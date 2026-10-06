@@ -1714,6 +1714,68 @@ static int r_leslie(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return TSR_OK;
 }
 
+/* C(n, k) as a double, rounded to the exact integer (these matrix builders use small orders). */
+static double sl_binom(int64_t n, int64_t k)
+{
+    if (k < 0 || k > n) return 0.0;
+    if (k > n - k) k = n - k;
+    double r = 1.0;
+    for (int64_t i = 0; i < k; i++) r = r * (double)(n - i) / (double)(i + 1);
+    return floor(r + 0.5);
+}
+
+/* pascal(n, kind='symmetric'): the n x n Pascal matrix. symmetric S[i][j] = C(i+j, i); lower L[i][j] = C(i, j)
+   (0 for j > i); upper U[i][j] = C(j, i) (scipy.linalg.pascal). */
+static int r_pascal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t n; int rc = sl_int(&args[0], "n", &n);
+    if (rc < 0) return rc;
+    if (n < 0) { fn_set_error("pascal: n must be a non-negative integer"); return TSR_EARG; }
+    int kind = 0;  /* 0 symmetric, 1 lower, 2 upper */
+    if (nargs > 1 && args[1].kind == 2 && args[1].str) {
+        if (!strcmp(args[1].str, "lower")) kind = 1;
+        else if (!strcmp(args[1].str, "upper")) kind = 2;
+        else if (strcmp(args[1].str, "symmetric") != 0) { fn_set_error("pascal: kind must be 'symmetric', 'lower' or 'upper'"); return TSR_EARG; }
+    }
+    int64_t osh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) return TSR_ENOMEM;
+    for (int64_t i = 0; i < n; i++)
+        for (int64_t j = 0; j < n; j++)
+            out[i * n + j] = kind == 0 ? sl_binom(i + j, i) : kind == 1 ? sl_binom(i, j) : sl_binom(j, i);
+    return TSR_OK;
+}
+
+/* invpascal(n, kind='symmetric'): inverse of the Pascal matrix. lower: (-1)^(i+j) C(i, j); upper its
+   transpose; symmetric: (-1)^(i+j) * sum_{k>=max(i,j)} C(k, i) C(k, j) (scipy.linalg.invpascal). */
+static int r_invpascal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t n; int rc = sl_int(&args[0], "n", &n);
+    if (rc < 0) return rc;
+    if (n < 0) { fn_set_error("invpascal: n must be a non-negative integer"); return TSR_EARG; }
+    int kind = 0;
+    if (nargs > 1 && args[1].kind == 2 && args[1].str) {
+        if (!strcmp(args[1].str, "lower")) kind = 1;
+        else if (!strcmp(args[1].str, "upper")) kind = 2;
+        else if (strcmp(args[1].str, "symmetric") != 0) { fn_set_error("invpascal: kind must be 'symmetric', 'lower' or 'upper'"); return TSR_EARG; }
+    }
+    int64_t osh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) return TSR_ENOMEM;
+    for (int64_t i = 0; i < n; i++)
+        for (int64_t j = 0; j < n; j++) {
+            const double sign = ((i + j) & 1) ? -1.0 : 1.0;
+            double v;
+            if (kind == 1) v = sign * sl_binom(i, j);
+            else if (kind == 2) v = sign * sl_binom(j, i);
+            else { double s = 0.0; for (int64_t k = (i > j ? i : j); k < n; k++) s += sl_binom(k, i) * sl_binom(k, j); v = sign * s; }
+            out[i * n + j] = v;
+        }
+    return TSR_OK;
+}
+
 /* khatri_rao(a, b): the column-wise Kronecker product; a is (ra, k), b is (rb, k), result is (ra*rb, k)
    with result[i*rb + l][j] = a[i][j] * b[l][j] (scipy.linalg.khatri_rao). */
 static int r_khatri_rao(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2548,6 +2610,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.hankel", 1, "c, r=None", "out", r_hankel, NULL, "Hankel matrix with first column c and last row r (scipy.linalg.hankel)."),
     ROUTINE("slinalg.fiedler", 1, "a", "out", r_fiedler, NULL, "Symmetric Fiedler matrix of absolute differences |a_i - a_j| (scipy.linalg.fiedler)."),
     ROUTINE("slinalg.leslie", 1, "f, s", "out", r_leslie, NULL, "Leslie population matrix with first row f and sub-diagonal s (scipy.linalg.leslie)."),
+    ROUTINE("slinalg.pascal", 1, "n, kind='symmetric'", "out", r_pascal, NULL, "Pascal matrix of order n (scipy.linalg.pascal)."),
+    ROUTINE("slinalg.invpascal", 1, "n, kind='symmetric'", "out", r_invpascal, NULL, "Inverse of the Pascal matrix of order n (scipy.linalg.invpascal)."),
     ROUTINE("slinalg.khatri_rao", 1, "a, b", "out", r_khatri_rao, NULL, "Column-wise Kronecker (Khatri-Rao) product (scipy.linalg.khatri_rao)."),
     ROUTINE("slinalg.diagsvd", 1, "s, M, N", "out", r_diagsvd, NULL, "M x N matrix with s on the diagonal (scipy.linalg.diagsvd)."),
     ROUTINE("slinalg.orth", 1, "A, rcond=None", "out", r_orth, NULL, "Orthonormal basis for the range of A via SVD (scipy.linalg.orth)."),

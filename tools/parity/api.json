@@ -1879,6 +1879,12 @@
                 "doc": "Inverse of a square matrix (scipy.linalg.inv)."
             },
             {
+                "name": "invpascal",
+                "static": true,
+                "sig": "invpascal(mixed $n, mixed $kind = 'symmetric'): mixed",
+                "doc": "Inverse of the Pascal matrix of order n (scipy.linalg.invpascal)."
+            },
+            {
                 "name": "khatriRao",
                 "static": true,
                 "sig": "khatriRao(mixed $a, mixed $b): mixed",
@@ -1943,6 +1949,12 @@
                 "static": true,
                 "sig": "orth(mixed $A, mixed $rcond = null): mixed",
                 "doc": "Orthonormal basis for the range of A via SVD (scipy.linalg.orth)."
+            },
+            {
+                "name": "pascal",
+                "static": true,
+                "sig": "pascal(mixed $n, mixed $kind = 'symmetric'): mixed",
+                "doc": "Pascal matrix of order n (scipy.linalg.pascal)."
             },
             {
                 "name": "pinv",
@@ -14506,6 +14518,18 @@
                 "name": "leslie",
                 "static": true,
                 "sig": "leslie($f, $s)",
+                "doc": ""
+            },
+            {
+                "name": "pascal",
+                "static": true,
+                "sig": "pascal($n, $kind = 'symmetric')",
+                "doc": ""
+            },
+            {
+                "name": "invpascal",
+                "static": true,
+                "sig": "invpascal($n, $kind = 'symmetric')",
                 "doc": ""
             },
             {

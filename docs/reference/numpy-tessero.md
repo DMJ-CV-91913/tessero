@@ -270,6 +270,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.hessenberg` | `Tessero\ScipyLinalg::hessenberg()` |
 | `scipy.linalg.hilbert` | `Tessero\ScipyLinalg::hilbert()` |
 | `scipy.linalg.inv` | `Tessero\ScipyLinalg::inv()` |
+| `scipy.linalg.invpascal` | `Tessero\ScipyLinalg::invpascal()` |
 | `scipy.linalg.khatri_rao` | `Tessero\ScipyLinalg::khatriRao()` |
 | `scipy.linalg.ldl` | `Tessero\ScipyLinalg::ldl()` |
 | `scipy.linalg.leslie` | `Tessero\ScipyLinalg::leslie()` |
@@ -281,6 +282,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.norm` | `Tessero\ScipyLinalg::norm()` |
 | `scipy.linalg.null_space` | `Tessero\ScipyLinalg::nullSpace()` |
 | `scipy.linalg.orth` | `Tessero\ScipyLinalg::orth()` |
+| `scipy.linalg.pascal` | `Tessero\ScipyLinalg::pascal()` |
 | `scipy.linalg.pinv` | `Tessero\ScipyLinalg::pinv()` |
 | `scipy.linalg.pinvh` | `Tessero\ScipyLinalg::pinvh()` |
 | `scipy.linalg.polar` | `Tessero\ScipyLinalg::polar()` |
