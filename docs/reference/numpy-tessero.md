@@ -261,6 +261,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.convolution_matrix` | `Tessero\ScipyLinalg::convolutionMatrix()` |
 | `scipy.linalg.coshm` | `Tessero\ScipyLinalg::coshm()` |
 | `scipy.linalg.cosm` | `Tessero\ScipyLinalg::cosm()` |
+| `scipy.linalg.cossin` | `Tessero\ScipyLinalg::cossin()` |
 | `scipy.linalg.det` | `Tessero\ScipyLinalg::det()` |
 | `scipy.linalg.dft` | `Tessero\ScipyLinalg::dft()` |
 | `scipy.linalg.diagsvd` | `Tessero\ScipyLinalg::diagsvd()` |

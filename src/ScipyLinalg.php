@@ -30,6 +30,7 @@ final class ScipyLinalg
     'convolution_matrix' => 'convolutionMatrix',
     'coshm' => 'coshm',
     'cosm' => 'cosm',
+    'cossin' => 'cossin',
     'det' => 'det',
     'dft' => 'dft',
     'diagsvd' => 'diagsvd',
@@ -244,6 +245,18 @@ final class ScipyLinalg
     public static function cosm(mixed $a): mixed
     {
         return Registry::routine('slinalg.cosm', [$a]);
+    }
+
+    /**
+     * Cosine-sine decomposition of a partitioned orthogonal matrix via dorcsd (scipy.linalg.cossin).
+     *
+     * scipy.linalg.cossin
+     *
+     * @return mixed one array, or an array keyed by u, cs, vh when several results are requested
+     */
+    public static function cossin(mixed $X, mixed $p, mixed $q): mixed
+    {
+        return Registry::routine('slinalg.cossin', [$X, $p, $q]);
     }
 
     /**

@@ -3946,6 +3946,74 @@ static int r_qr_delete(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* cossin(X, p, q): the cosine-sine decomposition of a real orthogonal m x m matrix partitioned at (p, q):
+   X = U @ CS @ VH with U = diag(U1, U2), VH = diag(V1^T, V2^T) block-orthogonal and CS the cosine-sine matrix,
+   via LAPACK dorcsd (scipy.linalg.cossin, default swap_sign=False, separate=False). Returns (U, CS, VH). */
+static int r_cossin(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("cossin: X must be a 2-D array"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != m) { fn_set_error("cossin: X must be square"); return TSR_EARG; }
+    int64_t p = 0, q = 0;
+    if (sl_arg_int(&args[1], &p) != 0 || sl_arg_int(&args[2], &q) != 0) { fn_set_error("cossin: p and q must be integers"); return TSR_EARG; }
+    if (p <= 0 || p >= m || q <= 0 || q >= m) { fn_set_error("cossin: need 0<p<m and 0<q<m"); return TSR_EARG; }
+    int64_t nx; double *X = mat_f64(&args[0], "X", &nx); if (!X) return TSR_ENOMEM;
+    const int64_t mp = m - p, mq = m - q;
+    const int64_t r = (p < q ? p : q) < (mp < mq ? mp : mq) ? (p < q ? p : q) : (mp < mq ? mp : mq);
+    double *x11 = (double *)malloc(sizeof(double) * (size_t)(p * q));
+    double *x12 = (double *)malloc(sizeof(double) * (size_t)(p * mq));
+    double *x21 = (double *)malloc(sizeof(double) * (size_t)(mp * q));
+    double *x22 = (double *)malloc(sizeof(double) * (size_t)(mp * mq));
+    double *theta = (double *)malloc(sizeof(double) * (size_t)(r > 0 ? r : 1));
+    double *u1 = (double *)malloc(sizeof(double) * (size_t)(p * p));
+    double *u2 = (double *)malloc(sizeof(double) * (size_t)(mp * mp));
+    double *v1t = (double *)malloc(sizeof(double) * (size_t)(q * q));
+    double *v2t = (double *)malloc(sizeof(double) * (size_t)(mq * mq));
+    int rc = TSR_OK;
+    if (!x11 || !x12 || !x21 || !x22 || !theta || !u1 || !u2 || !v1t || !v2t) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < p; i++) for (int64_t j = 0; j < q; j++) x11[i * q + j] = X[i * m + j];
+        for (int64_t i = 0; i < p; i++) for (int64_t j = 0; j < mq; j++) x12[i * mq + j] = X[i * m + (q + j)];
+        for (int64_t i = 0; i < mp; i++) for (int64_t j = 0; j < q; j++) x21[i * q + j] = X[(p + i) * m + j];
+        for (int64_t i = 0; i < mp; i++) for (int64_t j = 0; j < mq; j++) x22[i * mq + j] = X[(p + i) * m + (q + j)];
+        lapack_int info = LAPACKE_dorcsd(LAPACK_ROW_MAJOR, 'Y', 'Y', 'Y', 'Y', 'N', 'D',
+                                         (lapack_int)m, (lapack_int)p, (lapack_int)q,
+                                         x11, (lapack_int)q, x12, (lapack_int)mq, x21, (lapack_int)q, x22, (lapack_int)mq,
+                                         theta, u1, (lapack_int)p, u2, (lapack_int)mp, v1t, (lapack_int)q, v2t, (lapack_int)mq);
+        if (info != 0) { fn_set_error("cossin: dorcsd failed"); rc = TSR_EARG; }
+        else {
+            int64_t osh[2] = {m, m};
+            double *U = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+            double *CS = (double *)fn_result_array(&res[1], TSR_F64, 2, osh);
+            double *VH = (double *)fn_result_array(&res[2], TSR_F64, 2, osh);
+            if (!U || !CS || !VH) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < m * m; i++) { U[i] = 0.0; VH[i] = 0.0; CS[i] = 0.0; }
+                for (int64_t i = 0; i < p; i++) for (int64_t j = 0; j < p; j++) U[i * m + j] = u1[i * p + j];
+                for (int64_t i = 0; i < mp; i++) for (int64_t j = 0; j < mp; j++) U[(p + i) * m + (p + j)] = u2[i * mp + j];
+                for (int64_t i = 0; i < q; i++) for (int64_t j = 0; j < q; j++) VH[i * m + j] = v1t[i * q + j];
+                for (int64_t i = 0; i < mq; i++) for (int64_t j = 0; j < mq; j++) VH[(q + i) * m + (q + j)] = v2t[i * mq + j];
+                /* CS assembly (scipy _cossin, swap_sign=False) */
+                const int64_t minpq = p < q ? p : q, minpmq = p < mq ? p : mq;
+                const int64_t minmpq = mp < q ? mp : q, minmpmq = mp < mq ? mp : mq;
+                const int64_t n11 = minpq - r, n12 = minpmq - r, n21 = minmpq - r, n22 = minmpmq - r;
+                for (int64_t i = 0; i < n11; i++) CS[i * m + i] = 1.0;
+                { int64_t xs = n11 + r, ys = n11 + n21 + n22 + 2 * r; for (int64_t t = 0; t < n12; t++) CS[(xs + t) * m + (ys + t)] = -1.0; }
+                { int64_t xs = p + n22 + r, ys = n11 + r; for (int64_t t = 0; t < n21; t++) CS[(xs + t) * m + (ys + t)] = 1.0; }
+                for (int64_t t = 0; t < n22; t++) CS[(p + t) * m + (q + t)] = 1.0;
+                for (int64_t t = 0; t < r; t++) CS[(n11 + t) * m + (n11 + t)] = cos(theta[t]);
+                { int64_t xs = p + n22, ys = n11 + r + n21 + n22; for (int64_t t = 0; t < r; t++) CS[(xs + t) * m + (ys + t)] = cos(theta[t]); }
+                { int64_t xs = n11, ys = n11 + n21 + n22 + r; for (int64_t t = 0; t < r; t++) CS[(xs + t) * m + (ys + t)] = -sin(theta[t]); }
+                { int64_t xs = p + n22, ys = n11; for (int64_t t = 0; t < r; t++) CS[(xs + t) * m + (ys + t)] = sin(theta[t]); }
+            }
+        }
+    }
+    free(x11); free(x12); free(x21); free(x22); free(theta); free(u1); free(u2); free(v1t); free(v2t);
+    fn_free_doubles(X, nx);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -4023,6 +4091,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.qr_update", 4, "Q, R, u, v", "Q, R", r_qr_update, NULL, "Economic QR of (Q R + u v^T), canonicalised (scipy.linalg.qr_update)."),
     ROUTINE("slinalg.qr_insert", 5, "Q, R, u, k, which='row'", "Q, R", r_qr_insert, NULL, "Economic QR after inserting a row/column, canonicalised (scipy.linalg.qr_insert)."),
     ROUTINE("slinalg.qr_delete", 5, "Q, R, k, p=1, which='row'", "Q, R", r_qr_delete, NULL, "Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete)."),
+    ROUTINE("slinalg.cossin", 3, "X, p, q", "u, cs, vh", r_cossin, NULL, "Cosine-sine decomposition of a partitioned orthogonal matrix via dorcsd (scipy.linalg.cossin)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),
