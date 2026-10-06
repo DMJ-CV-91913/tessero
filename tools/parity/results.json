@@ -435,6 +435,7 @@
         "signal.correlate": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.deconvolve": "pass",
         "signal.detrend": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
@@ -2160,7 +2161,8 @@
             "signal.kaiser_beta": 0,
             "signal.kaiserord": 0,
             "signal.firwin2": 0.7922821494108989,
-            "signal.sos2zpk": 0
+            "signal.sos2zpk": 0,
+            "signal.deconvolve": 0
         },
         "ext": {
             "np.median": 0,
@@ -3241,7 +3243,8 @@
             "signal.kaiser_beta": 0,
             "signal.kaiserord": 0,
             "signal.firwin2": 0.7922821494108989,
-            "signal.sos2zpk": 0
+            "signal.sos2zpk": 0,
+            "signal.deconvolve": 0
         }
     },
     "ext": {
@@ -3680,6 +3683,7 @@
         "signal.correlate": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.deconvolve": "pass",
         "signal.detrend": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
