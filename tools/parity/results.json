@@ -469,6 +469,7 @@
         "slinalg.fractional_matrix_power": "pass",
         "slinalg.hadamard": "pass",
         "slinalg.hankel": "pass",
+        "slinalg.helmert": "pass",
         "slinalg.hessenberg": "pass",
         "slinalg.hilbert": "pass",
         "slinalg.inv": "pass",
@@ -2050,7 +2051,8 @@
             "slinalg.eigh_tridiagonal": 0,
             "slinalg.eigvals_banded": 0,
             "slinalg.cholesky_banded": 0,
-            "slinalg.solve_discrete_lyapunov": 0
+            "slinalg.solve_discrete_lyapunov": 0,
+            "slinalg.helmert": 0
         },
         "ext": {
             "np.median": 0,
@@ -3076,7 +3078,8 @@
             "slinalg.eigh_tridiagonal": 0,
             "slinalg.eigvals_banded": 0,
             "slinalg.cholesky_banded": 0,
-            "slinalg.solve_discrete_lyapunov": 0
+            "slinalg.solve_discrete_lyapunov": 0,
+            "slinalg.helmert": 0
         }
     },
     "ext": {
@@ -3549,6 +3552,7 @@
         "slinalg.fractional_matrix_power": "pass",
         "slinalg.hadamard": "pass",
         "slinalg.hankel": "pass",
+        "slinalg.helmert": "pass",
         "slinalg.hessenberg": "pass",
         "slinalg.hilbert": "pass",
         "slinalg.inv": "pass",

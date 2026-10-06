@@ -2515,6 +2515,33 @@ static int r_solve_discrete_lyapunov(const void *ctx, const tsr_arg *args, int n
     return rc;
 }
 
+/* helmert(n, full=False): the Helmert matrix of order n. Contrast row k (0-based, k = 0..n-2) is
+   1/sqrt((k+1)(k+2)) in columns 0..k and -(k+1)/sqrt((k+1)(k+2)) in column k+1; full prepends the mean row
+   1/sqrt(n) (scipy.linalg.helmert). */
+static int r_helmert(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t n; int rc = sl_int(&args[0], "n", &n);
+    if (rc < 0) return rc;
+    if (n < 1) { fn_set_error("helmert: n must be a positive integer"); return TSR_EARG; }
+    int full = 0;
+    if (nargs > 1 && ((args[1].kind == 4 && args[1].num != 0) || (args[1].kind == 1 && (args[1].num != 0 || args[1].ival != 0)))) full = 1;
+    const int64_t m = full ? n : n - 1;
+    int64_t osh[2] = {m, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) return TSR_ENOMEM;
+    for (int64_t i = 0; i < m * n; i++) out[i] = 0.0;
+    int64_t base = 0;
+    if (full) { const double v = 1.0 / sqrt((double)n); for (int64_t j = 0; j < n; j++) out[j] = v; base = 1; }
+    for (int64_t k = 0; k < n - 1; k++) {
+        const double d = (double)(k + 1), s = sqrt(d * (d + 1.0));
+        double *row = out + (base + k) * n;
+        for (int64_t j = 0; j <= k; j++) row[j] = 1.0 / s;
+        row[k + 1] = -d / s;
+    }
+    return TSR_OK;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3070,6 +3097,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.eigvals_banded", 1, "a_band, lower=False", "out", r_eigvals_banded, NULL, "Eigenvalues of a symmetric banded matrix in band storage via dsbevd (scipy.linalg.eigvals_banded)."),
     ROUTINE("slinalg.cholesky_banded", 1, "ab, lower=False", "out", r_cholesky_banded, NULL, "Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded)."),
     ROUTINE("slinalg.solve_discrete_lyapunov", 1, "a, q", "out", r_solve_discrete_lyapunov, NULL, "Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov)."),
+    ROUTINE("slinalg.helmert", 1, "n, full=False", "out", r_helmert, NULL, "Helmert matrix of order n (scipy.linalg.helmert)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),
