@@ -465,6 +465,7 @@
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",
         "signal.sos2tf": "pass",
+        "signal.sos2zpk": "pass",
         "signal.sosfilt": "pass",
         "signal.sosfilt_zi": "pass",
         "signal.sosfiltfilt": "pass",
@@ -2158,7 +2159,8 @@
             "signal.kaiser_atten": 0,
             "signal.kaiser_beta": 0,
             "signal.kaiserord": 0,
-            "signal.firwin2": 0.7922821494108989
+            "signal.firwin2": 0.7922821494108989,
+            "signal.sos2zpk": 0
         },
         "ext": {
             "np.median": 0,
@@ -3238,7 +3240,8 @@
             "signal.kaiser_atten": 0,
             "signal.kaiser_beta": 0,
             "signal.kaiserord": 0,
-            "signal.firwin2": 0.7922821494108989
+            "signal.firwin2": 0.7922821494108989,
+            "signal.sos2zpk": 0
         }
     },
     "ext": {
@@ -3707,6 +3710,7 @@
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",
         "signal.sos2tf": "pass",
+        "signal.sos2zpk": "pass",
         "signal.sosfilt": "pass",
         "signal.sosfilt_zi": "pass",
         "signal.sosfiltfilt": "pass",
