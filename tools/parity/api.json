@@ -1897,6 +1897,12 @@
                 "doc": "Hankel matrix with first column c and last row r (scipy.linalg.hankel)."
             },
             {
+                "name": "helmert",
+                "static": true,
+                "sig": "helmert(mixed $n, mixed $full = false): mixed",
+                "doc": "Helmert matrix of order n (scipy.linalg.helmert)."
+            },
+            {
                 "name": "hessenberg",
                 "static": true,
                 "sig": "hessenberg(mixed $a, mixed $calcQ = false): mixed",
@@ -14788,6 +14794,12 @@
                 "name": "solveDiscreteLyapunov",
                 "static": true,
                 "sig": "solveDiscreteLyapunov($a, $q)",
+                "doc": ""
+            },
+            {
+                "name": "helmert",
+                "static": true,
+                "sig": "helmert($n, $full = false)",
                 "doc": ""
             },
             {

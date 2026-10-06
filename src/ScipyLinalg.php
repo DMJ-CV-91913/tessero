@@ -44,6 +44,7 @@ final class ScipyLinalg
     'fractional_matrix_power' => 'fractionalMatrixPower',
     'hadamard' => 'hadamard',
     'hankel' => 'hankel',
+    'helmert' => 'helmert',
     'hessenberg' => 'hessenberg',
     'hilbert' => 'hilbert',
     'inv' => 'inv',
@@ -373,6 +374,16 @@ final class ScipyLinalg
     public static function hankel(mixed $c, mixed $r = null): mixed
     {
         return Registry::routine('slinalg.hankel', [$c, $r]);
+    }
+
+    /**
+     * Helmert matrix of order n (scipy.linalg.helmert).
+     *
+     * scipy.linalg.helmert
+     */
+    public static function helmert(mixed $n, mixed $full = false): mixed
+    {
+        return Registry::routine('slinalg.helmert', [$n, $full]);
     }
 
     /**
