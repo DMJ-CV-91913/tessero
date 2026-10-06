@@ -272,6 +272,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.eigvalsh` | `Tessero\ScipyLinalg::eigvalsh()` |
 | `scipy.linalg.eigvalsh_tridiagonal` | `Tessero\ScipyLinalg::eigvalshTridiagonal()` |
 | `scipy.linalg.expm` | `Tessero\ScipyLinalg::expm()` |
+| `scipy.linalg.expm_cond` | `Tessero\ScipyLinalg::expmCond()` |
+| `scipy.linalg.expm_frechet` | `Tessero\ScipyLinalg::expmFrechet()` |
 | `scipy.linalg.fiedler` | `Tessero\ScipyLinalg::fiedler()` |
 | `scipy.linalg.fractional_matrix_power` | `Tessero\ScipyLinalg::fractionalMatrixPower()` |
 | `scipy.linalg.hadamard` | `Tessero\ScipyLinalg::hadamard()` |

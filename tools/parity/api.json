@@ -1879,6 +1879,18 @@
                 "doc": "Matrix exponential via the Schur-Parlett method (scipy.linalg.expm; real spectrum)."
             },
             {
+                "name": "expmCond",
+                "static": true,
+                "sig": "expmCond(mixed $A): mixed",
+                "doc": "Relative condition number of the matrix exponential from the Kronecker form of its Frechet derivative (scipy.linalg.expm_cond)."
+            },
+            {
+                "name": "expmFrechet",
+                "static": true,
+                "sig": "expmFrechet(mixed $A, mixed $E): mixed",
+                "doc": "Matrix exponential and its Frechet derivative in direction E via the block-enlarge identity (scipy.linalg.expm_frechet)."
+            },
+            {
                 "name": "fiedler",
                 "static": true,
                 "sig": "fiedler(mixed $a): mixed",
@@ -14866,6 +14878,18 @@
                 "name": "eigBanded",
                 "static": true,
                 "sig": "eigBanded($ab, $lower = false, $eigvalsOnly = false)",
+                "doc": ""
+            },
+            {
+                "name": "expmFrechet",
+                "static": true,
+                "sig": "expmFrechet($A, $E)",
+                "doc": ""
+            },
+            {
+                "name": "expmCond",
+                "static": true,
+                "sig": "expmCond($A)",
                 "doc": ""
             },
             {

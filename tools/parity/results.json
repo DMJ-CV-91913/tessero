@@ -466,6 +466,8 @@
         "slinalg.eigvalsh": "pass",
         "slinalg.eigvalsh_tridiagonal": "pass",
         "slinalg.expm": "pass",
+        "slinalg.expm_cond": "pass",
+        "slinalg.expm_frechet": "pass",
         "slinalg.fiedler": "pass",
         "slinalg.fractional_matrix_power": "pass",
         "slinalg.hadamard": "pass",
@@ -2060,7 +2062,9 @@
             "slinalg.cho_solve_banded": 0,
             "slinalg.rq": 0,
             "slinalg.orthogonal_procrustes": 4.7343702554387336e-14,
-            "slinalg.matrix_balance": 0
+            "slinalg.matrix_balance": 0,
+            "slinalg.expm_frechet": 1.223856557204449e-14,
+            "slinalg.expm_cond": 3.9339171700390486e-16
         },
         "ext": {
             "np.median": 0,
@@ -3091,7 +3095,9 @@
             "slinalg.cho_solve_banded": 0,
             "slinalg.rq": 0,
             "slinalg.orthogonal_procrustes": 4.7343702554387336e-14,
-            "slinalg.matrix_balance": 0
+            "slinalg.matrix_balance": 0,
+            "slinalg.expm_frechet": 1.223856557204449e-14,
+            "slinalg.expm_cond": 3.9339171700390486e-16
         }
     },
     "ext": {
@@ -3561,6 +3567,8 @@
         "slinalg.eigvalsh": "pass",
         "slinalg.eigvalsh_tridiagonal": "pass",
         "slinalg.expm": "pass",
+        "slinalg.expm_cond": "pass",
+        "slinalg.expm_frechet": "pass",
         "slinalg.fiedler": "pass",
         "slinalg.fractional_matrix_power": "pass",
         "slinalg.hadamard": "pass",
