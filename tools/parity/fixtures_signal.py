@@ -403,6 +403,25 @@ for (rip, w) in [(65.0, 0.1), (40.0, 0.05), (20.0, 0.2), (30.0, 0.15)]:
     nt, beta = sg.kaiserord(rip, w)
     kord.append({'args': [F.enc(rip), F.enc(w)], 'kwargs': {}, 'expect': F.enc_result((nt, beta), ['numtaps', 'beta']), 'compare': 'tol'})
 
+# firwin2: FIR by frequency sampling (nfreqs/window/antisymmetric/fs are keyword-only in scipy)
+def _firwin2_case(numtaps, freq, gain, window='hamming', fs=None):
+    args = [numtaps, np.asarray(freq, dtype=float), np.asarray(gain, dtype=float), None, window]
+    kw = dict(window=window)
+    if fs is not None:
+        args = [numtaps, np.asarray(freq, dtype=float), np.asarray(gain, dtype=float), None, window, False, fs]; kw['fs'] = fs
+    r = sg.firwin2(numtaps, np.asarray(freq, dtype=float), np.asarray(gain, dtype=float), **kw)
+    return {'args': [F.enc(np.asarray(a) if isinstance(a, np.ndarray) else a) for a in args],
+            'kwargs': {}, 'expect': F.enc_result(r, []), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+fw2 = [
+    _firwin2_case(31, [0.0, 0.5, 1.0], [1.0, 1.0, 0.0]),            # lowpass ramp
+    _firwin2_case(63, [0.0, 0.3, 0.6, 1.0], [0.0, 1.0, 1.0, 0.0]),  # bandpass
+    _firwin2_case(32, [0.0, 0.5, 1.0], [1.0, 0.5, 0.0]),           # even length (zero at Nyquist)
+    _firwin2_case(31, [0.0, 0.5, 1.0], [1.0, 1.0, 0.0], window='hann'),
+    _firwin2_case(45, [0.0, 30.0, 60.0, 100.0], [1.0, 1.0, 0.0, 0.0], fs=200.0),  # fs
+]
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -445,7 +464,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'resample', 'cases': rsmp, 'tol': {'atol': 1e-10}},
                  {'fn': 'firwin', 'cases': fwn, 'tol': {'atol': 1e-12}},
                  {'fn': 'kaiser_atten', 'cases': katt}, {'fn': 'kaiser_beta', 'cases': kbeta},
-                 {'fn': 'kaiserord', 'cases': kord}]}
+                 {'fn': 'kaiserord', 'cases': kord},
+                 {'fn': 'firwin2', 'cases': fw2, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
