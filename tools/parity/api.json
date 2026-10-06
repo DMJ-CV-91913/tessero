@@ -1777,6 +1777,12 @@
                 "doc": "Companion matrix of a polynomial (scipy.linalg.companion)."
             },
             {
+                "name": "convolutionMatrix",
+                "static": true,
+                "sig": "convolutionMatrix(mixed $a, mixed $n, mixed $mode = 'full'): mixed",
+                "doc": "Toeplitz matrix A with A @ v = convolve(a, v, mode) (scipy.linalg.convolution_matrix)."
+            },
+            {
                 "name": "coshm",
                 "static": true,
                 "sig": "coshm(mixed $a): mixed",
@@ -1793,6 +1799,12 @@
                 "static": true,
                 "sig": "det(mixed $a): mixed",
                 "doc": "Determinant of a square matrix (scipy.linalg.det)."
+            },
+            {
+                "name": "dft",
+                "static": true,
+                "sig": "dft(mixed $n, mixed $scale = null): mixed",
+                "doc": "The n x n discrete Fourier transform matrix (scipy.linalg.dft)."
             },
             {
                 "name": "diagsvd",
@@ -14530,6 +14542,18 @@
                 "name": "invpascal",
                 "static": true,
                 "sig": "invpascal($n, $kind = 'symmetric')",
+                "doc": ""
+            },
+            {
+                "name": "convolutionMatrix",
+                "static": true,
+                "sig": "convolutionMatrix($a, $n, $mode = 'full')",
+                "doc": ""
+            },
+            {
+                "name": "dft",
+                "static": true,
+                "sig": "dft($n, $scale = null)",
                 "doc": ""
             },
             {
