@@ -239,6 +239,14 @@ def main():
          call('convolution_matrix', [rng.uniform(-3, 3, size=5), 3], {'mode': 'same'})]
     blocks['dft'] = [call('dft', [n]) for n in (1, 4, 5, 8)] + \
         [call('dft', [5], {'scale': 'sqrtn'}), call('dft', [4], {'scale': 'n'})]
+    # Sylvester / Lyapunov (Bartels-Stewart): spectra chosen so eig(A) + eig(B) is never ~0 (solvable).
+    _Asyl = np.array([[2.0, 0.5, 0.0], [0.0, 3.0, 0.3], [0.1, 0.0, 4.0]])
+    _Bsyl = np.array([[-5.0, 0.2], [0.0, -6.0]])
+    blocks['solve_sylvester'] = [call('solve_sylvester', [_Asyl, _Bsyl, rng.uniform(-2, 2, size=(3, 2))]),
+                                 call('solve_sylvester', [_Asyl, _Asyl + 10 * np.eye(3), rng.uniform(-2, 2, size=(3, 3))])]
+    _Aly = np.array([[-3.0, 1.0, 0.5], [0.0, -2.0, 0.3], [0.2, 0.0, -4.0]])
+    _Qly = np.array([[2.0, 0.3, 0.1], [0.3, 3.0, 0.2], [0.1, 0.2, 1.5]])
+    blocks['solve_continuous_lyapunov'] = [call('solve_continuous_lyapunov', [_Aly, _Qly])]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]
