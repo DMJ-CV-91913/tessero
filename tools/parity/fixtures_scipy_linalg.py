@@ -279,6 +279,7 @@ def main():
     blocks['cho_solve_banded'] = chb
     blocks['rq'] = [callc('rq', [gen(n)], None, ['R', 'Q'], lambda r: r) for n in (2, 3, 4)]
     blocks['orthogonal_procrustes'] = [callc('orthogonal_procrustes', [gen(n), gen(n)], None, ['R', 'scale'], lambda r: r) for n in (3, 4, 5)]
+    blocks['matrix_balance'] = [callc('matrix_balance', [gen(n)], None, ['B', 'T'], lambda r: r) for n in (3, 4, 5)]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]

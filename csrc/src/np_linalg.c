@@ -2644,6 +2644,34 @@ static int r_orthogonal_procrustes(const void *ctx, const tsr_arg *args, int nar
     return rc;
 }
 
+/* matrix_balance(A, ...): balance a square matrix via dgebal (job='B'); returns the balanced matrix B and the
+   similarity transform T = diag(scale) with B = T^-1 A T. For a generic dense matrix dgebal performs no
+   permutation, so T is the diagonal scaling (scipy.linalg.matrix_balance, separate=False). Returns (B, T). */
+static int r_matrix_balance(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("matrix_balance: A must be a square 2-D array"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    int64_t na; double *a = mat_f64(&args[0], "A", &na); if (!a) return TSR_ENOMEM;
+    double *scale = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    int rc = TSR_OK;
+    lapack_int ilo = 1, ihi = (lapack_int)n;
+    if (!scale) rc = TSR_ENOMEM;
+    else if (n > 0) {
+        lapack_int info = LAPACKE_dgebal(LAPACK_ROW_MAJOR, 'B', (lapack_int)n, a, (lapack_int)n, &ilo, &ihi, scale);
+        if (info != 0) { rc = TSR_EARG; fn_set_error("matrix_balance: dgebal failed"); }
+    }
+    if (rc == TSR_OK) {
+        int64_t bsh[2] = {n, n}, tsh[2] = {n, n};
+        double *B = (double *)fn_result_array(&res[0], TSR_F64, 2, bsh);
+        double *T = (double *)fn_result_array(&res[1], TSR_F64, 2, tsh);
+        if (!B || !T) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < n * n; i++) { B[i] = a[i]; T[i] = 0.0; } for (int64_t i = 0; i < n; i++) T[i * n + i] = scale[i]; }
+    }
+    free(scale); fn_free_doubles(a, na);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3203,6 +3231,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.cho_solve_banded", 1, "cb, lower, b", "out", r_cho_solve_banded, NULL, "Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded)."),
     ROUTINE("slinalg.rq", 2, "a, mode='full'", "R, Q", r_rq, NULL, "RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq)."),
     ROUTINE("slinalg.orthogonal_procrustes", 2, "A, B", "R, scale", r_orthogonal_procrustes, NULL, "Orthogonal Procrustes solution R minimising ||A R - B|| and scale (scipy.linalg.orthogonal_procrustes)."),
+    ROUTINE("slinalg.matrix_balance", 2, "A, permute=True, scale=True, separate=False", "B, T", r_matrix_balance, NULL, "Balance a matrix via dgebal; returns the balanced matrix and the scaling transform (scipy.linalg.matrix_balance)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

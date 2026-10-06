@@ -293,6 +293,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.lu_factor` | `Tessero\ScipyLinalg::luFactor()` |
 | `scipy.linalg.lu_solve` | `Tessero\ScipyLinalg::luSolve()` |
 | `scipy.linalg.matmul_toeplitz` | `Tessero\ScipyLinalg::matmulToeplitz()` |
+| `scipy.linalg.matrix_balance` | `Tessero\ScipyLinalg::matrixBalance()` |
 | `scipy.linalg.norm` | `Tessero\ScipyLinalg::norm()` |
 | `scipy.linalg.null_space` | `Tessero\ScipyLinalg::nullSpace()` |
 | `scipy.linalg.orth` | `Tessero\ScipyLinalg::orth()` |

@@ -2005,6 +2005,12 @@
                 "doc": "The product of a Toeplitz matrix with x (scipy.linalg.matmul_toeplitz)."
             },
             {
+                "name": "matrixBalance",
+                "static": true,
+                "sig": "matrixBalance(mixed $A, mixed $permute = true, mixed $scale = true, mixed $separate = false): mixed",
+                "doc": "Balance a matrix via dgebal; returns the balanced matrix and the scaling transform (scipy.linalg.matrix_balance)."
+            },
+            {
                 "name": "norm",
                 "static": true,
                 "sig": "norm(mixed $a, mixed $ord = null, mixed $axis = null, mixed $keepdims = false): mixed",
@@ -14836,6 +14842,12 @@
                 "name": "orthogonalProcrustes",
                 "static": true,
                 "sig": "orthogonalProcrustes($A, $B)",
+                "doc": ""
+            },
+            {
+                "name": "matrixBalance",
+                "static": true,
+                "sig": "matrixBalance($A, $permute = true, $scale = true, $separate = false)",
                 "doc": ""
             },
             {
