@@ -2115,6 +2115,16 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.solve_continuous_lyapunov": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.solve_sylvester": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.solve_triangular": {
             "kind": "routine",
             "nin": 0,

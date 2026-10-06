@@ -295,6 +295,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.sinm` | `Tessero\ScipyLinalg::sinm()` |
 | `scipy.linalg.solve` | `Tessero\ScipyLinalg::solve()` |
 | `scipy.linalg.solve_banded` | `Tessero\ScipyLinalg::solveBanded()` |
+| `scipy.linalg.solve_continuous_lyapunov` | `Tessero\ScipyLinalg::solveContinuousLyapunov()` |
+| `scipy.linalg.solve_sylvester` | `Tessero\ScipyLinalg::solveSylvester()` |
 | `scipy.linalg.solve_triangular` | `Tessero\ScipyLinalg::solveTriangular()` |
 | `scipy.linalg.solveh_banded` | `Tessero\ScipyLinalg::solvehBanded()` |
 | `scipy.linalg.sqrtm` | `Tessero\ScipyLinalg::sqrtm()` |
