@@ -2170,6 +2170,11 @@
             "nin": 0,
             "nout": 2
         },
+        "slinalg.qr_multiply": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "slinalg.qz": {
             "kind": "routine",
             "nin": 0,
