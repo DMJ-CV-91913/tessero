@@ -371,6 +371,17 @@ def main():
     blocks['eigvals'] = [callc('eigvals', [m], None, [], eigvals_canon) for m in emats]
     blocks['eig'] = [callc('eig', [m], None, ['eigenvalues', 'eigenvectors'], eig_canon) for m in emats]
 
+    # expm_frechet / expm_cond: Frechet derivative of the matrix exponential (block-enlarge identity) and its
+    # condition number. Small entries keep ||A|| below the degree-13 Pade scaling threshold (exact, no squaring).
+    ef, ec = [], []
+    for n in (2, 3, 4):
+        Aef = rng.uniform(-1.0, 1.0, size=(n, n))
+        Eef = rng.uniform(-1.0, 1.0, size=(n, n))
+        ef.append(call('expm_frechet', [Aef, Eef], names=['expm', 'frechet']))
+        ec.append(call('expm_cond', [rng.uniform(-1.0, 1.0, size=(n, n))]))
+    blocks['expm_frechet'] = ef
+    blocks['expm_cond'] = ec
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}

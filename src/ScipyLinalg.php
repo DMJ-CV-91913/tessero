@@ -41,6 +41,8 @@ final class ScipyLinalg
     'eigvalsh' => 'eigvalsh',
     'eigvalsh_tridiagonal' => 'eigvalshTridiagonal',
     'expm' => 'expm',
+    'expm_cond' => 'expmCond',
+    'expm_frechet' => 'expmFrechet',
     'fiedler' => 'fiedler',
     'fractional_matrix_power' => 'fractionalMatrixPower',
     'hadamard' => 'hadamard',
@@ -348,6 +350,28 @@ final class ScipyLinalg
     public static function expm(mixed $a): mixed
     {
         return Registry::routine('slinalg.expm', [$a]);
+    }
+
+    /**
+     * Relative condition number of the matrix exponential from the Kronecker form of its Frechet derivative (scipy.linalg.expm_cond).
+     *
+     * scipy.linalg.expm_cond
+     */
+    public static function expmCond(mixed $A): mixed
+    {
+        return Registry::routine('slinalg.expm_cond', [$A]);
+    }
+
+    /**
+     * Matrix exponential and its Frechet derivative in direction E via the block-enlarge identity (scipy.linalg.expm_frechet).
+     *
+     * scipy.linalg.expm_frechet
+     *
+     * @return mixed one array, or an array keyed by expm, frechet when several results are requested
+     */
+    public static function expmFrechet(mixed $A, mixed $E): mixed
+    {
+        return Registry::routine('slinalg.expm_frechet', [$A, $E]);
     }
 
     /**
