@@ -161,6 +161,31 @@ for (N, rs, Wn, bt) in [(2, 20.0, 0.2, 'low'), (3, 30.0, 0.3, 'low'), (4, 40.0, 
     b, a = _cb2(N, rs, Wn, btype=bt)
     cb2c.append({'args': [F.enc(N), F.enc(rs), F.enc(Wn), F.enc(bt)], 'kwargs': {}, 'expect': F.enc_result((b, a), ['b', 'a']), 'compare': 'tol'})
 
+# waveform generators (pure, host-independent)
+def _wave_case(fn, args, pyargs):
+    return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
+
+
+sqw, saw, chp, gps, uimp = [], [], [], [], []
+_tt = np.linspace(0, 4 * np.pi, 60)
+for duty in (0.5, 0.3, 0.75, 0.1):
+    sqw.append(_wave_case('square', [_tt, duty], [_tt, duty]))
+for width in (1.0, 0.0, 0.5, 0.3):
+    saw.append(_wave_case('sawtooth', [_tt, width], [_tt, width]))
+_ct = np.linspace(0, 1.0, 80)
+for (f0, t1, f1, method) in [(6.0, 1.0, 1.0, 'linear'), (1.0, 1.0, 10.0, 'linear'),
+                             (1.0, 1.0, 8.0, 'quadratic'), (1.0, 1.0, 6.0, 'logarithmic'),
+                             (1.0, 1.0, 6.0, 'hyperbolic')]:
+    chp.append(_wave_case('chirp', [_ct, f0, t1, f1, method, 0.0], [_ct, f0, t1, f1, method, 0.0]))
+chp.append(_wave_case('chirp', [_ct, 2.0, 1.0, 5.0, 'linear', 90.0], [_ct, 2.0, 1.0, 5.0, 'linear', 90.0]))
+_gt = np.linspace(-0.5, 0.5, 60)
+for (fc, bw) in [(5.0, 0.5), (10.0, 0.3), (3.0, 0.8)]:
+    gps.append(_wave_case('gausspulse', [_gt, fc, bw], [_gt, fc, bw]))
+uimp.append(_wave_case('unit_impulse', [8], [8]))
+uimp.append(_wave_case('unit_impulse', [8, 3], [8, 3]))
+uimp.append(_wave_case('unit_impulse', [9, 'mid'], [9, 'mid']))
+uimp.append(_wave_case('unit_impulse', [8, -1], [8, -1]))
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -174,7 +199,11 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'freqz', 'cases': fqz, 'tol': {'atol': 1e-12}},
                  {'fn': 'zpk2tf', 'cases': z2tc, 'tol': {'atol': 1e-12}}, {'fn': 'butter', 'cases': butc, 'tol': {'atol': 1e-12}},
                  {'fn': 'cheby1', 'cases': cb1c, 'tol': {'atol': 1e-12}},
-                 {'fn': 'cheby2', 'cases': cb2c, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'cheby2', 'cases': cb2c, 'tol': {'atol': 1e-12}},
+                 {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
+                 {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
+                 {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},
+                 {'fn': 'unit_impulse', 'cases': uimp}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

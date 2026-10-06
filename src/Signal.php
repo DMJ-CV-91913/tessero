@@ -21,20 +21,25 @@ final class Signal
     'butter' => 'butter',
     'cheby1' => 'cheby1',
     'cheby2' => 'cheby2',
+    'chirp' => 'chirp',
     'convolve' => 'convolve',
     'correlate' => 'correlate',
     'detrend' => 'detrend',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
     'freqz' => 'freqz',
+    'gausspulse' => 'gausspulse',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
     'oaconvolve' => 'oaconvolve',
     'savgol_coeffs' => 'savgolCoeffs',
     'savgol_filter' => 'savgolFilter',
+    'sawtooth' => 'sawtooth',
     'sosfilt' => 'sosfilt',
     'sosfilt_zi' => 'sosfiltZi',
     'sosfiltfilt' => 'sosfiltfilt',
+    'square' => 'square',
+    'unit_impulse' => 'unitImpulse',
     'zpk2tf' => 'zpk2tf',
     ];
 
@@ -88,6 +93,16 @@ final class Signal
     public static function cheby2(mixed $N, mixed $rs, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed
     {
         return Registry::routine('signal.cheby2', [$N, $rs, $Wn, $btype, $analog, $output, $fs]);
+    }
+
+    /**
+     * Frequency-swept cosine (linear/quadratic/logarithmic/hyperbolic) (scipy.signal.chirp).
+     *
+     * scipy.signal.chirp
+     */
+    public static function chirp(mixed $t, mixed $f0, mixed $t1, mixed $f1, mixed $method = 'linear', mixed $phi = 0, mixed $vertexZero = true): mixed
+    {
+        return Registry::routine('signal.chirp', [$t, $f0, $t1, $f1, $method, $phi, $vertexZero]);
     }
 
     /**
@@ -153,6 +168,16 @@ final class Signal
     }
 
     /**
+     * Gaussian-modulated sinusoid, in-phase component (scipy.signal.gausspulse).
+     *
+     * scipy.signal.gausspulse
+     */
+    public static function gausspulse(mixed $t, mixed $fc = 1000, mixed $bw = 0.5, mixed $bwr = -6): mixed
+    {
+        return Registry::routine('signal.gausspulse', [$t, $fc, $bw, $bwr]);
+    }
+
+    /**
      * Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state).
      *
      * scipy.signal.lfilter
@@ -203,6 +228,16 @@ final class Signal
     }
 
     /**
+     * Sawtooth/triangle wave of period 2pi with the given rising width (scipy.signal.sawtooth).
+     *
+     * scipy.signal.sawtooth
+     */
+    public static function sawtooth(mixed $t, mixed $width = 1): mixed
+    {
+        return Registry::routine('signal.sawtooth', [$t, $width]);
+    }
+
+    /**
      * Filter a 1-D signal through a cascade of second-order sections (scipy.signal.sosfilt; zero initial state).
      *
      * scipy.signal.sosfilt
@@ -230,6 +265,26 @@ final class Signal
     public static function sosfiltfilt(mixed $sos, mixed $x, mixed $axis = -1, mixed $padtype = 'odd', mixed $padlen = null): mixed
     {
         return Registry::routine('signal.sosfiltfilt', [$sos, $x, $axis, $padtype, $padlen]);
+    }
+
+    /**
+     * Square-wave of period 2pi with the given duty cycle (scipy.signal.square).
+     *
+     * scipy.signal.square
+     */
+    public static function square(mixed $t, mixed $duty = 0.5): mixed
+    {
+        return Registry::routine('signal.square', [$t, $duty]);
+    }
+
+    /**
+     * Unit impulse: zeros with a single 1 at idx (scipy.signal.unit_impulse).
+     *
+     * scipy.signal.unit_impulse
+     */
+    public static function unitImpulse(mixed $shape, mixed $idx = null): mixed
+    {
+        return Registry::routine('signal.unit_impulse', [$shape, $idx]);
     }
 
     /**
