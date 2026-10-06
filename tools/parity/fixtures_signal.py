@@ -208,6 +208,24 @@ for (N, Wn, bt) in [(2, 0.2, 'low'), (3, 0.3, 'low'), (4, 0.25, 'high'), (3, 0.5
     s2t.append({'args': [F.enc(np.asarray(sos))], 'kwargs': {},
                 'expect': F.enc_result((b2, a2), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# analog lowpass-prototype transforms
+def _tf_case(args, bo, ao):
+    return {'args': [F.enc(np.asarray(x) if isinstance(x, (list, np.ndarray)) else x) for x in args],
+            'kwargs': {}, 'expect': F.enc_result((bo, ao), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+lplp, lphp, lpbp, lpbs, blin = [], [], [], [], []
+for N in (1, 2, 3):
+    bp, ap = sg.butter(N, 1.0, analog=True, output='ba')
+    for wo in (2.0, 0.5):
+        b_, a_ = sg.lp2lp(bp, ap, wo); lplp.append(_tf_case([bp, ap, wo], b_, a_))
+        b_, a_ = sg.lp2hp(bp, ap, wo); lphp.append(_tf_case([bp, ap, wo], b_, a_))
+    for (wo, bw) in ((2.0, 1.0), (1.5, 0.5)):
+        b_, a_ = sg.lp2bp(bp, ap, wo, bw); lpbp.append(_tf_case([bp, ap, wo, bw], b_, a_))
+        b_, a_ = sg.lp2bs(bp, ap, wo, bw); lpbs.append(_tf_case([bp, ap, wo, bw], b_, a_))
+    for fs in (2.0, 10.0):
+        b_, a_ = sg.bilinear(bp, ap, fs); blin.append(_tf_case([bp, ap, fs], b_, a_))
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -228,7 +246,12 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'unit_impulse', 'cases': uimp},
                  {'fn': 'normalize', 'cases': nrm, 'tol': {'atol': 1e-12}},
                  {'fn': 'tf2zpk', 'cases': t2z, 'tol': {'atol': 1e-12}},
-                 {'fn': 'sos2tf', 'cases': s2t, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'sos2tf', 'cases': s2t, 'tol': {'atol': 1e-12}},
+                 {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},
+                 {'fn': 'lp2hp', 'cases': lphp, 'tol': {'atol': 1e-12}},
+                 {'fn': 'lp2bp', 'cases': lpbp, 'tol': {'atol': 1e-12}},
+                 {'fn': 'lp2bs', 'cases': lpbs, 'tol': {'atol': 1e-12}},
+                 {'fn': 'bilinear', 'cases': blin, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

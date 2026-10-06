@@ -425,6 +425,7 @@
         "random.wald": "pass",
         "random.weibull": "pass",
         "random.zipf": "pass",
+        "signal.bilinear": "pass",
         "signal.butter": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
@@ -438,6 +439,10 @@
         "signal.gausspulse": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
+        "signal.lp2bp": "pass",
+        "signal.lp2bs": "pass",
+        "signal.lp2hp": "pass",
+        "signal.lp2lp": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.savgol_coeffs": "pass",
@@ -2110,7 +2115,12 @@
             "signal.unit_impulse": 0,
             "signal.normalize": 0,
             "signal.tf2zpk": 0,
-            "signal.sos2tf": 0
+            "signal.sos2tf": 0,
+            "signal.lp2lp": 0,
+            "signal.lp2hp": 0,
+            "signal.lp2bp": 0,
+            "signal.lp2bs": 0,
+            "signal.bilinear": 0
         },
         "ext": {
             "np.median": 0,
@@ -3166,7 +3176,12 @@
             "signal.unit_impulse": 0,
             "signal.normalize": 0,
             "signal.tf2zpk": 0,
-            "signal.sos2tf": 0
+            "signal.sos2tf": 0,
+            "signal.lp2lp": 0,
+            "signal.lp2hp": 0,
+            "signal.lp2bp": 0,
+            "signal.lp2bs": 0,
+            "signal.bilinear": 0
         }
     },
     "ext": {
@@ -3595,6 +3610,7 @@
         "random.wald": "pass",
         "random.weibull": "pass",
         "random.zipf": "pass",
+        "signal.bilinear": "pass",
         "signal.butter": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
@@ -3608,6 +3624,10 @@
         "signal.gausspulse": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
+        "signal.lp2bp": "pass",
+        "signal.lp2bs": "pass",
+        "signal.lp2hp": "pass",
+        "signal.lp2lp": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.savgol_coeffs": "pass",

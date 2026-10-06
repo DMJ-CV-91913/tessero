@@ -18,6 +18,7 @@ final class Signal
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'bilinear' => 'bilinear',
     'butter' => 'butter',
     'cheby1' => 'cheby1',
     'cheby2' => 'cheby2',
@@ -31,6 +32,10 @@ final class Signal
     'gausspulse' => 'gausspulse',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
+    'lp2bp' => 'lp2bp',
+    'lp2bs' => 'lp2bs',
+    'lp2hp' => 'lp2hp',
+    'lp2lp' => 'lp2lp',
     'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
     'savgol_coeffs' => 'savgolCoeffs',
@@ -60,6 +65,18 @@ final class Signal
         }
 
         return self::{self::FUNCTIONS[$name]}(...$args);
+    }
+
+    /**
+     * Bilinear transform of an analog filter to a digital filter (scipy.signal.bilinear).
+     *
+     * scipy.signal.bilinear
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function bilinear(mixed $b, mixed $a, mixed $fs = 1.0): mixed
+    {
+        return Registry::routine('signal.bilinear', [$b, $a, $fs]);
     }
 
     /**
@@ -198,6 +215,54 @@ final class Signal
     public static function lfilterZi(mixed $b, mixed $a): mixed
     {
         return Registry::routine('signal.lfilter_zi', [$b, $a]);
+    }
+
+    /**
+     * Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp).
+     *
+     * scipy.signal.lp2bp
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function lp2bp(mixed $b, mixed $a, mixed $wo = 1.0, mixed $bw = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2bp', [$b, $a, $wo, $bw]);
+    }
+
+    /**
+     * Transform a lowpass analog prototype to bandstop (scipy.signal.lp2bs).
+     *
+     * scipy.signal.lp2bs
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function lp2bs(mixed $b, mixed $a, mixed $wo = 1.0, mixed $bw = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2bs', [$b, $a, $wo, $bw]);
+    }
+
+    /**
+     * Transform a lowpass analog prototype to highpass (scipy.signal.lp2hp).
+     *
+     * scipy.signal.lp2hp
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function lp2hp(mixed $b, mixed $a, mixed $wo = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2hp', [$b, $a, $wo]);
+    }
+
+    /**
+     * Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp).
+     *
+     * scipy.signal.lp2lp
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function lp2lp(mixed $b, mixed $a, mixed $wo = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2lp', [$b, $a, $wo]);
     }
 
     /**

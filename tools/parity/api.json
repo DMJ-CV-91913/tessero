@@ -2651,6 +2651,12 @@
                 "doc": "Call a function by its SciPy/NumPy name: Signal::apply('log_ndtr', $x)."
             },
             {
+                "name": "bilinear",
+                "static": true,
+                "sig": "bilinear(mixed $b, mixed $a, mixed $fs = 1.0): mixed",
+                "doc": "Bilinear transform of an analog filter to a digital filter (scipy.signal.bilinear)."
+            },
+            {
                 "name": "butter",
                 "static": true,
                 "sig": "butter(mixed $N, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed",
@@ -2727,6 +2733,30 @@
                 "static": true,
                 "sig": "lfilterZi(mixed $b, mixed $a): mixed",
                 "doc": "Steady-state step-response initial conditions for lfilter (scipy.signal.lfilter_zi)."
+            },
+            {
+                "name": "lp2bp",
+                "static": true,
+                "sig": "lp2bp(mixed $b, mixed $a, mixed $wo = 1.0, mixed $bw = 1.0): mixed",
+                "doc": "Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp)."
+            },
+            {
+                "name": "lp2bs",
+                "static": true,
+                "sig": "lp2bs(mixed $b, mixed $a, mixed $wo = 1.0, mixed $bw = 1.0): mixed",
+                "doc": "Transform a lowpass analog prototype to bandstop (scipy.signal.lp2bs)."
+            },
+            {
+                "name": "lp2hp",
+                "static": true,
+                "sig": "lp2hp(mixed $b, mixed $a, mixed $wo = 1.0): mixed",
+                "doc": "Transform a lowpass analog prototype to highpass (scipy.signal.lp2hp)."
+            },
+            {
+                "name": "lp2lp",
+                "static": true,
+                "sig": "lp2lp(mixed $b, mixed $a, mixed $wo = 1.0): mixed",
+                "doc": "Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp)."
             },
             {
                 "name": "normalize",
@@ -15363,6 +15393,36 @@
                 "name": "sos2tf",
                 "static": true,
                 "sig": "sos2tf($sos)",
+                "doc": ""
+            },
+            {
+                "name": "lp2lp",
+                "static": true,
+                "sig": "lp2lp($b, $a, $wo = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "lp2hp",
+                "static": true,
+                "sig": "lp2hp($b, $a, $wo = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "lp2bp",
+                "static": true,
+                "sig": "lp2bp($b, $a, $wo = 1.0, $bw = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "lp2bs",
+                "static": true,
+                "sig": "lp2bs($b, $a, $wo = 1.0, $bw = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "bilinear",
+                "static": true,
+                "sig": "bilinear($b, $a, $fs = 1.0)",
                 "doc": ""
             }
         ]

@@ -1555,6 +1555,188 @@ static int r_sos2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* ---- analog lowpass-prototype transforms (scipy.signal) ---- */
+
+static double sig_comb(int64_t n, int64_t k)
+{
+    if (k < 0 || k > n) return 0.0;
+    double r = 1.0;
+    for (int64_t i = 0; i < k; i++) r = r * (double)(n - i) / (double)(i + 1);
+    return r;
+}
+
+/* Polynomial multiply (lowest-first coefficients): r = a * b, length na+nb-1; r must not alias a or b. */
+static void sig_polymul_lo(const double *a, int64_t na, const double *b, int64_t nb, double *r)
+{
+    const int64_t nr = na + nb - 1;
+    for (int64_t i = 0; i < nr; i++) r[i] = 0.0;
+    for (int64_t i = 0; i < na; i++) for (int64_t j = 0; j < nb; j++) r[i + j] += a[i] * b[j];
+}
+
+/* Emit normalize(bp, ap) into res; consumes bp/ap (caller frees). */
+static int sig_emit_normalized(const double *bp, int64_t nbp, const double *ap, int64_t nap, tsr_result *res)
+{
+    double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
+    if (sig_normalize(bp, nbp, ap, nap, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("transform: normalize failed"); return TSR_EARG; }
+    int rc = TSR_OK;
+    double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nb2});
+    double *oa = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){na2});
+    if (!ob || !oa) rc = TSR_ENOMEM; else { memcpy(ob, b2, sizeof(double) * (size_t)nb2); memcpy(oa, a2, sizeof(double) * (size_t)na2); }
+    free(b2); free(a2);
+    return rc;
+}
+
+/* lp2lp(b, a, wo=1.0): transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp). */
+static int r_lp2lp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    const int64_t M = na > nb ? na : nb;
+    const int64_t start1 = nb > na ? nb - na : 0, start2 = na > nb ? na - nb : 0;
+    const double ps1 = pow(wo, (double)(M - 1 - start1));
+    double *bb = (double *)malloc(sizeof(double) * (size_t)nb), *aa = (double *)malloc(sizeof(double) * (size_t)na);
+    int rc = TSR_OK;
+    if (!bb || !aa) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < nb; i++) bb[i] = b[i] * ps1 / pow(wo, (double)(M - 1 - (start2 + i)));
+        for (int64_t i = 0; i < na; i++) aa[i] = a[i] * ps1 / pow(wo, (double)(M - 1 - (start1 + i)));
+        rc = sig_emit_normalized(bb, nb, aa, na, res);
+    }
+    free(bb); free(aa); fn_free_doubles(b, nb); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* lp2hp(b, a, wo=1.0): lowpass analog prototype to highpass (scipy.signal.lp2hp). */
+static int r_lp2hp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    const int64_t M = na > nb ? na : nb;
+    double *pwo = (double *)malloc(sizeof(double) * (size_t)M);
+    int rc = TSR_OK;
+    if (!pwo) { fn_free_doubles(b, nb); fn_free_doubles(a, na); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < M; i++) pwo[i] = (wo != 1.0) ? pow(wo, (double)i) : 1.0;
+    const int64_t L = na >= nb ? na : nb;
+    double *outb = (double *)calloc((size_t)L, sizeof(double)), *outa = (double *)calloc((size_t)L, sizeof(double));
+    if (!outb || !outa) rc = TSR_ENOMEM;
+    else {
+        if (na >= nb) {
+            for (int64_t i = 0; i < na; i++) outa[i] = a[na - 1 - i] * pwo[i];
+            for (int64_t i = 0; i < nb; i++) outb[i] = b[nb - 1 - i] * pwo[i];
+        } else {
+            for (int64_t i = 0; i < nb; i++) outb[i] = b[nb - 1 - i] * pwo[i];
+            for (int64_t i = 0; i < na; i++) outa[i] = a[na - 1 - i] * pwo[i];
+        }
+        rc = sig_emit_normalized(outb, L, outa, L, res);
+    }
+    free(pwo); free(outb); free(outa); fn_free_doubles(b, nb); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* lp2bp(b, a, wo=1.0, bw=1.0): lowpass analog prototype to bandpass (scipy.signal.lp2bp). */
+static int r_lp2bp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    const double bw = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
+    const int64_t N = nb - 1, D = na - 1, ma = N > D ? N : D, Np = N + ma, Dp = D + ma;
+    const double wosq = wo * wo;
+    double *bp = (double *)calloc((size_t)(Np + 1), sizeof(double)), *ap = (double *)calloc((size_t)(Dp + 1), sizeof(double));
+    int rc = TSR_OK;
+    if (!bp || !ap) rc = TSR_ENOMEM;
+    else {
+        for (int64_t j = 0; j <= Np; j++) { double v = 0.0;
+            for (int64_t i = 0; i <= N; i++) for (int64_t k = 0; k <= i; k++) if (ma - i + 2 * k == j) v += sig_comb(i, k) * b[N - i] * pow(wosq, (double)(i - k)) / pow(bw, (double)i);
+            bp[Np - j] = v; }
+        for (int64_t j = 0; j <= Dp; j++) { double v = 0.0;
+            for (int64_t i = 0; i <= D; i++) for (int64_t k = 0; k <= i; k++) if (ma - i + 2 * k == j) v += sig_comb(i, k) * a[D - i] * pow(wosq, (double)(i - k)) / pow(bw, (double)i);
+            ap[Dp - j] = v; }
+        rc = sig_emit_normalized(bp, Np + 1, ap, Dp + 1, res);
+    }
+    free(bp); free(ap); fn_free_doubles(b, nb); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* lp2bs(b, a, wo=1.0, bw=1.0): lowpass analog prototype to bandstop (scipy.signal.lp2bs). */
+static int r_lp2bs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    const double bw = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
+    const int64_t N = nb - 1, D = na - 1, M = N > D ? N : D, Np = 2 * M, Dp = 2 * M;
+    const double wosq = wo * wo;
+    double *bp = (double *)calloc((size_t)(Np + 1), sizeof(double)), *ap = (double *)calloc((size_t)(Dp + 1), sizeof(double));
+    int rc = TSR_OK;
+    if (!bp || !ap) rc = TSR_ENOMEM;
+    else {
+        for (int64_t j = 0; j <= Np; j++) { double v = 0.0;
+            for (int64_t i = 0; i <= N; i++) for (int64_t k = 0; k <= M - i; k++) if (i + 2 * k == j) v += sig_comb(M - i, k) * b[N - i] * pow(wosq, (double)(M - i - k)) * pow(bw, (double)i);
+            bp[Np - j] = v; }
+        for (int64_t j = 0; j <= Dp; j++) { double v = 0.0;
+            for (int64_t i = 0; i <= D; i++) for (int64_t k = 0; k <= M - i; k++) if (i + 2 * k == j) v += sig_comb(M - i, k) * a[D - i] * pow(wosq, (double)(M - i - k)) * pow(bw, (double)i);
+            ap[Dp - j] = v; }
+        rc = sig_emit_normalized(bp, Np + 1, ap, Dp + 1, res);
+    }
+    free(bp); free(ap); fn_free_doubles(b, nb); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* bilinear(b, a, fs=1.0): bilinear transform of an analog filter to a digital one (scipy.signal.bilinear). */
+static int r_bilinear(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nb0, na0; double *b0 = fn_arg_doubles(&args[0], &nb0); if (!b0) return TSR_ENOMEM;
+    double *a0 = fn_arg_doubles(&args[1], &na0); if (!a0) { fn_free_doubles(b0, nb0); return TSR_ENOMEM; }
+    const double fs = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    int64_t bs = 0; while (bs < nb0 - 1 && b0[bs] == 0.0) bs++;   /* trim leading zeros */
+    int64_t as = 0; while (as < na0 - 1 && a0[as] == 0.0) as++;
+    const double *b = b0 + bs, *a = a0 + as;
+    const int64_t nb = nb0 - bs, na = na0 - as;
+    const int64_t Ndeg = (nb > na ? nb : na) - 1;             /* output degree */
+    const double fac = sqrt(2.0 * fs);
+    const double P[2] = {1.0 / fac, 1.0 / fac};               /* (z+1)/fac, lowest-first */
+    const double Q[2] = {-fac, fac};                          /* (z-1)*fac, lowest-first */
+    double *num = (double *)calloc((size_t)(Ndeg + 1), sizeof(double));
+    double *den = (double *)calloc((size_t)(Ndeg + 1), sizeof(double));
+    double *tp = (double *)malloc(sizeof(double) * (size_t)(Ndeg + 2));   /* P^m accumulator */
+    double *tq = (double *)malloc(sizeof(double) * (size_t)(Ndeg + 2));   /* Q^m accumulator */
+    double *tmp = (double *)malloc(sizeof(double) * (size_t)(Ndeg + 2));
+    double *term = (double *)malloc(sizeof(double) * (size_t)(Ndeg + 2));
+    int rc = TSR_OK;
+    if (!num || !den || !tp || !tq || !tmp || !term) rc = TSR_ENOMEM;
+    else {
+        for (int pass = 0; pass < 2; pass++) {
+            const double *c = pass ? a : b; const int64_t nc = pass ? na : nb; double *acc = pass ? den : num;
+            for (int64_t q = 0; q < nc; q++) {
+                const int64_t ep = Ndeg - q, eq = q;          /* P^ep * Q^eq, degree ep+eq = Ndeg */
+                int64_t lp = 1; tp[0] = 1.0;                  /* P^ep (lowest-first) */
+                for (int64_t m = 0; m < ep; m++) { sig_polymul_lo(tp, lp, P, 2, tmp); lp += 1; memcpy(tp, tmp, sizeof(double) * (size_t)lp); }
+                int64_t lq = 1; tq[0] = 1.0;                  /* Q^eq */
+                for (int64_t m = 0; m < eq; m++) { sig_polymul_lo(tq, lq, Q, 2, tmp); lq += 1; memcpy(tq, tmp, sizeof(double) * (size_t)lq); }
+                sig_polymul_lo(tp, lp, tq, lq, term);         /* degree Ndeg -> length Ndeg+1 */
+                const double cf = c[nc - 1 - q];              /* c[::-1][q] */
+                for (int64_t t = 0; t <= Ndeg; t++) acc[t] += cf * term[t];
+            }
+        }
+        /* reverse to highest-first, then normalize */
+        double *bh = (double *)malloc(sizeof(double) * (size_t)(Ndeg + 1)), *ah = (double *)malloc(sizeof(double) * (size_t)(Ndeg + 1));
+        if (!bh || !ah) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i <= Ndeg; i++) { bh[i] = num[Ndeg - i]; ah[i] = den[Ndeg - i]; } rc = sig_emit_normalized(bh, Ndeg + 1, ah, Ndeg + 1, res); }
+        free(bh); free(ah);
+    }
+    free(num); free(den); free(tp); free(tq); free(tmp); free(term);
+    fn_free_doubles(b0, nb0); fn_free_doubles(a0, na0);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -1582,6 +1764,11 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.normalize", 2, "b, a", "b, a", r_signal_normalize, NULL, "Normalize a transfer-function representation (scipy.signal.normalize)."),
     ROUTINE("signal.tf2zpk", 3, "b, a", "z, p, k", r_tf2zpk, NULL, "Zeros, poles and gain from transfer-function coefficients (scipy.signal.tf2zpk)."),
     ROUTINE("signal.sos2tf", 2, "sos", "b, a", r_sos2tf, NULL, "Transfer function (b, a) from a second-order-sections cascade (scipy.signal.sos2tf)."),
+    ROUTINE("signal.lp2lp", 2, "b, a, wo=1.0", "b, a", r_lp2lp, NULL, "Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp)."),
+    ROUTINE("signal.lp2hp", 2, "b, a, wo=1.0", "b, a", r_lp2hp, NULL, "Transform a lowpass analog prototype to highpass (scipy.signal.lp2hp)."),
+    ROUTINE("signal.lp2bp", 2, "b, a, wo=1.0, bw=1.0", "b, a", r_lp2bp, NULL, "Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp)."),
+    ROUTINE("signal.lp2bs", 2, "b, a, wo=1.0, bw=1.0", "b, a", r_lp2bs, NULL, "Transform a lowpass analog prototype to bandstop (scipy.signal.lp2bs)."),
+    ROUTINE("signal.bilinear", 2, "b, a, fs=1.0", "b, a", r_bilinear, NULL, "Bilinear transform of an analog filter to a digital filter (scipy.signal.bilinear)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),

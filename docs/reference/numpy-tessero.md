@@ -929,6 +929,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 
 | NumPy / SciPy | Tessero |
 |---|---|
+| `scipy.signal.bilinear` | `Tessero\Signal::bilinear()` |
 | `scipy.signal.butter` | `Tessero\Signal::butter()` |
 | `scipy.signal.cheby1` | `Tessero\Signal::cheby1()` |
 | `scipy.signal.cheby2` | `Tessero\Signal::cheby2()` |
@@ -942,6 +943,10 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
 | `scipy.signal.lfilter` | `Tessero\Signal::lfilter()` |
 | `scipy.signal.lfilter_zi` | `Tessero\Signal::lfilterZi()` |
+| `scipy.signal.lp2bp` | `Tessero\Signal::lp2bp()` |
+| `scipy.signal.lp2bs` | `Tessero\Signal::lp2bs()` |
+| `scipy.signal.lp2hp` | `Tessero\Signal::lp2hp()` |
+| `scipy.signal.lp2lp` | `Tessero\Signal::lp2lp()` |
 | `scipy.signal.normalize` | `Tessero\Signal::normalize()` |
 | `scipy.signal.oaconvolve` | `Tessero\Signal::oaconvolve()` |
 | `scipy.signal.savgol_coeffs` | `Tessero\Signal::savgolCoeffs()` |
