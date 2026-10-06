@@ -427,6 +427,16 @@ def main():
     ]
     blocks['solve_discrete_are'] = dare
 
+    # signm: matrix sign function. Matrices have real, distinct, well-separated spectra (away from 0), so
+    # scipy's funm-based signm converges and returns the Schur-Parlett value.
+    blocks['signm'] = [
+        call('signm', [np.array([[1., 2., 3.], [1., 2., 1.], [1., 1., 1.]])]),
+        call('signm', [np.array([[2., 1., 0.5], [0., -3., 1.], [0., 0., 4.]])]),
+        call('signm', [np.array([[3., 1.], [1., -2.]])]),
+        call('signm', [np.array([[4., 1., 0.], [1., -3., 1.], [0., 1., 2.]])]),
+        call('signm', [np.array([[6., 2.], [1., 5.]])]),
+    ]
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}

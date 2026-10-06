@@ -2190,6 +2190,11 @@
             "nin": 0,
             "nout": 2
         },
+        "slinalg.signm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.sinhm": {
             "kind": "routine",
             "nin": 0,

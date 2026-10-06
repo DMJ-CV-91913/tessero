@@ -79,6 +79,7 @@ final class ScipyLinalg
     'rq' => 'rq',
     'rsf2csf' => 'rsf2csf',
     'schur' => 'schur',
+    'signm' => 'signm',
     'sinhm' => 'sinhm',
     'sinm' => 'sinm',
     'solve' => 'solve',
@@ -763,6 +764,16 @@ final class ScipyLinalg
     public static function schur(mixed $a, mixed $output = 'real'): mixed
     {
         return Registry::routine('slinalg.schur', [$a, $output]);
+    }
+
+    /**
+     * Matrix sign function via the Schur-Parlett method (scipy.linalg.signm; real, well-separated spectrum).
+     *
+     * scipy.linalg.signm
+     */
+    public static function signm(mixed $A): mixed
+    {
+        return Registry::routine('slinalg.signm', [$A]);
     }
 
     /**
