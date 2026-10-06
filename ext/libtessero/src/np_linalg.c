@@ -3322,6 +3322,174 @@ static int r_expm_cond(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* Read an array argument as a flat row-major interleaved-complex buffer (2 doubles per element, re then im) of
+   logical length *n_out. complex128 inputs are read directly (honouring strides and offset); any real dtype is
+   read through mat_f64 with zero imaginary parts. Caller frees with free(). NULL on error. */
+static double *cplx_read(const tsr_arg *a, const char *what, int64_t *n_out)
+{
+    if (a->kind != 3) { fn_set_error("%s must be an array", what); return NULL; }
+    const tsr_array *ar = &a->arr;
+    int64_t sz = 1;
+    for (int d = 0; d < ar->ndim; d++) sz *= ar->shape[d];
+    if (sz < 0) sz = 0;
+    double *buf = (double *)malloc(sizeof(double) * (size_t)(2 * (sz > 0 ? sz : 1)));
+    if (!buf) { fn_set_error("%s: out of memory", what); return NULL; }
+    if (ar->dtype != TSR_C128) {                             /* real input: cast via mat_f64, zero imaginary */
+        int64_t m; double *re = mat_f64(a, what, &m);
+        if (!re) { free(buf); return NULL; }
+        for (int64_t k = 0; k < sz; k++) { buf[2 * k] = re[k]; buf[2 * k + 1] = 0.0; }
+        fn_free_doubles(re, m);
+        *n_out = sz; return buf;
+    }
+    const char *base = (const char *)ar->data + ar->offset;
+    int64_t idx[32] = {0};
+    for (int64_t k = 0; k < sz; k++) {
+        const char *p = base;
+        for (int d = 0; d < ar->ndim; d++) p += idx[d] * ar->strides[d];
+        buf[2 * k] = ((const double *)p)[0];
+        buf[2 * k + 1] = ((const double *)p)[1];
+        for (int d = (int)ar->ndim - 1; d >= 0; d--) { if (++idx[d] < ar->shape[d]) break; idx[d] = 0; }
+    }
+    *n_out = sz; return buf;
+}
+
+/* rsf2csf(T, Z): convert a real Schur form (T real quasi-triangular, Z real orthogonal, A = Z T Z^T) to the
+   complex Schur form (T upper-triangular, Z unitary) by the Givens rotations that zero each 2x2 block's
+   subdiagonal (scipy.linalg.rsf2csf). Deterministic given the inputs; outputs are complex128. */
+static int r_rsf2csf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("rsf2csf: T and Z must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[1].arr.shape[1] != n) { fn_set_error("rsf2csf: T and Z must be square and the same size"); return TSR_EARG; }
+    int64_t nt, nz;
+    double *Tr = mat_f64(&args[0], "T", &nt); if (!Tr) return TSR_ENOMEM;
+    double *Zr = mat_f64(&args[1], "Z", &nz); if (!Zr) { fn_free_doubles(Tr, nt); return TSR_ENOMEM; }
+    const size_t cc = (size_t)(2 * (n * n > 0 ? n * n : 1));
+    double *T = (double *)malloc(sizeof(double) * cc);       /* interleaved complex */
+    double *Z = (double *)malloc(sizeof(double) * cc);
+    int rc = TSR_OK;
+    if (!T || !Z) rc = TSR_ENOMEM;
+    else {
+        for (int64_t k = 0; k < n * n; k++) { T[2 * k] = Tr[k]; T[2 * k + 1] = 0.0; Z[2 * k] = Zr[k]; Z[2 * k + 1] = 0.0; }
+        const double eps = 2.220446049250313e-16;
+        for (int64_t m = n - 1; m >= 1; m--) {
+            const int64_t sub = m * n + (m - 1);
+            const double atsub = hypot(T[2 * sub], T[2 * sub + 1]);
+            const double amm1 = hypot(T[2 * ((m - 1) * n + (m - 1))], T[2 * ((m - 1) * n + (m - 1)) + 1]);
+            const double amm = hypot(T[2 * (m * n + m)], T[2 * (m * n + m) + 1]);
+            if (atsub > eps * (amm1 + amm)) {
+                /* 2x2 block [[p, q], [r, s]]; its conjugate-pair eigenvalues are (tr +- i*sqrt(-disc))/2, and
+                   LAPACK/scipy order the positive-imaginary one first, so mu = eigvals[0] - s. */
+                const double p = T[2 * ((m - 1) * n + (m - 1))], q = T[2 * ((m - 1) * n + m)];
+                const double r_ = T[2 * sub], s = T[2 * (m * n + m)];
+                const double tr = p + s, det = p * s - q * r_, disc = tr * tr - 4.0 * det;
+                double mu_re, mu_im;
+                if (disc < 0.0) { mu_re = tr * 0.5 - s; mu_im = sqrt(-disc) * 0.5; }
+                else { mu_re = (tr + sqrt(disc)) * 0.5 - s; mu_im = 0.0; }
+                const double rn = hypot(hypot(mu_re, mu_im), r_);   /* norm([mu, T[m,m-1]]) */
+                const double cre = mu_re / rn, cim = mu_im / rn;    /* c = mu / rn (complex) */
+                const double sr = r_ / rn;                          /* s = T[m,m-1] / rn (real) */
+                /* G = [[conj(c), s], [-s, c]]. Left: rows (m-1, m), columns (m-1 .. n-1). */
+                for (int64_t col = m - 1; col < n; col++) {
+                    const int64_t a0 = (m - 1) * n + col, a1 = m * n + col;
+                    const double xr = T[2 * a0], xi = T[2 * a0 + 1], yr = T[2 * a1], yi = T[2 * a1 + 1];
+                    /* row0 = conj(c)*x + s*y ; row1 = -s*x + c*y */
+                    T[2 * a0]     = cre * xr + cim * xi + sr * yr;
+                    T[2 * a0 + 1] = cre * xi - cim * xr + sr * yi;
+                    T[2 * a1]     = -sr * xr + cre * yr - cim * yi;
+                    T[2 * a1 + 1] = -sr * xi + cre * yi + cim * yr;
+                }
+                /* Right: T[:m+1, (m-1, m)] @ G^H, G^H = [[c, -s], [s, conj(c)]]. */
+                for (int64_t row = 0; row <= m; row++) {
+                    const int64_t a0 = row * n + (m - 1), a1 = row * n + m;
+                    const double ur = T[2 * a0], ui = T[2 * a0 + 1], vr = T[2 * a1], vi = T[2 * a1 + 1];
+                    /* col0 = u*c + v*s ; col1 = -u*s + v*conj(c) */
+                    T[2 * a0]     = ur * cre - ui * cim + vr * sr;
+                    T[2 * a0 + 1] = ur * cim + ui * cre + vi * sr;
+                    T[2 * a1]     = -ur * sr + vr * cre + vi * cim;
+                    T[2 * a1 + 1] = -ui * sr + vi * cre - vr * cim;
+                }
+                /* Z[:, (m-1, m)] @ G^H, all rows. */
+                for (int64_t row = 0; row < n; row++) {
+                    const int64_t a0 = row * n + (m - 1), a1 = row * n + m;
+                    const double ur = Z[2 * a0], ui = Z[2 * a0 + 1], vr = Z[2 * a1], vi = Z[2 * a1 + 1];
+                    Z[2 * a0]     = ur * cre - ui * cim + vr * sr;
+                    Z[2 * a0 + 1] = ur * cim + ui * cre + vi * sr;
+                    Z[2 * a1]     = -ur * sr + vr * cre + vi * cim;
+                    Z[2 * a1 + 1] = -ui * sr + vi * cre - vr * cim;
+                }
+            }
+            T[2 * sub] = 0.0; T[2 * sub + 1] = 0.0;
+        }
+        int64_t osh[2] = {n, n};
+        double *To = (double *)fn_result_array(&res[0], TSR_C128, 2, osh);
+        double *Zo = (double *)fn_result_array(&res[1], TSR_C128, 2, osh);
+        if (!To || !Zo) rc = TSR_ENOMEM;
+        else { memcpy(To, T, sizeof(double) * cc); memcpy(Zo, Z, sizeof(double) * cc); }
+    }
+    free(T); free(Z);
+    fn_free_doubles(Tr, nt); fn_free_doubles(Zr, nz);
+    return rc;
+}
+
+/* cdf2rdf(w, v): convert complex eigenvalues w and eigenvectors v (as returned by eig) into the real block
+   diagonal form wr and the real eigenvectors vr with vr @ wr @ inv(vr) == original (scipy.linalg.cdf2rdf).
+   Each conjugate pair (positions j, k=j+1) becomes a 2x2 block [[a, b], [-b, a]]; vr = Re(v @ u) with u the
+   block-mixing matrix. Deterministic given the inputs. Returns (wr, vr), both real. */
+static int r_cdf2rdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("cdf2rdf: w must be 1-D and v 2-D"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    if (args[1].arr.shape[0] != n || args[1].arr.shape[1] != n) { fn_set_error("cdf2rdf: v must be n x n with n = len(w)"); return TSR_EARG; }
+    int64_t nw, nv;
+    double *w = cplx_read(&args[0], "w", &nw); if (!w) return TSR_ENOMEM;
+    double *v = cplx_read(&args[1], "v", &nv); if (!v) { free(w); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    /* complex positions, in order; conjugate pairs are consecutive (eig returns +imag first). */
+    int64_t *cidx = (int64_t *)malloc(sizeof(int64_t) * (size_t)(n > 0 ? n : 1));
+    double *u = (double *)calloc((size_t)(2 * (n * n > 0 ? n * n : 1)), sizeof(double));  /* interleaved complex */
+    if (!cidx || !u) rc = TSR_ENOMEM;
+    else {
+        int64_t nc = 0;
+        for (int64_t i = 0; i < n; i++) if (w[2 * i + 1] != 0.0) cidx[nc++] = i;
+        if (nc % 2 != 0) { fn_set_error("cdf2rdf: expected complex-conjugate pairs of eigenvalues"); rc = TSR_EARG; }
+        else {
+            int64_t osh2[2] = {n, n};
+            double *wr = (double *)fn_result_array(&res[0], TSR_F64, 2, osh2);
+            double *vr = (double *)fn_result_array(&res[1], TSR_F64, 2, osh2);
+            if (!wr || !vr) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < n * n; i++) wr[i] = 0.0;
+                for (int64_t i = 0; i < n; i++) { wr[i * n + i] = w[2 * i]; u[2 * (i * n + i)] = 1.0; }  /* diag */
+                for (int64_t pr = 0; pr < nc; pr += 2) {
+                    const int64_t j = cidx[pr], k = cidx[pr + 1];
+                    wr[j * n + k] = w[2 * j + 1];               /* +b */
+                    wr[k * n + j] = w[2 * k + 1];               /* -b */
+                    u[2 * (j * n + j)]     = 0.0; u[2 * (j * n + j) + 1] = 0.5;   /* u[j,j] = 0.5i (replaces 1) */
+                    u[2 * (j * n + k)]     = 0.5; u[2 * (j * n + k) + 1] = 0.0;   /* u[j,k] = 0.5  */
+                    u[2 * (k * n + j)]     = 0.0; u[2 * (k * n + j) + 1] = -0.5;  /* u[k,j] = -0.5i */
+                    u[2 * (k * n + k)]     = 0.5; u[2 * (k * n + k) + 1] = 0.0;   /* u[k,k] = 0.5 (replaces 1) */
+                }
+                /* vr = Re(v @ u) */
+                for (int64_t i = 0; i < n; i++)
+                    for (int64_t c = 0; c < n; c++) {
+                        double acc = 0.0;
+                        for (int64_t l = 0; l < n; l++) {
+                            const double vr_ = v[2 * (i * n + l)], vi_ = v[2 * (i * n + l) + 1];
+                            const double ur_ = u[2 * (l * n + c)], ui_ = u[2 * (l * n + c) + 1];
+                            acc += vr_ * ur_ - vi_ * ui_;       /* real part of v*u */
+                        }
+                        vr[i * n + c] = acc;
+                    }
+            }
+        }
+    }
+    free(cidx); free(u); free(w); free(v);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -3389,6 +3557,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),
     ROUTINE("slinalg.expm_frechet", 2, "A, E", "expm, frechet", r_expm_frechet, NULL, "Matrix exponential and its Frechet derivative in direction E via the block-enlarge identity (scipy.linalg.expm_frechet)."),
     ROUTINE("slinalg.expm_cond", 1, "A", "out", r_expm_cond, NULL, "Relative condition number of the matrix exponential from the Kronecker form of its Frechet derivative (scipy.linalg.expm_cond)."),
+    ROUTINE("slinalg.rsf2csf", 2, "T, Z", "T, Z", r_rsf2csf, NULL, "Convert a real Schur form to the complex (upper-triangular) Schur form (scipy.linalg.rsf2csf)."),
+    ROUTINE("slinalg.cdf2rdf", 2, "w, v", "wr, vr", r_cdf2rdf, NULL, "Convert complex eigenvalues/eigenvectors to real block-diagonal form (scipy.linalg.cdf2rdf)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),

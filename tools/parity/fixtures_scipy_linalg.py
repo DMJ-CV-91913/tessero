@@ -382,6 +382,23 @@ def main():
     blocks['expm_frechet'] = ef
     blocks['expm_cond'] = ec
 
+    # rsf2csf: real Schur form -> complex Schur form. Matrices with complex-conjugate eigenvalues exercise the
+    # 2x2-block Givens rotations; the output is deterministic given the (real) Schur inputs.
+    rcf = []
+    for A in (rng.uniform(-3, 3, size=(3, 3)), rng.uniform(-3, 3, size=(4, 4)), rng.uniform(-3, 3, size=(5, 5)),
+              np.array([[0., 2., 2.], [0., 1., 2.], [1., 0., 1.]])):
+        Ts, Zs = sla.schur(A)
+        rcf.append(call('rsf2csf', [Ts, Zs], names=['T', 'Z']))
+    blocks['rsf2csf'] = rcf
+
+    # cdf2rdf: complex eigenpairs (from eig) -> real block-diagonal form. Inputs carry conjugate pairs.
+    crf = []
+    for A in (rng.uniform(-3, 3, size=(3, 3)), rng.uniform(-3, 3, size=(4, 4)), rng.uniform(-3, 3, size=(5, 5)),
+              np.array([[0., -1.], [1., 0.]])):
+        we, ve = sla.eig(A)
+        crf.append(call('cdf2rdf', [we, ve], names=['wr', 'vr']))
+    blocks['cdf2rdf'] = crf
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}
