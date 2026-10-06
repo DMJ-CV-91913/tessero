@@ -444,6 +444,7 @@
         "signal.sosfiltfilt": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.block_diag": "pass",
+        "slinalg.cdf2rdf": "pass",
         "slinalg.cho_factor": "pass",
         "slinalg.cho_solve": "pass",
         "slinalg.cho_solve_banded": "pass",
@@ -501,6 +502,7 @@
         "slinalg.qr": "pass",
         "slinalg.qz": "pass",
         "slinalg.rq": "pass",
+        "slinalg.rsf2csf": "pass",
         "slinalg.schur": "pass",
         "slinalg.sinhm": "pass",
         "slinalg.sinm": "pass",
@@ -2064,7 +2066,9 @@
             "slinalg.orthogonal_procrustes": 4.7343702554387336e-14,
             "slinalg.matrix_balance": 0,
             "slinalg.expm_frechet": 1.223856557204449e-14,
-            "slinalg.expm_cond": 3.9339171700390486e-16
+            "slinalg.expm_cond": 3.9339171700390486e-16,
+            "slinalg.rsf2csf": 1.125,
+            "slinalg.cdf2rdf": 0
         },
         "ext": {
             "np.median": 0,
@@ -3097,7 +3101,9 @@
             "slinalg.orthogonal_procrustes": 4.7343702554387336e-14,
             "slinalg.matrix_balance": 0,
             "slinalg.expm_frechet": 1.223856557204449e-14,
-            "slinalg.expm_cond": 3.9339171700390486e-16
+            "slinalg.expm_cond": 3.9339171700390486e-16,
+            "slinalg.rsf2csf": 1.125,
+            "slinalg.cdf2rdf": 0
         }
     },
     "ext": {
@@ -3545,6 +3551,7 @@
         "signal.sosfiltfilt": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.block_diag": "pass",
+        "slinalg.cdf2rdf": "pass",
         "slinalg.cho_factor": "pass",
         "slinalg.cho_solve": "pass",
         "slinalg.cho_solve_banded": "pass",
@@ -3602,6 +3609,7 @@
         "slinalg.qr": "pass",
         "slinalg.qz": "pass",
         "slinalg.rq": "pass",
+        "slinalg.rsf2csf": "pass",
         "slinalg.schur": "pass",
         "slinalg.sinhm": "pass",
         "slinalg.sinm": "pass",

@@ -1747,6 +1747,12 @@
                 "doc": "Assemble 2-D blocks on the diagonal of a larger zero matrix (scipy.linalg.block_diag)."
             },
             {
+                "name": "cdf2rdf",
+                "static": true,
+                "sig": "cdf2rdf(mixed $w, mixed $v): mixed",
+                "doc": "Convert complex eigenvalues/eigenvectors to real block-diagonal form (scipy.linalg.cdf2rdf)."
+            },
+            {
                 "name": "choFactor",
                 "static": true,
                 "sig": "choFactor(mixed $a, mixed $lower = false): mixed",
@@ -2087,6 +2093,12 @@
                 "static": true,
                 "sig": "rq(mixed $a, mixed $mode = 'full'): mixed",
                 "doc": "RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq)."
+            },
+            {
+                "name": "rsf2csf",
+                "static": true,
+                "sig": "rsf2csf(mixed $T, mixed $Z): mixed",
+                "doc": "Convert a real Schur form to the complex (upper-triangular) Schur form (scipy.linalg.rsf2csf)."
             },
             {
                 "name": "schur",
@@ -14890,6 +14902,18 @@
                 "name": "expmCond",
                 "static": true,
                 "sig": "expmCond($A)",
+                "doc": ""
+            },
+            {
+                "name": "rsf2csf",
+                "static": true,
+                "sig": "rsf2csf($T, $Z)",
+                "doc": ""
+            },
+            {
+                "name": "cdf2rdf",
+                "static": true,
+                "sig": "cdf2rdf($w, $v)",
                 "doc": ""
             },
             {

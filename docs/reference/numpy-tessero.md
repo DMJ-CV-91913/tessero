@@ -250,6 +250,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | NumPy / SciPy | Tessero |
 |---|---|
 | `scipy.linalg.block_diag` | `Tessero\ScipyLinalg::blockDiag()` |
+| `scipy.linalg.cdf2rdf` | `Tessero\ScipyLinalg::cdf2rdf()` |
 | `scipy.linalg.cho_factor` | `Tessero\ScipyLinalg::choFactor()` |
 | `scipy.linalg.cho_solve` | `Tessero\ScipyLinalg::choSolve()` |
 | `scipy.linalg.cho_solve_banded` | `Tessero\ScipyLinalg::choSolveBanded()` |
@@ -307,6 +308,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.qr` | `Tessero\ScipyLinalg::qr()` |
 | `scipy.linalg.qz` | `Tessero\ScipyLinalg::qz()` |
 | `scipy.linalg.rq` | `Tessero\ScipyLinalg::rq()` |
+| `scipy.linalg.rsf2csf` | `Tessero\ScipyLinalg::rsf2csf()` |
 | `scipy.linalg.schur` | `Tessero\ScipyLinalg::schur()` |
 | `scipy.linalg.sinhm` | `Tessero\ScipyLinalg::sinhm()` |
 | `scipy.linalg.sinm` | `Tessero\ScipyLinalg::sinm()` |

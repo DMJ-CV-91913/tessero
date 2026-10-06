@@ -1890,6 +1890,11 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.cdf2rdf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "slinalg.cho_factor": {
             "kind": "routine",
             "nin": 0,
@@ -2171,6 +2176,11 @@
             "nout": 4
         },
         "slinalg.rq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.rsf2csf": {
             "kind": "routine",
             "nin": 0,
             "nout": 2
