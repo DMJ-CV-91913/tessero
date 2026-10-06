@@ -1416,6 +1416,12 @@ static int r_unit_impulse(const void *ctx, const tsr_arg *args, int nargs, tsr_r
 
 /* ---- transfer-function / zpk / sos conversions (scipy.signal) ---- */
 
+static int cmp_double_sig(const void *a, const void *b)
+{
+    const double x = *(const double *)a, y = *(const double *)b;
+    return (x > y) - (x < y);
+}
+
 static int sig_cplx_cmp(const void *a, const void *b)
 {
     const double *x = (const double *)a, *y = (const double *)b;
@@ -2008,6 +2014,86 @@ static int r_periodogram(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     return rc;
 }
 
+/* welch(x, fs=1.0, window='hann_periodic', nperseg=None, noverlap=None, nfft=None, detrend='constant',
+   return_onesided=True, scaling='density', average='mean'): Welch PSD estimate -- the per-segment periodogram
+   averaged over overlapping segments (scipy.signal.welch, real x). Default window is a periodic Hann; nperseg
+   defaults to min(256, len(x)); noverlap to nperseg//2. Returns (f, Pxx). */
+static int r_welch(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("welch: x must be a 1-D real array"); return TSR_EARG; }
+    int64_t nx; double *x = fn_arg_doubles(&args[0], &nx); if (!x) return TSR_ENOMEM;
+    const double fs = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1.0;
+    /* window: array, or a name (boxcar / hann[_periodic], the default) */
+    int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
+    int win_boxcar = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "boxcar"));
+    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (warr ? nwin : (nx < 256 ? nx : 256));
+    if (nperseg > nx) nperseg = nx;
+    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : nperseg / 2;
+    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg;
+    int det = 1;
+    if (nargs > 6) { if (args[6].kind == 2 && args[6].str) det = !strcmp(args[6].str, "linear") ? 2 : 1; else if (args[6].kind == 4 && args[6].num == 0.0) det = 0; }
+    const int onesided = (nargs > 7 && args[7].kind == 4) ? (args[7].num != 0.0) : 1;
+    const int density = !(nargs > 8 && args[8].kind == 2 && args[8].str && !strcmp(args[8].str, "spectrum"));
+    /* args[9] is axis (1-D only, ignored); average is args[10] to match scipy's parameter order */
+    const int median = (nargs > 10 && args[10].kind == 2 && args[10].str && !strcmp(args[10].str, "median"));
+    const int64_t nstep = nperseg - noverlap;
+    int rc = TSR_OK;
+    if (nstep <= 0) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); fn_set_error("welch: noverlap must be less than nperseg"); return TSR_EARG; }
+    const int64_t nseg = nperseg <= nx ? 1 + (nx - nperseg) / nstep : 0;
+    const int64_t nb = onesided ? nfft / 2 + 1 : nfft;
+    double *win = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    double *acc = (double *)calloc((size_t)(nb > 0 ? nb : 1), sizeof(double));         /* mean accumulator */
+    double *allP = median ? (double *)malloc(sizeof(double) * (size_t)(nb * (nseg > 0 ? nseg : 1))) : NULL;   /* per-seg for median */
+    double *seg = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    double *in = (double *)calloc((size_t)(onesided ? nfft : 2 * nfft), sizeof(double));
+    double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * nb));
+    if (!win || !acc || !seg || !in || !Xf || (median && !allP) || (nargs > 2 && args[2].kind == 3 && !warr)) rc = TSR_ENOMEM;
+    else if (warr && nwin != nperseg) { fn_set_error("welch: window length must equal nperseg"); rc = TSR_EARG; }
+    else if (nseg < 1) { fn_set_error("welch: nperseg exceeds the signal length"); rc = TSR_EARG; }
+    else {
+        for (int64_t i = 0; i < nperseg; i++) {                 /* periodic Hann default, or boxcar, or array */
+            if (warr) win[i] = warr[i];
+            else if (win_boxcar) win[i] = 1.0;
+            else win[i] = 0.5 - 0.5 * cos(2.0 * M_PI * (double)i / (double)nperseg);
+        }
+        double sw2 = 0, sw = 0; for (int64_t i = 0; i < nperseg; i++) { sw2 += win[i] * win[i]; sw += win[i]; }
+        const double scale = density ? 1.0 / (fs * sw2) : 1.0 / (sw * sw);
+        for (int64_t s = 0; s < nseg; s++) {
+            const double *src = x + s * nstep;
+            for (int64_t i = 0; i < nperseg; i++) seg[i] = src[i];
+            if (det == 1) { double m = 0; for (int64_t i = 0; i < nperseg; i++) m += seg[i]; m /= (double)nperseg; for (int64_t i = 0; i < nperseg; i++) seg[i] -= m; }
+            else if (det == 2 && nperseg > 1) { double st = 0, sx = 0, stt = 0, stx = 0; const double n = (double)nperseg; for (int64_t i = 0; i < nperseg; i++) { st += i; sx += seg[i]; stt += (double)i * i; stx += (double)i * seg[i]; } const double b = (n * stx - st * sx) / (n * stt - st * st), a = (sx - b * st) / n; for (int64_t i = 0; i < nperseg; i++) seg[i] -= a + b * (double)i; }
+            for (int64_t i = 0; i < nperseg; i++) seg[i] *= win[i];
+            if (onesided) { for (int64_t i = 0; i < nfft; i++) in[i] = i < nperseg ? seg[i] : 0.0; tsr_rfft(nfft, 1, in, Xf); }
+            else { for (int64_t i = 0; i < nfft; i++) { in[2 * i] = i < nperseg ? seg[i] : 0.0; in[2 * i + 1] = 0.0; } tsr_fft(nfft, 1, 0, in, Xf); }
+            for (int64_t k = 0; k < nb; k++) {
+                const double p = (Xf[2 * k] * Xf[2 * k] + Xf[2 * k + 1] * Xf[2 * k + 1]) * scale;
+                if (median) allP[s * nb + k] = p; else acc[k] += p;
+            }
+        }
+        double *f = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nb});
+        double *P = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nb});
+        if (!f || !P) rc = TSR_ENOMEM;
+        else {
+            double bias = 1.0;
+            if (median) { for (int64_t k = 1; k <= (nseg - 1) / 2; k++) bias += 1.0 / (double)(2 * k + 1) - 1.0 / (double)(2 * k); }
+            double *col = median ? (double *)malloc(sizeof(double) * (size_t)nseg) : NULL;
+            for (int64_t k = 0; k < nb; k++) {
+                if (median) { for (int64_t s = 0; s < nseg; s++) col[s] = allP[s * nb + k]; qsort(col, (size_t)nseg, sizeof(double), cmp_double_sig); P[k] = (nseg % 2 ? col[nseg / 2] : 0.5 * (col[nseg / 2 - 1] + col[nseg / 2])) / bias; }
+                else P[k] = acc[k] / (double)nseg;
+                if (onesided) { const int64_t kk = (nfft % 2) ? (k >= 1 ? k : -1) : (k >= 1 && k < nb - 1 ? k : -1); if (kk >= 0) P[k] *= 2.0; }
+                if (onesided) f[k] = (double)k * fs / (double)nfft;
+                else { const int64_t kk = (k <= (nfft - 1) / 2) ? k : k - nfft; f[k] = (double)kk * fs / (double)nfft; }
+            }
+            free(col);
+        }
+    }
+    free(win); free(acc); free(allP); free(seg); free(in); free(Xf); if (warr) fn_free_doubles(warr, nwin);
+    fn_free_doubles(x, nx);
+    return rc;
+}
+
 /* transpose an r x c interleaved-complex matrix into dst (c x r). */
 static void sig_ctranspose(const double *src, int64_t r, int64_t c, double *dst)
 {
@@ -2099,6 +2185,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
     ROUTINE("signal.hilbert2", 1, "x, N=None", "out", r_hilbert2, NULL, "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."),
     ROUTINE("signal.periodogram", 2, "x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True, scaling='density'", "f, Pxx", r_periodogram, NULL, "Power spectral density estimate from a single segment (scipy.signal.periodogram)."),
+    ROUTINE("signal.welch", 2, "x, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', return_onesided=True, scaling='density', axis=-1, average='mean'", "f, Pxx", r_welch, NULL, "Welch's averaged-periodogram power spectral density estimate (scipy.signal.welch)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),

@@ -56,6 +56,7 @@ final class Signal
     'square' => 'square',
     'tf2zpk' => 'tf2zpk',
     'unit_impulse' => 'unitImpulse',
+    'welch' => 'welch',
     'zpk2tf' => 'zpk2tf',
     ];
 
@@ -489,6 +490,18 @@ final class Signal
     public static function unitImpulse(mixed $shape, mixed $idx = null): mixed
     {
         return Registry::routine('signal.unit_impulse', [$shape, $idx]);
+    }
+
+    /**
+     * Welch's averaged-periodogram power spectral density estimate (scipy.signal.welch).
+     *
+     * scipy.signal.welch
+     *
+     * @return mixed one array, or an array keyed by f, Pxx when several results are requested
+     */
+    public static function welch(mixed $x, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed
+    {
+        return Registry::routine('signal.welch', [$x, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $average]);
     }
 
     /**

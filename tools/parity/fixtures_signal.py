@@ -293,6 +293,27 @@ pgm.append(_pgm_case([xp64, 1.0, _win], [xp64, 1.0, _win]))                     
 xp51 = rng.uniform(-3, 3, 51)
 pgm.append(_pgm_case([xp51], [xp51]))                                              # odd length
 
+# welch: averaged-periodogram PSD
+def _welch_case(args, pyargs):
+    return {'args': [F.enc(np.asarray(a) if isinstance(a, (list, np.ndarray)) else a) for a in args],
+            'kwargs': {}, 'expect': F.enc_result(sg.welch(*pyargs), ['f', 'Pxx']), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+wel = []
+xw = rng.uniform(-3, 3, 200)
+wel.append(_welch_case([xw, 1.0, 'hann', 64], [xw, 1.0, 'hann', 64]))                       # default noverlap, mean
+wel.append(_welch_case([xw, 100.0, 'hann', 64], [xw, 100.0, 'hann', 64]))                   # fs
+wel.append(_welch_case([xw, 1.0, 'boxcar', 50], [xw, 1.0, 'boxcar', 50]))                   # boxcar window
+wel.append(_welch_case([xw, 1.0, 'hann', 64, 16], [xw, 1.0, 'hann', 64, 16]))               # noverlap=16
+wel.append(_welch_case([xw, 1.0, 'hann', 64, None, None, 'constant', True, 'spectrum'],
+                       [xw, 1.0, 'hann', 64, None, None, 'constant', True, 'spectrum']))     # spectrum
+wel.append(_welch_case([xw, 1.0, 'hann', 64, None, None, 'constant', False],
+                       [xw, 1.0, 'hann', 64, None, None, 'constant', False]))                # two-sided
+wel.append(_welch_case([xw, 1.0, 'hann', 64, None, None, 'linear'],
+                       [xw, 1.0, 'hann', 64, None, None, 'linear']))                         # linear detrend
+wel.append(_welch_case([xw, 1.0, 'hann', 64, None, None, 'constant', True, 'density', -1, 'median'],
+                       [xw, 1.0, 'hann', 64, None, None, 'constant', True, 'density', -1, 'median']))   # median average (axis=-1 then average)
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -326,7 +347,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'group_delay', 'cases': gdl, 'tol': {'atol': 1e-9}},
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
-                 {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
+                 {'fn': 'welch', 'cases': wel, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
