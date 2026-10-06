@@ -2047,6 +2047,12 @@
                 "doc": "Orthonormal basis for the null space of A via SVD (scipy.linalg.null_space)."
             },
             {
+                "name": "ordqz",
+                "static": true,
+                "sig": "ordqz(mixed $A, mixed $B, mixed $sort = 'lhp', mixed $output = 'real'): mixed",
+                "doc": "Reordered generalised Schur (QZ) decomposition via dgges and dtgsen (scipy.linalg.ordqz)."
+            },
+            {
                 "name": "orth",
                 "static": true,
                 "sig": "orth(mixed $A, mixed $rcond = null): mixed",
@@ -15022,6 +15028,12 @@
                 "name": "cossin",
                 "static": true,
                 "sig": "cossin($X, $p, $q)",
+                "doc": ""
+            },
+            {
+                "name": "ordqz",
+                "static": true,
+                "sig": "ordqz($A, $B, $sort = 'lhp', $output = 'real')",
                 "doc": ""
             },
             {

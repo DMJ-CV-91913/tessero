@@ -176,6 +176,7 @@
 | `slinalg.qr_insert` | every call | rtol 1e-09 |
 | `slinalg.qr_delete` | every call | rtol 1e-09 |
 | `slinalg.cossin` | every call | rtol 1e-09 |
+| `slinalg.ordqz` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |
