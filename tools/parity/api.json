@@ -2693,6 +2693,12 @@
                 "doc": "N-D cross-correlation of two arrays, modes full/same/valid (scipy.signal.correlate; real)."
             },
             {
+                "name": "csd",
+                "static": true,
+                "sig": "csd(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed",
+                "doc": "Cross power spectral density by Welch's method (scipy.signal.csd)."
+            },
+            {
                 "name": "detrend",
                 "static": true,
                 "sig": "detrend(mixed $data, mixed $axis = -1, mixed $type = 'linear', mixed $bp = 0, mixed $overwriteData = false): mixed",
@@ -15531,6 +15537,12 @@
                 "name": "welch",
                 "static": true,
                 "sig": "welch($x, $fs = 1.0, $window = 'hann', $nperseg = null, $noverlap = null, $nfft = null, $detrend = 'constant', $returnOnesided = true, $scaling = 'density', $axis = -1, $average = 'mean')",
+                "doc": ""
+            },
+            {
+                "name": "csd",
+                "static": true,
+                "sig": "csd($x, $y, $fs = 1.0, $window = 'hann', $nperseg = null, $noverlap = null, $nfft = null, $detrend = 'constant', $returnOnesided = true, $scaling = 'density', $axis = -1, $average = 'mean')",
                 "doc": ""
             }
         ]

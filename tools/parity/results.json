@@ -432,6 +432,7 @@
         "signal.chirp": "pass",
         "signal.convolve": "pass",
         "signal.correlate": "pass",
+        "signal.csd": "pass",
         "signal.detrend": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
@@ -2138,7 +2139,8 @@
             "signal.hilbert": 2,
             "signal.hilbert2": 3.3391152022171014e-12,
             "signal.periodogram": 0.9897959183673469,
-            "signal.welch": 2.6034782608695655
+            "signal.welch": 2.6034782608695655,
+            "signal.csd": 8.338666666666667
         },
         "ext": {
             "np.median": 0,
@@ -3208,7 +3210,8 @@
             "signal.hilbert": 2,
             "signal.hilbert2": 3.3391152022171014e-12,
             "signal.periodogram": 0.9897959183673469,
-            "signal.welch": 2.6034782608695655
+            "signal.welch": 2.6034782608695655,
+            "signal.csd": 8.338666666666667
         }
     },
     "ext": {
@@ -3644,6 +3647,7 @@
         "signal.chirp": "pass",
         "signal.convolve": "pass",
         "signal.correlate": "pass",
+        "signal.csd": "pass",
         "signal.detrend": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
