@@ -31,6 +31,7 @@ final class Signal
     'detrend' => 'detrend',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
+    'firwin' => 'firwin',
     'freqs' => 'freqs',
     'freqs_zpk' => 'freqsZpk',
     'freqz' => 'freqz',
@@ -221,6 +222,16 @@ final class Signal
     public static function filtfilt(mixed $b, mixed $a, mixed $x, mixed $axis = -1, mixed $padtype = 'odd', mixed $padlen = null, mixed $method = 'pad', mixed $irlen = null): mixed
     {
         return Registry::routine('signal.filtfilt', [$b, $a, $x, $axis, $padtype, $padlen, $method, $irlen]);
+    }
+
+    /**
+     * FIR filter design by the window method (scipy.signal.firwin).
+     *
+     * scipy.signal.firwin
+     */
+    public static function firwin(mixed $numtaps, mixed $cutoff, mixed $window = 'hamming', mixed $passZero = true, mixed $scale = true, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.firwin', [$numtaps, $cutoff, $window, $passZero, $scale, $fs]);
     }
 
     /**
