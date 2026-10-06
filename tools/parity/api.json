@@ -2681,6 +2681,12 @@
                 "doc": "Frequency-swept cosine (linear/quadratic/logarithmic/hyperbolic) (scipy.signal.chirp)."
             },
             {
+                "name": "coherence",
+                "static": true,
+                "sig": "coherence(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $axis = -1): mixed",
+                "doc": "Magnitude-squared coherence by Welch's method (scipy.signal.coherence)."
+            },
+            {
                 "name": "convolve",
                 "static": true,
                 "sig": "convolve(mixed $a, mixed $v, mixed $mode = 'full'): mixed",
@@ -15543,6 +15549,12 @@
                 "name": "csd",
                 "static": true,
                 "sig": "csd($x, $y, $fs = 1.0, $window = 'hann', $nperseg = null, $noverlap = null, $nfft = null, $detrend = 'constant', $returnOnesided = true, $scaling = 'density', $axis = -1, $average = 'mean')",
+                "doc": ""
+            },
+            {
+                "name": "coherence",
+                "static": true,
+                "sig": "coherence($x, $y, $fs = 1.0, $window = 'hann', $nperseg = null, $noverlap = null, $nfft = null, $detrend = 'constant', $axis = -1)",
                 "doc": ""
             }
         ]

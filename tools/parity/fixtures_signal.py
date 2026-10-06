@@ -330,6 +330,16 @@ csdc.append(_csd_case([xc, yc, 1.0, 'hann', 64, 16], [xc, yc, 1.0, 'hann', 64, 1
 csdc.append(_csd_case([xc, yc, 1.0, 'hann', 64, None, None, 'constant', False],
                       [xc, yc, 1.0, 'hann', 64, None, None, 'constant', False]))   # two-sided
 
+# coherence
+coh = []
+xh = rng.uniform(-3, 3, 200)
+yh = 0.7 * xh + rng.uniform(-1, 1, 200)
+coh.append({'args': [F.enc(xh), F.enc(yh), F.enc(1.0), F.enc('hann'), F.enc(64)], 'kwargs': {}, 'expect': F.enc_result(sg.coherence(xh, yh, 1.0, 'hann', 64), ['f', 'Cxy']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+coh.append({'args': [F.enc(xh), F.enc(yh), F.enc(50.0), F.enc('hann'), F.enc(64), F.enc(16)], 'kwargs': {}, 'expect': F.enc_result(sg.coherence(xh, yh, 50.0, 'hann', 64, 16), ['f', 'Cxy']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+# boxcar with detrend=False: the default constant detrend forces the boxcar DC bin to an exact 0, making the
+# DC coherence a 0/0 that is pure fp noise in any engine; detrend=False keeps every bin well-defined.
+coh.append({'args': [F.enc(xh), F.enc(yh), F.enc(1.0), F.enc('boxcar'), F.enc(50), None, None, F.enc(False)], 'kwargs': {}, 'expect': F.enc_result(sg.coherence(xh, yh, 1.0, 'boxcar', 50, None, None, False), ['f', 'Cxy']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -365,7 +375,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
                  {'fn': 'welch', 'cases': wel, 'tol': {'atol': 1e-12}},
-                 {'fn': 'csd', 'cases': csdc, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'csd', 'cases': csdc, 'tol': {'atol': 1e-12}},
+                 {'fn': 'coherence', 'cases': coh, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

@@ -23,6 +23,7 @@ final class Signal
     'cheby1' => 'cheby1',
     'cheby2' => 'cheby2',
     'chirp' => 'chirp',
+    'coherence' => 'coherence',
     'convolve' => 'convolve',
     'correlate' => 'correlate',
     'csd' => 'csd',
@@ -133,6 +134,18 @@ final class Signal
     public static function chirp(mixed $t, mixed $f0, mixed $t1, mixed $f1, mixed $method = 'linear', mixed $phi = 0, mixed $vertexZero = true): mixed
     {
         return Registry::routine('signal.chirp', [$t, $f0, $t1, $f1, $method, $phi, $vertexZero]);
+    }
+
+    /**
+     * Magnitude-squared coherence by Welch's method (scipy.signal.coherence).
+     *
+     * scipy.signal.coherence
+     *
+     * @return mixed one array, or an array keyed by f, Cxy when several results are requested
+     */
+    public static function coherence(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $axis = -1): mixed
+    {
+        return Registry::routine('signal.coherence', [$x, $y, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $axis]);
     }
 
     /**
