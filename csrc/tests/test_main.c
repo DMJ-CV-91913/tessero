@@ -223,6 +223,78 @@ static void test_matmul(void)
     free(A); free(B); free(C);
 }
 
+/* reference row-major GEMM: C = alpha*op(A)*op(B) + beta*C, op by transpose flag */
+static double gemm_ref(int ta, int tb, int64_t m, int64_t n, int64_t k, double alpha,
+                       const double *A, int64_t lda, const double *B, int64_t ldb,
+                       double beta, const double *C, int64_t i, int64_t j)
+{
+    double acc = 0;
+    for (int64_t p = 0; p < k; p++) {
+        double aip = ta ? A[p * lda + i] : A[i * lda + p];
+        double bpj = tb ? B[j * ldb + p] : B[p * ldb + j];
+        acc += aip * bpj;
+    }
+    return alpha * acc + beta * (C ? C[i * n + j] : 0);
+}
+
+static void test_gemm(void)
+{
+    int64_t m = 17, n = 23, k = 29;
+    double *A = malloc(m * k * 8), *AT = malloc(k * m * 8), *B = malloc(k * n * 8), *BT = malloc(n * k * 8), *C = malloc(m * n * 8);
+    for (int64_t i = 0; i < m * k; i++) A[i] = sin(0.3 * i + 1);
+    for (int64_t i = 0; i < k * n; i++) B[i] = cos(0.2 * i + 2);
+    for (int64_t i = 0; i < m; i++) for (int64_t p = 0; p < k; p++) AT[p * m + i] = A[i * k + p]; /* k x m */
+    for (int64_t p = 0; p < k; p++) for (int64_t j = 0; j < n; j++) BT[j * k + p] = B[p * n + j]; /* n x k */
+
+    /* NN, alpha=1, beta=0 (plain forward) */
+    tsr_gemm(TSR_F64, 0, 0, m, n, k, 1.0, A, k, B, n, 0.0, C, n);
+    double err = 0;
+    for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++)
+        err = fmax(err, fabs(C[i * n + j] - gemm_ref(0, 0, m, n, k, 1.0, A, k, B, n, 0.0, NULL, i, j)));
+    CHECK(err < 1e-12, "gemm NN err %.3e", err);
+
+    /* op(A^T) via transa: AT is k x m, op(AT)=A; must equal the NN result */
+    double *C2 = malloc(m * n * 8);
+    tsr_gemm(TSR_F64, 1, 0, m, n, k, 1.0, AT, m, B, n, 0.0, C2, n);
+    err = 0; for (int64_t i = 0; i < m * n; i++) err = fmax(err, fabs(C2[i] - C[i]));
+    CHECK(err < 1e-12, "gemm TN matches NN err %.3e", err);
+
+    /* op(B^T) via transb: BT is n x k, op(BT)=B; must equal the NN result */
+    tsr_gemm(TSR_F64, 0, 1, m, n, k, 1.0, A, k, BT, k, 0.0, C2, n);
+    err = 0; for (int64_t i = 0; i < m * n; i++) err = fmax(err, fabs(C2[i] - C[i]));
+    CHECK(err < 1e-12, "gemm NT matches NN err %.3e", err);
+
+    /* TT: both transposed */
+    tsr_gemm(TSR_F64, 1, 1, m, n, k, 1.0, AT, m, BT, k, 0.0, C2, n);
+    err = 0; for (int64_t i = 0; i < m * n; i++) err = fmax(err, fabs(C2[i] - C[i]));
+    CHECK(err < 1e-12, "gemm TT matches NN err %.3e", err);
+
+    /* alpha/beta accumulate: C <- 2*A@B + 3*C, starting from the current C (= A@B) */
+    for (int64_t i = 0; i < m * n; i++) C2[i] = C[i];
+    tsr_gemm(TSR_F64, 0, 0, m, n, k, 2.0, A, k, B, n, 3.0, C2, n);
+    err = 0; for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++)
+        err = fmax(err, fabs(C2[i * n + j] - (2.0 * C[i * n + j] + 3.0 * C[i * n + j])));
+    CHECK(err < 1e-11, "gemm alpha/beta err %.3e", err);
+
+    /* CBLAS constants (111 NoTrans / 112 Trans) accepted like 0/1 */
+    tsr_gemm(TSR_F64, 112, 111, m, n, k, 1.0, AT, m, B, n, 0.0, C2, n);
+    err = 0; for (int64_t i = 0; i < m * n; i++) err = fmax(err, fabs(C2[i] - C[i]));
+    CHECK(err < 1e-12, "gemm CBLAS flag aliases err %.3e", err);
+
+    /* float32 path */
+    float *Af = malloc(m * k * 4), *Bf = malloc(k * n * 4), *Cf = malloc(m * n * 4);
+    for (int64_t i = 0; i < m * k; i++) Af[i] = (float)A[i];
+    for (int64_t i = 0; i < k * n; i++) Bf[i] = (float)B[i];
+    tsr_gemm(TSR_F32, 0, 0, m, n, k, 1.0, Af, k, Bf, n, 0.0, Cf, n);
+    err = 0; for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++)
+        err = fmax(err, fabs((double)Cf[i * n + j] - gemm_ref(0, 0, m, n, k, 1.0, A, k, B, n, 0.0, NULL, i, j)));
+    CHECK(err < 1e-3, "gemm f32 err %.3e", err);
+
+    CHECK(tsr_gemm(TSR_I64, 0, 0, m, n, k, 1.0, A, k, B, n, 0.0, C, n) == TSR_ETYPE, "gemm rejects int");
+
+    free(A); free(AT); free(B); free(BT); free(C); free(C2); free(Af); free(Bf); free(Cf);
+}
+
 static void test_fft(void)
 {
     const int64_t sizes[] = {1, 2, 3, 4, 5, 6, 7, 8, 12, 15, 16, 30, 49, 97, 101, 128, 210, 1000, 1009, 1024, 4096};
@@ -750,6 +822,7 @@ int main(void)
     test_reduce();
     test_index();
     test_matmul();
+    test_gemm();
     test_fft();
     test_rng();
     test_sparse();
