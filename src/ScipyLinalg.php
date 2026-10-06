@@ -24,9 +24,11 @@ final class ScipyLinalg
     'cholesky' => 'cholesky',
     'circulant' => 'circulant',
     'companion' => 'companion',
+    'convolution_matrix' => 'convolutionMatrix',
     'coshm' => 'coshm',
     'cosm' => 'cosm',
     'det' => 'det',
+    'dft' => 'dft',
     'diagsvd' => 'diagsvd',
     'eig' => 'eig',
     'eig_banded' => 'eigBanded',
@@ -153,6 +155,16 @@ final class ScipyLinalg
     }
 
     /**
+     * Toeplitz matrix A with A @ v = convolve(a, v, mode) (scipy.linalg.convolution_matrix).
+     *
+     * scipy.linalg.convolution_matrix
+     */
+    public static function convolutionMatrix(mixed $a, mixed $n, mixed $mode = 'full'): mixed
+    {
+        return Registry::routine('slinalg.convolution_matrix', [$a, $n, $mode]);
+    }
+
+    /**
      * Matrix hyperbolic cosine via the Schur-Parlett method (scipy.linalg.coshm; real spectrum).
      *
      * scipy.linalg.coshm
@@ -180,6 +192,16 @@ final class ScipyLinalg
     public static function det(mixed $a): mixed
     {
         return Registry::routine('slinalg.det', [$a]);
+    }
+
+    /**
+     * The n x n discrete Fourier transform matrix (scipy.linalg.dft).
+     *
+     * scipy.linalg.dft
+     */
+    public static function dft(mixed $n, mixed $scale = null): mixed
+    {
+        return Registry::routine('slinalg.dft', [$n, $scale]);
     }
 
     /**
