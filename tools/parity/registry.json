@@ -1845,7 +1845,22 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.freqs": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.freqs_zpk": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.freqz": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.freqz_zpk": {
             "kind": "routine",
             "nin": 0,
             "nout": 2

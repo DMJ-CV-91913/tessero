@@ -28,7 +28,10 @@ final class Signal
     'detrend' => 'detrend',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
+    'freqs' => 'freqs',
+    'freqs_zpk' => 'freqsZpk',
     'freqz' => 'freqz',
+    'freqz_zpk' => 'freqzZpk',
     'gausspulse' => 'gausspulse',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
@@ -176,6 +179,30 @@ final class Signal
     }
 
     /**
+     * Analog filter frequency response at the given frequencies (scipy.signal.freqs).
+     *
+     * scipy.signal.freqs
+     *
+     * @return mixed one array, or an array keyed by w, h when several results are requested
+     */
+    public static function freqs(mixed $b, mixed $a, mixed $worN): mixed
+    {
+        return Registry::routine('signal.freqs', [$b, $a, $worN]);
+    }
+
+    /**
+     * Analog zpk frequency response at the given frequencies (scipy.signal.freqs_zpk).
+     *
+     * scipy.signal.freqs_zpk
+     *
+     * @return mixed one array, or an array keyed by w, h when several results are requested
+     */
+    public static function freqsZpk(mixed $z, mixed $p, mixed $k, mixed $worN): mixed
+    {
+        return Registry::routine('signal.freqs_zpk', [$z, $p, $k, $worN]);
+    }
+
+    /**
      * Frequency response of a digital filter (scipy.signal.freqz).
      *
      * scipy.signal.freqz
@@ -185,6 +212,18 @@ final class Signal
     public static function freqz(mixed $b, mixed $a = 1, mixed $worN = 512, mixed $whole = false): mixed
     {
         return Registry::routine('signal.freqz', [$b, $a, $worN, $whole]);
+    }
+
+    /**
+     * Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk).
+     *
+     * scipy.signal.freqz_zpk
+     *
+     * @return mixed one array, or an array keyed by w, h when several results are requested
+     */
+    public static function freqzZpk(mixed $z, mixed $p, mixed $k, mixed $worN = 512, mixed $whole = false): mixed
+    {
+        return Registry::routine('signal.freqz_zpk', [$z, $p, $k, $worN, $whole]);
     }
 
     /**

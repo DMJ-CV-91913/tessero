@@ -1737,6 +1737,101 @@ static int r_bilinear(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     return rc;
 }
 
+/* ---- frequency response (analog freqs, zpk forms) ---- */
+
+/* complex divide via Smith's method, matching numpy's npy_cdivide (as r_freqz does). */
+static double complex sig_cdiv(double complex num, double complex den)
+{
+    const double nr = creal(num), ni = cimag(num), dr = creal(den), di = cimag(den);
+    double hr, hi;
+    if (fabs(dr) >= fabs(di)) { const double rat = di / dr, scl = 1.0 / (dr + di * rat); hr = (nr + ni * rat) * scl; hi = (ni - nr * rat) * scl; }
+    else { const double rat = dr / di, scl = 1.0 / (dr * rat + di); hr = (nr * rat + ni) * scl; hi = (ni * rat - nr) * scl; }
+    return hr + I * hi;
+}
+
+/* freqs(b, a, worN): analog frequency response H(jw) = polyval(b, jw)/polyval(a, jw) at the given frequencies
+   (scipy.signal.freqs; worN must be an explicit 1-D frequency array). Returns (w, h). */
+static int r_freqs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("freqs: b and a must be 1-D arrays"); return TSR_EARG; }
+    if (args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("freqs: worN must be a 1-D array of frequencies"); return TSR_EARG; }
+    int64_t nb, na, nw; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    double *wv = fn_arg_doubles(&args[2], &nw); if (!wv) { fn_free_doubles(b, nb); fn_free_doubles(a, na); return TSR_ENOMEM; }
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw});
+    double *h = w ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){nw}) : NULL;
+    int rc = TSR_OK;
+    if (!w || !h) rc = TSR_ENOMEM;
+    else for (int64_t j = 0; j < nw; j++) {
+        const double complex s = I * wv[j];
+        double complex num = b[0], den = a[0];
+        for (int64_t k = 1; k < nb; k++) num = num * s + b[k];
+        for (int64_t k = 1; k < na; k++) den = den * s + a[k];
+        const double complex hv = sig_cdiv(num, den);
+        w[j] = wv[j]; h[2 * j] = creal(hv); h[2 * j + 1] = cimag(hv);
+    }
+    fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_free_doubles(wv, nw);
+    return rc;
+}
+
+/* freqs_zpk(z, p, k, worN): analog response H(jw) = k*prod(jw - z)/prod(jw - p) (scipy.signal.freqs_zpk;
+   worN an explicit 1-D frequency array). Returns (w, h). */
+static int r_freqs_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("freqs_zpk: worN must be a 1-D array of frequencies"); return TSR_EARG; }
+    int64_t nz, np_, nw; double complex *z = read_carr(&args[0], &nz); if (!z) return TSR_ENOMEM;
+    double complex *p = read_carr(&args[1], &np_); if (!p) { free(z); return TSR_ENOMEM; }
+    const double k = (args[2].kind == 1) ? args[2].num : 1.0;
+    double *wv = fn_arg_doubles(&args[3], &nw); if (!wv) { free(z); free(p); return TSR_ENOMEM; }
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw});
+    double *h = w ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){nw}) : NULL;
+    int rc = TSR_OK;
+    if (!w || !h) rc = TSR_ENOMEM;
+    else for (int64_t j = 0; j < nw; j++) {
+        const double complex s = I * wv[j];
+        double complex num = 1.0, den = 1.0;
+        for (int64_t i = 0; i < nz; i++) num *= (s - z[i]);
+        for (int64_t i = 0; i < np_; i++) den *= (s - p[i]);
+        const double complex hv = k * sig_cdiv(num, den);
+        w[j] = wv[j]; h[2 * j] = creal(hv); h[2 * j + 1] = cimag(hv);
+    }
+    free(z); free(p); fn_free_doubles(wv, nw);
+    return rc;
+}
+
+/* freqz_zpk(z, p, k, worN=512, whole=False): digital response H(e^jw) = k*prod(e^jw - z)/prod(e^jw - p) on a
+   linear grid [0, pi) (or [0, 2pi) if whole) (scipy.signal.freqz_zpk; fs defaults to 2*pi so w is returned raw). */
+static int r_freqz_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const int64_t N = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 512;
+    const int whole = (nargs > 4 && (args[4].kind == 1 || args[4].kind == 4)) ? args[4].num != 0 : 0;
+    if (N <= 0) { fn_set_error("freqz_zpk: worN must be positive"); return TSR_EARG; }
+    int64_t nz, np_; double complex *z = read_carr(&args[0], &nz); if (!z) return TSR_ENOMEM;
+    double complex *p = read_carr(&args[1], &np_); if (!p) { free(z); return TSR_ENOMEM; }
+    const double k = (args[2].kind == 1) ? args[2].num : 1.0;
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N});
+    double *h = w ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){N}) : NULL;
+    int rc = TSR_OK;
+    if (!w || !h) rc = TSR_ENOMEM;
+    else {
+        const double step = (whole ? 2.0 * M_PI : M_PI) / (double)N;
+        for (int64_t j = 0; j < N; j++) {
+            const double wj = (double)j * step;
+            const double complex zm1 = cos(wj) + I * sin(wj);
+            double complex num = 1.0, den = 1.0;
+            for (int64_t i = 0; i < nz; i++) num *= (zm1 - z[i]);
+            for (int64_t i = 0; i < np_; i++) den *= (zm1 - p[i]);
+            const double complex hv = k * sig_cdiv(num, den);
+            w[j] = wj; h[2 * j] = creal(hv); h[2 * j + 1] = cimag(hv);
+        }
+    }
+    free(z); free(p);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -1769,6 +1864,9 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.lp2bp", 2, "b, a, wo=1.0, bw=1.0", "b, a", r_lp2bp, NULL, "Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp)."),
     ROUTINE("signal.lp2bs", 2, "b, a, wo=1.0, bw=1.0", "b, a", r_lp2bs, NULL, "Transform a lowpass analog prototype to bandstop (scipy.signal.lp2bs)."),
     ROUTINE("signal.bilinear", 2, "b, a, fs=1.0", "b, a", r_bilinear, NULL, "Bilinear transform of an analog filter to a digital filter (scipy.signal.bilinear)."),
+    ROUTINE("signal.freqs", 2, "b, a, worN", "w, h", r_freqs, NULL, "Analog filter frequency response at the given frequencies (scipy.signal.freqs)."),
+    ROUTINE("signal.freqs_zpk", 2, "z, p, k, worN", "w, h", r_freqs_zpk, NULL, "Analog zpk frequency response at the given frequencies (scipy.signal.freqs_zpk)."),
+    ROUTINE("signal.freqz_zpk", 2, "z, p, k, worN=512, whole=False", "w, h", r_freqz_zpk, NULL, "Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),
