@@ -2807,6 +2807,12 @@
                 "doc": "N-D convolution by the overlap-add method, modes full/same/valid (scipy.signal.oaconvolve; real)."
             },
             {
+                "name": "periodogram",
+                "static": true,
+                "sig": "periodogram(mixed $x, mixed $fs = 1.0, mixed $window = 'boxcar', mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density'): mixed",
+                "doc": "Power spectral density estimate from a single segment (scipy.signal.periodogram)."
+            },
+            {
                 "name": "savgolCoeffs",
                 "static": true,
                 "sig": "savgolCoeffs(mixed $windowLength, mixed $polyorder, mixed $deriv = 0, mixed $delta = 1.0, mixed $pos = null, mixed $use = 'conv'): mixed",
@@ -15507,6 +15513,12 @@
                 "name": "hilbert2",
                 "static": true,
                 "sig": "hilbert2($x, $N = null)",
+                "doc": ""
+            },
+            {
+                "name": "periodogram",
+                "static": true,
+                "sig": "periodogram($x, $fs = 1.0, $window = 'boxcar', $nfft = null, $detrend = 'constant', $returnOnesided = true, $scaling = 'density')",
                 "doc": ""
             }
         ]

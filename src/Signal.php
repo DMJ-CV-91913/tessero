@@ -44,6 +44,7 @@ final class Signal
     'lp2lp' => 'lp2lp',
     'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
+    'periodogram' => 'periodogram',
     'savgol_coeffs' => 'savgolCoeffs',
     'savgol_filter' => 'savgolFilter',
     'sawtooth' => 'sawtooth',
@@ -360,6 +361,18 @@ final class Signal
     public static function oaconvolve(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $axes = null): mixed
     {
         return Registry::routine('signal.oaconvolve', [$in1, $in2, $mode, $axes]);
+    }
+
+    /**
+     * Power spectral density estimate from a single segment (scipy.signal.periodogram).
+     *
+     * scipy.signal.periodogram
+     *
+     * @return mixed one array, or an array keyed by f, Pxx when several results are requested
+     */
+    public static function periodogram(mixed $x, mixed $fs = 1.0, mixed $window = 'boxcar', mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density'): mixed
+    {
+        return Registry::routine('signal.periodogram', [$x, $fs, $window, $nfft, $detrend, $returnOnesided, $scaling]);
     }
 
     /**
