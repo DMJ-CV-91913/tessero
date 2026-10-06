@@ -302,6 +302,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.polar` | `Tessero\ScipyLinalg::polar()` |
 | `scipy.linalg.qr` | `Tessero\ScipyLinalg::qr()` |
 | `scipy.linalg.qz` | `Tessero\ScipyLinalg::qz()` |
+| `scipy.linalg.rq` | `Tessero\ScipyLinalg::rq()` |
 | `scipy.linalg.schur` | `Tessero\ScipyLinalg::schur()` |
 | `scipy.linalg.sinhm` | `Tessero\ScipyLinalg::sinhm()` |
 | `scipy.linalg.sinm` | `Tessero\ScipyLinalg::sinm()` |

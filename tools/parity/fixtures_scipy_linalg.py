@@ -277,6 +277,7 @@ def main():
         for bv in (rng.uniform(-2, 2, size=4), rng.uniform(-2, 2, size=(4, 2))):
             chb.append({'args': [enc(cbf), enc(False), enc(bv)], 'kwargs': {}, 'expect': enc_one(sla.cho_solve_banded((cbf, False), bv))})
     blocks['cho_solve_banded'] = chb
+    blocks['rq'] = [callc('rq', [gen(n)], None, ['R', 'Q'], lambda r: r) for n in (2, 3, 4)]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]
