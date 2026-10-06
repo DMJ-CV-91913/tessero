@@ -146,6 +146,7 @@ final class Np
     'partition' => 'partition',
     'percentile' => 'percentile',
     'place' => 'place',
+    'poly' => 'poly',
     'polyadd' => 'polyadd',
     'polyder' => 'polyder',
     'polydiv' => 'polydiv',
@@ -179,6 +180,7 @@ final class Np
     'simpson' => 'simpson',
     'sinc' => 'sinc',
     'size' => 'size',
+    'sort_complex' => 'sortComplex',
     'spacing' => 'spacing',
     'split' => 'split',
     'squeeze' => 'squeeze',
@@ -1527,6 +1529,16 @@ final class Np
     }
 
     /**
+     * Coefficients of the polynomial with the given roots (numpy.poly).
+     *
+     * numpy.poly
+     */
+    public static function poly(mixed $seq): mixed
+    {
+        return Registry::routine('np.poly', [$seq]);
+    }
+
+    /**
      * Sum of two polynomials (numpy.polyadd).
      *
      * numpy.polyadd
@@ -1854,6 +1866,16 @@ final class Np
     public static function size(mixed $a, mixed $axis = null): mixed
     {
         return Registry::routine('np.size', [$a, $axis]);
+    }
+
+    /**
+     * A complex copy of a sorted by real then imaginary part (numpy.sort_complex).
+     *
+     * numpy.sort_complex
+     */
+    public static function sortComplex(mixed $a): mixed
+    {
+        return Registry::routine('np.sort_complex', [$a]);
     }
 
     /**

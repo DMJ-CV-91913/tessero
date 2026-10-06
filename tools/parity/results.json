@@ -293,6 +293,7 @@
         "np.partition": "pass",
         "np.percentile": "pass",
         "np.place": "pass",
+        "np.poly": "pass",
         "np.polyadd": "pass",
         "np.polyder": "pass",
         "np.polydiv": "pass",
@@ -326,6 +327,7 @@
         "np.simpson": "pass",
         "np.sinc": "pass",
         "np.size": "pass",
+        "np.sort_complex": "pass",
         "np.spacing": "pass",
         "np.split": "pass",
         "np.squeeze": "pass",
@@ -1801,7 +1803,7 @@
             "special.softmax": 2.1851336581537145e-16,
             "special.log_softmax": 1.9506335403222065e-16,
             "np.cumulative_trapezoid": 0,
-            "np.simpson": 3.32107928550973e-16,
+            "np.simpson": 1.966117144554515e-16,
             "slinalg.circulant": 0,
             "slinalg.companion": 0,
             "slinalg.hadamard": 0,
@@ -2036,7 +2038,9 @@
             "slinalg.ishermitian": 0,
             "slinalg.solve_toeplitz": 8.343314544203033e-16,
             "slinalg.solve_circulant": 7.214207883678215e-15,
-            "slinalg.matmul_toeplitz": 3.996445529299166e-16
+            "slinalg.matmul_toeplitz": 3.996445529299166e-16,
+            "np.poly": 0,
+            "np.sort_complex": 0
         },
         "ext": {
             "np.median": 0,
@@ -2820,7 +2824,7 @@
             "special.softmax": 2.1851336581537145e-16,
             "special.log_softmax": 1.9506335403222065e-16,
             "np.cumulative_trapezoid": 0,
-            "np.simpson": 3.32107928550973e-16,
+            "np.simpson": 1.966117144554515e-16,
             "slinalg.circulant": 0,
             "slinalg.companion": 0,
             "slinalg.hadamard": 0,
@@ -3055,7 +3059,9 @@
             "slinalg.ishermitian": 0,
             "slinalg.solve_toeplitz": 8.343314544203033e-16,
             "slinalg.solve_circulant": 7.214207883678215e-15,
-            "slinalg.matmul_toeplitz": 3.996445529299166e-16
+            "slinalg.matmul_toeplitz": 3.996445529299166e-16,
+            "np.poly": 0,
+            "np.sort_complex": 0
         }
     },
     "ext": {
@@ -3352,6 +3358,7 @@
         "np.partition": "pass",
         "np.percentile": "pass",
         "np.place": "pass",
+        "np.poly": "pass",
         "np.polyadd": "pass",
         "np.polyder": "pass",
         "np.polydiv": "pass",
@@ -3385,6 +3392,7 @@
         "np.simpson": "pass",
         "np.sinc": "pass",
         "np.size": "pass",
+        "np.sort_complex": "pass",
         "np.spacing": "pass",
         "np.split": "pass",
         "np.squeeze": "pass",
