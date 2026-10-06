@@ -2578,6 +2578,35 @@ static int r_cho_solve_banded(const void *ctx, const tsr_arg *args, int nargs, t
     return rc;
 }
 
+/* rq(a, mode='full'): the RQ decomposition a = R Q of a square matrix via dgerqf + dorgrq (R upper triangular,
+   Q orthogonal). Uses the same LAPACK routines as scipy, so the factors match exactly (scipy.linalg.rq).
+   Returns (R, Q). */
+static int r_rq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("rq: a must be a square 2-D array"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    int64_t na; double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    double *tau = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    int64_t rsh[2] = {n, n}, qsh[2] = {n, n};
+    double *R = (double *)fn_result_array(&res[0], TSR_F64, 2, rsh);
+    double *Q = (double *)fn_result_array(&res[1], TSR_F64, 2, qsh);
+    int rc = TSR_OK;
+    if (!tau || !R || !Q) rc = TSR_ENOMEM;
+    else if (n > 0) {
+        lapack_int info = LAPACKE_dgerqf(LAPACK_ROW_MAJOR, (lapack_int)n, (lapack_int)n, a, (lapack_int)n, tau);
+        if (info != 0) { rc = TSR_EARG; fn_set_error("rq: dgerqf failed"); }
+        else {
+            for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) R[i * n + j] = (j >= i) ? a[i * n + j] : 0.0;
+            info = LAPACKE_dorgrq(LAPACK_ROW_MAJOR, (lapack_int)n, (lapack_int)n, (lapack_int)n, a, (lapack_int)n, tau);
+            if (info != 0) { rc = TSR_EARG; fn_set_error("rq: dorgrq failed"); }
+            else for (int64_t i = 0; i < n * n; i++) Q[i] = a[i];
+        }
+    }
+    free(tau); fn_free_doubles(a, na);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3135,6 +3164,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.solve_discrete_lyapunov", 1, "a, q", "out", r_solve_discrete_lyapunov, NULL, "Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov)."),
     ROUTINE("slinalg.helmert", 1, "n, full=False", "out", r_helmert, NULL, "Helmert matrix of order n (scipy.linalg.helmert)."),
     ROUTINE("slinalg.cho_solve_banded", 1, "cb, lower, b", "out", r_cho_solve_banded, NULL, "Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded)."),
+    ROUTINE("slinalg.rq", 2, "a, mode='full'", "R, Q", r_rq, NULL, "RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

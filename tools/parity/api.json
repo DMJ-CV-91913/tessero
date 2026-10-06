@@ -2059,6 +2059,12 @@
                 "doc": "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."
             },
             {
+                "name": "rq",
+                "static": true,
+                "sig": "rq(mixed $a, mixed $mode = 'full'): mixed",
+                "doc": "RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq)."
+            },
+            {
                 "name": "schur",
                 "static": true,
                 "sig": "schur(mixed $a, mixed $output = 'real'): mixed",
@@ -14812,6 +14818,12 @@
                 "name": "choSolveBanded",
                 "static": true,
                 "sig": "choSolveBanded($cb, $lower, $b)",
+                "doc": ""
+            },
+            {
+                "name": "rq",
+                "static": true,
+                "sig": "rq($a, $mode = 'full')",
                 "doc": ""
             },
             {

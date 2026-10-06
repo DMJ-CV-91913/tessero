@@ -71,6 +71,7 @@ final class ScipyLinalg
     'polar' => 'polar',
     'qr' => 'qr',
     'qz' => 'qz',
+    'rq' => 'rq',
     'schur' => 'schur',
     'sinhm' => 'sinhm',
     'sinm' => 'sinm',
@@ -659,6 +660,18 @@ final class ScipyLinalg
     public static function qz(mixed $A, mixed $B, mixed $output = 'real'): mixed
     {
         return Registry::routine('slinalg.qz', [$A, $B, $output]);
+    }
+
+    /**
+     * RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq).
+     *
+     * scipy.linalg.rq
+     *
+     * @return mixed one array, or an array keyed by R, Q when several results are requested
+     */
+    public static function rq(mixed $a, mixed $mode = 'full'): mixed
+    {
+        return Registry::routine('slinalg.rq', [$a, $mode]);
     }
 
     /**
