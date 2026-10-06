@@ -2669,6 +2669,12 @@
                 "doc": "Chebyshev type II IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.cheby2)."
             },
             {
+                "name": "chirp",
+                "static": true,
+                "sig": "chirp(mixed $t, mixed $f0, mixed $t1, mixed $f1, mixed $method = 'linear', mixed $phi = 0, mixed $vertexZero = true): mixed",
+                "doc": "Frequency-swept cosine (linear/quadratic/logarithmic/hyperbolic) (scipy.signal.chirp)."
+            },
+            {
                 "name": "convolve",
                 "static": true,
                 "sig": "convolve(mixed $a, mixed $v, mixed $mode = 'full'): mixed",
@@ -2705,6 +2711,12 @@
                 "doc": "Frequency response of a digital filter (scipy.signal.freqz)."
             },
             {
+                "name": "gausspulse",
+                "static": true,
+                "sig": "gausspulse(mixed $t, mixed $fc = 1000, mixed $bw = 0.5, mixed $bwr = -6): mixed",
+                "doc": "Gaussian-modulated sinusoid, in-phase component (scipy.signal.gausspulse)."
+            },
+            {
                 "name": "lfilter",
                 "static": true,
                 "sig": "lfilter(mixed $b, mixed $a, mixed $x): mixed",
@@ -2735,6 +2747,12 @@
                 "doc": "Apply a Savitzky-Golay filter to a 1-D signal (scipy.signal.savgol_filter)."
             },
             {
+                "name": "sawtooth",
+                "static": true,
+                "sig": "sawtooth(mixed $t, mixed $width = 1): mixed",
+                "doc": "Sawtooth/triangle wave of period 2pi with the given rising width (scipy.signal.sawtooth)."
+            },
+            {
                 "name": "sosfilt",
                 "static": true,
                 "sig": "sosfilt(mixed $sos, mixed $x, mixed $axis = -1, mixed $zi = null): mixed",
@@ -2751,6 +2769,18 @@
                 "static": true,
                 "sig": "sosfiltfilt(mixed $sos, mixed $x, mixed $axis = -1, mixed $padtype = 'odd', mixed $padlen = null): mixed",
                 "doc": "Zero-phase forward-backward SOS filtering with odd padding (scipy.signal.sosfiltfilt; 1-D)."
+            },
+            {
+                "name": "square",
+                "static": true,
+                "sig": "square(mixed $t, mixed $duty = 0.5): mixed",
+                "doc": "Square-wave of period 2pi with the given duty cycle (scipy.signal.square)."
+            },
+            {
+                "name": "unitImpulse",
+                "static": true,
+                "sig": "unitImpulse(mixed $shape, mixed $idx = null): mixed",
+                "doc": "Unit impulse: zeros with a single 1 at idx (scipy.signal.unit_impulse)."
             },
             {
                 "name": "zpk2tf",
@@ -15267,6 +15297,36 @@
                 "name": "savgolFilter",
                 "static": true,
                 "sig": "savgolFilter($x, $windowLength, $polyorder, $deriv = 0, $delta = 1.0, $axis = -1, $mode = 'interp', $cval = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "square",
+                "static": true,
+                "sig": "square($t, $duty = 0.5)",
+                "doc": ""
+            },
+            {
+                "name": "sawtooth",
+                "static": true,
+                "sig": "sawtooth($t, $width = 1)",
+                "doc": ""
+            },
+            {
+                "name": "chirp",
+                "static": true,
+                "sig": "chirp($t, $f0, $t1, $f1, $method = 'linear', $phi = 0, $vertexZero = true)",
+                "doc": ""
+            },
+            {
+                "name": "gausspulse",
+                "static": true,
+                "sig": "gausspulse($t, $fc = 1000, $bw = 0.5, $bwr = -6)",
+                "doc": ""
+            },
+            {
+                "name": "unitImpulse",
+                "static": true,
+                "sig": "unitImpulse($shape, $idx = null)",
                 "doc": ""
             }
         ]

@@ -932,20 +932,25 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.butter` | `Tessero\Signal::butter()` |
 | `scipy.signal.cheby1` | `Tessero\Signal::cheby1()` |
 | `scipy.signal.cheby2` | `Tessero\Signal::cheby2()` |
+| `scipy.signal.chirp` | `Tessero\Signal::chirp()` |
 | `scipy.signal.convolve` | `Tessero\Signal::convolve()` |
 | `scipy.signal.correlate` | `Tessero\Signal::correlate()` |
 | `scipy.signal.detrend` | `Tessero\Signal::detrend()` |
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |
 | `scipy.signal.freqz` | `Tessero\Signal::freqz()` |
+| `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
 | `scipy.signal.lfilter` | `Tessero\Signal::lfilter()` |
 | `scipy.signal.lfilter_zi` | `Tessero\Signal::lfilterZi()` |
 | `scipy.signal.oaconvolve` | `Tessero\Signal::oaconvolve()` |
 | `scipy.signal.savgol_coeffs` | `Tessero\Signal::savgolCoeffs()` |
 | `scipy.signal.savgol_filter` | `Tessero\Signal::savgolFilter()` |
+| `scipy.signal.sawtooth` | `Tessero\Signal::sawtooth()` |
 | `scipy.signal.sosfilt` | `Tessero\Signal::sosfilt()` |
 | `scipy.signal.sosfilt_zi` | `Tessero\Signal::sosfiltZi()` |
 | `scipy.signal.sosfiltfilt` | `Tessero\Signal::sosfiltfilt()` |
+| `scipy.signal.square` | `Tessero\Signal::square()` |
+| `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
 | `scipy.signal.zpk2tf` | `Tessero\Signal::zpk2tf()` |
 
 ## scipy.ndimage
