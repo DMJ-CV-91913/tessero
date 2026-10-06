@@ -18,6 +18,7 @@ enum { CONV_FULL, CONV_SAME, CONV_VALID };
 
 static int gesolve(int n, double *A, double *b);   /* small dense solver, defined below */
 extern int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);   /* core FFT (fft.c) */
+extern int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);                /* real FFT -> n/2+1 bins */
 
 static int parse_mode(const tsr_arg *a, int *mode)
 {
@@ -1935,6 +1936,78 @@ static int r_hilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return rc;
 }
 
+/* periodogram(x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True,
+   scaling='density'): the power spectral density estimate from a single segment (scipy.signal.periodogram,
+   real x). window is 'boxcar' (default) or an explicit array. Returns (f, Pxx). */
+static int r_periodogram(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("periodogram: x must be a 1-D real array"); return TSR_EARG; }
+    int64_t N0; double *x = fn_arg_doubles(&args[0], &N0); if (!x) return TSR_ENOMEM;
+    const double fs = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1.0;
+    int64_t nperseg = N0, fftlen = N0;
+    if (nargs > 3 && args[3].kind == 1) { const int64_t nf = (int64_t)args[3].num; if (nf < N0) { nperseg = nf; fftlen = nf; } else { fftlen = nf; } }
+    int det = 1;                                             /* 1 constant, 2 linear, 0 none */
+    if (nargs > 4) { if (args[4].kind == 2 && args[4].str) { det = !strcmp(args[4].str, "linear") ? 2 : (!strcmp(args[4].str, "constant") ? 1 : 1); } else if (args[4].kind == 4 && args[4].num == 0.0) det = 0; }
+    const int onesided = (nargs > 5 && args[5].kind == 4) ? (args[5].num != 0.0) : 1;
+    const int density = !(nargs > 6 && args[6].kind == 2 && args[6].str && !strcmp(args[6].str, "spectrum"));
+    int rc = TSR_OK;
+    double *win = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    double *seg = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
+    if (!win || !seg || (nargs > 2 && args[2].kind == 3 && !warr)) rc = TSR_ENOMEM;
+    else if (warr && nwin != nperseg) { fn_set_error("periodogram: window length must equal the segment length"); rc = TSR_EARG; }
+    else {
+        for (int64_t i = 0; i < nperseg; i++) win[i] = warr ? warr[i] : 1.0;   /* boxcar default */
+        for (int64_t i = 0; i < nperseg; i++) seg[i] = x[i];
+        if (det == 1) { double m = 0; for (int64_t i = 0; i < nperseg; i++) m += seg[i]; m /= (double)nperseg; for (int64_t i = 0; i < nperseg; i++) seg[i] -= m; }
+        else if (det == 2 && nperseg > 1) {                  /* subtract the least-squares line */
+            double st = 0, sx = 0, stt = 0, stx = 0; const double n = (double)nperseg;
+            for (int64_t i = 0; i < nperseg; i++) { st += i; sx += seg[i]; stt += (double)i * i; stx += (double)i * seg[i]; }
+            const double b = (n * stx - st * sx) / (n * stt - st * st), a = (sx - b * st) / n;
+            for (int64_t i = 0; i < nperseg; i++) seg[i] -= a + b * (double)i;
+        }
+        double sw2 = 0, sw = 0;
+        for (int64_t i = 0; i < nperseg; i++) { sw2 += win[i] * win[i]; sw += win[i]; seg[i] *= win[i]; }
+        const double scale = density ? 1.0 / (fs * sw2) : 1.0 / (sw * sw);
+        if (onesided) {
+            const int64_t nb = fftlen / 2 + 1;
+            double *in = (double *)calloc((size_t)fftlen, sizeof(double));
+            double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * nb));
+            double *f = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nb});
+            double *P = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nb});
+            if (!in || !Xf || !f || !P) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < nperseg; i++) in[i] = seg[i];
+                tsr_rfft(fftlen, 1, in, Xf);
+                for (int64_t k = 0; k < nb; k++) { P[k] = (Xf[2 * k] * Xf[2 * k] + Xf[2 * k + 1] * Xf[2 * k + 1]) * scale; f[k] = (double)k * fs / (double)fftlen; }
+                const int64_t last = (fftlen % 2) ? nb : nb - 1;   /* odd: double 1.. ; even: double 1..nb-2 */
+                for (int64_t k = 1; k < last; k++) P[k] *= 2.0;
+            }
+            free(in); free(Xf);
+        } else {
+            double *in = (double *)calloc((size_t)(2 * fftlen), sizeof(double));
+            double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * fftlen));
+            double *f = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){fftlen});
+            double *P = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){fftlen});
+            if (!in || !Xf || !f || !P) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < nperseg; i++) in[2 * i] = seg[i];
+                tsr_fft(fftlen, 1, 0, in, Xf);
+                for (int64_t k = 0; k < fftlen; k++) {
+                    P[k] = (Xf[2 * k] * Xf[2 * k] + Xf[2 * k + 1] * Xf[2 * k + 1]) * scale;
+                    const int64_t kk = (k <= (fftlen - 1) / 2) ? k : k - fftlen;    /* fftfreq */
+                    f[k] = (double)kk * fs / (double)fftlen;
+                }
+            }
+            free(in); free(Xf);
+        }
+    }
+    free(win); free(seg); if (warr) fn_free_doubles(warr, nwin);
+    fn_free_doubles(x, N0);
+    return rc;
+}
+
 /* transpose an r x c interleaved-complex matrix into dst (c x r). */
 static void sig_ctranspose(const double *src, int64_t r, int64_t c, double *dst)
 {
@@ -2025,6 +2098,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.group_delay", 2, "b, a, w=512, whole=False", "w, gd", r_group_delay, NULL, "Group delay of a digital filter (scipy.signal.group_delay)."),
     ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
     ROUTINE("signal.hilbert2", 1, "x, N=None", "out", r_hilbert2, NULL, "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."),
+    ROUTINE("signal.periodogram", 2, "x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True, scaling='density'", "f, Pxx", r_periodogram, NULL, "Power spectral density estimate from a single segment (scipy.signal.periodogram)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),

@@ -451,6 +451,7 @@
         "signal.lp2lp": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
+        "signal.periodogram": "pass",
         "signal.savgol_coeffs": "pass",
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",
@@ -2134,7 +2135,8 @@
             "signal.sosfreqz": 1,
             "signal.group_delay": 2.1664513650495942e-11,
             "signal.hilbert": 2,
-            "signal.hilbert2": 3.3391152022171014e-12
+            "signal.hilbert2": 3.3391152022171014e-12,
+            "signal.periodogram": 0.9897959183673469
         },
         "ext": {
             "np.median": 0,
@@ -3202,7 +3204,8 @@
             "signal.sosfreqz": 1,
             "signal.group_delay": 2.1664513650495942e-11,
             "signal.hilbert": 2,
-            "signal.hilbert2": 3.3391152022171014e-12
+            "signal.hilbert2": 3.3391152022171014e-12,
+            "signal.periodogram": 0.9897959183673469
         }
     },
     "ext": {
@@ -3657,6 +3660,7 @@
         "signal.lp2lp": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
+        "signal.periodogram": "pass",
         "signal.savgol_coeffs": "pass",
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",

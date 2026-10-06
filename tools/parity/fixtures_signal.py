@@ -273,6 +273,26 @@ for (r, c) in ((4, 4), (8, 6), (5, 7), (6, 8)):
     xx = rng.uniform(-3, 3, (r, c))
     hlb2.append({'args': [F.enc(xx)], 'kwargs': {}, 'expect': F.enc_result(sg.hilbert2(xx), []), 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# periodogram: single-segment PSD estimate
+def _pgm_case(args, pyargs):
+    return {'args': [F.enc(np.asarray(a) if isinstance(a, (list, np.ndarray)) else a) for a in args],
+            'kwargs': {}, 'expect': F.enc_result(sg.periodogram(*pyargs), ['f', 'Pxx']), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+pgm = []
+xp64 = rng.uniform(-3, 3, 64)
+pgm.append(_pgm_case([xp64], [xp64]))                                              # default
+pgm.append(_pgm_case([xp64, 100.0], [xp64, 100.0]))                                # fs
+pgm.append(_pgm_case([xp64, 1.0, 'boxcar', 64, 'constant', True, 'spectrum'],
+                     [xp64, 1.0, 'boxcar', 64, 'constant', True, 'spectrum']))      # spectrum scaling
+pgm.append(_pgm_case([xp64, 1.0, 'boxcar', 64, 'constant', False, 'density'],
+                     [xp64, 1.0, 'boxcar', 64, 'constant', False, 'density']))      # two-sided
+pgm.append(_pgm_case([xp64, 2.0, 'boxcar', 64, 'linear'], [xp64, 2.0, 'boxcar', 64, 'linear']))  # linear detrend
+_win = sg.windows.hann(64, sym=False)
+pgm.append(_pgm_case([xp64, 1.0, _win], [xp64, 1.0, _win]))                         # explicit window array
+xp51 = rng.uniform(-3, 3, 51)
+pgm.append(_pgm_case([xp51], [xp51]))                                              # odd length
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -305,7 +325,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'sosfreqz', 'cases': sfz2, 'tol': {'atol': 1e-12}},
                  {'fn': 'group_delay', 'cases': gdl, 'tol': {'atol': 1e-9}},
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
-                 {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}}]}
+                 {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
+                 {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
