@@ -26,6 +26,7 @@ final class Signal
     'coherence' => 'coherence',
     'convolve' => 'convolve',
     'correlate' => 'correlate',
+    'correlation_lags' => 'correlationLags',
     'csd' => 'csd',
     'detrend' => 'detrend',
     'fftconvolve' => 'fftconvolve',
@@ -167,6 +168,16 @@ final class Signal
     public static function correlate(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $method = 'auto'): mixed
     {
         return Registry::routine('signal.correlate', [$in1, $in2, $mode, $method]);
+    }
+
+    /**
+     * Lag indices for the output of signal.correlate (scipy.signal.correlation_lags).
+     *
+     * scipy.signal.correlation_lags
+     */
+    public static function correlationLags(mixed $in1Len, mixed $in2Len, mixed $mode = 'full'): mixed
+    {
+        return Registry::routine('signal.correlation_lags', [$in1Len, $in2Len, $mode]);
     }
 
     /**

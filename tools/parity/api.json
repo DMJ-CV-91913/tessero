@@ -2699,6 +2699,12 @@
                 "doc": "N-D cross-correlation of two arrays, modes full/same/valid (scipy.signal.correlate; real)."
             },
             {
+                "name": "correlationLags",
+                "static": true,
+                "sig": "correlationLags(mixed $in1Len, mixed $in2Len, mixed $mode = 'full'): mixed",
+                "doc": "Lag indices for the output of signal.correlate (scipy.signal.correlation_lags)."
+            },
+            {
                 "name": "csd",
                 "static": true,
                 "sig": "csd(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed",
@@ -15567,6 +15573,12 @@
                 "name": "spectrogram",
                 "static": true,
                 "sig": "spectrogram($x, $fs = 1.0, $window = 'tukey', $nperseg = null, $noverlap = null, $nfft = null, $detrend = 'constant', $returnOnesided = true, $scaling = 'density', $axis = -1, $mode = 'psd')",
+                "doc": ""
+            },
+            {
+                "name": "correlationLags",
+                "static": true,
+                "sig": "correlationLags($in1Len, $in2Len, $mode = 'full')",
                 "doc": ""
             }
         ]
