@@ -1813,6 +1813,12 @@
                 "doc": "Matrix cosine via the Schur-Parlett method (scipy.linalg.cosm; real spectrum)."
             },
             {
+                "name": "cossin",
+                "static": true,
+                "sig": "cossin(mixed $X, mixed $p, mixed $q): mixed",
+                "doc": "Cosine-sine decomposition of a partitioned orthogonal matrix via dorcsd (scipy.linalg.cossin)."
+            },
+            {
                 "name": "det",
                 "static": true,
                 "sig": "det(mixed $a): mixed",
@@ -15010,6 +15016,12 @@
                 "name": "qrDelete",
                 "static": true,
                 "sig": "qrDelete($Q, $R, $k, $p = 1, $which = 'row')",
+                "doc": ""
+            },
+            {
+                "name": "cossin",
+                "static": true,
+                "sig": "cossin($X, $p, $q)",
                 "doc": ""
             },
             {
