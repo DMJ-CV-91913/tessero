@@ -106,6 +106,12 @@
 | `signal.lp2bs` | call | rtol 0 |
 | `signal.bilinear` | every call | rtol 0 |
 | `signal.bilinear` | call | rtol 0 |
+| `signal.freqs` | every call | rtol 0 |
+| `signal.freqs` | call | rtol 0 |
+| `signal.freqs_zpk` | every call | rtol 0 |
+| `signal.freqs_zpk` | call | rtol 0 |
+| `signal.freqz_zpk` | every call | rtol 0 |
+| `signal.freqz_zpk` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

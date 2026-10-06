@@ -226,6 +226,23 @@ for N in (1, 2, 3):
     for fs in (2.0, 10.0):
         b_, a_ = sg.bilinear(bp, ap, fs); blin.append(_tf_case([bp, ap, fs], b_, a_))
 
+# frequency response: analog freqs / freqs_zpk, digital freqz_zpk
+def _wh_case(args, wh):
+    return {'args': [F.enc(np.asarray(x) if isinstance(x, (list, np.ndarray)) else x) for x in args],
+            'kwargs': {}, 'expect': F.enc_result(wh, ['w', 'h']), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+frqs, frzp, frzz = [], [], []
+_wa = np.linspace(0.1, 20.0, 60)
+for N in (1, 2, 3):
+    ba_b, ba_a = sg.butter(N, 1.0, analog=True, output='ba')
+    frqs.append(_wh_case([ba_b, ba_a, _wa], sg.freqs(ba_b, ba_a, _wa)))
+    z, p, kk = sg.butter(N, 1.0, analog=True, output='zpk')
+    frzp.append(_wh_case([z, p, float(kk), _wa], sg.freqs_zpk(z, p, kk, _wa)))
+    zd, pd, kd = sg.butter(N, 0.3, btype='low', output='zpk')
+    for (wn, whole) in ((16, False), (24, True)):
+        frzz.append(_wh_case([zd, pd, float(kd), wn, whole], sg.freqz_zpk(zd, pd, kd, worN=wn, whole=whole)))
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -251,7 +268,10 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'lp2hp', 'cases': lphp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2bp', 'cases': lpbp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2bs', 'cases': lpbs, 'tol': {'atol': 1e-12}},
-                 {'fn': 'bilinear', 'cases': blin, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'bilinear', 'cases': blin, 'tol': {'atol': 1e-12}},
+                 {'fn': 'freqs', 'cases': frqs, 'tol': {'atol': 1e-12}},
+                 {'fn': 'freqs_zpk', 'cases': frzp, 'tol': {'atol': 1e-12}},
+                 {'fn': 'freqz_zpk', 'cases': frzz, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

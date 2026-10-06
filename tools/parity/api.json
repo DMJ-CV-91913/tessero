@@ -2711,10 +2711,28 @@
                 "doc": "Zero-phase forward-backward IIR filtering with odd padding (scipy.signal.filtfilt; 1-D)."
             },
             {
+                "name": "freqs",
+                "static": true,
+                "sig": "freqs(mixed $b, mixed $a, mixed $worN): mixed",
+                "doc": "Analog filter frequency response at the given frequencies (scipy.signal.freqs)."
+            },
+            {
+                "name": "freqsZpk",
+                "static": true,
+                "sig": "freqsZpk(mixed $z, mixed $p, mixed $k, mixed $worN): mixed",
+                "doc": "Analog zpk frequency response at the given frequencies (scipy.signal.freqs_zpk)."
+            },
+            {
                 "name": "freqz",
                 "static": true,
                 "sig": "freqz(mixed $b, mixed $a = 1, mixed $worN = 512, mixed $whole = false): mixed",
                 "doc": "Frequency response of a digital filter (scipy.signal.freqz)."
+            },
+            {
+                "name": "freqzZpk",
+                "static": true,
+                "sig": "freqzZpk(mixed $z, mixed $p, mixed $k, mixed $worN = 512, mixed $whole = false): mixed",
+                "doc": "Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk)."
             },
             {
                 "name": "gausspulse",
@@ -15423,6 +15441,24 @@
                 "name": "bilinear",
                 "static": true,
                 "sig": "bilinear($b, $a, $fs = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "freqs",
+                "static": true,
+                "sig": "freqs($b, $a, $worN)",
+                "doc": ""
+            },
+            {
+                "name": "freqsZpk",
+                "static": true,
+                "sig": "freqsZpk($z, $p, $k, $worN)",
+                "doc": ""
+            },
+            {
+                "name": "freqzZpk",
+                "static": true,
+                "sig": "freqzZpk($z, $p, $k, $worN = 512, $whole = false)",
                 "doc": ""
             }
         ]
