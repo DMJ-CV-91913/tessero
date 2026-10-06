@@ -1795,6 +1795,11 @@
             "nin": 1,
             "nout": 1
         },
+        "signal.bilinear": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.butter": {
             "kind": "routine",
             "nin": 0,
@@ -1859,6 +1864,26 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "signal.lp2bp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.lp2bs": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.lp2hp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.lp2lp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "signal.normalize": {
             "kind": "routine",

@@ -96,6 +96,16 @@
 | `signal.tf2zpk` | call | rtol 0 |
 | `signal.sos2tf` | every call | rtol 0 |
 | `signal.sos2tf` | call | rtol 0 |
+| `signal.lp2lp` | every call | rtol 0 |
+| `signal.lp2lp` | call | rtol 0 |
+| `signal.lp2hp` | every call | rtol 0 |
+| `signal.lp2hp` | call | rtol 0 |
+| `signal.lp2bp` | every call | rtol 0 |
+| `signal.lp2bp` | call | rtol 0 |
+| `signal.lp2bs` | every call | rtol 0 |
+| `signal.lp2bs` | call | rtol 0 |
+| `signal.bilinear` | every call | rtol 0 |
+| `signal.bilinear` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |
