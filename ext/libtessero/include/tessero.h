@@ -134,6 +134,10 @@ int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_
 int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
              double alpha, const void *a, int64_t lda, const void *b, int64_t ldb,
              double beta, void *c, int64_t ldc);
+/* y := alpha*x + y (BLAS-1 AXPY, F64/F32). incx/incy are element strides (1 for contiguous); negative strides
+   follow the reference-BLAS convention. alpha is cast to the element type. n==0 is a no-op. Mirrors
+   cblas_{s,d}axpy. Returns 0, TSR_EARG (-1) if n<0, or TSR_ETYPE (-4) for an unsupported dtype. */
+int tsr_axpy(int dtype, int64_t n, double alpha, const void *x, int64_t incx, void *y, int64_t incy);
 double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const double *y, int64_t incy);
 
 /* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
