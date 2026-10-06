@@ -455,6 +455,7 @@
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.periodogram": "pass",
+        "signal.resample": "pass",
         "signal.savgol_coeffs": "pass",
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",
@@ -2146,7 +2147,8 @@
             "signal.csd": 8.338666666666667,
             "signal.coherence": 3.0352614568523472e-15,
             "signal.spectrogram": 3,
-            "signal.correlation_lags": 0
+            "signal.correlation_lags": 0,
+            "signal.resample": 1.46249245661051e-12
         },
         "ext": {
             "np.median": 0,
@@ -3220,7 +3222,8 @@
             "signal.csd": 8.338666666666667,
             "signal.coherence": 3.0352614568523472e-15,
             "signal.spectrogram": 3,
-            "signal.correlation_lags": 0
+            "signal.correlation_lags": 0,
+            "signal.resample": 1.46249245661051e-12
         }
     },
     "ext": {
@@ -3679,6 +3682,7 @@
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.periodogram": "pass",
+        "signal.resample": "pass",
         "signal.savgol_coeffs": "pass",
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",

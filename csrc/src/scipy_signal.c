@@ -19,6 +19,7 @@ enum { CONV_FULL, CONV_SAME, CONV_VALID };
 static int gesolve(int n, double *A, double *b);   /* small dense solver, defined below */
 extern int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);   /* core FFT (fft.c) */
 extern int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);                /* real FFT -> n/2+1 bins */
+extern int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);               /* inverse real FFT (1/n) */
 
 static int parse_mode(const tsr_arg *a, int *mode)
 {
@@ -2237,6 +2238,41 @@ static int r_coherence(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* resample(x, num): resample a real signal to num samples via the FFT -- rfft, resize the spectrum to num
+   bins (with the standard unpaired-Nyquist-bin adjustment and 1/s_fac scaling), then irfft (scipy.signal.
+   resample, real x, window=None, domain='time'). Returns the length-num resampled signal. */
+static int r_resample(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("resample: x must be a 1-D real array"); return TSR_EARG; }
+    if (nargs < 2 || args[1].kind != 1) { fn_set_error("resample: num must be an integer"); return TSR_EARG; }
+    const int64_t num = (int64_t)args[1].num;
+    if (num <= 0) { fn_set_error("resample: num must be positive"); return TSR_EARG; }
+    if (nargs > 4 && args[4].kind != 0 && !(args[4].kind == 4 && args[4].num == 0.0)) { fn_set_error("resample: only window=None is supported"); return TSR_EARG; }
+    int64_t Nx; double *x = fn_arg_doubles(&args[0], &Nx); if (!x) return TSR_ENOMEM;
+    const int64_t nxb = Nx / 2 + 1, nyb = num / 2 + 1;
+    const int64_t m = num < Nx ? num : Nx, m2 = m / 2 + 1;
+    double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * nxb));
+    double *Y = (double *)calloc((size_t)(2 * nyb), sizeof(double));
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){num});
+    int rc = TSR_OK;
+    if (!Xf || !Y || !out) rc = TSR_ENOMEM;
+    else {
+        tsr_rfft(Nx, 1, x, Xf);
+        const double s_fac = (double)Nx / (double)num;
+        const int64_t ncopy = m2 < nyb ? m2 : nyb;
+        for (int64_t k = 0; k < ncopy; k++) { Y[2 * k] = Xf[2 * k]; Y[2 * k + 1] = Xf[2 * k + 1]; }
+        if (m % 2 == 0 && num != Nx) {                       /* unpaired Nyquist bin at m/2 */
+            const int64_t idx = m / 2; const double fac = num < Nx ? 2.0 : 0.5;
+            if (idx < nyb) { Y[2 * idx] *= fac; Y[2 * idx + 1] *= fac; }
+        }
+        for (int64_t k = 0; k < nyb; k++) { Y[2 * k] /= s_fac; Y[2 * k + 1] /= s_fac; }
+        tsr_irfft(num, 1, Y, out);
+    }
+    free(Xf); free(Y); fn_free_doubles(x, Nx);
+    return rc;
+}
+
 /* correlation_lags(in1_len, in2_len, mode='full'): the lag indices for signal.correlate's output
    (scipy.signal.correlation_lags). Integer array. */
 static int r_correlation_lags(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2460,6 +2496,7 @@ static const fn_def DEFS[] = {
     ROUTINE("windows.exponential", 1, "M, center=None, tau=1.0, sym=True", "out", r_win_exponential, NULL, "Exponential (Poisson) window (scipy.signal.windows.exponential)."),
     ROUTINE("windows.tukey", 1, "M, alpha=0.5, sym=True", "out", r_win_tukey, NULL, "Tukey (tapered cosine) window (scipy.signal.windows.tukey)."),
     ROUTINE("signal.correlation_lags", 1, "in1_len, in2_len, mode='full'", "out", r_correlation_lags, NULL, "Lag indices for the output of signal.correlate (scipy.signal.correlation_lags)."),
+    ROUTINE("signal.resample", 1, "x, num, t=None, axis=0, window=None, domain='time'", "out", r_resample, NULL, "Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

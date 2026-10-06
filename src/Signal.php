@@ -48,6 +48,7 @@ final class Signal
     'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
     'periodogram' => 'periodogram',
+    'resample' => 'resample',
     'savgol_coeffs' => 'savgolCoeffs',
     'savgol_filter' => 'savgolFilter',
     'sawtooth' => 'sawtooth',
@@ -412,6 +413,16 @@ final class Signal
     public static function periodogram(mixed $x, mixed $fs = 1.0, mixed $window = 'boxcar', mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density'): mixed
     {
         return Registry::routine('signal.periodogram', [$x, $fs, $window, $nfft, $detrend, $returnOnesided, $scaling]);
+    }
+
+    /**
+     * Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None).
+     *
+     * scipy.signal.resample
+     */
+    public static function resample(mixed $x, mixed $num, mixed $t = null, mixed $axis = 0, mixed $window = null, mixed $domain = 'time'): mixed
+    {
+        return Registry::routine('signal.resample', [$x, $num, $t, $axis, $window, $domain]);
     }
 
     /**

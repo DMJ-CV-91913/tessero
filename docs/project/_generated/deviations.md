@@ -130,6 +130,8 @@
 | `signal.coherence` | call | rtol 0 |
 | `signal.spectrogram` | every call | rtol 0 |
 | `signal.spectrogram` | call | rtol 0 |
+| `signal.resample` | every call | rtol 0 |
+| `signal.resample` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

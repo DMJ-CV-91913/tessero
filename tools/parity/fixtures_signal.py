@@ -363,6 +363,12 @@ for (a, b, m) in [(7, 4, 'full'), (7, 4, 'same'), (7, 4, 'valid'), (4, 7, 'valid
                   (10, 10, 'same'), (5, 8, 'full'), (6, 6, 'valid'), (9, 4, 'same'), (8, 5, 'valid')]:
     clg.append({'args': [F.enc(a), F.enc(b), F.enc(m)], 'kwargs': {}, 'expect': F.enc_result(sg.correlation_lags(a, b, m), []), 'compare': 'tol'})
 
+# resample (FFT-based, window=None)
+rsmp = []
+for (n0, num) in [(64, 128), (128, 64), (100, 50), (50, 100), (64, 64), (81, 40), (40, 81), (100, 75)]:
+    xr = rng.uniform(-3, 3, n0)
+    rsmp.append({'args': [F.enc(xr), F.enc(num)], 'kwargs': {}, 'expect': F.enc_result(sg.resample(xr, num), []), 'compare': 'tol', 'tol': {'atol': 1e-10}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -401,7 +407,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'csd', 'cases': csdc, 'tol': {'atol': 1e-12}},
                  {'fn': 'coherence', 'cases': coh, 'tol': {'atol': 1e-12}},
                  {'fn': 'spectrogram', 'cases': spg, 'tol': {'atol': 1e-12}},
-                 {'fn': 'correlation_lags', 'cases': clg}]}
+                 {'fn': 'correlation_lags', 'cases': clg},
+                 {'fn': 'resample', 'cases': rsmp, 'tol': {'atol': 1e-10}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
