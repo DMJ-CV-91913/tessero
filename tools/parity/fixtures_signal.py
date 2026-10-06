@@ -357,6 +357,12 @@ _wt = sg.windows.tukey(64, 0.25, sym=False)
 spg.append(_spg_case([xs200, 1.0, _wt], [xs200, 1.0, _wt]))               # explicit window array
 spg.append(_spg_case([xs200, 1.0, 'hann', 64, 48], [xs200, 1.0, 'hann', 64, 48]))   # noverlap=48
 
+# correlation_lags: integer lag indices
+clg = []
+for (a, b, m) in [(7, 4, 'full'), (7, 4, 'same'), (7, 4, 'valid'), (4, 7, 'valid'),
+                  (10, 10, 'same'), (5, 8, 'full'), (6, 6, 'valid'), (9, 4, 'same'), (8, 5, 'valid')]:
+    clg.append({'args': [F.enc(a), F.enc(b), F.enc(m)], 'kwargs': {}, 'expect': F.enc_result(sg.correlation_lags(a, b, m), []), 'compare': 'tol'})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -394,7 +400,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'welch', 'cases': wel, 'tol': {'atol': 1e-12}},
                  {'fn': 'csd', 'cases': csdc, 'tol': {'atol': 1e-12}},
                  {'fn': 'coherence', 'cases': coh, 'tol': {'atol': 1e-12}},
-                 {'fn': 'spectrogram', 'cases': spg, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'spectrogram', 'cases': spg, 'tol': {'atol': 1e-12}},
+                 {'fn': 'correlation_lags', 'cases': clg}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
