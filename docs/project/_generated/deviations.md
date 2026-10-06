@@ -177,6 +177,9 @@
 | `slinalg.qr_delete` | every call | rtol 1e-09 |
 | `slinalg.cossin` | every call | rtol 1e-09 |
 | `slinalg.ordqz` | every call | rtol 1e-09 |
+| `slinalg.bandwidth` | every call | rtol 1e-09 |
+| `slinalg.fiedler_companion` | every call | rtol 1e-09 |
+| `slinalg.solve_lyapunov` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |
