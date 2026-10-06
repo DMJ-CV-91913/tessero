@@ -6102,6 +6102,12 @@
                 "doc": "x1 * 2**x2 element-wise, with an integer exponent (numpy.ldexp)."
             },
             {
+                "name": "leftShift",
+                "static": true,
+                "sig": "leftShift(mixed $x1, mixed $x2): mixed",
+                "doc": "Shift the bits of each integer left by the per-element count (numpy.left_shift)."
+            },
+            {
                 "name": "lexsort",
                 "static": true,
                 "sig": "lexsort(mixed $keys): mixed",
@@ -6400,6 +6406,12 @@
                 "static": true,
                 "sig": "resultType(mixed ...$arraysAndDtypes): mixed",
                 "doc": "The dtype resulting from NumPy's type-promotion rules (numpy.result_type)."
+            },
+            {
+                "name": "rightShift",
+                "static": true,
+                "sig": "rightShift(mixed $x1, mixed $x2): mixed",
+                "doc": "Shift the bits of each integer right by the per-element count (numpy.right_shift)."
             },
             {
                 "name": "roll",
@@ -10864,6 +10876,18 @@
                 "name": "bitwiseXor",
                 "static": true,
                 "sig": "bitwiseXor($x1, $x2)",
+                "doc": ""
+            },
+            {
+                "name": "leftShift",
+                "static": true,
+                "sig": "leftShift($x1, $x2)",
+                "doc": ""
+            },
+            {
+                "name": "rightShift",
+                "static": true,
+                "sig": "rightShift($x1, $x2)",
                 "doc": ""
             },
             {
