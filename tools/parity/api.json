@@ -2783,6 +2783,24 @@
                 "doc": "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."
             },
             {
+                "name": "kaiserAtten",
+                "static": true,
+                "sig": "kaiserAtten(mixed $numtaps, mixed $width): mixed",
+                "doc": "Kaiser-window attenuation (dB) for a filter length and transition width (scipy.signal.kaiser_atten)."
+            },
+            {
+                "name": "kaiserBeta",
+                "static": true,
+                "sig": "kaiserBeta(mixed $a): mixed",
+                "doc": "Kaiser-window shape beta for a given attenuation (scipy.signal.kaiser_beta)."
+            },
+            {
+                "name": "kaiserord",
+                "static": true,
+                "sig": "kaiserord(mixed $ripple, mixed $width): mixed",
+                "doc": "Kaiser filter length and beta for a ripple and transition width (scipy.signal.kaiserord)."
+            },
+            {
                 "name": "lfilter",
                 "static": true,
                 "sig": "lfilter(mixed $b, mixed $a, mixed $x): mixed",
@@ -15603,6 +15621,24 @@
                 "name": "firwin",
                 "static": true,
                 "sig": "firwin($numtaps, $cutoff, $window = 'hamming', $passZero = true, $scale = true, $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "kaiserAtten",
+                "static": true,
+                "sig": "kaiserAtten($numtaps, $width)",
+                "doc": ""
+            },
+            {
+                "name": "kaiserBeta",
+                "static": true,
+                "sig": "kaiserBeta($a)",
+                "doc": ""
+            },
+            {
+                "name": "kaiserord",
+                "static": true,
+                "sig": "kaiserord($ripple, $width)",
                 "doc": ""
             }
         ]

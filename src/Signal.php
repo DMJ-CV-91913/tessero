@@ -40,6 +40,9 @@ final class Signal
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
+    'kaiser_atten' => 'kaiserAtten',
+    'kaiser_beta' => 'kaiserBeta',
+    'kaiserord' => 'kaiserord',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
     'lp2bp' => 'lp2bp',
@@ -322,6 +325,38 @@ final class Signal
     public static function hilbert2(mixed $x, mixed $N = null): mixed
     {
         return Registry::routine('signal.hilbert2', [$x, $N]);
+    }
+
+    /**
+     * Kaiser-window attenuation (dB) for a filter length and transition width (scipy.signal.kaiser_atten).
+     *
+     * scipy.signal.kaiser_atten
+     */
+    public static function kaiserAtten(mixed $numtaps, mixed $width): mixed
+    {
+        return Registry::routine('signal.kaiser_atten', [$numtaps, $width]);
+    }
+
+    /**
+     * Kaiser-window shape beta for a given attenuation (scipy.signal.kaiser_beta).
+     *
+     * scipy.signal.kaiser_beta
+     */
+    public static function kaiserBeta(mixed $a): mixed
+    {
+        return Registry::routine('signal.kaiser_beta', [$a]);
+    }
+
+    /**
+     * Kaiser filter length and beta for a ripple and transition width (scipy.signal.kaiserord).
+     *
+     * scipy.signal.kaiserord
+     *
+     * @return mixed one array, or an array keyed by numtaps, beta when several results are requested
+     */
+    public static function kaiserord(mixed $ripple, mixed $width): mixed
+    {
+        return Registry::routine('signal.kaiserord', [$ripple, $width]);
     }
 
     /**

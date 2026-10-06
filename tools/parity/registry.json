@@ -1905,6 +1905,21 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.kaiser_atten": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.kaiser_beta": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.kaiserord": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.lfilter": {
             "kind": "routine",
             "nin": 0,
