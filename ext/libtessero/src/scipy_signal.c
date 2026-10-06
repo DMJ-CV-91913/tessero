@@ -1935,6 +1935,57 @@ static int r_hilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return rc;
 }
 
+/* transpose an r x c interleaved-complex matrix into dst (c x r). */
+static void sig_ctranspose(const double *src, int64_t r, int64_t c, double *dst)
+{
+    for (int64_t i = 0; i < r; i++)
+        for (int64_t j = 0; j < c; j++) { dst[2 * (j * r + i)] = src[2 * (i * c + j)]; dst[2 * (j * r + i) + 1] = src[2 * (i * c + j) + 1]; }
+}
+
+/* hilbert2(x, N=None): the 2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2).
+   fft2 -> double the positive-frequency half-planes along each axis (outer product of the 1-D hilbert
+   multipliers), zero the negative halves -> ifft2. N is the full x shape by default, or a single int for both. */
+static int r_hilbert2(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("hilbert2: x must be a 2-D real array"); return TSR_EARG; }
+    const int64_t r0 = args[0].arr.shape[0], c0 = args[0].arr.shape[1];
+    int64_t N0 = r0, N1 = c0;
+    if (nargs > 1 && args[1].kind == 1) { N0 = N1 = (int64_t)args[1].num; if (N0 <= 0) { fn_set_error("hilbert2: N must be positive"); return TSR_EARG; } }
+    int64_t nx; double *x = fn_arg_doubles(&args[0], &nx); if (!x) return TSR_ENOMEM;
+    const size_t sz = (size_t)(2 * N0 * N1);
+    double *a = (double *)calloc(sz, sizeof(double));
+    double *b = (double *)malloc(sz * sizeof(double));
+    double *t = (double *)malloc(sz * sizeof(double));
+    double *b2 = (double *)malloc(sz * sizeof(double));
+    double *Xf = (double *)malloc(sz * sizeof(double));
+    double *out = (double *)fn_result_array(&res[0], TSR_C128, 2, (int64_t[]){N0, N1});
+    int rc = TSR_OK;
+    if (!a || !b || !t || !b2 || !Xf || !out) rc = TSR_ENOMEM;
+    else {
+        const int64_t mr = r0 < N0 ? r0 : N0, mc = c0 < N1 ? c0 : N1;
+        for (int64_t i = 0; i < mr; i++) for (int64_t j = 0; j < mc; j++) a[2 * (i * N1 + j)] = x[i * c0 + j];
+        tsr_fft(N1, N0, 0, a, b);                            /* FFT each row (axis 1) */
+        sig_ctranspose(b, N0, N1, t);
+        tsr_fft(N0, N1, 0, t, b2);                           /* FFT each column (axis 0), in transposed layout */
+        sig_ctranspose(b2, N1, N0, Xf);                      /* Xf[i][j] = fft2(x) */
+        const int64_t k0 = (N0 + 1) / 2, k1 = (N1 + 1) / 2;
+        for (int64_t i = 0; i < N0; i++) {
+            const double ri = (i == 0) ? 1.0 : (i < k0 ? 2.0 : 0.0);
+            for (int64_t j = 0; j < N1; j++) {
+                const double f = ri * ((j == 0) ? 1.0 : (j < k1 ? 2.0 : 0.0));
+                Xf[2 * (i * N1 + j)] *= f; Xf[2 * (i * N1 + j) + 1] *= f;
+            }
+        }
+        tsr_fft(N1, N0, 1, Xf, b);                           /* ifft rows (1/N1) */
+        sig_ctranspose(b, N0, N1, t);
+        tsr_fft(N0, N1, 1, t, b2);                           /* ifft cols (1/N0) */
+        sig_ctranspose(b2, N1, N0, out);
+    }
+    free(a); free(b); free(t); free(b2); free(Xf); fn_free_doubles(x, nx);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -1973,6 +2024,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.sosfreqz", 2, "sos, worN=512, whole=False", "w, h", r_sosfreqz, NULL, "Frequency response of a second-order-sections cascade (scipy.signal.sosfreqz)."),
     ROUTINE("signal.group_delay", 2, "b, a, w=512, whole=False", "w, gd", r_group_delay, NULL, "Group delay of a digital filter (scipy.signal.group_delay)."),
     ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
+    ROUTINE("signal.hilbert2", 1, "x, N=None", "out", r_hilbert2, NULL, "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),

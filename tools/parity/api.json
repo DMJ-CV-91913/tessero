@@ -2753,6 +2753,12 @@
                 "doc": "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."
             },
             {
+                "name": "hilbert2",
+                "static": true,
+                "sig": "hilbert2(mixed $x, mixed $N = null): mixed",
+                "doc": "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."
+            },
+            {
                 "name": "lfilter",
                 "static": true,
                 "sig": "lfilter(mixed $b, mixed $a, mixed $x): mixed",
@@ -15495,6 +15501,12 @@
                 "name": "hilbert",
                 "static": true,
                 "sig": "hilbert($x, $N = null)",
+                "doc": ""
+            },
+            {
+                "name": "hilbert2",
+                "static": true,
+                "sig": "hilbert2($x, $N = null)",
                 "doc": ""
             }
         ]

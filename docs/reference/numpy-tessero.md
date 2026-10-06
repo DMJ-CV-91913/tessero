@@ -946,6 +946,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
 | `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
+| `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |
 | `scipy.signal.lfilter` | `Tessero\Signal::lfilter()` |
 | `scipy.signal.lfilter_zi` | `Tessero\Signal::lfilterZi()` |
 | `scipy.signal.lp2bp` | `Tessero\Signal::lp2bp()` |
