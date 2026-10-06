@@ -322,6 +322,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.solve_triangular` | `Tessero\ScipyLinalg::solveTriangular()` |
 | `scipy.linalg.solveh_banded` | `Tessero\ScipyLinalg::solvehBanded()` |
 | `scipy.linalg.sqrtm` | `Tessero\ScipyLinalg::sqrtm()` |
+| `scipy.linalg.subspace_angles` | `Tessero\ScipyLinalg::subspaceAngles()` |
 | `scipy.linalg.svd` | `Tessero\ScipyLinalg::svd()` |
 | `scipy.linalg.svdvals` | `Tessero\ScipyLinalg::svdvals()` |
 | `scipy.linalg.tanhm` | `Tessero\ScipyLinalg::tanhm()` |

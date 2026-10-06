@@ -2179,6 +2179,12 @@
                 "doc": "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."
             },
             {
+                "name": "subspaceAngles",
+                "static": true,
+                "sig": "subspaceAngles(mixed $A, mixed $B): mixed",
+                "doc": "Principal angles between the column spaces of A and B (scipy.linalg.subspace_angles)."
+            },
+            {
                 "name": "svd",
                 "static": true,
                 "sig": "svd(mixed $a, mixed $fullMatrices = true): mixed",
@@ -14914,6 +14920,12 @@
                 "name": "cdf2rdf",
                 "static": true,
                 "sig": "cdf2rdf($w, $v)",
+                "doc": ""
+            },
+            {
+                "name": "subspaceAngles",
+                "static": true,
+                "sig": "subspaceAngles($A, $B)",
                 "doc": ""
             },
             {
