@@ -34,6 +34,7 @@ final class Signal
     'freqz_zpk' => 'freqzZpk',
     'gausspulse' => 'gausspulse',
     'group_delay' => 'groupDelay',
+    'hilbert' => 'hilbert',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
     'lp2bp' => 'lp2bp',
@@ -248,6 +249,16 @@ final class Signal
     public static function groupDelay(mixed $b, mixed $a, mixed $w = 512, mixed $whole = false): mixed
     {
         return Registry::routine('signal.group_delay', [$b, $a, $w, $whole]);
+    }
+
+    /**
+     * Analytic signal of a real sequence via the FFT (scipy.signal.hilbert).
+     *
+     * scipy.signal.hilbert
+     */
+    public static function hilbert(mixed $x, mixed $N = null): mixed
+    {
+        return Registry::routine('signal.hilbert', [$x, $N]);
     }
 
     /**
