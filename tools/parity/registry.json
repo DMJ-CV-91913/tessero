@@ -2130,12 +2130,22 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.solve_circulant": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.solve_continuous_lyapunov": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
         "slinalg.solve_sylvester": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.solve_toeplitz": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
