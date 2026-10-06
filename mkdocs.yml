@@ -1,0 +1,152 @@
+site_name: Tessero
+site_description: Numerical computing for PHP — arrays, linear algebra, FFT, random numbers, sparse matrices, optimisation, LP/MILP and MDP solvers on a native kernel.
+copyright: Copyright &copy; 2026 The Tessero contributors — BSD-3-Clause
+docs_dir: docs
+exclude_docs: |
+  project/_generated/
+site_dir: site
+strict: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle: { icon: material/weather-night, name: Dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle: { icon: material/weather-sunny, name: Light mode }
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+validation:
+  nav:
+    omitted_files: info   # generated API pages are reached from reference/api/index.md
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+      - Choosing a backend: getting-started/choosing-a-backend.md
+  - User guide:
+      - Arrays: guide/arrays.md
+      - Indexing and slicing: guide/indexing.md
+      - Maths, reductions, sorting: guide/math.md
+      - Universal functions (Math): guide/ufuncs.md
+      - Linear algebra: guide/linear-algebra.md
+      - FFT: guide/fft.md
+      - Random numbers: guide/random.md
+      - Statistics and special functions: guide/statistics.md
+      - Sparse matrices: guide/sparse.md
+      - Optimisation: guide/optimization.md
+      - Linear programming: guide/linear-programming.md
+      - Markov decision processes: guide/mdp.md
+      - Input and output: guide/io.md
+      - Memory-mapped arrays: guide/memmap.md
+      - Laravel: guide/laravel.md
+  - Examples cookbook:
+      - Overview: examples/index.md
+      - Arrays and indexing: examples/arrays.md
+      - Math and ufuncs: examples/math.md
+      - Reductions and statistics: examples/reductions.md
+      - Sorting and searching: examples/sorting.md
+      - Linear algebra (dense): examples/linalg.md
+      - Sparse matrices: examples/sparse.md
+      - FFT: examples/fft.md
+      - Random: examples/random.md
+      - .npy / .npz and memory maps: examples/io.md
+      - scipy.special: examples/special.md
+      - scipy.stats: examples/stats.md
+      - Optimize: examples/optimize.md
+      - Graphs (csgraph): examples/csgraph.md
+      - Markov decision processes: examples/mdp.md
+      - Laravel bridge: examples/laravel.md
+  - Operations manual:
+      - operations/index.md
+      - Deployment: operations/deployment.md
+      - Native extension: operations/native-extension.md
+      - Docker: operations/docker.md
+      - Configuration reference: operations/configuration-reference.md
+      - Memory and threads: operations/memory-and-threads.md
+      - Monitoring: operations/monitoring.md
+      - Performance tuning: operations/performance-tuning.md
+      - Troubleshooting: operations/troubleshooting.md
+      - Runbooks: operations/runbooks.md
+      - Security: operations/security.md
+      - Upgrading: operations/upgrading.md
+      - Maintaining the library: operations/maintaining.md
+      - Soak testing: operations/soak-testing.md
+      - Live-testing checklist: operations/live-testing.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - C kernel: architecture/c-kernel.md
+      - Memory model: architecture/memory-model.md
+      - FFI binding: architecture/ffi-binding.md
+      - Native extension: architecture/native-extension.md
+      - Numerical methods: architecture/numerical-methods.md
+      - Solvers: architecture/solvers.md
+      - Testing and quality: architecture/testing-and-quality.md
+      - Design brief map: architecture/prompt-mapping.md
+      - Decision records:
+          - architecture/adr/index.md
+          - 0001 FFI-first: architecture/adr/0001-ffi-first-prebuilt-kernels.md
+          - 0002 NumPy as specification: architecture/adr/0002-numpy-as-specification.md
+          - 0003 One kernel, two bindings: architecture/adr/0003-one-kernel-two-bindings.md
+          - 0004 Allocator and budget: architecture/adr/0004-native-allocator-and-budget.md
+          - 0005 Strides and views: architecture/adr/0005-byte-strides-and-views.md
+          - 0006 Process-wide settings: architecture/adr/0006-process-wide-kernel-settings.md
+          - 0007 Solvers in C: architecture/adr/0007-solvers-in-c.md
+          - 0008 Project name: architecture/adr/0008-project-name.md
+          - 0009 Ufunc engine and memmap: architecture/adr/0009-ufunc-engine-and-memmap.md
+          - 0010 Shared kernels for both bindings: architecture/adr/0010-shared-kernels-and-vector-math.md
+          - 0011 Kernel function registry: architecture/adr/0011-kernel-function-registry.md
+          - 0012 Pinned reference environment: architecture/adr/0012-pinned-reference-environment.md
+          - 0013 Sequences and in-place routines: architecture/adr/0013-registry-sequences-and-in-place-routines.md
+  - Reference:
+      - API: reference/api/index.md
+      - NumPy/SciPy to Tessero: reference/numpy-tessero.md
+      - C ABI: reference/api/c-abi.md
+      - Error codes: reference/error-codes.md
+  - Project:
+      - Roadmap: project/roadmap.md
+      - Open issues (beta): project/open-issues.md
+      - NumPy/SciPy gap analysis: project/numpy-scipy-gap-analysis.md
+      - NumPy/SciPy coverage inventory: project/numpy-scipy-coverage.md
+      - Coverage of real-world usage: project/usage-weighted-coverage.md
+      - Reference deviations: project/reference-deviations.md
+      - Gap analysis status: project/gap-closure.md
+      - Changelog: project/changelog.md
+      - Contributing: project/contributing.md
+      - Governance: project/governance.md
+      - Code of conduct: project/code-of-conduct.md
+      - Security policy: project/security-policy.md
+      - Releasing: project/releasing.md
+      - Upstream PHP bugs: project/upstream-bugs.md
+      - Memory-safety review: project/memory-safety-review.md

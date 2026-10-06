@@ -1,0 +1,1517 @@
+# scipy.special functions in the kernel registry (ADR 0011).
+# Bootstrapped by tools/parity/bootstrap_special.py from SciPy 1.17.1 wiring; maintained by hand since.
+# impl: C++ statement over inputs i[] and outputs o[] (float64). guard: C++ condition under which the outputs are
+# NaN instead (inputs that crash or hang SciPy itself, found by tools/parity/crash_scan.py); capped: documents a
+# local modification of vendored code that does the same from inside a library (see THIRD_PARTY_NOTICES.md). int_impl: the loop SciPy uses when the
+# arguments listed in int_args are integers (NumPy picks it for integer arrays).
+module: special
+functions:
+  - name: agm
+    ref: scipy.special.agm
+    args: [a, b]
+    outs: [y]
+    impl: "o[0] = scipy_port::agm(i[0], i[1]);"
+    doc: "Compute the arithmetic-geometric mean of `a` and `b`."
+  - name: airy
+    ref: scipy.special.airy
+    args: [z]
+    outs: [Ai, Aip, Bi, Bip]
+    impl: "xsf::airy(i[0], o[0], o[1], o[2], o[3]);"
+    doc: "Airy functions and their derivatives."
+  - name: airye
+    ref: scipy.special.airye
+    args: [z]
+    outs: [eAi, eAip, eBi, eBip]
+    impl: "xsf::airye(i[0], o[0], o[1], o[2], o[3]);"
+    doc: "Exponentially scaled Airy functions and their derivatives."
+  - name: bdtr
+    ref: scipy.special.bdtr
+    args: [k, n, p]
+    outs: [y]
+    impl: "o[0] = scipy_port::bdtr_unsafe(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_bdtr_wrap(i[0], (long)i[1], i[2]);"
+    int_args: [1]
+    doc: "Binomial distribution cumulative distribution function."
+  - name: bdtrc
+    ref: scipy.special.bdtrc
+    args: [k, n, p]
+    outs: [y]
+    impl: "o[0] = scipy_port::bdtrc_unsafe(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_bdtrc_wrap(i[0], (long)i[1], i[2]);"
+    int_args: [1]
+    doc: "Binomial distribution survival function."
+  - name: bdtri
+    ref: scipy.special.bdtri
+    args: [k, n, y]
+    outs: [p]
+    impl: "o[0] = scipy_port::bdtri_unsafe(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_bdtri_wrap(i[0], (long)i[1], i[2]);"
+    int_args: [1]
+    doc: "Inverse function to `bdtr` with respect to `p`."
+  - name: bdtrik
+    ref: scipy.special.bdtrik
+    args: [y, n, p]
+    outs: [k]
+    impl: "o[0] = scipy_port::bdtrik(i[0], i[1], i[2]);"
+    doc: "Inverse function to `bdtr` with respect to `k`."
+  - name: bdtrin
+    ref: scipy.special.bdtrin
+    args: [k, y, p]
+    outs: [n]
+    impl: "o[0] = scipy_port::bdtrin(i[0], i[1], i[2]);"
+    doc: "Inverse function to `bdtr` with respect to `n`."
+  - name: bei
+    ref: scipy.special.bei
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::bei(i[0]);"
+    doc: "Kelvin function bei."
+  - name: beip
+    ref: scipy.special.beip
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::beip(i[0]);"
+    doc: "Derivative of the Kelvin function bei."
+  - name: ber
+    ref: scipy.special.ber
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::ber(i[0]);"
+    doc: "Kelvin function ber."
+  - name: berp
+    ref: scipy.special.berp
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::berp(i[0]);"
+    doc: "Derivative of the Kelvin function ber."
+  - name: besselpoly
+    ref: scipy.special.besselpoly
+    args: [a, lmb, nu]
+    outs: [y]
+    impl: "o[0] = xsf::besselpoly(i[0], i[1], i[2]);"
+    doc: "Weighted integral of the Bessel function of the first kind."
+  - name: beta
+    ref: scipy.special.beta
+    args: [a, b]
+    outs: [y]
+    impl: "o[0] = xsf::beta(i[0], i[1]);"
+    doc: "Beta function."
+  - name: betainc
+    ref: scipy.special.betainc
+    args: [a, b, x]
+    outs: [y]
+    impl: "o[0] = ibeta_double(i[0], i[1], i[2]);"
+    doc: "Regularized incomplete beta function."
+  - name: betaincc
+    ref: scipy.special.betaincc
+    args: [a, b, x]
+    outs: [y]
+    impl: "o[0] = ibetac_double(i[0], i[1], i[2]);"
+    doc: "Complement of the regularized incomplete beta function."
+  - name: betainccinv
+    ref: scipy.special.betainccinv
+    args: [a, b, y]
+    outs: [y]
+    impl: "o[0] = ibetac_inv_double(i[0], i[1], i[2]);"
+    doc: "Inverse of the complemented regularized incomplete beta function."
+  - name: betaincinv
+    ref: scipy.special.betaincinv
+    args: [a, b, y]
+    outs: [y]
+    impl: "o[0] = ibeta_inv_double(i[0], i[1], i[2]);"
+    doc: "Inverse of the regularized incomplete beta function."
+  - name: betaln
+    ref: scipy.special.betaln
+    args: [a, b]
+    outs: [y]
+    impl: "o[0] = xsf::betaln(i[0], i[1]);"
+    doc: "Natural logarithm of absolute value of beta function."
+  - name: binom
+    ref: scipy.special.binom
+    args: [x, y]
+    outs: [y]
+    impl: "o[0] = xsf::binom(i[0], i[1]);"
+    doc: "Binomial coefficient considered as a function of two real variables."
+  - name: comb
+    ref: scipy.special.comb
+    args: [N, k]
+    outs: [y]
+    impl: "o[0] = (i[1] <= i[0] && i[0] >= 0.0 && i[1] >= 0.0) ? xsf::binom(i[0], i[1]) : 0.0;"
+    doc: "The number of combinations of N things taken k at a time (scipy.special.comb, exact=False, repetition=False)."
+  - name: factorial
+    ref: scipy.special.factorial
+    args: [n]
+    outs: [y]
+    impl: "o[0] = (i[0] < 0.0) ? 0.0 : xsf::gamma(i[0] + 1.0);"
+    doc: "The factorial n! as gamma(n+1), 0 for n<0 (scipy.special.factorial, exact=False)."
+  - name: polygamma
+    ref: scipy.special.polygamma
+    args: [n, x]
+    outs: [y]
+    domain:
+      n: [0, 1, 2, 3, 4, 5]
+      x: [0.1, 0.5, 1.0, 1.5, 2.5, 5.0, 10.0, 50.0]
+    impl: "int nn = (int)(i[0] + 0.5); o[0] = nn == 0 ? xsf::digamma(i[1]) : ((nn & 1 ? 1.0 : -1.0) * xsf::gamma((double)nn + 1.0) * xsf::zeta((double)nn + 1.0, i[1]));"
+    doc: "Polygamma function of order n: the (n+1)-th derivative of the logarithm of the gamma function (scipy.special.polygamma)."
+  - name: boxcox
+    ref: scipy.special.boxcox
+    args: [x, lmbda]
+    outs: [y]
+    impl: "o[0] = scipy_port::boxcox(i[0], i[1]);"
+    doc: "Compute the Box-Cox transformation."
+  - name: boxcox1p
+    ref: scipy.special.boxcox1p
+    args: [x, lmbda]
+    outs: [y]
+    impl: "o[0] = scipy_port::boxcox1p(i[0], i[1]);"
+    doc: "Compute the Box-Cox transformation of 1 + `x`."
+  - name: btdtria
+    ref: scipy.special.btdtria
+    args: [p, b, x]
+    outs: [a]
+    impl: "o[0] = ibeta_inva_double(i[0], i[1], i[2]);"
+    doc: "Inverse of `betainc` with respect to `a`."
+  - name: btdtrib
+    ref: scipy.special.btdtrib
+    args: [x0, x1, x2]
+    outs: [b]
+    impl: "o[0] = ibeta_invb_double(i[0], i[1], i[2]);"
+    doc: "btdtria(a, p, x, out=None)."
+  - name: cbrt
+    ref: scipy.special.cbrt
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::cbrt(i[0]);"
+    doc: "Element-wise cube root of `x`."
+  - name: chdtr
+    ref: scipy.special.chdtr
+    args: [v, x]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_chdtr(i[0], i[1]);"
+    doc: "Chi square cumulative distribution function."
+  - name: chdtrc
+    ref: scipy.special.chdtrc
+    args: [v, x]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_chdtrc(i[0], i[1]);"
+    doc: "Chi square survival function."
+  - name: chdtri
+    ref: scipy.special.chdtri
+    args: [v, p]
+    outs: [x]
+    impl: "o[0] = scipy_xsfw::xsf_chdtri(i[0], i[1]);"
+    doc: "Inverse to `chdtrc` with respect to `x`."
+  - name: chdtriv
+    ref: scipy.special.chdtriv
+    args: [p, x]
+    outs: [y]
+    impl: "o[0] = chdtriv_double(i[0], i[1]);"
+    doc: "Inverse to `chdtr` with respect to `v`."
+  - name: chndtr
+    ref: scipy.special.chndtr
+    args: [x, df, nc]
+    outs: [x]
+    impl: "o[0] = ncx2_cdf_double(i[0], i[1], i[2]);"
+    doc: "Non-central chi square cumulative distribution function."
+  - name: chndtridf
+    ref: scipy.special.chndtridf
+    args: [x, p, nc]
+    outs: [df]
+    impl: "o[0] = ncx2_find_degrees_of_freedom_double(i[0], i[1], i[2]);"
+    doc: "Inverse to `chndtr` vs `df`."
+  - name: chndtrinc
+    ref: scipy.special.chndtrinc
+    args: [x, df, p]
+    outs: [nc]
+    impl: "o[0] = ncx2_find_noncentrality_double(i[0], i[1], i[2]);"
+    doc: "Inverse to `chndtr` vs `nc`."
+  - name: chndtrix
+    ref: scipy.special.chndtrix
+    args: [p, df, nc]
+    outs: [x]
+    impl: "o[0] = ncx2_ppf_double(i[0], i[1], i[2]);"
+    doc: "Inverse to `chndtr` vs `x`."
+  - name: cosdg
+    ref: scipy.special.cosdg
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::cosdg(i[0]);"
+    doc: "Cosine of the angle `x` given in degrees."
+  - name: cosm1
+    ref: scipy.special.cosm1
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::cosm1(i[0]);"
+    doc: "cos(x) - 1 for use when `x` is near zero."
+  - name: cotdg
+    ref: scipy.special.cotdg
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::cotdg(i[0]);"
+    doc: "Cotangent of the angle `x` given in degrees."
+  - name: dawsn
+    ref: scipy.special.dawsn
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::dawsn(i[0]);"
+    doc: "Dawson's integral."
+  - name: digamma
+    ref: scipy.special.digamma
+    args: [z]
+    outs: [digamma]
+    impl: "o[0] = xsf::digamma(i[0]);"
+    doc: "The digamma function (alias of psi)."
+  - name: ellipe
+    ref: scipy.special.ellipe
+    args: [m]
+    outs: [E]
+    impl: "o[0] = xsf::ellipe(i[0]);"
+    doc: "Complete elliptic integral of the second kind."
+  - name: ellipeinc
+    ref: scipy.special.ellipeinc
+    args: [phi, m]
+    outs: [E]
+    impl: "o[0] = xsf::ellipeinc(i[0], i[1]);"
+    doc: "Incomplete elliptic integral of the second kind."
+  - name: ellipj
+    ref: scipy.special.ellipj
+    args: [u, m]
+    outs: [sn, cn, dn, ph]
+    impl: "xsf::ellipj(i[0], i[1], o[0], o[1], o[2], o[3]);"
+    doc: "Jacobi elliptic functions."
+  - name: ellipk
+    ref: scipy.special.ellipk
+    args: [m]
+    outs: [K]
+    impl: "o[0] = xsf::ellipk(i[0]);"
+    doc: "Complete elliptic integral of the first kind."
+  - name: ellipkinc
+    ref: scipy.special.ellipkinc
+    args: [phi, m]
+    outs: [K]
+    impl: "o[0] = xsf::ellipkinc(i[0], i[1]);"
+    doc: "Incomplete elliptic integral of the first kind."
+  - name: ellipkm1
+    ref: scipy.special.ellipkm1
+    args: [p]
+    outs: [K]
+    impl: "o[0] = xsf::ellipkm1(i[0]);"
+    doc: "Complete elliptic integral of the first kind around `m` = 1."
+  - name: elliprc
+    ref: scipy.special.elliprc
+    args: [x, y]
+    outs: [R]
+    impl: "o[0] = tsr_ellint::fellint_RC(i[0], i[1]);"
+    doc: "Degenerate symmetric elliptic integral."
+  - name: elliprd
+    ref: scipy.special.elliprd
+    args: [x, y, z]
+    outs: [R]
+    impl: "o[0] = tsr_ellint::fellint_RD(i[0], i[1], i[2]);"
+    doc: "Symmetric elliptic integral of the second kind."
+  - name: elliprf
+    ref: scipy.special.elliprf
+    args: [x, y, z]
+    outs: [R]
+    impl: "o[0] = tsr_ellint::fellint_RF(i[0], i[1], i[2]);"
+    doc: "Completely-symmetric elliptic integral of the first kind."
+  - name: elliprg
+    ref: scipy.special.elliprg
+    args: [x, y, z]
+    outs: [R]
+    impl: "o[0] = tsr_ellint::fellint_RG(i[0], i[1], i[2]);"
+    doc: "Completely-symmetric elliptic integral of the second kind."
+  - name: elliprj
+    ref: scipy.special.elliprj
+    args: [x, y, z, p]
+    outs: [R]
+    impl: "o[0] = tsr_ellint::fellint_RJ(i[0], i[1], i[2], i[3]);"
+    doc: "Symmetric elliptic integral of the third kind."
+  - name: entr
+    ref: scipy.special.entr
+    args: [x]
+    outs: [res]
+    impl: "o[0] = scipy_port::entr(i[0]);"
+    doc: "Elementwise function for computing entropy."
+  - name: erf
+    ref: scipy.special.erf
+    args: [z]
+    outs: [res]
+    impl: "o[0] = xsf::erf(i[0]);"
+    doc: "Returns the error function of complex argument."
+  - name: erfc
+    ref: scipy.special.erfc
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::erfc(i[0]);"
+    doc: "Complementary error function, ``1 - erf(x)``."
+  - name: erfcinv
+    ref: scipy.special.erfcinv
+    args: [y]
+    outs: [erfcinv]
+    impl: "o[0] = scipy_xsfw::cephes_erfcinv(i[0]);"
+    doc: "Inverse of the complementary error function."
+  - name: erfcx
+    ref: scipy.special.erfcx
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::erfcx(i[0]);"
+    doc: "Scaled complementary error function, ``exp(x**2) * erfc(x)``."
+  - name: erfi
+    ref: scipy.special.erfi
+    args: [z]
+    outs: [y]
+    impl: "o[0] = xsf::erfi(i[0]);"
+    doc: "Imaginary error function, ``-i erf(i z)``."
+  - name: erfinv
+    ref: scipy.special.erfinv
+    args: [y]
+    outs: [erfinv]
+    impl: "o[0] = erfinv_double(i[0]);"
+    doc: "Inverse of the error function."
+  - name: eval_chebyc
+    ref: scipy.special.eval_chebyc
+    args: [n, x]
+    outs: [C]
+    impl: "o[0] = scipy_port::eval_chebyc(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_chebyc_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate Chebyshev polynomial of the first kind on [-2, 2] at a point."
+  - name: eval_chebys
+    ref: scipy.special.eval_chebys
+    args: [n, x]
+    outs: [S]
+    impl: "o[0] = scipy_port::eval_chebys(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_chebys_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate Chebyshev polynomial of the second kind on [-2, 2] at a point."
+  - name: eval_chebyt
+    ref: scipy.special.eval_chebyt
+    args: [n, x]
+    outs: [T]
+    impl: "o[0] = scipy_port::eval_chebyt(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_chebyt_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate Chebyshev polynomial of the first kind at a point."
+  - name: eval_chebyu
+    ref: scipy.special.eval_chebyu
+    args: [n, x]
+    outs: [U]
+    impl: "o[0] = scipy_port::eval_chebyu(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_chebyu_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate Chebyshev polynomial of the second kind at a point."
+  - name: eval_gegenbauer
+    ref: scipy.special.eval_gegenbauer
+    args: [n, alpha, x]
+    outs: [C]
+    impl: "o[0] = scipy_port::eval_gegenbauer(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_port::eval_gegenbauer_l((long)i[0], i[1], i[2]);"
+    int_args: [0]
+    doc: "Evaluate Gegenbauer polynomial at a point."
+  - name: eval_genlaguerre
+    ref: scipy.special.eval_genlaguerre
+    args: [n, alpha, x]
+    outs: [L]
+    impl: "o[0] = scipy_port::eval_genlaguerre(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_port::eval_genlaguerre_l((long)i[0], i[1], i[2]);"
+    int_args: [0]
+    doc: "Evaluate generalized Laguerre polynomial at a point."
+  - name: eval_hermite
+    ref: scipy.special.eval_hermite
+    args: [n, x]
+    outs: [H]
+    impl: "o[0] = scipy_port::eval_hermite((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Evaluate physicist's Hermite polynomial at a point."
+  - name: eval_hermitenorm
+    ref: scipy.special.eval_hermitenorm
+    args: [n, x]
+    outs: [He]
+    impl: "o[0] = scipy_port::eval_hermitenorm((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Evaluate probabilist's (normalized) Hermite polynomial at a point."
+  - name: eval_jacobi
+    ref: scipy.special.eval_jacobi
+    args: [n, alpha, beta, x]
+    outs: [P]
+    impl: "o[0] = scipy_port::eval_jacobi(i[0], i[1], i[2], i[3]);"
+    int_impl: "o[0] = scipy_port::eval_jacobi_l((long)i[0], i[1], i[2], i[3]);"
+    int_args: [0]
+    doc: "Evaluate Jacobi polynomial at a point."
+  - name: eval_laguerre
+    ref: scipy.special.eval_laguerre
+    args: [n, x]
+    outs: [L]
+    impl: "o[0] = scipy_port::eval_laguerre(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_laguerre_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate Laguerre polynomial at a point."
+  - name: eval_legendre
+    ref: scipy.special.eval_legendre
+    args: [n, x]
+    outs: [P]
+    impl: "o[0] = scipy_port::eval_legendre(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_legendre_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate Legendre polynomial at a point."
+  - name: eval_sh_chebyt
+    ref: scipy.special.eval_sh_chebyt
+    args: [n, x]
+    outs: [T]
+    impl: "o[0] = scipy_port::eval_sh_chebyt(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_sh_chebyt_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate shifted Chebyshev polynomial of the first kind at a point."
+  - name: eval_sh_chebyu
+    ref: scipy.special.eval_sh_chebyu
+    args: [n, x]
+    outs: [U]
+    impl: "o[0] = scipy_port::eval_sh_chebyu(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_sh_chebyu_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate shifted Chebyshev polynomial of the second kind at a point."
+  - name: eval_sh_jacobi
+    ref: scipy.special.eval_sh_jacobi
+    args: [n, p, q, x]
+    outs: [G]
+    impl: "o[0] = scipy_port::eval_sh_jacobi(i[0], i[1], i[2], i[3]);"
+    int_impl: "o[0] = scipy_port::eval_sh_jacobi_l((long)i[0], i[1], i[2], i[3]);"
+    int_args: [0]
+    doc: "Evaluate shifted Jacobi polynomial at a point."
+  - name: eval_sh_legendre
+    ref: scipy.special.eval_sh_legendre
+    args: [n, x]
+    outs: [P]
+    impl: "o[0] = scipy_port::eval_sh_legendre(i[0], i[1]);"
+    int_impl: "o[0] = scipy_port::eval_sh_legendre_l((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Evaluate shifted Legendre polynomial at a point."
+  - name: exp1
+    ref: scipy.special.exp1
+    args: [z]
+    outs: [y]
+    impl: "o[0] = xsf::exp1(i[0]);"
+    doc: "Exponential integral E1."
+  - name: exp10
+    ref: scipy.special.exp10
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::exp10(i[0]);"
+    doc: "Compute ``10**x`` element-wise."
+  - name: exp2
+    ref: scipy.special.exp2
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::exp2(i[0]);"
+    doc: "Compute ``2**x`` element-wise."
+  - name: expi
+    ref: scipy.special.expi
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::expi(i[0]);"
+    doc: "Exponential integral Ei."
+  - name: expit
+    ref: scipy.special.expit
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::expit(i[0]);"
+    doc: "Expit (a.k.a. logistic sigmoid) ufunc for ndarrays."
+  - name: expm1
+    ref: scipy.special.expm1
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::expm1(i[0]);"
+    doc: "Compute ``exp(x) - 1``."
+  - name: expn
+    ref: scipy.special.expn
+    args: [n, x]
+    outs: [y]
+    impl: "o[0] = scipy_port::expn_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_expn_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Generalized exponential integral En."
+  - name: exprel
+    ref: scipy.special.exprel
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::exprel(i[0]);"
+    doc: "Relative error exponential, ``(exp(x) - 1)/x``."
+  - name: fdtr
+    ref: scipy.special.fdtr
+    args: [dfn, dfd, x]
+    outs: [y]
+    impl: "o[0] = f_cdf_double(i[0], i[1], i[2]);"
+    doc: "F cumulative distribution function."
+  - name: fdtrc
+    ref: scipy.special.fdtrc
+    args: [dfn, dfd, x]
+    outs: [y]
+    impl: "o[0] = f_sf_double(i[0], i[1], i[2]);"
+    doc: "F survival function."
+  - name: fdtri
+    ref: scipy.special.fdtri
+    args: [dfn, dfd, p]
+    outs: [x]
+    impl: "o[0] = f_ppf_double(i[0], i[1], i[2]);"
+    doc: "The `p`-th quantile of the F-distribution."
+  - name: fdtridfd
+    ref: scipy.special.fdtridfd
+    args: [dfn, p, x]
+    outs: [dfd]
+    impl: "o[0] = scipy_port::fdtridfd(i[0], i[1], i[2]);"
+    doc: "Inverse to `fdtr` vs dfd."
+  - name: fresnel
+    ref: scipy.special.fresnel
+    args: [z]
+    outs: [S, C]
+    impl: "xsf::fresnel(i[0], o[0], o[1]);"
+    doc: "Fresnel integrals."
+  - name: gamma
+    ref: scipy.special.gamma
+    args: [z]
+    outs: [y]
+    impl: "o[0] = xsf::gamma(i[0]);"
+    doc: "gamma function."
+  - name: gammainc
+    ref: scipy.special.gammainc
+    args: [a, x]
+    outs: [y]
+    impl: "o[0] = xsf::gammainc(i[0], i[1]);"
+    doc: "Regularized lower incomplete gamma function."
+  - name: gammaincc
+    ref: scipy.special.gammaincc
+    args: [a, x]
+    outs: [y]
+    impl: "o[0] = xsf::gammaincc(i[0], i[1]);"
+    doc: "Regularized upper incomplete gamma function."
+  - name: gammainccinv
+    ref: scipy.special.gammainccinv
+    args: [a, y]
+    outs: [y]
+    impl: "o[0] = xsf::gammainccinv(i[0], i[1]);"
+    doc: "Inverse of the regularized upper incomplete gamma function."
+  - name: gammaincinv
+    ref: scipy.special.gammaincinv
+    args: [a, y]
+    outs: [y]
+    impl: "o[0] = xsf::gammaincinv(i[0], i[1]);"
+    doc: "Inverse to the regularized lower incomplete gamma function."
+  - name: gammaln
+    ref: scipy.special.gammaln
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::gammaln(i[0]);"
+    doc: "Logarithm of the absolute value of the gamma function."
+  - name: gammasgn
+    ref: scipy.special.gammasgn
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::gammasgn(i[0]);"
+    doc: "Sign of the gamma function."
+  - name: gdtr
+    ref: scipy.special.gdtr
+    args: [a, b, x]
+    outs: [F]
+    impl: "o[0] = scipy_xsfw::xsf_gdtr(i[0], i[1], i[2]);"
+    doc: "Gamma distribution cumulative distribution function."
+  - name: gdtrc
+    ref: scipy.special.gdtrc
+    args: [a, b, x]
+    outs: [F]
+    impl: "o[0] = scipy_xsfw::xsf_gdtrc(i[0], i[1], i[2]);"
+    doc: "Gamma distribution survival function."
+  - name: gdtria
+    ref: scipy.special.gdtria
+    args: [p, b, x]
+    outs: [a]
+    impl: "o[0] = scipy_xsfw::special_gdtria(i[0], i[1], i[2]);"
+    doc: "Inverse of `gdtr` vs a."
+  - name: gdtrib
+    ref: scipy.special.gdtrib
+    args: [a, p, x]
+    outs: [b]
+    impl: "o[0] = scipy_xsfw::xsf_gdtrib(i[0], i[1], i[2]);"
+    doc: "Inverse of `gdtr` vs b."
+  - name: gdtrix
+    ref: scipy.special.gdtrix
+    args: [a, b, p]
+    outs: [x]
+    impl: "o[0] = scipy_xsfw::special_gdtrix(i[0], i[1], i[2]);"
+    doc: "Inverse of `gdtr` vs x."
+  - name: huber
+    ref: scipy.special.huber
+    args: [delta, r]
+    outs: [y]
+    impl: "o[0] = scipy_port::huber(i[0], i[1]);"
+    doc: "Huber loss function."
+  - name: hyp0f1
+    ref: scipy.special.hyp0f1
+    args: [v, z]
+    outs: [y]
+    impl: "o[0] = scipy_port::hyp0f1(i[0], i[1]);"
+    doc: "Confluent hypergeometric limit function 0F1."
+  - name: hyp1f1
+    ref: scipy.special.hyp1f1
+    args: [a, b, x]
+    outs: [y]
+    impl: "o[0] = hyp1f1_double(i[0], i[1], i[2]);"
+    doc: "Confluent hypergeometric function 1F1."
+  - name: hyp2f1
+    ref: scipy.special.hyp2f1
+    args: [a, b, c, z]
+    outs: [hyp2f1]
+    impl: "o[0] = xsf::hyp2f1(i[0], i[1], i[2], i[3]);"
+    doc: "Gauss hypergeometric function 2F1(a, b; c; z)."
+  - name: hyperu
+    ref: scipy.special.hyperu
+    args: [a, b, x]
+    outs: [y]
+    impl: "o[0] = scipy_port::hyperu(i[0], i[1], i[2]);"
+    doc: "Confluent hypergeometric function U."
+  - name: i0
+    ref: scipy.special.i0
+    args: [x]
+    outs: [I]
+    impl: "o[0] = xsf::cyl_bessel_i0(i[0]);"
+    doc: "Modified Bessel function of order 0."
+  - name: i0e
+    ref: scipy.special.i0e
+    args: [x]
+    outs: [I]
+    impl: "o[0] = xsf::cyl_bessel_i0e(i[0]);"
+    doc: "Exponentially scaled modified Bessel function of order 0."
+  - name: i1
+    ref: scipy.special.i1
+    args: [x]
+    outs: [I]
+    impl: "o[0] = xsf::cyl_bessel_i1(i[0]);"
+    doc: "Modified Bessel function of order 1."
+  - name: i1e
+    ref: scipy.special.i1e
+    args: [x]
+    outs: [I]
+    impl: "o[0] = xsf::cyl_bessel_i1e(i[0]);"
+    doc: "Exponentially scaled modified Bessel function of order 1."
+  - name: inv_boxcox
+    ref: scipy.special.inv_boxcox
+    args: [y, lmbda]
+    outs: [x]
+    impl: "o[0] = scipy_port::inv_boxcox(i[0], i[1]);"
+    doc: "Compute the inverse of the Box-Cox transformation."
+  - name: inv_boxcox1p
+    ref: scipy.special.inv_boxcox1p
+    args: [y, lmbda]
+    outs: [x]
+    impl: "o[0] = scipy_port::inv_boxcox1p(i[0], i[1]);"
+    doc: "Compute the inverse of the Box-Cox transformation."
+  - name: it2i0k0
+    ref: scipy.special.it2i0k0
+    args: [x]
+    outs: [ii0, ik0]
+    impl: "xsf::it2i0k0(i[0], o[0], o[1]);"
+    doc: "Integrals related to modified Bessel functions of order 0."
+  - name: it2j0y0
+    ref: scipy.special.it2j0y0
+    args: [x]
+    outs: [ij0, iy0]
+    impl: "xsf::it2j0y0(i[0], o[0], o[1]);"
+    doc: "Integrals related to Bessel functions of the first kind of order 0."
+  - name: it2struve0
+    ref: scipy.special.it2struve0
+    args: [x]
+    outs: [I]
+    impl: "o[0] = xsf::it2struve0(i[0]);"
+    doc: "Integral related to the Struve function of order 0."
+  - name: itairy
+    ref: scipy.special.itairy
+    args: [x]
+    outs: [Apt, Bpt, Ant, Bnt]
+    impl: "xsf::itairy(i[0], o[0], o[1], o[2], o[3]);"
+    doc: "Integrals of Airy functions."
+  - name: iti0k0
+    ref: scipy.special.iti0k0
+    args: [x]
+    outs: [ii0, ik0]
+    impl: "xsf::it1i0k0(i[0], o[0], o[1]);"
+    doc: "Integrals of modified Bessel functions of order 0."
+  - name: itj0y0
+    ref: scipy.special.itj0y0
+    args: [x]
+    outs: [ij0, iy0]
+    impl: "xsf::it1j0y0(i[0], o[0], o[1]);"
+    doc: "Integrals of Bessel functions of the first kind of order 0."
+  - name: itmodstruve0
+    ref: scipy.special.itmodstruve0
+    args: [x]
+    outs: [I]
+    impl: "o[0] = xsf::itmodstruve0(i[0]);"
+    doc: "Integral of the modified Struve function of order 0."
+  - name: itstruve0
+    ref: scipy.special.itstruve0
+    args: [x]
+    outs: [I]
+    impl: "o[0] = xsf::itstruve0(i[0]);"
+    doc: "Integral of the Struve function of order 0."
+  - name: iv
+    ref: scipy.special.iv
+    args: [v, z]
+    outs: [y]
+    impl: "o[0] = xsf::cyl_bessel_i(i[0], i[1]);"
+    cplx_impl: "std::complex<double> r = xsf::cyl_bessel_i(i[0], std::complex<double>(i[2], i[3])); o[0] = r.real(); o[1] = r.imag();"
+    doc: "Modified Bessel function of the first kind of real order."
+  - name: ive
+    ref: scipy.special.ive
+    args: [v, z]
+    outs: [y]
+    impl: "o[0] = xsf::cyl_bessel_ie(i[0], i[1]);"
+    doc: "Exponentially scaled modified Bessel function of the first kind."
+  - name: j0
+    ref: scipy.special.j0
+    args: [x]
+    outs: [J]
+    impl: "o[0] = xsf::cyl_bessel_j0(i[0]);"
+    doc: "Bessel function of the first kind of order 0."
+  - name: j1
+    ref: scipy.special.j1
+    args: [x]
+    outs: [J]
+    impl: "o[0] = xsf::cyl_bessel_j1(i[0]);"
+    doc: "Bessel function of the first kind of order 1."
+  - name: jn
+    ref: scipy.special.jn
+    args: [n, z]
+    outs: [J]
+    impl: "o[0] = xsf::cyl_bessel_j(i[0], i[1]);"
+    doc: "Bessel function of the first kind of real order and complex argument (alias of jv)."
+  - name: jv
+    ref: scipy.special.jv
+    args: [v, z]
+    outs: [J]
+    impl: "o[0] = xsf::cyl_bessel_j(i[0], i[1]);"
+    cplx_impl: "std::complex<double> r = xsf::cyl_bessel_j(i[0], std::complex<double>(i[2], i[3])); o[0] = r.real(); o[1] = r.imag();"
+    doc: "Bessel function of the first kind of real order and complex argument."
+  - name: jve
+    ref: scipy.special.jve
+    args: [v, z]
+    outs: [J]
+    impl: "o[0] = xsf::cyl_bessel_je(i[0], i[1]);"
+    doc: "Exponentially scaled Bessel function of the first kind of order `v`."
+  - name: k0
+    ref: scipy.special.k0
+    args: [x]
+    outs: [K]
+    impl: "o[0] = xsf::cyl_bessel_k0(i[0]);"
+    doc: "Modified Bessel function of the second kind of order 0, :math:`K_0`."
+  - name: k0e
+    ref: scipy.special.k0e
+    args: [x]
+    outs: [K]
+    impl: "o[0] = xsf::cyl_bessel_k0e(i[0]);"
+    doc: "Exponentially scaled modified Bessel function K of order 0."
+  - name: k1
+    ref: scipy.special.k1
+    args: [x]
+    outs: [K]
+    impl: "o[0] = xsf::cyl_bessel_k1(i[0]);"
+    doc: "Modified Bessel function of the second kind of order 1, :math:`K_1(x)`."
+  - name: k1e
+    ref: scipy.special.k1e
+    args: [x]
+    outs: [K]
+    impl: "o[0] = xsf::cyl_bessel_k1e(i[0]);"
+    doc: "Exponentially scaled modified Bessel function K of order 1."
+  - name: kei
+    ref: scipy.special.kei
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::kei(i[0]);"
+    doc: "Kelvin function kei."
+  - name: keip
+    ref: scipy.special.keip
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::keip(i[0]);"
+    doc: "Derivative of the Kelvin function kei."
+  - name: ker
+    ref: scipy.special.ker
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::ker(i[0]);"
+    doc: "Kelvin function ker."
+  - name: kerp
+    ref: scipy.special.kerp
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::kerp(i[0]);"
+    doc: "Derivative of the Kelvin function ker."
+  - name: kl_div
+    ref: scipy.special.kl_div
+    args: [x, y]
+    outs: [y]
+    impl: "o[0] = scipy_port::kl_div(i[0], i[1]);"
+    doc: "Elementwise function for computing Kullback-Leibler divergence."
+  - name: kn
+    ref: scipy.special.kn
+    args: [n, x]
+    outs: [y]
+    impl: "o[0] = scipy_port::kn_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::special_cyl_bessel_k_int((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Modified Bessel function of the second kind of integer order `n`."
+  - name: kolmogi
+    ref: scipy.special.kolmogi
+    args: [p]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_kolmogi(i[0]);"
+    doc: "Inverse Survival Function of Kolmogorov distribution."
+  - name: kolmogorov
+    ref: scipy.special.kolmogorov
+    args: [y]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_kolmogorov(i[0]);"
+    doc: "Complementary cumulative distribution (Survival Function) function of Kolmogorov distribution."
+  - name: kv
+    ref: scipy.special.kv
+    args: [v, z]
+    outs: [y]
+    impl: "o[0] = xsf::cyl_bessel_k(i[0], i[1]);"
+    cplx_impl: "std::complex<double> r = xsf::cyl_bessel_k(i[0], std::complex<double>(i[2], i[3])); o[0] = r.real(); o[1] = r.imag();"
+    doc: "Modified Bessel function of the second kind of real order `v`."
+  - name: kve
+    ref: scipy.special.kve
+    args: [v, z]
+    outs: [y]
+    impl: "o[0] = xsf::cyl_bessel_ke(i[0], i[1]);"
+    doc: "Exponentially scaled modified Bessel function of the second kind."
+  - name: log1p
+    ref: scipy.special.log1p
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::log1p(i[0]);"
+    doc: "Calculates log(1 + x) for use when `x` is near zero."
+  - name: log_expit
+    ref: scipy.special.log_expit
+    args: [x]
+    outs: [out]
+    impl: "o[0] = xsf::log_expit(i[0]);"
+    doc: "Logarithm of the logistic sigmoid function."
+  - name: log_ndtr
+    ref: scipy.special.log_ndtr
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::log_ndtr(i[0]);"
+    doc: "Logarithm of Gaussian cumulative distribution function."
+  - name: log_wright_bessel
+    ref: scipy.special.log_wright_bessel
+    args: [a, b, x]
+    outs: [y]
+    impl: "o[0] = xsf::log_wright_bessel(i[0], i[1], i[2]);"
+    doc: "Natural logarithm of Wright's generalized Bessel function, see `wright_bessel`. This function comes in handy in particular for large values of x."
+  - name: loggamma
+    ref: scipy.special.loggamma
+    args: [z]
+    outs: [loggamma]
+    impl: "o[0] = xsf::loggamma(i[0]);"
+    doc: "Principal branch of the logarithm of the gamma function."
+  - name: logit
+    ref: scipy.special.logit
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::logit(i[0]);"
+    doc: "Logit ufunc for ndarrays."
+  - name: lpmv
+    ref: scipy.special.lpmv
+    args: [m, v, x]
+    outs: [pmv]
+    impl: "o[0] = scipy_xsfw::pmv_wrap(i[0], i[1], i[2]);"
+    doc: "Associated Legendre function of integer order and real degree."
+  - name: mathieu_a
+    ref: scipy.special.mathieu_a
+    args: [m, q]
+    outs: [y]
+    impl: "o[0] = xsf::cem_cva(i[0], i[1]);"
+    doc: "Characteristic value of even Mathieu functions."
+  - name: mathieu_b
+    ref: scipy.special.mathieu_b
+    args: [m, q]
+    outs: [y]
+    impl: "o[0] = xsf::sem_cva(i[0], i[1]);"
+    doc: "Characteristic value of odd Mathieu functions."
+  - name: mathieu_cem
+    ref: scipy.special.mathieu_cem
+    args: [m, q, x]
+    outs: [y, yp]
+    impl: "xsf::cem(i[0], i[1], i[2], o[0], o[1]);"
+    guard: "i[0] == INFINITY || !std::isfinite(i[1]) || !(std::fabs(i[1]) <= 2e7) || !(std::fabs(i[0]) <= 3e8)"   # SciPy segfaults here (crashes-special.json; |q| > 2e7 or m > 3e8: its work-array size overflows; SciPy returns NaN just below)
+    doc: "Even Mathieu function and its derivative."
+  - name: mathieu_modcem1
+    ref: scipy.special.mathieu_modcem1
+    args: [m, q, x]
+    outs: [y, yp]
+    impl: "xsf::mcm1(i[0], i[1], i[2], o[0], o[1]);"
+    guard: "i[0] == INFINITY || !std::isfinite(i[1]) || !(std::fabs(i[1]) <= 2e7) || !(std::fabs(i[0]) <= 3e8)"   # SciPy segfaults here (crashes-special.json; |q| > 2e7 or m > 3e8: its work-array size overflows; SciPy returns NaN just below)
+    doc: "Even modified Mathieu function of the first kind and its derivative."
+  - name: mathieu_modcem2
+    ref: scipy.special.mathieu_modcem2
+    args: [m, q, x]
+    outs: [y, yp]
+    impl: "xsf::mcm2(i[0], i[1], i[2], o[0], o[1]);"
+    guard: "i[0] == INFINITY || !std::isfinite(i[1]) || !(std::fabs(i[1]) <= 2e7) || !(std::fabs(i[0]) <= 3e8)"   # SciPy segfaults here (crashes-special.json; |q| > 2e7 or m > 3e8: its work-array size overflows; SciPy returns NaN just below)
+    doc: "Even modified Mathieu function of the second kind and its derivative."
+  - name: mathieu_modsem1
+    ref: scipy.special.mathieu_modsem1
+    args: [m, q, x]
+    outs: [y, yp]
+    impl: "xsf::msm1(i[0], i[1], i[2], o[0], o[1]);"
+    guard: "i[0] == INFINITY || !std::isfinite(i[1]) || !(std::fabs(i[1]) <= 2e7) || !(std::fabs(i[0]) <= 3e8)"   # SciPy segfaults here (crashes-special.json; |q| > 2e7 or m > 3e8: its work-array size overflows; SciPy returns NaN just below)
+    doc: "Odd modified Mathieu function of the first kind and its derivative."
+  - name: mathieu_modsem2
+    ref: scipy.special.mathieu_modsem2
+    args: [m, q, x]
+    outs: [y, yp]
+    impl: "xsf::msm2(i[0], i[1], i[2], o[0], o[1]);"
+    guard: "i[0] == INFINITY || !std::isfinite(i[1]) || !(std::fabs(i[1]) <= 2e7) || !(std::fabs(i[0]) <= 3e8)"   # SciPy segfaults here (crashes-special.json; |q| > 2e7 or m > 3e8: its work-array size overflows; SciPy returns NaN just below)
+    doc: "Odd modified Mathieu function of the second kind and its derivative."
+  - name: mathieu_sem
+    ref: scipy.special.mathieu_sem
+    args: [m, q, x]
+    outs: [y, yp]
+    impl: "xsf::sem(i[0], i[1], i[2], o[0], o[1]);"
+    guard: "i[0] == INFINITY || !std::isfinite(i[1]) || !(std::fabs(i[1]) <= 2e7) || !(std::fabs(i[0]) <= 3e8)"   # SciPy segfaults here (crashes-special.json; |q| > 2e7 or m > 3e8: its work-array size overflows; SciPy returns NaN just below)
+    doc: "Odd Mathieu function and its derivative."
+  - name: modstruve
+    ref: scipy.special.modstruve
+    args: [v, x]
+    outs: [L]
+    impl: "o[0] = xsf::struve_l(i[0], i[1]);"
+    doc: "Modified Struve function."
+  - name: nbdtr
+    ref: scipy.special.nbdtr
+    args: [k, n, p]
+    outs: [F]
+    impl: "o[0] = scipy_port::nbdtr_unsafe(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_nbdtr_wrap((long)i[0], (long)i[1], i[2]);"
+    int_args: [0, 1]
+    doc: "Negative binomial cumulative distribution function."
+  - name: nbdtrc
+    ref: scipy.special.nbdtrc
+    args: [k, n, p]
+    outs: [F]
+    impl: "o[0] = scipy_port::nbdtrc_unsafe(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_nbdtrc_wrap((long)i[0], (long)i[1], i[2]);"
+    int_args: [0, 1]
+    doc: "Negative binomial survival function."
+  - name: nbdtri
+    ref: scipy.special.nbdtri
+    args: [k, n, y]
+    outs: [p]
+    impl: "o[0] = scipy_port::nbdtri_unsafe(i[0], i[1], i[2]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_nbdtri_wrap((long)i[0], (long)i[1], i[2]);"
+    int_args: [0, 1]
+    doc: "Returns the inverse with respect to the parameter `p` of ``y = nbdtr(k, n, p)``, the negative binomial cumulative distribution function."
+  - name: nbdtrik
+    ref: scipy.special.nbdtrik
+    args: [y, n, p]
+    outs: [k]
+    impl: "o[0] = scipy_port::nbdtrik(i[0], i[1], i[2]);"
+    doc: "Negative binomial percentile function."
+  - name: nbdtrin
+    ref: scipy.special.nbdtrin
+    args: [k, y, p]
+    outs: [n]
+    impl: "o[0] = scipy_port::nbdtrin(i[0], i[1], i[2]);"
+    doc: "Inverse of `nbdtr` vs `n`."
+  - name: ncfdtr
+    ref: scipy.special.ncfdtr
+    args: [dfn, dfd, nc, f]
+    outs: [cdf]
+    impl: "o[0] = ncf_cdf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Cumulative distribution function of the non-central F distribution."
+  - name: ncfdtri
+    ref: scipy.special.ncfdtri
+    args: [dfn, dfd, nc, p]
+    outs: [f]
+    impl: "o[0] = ncf_ppf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Inverse with respect to `f` of the CDF of the non-central F distribution."
+  - name: ncfdtridfd
+    ref: scipy.special.ncfdtridfd
+    args: [dfn, p, nc, f]
+    outs: [dfd]
+    impl: "o[0] = scipy_port::ncfdtridfd(i[0], i[1], i[2], i[3]);"
+    doc: "Calculate degrees of freedom (denominator) for the noncentral F-distribution."
+  - name: ncfdtridfn
+    ref: scipy.special.ncfdtridfn
+    args: [p, dfd, nc, f]
+    outs: [dfn]
+    impl: "o[0] = scipy_port::ncfdtridfn(i[0], i[1], i[2], i[3]);"
+    doc: "Calculate degrees of freedom (numerator) for the noncentral F-distribution."
+  - name: ncfdtrinc
+    ref: scipy.special.ncfdtrinc
+    args: [dfn, dfd, p, f]
+    outs: [nc]
+    impl: "o[0] = scipy_port::ncfdtrinc(i[0], i[1], i[2], i[3]);"
+    doc: "Calculate non-centrality parameter for non-central F distribution."
+  - name: nctdtr
+    ref: scipy.special.nctdtr
+    args: [df, nc, t]
+    outs: [cdf]
+    impl: "o[0] = nct_cdf_double(i[0], i[1], i[2]);"
+    doc: "Cumulative distribution function of the non-central `t` distribution."
+  - name: nctdtridf
+    ref: scipy.special.nctdtridf
+    args: [p, nc, t]
+    outs: [df]
+    impl: "o[0] = scipy_port::nctdtridf(i[0], i[1], i[2]);"
+    capped: "cdflib cumtnc: an iteration cap ends the series SciPy never finishes; NaN (crashes-special.json)"
+    doc: "Calculate degrees of freedom for non-central t distribution."
+  - name: nctdtrinc
+    ref: scipy.special.nctdtrinc
+    args: [df, p, t]
+    outs: [nc]
+    impl: "o[0] = scipy_port::nctdtrinc(i[0], i[1], i[2]);"
+    capped: "cdflib cumtnc: an iteration cap ends the series SciPy never finishes; NaN (crashes-special.json)"
+    doc: "Calculate non-centrality parameter for non-central t distribution."
+  - name: nctdtrit
+    ref: scipy.special.nctdtrit
+    args: [df, nc, p]
+    outs: [t]
+    impl: "o[0] = nct_ppf_double(i[0], i[1], i[2]);"
+    doc: "Inverse cumulative distribution function of the non-central t distribution."
+  - name: ndtr
+    ref: scipy.special.ndtr
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::ndtr(i[0]);"
+    doc: "Cumulative distribution of the standard normal distribution."
+  - name: ndtri
+    ref: scipy.special.ndtri
+    args: [y]
+    outs: [x]
+    impl: "o[0] = scipy_xsfw::xsf_ndtri(i[0]);"
+    doc: "Inverse of `ndtr` vs x."
+  - name: ndtri_exp
+    ref: scipy.special.ndtri_exp
+    args: [y]
+    outs: [y]
+    impl: "o[0] = scipy_port::ndtri_exp(i[0]);"
+    doc: "Inverse of `log_ndtr` vs x. Allows for greater precision than `ndtri` composed with `numpy.exp` for very small values of y and for y close to 0."
+  - name: nrdtrimn
+    ref: scipy.special.nrdtrimn
+    args: [p, std, x]
+    outs: [mn]
+    impl: "o[0] = scipy_port::nrdtrimn(i[0], i[1], i[2]);"
+    doc: "Calculate mean of normal distribution given other params."
+  - name: nrdtrisd
+    ref: scipy.special.nrdtrisd
+    args: [mn, p, x]
+    outs: [std]
+    impl: "o[0] = scipy_port::nrdtrisd(i[0], i[1], i[2]);"
+    doc: "Calculate standard deviation of normal distribution given other params."
+  - name: obl_ang1
+    ref: scipy.special.obl_ang1
+    args: [m, n, c, x]
+    outs: [s, sp]
+    impl: "xsf::oblate_aswfa_nocv(i[0], i[1], i[2], i[3], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Oblate spheroidal angular function of the first kind and its derivative."
+  - name: obl_ang1_cv
+    ref: scipy.special.obl_ang1_cv
+    args: [m, n, c, cv, x]
+    outs: [s, sp]
+    impl: "xsf::oblate_aswfa(i[0], i[1], i[2], i[3], i[4], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Oblate spheroidal angular function obl_ang1 for precomputed characteristic value."
+  - name: obl_cv
+    ref: scipy.special.obl_cv
+    args: [m, n, c]
+    outs: [cv]
+    impl: "o[0] = xsf::oblate_segv(i[0], i[1], i[2]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Characteristic value of oblate spheroidal function."
+  - name: obl_rad1
+    ref: scipy.special.obl_rad1
+    args: [m, n, c, x]
+    outs: [s, sp]
+    impl: "xsf::oblate_radial1_nocv(i[0], i[1], i[2], i[3], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Oblate spheroidal radial function of the first kind and its derivative."
+  - name: obl_rad1_cv
+    ref: scipy.special.obl_rad1_cv
+    args: [m, n, c, cv, x]
+    outs: [s, sp]
+    impl: "xsf::oblate_radial1(i[0], i[1], i[2], i[3], i[4], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Oblate spheroidal radial function obl_rad1 for precomputed characteristic value."
+  - name: obl_rad2
+    ref: scipy.special.obl_rad2
+    args: [m, n, c, x]
+    outs: [s, sp]
+    impl: "xsf::oblate_radial2_nocv(i[0], i[1], i[2], i[3], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Oblate spheroidal radial function of the second kind and its derivative."
+  - name: obl_rad2_cv
+    ref: scipy.special.obl_rad2_cv
+    args: [m, n, c, cv, x]
+    outs: [s, sp]
+    impl: "xsf::oblate_radial2(i[0], i[1], i[2], i[3], i[4], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Oblate spheroidal radial function obl_rad2 for precomputed characteristic value."
+  - name: owens_t
+    ref: scipy.special.owens_t
+    args: [h, a]
+    outs: [t]
+    impl: "o[0] = scipy_xsfw::xsf_owens_t(i[0], i[1]);"
+    doc: "Owen's T Function."
+  - name: pbdv
+    ref: scipy.special.pbdv
+    args: [v, x]
+    outs: [d, dp]
+    impl: "xsf::pbdv(i[0], i[1], o[0], o[1]);"
+    doc: "Parabolic cylinder function D."
+  - name: pbvv
+    ref: scipy.special.pbvv
+    args: [v, x]
+    outs: [v, vp]
+    impl: "xsf::pbvv(i[0], i[1], o[0], o[1]);"
+    doc: "Parabolic cylinder function V."
+  - name: pbwa
+    ref: scipy.special.pbwa
+    args: [a, x]
+    outs: [w, wp]
+    impl: "xsf::pbwa(i[0], i[1], o[0], o[1]);"
+    doc: "Parabolic cylinder function W."
+  - name: pdtr
+    ref: scipy.special.pdtr
+    args: [k, m]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_pdtr(i[0], i[1]);"
+    doc: "Poisson cumulative distribution function."
+  - name: pdtrc
+    ref: scipy.special.pdtrc
+    args: [k, m]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_pdtrc(i[0], i[1]);"
+    doc: "Poisson survival function."
+  - name: pdtri
+    ref: scipy.special.pdtri
+    args: [k, y]
+    outs: [y]
+    impl: "o[0] = scipy_port::pdtri_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_pdtri_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Inverse to `pdtr` vs m."
+  - name: pdtrik
+    ref: scipy.special.pdtrik
+    args: [p, m]
+    outs: [y]
+    impl: "o[0] = pdtrik_double(i[0], i[1]);"
+    doc: "Inverse to `pdtr` vs `k`."
+  - name: poch
+    ref: scipy.special.poch
+    args: [z, m]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::cephes_poch(i[0], i[1]);"
+    doc: "Pochhammer symbol."
+  - name: powm1
+    ref: scipy.special.powm1
+    args: [x, y]
+    outs: [y]
+    impl: "o[0] = powm1_double(i[0], i[1]);"
+    doc: "Computes ``x**y - 1``."
+  - name: pro_ang1
+    ref: scipy.special.pro_ang1
+    args: [m, n, c, x]
+    outs: [s, sp]
+    impl: "xsf::prolate_aswfa_nocv(i[0], i[1], i[2], i[3], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Prolate spheroidal angular function of the first kind and its derivative."
+  - name: pro_ang1_cv
+    ref: scipy.special.pro_ang1_cv
+    args: [m, n, c, cv, x]
+    outs: [s, sp]
+    impl: "xsf::prolate_aswfa(i[0], i[1], i[2], i[3], i[4], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Prolate spheroidal angular function pro_ang1 for precomputed characteristic value."
+  - name: pro_cv
+    ref: scipy.special.pro_cv
+    args: [m, n, c]
+    outs: [cv]
+    impl: "o[0] = xsf::prolate_segv(i[0], i[1], i[2]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Characteristic value of prolate spheroidal function."
+  - name: pro_rad1
+    ref: scipy.special.pro_rad1
+    args: [m, n, c, x]
+    outs: [s, sp]
+    impl: "xsf::prolate_radial1_nocv(i[0], i[1], i[2], i[3], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Prolate spheroidal radial function of the first kind and its derivative."
+  - name: pro_rad1_cv
+    ref: scipy.special.pro_rad1_cv
+    args: [m, n, c, cv, x]
+    outs: [s, sp]
+    impl: "xsf::prolate_radial1(i[0], i[1], i[2], i[3], i[4], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Prolate spheroidal radial function pro_rad1 for precomputed characteristic value."
+  - name: pro_rad2
+    ref: scipy.special.pro_rad2
+    args: [m, n, c, x]
+    outs: [s, sp]
+    impl: "xsf::prolate_radial2_nocv(i[0], i[1], i[2], i[3], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Prolate spheroidal radial function of the second kind and its derivative."
+  - name: pro_rad2_cv
+    ref: scipy.special.pro_rad2_cv
+    args: [m, n, c, cv, x]
+    outs: [s, sp]
+    impl: "xsf::prolate_radial2(i[0], i[1], i[2], i[3], i[4], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))"   # m, n or finite c beyond 1000: SciPy overruns its work arrays or aborts (bad_array_new_length) there (ub_scan.py); c = -inf is defined (SciPy's early exit)
+    reference_ub: asan   # SciPy's xsf overruns fixed arrays for large c: those rows are undefined (ub_scan.py)
+    doc: "Prolate spheroidal radial function pro_rad2 for precomputed characteristic value."
+  - name: pseudo_huber
+    ref: scipy.special.pseudo_huber
+    args: [delta, r]
+    outs: [res]
+    impl: "o[0] = scipy_port::pseudo_huber(i[0], i[1]);"
+    doc: "Pseudo-Huber loss function."
+  - name: psi
+    ref: scipy.special.psi
+    args: [z]
+    outs: [digamma]
+    impl: "o[0] = xsf::digamma(i[0]);"
+    doc: "The digamma function."
+  - name: radian
+    ref: scipy.special.radian
+    args: [d, m, s]
+    outs: [y]
+    impl: "o[0] = xsf::radian(i[0], i[1], i[2]);"
+    doc: "Convert from degrees to radians."
+  - name: rel_entr
+    ref: scipy.special.rel_entr
+    args: [x, y]
+    outs: [y]
+    impl: "o[0] = scipy_port::rel_entr(i[0], i[1]);"
+    doc: "Elementwise function for computing relative entropy."
+  - name: rgamma
+    ref: scipy.special.rgamma
+    args: [z]
+    outs: [y]
+    impl: "o[0] = xsf::rgamma(i[0]);"
+    doc: "Reciprocal of the gamma function."
+  - name: round
+    ref: scipy.special.round
+    args: [x]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::cephes_round(i[0]);"
+    doc: "Round to the nearest integer."
+  - name: shichi
+    ref: scipy.special.shichi
+    args: [x]
+    outs: [si, ci]
+    impl: "scipy_xsfw::xsf_shichi(i[0], &o[0], &o[1]);"
+    doc: "Hyperbolic sine and cosine integrals."
+  - name: sici
+    ref: scipy.special.sici
+    args: [x]
+    outs: [si, ci]
+    impl: "scipy_xsfw::xsf_sici(i[0], &o[0], &o[1]);"
+    doc: "Sine and cosine integrals."
+  - name: sindg
+    ref: scipy.special.sindg
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::sindg(i[0]);"
+    doc: "Sine of the angle `x` given in degrees."
+  - name: smirnov
+    ref: scipy.special.smirnov
+    args: [n, d]
+    outs: [y]
+    impl: "o[0] = scipy_port::smirnov_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_smirnov_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Kolmogorov-Smirnov complementary cumulative distribution function."
+  - name: smirnovi
+    ref: scipy.special.smirnovi
+    args: [n, p]
+    outs: [y]
+    impl: "o[0] = scipy_port::smirnovi_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_smirnovi_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Inverse to `smirnov`."
+  - name: spence
+    ref: scipy.special.spence
+    args: [z]
+    outs: [s]
+    impl: "o[0] = scipy_xsfw::cephes_spence(i[0]);"
+    doc: "Spence's function, also known as the dilogarithm."
+  - name: stdtr
+    ref: scipy.special.stdtr
+    args: [df, t]
+    outs: [y]
+    impl: "o[0] = t_cdf_double(i[0], i[1]);"
+    doc: "Student t distribution cumulative distribution function."
+  - name: stdtridf
+    ref: scipy.special.stdtridf
+    args: [p, t]
+    outs: [df]
+    impl: "o[0] = scipy_port::stdtridf(i[0], i[1]);"
+    doc: "Inverse of `stdtr` vs df."
+  - name: stdtrit
+    ref: scipy.special.stdtrit
+    args: [df, p]
+    outs: [t]
+    impl: "o[0] = t_ppf_double(i[0], i[1]);"
+    doc: "The `p`-th quantile of the student t distribution."
+  - name: struve
+    ref: scipy.special.struve
+    args: [v, x]
+    outs: [H]
+    impl: "o[0] = xsf::struve_h(i[0], i[1]);"
+    doc: "Struve function."
+  - name: tandg
+    ref: scipy.special.tandg
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::tandg(i[0]);"
+    doc: "Tangent of angle `x` given in degrees."
+  - name: tklmbda
+    ref: scipy.special.tklmbda
+    args: [x, lmbda]
+    outs: [cdf]
+    impl: "o[0] = scipy_xsfw::xsf_tukeylambdacdf(i[0], i[1]);"
+    doc: "Cumulative distribution function of the Tukey lambda distribution."
+  - name: voigt_profile
+    ref: scipy.special.voigt_profile
+    args: [x, sigma, gamma]
+    outs: [y]
+    impl: "o[0] = xsf::voigt_profile(i[0], i[1], i[2]);"
+    doc: "Voigt profile."
+  - name: wright_bessel
+    ref: scipy.special.wright_bessel
+    args: [a, b, x]
+    outs: [y]
+    impl: "o[0] = xsf::wright_bessel(i[0], i[1], i[2]);"
+    doc: "Wright's generalized Bessel function."
+  - name: wrightomega
+    ref: scipy.special.wrightomega
+    args: [z]
+    outs: [omega]
+    impl: "o[0] = wright::wrightomega_real(i[0]);"
+    doc: "Wright Omega function."
+  - name: xlog1py
+    ref: scipy.special.xlog1py
+    args: [x, y]
+    outs: [z]
+    impl: "o[0] = xsf::xlog1py(i[0], i[1]);"
+    doc: "Compute ``x*log1p(y)`` so that the result is 0 if ``x = 0``."
+  - name: xlogy
+    ref: scipy.special.xlogy
+    args: [x, y]
+    outs: [z]
+    impl: "o[0] = xsf::xlogy(i[0], i[1]);"
+    doc: "Compute ``x*log(y)`` so that the result is 0 if ``x = 0``."
+  - name: y0
+    ref: scipy.special.y0
+    args: [x]
+    outs: [Y]
+    impl: "o[0] = xsf::cyl_bessel_y0(i[0]);"
+    doc: "Bessel function of the second kind of order 0."
+  - name: y1
+    ref: scipy.special.y1
+    args: [x]
+    outs: [Y]
+    impl: "o[0] = xsf::cyl_bessel_y1(i[0]);"
+    doc: "Bessel function of the second kind of order 1."
+  - name: yn
+    ref: scipy.special.yn
+    args: [n, x]
+    outs: [Y]
+    impl: "o[0] = scipy_port::yn_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_yn_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Bessel function of the second kind of integer order and real argument."
+  - name: yv
+    ref: scipy.special.yv
+    args: [v, z]
+    outs: [Y]
+    impl: "o[0] = xsf::cyl_bessel_y(i[0], i[1]);"
+    cplx_impl: "std::complex<double> r = xsf::cyl_bessel_y(i[0], std::complex<double>(i[2], i[3])); o[0] = r.real(); o[1] = r.imag();"
+    doc: "Bessel function of the second kind of real order and complex argument."
+  - name: yve
+    ref: scipy.special.yve
+    args: [v, z]
+    outs: [Y]
+    impl: "o[0] = xsf::cyl_bessel_ye(i[0], i[1]);"
+    doc: "Exponentially scaled Bessel function of the second kind of real order."
+  - name: zetac
+    ref: scipy.special.zetac
+    args: [x]
+    outs: [y]
+    impl: "o[0] = xsf::zetac(i[0]);"
+    doc: "Riemann zeta function minus 1."
+  - name: softplus
+    ref: scipy.special.softplus
+    args: [x]
+    outs: [y]
+    impl: "o[0] = fmax(i[0], 0.0) + log1p(exp(-fabs(i[0])));"
+    doc: "Softplus, log(1 + exp(x)), evaluated stably (scipy.special.softplus)."
+  - name: sinc
+    ref: scipy.special.sinc
+    args: [x]
+    outs: [y]
+    impl: "double px = 3.141592653589793 * i[0]; o[0] = px == 0.0 ? 1.0 : sin(px) / px;"
+    doc: "Normalized sinc, sin(pi x)/(pi x) with sinc(0)=1 (scipy.special.sinc)."
+  - name: spherical_jn
+    ref: scipy.special.spherical_jn
+    args: [n, z, derivative]
+    outs: [jn]
+    domain:
+      n: [0, 1, 2, 3, 5]
+      z: [0.5, 1.0, 2.0, 5.0, 10.0]
+      derivative: [0, 1]
+    impl: "o[0] = i[2] != 0.0 ? xsf::sph_bessel_j_jac((long)i[0], i[1]) : xsf::sph_bessel_j((long)i[0], i[1]);"
+    doc: "Spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_jn)."
+  - name: spherical_yn
+    ref: scipy.special.spherical_yn
+    args: [n, z, derivative]
+    outs: [yn]
+    domain:
+      n: [0, 1, 2, 3, 5]
+      z: [0.5, 1.0, 2.0, 5.0, 10.0]
+      derivative: [0, 1]
+    impl: "o[0] = i[2] != 0.0 ? xsf::sph_bessel_y_jac((long)i[0], i[1]) : xsf::sph_bessel_y((long)i[0], i[1]);"
+    doc: "Spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_yn)."
+  - name: spherical_in
+    ref: scipy.special.spherical_in
+    args: [n, z, derivative]
+    outs: [in]
+    domain:
+      n: [0, 1, 2, 3, 5]
+      z: [0.5, 1.0, 2.0, 5.0, 10.0]
+      derivative: [0, 1]
+    impl: "o[0] = i[2] != 0.0 ? xsf::sph_bessel_i_jac((long)i[0], i[1]) : xsf::sph_bessel_i((long)i[0], i[1]);"
+    doc: "Modified spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_in)."
+  - name: spherical_kn
+    ref: scipy.special.spherical_kn
+    args: [n, z, derivative]
+    outs: [kn]
+    domain:
+      n: [0, 1, 2, 3, 5]
+      z: [0.5, 1.0, 2.0, 5.0, 10.0]
+      derivative: [0, 1]
+    impl: "o[0] = i[2] != 0.0 ? xsf::sph_bessel_k_jac((long)i[0], i[1]) : xsf::sph_bessel_k((long)i[0], i[1]);"
+    doc: "Modified spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_kn)."

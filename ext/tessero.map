@@ -1,0 +1,6 @@
+/* Export only the Zend entry point: GCC target_clones emits ifunc symbols with
+   default visibility even under -fvisibility=hidden. */
+{
+  global: get_module;
+  local: *;
+};

@@ -1,0 +1,94 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * tessero - diagnostics and build helper.
+ *
+ *   vendor/bin/tessero info          library, SIMD level, BLAS, load mode, memory
+ *   vendor/bin/tessero doctor        checks a deployment (ffi.enable, preload, binary, BLAS) and says what to fix
+ *   vendor/bin/tessero build         compile libtessero for this machine (needs a C compiler)
+ *   vendor/bin/tessero bench         run the benchmark suite with regression gates
+ *   vendor/bin/tessero php-ini       print the php.ini lines for FPM preloading
+ */
+
+declare(strict_types=1);
+
+$root = dirname(__DIR__);
+foreach ([$root . '/vendor/autoload.php', $root . '/../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+if (! class_exists(\Tessero\Tessero::class)) {
+    require $root . '/tests/autoload.php';
+}
+
+$cmd = $argv[1] ?? 'info';
+
+switch ($cmd) {
+    case 'info':
+        $info = \Tessero\Tessero::info();
+        if (extension_loaded('tessero')) {
+            $info['ext_tessero'] = \Tessero\Ext\Engine::version();
+        }
+        if (in_array('--json', $argv, true)) {
+            echo json_encode($info, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), "\n";
+            exit(0);
+        }
+        foreach ($info as $k => $v) {
+            printf("%-14s %s\n", $k, is_bool($v) ? ($v ? 'yes' : 'no') : (string) ($v ?? '-'));
+        }
+        exit(0);
+
+    case 'doctor':
+        $problems = 0;
+        $check = static function (bool $ok, string $label, string $fix = '') use (&$problems): void {
+            printf("  [%s] %s\n", $ok ? 'ok' : '!!', $label);
+            if (! $ok) {
+                $problems++;
+                if ($fix !== '') {
+                    echo "       -> {$fix}\n";
+                }
+            }
+        };
+        echo "Tessero deployment check (PHP " . PHP_VERSION . ', ' . PHP_SAPI . ")\n";
+        $check(PHP_VERSION_ID >= 80200, 'PHP >= 8.2', 'upgrade PHP');
+        $check(extension_loaded('ffi'), 'ext-ffi loaded', 'install/enable ext-ffi (php-ffi package or --with-ffi)');
+        $mode = (string) ini_get('ffi.enable');
+        $check(in_array(strtolower($mode), ['1', 'on', 'true', 'preload'], true), "ffi.enable = {$mode}", 'set ffi.enable=preload (FPM) or 1 (CLI/workers)');
+        $lib = \Tessero\Native\Library::locate();
+        $check($lib !== null, 'prebuilt libtessero for ' . \Tessero\Native\Library::platform() . ($lib ? " ({$lib})" : ''), 'run `vendor/bin/tessero build` or set TESSERO_LIB');
+        $check(\Tessero\Native\Library::available(), 'libtessero loads in this SAPI (' . \Tessero\Native\Library::mode() . ')', 'under FPM add resources/preload.php to opcache.preload (`vendor/bin/tessero php-ini`)');
+        $check(\Tessero\Native\Blas::available(), 'LP64 OpenBLAS + LAPACKE (linalg, fast matmul)', 'apt install libopenblas0 liblapacke  (or `pip install scipy`), or set TESSERO_BLAS');
+        if (\Tessero\Native\Library::available()) {
+            $i = \Tessero\Tessero::info();
+            printf("  [--] kernel %s, SIMD %s, OpenMP %s, threads %d\n", $i['libtessero'], $i['simd'], $i['openmp'] ? 'yes' : 'no', $i['threads']);
+        }
+        printf("  [%s] ext-tessero %s(optional native backend: operators, 30x lower call overhead)\n",
+            extension_loaded('tessero') ? 'ok' : '--', extension_loaded('tessero') ? \Tessero\Ext\Engine::version() . ' ' : '');
+        echo $problems === 0 ? "All good.\n" : "{$problems} item(s) need attention.\n";
+        exit($problems === 0 ? 0 : 1);
+
+    case 'build':
+        passthru('make -C ' . escapeshellarg($root . '/csrc'), $rc);
+        exit($rc);
+
+    case 'bench':
+        passthru(escapeshellarg(PHP_BINARY) . ' -d ffi.enable=1 ' . escapeshellarg($root . '/bench/run.php') . ' ' . implode(' ', array_map('escapeshellarg', array_slice($argv, 2))), $rc);
+        exit($rc);
+
+    case 'php-ini':
+        $user = function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? 'www-data') : 'www-data';
+        echo "; Tessero under PHP-FPM / Apache\n";
+        echo "ffi.enable = preload\n";
+        echo "opcache.enable = 1\n";
+        echo 'opcache.preload = ' . realpath($root . '/resources/preload.php') . "\n";
+        echo "opcache.preload_user = " . ($user === 'root' ? 'www-data' : $user) . "\n";
+        echo "; optional native memory cap per worker is set in code: Tessero::setMemoryBudget(256 * 1024 * 1024)\n";
+        exit(0);
+
+    default:
+        fwrite(STDERR, "Unknown command '{$cmd}'. Commands: info [--json], doctor, build, bench, php-ini\n");
+        exit(2);
+}
