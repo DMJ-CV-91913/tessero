@@ -75,7 +75,10 @@ final class ScipyLinalg
     'pinvh' => 'pinvh',
     'polar' => 'polar',
     'qr' => 'qr',
+    'qr_delete' => 'qrDelete',
+    'qr_insert' => 'qrInsert',
     'qr_multiply' => 'qrMultiply',
+    'qr_update' => 'qrUpdate',
     'qz' => 'qz',
     'rq' => 'rq',
     'rsf2csf' => 'rsf2csf',
@@ -720,6 +723,30 @@ final class ScipyLinalg
     }
 
     /**
+     * Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete).
+     *
+     * scipy.linalg.qr_delete
+     *
+     * @return mixed one array, or an array keyed by Q, R when several results are requested
+     */
+    public static function qrDelete(mixed $Q, mixed $R, mixed $k, mixed $p = 1, mixed $which = 'row'): mixed
+    {
+        return Registry::routine('slinalg.qr_delete', [$Q, $R, $k, $p, $which]);
+    }
+
+    /**
+     * Economic QR after inserting a row/column, canonicalised (scipy.linalg.qr_insert).
+     *
+     * scipy.linalg.qr_insert
+     *
+     * @return mixed one array, or an array keyed by Q, R when several results are requested
+     */
+    public static function qrInsert(mixed $Q, mixed $R, mixed $u, mixed $k, mixed $which = 'row'): mixed
+    {
+        return Registry::routine('slinalg.qr_insert', [$Q, $R, $u, $k, $which]);
+    }
+
+    /**
      * Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply).
      *
      * scipy.linalg.qr_multiply
@@ -729,6 +756,18 @@ final class ScipyLinalg
     public static function qrMultiply(mixed $a, mixed $c, mixed $mode = 'right'): mixed
     {
         return Registry::routine('slinalg.qr_multiply', [$a, $c, $mode]);
+    }
+
+    /**
+     * Economic QR of (Q R + u v^T), canonicalised (scipy.linalg.qr_update).
+     *
+     * scipy.linalg.qr_update
+     *
+     * @return mixed one array, or an array keyed by Q, R when several results are requested
+     */
+    public static function qrUpdate(mixed $Q, mixed $R, mixed $u, mixed $v): mixed
+    {
+        return Registry::routine('slinalg.qr_update', [$Q, $R, $u, $v]);
     }
 
     /**
