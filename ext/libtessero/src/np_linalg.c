@@ -3170,6 +3170,158 @@ static int r_fractional_matrix_power(const void *ctx, const tsr_arg *args, int n
     return TSR_OK;
 }
 
+/* C = X @ Y for n x n row-major matrices; C must not alias X or Y. */
+static void mm_nn(const double *X, const double *Y, double *C, int64_t n)
+{
+    for (int64_t i = 0; i < n; i++)
+        for (int64_t j = 0; j < n; j++) {
+            double s = 0.0;
+            for (int64_t k = 0; k < n; k++) s += X[i * n + k] * Y[k * n + j];
+            C[i * n + j] = s;
+        }
+}
+
+/* Matrix exponential of an n x n row-major real matrix via scaling and squaring with the degree-13 Padé
+   approximant (Higham, 2005). Writes the result into out (caller-allocated n*n). This is the reusable core the
+   Frechet-derivative routines below rely on through the block-enlarge identity. 0 on success, -1 on failure. */
+static int sl_expm(const double *A, int64_t n, double *out)
+{
+    if (n == 0) return 0;
+    const size_t nn = (size_t)(n * n);
+    static const double b[14] = {
+        64764752532480000.0, 32382376266240000.0, 7771770303897600.0, 1187353796428800.0,
+        129060195264000.0, 10559470521600.0, 670442572800.0, 33522128640.0,
+        1323241920.0, 40840800.0, 960960.0, 16380.0, 182.0, 1.0};
+    double *a  = (double *)malloc(sizeof(double) * nn);
+    double *A2 = (double *)malloc(sizeof(double) * nn);
+    double *A4 = (double *)malloc(sizeof(double) * nn);
+    double *A6 = (double *)malloc(sizeof(double) * nn);
+    double *U  = (double *)malloc(sizeof(double) * nn);
+    double *V  = (double *)malloc(sizeof(double) * nn);
+    double *W  = (double *)malloc(sizeof(double) * nn);
+    double *P  = (double *)malloc(sizeof(double) * nn);
+    double *Q  = (double *)malloc(sizeof(double) * nn);
+    if (!a || !A2 || !A4 || !A6 || !U || !V || !W || !P || !Q) {
+        free(a); free(A2); free(A4); free(A6); free(U); free(V); free(W); free(P); free(Q); return -1;
+    }
+    memcpy(a, A, sizeof(double) * nn);
+    double norm1 = 0.0;                                      /* 1-norm = max column abs-sum */
+    for (int64_t j = 0; j < n; j++) { double c = 0.0; for (int64_t i = 0; i < n; i++) c += fabs(a[i * n + j]); if (c > norm1) norm1 = c; }
+    const double theta13 = 5.371920351148152;
+    int s = 0;
+    if (norm1 > theta13) { s = (int)ceil(log2(norm1 / theta13)); if (s < 0) s = 0; }
+    if (s > 0) { const double scale = ldexp(1.0, -s); for (size_t i = 0; i < nn; i++) a[i] *= scale; }
+    mm_nn(a, a, A2, n);
+    mm_nn(A2, A2, A4, n);
+    mm_nn(A2, A4, A6, n);
+    /* U = a @ (A6 @ (b13 A6 + b11 A4 + b9 A2) + b7 A6 + b5 A4 + b3 A2 + b1 I) */
+    for (size_t i = 0; i < nn; i++) W[i] = b[13] * A6[i] + b[11] * A4[i] + b[9] * A2[i];
+    mm_nn(A6, W, P, n);
+    for (size_t i = 0; i < nn; i++) P[i] += b[7] * A6[i] + b[5] * A4[i] + b[3] * A2[i];
+    for (int64_t i = 0; i < n; i++) P[i * n + i] += b[1];
+    mm_nn(a, P, U, n);
+    /* V = A6 @ (b12 A6 + b10 A4 + b8 A2) + b6 A6 + b4 A4 + b2 A2 + b0 I */
+    for (size_t i = 0; i < nn; i++) W[i] = b[12] * A6[i] + b[10] * A4[i] + b[8] * A2[i];
+    mm_nn(A6, W, V, n);
+    for (size_t i = 0; i < nn; i++) V[i] += b[6] * A6[i] + b[4] * A4[i] + b[2] * A2[i];
+    for (int64_t i = 0; i < n; i++) V[i * n + i] += b[0];
+    for (size_t i = 0; i < nn; i++) { const double u = U[i], v = V[i]; P[i] = u + v; Q[i] = v - u; }
+    int rc = sl_dense_solve(Q, P, n, n);                     /* P <- R = (V - U)^{-1} (V + U) */
+    if (rc == 0) {
+        memcpy(out, P, sizeof(double) * nn);
+        for (int k = 0; k < s; k++) { mm_nn(out, out, W, n); memcpy(out, W, sizeof(double) * nn); }
+    }
+    free(a); free(A2); free(A4); free(A6); free(U); free(V); free(W); free(P); free(Q);
+    return rc;
+}
+
+/* expm_frechet(A, E): the matrix exponential expm(A) together with its Frechet derivative L(A, E) in the
+   direction E, via the block-enlarge identity expm([[A, E], [0, A]]) = [[expm(A), L(A, E)], [0, expm(A)]]
+   (scipy.linalg.expm_frechet, default compute_expm=True). Returns (expm, frechet). */
+static int r_expm_frechet(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("expm_frechet: A and E must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[1].arr.shape[1] != n) { fn_set_error("expm_frechet: A and E must be square and the same size"); return TSR_EARG; }
+    int64_t na, ne;
+    double *A = mat_f64(&args[0], "A", &na); if (!A) return TSR_ENOMEM;
+    double *E = mat_f64(&args[1], "E", &ne); if (!E) { fn_free_doubles(A, na); return TSR_ENOMEM; }
+    const int64_t m = 2 * n;
+    double *B = (double *)calloc((size_t)(m * m > 0 ? m * m : 1), sizeof(double));
+    double *M = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));
+    int rc = TSR_OK;
+    if (!B || !M) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) {
+            B[i * m + j] = A[i * n + j];
+            B[i * m + (n + j)] = E[i * n + j];
+            B[(n + i) * m + (n + j)] = A[i * n + j];
+        }
+        if (sl_expm(B, m, M) != 0) { fn_set_error("expm_frechet: the matrix exponential failed"); rc = TSR_EARG; }
+        else {
+            int64_t osh[2] = {n, n};
+            double *ex = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+            double *fr = (double *)fn_result_array(&res[1], TSR_F64, 2, osh);
+            if (!ex || !fr) rc = TSR_ENOMEM;
+            else for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) {
+                ex[i * n + j] = M[i * m + j];
+                fr[i * n + j] = M[i * m + (n + j)];
+            }
+        }
+    }
+    free(B); free(M);
+    fn_free_doubles(A, na); fn_free_doubles(E, ne);
+    return rc;
+}
+
+/* expm_cond(A): the relative condition number of the matrix exponential, kappa = ||K|| ||A||_F / ||expm(A)||_F,
+   where K is the n^2 x n^2 Kronecker form of the Frechet derivative (its columns are the vectorised L(A, E_ij)
+   for the standard-basis directions) and ||K|| is its spectral (induced 2-) norm (scipy.linalg.expm_cond). A
+   row/column permutation of K leaves its spectral norm unchanged, so the exact vec ordering is immaterial. */
+static int r_expm_cond(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("expm_cond: A must be a square 2-D array"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    int64_t na;
+    double *A = mat_f64(&args[0], "A", &na); if (!A) return TSR_ENOMEM;
+    const int64_t m = 2 * n, n2 = n * n;
+    double *X  = (double *)malloc(sizeof(double) * (size_t)(n2 > 0 ? n2 : 1));
+    double *B  = (double *)calloc((size_t)(m * m > 0 ? m * m : 1), sizeof(double));
+    double *M  = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));
+    double *K  = (double *)malloc(sizeof(double) * (size_t)(n2 * n2 > 0 ? n2 * n2 : 1));
+    double *sv = (double *)malloc(sizeof(double) * (size_t)(n2 > 0 ? n2 : 1));
+    int rc = TSR_OK;
+    if (!X || !B || !M || !K || !sv) rc = TSR_ENOMEM;
+    else if (sl_expm(A, n, X) != 0) { fn_set_error("expm_cond: the matrix exponential failed"); rc = TSR_EARG; }
+    else {
+        for (int64_t i = 0; i < n && rc == TSR_OK; i++)
+            for (int64_t j = 0; j < n && rc == TSR_OK; j++) {
+                const int64_t p = i * n + j;                 /* column p = direction E_ij */
+                memset(B, 0, sizeof(double) * (size_t)(m * m));
+                for (int64_t r = 0; r < n; r++) for (int64_t c = 0; c < n; c++) {
+                    B[r * m + c] = A[r * n + c];
+                    B[(n + r) * m + (n + c)] = A[r * n + c];
+                }
+                B[i * m + (n + j)] = 1.0;
+                if (sl_expm(B, m, M) != 0) { fn_set_error("expm_cond: the matrix exponential failed"); rc = TSR_EARG; break; }
+                for (int64_t r = 0; r < n; r++) for (int64_t c = 0; c < n; c++)
+                    K[(r * n + c) * n2 + p] = M[r * m + (n + c)];
+            }
+        if (rc == TSR_OK) {
+            double a_fro = 0.0, x_fro = 0.0, k_norm = 0.0;   /* ||A||_F, ||expm(A)||_F, ||K||_2 */
+            for (int64_t i = 0; i < n2; i++) { a_fro += A[i] * A[i]; x_fro += X[i] * X[i]; }
+            a_fro = sqrt(a_fro); x_fro = sqrt(x_fro);
+            if (n2 > 0) { lapack_int info = svd_values(K, n2, n2, sv); if (info != 0) { fn_set_error("expm_cond: the SVD of the Kronecker form failed"); rc = TSR_EARG; } else k_norm = sv[0]; }
+            if (rc == TSR_OK) fn_result_num(&res[0], x_fro > 0.0 ? (k_norm * a_fro) / x_fro : FN_INF);
+        }
+    }
+    free(X); free(B); free(M); free(K); free(sv);
+    fn_free_doubles(A, na);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -3235,6 +3387,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),
+    ROUTINE("slinalg.expm_frechet", 2, "A, E", "expm, frechet", r_expm_frechet, NULL, "Matrix exponential and its Frechet derivative in direction E via the block-enlarge identity (scipy.linalg.expm_frechet)."),
+    ROUTINE("slinalg.expm_cond", 1, "A", "out", r_expm_cond, NULL, "Relative condition number of the matrix exponential from the Kronecker form of its Frechet derivative (scipy.linalg.expm_cond)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),
