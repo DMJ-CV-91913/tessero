@@ -91,6 +91,7 @@ final class ScipyLinalg
     'solve_triangular' => 'solveTriangular',
     'solveh_banded' => 'solvehBanded',
     'sqrtm' => 'sqrtm',
+    'subspace_angles' => 'subspaceAngles',
     'svd' => 'svd',
     'svdvals' => 'svdvals',
     'tanhm' => 'tanhm',
@@ -880,6 +881,16 @@ final class ScipyLinalg
     public static function sqrtm(mixed $a, mixed $disp = true): mixed
     {
         return Registry::routine('slinalg.sqrtm', [$a, $disp]);
+    }
+
+    /**
+     * Principal angles between the column spaces of A and B (scipy.linalg.subspace_angles).
+     *
+     * scipy.linalg.subspace_angles
+     */
+    public static function subspaceAngles(mixed $A, mixed $B): mixed
+    {
+        return Registry::routine('slinalg.subspace_angles', [$A, $B]);
     }
 
     /**

@@ -3490,6 +3490,104 @@ static int r_cdf2rdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return rc;
 }
 
+/* Orthonormal basis for the column space of an m x n row-major matrix A (as scipy.linalg.orth): the leading
+   left singular vectors whose singular value exceeds max(s) * eps * max(m, n). Writes Q (m x rank, row-major)
+   into Qout (buffer >= m*min(m,n)) and the rank into *rank_out. 0 on success, -1 on failure. */
+static int sl_orth(const double *A, int64_t m, int64_t n, double *Qout, int64_t *rank_out)
+{
+    const int64_t k = m < n ? m : n;
+    *rank_out = 0;
+    if (k == 0) return 0;
+    double *a = (double *)malloc(sizeof(double) * (size_t)(m * n));
+    double *u = (double *)malloc(sizeof(double) * (size_t)(m * k));
+    double *s = (double *)malloc(sizeof(double) * (size_t)k);
+    double *vt = (double *)malloc(sizeof(double) * (size_t)(k * n));
+    int rc = -1;
+    if (a && u && s && vt) {
+        memcpy(a, A, sizeof(double) * (size_t)(m * n));
+        lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)k, vt, (lapack_int)n);
+        if (info == 0) {
+            const double tol = s[0] * (double)(m > n ? m : n) * DBL_EPSILON;
+            int64_t rank = 0;
+            for (int64_t i = 0; i < k; i++) if (s[i] > tol) rank++;
+            for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < rank; j++) Qout[i * rank + j] = u[i * k + j];
+            *rank_out = rank;
+            rc = 0;
+        }
+    }
+    free(a); free(u); free(s); free(vt);
+    return rc;
+}
+
+/* subspace_angles(A, B): the principal angles between the column spaces of A and B (scipy.linalg.subspace_angles).
+   QA = orth(A), QB = orth(B); sigma = svdvals(QA^T QB) are the cosines; the sines come from the SVD of the
+   residual of the smaller basis projected onto the larger. The result is invariant to the (sign-free) choice of
+   orthonormal bases, so it is deterministic. Returns the 1-D angle array. */
+static int r_subspace_angles(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("subspace_angles: A and B must be 2-D arrays"); return TSR_EARG; }
+    const int64_t nrow = args[0].arr.shape[0], nA = args[0].arr.shape[1], nB = args[1].arr.shape[1];
+    if (args[1].arr.shape[0] != nrow) { fn_set_error("subspace_angles: A and B must have the same number of rows"); return TSR_EARG; }
+    int64_t naA, naB;
+    double *A = mat_f64(&args[0], "A", &naA); if (!A) return TSR_ENOMEM;
+    double *B = mat_f64(&args[1], "B", &naB); if (!B) { fn_free_doubles(A, naA); return TSR_ENOMEM; }
+    const int64_t kA = nrow < nA ? nrow : nA, kB = nrow < nB ? nrow : nB;
+    double *QA = (double *)malloc(sizeof(double) * (size_t)(nrow * (kA ? kA : 1)));
+    double *QB = (double *)malloc(sizeof(double) * (size_t)(nrow * (kB ? kB : 1)));
+    int rc = TSR_OK;
+    int64_t rA = 0, rB = 0;
+    if (!QA || !QB) rc = TSR_ENOMEM;
+    else if (sl_orth(A, nrow, nA, QA, &rA) != 0 || sl_orth(B, nrow, nB, QB, &rB) != 0) { fn_set_error("subspace_angles: SVD did not converge"); rc = TSR_EARG; }
+    else {
+        const int64_t p = rA < rB ? rA : rB;                 /* number of angles */
+        double *M = (double *)malloc(sizeof(double) * (size_t)((rA * rB > 0 ? rA * rB : 1)));
+        double *Mc = (double *)malloc(sizeof(double) * (size_t)((rA * rB > 0 ? rA * rB : 1)));
+        double *sigma = (double *)malloc(sizeof(double) * (size_t)(p ? p : 1));
+        const int64_t bcols = rA >= rB ? rB : rA;
+        double *Bmat = (double *)malloc(sizeof(double) * (size_t)((nrow * bcols > 0 ? nrow * bcols : 1)));
+        double *svb = (double *)malloc(sizeof(double) * (size_t)(p ? p : 1));
+        if (!M || !Mc || !sigma || !Bmat || !svb) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < rA; i++) for (int64_t j = 0; j < rB; j++) {
+                double s = 0.0; for (int64_t l = 0; l < nrow; l++) s += QA[l * rA + i] * QB[l * rB + j];
+                M[i * rB + j] = s;
+            }
+            if (rA >= rB) {                                  /* Bmat = QB - QA @ M  (nrow x rB) */
+                for (int64_t i = 0; i < nrow; i++) for (int64_t j = 0; j < rB; j++) {
+                    double s = 0.0; for (int64_t l = 0; l < rA; l++) s += QA[i * rA + l] * M[l * rB + j];
+                    Bmat[i * rB + j] = QB[i * rB + j] - s;
+                }
+            } else {                                         /* Bmat = QA - QB @ M^T  (nrow x rA) */
+                for (int64_t i = 0; i < nrow; i++) for (int64_t j = 0; j < rA; j++) {
+                    double s = 0.0; for (int64_t l = 0; l < rB; l++) s += QB[i * rB + l] * M[j * rB + l];
+                    Bmat[i * rA + j] = QA[i * rA + j] - s;
+                }
+            }
+            if (p > 0) {
+                memcpy(Mc, M, sizeof(double) * (size_t)(rA * rB));
+                lapack_int i1 = svd_values(Mc, rA, rB, sigma);
+                lapack_int i2 = svd_values(Bmat, nrow, bcols, svb);
+                if (i1 != 0 || i2 != 0) { fn_set_error("subspace_angles: SVD did not converge"); rc = TSR_EARG; }
+            }
+            if (rc == TSR_OK) {
+                int64_t osh[1] = {p};
+                double *th = (double *)fn_result_array(&res[0], TSR_F64, 1, osh);
+                if (!th) rc = TSR_ENOMEM;
+                else for (int64_t i = 0; i < p; i++) {
+                    const double sg = sigma[i];
+                    if (sg * sg >= 0.5) { double x = svb[i]; x = x < -1.0 ? -1.0 : (x > 1.0 ? 1.0 : x); th[i] = asin(x); }
+                    else { double x = sigma[p - 1 - i]; x = x < -1.0 ? -1.0 : (x > 1.0 ? 1.0 : x); th[i] = acos(x); }
+                }
+            }
+        }
+        free(M); free(Mc); free(sigma); free(Bmat); free(svb);
+    }
+    free(QA); free(QB);
+    fn_free_doubles(A, naA); fn_free_doubles(B, naB);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -3559,6 +3657,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.expm_cond", 1, "A", "out", r_expm_cond, NULL, "Relative condition number of the matrix exponential from the Kronecker form of its Frechet derivative (scipy.linalg.expm_cond)."),
     ROUTINE("slinalg.rsf2csf", 2, "T, Z", "T, Z", r_rsf2csf, NULL, "Convert a real Schur form to the complex (upper-triangular) Schur form (scipy.linalg.rsf2csf)."),
     ROUTINE("slinalg.cdf2rdf", 2, "w, v", "wr, vr", r_cdf2rdf, NULL, "Convert complex eigenvalues/eigenvectors to real block-diagonal form (scipy.linalg.cdf2rdf)."),
+    ROUTINE("slinalg.subspace_angles", 2, "A, B", "out", r_subspace_angles, NULL, "Principal angles between the column spaces of A and B (scipy.linalg.subspace_angles)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),

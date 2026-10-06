@@ -74,3 +74,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-06,scipy.linalg: matrix_balance,87.7,87.0,61.2,60.9,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,"scipy.linalg: expm_frechet, expm_cond",87.7,87.0,61.3,61.1,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,"scipy.linalg: rsf2csf, cdf2rdf",87.7,87.0,61.5,61.2,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-06,scipy.linalg: subspace_angles,87.7,87.0,61.5,61.3,99.1,99.6,71.7,71.7,79.1,79.1

@@ -516,6 +516,7 @@
         "slinalg.solve_triangular": "pass",
         "slinalg.solveh_banded": "pass",
         "slinalg.sqrtm": "pass",
+        "slinalg.subspace_angles": "pass",
         "slinalg.svd": "pass",
         "slinalg.svdvals": "pass",
         "slinalg.tanhm": "pass",
@@ -2068,7 +2069,8 @@
             "slinalg.expm_frechet": 1.223856557204449e-14,
             "slinalg.expm_cond": 3.9339171700390486e-16,
             "slinalg.rsf2csf": 1.125,
-            "slinalg.cdf2rdf": 0
+            "slinalg.cdf2rdf": 0,
+            "slinalg.subspace_angles": 0.02500842416944293
         },
         "ext": {
             "np.median": 0,
@@ -3103,7 +3105,8 @@
             "slinalg.expm_frechet": 1.223856557204449e-14,
             "slinalg.expm_cond": 3.9339171700390486e-16,
             "slinalg.rsf2csf": 1.125,
-            "slinalg.cdf2rdf": 0
+            "slinalg.cdf2rdf": 0,
+            "slinalg.subspace_angles": 0.02500842416944293
         }
     },
     "ext": {
@@ -3623,6 +3626,7 @@
         "slinalg.solve_triangular": "pass",
         "slinalg.solveh_banded": "pass",
         "slinalg.sqrtm": "pass",
+        "slinalg.subspace_angles": "pass",
         "slinalg.svd": "pass",
         "slinalg.svdvals": "pass",
         "slinalg.tanhm": "pass",

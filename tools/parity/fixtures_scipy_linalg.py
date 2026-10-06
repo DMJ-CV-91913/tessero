@@ -399,6 +399,17 @@ def main():
         crf.append(call('cdf2rdf', [we, ve], names=['wr', 'vr']))
     blocks['cdf2rdf'] = crf
 
+    # subspace_angles: principal angles between column spaces. Various rank combinations, including overlapping
+    # and disjoint subspaces, exercise both the arccos (large cosine) and arcsin (small angle) branches.
+    sang = []
+    for (nr, pa, pb) in ((5, 2, 2), (6, 3, 2), (4, 2, 3), (6, 3, 3), (5, 1, 2)):
+        sang.append(call('subspace_angles', [rng.uniform(-2, 2, size=(nr, pa)), rng.uniform(-2, 2, size=(nr, pb))]))
+    # a shared-column case: B overlaps A so some angles are ~0
+    Ash = rng.uniform(-2, 2, size=(6, 3))
+    Bsh = np.column_stack([Ash[:, 0], rng.uniform(-2, 2, size=(6, 2))])
+    sang.append(call('subspace_angles', [Ash, Bsh]))
+    blocks['subspace_angles'] = sang
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}
