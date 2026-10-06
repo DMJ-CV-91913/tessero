@@ -307,6 +307,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.solve_banded` | `Tessero\ScipyLinalg::solveBanded()` |
 | `scipy.linalg.solve_circulant` | `Tessero\ScipyLinalg::solveCirculant()` |
 | `scipy.linalg.solve_continuous_lyapunov` | `Tessero\ScipyLinalg::solveContinuousLyapunov()` |
+| `scipy.linalg.solve_discrete_lyapunov` | `Tessero\ScipyLinalg::solveDiscreteLyapunov()` |
 | `scipy.linalg.solve_sylvester` | `Tessero\ScipyLinalg::solveSylvester()` |
 | `scipy.linalg.solve_toeplitz` | `Tessero\ScipyLinalg::solveToeplitz()` |
 | `scipy.linalg.solve_triangular` | `Tessero\ScipyLinalg::solveTriangular()` |

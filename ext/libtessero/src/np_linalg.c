@@ -2482,6 +2482,39 @@ static int r_cholesky_banded(const void *ctx, const tsr_arg *args, int nargs, ts
     return rc;
 }
 
+/* solve_discrete_lyapunov(a, q): solve the discrete Lyapunov (Stein) equation A X A^H - X + Q = 0, i.e.
+   X - A X A^H = Q, by the direct method (I - A (x) conj(A)) vec(X) = vec(Q) with C-order vec; for real a this
+   is A (x) A, solved with dgesv (scipy.linalg.solve_discrete_lyapunov, method='direct'). */
+static int r_solve_discrete_lyapunov(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("solve_discrete_lyapunov: a and q must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[1].arr.shape[1] != n) { fn_set_error("solve_discrete_lyapunov: a and q must be square and the same size"); return TSR_EARG; }
+    int64_t na, nq;
+    double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    double *q = mat_f64(&args[1], "q", &nq); if (!q) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    const int64_t n2 = n * n;
+    double *M = (double *)malloc(sizeof(double) * (size_t)(n2 * n2 > 0 ? n2 * n2 : 1));
+    double *rhs = (double *)malloc(sizeof(double) * (size_t)(n2 > 0 ? n2 : 1));
+    int rc = TSR_OK;
+    if (!M || !rhs) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < n; i++) for (int64_t k = 0; k < n; k++) {
+            const int64_t row = i * n + k;
+            for (int64_t j = 0; j < n; j++) for (int64_t l = 0; l < n; l++) {
+                const int64_t col = j * n + l;
+                M[row * n2 + col] = (row == col ? 1.0 : 0.0) - a[i * n + j] * a[k * n + l];
+            }
+        }
+        for (int64_t i = 0; i < n2; i++) rhs[i] = q[i];
+        if (sl_dense_solve(M, rhs, n2, 1) != 0) { fn_set_error("solve_discrete_lyapunov: the Stein system is singular"); rc = TSR_EARG; }
+        else { int64_t osh[2] = {n, n}; double *x = (double *)fn_result_array(&res[0], TSR_F64, 2, osh); if (!x) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n2; i++) x[i] = rhs[i]; }
+    }
+    free(M); free(rhs); fn_free_doubles(a, na); fn_free_doubles(q, nq);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3036,6 +3069,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.eigh_tridiagonal", 2, "d, e", "eigenvalues, eigenvectors", r_eigh_tridiagonal, NULL, "Eigenvalues and eigenvectors of a symmetric tridiagonal matrix via dstev (scipy.linalg.eigh_tridiagonal)."),
     ROUTINE("slinalg.eigvals_banded", 1, "a_band, lower=False", "out", r_eigvals_banded, NULL, "Eigenvalues of a symmetric banded matrix in band storage via dsbevd (scipy.linalg.eigvals_banded)."),
     ROUTINE("slinalg.cholesky_banded", 1, "ab, lower=False", "out", r_cholesky_banded, NULL, "Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded)."),
+    ROUTINE("slinalg.solve_discrete_lyapunov", 1, "a, q", "out", r_solve_discrete_lyapunov, NULL, "Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

@@ -76,6 +76,7 @@ final class ScipyLinalg
     'solve_banded' => 'solveBanded',
     'solve_circulant' => 'solveCirculant',
     'solve_continuous_lyapunov' => 'solveContinuousLyapunov',
+    'solve_discrete_lyapunov' => 'solveDiscreteLyapunov',
     'solve_sylvester' => 'solveSylvester',
     'solve_toeplitz' => 'solveToeplitz',
     'solve_triangular' => 'solveTriangular',
@@ -708,6 +709,16 @@ final class ScipyLinalg
     public static function solveContinuousLyapunov(mixed $a, mixed $q): mixed
     {
         return Registry::routine('slinalg.solve_continuous_lyapunov', [$a, $q]);
+    }
+
+    /**
+     * Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov).
+     *
+     * scipy.linalg.solve_discrete_lyapunov
+     */
+    public static function solveDiscreteLyapunov(mixed $a, mixed $q): mixed
+    {
+        return Registry::routine('slinalg.solve_discrete_lyapunov', [$a, $q]);
     }
 
     /**
