@@ -472,6 +472,15 @@ def main():
         cosn.append(call('cossin', [Xo, pp, qq], names=['u', 'cs', 'vh']))
     blocks['cossin'] = cosn
 
+    # ordqz: reordered generalised Schur decomposition (dgges + dtgsen). Compared directly, like qz.
+    oqz = []
+    for n in (3, 4, 5):
+        A_ = rng.uniform(-3, 3, (n, n))
+        B_ = rng.uniform(-3, 3, (n, n))
+        for srt in ('lhp', 'iuc'):
+            oqz.append(call('ordqz', [A_, B_, srt], names=['AA', 'BB', 'alpha', 'beta', 'Q', 'Z']))
+    blocks['ordqz'] = oqz
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}
