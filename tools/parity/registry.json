@@ -1880,6 +1880,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.hilbert2": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.lfilter": {
             "kind": "routine",
             "nin": 0,
