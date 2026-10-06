@@ -3746,6 +3746,57 @@ static int r_solve_discrete_are(const void *ctx, const tsr_arg *args, int nargs,
     return rc;
 }
 
+/* qr_multiply(a, c, mode='right'): the product of c with the economic orthogonal factor Q of a (formed via
+   dgeqrf + dorgqr with LAPACK's standard, non-canonicalised signs, matching scipy.linalg.qr_multiply).
+   mode='left' returns (Q @ c, R); mode='right' returns (c @ Q, R), with R the economic upper-triangular factor. */
+static int r_qr_multiply(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("qr_multiply: a and c must be 2-D arrays"); return TSR_EARG; }
+    int left = 0;
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) {
+        if (!strcmp(args[2].str, "left")) left = 1;
+        else if (strcmp(args[2].str, "right") != 0) { fn_set_error("qr_multiply: mode must be 'left' or 'right'"); return TSR_EARG; }
+    }
+    const int64_t m = args[0].arr.shape[0], n = args[0].arr.shape[1], k = m < n ? m : n;
+    const int64_t cr = args[1].arr.shape[0], cc = args[1].arr.shape[1];
+    int64_t na, nc;
+    double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    double *c = mat_f64(&args[1], "c", &nc); if (!c) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    double *tau = (double *)malloc(sizeof(double) * (size_t)(k > 0 ? k : 1));
+    double *q = (double *)malloc(sizeof(double) * (size_t)(m * (k > 0 ? k : 1)));
+    int rc = TSR_OK;
+    if (!tau || !q) rc = TSR_ENOMEM;
+    else if (k > 0) {
+        lapack_int info = LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)n, a, (lapack_int)n, tau);
+        if (info != 0) { rc = TSR_EARG; fn_set_error("qr_multiply: dgeqrf failed"); }
+        else {
+            for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < k; j++) q[i * k + j] = j < n ? a[i * n + j] : 0.0;
+            lapack_int info2 = LAPACKE_dorgqr(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)k, (lapack_int)k, q, (lapack_int)k, tau);
+            if (info2 != 0) { rc = TSR_EARG; fn_set_error("qr_multiply: dorgqr failed"); }
+        }
+    }
+    if (rc == TSR_OK) {
+        if (left && cr != k) { fn_set_error("qr_multiply: shapes incompatible for Q @ c"); rc = TSR_EARG; }
+        else if (!left && cc != m) { fn_set_error("qr_multiply: shapes incompatible for c @ Q"); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        const int64_t outr = left ? m : cr, outc = left ? cc : k;
+        int64_t osh[2] = {outr, outc}, rsh[2] = {k, n};
+        double *cq = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+        double *rout = (double *)fn_result_array(&res[1], TSR_F64, 2, rsh);
+        if (!cq || !rout) rc = TSR_ENOMEM;
+        else {
+            if (left) for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < cc; j++) { double s = 0.0; for (int64_t l = 0; l < k; l++) s += q[i * k + l] * c[l * cc + j]; cq[i * cc + j] = s; }
+            else for (int64_t i = 0; i < cr; i++) for (int64_t j = 0; j < k; j++) { double s = 0.0; for (int64_t l = 0; l < m; l++) s += c[i * m + l] * q[l * k + j]; cq[i * k + j] = s; }
+            for (int64_t i = 0; i < k; i++) for (int64_t j = 0; j < n; j++) rout[i * n + j] = j >= i ? a[i * n + j] : 0.0;
+        }
+    }
+    free(tau); free(q);
+    fn_free_doubles(a, na); fn_free_doubles(c, nc);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -3819,6 +3870,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.solve_continuous_are", 4, "a, b, q, r", "out", r_solve_continuous_are, NULL, "Stabilising solution of the continuous-time algebraic Riccati equation (scipy.linalg.solve_continuous_are)."),
     ROUTINE("slinalg.solve_discrete_are", 4, "a, b, q, r", "out", r_solve_discrete_are, NULL, "Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are)."),
     ROUTINE("slinalg.signm", 1, "A", "out", r_signm, NULL, "Matrix sign function via the Schur-Parlett method (scipy.linalg.signm; real, well-separated spectrum)."),
+    ROUTINE("slinalg.qr_multiply", 3, "a, c, mode='right'", "CQ, R", r_qr_multiply, NULL, "Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),

@@ -2083,6 +2083,12 @@
                 "doc": "QR factorisation (scipy.linalg.qr; mode 'full' or 'economic')."
             },
             {
+                "name": "qrMultiply",
+                "static": true,
+                "sig": "qrMultiply(mixed $a, mixed $c, mixed $mode = 'right'): mixed",
+                "doc": "Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply)."
+            },
+            {
                 "name": "qz",
                 "static": true,
                 "sig": "qz(mixed $A, mixed $B, mixed $output = 'real'): mixed",
@@ -14962,6 +14968,12 @@
                 "name": "signm",
                 "static": true,
                 "sig": "signm($A)",
+                "doc": ""
+            },
+            {
+                "name": "qrMultiply",
+                "static": true,
+                "sig": "qrMultiply($a, $c, $mode = 'right')",
                 "doc": ""
             },
             {
