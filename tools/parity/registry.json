@@ -1905,6 +1905,11 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.cholesky_banded": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.circulant": {
             "kind": "routine",
             "nin": 0,
@@ -1966,6 +1971,11 @@
             "nout": 2
         },
         "slinalg.eigvals": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.eigvals_banded": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

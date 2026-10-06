@@ -447,6 +447,7 @@
         "slinalg.cho_factor": "pass",
         "slinalg.cho_solve": "pass",
         "slinalg.cholesky": "pass",
+        "slinalg.cholesky_banded": "pass",
         "slinalg.circulant": "pass",
         "slinalg.companion": "pass",
         "slinalg.convolution_matrix": "pass",
@@ -460,6 +461,7 @@
         "slinalg.eigh": "pass",
         "slinalg.eigh_tridiagonal": "pass",
         "slinalg.eigvals": "pass",
+        "slinalg.eigvals_banded": "pass",
         "slinalg.eigvalsh": "pass",
         "slinalg.eigvalsh_tridiagonal": "pass",
         "slinalg.expm": "pass",
@@ -2044,7 +2046,9 @@
             "np.poly": 0,
             "np.sort_complex": 0,
             "slinalg.invhilbert": 0,
-            "slinalg.eigh_tridiagonal": 0
+            "slinalg.eigh_tridiagonal": 0,
+            "slinalg.eigvals_banded": 0,
+            "slinalg.cholesky_banded": 0
         },
         "ext": {
             "np.median": 0,
@@ -3067,7 +3071,9 @@
             "np.poly": 0,
             "np.sort_complex": 0,
             "slinalg.invhilbert": 0,
-            "slinalg.eigh_tridiagonal": 0
+            "slinalg.eigh_tridiagonal": 0,
+            "slinalg.eigvals_banded": 0,
+            "slinalg.cholesky_banded": 0
         }
     },
     "ext": {
@@ -3518,6 +3524,7 @@
         "slinalg.cho_factor": "pass",
         "slinalg.cho_solve": "pass",
         "slinalg.cholesky": "pass",
+        "slinalg.cholesky_banded": "pass",
         "slinalg.circulant": "pass",
         "slinalg.companion": "pass",
         "slinalg.convolution_matrix": "pass",
@@ -3531,6 +3538,7 @@
         "slinalg.eigh": "pass",
         "slinalg.eigh_tridiagonal": "pass",
         "slinalg.eigvals": "pass",
+        "slinalg.eigvals_banded": "pass",
         "slinalg.eigvalsh": "pass",
         "slinalg.eigvalsh_tridiagonal": "pass",
         "slinalg.expm": "pass",

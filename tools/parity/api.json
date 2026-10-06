@@ -1765,6 +1765,12 @@
                 "doc": "Cholesky factor, upper by default (scipy.linalg.cholesky)."
             },
             {
+                "name": "choleskyBanded",
+                "static": true,
+                "sig": "choleskyBanded(mixed $ab, mixed $lower = false): mixed",
+                "doc": "Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded)."
+            },
+            {
                 "name": "circulant",
                 "static": true,
                 "sig": "circulant(mixed $c): mixed",
@@ -1841,6 +1847,12 @@
                 "static": true,
                 "sig": "eigvals(mixed $a): mixed",
                 "doc": "Eigenvalues of a general matrix, complex, sorted (scipy.linalg.eigvals)."
+            },
+            {
+                "name": "eigvalsBanded",
+                "static": true,
+                "sig": "eigvalsBanded(mixed $aBand, mixed $lower = false): mixed",
+                "doc": "Eigenvalues of a symmetric banded matrix in band storage via dsbevd (scipy.linalg.eigvals_banded)."
             },
             {
                 "name": "eigvalsh",
@@ -14752,6 +14764,18 @@
                 "name": "eighTridiagonal",
                 "static": true,
                 "sig": "eighTridiagonal($d, $e)",
+                "doc": ""
+            },
+            {
+                "name": "eigvalsBanded",
+                "static": true,
+                "sig": "eigvalsBanded($aBand, $lower = false)",
+                "doc": ""
+            },
+            {
+                "name": "choleskyBanded",
+                "static": true,
+                "sig": "choleskyBanded($ab, $lower = false)",
                 "doc": ""
             },
             {
