@@ -2607,6 +2607,43 @@ static int r_rq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res
     return rc;
 }
 
+/* orthogonal_procrustes(A, B): the orthogonal matrix R minimising ||A R - B||_F, and scale = sum of singular
+   values. R = U Vt where U S Vt = svd(A^T B); scale = sum(S) (scipy.linalg.orthogonal_procrustes). Returns
+   (R, scale). */
+static int r_orthogonal_procrustes(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("orthogonal_procrustes: A and B must be 2-D arrays"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], n = args[0].arr.shape[1];
+    if (args[1].arr.shape[0] != m || args[1].arr.shape[1] != n) { fn_set_error("orthogonal_procrustes: A and B must have the same shape"); return TSR_EARG; }
+    int64_t nA, nB;
+    double *A = mat_f64(&args[0], "A", &nA); if (!A) return TSR_ENOMEM;
+    double *B = mat_f64(&args[1], "B", &nB); if (!B) { fn_free_doubles(A, nA); return TSR_ENOMEM; }
+    double *M = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *U = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *Vt = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *s = (double *)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+    int rc = TSR_OK;
+    if (!M || !U || !Vt || !s) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) { double acc = 0; for (int64_t k = 0; k < m; k++) acc += A[k * n + i] * B[k * n + j]; M[i * n + j] = acc; }
+        lapack_int info = n > 0 ? LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)n, (lapack_int)n, M, (lapack_int)n, s, U, (lapack_int)n, Vt, (lapack_int)n) : 0;
+        if (info != 0) { rc = TSR_EARG; fn_set_error("orthogonal_procrustes: SVD did not converge"); }
+        else {
+            int64_t rsh[2] = {n, n};
+            double *R = (double *)fn_result_array(&res[0], TSR_F64, 2, rsh);
+            if (!R) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) { double acc = 0; for (int64_t k = 0; k < n; k++) acc += U[i * n + k] * Vt[k * n + j]; R[i * n + j] = acc; }
+                double sc = 0; for (int64_t i = 0; i < n; i++) sc += s[i];
+                fn_result_num(&res[1], sc);
+            }
+        }
+    }
+    free(M); free(U); free(Vt); free(s); fn_free_doubles(A, nA); fn_free_doubles(B, nB);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3165,6 +3202,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.helmert", 1, "n, full=False", "out", r_helmert, NULL, "Helmert matrix of order n (scipy.linalg.helmert)."),
     ROUTINE("slinalg.cho_solve_banded", 1, "cb, lower, b", "out", r_cho_solve_banded, NULL, "Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded)."),
     ROUTINE("slinalg.rq", 2, "a, mode='full'", "R, Q", r_rq, NULL, "RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq)."),
+    ROUTINE("slinalg.orthogonal_procrustes", 2, "A, B", "R, scale", r_orthogonal_procrustes, NULL, "Orthogonal Procrustes solution R minimising ||A R - B|| and scale (scipy.linalg.orthogonal_procrustes)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

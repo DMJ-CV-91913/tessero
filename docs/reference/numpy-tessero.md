@@ -296,6 +296,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.norm` | `Tessero\ScipyLinalg::norm()` |
 | `scipy.linalg.null_space` | `Tessero\ScipyLinalg::nullSpace()` |
 | `scipy.linalg.orth` | `Tessero\ScipyLinalg::orth()` |
+| `scipy.linalg.orthogonal_procrustes` | `Tessero\ScipyLinalg::orthogonalProcrustes()` |
 | `scipy.linalg.pascal` | `Tessero\ScipyLinalg::pascal()` |
 | `scipy.linalg.pinv` | `Tessero\ScipyLinalg::pinv()` |
 | `scipy.linalg.pinvh` | `Tessero\ScipyLinalg::pinvh()` |
