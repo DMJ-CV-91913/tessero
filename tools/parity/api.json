@@ -2741,6 +2741,12 @@
                 "doc": "Gaussian-modulated sinusoid, in-phase component (scipy.signal.gausspulse)."
             },
             {
+                "name": "groupDelay",
+                "static": true,
+                "sig": "groupDelay(mixed $b, mixed $a, mixed $w = 512, mixed $whole = false): mixed",
+                "doc": "Group delay of a digital filter (scipy.signal.group_delay)."
+            },
+            {
                 "name": "lfilter",
                 "static": true,
                 "sig": "lfilter(mixed $b, mixed $a, mixed $x): mixed",
@@ -2829,6 +2835,12 @@
                 "static": true,
                 "sig": "sosfiltfilt(mixed $sos, mixed $x, mixed $axis = -1, mixed $padtype = 'odd', mixed $padlen = null): mixed",
                 "doc": "Zero-phase forward-backward SOS filtering with odd padding (scipy.signal.sosfiltfilt; 1-D)."
+            },
+            {
+                "name": "sosfreqz",
+                "static": true,
+                "sig": "sosfreqz(mixed $sos, mixed $worN = 512, mixed $whole = false): mixed",
+                "doc": "Frequency response of a second-order-sections cascade (scipy.signal.sosfreqz)."
             },
             {
                 "name": "square",
@@ -15459,6 +15471,18 @@
                 "name": "freqzZpk",
                 "static": true,
                 "sig": "freqzZpk($z, $p, $k, $worN = 512, $whole = false)",
+                "doc": ""
+            },
+            {
+                "name": "sosfreqz",
+                "static": true,
+                "sig": "sosfreqz($sos, $worN = 512, $whole = false)",
+                "doc": ""
+            },
+            {
+                "name": "groupDelay",
+                "static": true,
+                "sig": "groupDelay($b, $a, $w = 512, $whole = false)",
                 "doc": ""
             }
         ]

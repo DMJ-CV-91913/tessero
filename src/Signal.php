@@ -33,6 +33,7 @@ final class Signal
     'freqz' => 'freqz',
     'freqz_zpk' => 'freqzZpk',
     'gausspulse' => 'gausspulse',
+    'group_delay' => 'groupDelay',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
     'lp2bp' => 'lp2bp',
@@ -48,6 +49,7 @@ final class Signal
     'sosfilt' => 'sosfilt',
     'sosfilt_zi' => 'sosfiltZi',
     'sosfiltfilt' => 'sosfiltfilt',
+    'sosfreqz' => 'sosfreqz',
     'square' => 'square',
     'tf2zpk' => 'tf2zpk',
     'unit_impulse' => 'unitImpulse',
@@ -237,6 +239,18 @@ final class Signal
     }
 
     /**
+     * Group delay of a digital filter (scipy.signal.group_delay).
+     *
+     * scipy.signal.group_delay
+     *
+     * @return mixed one array, or an array keyed by w, gd when several results are requested
+     */
+    public static function groupDelay(mixed $b, mixed $a, mixed $w = 512, mixed $whole = false): mixed
+    {
+        return Registry::routine('signal.group_delay', [$b, $a, $w, $whole]);
+    }
+
+    /**
      * Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state).
      *
      * scipy.signal.lfilter
@@ -396,6 +410,18 @@ final class Signal
     public static function sosfiltfilt(mixed $sos, mixed $x, mixed $axis = -1, mixed $padtype = 'odd', mixed $padlen = null): mixed
     {
         return Registry::routine('signal.sosfiltfilt', [$sos, $x, $axis, $padtype, $padlen]);
+    }
+
+    /**
+     * Frequency response of a second-order-sections cascade (scipy.signal.sosfreqz).
+     *
+     * scipy.signal.sosfreqz
+     *
+     * @return mixed one array, or an array keyed by w, h when several results are requested
+     */
+    public static function sosfreqz(mixed $sos, mixed $worN = 512, mixed $whole = false): mixed
+    {
+        return Registry::routine('signal.sosfreqz', [$sos, $worN, $whole]);
     }
 
     /**

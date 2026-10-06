@@ -1832,6 +1832,76 @@ static int r_freqz_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* sosfreqz(sos, worN=512, whole=False): frequency response of an SOS cascade = product of the per-section
+   responses (scipy.signal.sosfreqz / freqz_sos). Returns (w, h). */
+static int r_sosfreqz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[1] != 6) { fn_set_error("sosfreqz: sos must be an (n, 6) array"); return TSR_EARG; }
+    const int64_t nsec = args[0].arr.shape[0];
+    const int64_t N = (nargs > 1 && args[1].kind == 1) ? (int64_t)args[1].num : 512;
+    const int whole = (nargs > 2 && (args[2].kind == 1 || args[2].kind == 4)) ? args[2].num != 0 : 0;
+    if (N <= 0) { fn_set_error("sosfreqz: worN must be positive"); return TSR_EARG; }
+    int64_t ns; double *sos = fn_arg_doubles(&args[0], &ns); if (!sos) return TSR_ENOMEM;
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N});
+    double *h = w ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){N}) : NULL;
+    int rc = TSR_OK;
+    if (!w || !h) rc = TSR_ENOMEM;
+    else {
+        const double step = (whole ? 2.0 * M_PI : M_PI) / (double)N;
+        for (int64_t j = 0; j < N; j++) {
+            const double wj = (double)j * step;
+            const double complex zm1 = cos(wj) - I * sin(wj);
+            double complex hv = 1.0;
+            for (int64_t s = 0; s < nsec; s++) {
+                const double *sb = sos + s * 6, *sa = sos + s * 6 + 3;
+                const double complex num = sb[0] + zm1 * (sb[1] + zm1 * sb[2]);
+                const double complex den = sa[0] + zm1 * (sa[1] + zm1 * sa[2]);
+                hv *= sig_cdiv(num, den);
+            }
+            w[j] = wj; h[2 * j] = creal(hv); h[2 * j + 1] = cimag(hv);
+        }
+    }
+    fn_free_doubles(sos, ns);
+    return rc;
+}
+
+/* group_delay(b, a, w=512, whole=False): group delay -d(arg H)/dw of a digital filter (scipy.signal.group_delay).
+   With c = convolve(b, a[::-1]): gd(w) = Re( sum_k k*c[k] z^k / sum_k c[k] z^k ) - (len(a)-1), z = exp(-i w);
+   non-finite values (singularities) are set to 0. Returns (w, gd). */
+static int r_group_delay(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("group_delay: b and a must be 1-D arrays"); return TSR_EARG; }
+    const int64_t N = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 512;
+    const int whole = (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) ? args[3].num != 0 : 0;
+    if (N <= 0) { fn_set_error("group_delay: w must be positive"); return TSR_EARG; }
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    const int64_t nc = nb + na - 1;                          /* c = convolve(b, reverse(a)) */
+    double *c = (double *)calloc((size_t)nc, sizeof(double));
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N});
+    double *gd = w ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){N}) : NULL;
+    int rc = TSR_OK;
+    if (!c || !w || !gd) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < nb; i++) for (int64_t k = 0; k < na; k++) c[i + k] += b[i] * a[na - 1 - k];
+        const double step = (whole ? 2.0 * M_PI : M_PI) / (double)N;
+        for (int64_t j = 0; j < N; j++) {
+            const double wj = (double)j * step;
+            const double complex z = cos(wj) - I * sin(wj);
+            double complex num = 0.0, den = 0.0;          /* polyval(c[::-1], z) and polyval(cr[::-1], z), Horner as numpy */
+            for (int64_t k = nc - 1; k >= 0; k--) { den = den * z + c[k]; num = num * z + (double)k * c[k]; }
+            const double complex ratio = sig_cdiv(num, den);
+            double g = creal(ratio) - (double)(na - 1);
+            if (!isfinite(g)) g = 0.0;
+            w[j] = wj; gd[j] = g;
+        }
+    }
+    free(c); fn_free_doubles(b, nb); fn_free_doubles(a, na);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -1867,6 +1937,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.freqs", 2, "b, a, worN", "w, h", r_freqs, NULL, "Analog filter frequency response at the given frequencies (scipy.signal.freqs)."),
     ROUTINE("signal.freqs_zpk", 2, "z, p, k, worN", "w, h", r_freqs_zpk, NULL, "Analog zpk frequency response at the given frequencies (scipy.signal.freqs_zpk)."),
     ROUTINE("signal.freqz_zpk", 2, "z, p, k, worN=512, whole=False", "w, h", r_freqz_zpk, NULL, "Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk)."),
+    ROUTINE("signal.sosfreqz", 2, "sos, worN=512, whole=False", "w, h", r_sosfreqz, NULL, "Frequency response of a second-order-sections cascade (scipy.signal.sosfreqz)."),
+    ROUTINE("signal.group_delay", 2, "b, a, w=512, whole=False", "w, gd", r_group_delay, NULL, "Group delay of a digital filter (scipy.signal.group_delay)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),
