@@ -2089,6 +2089,12 @@
                 "doc": "Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov)."
             },
             {
+                "name": "solveDiscreteLyapunov",
+                "static": true,
+                "sig": "solveDiscreteLyapunov(mixed $a, mixed $q): mixed",
+                "doc": "Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov)."
+            },
+            {
                 "name": "solveSylvester",
                 "static": true,
                 "sig": "solveSylvester(mixed $a, mixed $b, mixed $q): mixed",
@@ -14776,6 +14782,12 @@
                 "name": "choleskyBanded",
                 "static": true,
                 "sig": "choleskyBanded($ab, $lower = false)",
+                "doc": ""
+            },
+            {
+                "name": "solveDiscreteLyapunov",
+                "static": true,
+                "sig": "solveDiscreteLyapunov($a, $q)",
                 "doc": ""
             },
             {

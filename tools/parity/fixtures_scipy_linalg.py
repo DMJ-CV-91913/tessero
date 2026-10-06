@@ -266,6 +266,9 @@ def main():
     _band2 = np.array([[0.0, 0.0, 0.5, 0.5], [0.0, 1.0, 1.0, 1.0], [6.0, 6.0, 6.0, 6.0]])  # kd=2 SPD
     blocks['eigvals_banded'] = [call('eigvals_banded', [_band1]), call('eigvals_banded', [_band2])]
     blocks['cholesky_banded'] = [call('cholesky_banded', [_band1]), call('cholesky_banded', [_band2])]
+    _Adl = np.array([[0.5, 0.1, 0.0], [0.0, 0.3, 0.1], [0.1, 0.0, 0.4]])   # spectral radius < 1
+    _Qdl = np.array([[2.0, 0.3, 0.1], [0.3, 3.0, 0.2], [0.1, 0.2, 1.5]])   # symmetric
+    blocks['solve_discrete_lyapunov'] = [call('solve_discrete_lyapunov', [_Adl, _Qdl])]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]

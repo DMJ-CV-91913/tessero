@@ -66,3 +66,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-06,"numpy: poly, sort_complex",87.7,87.0,60.5,60.3,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,"scipy.linalg: invhilbert, eigh_tridiagonal",87.7,87.0,60.7,60.4,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,"scipy.linalg: eigvals_banded, cholesky_banded",87.7,87.0,60.8,60.5,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-06,scipy.linalg: solve_discrete_lyapunov,87.7,87.0,60.9,60.6,99.1,99.6,71.7,71.7,79.1,79.1
