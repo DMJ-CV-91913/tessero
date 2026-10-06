@@ -19,6 +19,7 @@ final class ScipyLinalg
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'block_diag' => 'blockDiag',
+    'cdf2rdf' => 'cdf2rdf',
     'cho_factor' => 'choFactor',
     'cho_solve' => 'choSolve',
     'cho_solve_banded' => 'choSolveBanded',
@@ -76,6 +77,7 @@ final class ScipyLinalg
     'qr' => 'qr',
     'qz' => 'qz',
     'rq' => 'rq',
+    'rsf2csf' => 'rsf2csf',
     'schur' => 'schur',
     'sinhm' => 'sinhm',
     'sinm' => 'sinm',
@@ -120,6 +122,18 @@ final class ScipyLinalg
     public static function blockDiag(mixed ...$arrs): mixed
     {
         return Registry::routineVariadic('slinalg.block_diag', $arrs);
+    }
+
+    /**
+     * Convert complex eigenvalues/eigenvectors to real block-diagonal form (scipy.linalg.cdf2rdf).
+     *
+     * scipy.linalg.cdf2rdf
+     *
+     * @return mixed one array, or an array keyed by wr, vr when several results are requested
+     */
+    public static function cdf2rdf(mixed $w, mixed $v): mixed
+    {
+        return Registry::routine('slinalg.cdf2rdf', [$w, $v]);
     }
 
     /**
@@ -722,6 +736,18 @@ final class ScipyLinalg
     public static function rq(mixed $a, mixed $mode = 'full'): mixed
     {
         return Registry::routine('slinalg.rq', [$a, $mode]);
+    }
+
+    /**
+     * Convert a real Schur form to the complex (upper-triangular) Schur form (scipy.linalg.rsf2csf).
+     *
+     * scipy.linalg.rsf2csf
+     *
+     * @return mixed one array, or an array keyed by T, Z when several results are requested
+     */
+    public static function rsf2csf(mixed $T, mixed $Z): mixed
+    {
+        return Registry::routine('slinalg.rsf2csf', [$T, $Z]);
     }
 
     /**
