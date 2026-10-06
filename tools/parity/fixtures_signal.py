@@ -186,6 +186,28 @@ uimp.append(_wave_case('unit_impulse', [8, 3], [8, 3]))
 uimp.append(_wave_case('unit_impulse', [9, 'mid'], [9, 'mid']))
 uimp.append(_wave_case('unit_impulse', [8, -1], [8, -1]))
 
+# transfer-function / zpk / sos conversions
+def _sortc(c):
+    c = np.asarray(c, complex)
+    return c[np.lexsort((c.imag, c.real))]
+
+
+nrm, t2z, s2t = [], [], []
+for (b, a) in [([1., 2., 3.], [2., 4., 6.]), ([0., 1., 2.], [1., 2., 1.]), ([1., 2.], [3., 4., 5.]),
+               ([2., 0., -1.], [1., 0.5, 0.25])]:
+    bn, an = sg.normalize(b, a)
+    nrm.append({'args': [F.enc(np.asarray(b)), F.enc(np.asarray(a))], 'kwargs': {},
+                'expect': F.enc_result((bn, an), ['b', 'a']), 'compare': 'tol'})
+for (N, Wn, bt) in [(2, 0.2, 'low'), (3, 0.3, 'low'), (4, 0.25, 'high'), (3, 0.5, 'low')]:
+    bb, aa = butter(N, Wn, btype=bt)
+    z, p, k = sg.tf2zpk(bb, aa)
+    t2z.append({'args': [F.enc(bb), F.enc(aa)], 'kwargs': {},
+                'expect': F.enc_result((_sortc(z), _sortc(p), float(k)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+    sos = butter(N, Wn, btype=bt, output='sos')
+    b2, a2 = sg.sos2tf(sos)
+    s2t.append({'args': [F.enc(np.asarray(sos))], 'kwargs': {},
+                'expect': F.enc_result((b2, a2), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -203,7 +225,10 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},
-                 {'fn': 'unit_impulse', 'cases': uimp}]}
+                 {'fn': 'unit_impulse', 'cases': uimp},
+                 {'fn': 'normalize', 'cases': nrm, 'tol': {'atol': 1e-12}},
+                 {'fn': 'tf2zpk', 'cases': t2z, 'tol': {'atol': 1e-12}},
+                 {'fn': 'sos2tf', 'cases': s2t, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

@@ -91,6 +91,11 @@
 | `signal.cheby2` | every call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
+| `signal.normalize` | every call | rtol 0 |
+| `signal.tf2zpk` | every call | rtol 0 |
+| `signal.tf2zpk` | call | rtol 0 |
+| `signal.sos2tf` | every call | rtol 0 |
+| `signal.sos2tf` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |
