@@ -2273,6 +2273,66 @@ static int r_resample(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     return rc;
 }
 
+static double sig_sinc(double x) { if (x == 0.0) return 1.0; const double px = M_PI * x; return sin(px) / px; }
+
+/* firwin(numtaps, cutoff, window='hamming', pass_zero=True, scale=True, fs=None): FIR filter design by the
+   window method (scipy.signal.firwin). cutoff is a 1-D array of band edges (normalised by fs/2); the passbands
+   are built from pass_zero, summed as windowed sinc differences, and (if scale) normalised to unit gain at the
+   first passband's reference frequency. Default window is a symmetric Hamming. */
+static int r_firwin(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("firwin: numtaps must be an integer"); return TSR_EARG; }
+    const int64_t M = (int64_t)args[0].num;
+    if (M < 1) { fn_set_error("firwin: numtaps must be >= 1"); return TSR_EARG; }
+    if (args[1].kind != 3) { fn_set_error("firwin: cutoff must be an array"); return TSR_EARG; }
+    int64_t nc; double *cut0 = fn_arg_doubles(&args[1], &nc); if (!cut0) return TSR_ENOMEM;
+    const int pass_zero = (nargs > 3 && args[3].kind == 4) ? (args[3].num != 0.0) : 1;
+    const int do_scale = (nargs > 4 && args[4].kind == 4) ? (args[4].num != 0.0) : 1;
+    const double fs = (nargs > 5 && args[5].kind == 1) ? args[5].num : 2.0;
+    const double nyq = 0.5 * fs;
+    int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
+    const int win_boxcar = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "boxcar"));
+    const int win_hann = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "hann"));
+    int rc = TSR_OK;
+    const int pass_nyq = ((nc % 2 == 0) == pass_zero);
+    double *cut = (double *)malloc(sizeof(double) * (size_t)(nc + 2));
+    double *h = (double *)calloc((size_t)M, sizeof(double));
+    double *win = (double *)malloc(sizeof(double) * (size_t)M);
+    if (!cut || !h || !win || (nargs > 2 && args[2].kind == 3 && !warr)) rc = TSR_ENOMEM;
+    else if (pass_nyq && M % 2 == 0) { fn_set_error("firwin: an even-length filter must have zero response at Nyquist"); rc = TSR_EARG; }
+    else if (warr && nwin != M) { fn_set_error("firwin: window length must equal numtaps"); rc = TSR_EARG; }
+    else {
+        int64_t ne = 0;                                      /* assemble band edges: [0?] cutoff [1?] */
+        if (pass_zero) cut[ne++] = 0.0;
+        for (int64_t i = 0; i < nc; i++) cut[ne++] = cut0[i] / nyq;
+        if (pass_nyq) cut[ne++] = 1.0;
+        const double alpha = 0.5 * (double)(M - 1);
+        for (int64_t b = 0; b + 1 < ne; b += 2) {
+            const double left = cut[b], right = cut[b + 1];
+            for (int64_t n = 0; n < M; n++) { const double m = (double)n - alpha; h[n] += right * sig_sinc(right * m) - left * sig_sinc(left * m); }
+        }
+        for (int64_t n = 0; n < M; n++) {                    /* symmetric window (fftbins=False) */
+            if (warr) win[n] = warr[n];
+            else if (win_boxcar) win[n] = 1.0;
+            else if (win_hann) win[n] = (M == 1) ? 1.0 : 0.5 - 0.5 * cos(2.0 * M_PI * (double)n / (double)(M - 1));
+            else win[n] = (M == 1) ? 1.0 : 0.54 - 0.46 * cos(2.0 * M_PI * (double)n / (double)(M - 1));   /* hamming */
+            h[n] *= win[n];
+        }
+        if (do_scale) {
+            const double left = cut[0], right = cut[1];
+            const double sf = (left == 0.0) ? 0.0 : (right == 1.0 ? 1.0 : 0.5 * (left + right));
+            double s = 0.0; for (int64_t n = 0; n < M; n++) s += h[n] * cos(M_PI * ((double)n - alpha) * sf);
+            if (s != 0.0) for (int64_t n = 0; n < M; n++) h[n] /= s;
+        }
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){M});
+        if (!out) rc = TSR_ENOMEM; else memcpy(out, h, sizeof(double) * (size_t)M);
+    }
+    free(cut); free(h); free(win); if (warr) fn_free_doubles(warr, nwin);
+    fn_free_doubles(cut0, nc);
+    return rc;
+}
+
 /* correlation_lags(in1_len, in2_len, mode='full'): the lag indices for signal.correlate's output
    (scipy.signal.correlation_lags). Integer array. */
 static int r_correlation_lags(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2497,6 +2557,7 @@ static const fn_def DEFS[] = {
     ROUTINE("windows.tukey", 1, "M, alpha=0.5, sym=True", "out", r_win_tukey, NULL, "Tukey (tapered cosine) window (scipy.signal.windows.tukey)."),
     ROUTINE("signal.correlation_lags", 1, "in1_len, in2_len, mode='full'", "out", r_correlation_lags, NULL, "Lag indices for the output of signal.correlate (scipy.signal.correlation_lags)."),
     ROUTINE("signal.resample", 1, "x, num, t=None, axis=0, window=None, domain='time'", "out", r_resample, NULL, "Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None)."),
+    ROUTINE("signal.firwin", 1, "numtaps, cutoff, window='hamming', pass_zero=True, scale=True, fs=None", "out", r_firwin, NULL, "FIR filter design by the window method (scipy.signal.firwin)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

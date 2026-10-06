@@ -132,6 +132,8 @@
 | `signal.spectrogram` | call | rtol 0 |
 | `signal.resample` | every call | rtol 0 |
 | `signal.resample` | call | rtol 0 |
+| `signal.firwin` | every call | rtol 0 |
+| `signal.firwin` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

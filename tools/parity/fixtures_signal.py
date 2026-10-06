@@ -369,6 +369,30 @@ for (n0, num) in [(64, 128), (128, 64), (100, 50), (50, 100), (64, 64), (81, 40)
     xr = rng.uniform(-3, 3, n0)
     rsmp.append({'args': [F.enc(xr), F.enc(num)], 'kwargs': {}, 'expect': F.enc_result(sg.resample(xr, num), []), 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# firwin: FIR design by the window method (window/pass_zero/scale/fs are keyword-only in scipy)
+def _firwin_case(numtaps, cutoff, window='hamming', pass_zero=True, scale=True, fs=None):
+    args = [numtaps, np.asarray(cutoff, dtype=float), window, pass_zero, scale]
+    kw = dict(window=window, pass_zero=pass_zero, scale=scale)
+    if fs is not None:
+        args.append(fs); kw['fs'] = fs
+    r = sg.firwin(numtaps, np.asarray(cutoff, dtype=float), **kw)
+    return {'args': [F.enc(np.asarray(a) if isinstance(a, np.ndarray) else a) for a in args],
+            'kwargs': {}, 'expect': F.enc_result(r, []), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+fwn = [
+    _firwin_case(31, [0.3]),                               # lowpass, hamming, scaled
+    _firwin_case(31, [0.3], window='hann'),
+    _firwin_case(32, [0.3]),                               # even lowpass
+    _firwin_case(31, [0.3], pass_zero=False),              # highpass
+    _firwin_case(31, [0.2, 0.5], pass_zero=False),         # bandpass
+    _firwin_case(31, [0.2, 0.5]),                          # bandstop
+    _firwin_case(31, [0.3], scale=False),
+    _firwin_case(31, [30.0], fs=100.0),                    # fs
+    _firwin_case(31, [0.3], window='boxcar'),
+    _firwin_case(41, [0.15, 0.35, 0.6], pass_zero=False),  # multi-band
+]
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -408,7 +432,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'coherence', 'cases': coh, 'tol': {'atol': 1e-12}},
                  {'fn': 'spectrogram', 'cases': spg, 'tol': {'atol': 1e-12}},
                  {'fn': 'correlation_lags', 'cases': clg},
-                 {'fn': 'resample', 'cases': rsmp, 'tol': {'atol': 1e-10}}]}
+                 {'fn': 'resample', 'cases': rsmp, 'tol': {'atol': 1e-10}},
+                 {'fn': 'firwin', 'cases': fwn, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
