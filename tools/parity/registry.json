@@ -2015,6 +2015,11 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.helmert": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.hessenberg": {
             "kind": "routine",
             "nin": 0,

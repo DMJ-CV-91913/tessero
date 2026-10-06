@@ -275,6 +275,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.fractional_matrix_power` | `Tessero\ScipyLinalg::fractionalMatrixPower()` |
 | `scipy.linalg.hadamard` | `Tessero\ScipyLinalg::hadamard()` |
 | `scipy.linalg.hankel` | `Tessero\ScipyLinalg::hankel()` |
+| `scipy.linalg.helmert` | `Tessero\ScipyLinalg::helmert()` |
 | `scipy.linalg.hessenberg` | `Tessero\ScipyLinalg::hessenberg()` |
 | `scipy.linalg.hilbert` | `Tessero\ScipyLinalg::hilbert()` |
 | `scipy.linalg.inv` | `Tessero\ScipyLinalg::inv()` |
