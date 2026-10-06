@@ -1529,6 +1529,48 @@ static int r_tf2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* sos2zpk(sos): zeros, poles and gain of a second-order-sections cascade (scipy.signal.sos2zpk). Each section's
+   roots are found via tf2zpk; z and p (length 2*n_sections, with zero padding where a section is lower order)
+   are returned sorted by (re, im) -- a zpk set is order-free, and the fixtures sort the same way. */
+static int r_sos2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[1] != 6) { fn_set_error("sos2zpk: sos must be an (n, 6) array"); return TSR_EARG; }
+    const int64_t nsec = args[0].arr.shape[0];
+    int64_t ns; double *sos = fn_arg_doubles(&args[0], &ns); if (!sos) return TSR_ENOMEM;
+    const int64_t nn = 2 * nsec;
+    double *z = (double *)calloc((size_t)(2 * (nn ? nn : 1)), sizeof(double));
+    double *p = (double *)calloc((size_t)(2 * (nn ? nn : 1)), sizeof(double));
+    int rc = TSR_OK;
+    double k = 1.0;
+    for (int64_t s = 0; s < nsec && rc == TSR_OK; s++) {
+        const double *sb = sos + s * 6, *sa = sos + s * 6 + 3;
+        double *bn = NULL, *an = NULL; int64_t nbn = 0, nan = 0;
+        if (sig_normalize(sb, 3, sa, 3, &bn, &nbn, &an, &nan) != 0) { rc = TSR_EARG; fn_set_error("sos2zpk: a section's a is zero"); break; }
+        const double ks = bn[0];
+        for (int64_t i = 0; i < nbn; i++) bn[i] /= (ks != 0.0 ? ks : 1.0);
+        int64_t nz = 0, np_ = 0;
+        double *zr = sig_polyroots(bn, nbn, &nz), *pr = sig_polyroots(an, nan, &np_);
+        if (nz < 0 || np_ < 0) { rc = TSR_EARG; fn_set_error("sos2zpk: root solve failed"); }
+        else {
+            for (int64_t i = 0; i < nz && i < 2; i++) { z[2 * (2 * s + i)] = zr[2 * i]; z[2 * (2 * s + i) + 1] = zr[2 * i + 1]; }
+            for (int64_t i = 0; i < np_ && i < 2; i++) { p[2 * (2 * s + i)] = pr[2 * i]; p[2 * (2 * s + i) + 1] = pr[2 * i + 1]; }
+            k *= ks;
+        }
+        free(zr); free(pr); free(bn); free(an);
+    }
+    if (rc == TSR_OK) {
+        qsort(z, (size_t)(nn ? nn : 1), 2 * sizeof(double), sig_cplx_cmp);
+        qsort(p, (size_t)(nn ? nn : 1), 2 * sizeof(double), sig_cplx_cmp);
+        double *oz = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){nn});
+        double *op = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){nn});
+        if (!oz || !op) rc = TSR_ENOMEM;
+        else { memcpy(oz, z, sizeof(double) * (size_t)(2 * nn)); memcpy(op, p, sizeof(double) * (size_t)(2 * nn)); fn_result_num(&res[2], k); }
+    }
+    free(z); free(p); fn_free_doubles(sos, ns);
+    return rc;
+}
+
 /* sos2tf(sos): transfer function (b, a) of a second-order-sections cascade (scipy.signal.sos2tf). */
 static int r_sos2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -2659,6 +2701,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.kaiser_beta", 1, "a", "out", r_kaiser_beta, NULL, "Kaiser-window shape beta for a given attenuation (scipy.signal.kaiser_beta)."),
     ROUTINE("signal.kaiserord", 2, "ripple, width", "numtaps, beta", r_kaiserord, NULL, "Kaiser filter length and beta for a ripple and transition width (scipy.signal.kaiserord)."),
     ROUTINE("signal.firwin2", 1, "numtaps, freq, gain, nfreqs=None, window='hamming', antisymmetric=False, fs=None", "out", r_firwin2, NULL, "FIR filter design by frequency sampling (scipy.signal.firwin2)."),
+    ROUTINE("signal.sos2zpk", 3, "sos", "z, p, k", r_sos2zpk, NULL, "Zeros, poles and gain from a second-order-sections cascade (scipy.signal.sos2zpk)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

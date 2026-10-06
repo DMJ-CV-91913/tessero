@@ -2891,6 +2891,12 @@
                 "doc": "Transfer function (b, a) from a second-order-sections cascade (scipy.signal.sos2tf)."
             },
             {
+                "name": "sos2zpk",
+                "static": true,
+                "sig": "sos2zpk(mixed $sos): mixed",
+                "doc": "Zeros, poles and gain from a second-order-sections cascade (scipy.signal.sos2zpk)."
+            },
+            {
                 "name": "sosfilt",
                 "static": true,
                 "sig": "sosfilt(mixed $sos, mixed $x, mixed $axis = -1, mixed $zi = null): mixed",
@@ -15651,6 +15657,12 @@
                 "name": "firwin2",
                 "static": true,
                 "sig": "firwin2($numtaps, $freq, $gain, $nfreqs = null, $window = 'hamming', $antisymmetric = false, $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "sos2zpk",
+                "static": true,
+                "sig": "sos2zpk($sos)",
                 "doc": ""
             }
         ]

@@ -422,6 +422,19 @@ fw2 = [
     _firwin2_case(45, [0.0, 30.0, 60.0, 100.0], [1.0, 1.0, 0.0, 0.0], fs=200.0),  # fs
 ]
 
+# sos2zpk: zpk from an SOS cascade (compare z, p as (re,im)-sorted sets)
+def _sortc2(c):
+    c = np.asarray(c, complex)
+    return c[np.lexsort((c.imag, c.real))]
+
+
+s2z = []
+for (N, Wn, bt) in [(4, 0.3, 'low'), (6, 0.25, 'low'), (4, 0.5, 'high'), (3, 0.4, 'low'), (8, 0.2, 'low')]:
+    sos = butter(N, Wn, btype=bt, output='sos')
+    z, p, kk = sg.sos2zpk(sos)
+    s2z.append({'args': [F.enc(np.asarray(sos))], 'kwargs': {},
+                'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-10}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -465,7 +478,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'firwin', 'cases': fwn, 'tol': {'atol': 1e-12}},
                  {'fn': 'kaiser_atten', 'cases': katt}, {'fn': 'kaiser_beta', 'cases': kbeta},
                  {'fn': 'kaiserord', 'cases': kord},
-                 {'fn': 'firwin2', 'cases': fw2, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'firwin2', 'cases': fw2, 'tol': {'atol': 1e-12}},
+                 {'fn': 'sos2zpk', 'cases': s2z, 'tol': {'atol': 1e-10}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

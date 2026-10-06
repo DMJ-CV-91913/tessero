@@ -58,6 +58,7 @@ final class Signal
     'savgol_filter' => 'savgolFilter',
     'sawtooth' => 'sawtooth',
     'sos2tf' => 'sos2tf',
+    'sos2zpk' => 'sos2zpk',
     'sosfilt' => 'sosfilt',
     'sosfilt_zi' => 'sosfiltZi',
     'sosfiltfilt' => 'sosfiltfilt',
@@ -522,6 +523,18 @@ final class Signal
     public static function sos2tf(mixed $sos): mixed
     {
         return Registry::routine('signal.sos2tf', [$sos]);
+    }
+
+    /**
+     * Zeros, poles and gain from a second-order-sections cascade (scipy.signal.sos2zpk).
+     *
+     * scipy.signal.sos2zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function sos2zpk(mixed $sos): mixed
+    {
+        return Registry::routine('signal.sos2zpk', [$sos]);
     }
 
     /**
