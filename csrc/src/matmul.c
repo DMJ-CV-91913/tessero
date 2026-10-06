@@ -75,6 +75,29 @@ int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
     }
 }
 
+/* y := alpha*x + y (BLAS-1 AXPY). incx/incy are element strides; negative strides follow the reference-BLAS
+   convention (the vector is walked from its far end). The unit-stride path is a tight loop. */
+#define AXPY(NAME, T)                                                                               \
+    TSR_CLONES static void NAME(int64_t n, T alpha, const T *x, int64_t incx, T *y, int64_t incy)   \
+    {                                                                                               \
+        if (incx == 1 && incy == 1) { for (int64_t i = 0; i < n; i++) y[i] += alpha * x[i]; return; } \
+        int64_t ix = incx < 0 ? (1 - n) * incx : 0, iy = incy < 0 ? (1 - n) * incy : 0;             \
+        for (int64_t i = 0; i < n; i++) { y[iy] += alpha * x[ix]; ix += incx; iy += incy; }         \
+    }
+AXPY(axpy_f64, double)
+AXPY(axpy_f32, float)
+
+int tsr_axpy(int dtype, int64_t n, double alpha, const void *x, int64_t incx, void *y, int64_t incy)
+{
+    if (n < 0) return TSR_EARG;
+    if (n == 0) return TSR_OK;
+    switch (dtype) {
+    case TSR_F64: axpy_f64(n, alpha, (const double *)x, incx, (double *)y, incy); return TSR_OK;
+    case TSR_F32: axpy_f32(n, (float)alpha, (const float *)x, incx, (float *)y, incy); return TSR_OK;
+    default: return TSR_ETYPE;
+    }
+}
+
 TSR_CLONES double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const double *y, int64_t incy)
 {
     double s[4] = {0, 0, 0, 0};
