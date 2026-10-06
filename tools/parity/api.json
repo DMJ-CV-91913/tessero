@@ -1759,6 +1759,12 @@
                 "doc": "Solve a x = b from a Cholesky factor; takes c, lower, b unpacked (scipy.linalg.cho_solve)."
             },
             {
+                "name": "choSolveBanded",
+                "static": true,
+                "sig": "choSolveBanded(mixed $cb, mixed $lower, mixed $b): mixed",
+                "doc": "Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded)."
+            },
+            {
                 "name": "cholesky",
                 "static": true,
                 "sig": "cholesky(mixed $a, mixed $lower = false): mixed",
@@ -14800,6 +14806,12 @@
                 "name": "helmert",
                 "static": true,
                 "sig": "helmert($n, $full = false)",
+                "doc": ""
+            },
+            {
+                "name": "choSolveBanded",
+                "static": true,
+                "sig": "choSolveBanded($cb, $lower, $b)",
                 "doc": ""
             },
             {

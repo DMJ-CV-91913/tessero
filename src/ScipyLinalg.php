@@ -21,6 +21,7 @@ final class ScipyLinalg
     'block_diag' => 'blockDiag',
     'cho_factor' => 'choFactor',
     'cho_solve' => 'choSolve',
+    'cho_solve_banded' => 'choSolveBanded',
     'cholesky' => 'cholesky',
     'cholesky_banded' => 'choleskyBanded',
     'circulant' => 'circulant',
@@ -136,6 +137,16 @@ final class ScipyLinalg
     public static function choSolve(mixed $c, mixed $lower, mixed $b): mixed
     {
         return Registry::routine('slinalg.cho_solve', [$c, $lower, $b]);
+    }
+
+    /**
+     * Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded).
+     *
+     * scipy.linalg.cho_solve_banded
+     */
+    public static function choSolveBanded(mixed $cb, mixed $lower, mixed $b): mixed
+    {
+        return Registry::routine('slinalg.cho_solve_banded', [$cb, $lower, $b]);
     }
 
     /**
