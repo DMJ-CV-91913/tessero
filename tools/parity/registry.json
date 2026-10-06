@@ -1860,6 +1860,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.normalize": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.oaconvolve": {
             "kind": "routine",
             "nin": 0,
@@ -1880,6 +1885,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.sos2tf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.sosfilt": {
             "kind": "routine",
             "nin": 0,
@@ -1899,6 +1909,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "signal.tf2zpk": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
         },
         "signal.unit_impulse": {
             "kind": "routine",

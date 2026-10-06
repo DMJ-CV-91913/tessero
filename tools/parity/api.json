@@ -2729,6 +2729,12 @@
                 "doc": "Steady-state step-response initial conditions for lfilter (scipy.signal.lfilter_zi)."
             },
             {
+                "name": "normalize",
+                "static": true,
+                "sig": "normalize(mixed $b, mixed $a): mixed",
+                "doc": "Normalize a transfer-function representation (scipy.signal.normalize)."
+            },
+            {
                 "name": "oaconvolve",
                 "static": true,
                 "sig": "oaconvolve(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $axes = null): mixed",
@@ -2753,6 +2759,12 @@
                 "doc": "Sawtooth/triangle wave of period 2pi with the given rising width (scipy.signal.sawtooth)."
             },
             {
+                "name": "sos2tf",
+                "static": true,
+                "sig": "sos2tf(mixed $sos): mixed",
+                "doc": "Transfer function (b, a) from a second-order-sections cascade (scipy.signal.sos2tf)."
+            },
+            {
                 "name": "sosfilt",
                 "static": true,
                 "sig": "sosfilt(mixed $sos, mixed $x, mixed $axis = -1, mixed $zi = null): mixed",
@@ -2775,6 +2787,12 @@
                 "static": true,
                 "sig": "square(mixed $t, mixed $duty = 0.5): mixed",
                 "doc": "Square-wave of period 2pi with the given duty cycle (scipy.signal.square)."
+            },
+            {
+                "name": "tf2zpk",
+                "static": true,
+                "sig": "tf2zpk(mixed $b, mixed $a): mixed",
+                "doc": "Zeros, poles and gain from transfer-function coefficients (scipy.signal.tf2zpk)."
             },
             {
                 "name": "unitImpulse",
@@ -15327,6 +15345,24 @@
                 "name": "unitImpulse",
                 "static": true,
                 "sig": "unitImpulse($shape, $idx = null)",
+                "doc": ""
+            },
+            {
+                "name": "normalize",
+                "static": true,
+                "sig": "normalize($b, $a)",
+                "doc": ""
+            },
+            {
+                "name": "tf2zpk",
+                "static": true,
+                "sig": "tf2zpk($b, $a)",
+                "doc": ""
+            },
+            {
+                "name": "sos2tf",
+                "static": true,
+                "sig": "sos2tf($sos)",
                 "doc": ""
             }
         ]
