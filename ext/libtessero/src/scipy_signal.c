@@ -2237,6 +2237,29 @@ static int r_coherence(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* correlation_lags(in1_len, in2_len, mode='full'): the lag indices for signal.correlate's output
+   (scipy.signal.correlation_lags). Integer array. */
+static int r_correlation_lags(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("correlation_lags: in1_len and in2_len must be integers"); return TSR_EARG; }
+    const int64_t n1 = (int64_t)args[0].num, n2 = (int64_t)args[1].num;
+    int mode = 0;                                            /* 0 full, 1 same, 2 valid */
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) {
+        if (!strcmp(args[2].str, "same")) mode = 1; else if (!strcmp(args[2].str, "valid")) mode = 2;
+        else if (strcmp(args[2].str, "full")) { fn_set_error("correlation_lags: mode must be 'full', 'same' or 'valid'"); return TSR_EARG; }
+    }
+    int64_t lo, hi;                                          /* lags are the half-open integer range [lo, hi) */
+    if (mode == 0) { lo = -n2 + 1; hi = n1; }
+    else if (mode == 1) { const int64_t L = n1 + n2 - 1, mid = L / 2, lb = n1 / 2; const int64_t base = -n2 + 1; lo = base + (mid - lb); hi = base + (mid + lb) + (n1 % 2 ? 1 : 0); }
+    else { const int64_t lb = n1 - n2; if (lb >= 0) { lo = 0; hi = lb + 1; } else { lo = lb; hi = 1; } }
+    const int64_t len = hi > lo ? hi - lo : 0;
+    int64_t *out = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, (int64_t[]){len});
+    if (!out) return TSR_ENOMEM;
+    for (int64_t i = 0; i < len; i++) out[i] = lo + i;
+    return TSR_OK;
+}
+
 /* periodic Tukey window of length M with taper fraction alpha, into w (matches scipy windows.tukey sym=False). */
 static void sig_tukey_periodic(double *w, int64_t M, double alpha)
 {
@@ -2436,6 +2459,7 @@ static const fn_def DEFS[] = {
     ROUTINE("windows.general_gaussian", 1, "M, p, sig, sym=True", "out", r_win_general_gaussian, NULL, "Generalized Gaussian window (scipy.signal.windows.general_gaussian)."),
     ROUTINE("windows.exponential", 1, "M, center=None, tau=1.0, sym=True", "out", r_win_exponential, NULL, "Exponential (Poisson) window (scipy.signal.windows.exponential)."),
     ROUTINE("windows.tukey", 1, "M, alpha=0.5, sym=True", "out", r_win_tukey, NULL, "Tukey (tapered cosine) window (scipy.signal.windows.tukey)."),
+    ROUTINE("signal.correlation_lags", 1, "in1_len, in2_len, mode='full'", "out", r_correlation_lags, NULL, "Lag indices for the output of signal.correlate (scipy.signal.correlation_lags)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
