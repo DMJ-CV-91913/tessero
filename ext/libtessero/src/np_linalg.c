@@ -4083,6 +4083,66 @@ static int r_ordqz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
+/* bandwidth(a): the lower and upper bandwidths of a 2-D array -- the largest distance below / above the main
+   diagonal at which a nonzero entry sits (scipy.linalg.bandwidth). Returns (lower, upper). */
+static int r_bandwidth(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("bandwidth: a must be a 2-D array"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], n = args[0].arr.shape[1];
+    int64_t na; double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    int64_t lower = 0, upper = 0;
+    for (int64_t i = 0; i < m; i++)
+        for (int64_t j = 0; j < n; j++)
+            if (a[i * n + j] != 0.0) {
+                if (i > j) { if (i - j > lower) lower = i - j; }
+                else if (j > i) { if (j - i > upper) upper = j - i; }
+            }
+    fn_free_doubles(a, na);
+    fn_result_int(&res[0], lower);
+    fn_result_int(&res[1], upper);
+    return TSR_OK;
+}
+
+/* fiedler_companion(a): the Fiedler companion (pentadiagonal) matrix of the polynomial with coefficients a,
+   highest degree first (scipy.linalg.fiedler_companion). */
+static int r_fiedler_companion(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("fiedler_companion: a must be a 1-D array"); return TSR_EARG; }
+    int64_t L; double *a = mat_f64(&args[0], "a", &L); if (!a) return TSR_ENOMEM;
+    int rc = TSR_OK;
+    if (L < 2) { fn_set_error("fiedler_companion: need at least two coefficients"); rc = TSR_EARG; }
+    else if (a[0] == 0.0) { fn_set_error("fiedler_companion: leading coefficient is zero"); rc = TSR_EARG; }
+    else {
+        const double a0 = a[0];
+        if (L == 2) {
+            int64_t sh[2] = {1, 1};
+            double *c = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+            if (!c) rc = TSR_ENOMEM; else c[0] = -a[1] / a0;
+        } else {
+            const int64_t n = L - 1;
+            int64_t sh[2] = {n, n};
+            double *c = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+            double *an = (double *)malloc(sizeof(double) * (size_t)L);
+            if (!c || !an) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < L; i++) an[i] = a[i] / a0;
+                for (int64_t i = 0; i < n * n; i++) c[i] = 0.0;
+                for (int64_t i = 3, j = 1; i < n && j < n - 2; i += 2, j += 2) c[i * n + j] = 1.0;
+                for (int64_t i = 2, j = 1, t = 3; i < n && j < n - 1; i += 2, j += 2, t += 2) c[i * n + j] = -an[t];
+                for (int64_t i = 0, j = 2; i < n - 2 && j < n; i += 2, j += 2) c[i * n + j] = 1.0;
+                for (int64_t i = 0, j = 1, t = 2; i < n - 1 && j < n; i += 2, j += 2, t += 2) c[i * n + j] = -an[t];
+                c[0] = -an[1];
+                c[1 * n + 0] = 1.0;
+            }
+            free(an);
+        }
+    }
+    fn_free_doubles(a, L);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -4162,6 +4222,9 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.qr_delete", 5, "Q, R, k, p=1, which='row'", "Q, R", r_qr_delete, NULL, "Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete)."),
     ROUTINE("slinalg.cossin", 3, "X, p, q", "u, cs, vh", r_cossin, NULL, "Cosine-sine decomposition of a partitioned orthogonal matrix via dorcsd (scipy.linalg.cossin)."),
     ROUTINE("slinalg.ordqz", 6, "A, B, sort='lhp', output='real'", "AA, BB, alpha, beta, Q, Z", r_ordqz, NULL, "Reordered generalised Schur (QZ) decomposition via dgges and dtgsen (scipy.linalg.ordqz)."),
+    ROUTINE("slinalg.bandwidth", 2, "a", "lower, upper", r_bandwidth, NULL, "Lower and upper bandwidths of a 2-D array (scipy.linalg.bandwidth)."),
+    ROUTINE("slinalg.fiedler_companion", 1, "a", "out", r_fiedler_companion, NULL, "Fiedler companion matrix of a polynomial (scipy.linalg.fiedler_companion)."),
+    ROUTINE("slinalg.solve_lyapunov", 1, "a, q", "out", r_solve_continuous_lyapunov, NULL, "Solve the continuous Lyapunov equation a x + x a^H = q; alias of solve_continuous_lyapunov (scipy.linalg.solve_lyapunov)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),

@@ -249,6 +249,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 
 | NumPy / SciPy | Tessero |
 |---|---|
+| `scipy.linalg.bandwidth` | `Tessero\ScipyLinalg::bandwidth()` |
 | `scipy.linalg.block_diag` | `Tessero\ScipyLinalg::blockDiag()` |
 | `scipy.linalg.cdf2rdf` | `Tessero\ScipyLinalg::cdf2rdf()` |
 | `scipy.linalg.cho_factor` | `Tessero\ScipyLinalg::choFactor()` |
@@ -277,6 +278,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.expm_cond` | `Tessero\ScipyLinalg::expmCond()` |
 | `scipy.linalg.expm_frechet` | `Tessero\ScipyLinalg::expmFrechet()` |
 | `scipy.linalg.fiedler` | `Tessero\ScipyLinalg::fiedler()` |
+| `scipy.linalg.fiedler_companion` | `Tessero\ScipyLinalg::fiedlerCompanion()` |
 | `scipy.linalg.fractional_matrix_power` | `Tessero\ScipyLinalg::fractionalMatrixPower()` |
 | `scipy.linalg.hadamard` | `Tessero\ScipyLinalg::hadamard()` |
 | `scipy.linalg.hankel` | `Tessero\ScipyLinalg::hankel()` |
@@ -326,6 +328,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.solve_continuous_lyapunov` | `Tessero\ScipyLinalg::solveContinuousLyapunov()` |
 | `scipy.linalg.solve_discrete_are` | `Tessero\ScipyLinalg::solveDiscreteAre()` |
 | `scipy.linalg.solve_discrete_lyapunov` | `Tessero\ScipyLinalg::solveDiscreteLyapunov()` |
+| `scipy.linalg.solve_lyapunov` | `Tessero\ScipyLinalg::solveLyapunov()` |
 | `scipy.linalg.solve_sylvester` | `Tessero\ScipyLinalg::solveSylvester()` |
 | `scipy.linalg.solve_toeplitz` | `Tessero\ScipyLinalg::solveToeplitz()` |
 | `scipy.linalg.solve_triangular` | `Tessero\ScipyLinalg::solveTriangular()` |
