@@ -25,6 +25,7 @@ final class Signal
     'chirp' => 'chirp',
     'convolve' => 'convolve',
     'correlate' => 'correlate',
+    'csd' => 'csd',
     'detrend' => 'detrend',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
@@ -152,6 +153,18 @@ final class Signal
     public static function correlate(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $method = 'auto'): mixed
     {
         return Registry::routine('signal.correlate', [$in1, $in2, $mode, $method]);
+    }
+
+    /**
+     * Cross power spectral density by Welch's method (scipy.signal.csd).
+     *
+     * scipy.signal.csd
+     *
+     * @return mixed one array, or an array keyed by f, Pxy when several results are requested
+     */
+    public static function csd(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed
+    {
+        return Registry::routine('signal.csd', [$x, $y, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $average]);
     }
 
     /**
