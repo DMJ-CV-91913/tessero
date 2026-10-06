@@ -2047,6 +2047,12 @@
                 "doc": "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."
             },
             {
+                "name": "solveCirculant",
+                "static": true,
+                "sig": "solveCirculant(mixed $c, mixed $b): mixed",
+                "doc": "Solve a circulant system C x = b (scipy.linalg.solve_circulant)."
+            },
+            {
                 "name": "solveContinuousLyapunov",
                 "static": true,
                 "sig": "solveContinuousLyapunov(mixed $a, mixed $q): mixed",
@@ -2057,6 +2063,12 @@
                 "static": true,
                 "sig": "solveSylvester(mixed $a, mixed $b, mixed $q): mixed",
                 "doc": "Solve the Sylvester equation a x + x b = q (scipy.linalg.solve_sylvester)."
+            },
+            {
+                "name": "solveToeplitz",
+                "static": true,
+                "sig": "solveToeplitz(mixed $cOrCr, mixed $b): mixed",
+                "doc": "Solve a Toeplitz system T x = b (scipy.linalg.solve_toeplitz)."
             },
             {
                 "name": "solveTriangular",
@@ -14668,6 +14680,18 @@
                 "name": "ishermitian",
                 "static": true,
                 "sig": "ishermitian($a, $atol = null, $rtol = null)",
+                "doc": ""
+            },
+            {
+                "name": "solveToeplitz",
+                "static": true,
+                "sig": "solveToeplitz($cOrCr, $b)",
+                "doc": ""
+            },
+            {
+                "name": "solveCirculant",
+                "static": true,
+                "sig": "solveCirculant($c, $b)",
                 "doc": ""
             },
             {

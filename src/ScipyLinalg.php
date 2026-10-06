@@ -69,8 +69,10 @@ final class ScipyLinalg
     'sinm' => 'sinm',
     'solve' => 'solve',
     'solve_banded' => 'solveBanded',
+    'solve_circulant' => 'solveCirculant',
     'solve_continuous_lyapunov' => 'solveContinuousLyapunov',
     'solve_sylvester' => 'solveSylvester',
+    'solve_toeplitz' => 'solveToeplitz',
     'solve_triangular' => 'solveTriangular',
     'solveh_banded' => 'solvehBanded',
     'sqrtm' => 'sqrtm',
@@ -632,6 +634,16 @@ final class ScipyLinalg
     }
 
     /**
+     * Solve a circulant system C x = b (scipy.linalg.solve_circulant).
+     *
+     * scipy.linalg.solve_circulant
+     */
+    public static function solveCirculant(mixed $c, mixed $b): mixed
+    {
+        return Registry::routine('slinalg.solve_circulant', [$c, $b]);
+    }
+
+    /**
      * Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov).
      *
      * scipy.linalg.solve_continuous_lyapunov
@@ -649,6 +661,16 @@ final class ScipyLinalg
     public static function solveSylvester(mixed $a, mixed $b, mixed $q): mixed
     {
         return Registry::routine('slinalg.solve_sylvester', [$a, $b, $q]);
+    }
+
+    /**
+     * Solve a Toeplitz system T x = b (scipy.linalg.solve_toeplitz).
+     *
+     * scipy.linalg.solve_toeplitz
+     */
+    public static function solveToeplitz(mixed $cOrCr, mixed $b): mixed
+    {
+        return Registry::routine('slinalg.solve_toeplitz', [$cOrCr, $b]);
     }
 
     /**

@@ -251,6 +251,12 @@ def main():
     _Ssym = rng.uniform(-2, 2, size=(4, 4)); _Ssym = _Ssym + _Ssym.T
     blocks['issymmetric'] = [call('issymmetric', [_Ssym]), call('issymmetric', [rng.uniform(-2, 2, size=(4, 4))]), call('issymmetric', [np.array([[1.0, 2.0], [2.0, 1.0]])])]
     blocks['ishermitian'] = [call('ishermitian', [_Ssym]), call('ishermitian', [rng.uniform(-2, 2, size=(3, 3))]), call('ishermitian', [np.eye(3)])]
+    _ctoe = np.array([4.0, 1.0, 0.5, 0.2])      # diagonally dominant symmetric Toeplitz -> well-conditioned
+    blocks['solve_toeplitz'] = [call('solve_toeplitz', [_ctoe, rng.uniform(-2, 2, size=4)]),
+                                call('solve_toeplitz', [_ctoe, rng.uniform(-2, 2, size=(4, 2))])]
+    _ccirc = np.array([5.0, 1.0, 0.5, 0.3, 0.2])   # dominant first element -> well-conditioned circulant
+    blocks['solve_circulant'] = [call('solve_circulant', [_ccirc, rng.uniform(-2, 2, size=5)]),
+                                 call('solve_circulant', [_ccirc, rng.uniform(-2, 2, size=(5, 2))])]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]

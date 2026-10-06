@@ -2277,6 +2277,75 @@ static int r_issymmetric(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     return TSR_OK;
 }
 
+/* Solve the dense n x n system M x = b in place (b is n x nrhs, row-major) via dgesv. 0 on success. */
+static int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs)
+{
+    if (n == 0) return 0;
+    lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)n);
+    if (!ipiv) return -1;
+    lapack_int info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, (lapack_int)n, (lapack_int)nrhs, M, (lapack_int)n, ipiv, b, (lapack_int)nrhs);
+    free(ipiv);
+    return info == 0 ? 0 : -1;
+}
+
+/* solve_toeplitz(c_or_cr, b): solve the Toeplitz system T x = b. A single 1-D c_or_cr gives a symmetric (real
+   Hermitian) Toeplitz T[i][j] = c[|i-j|]; a (c, r) pair uses first column c and first row r. Built dense and
+   solved with dgesv — the same solution scipy's Levinson recursion returns (scipy.linalg.solve_toeplitz). */
+static int r_solve_toeplitz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    const tsr_arg *carg, *rarg;
+    if (args[0].kind == 5 && args[0].count >= 2) { carg = &args[0].items[0]; rarg = &args[0].items[1]; }
+    else if (args[0].kind == 3) { carg = &args[0]; rarg = &args[0]; }
+    else { fn_set_error("solve_toeplitz: c_or_cr must be an array or a (c, r) pair"); return TSR_EARG; }
+    if (carg->kind != 3 || carg->arr.ndim != 1 || rarg->kind != 3 || rarg->arr.ndim != 1 || args[1].kind != 3) { fn_set_error("solve_toeplitz: c, r must be 1-D arrays and b an array"); return TSR_EARG; }
+    int64_t nc, nr = 0; double *c = mat_f64(carg, "c", &nc); if (!c) return TSR_ENOMEM;
+    double *r = (rarg == carg) ? c : mat_f64(rarg, "r", &nr); if (!r) { fn_free_doubles(c, nc); return TSR_ENOMEM; }
+    const int64_t n = nc;
+    const tsr_array *B = &args[1].arr;
+    const int vector = B->ndim == 1;
+    const int64_t k = vector ? 1 : B->shape[1];
+    int rc = TSR_OK;
+    if (B->shape[0] != n) { if (r != c) fn_free_doubles(r, nr); fn_free_doubles(c, nc); fn_set_error("solve_toeplitz: b has the wrong number of rows"); return TSR_EARG; }
+    double *M = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    int64_t nb = 0; double *b = mat_f64(&args[1], "b", &nb);
+    if (!M || !b) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) M[i * n + j] = (i >= j) ? c[i - j] : r[j - i];
+        if (sl_dense_solve(M, b, n, k) != 0) { fn_set_error("solve_toeplitz: the system is singular"); rc = TSR_EARG; }
+        else { int64_t osh[2] = {n, k}; double *x = (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, osh); if (!x) rc = TSR_ENOMEM; else memcpy(x, b, sizeof(double) * (size_t)(n * k)); }
+    }
+    free(M); if (b) fn_free_doubles(b, nb);
+    if (r != c) fn_free_doubles(r, nr);
+    fn_free_doubles(c, nc);
+    return rc;
+}
+
+/* solve_circulant(c, b): solve the circulant system C x = b, where C[i][j] = c[(i-j) mod n]. Built dense and
+   solved with dgesv — the same solution scipy's FFT method returns (scipy.linalg.solve_circulant). */
+static int r_solve_circulant(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3) { fn_set_error("solve_circulant: c must be 1-D and b an array"); return TSR_EARG; }
+    int64_t n; double *c = mat_f64(&args[0], "c", &n); if (!c) return TSR_ENOMEM;
+    const tsr_array *B = &args[1].arr;
+    const int vector = B->ndim == 1;
+    const int64_t k = vector ? 1 : B->shape[1];
+    int rc = TSR_OK;
+    if (B->shape[0] != n) { fn_free_doubles(c, n); fn_set_error("solve_circulant: b has the wrong number of rows"); return TSR_EARG; }
+    double *M = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    int64_t nb = 0; double *b = mat_f64(&args[1], "b", &nb);
+    if (!M || !b) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) { int64_t kk = (i - j) % n; if (kk < 0) kk += n; M[i * n + j] = c[kk]; }
+        if (sl_dense_solve(M, b, n, k) != 0) { fn_set_error("solve_circulant: the system is singular"); rc = TSR_EARG; }
+        else { int64_t osh[2] = {n, k}; double *x = (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, osh); if (!x) rc = TSR_ENOMEM; else memcpy(x, b, sizeof(double) * (size_t)(n * k)); }
+    }
+    free(M); if (b) fn_free_doubles(b, nb);
+    fn_free_doubles(c, n);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2824,6 +2893,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.eigvalsh_tridiagonal", 1, "d, e", "out", r_eigvalsh_tridiagonal, NULL, "Eigenvalues of a symmetric tridiagonal matrix via dsterf (scipy.linalg.eigvalsh_tridiagonal)."),
     ROUTINE("slinalg.issymmetric", 1, "a, atol=None, rtol=None", "out", r_issymmetric, NULL, "Whether a square matrix is symmetric (scipy.linalg.issymmetric)."),
     ROUTINE("slinalg.ishermitian", 1, "a, atol=None, rtol=None", "out", r_issymmetric, NULL, "Whether a square matrix is Hermitian; for real input, symmetric (scipy.linalg.ishermitian)."),
+    ROUTINE("slinalg.solve_toeplitz", 1, "c_or_cr, b", "out", r_solve_toeplitz, NULL, "Solve a Toeplitz system T x = b (scipy.linalg.solve_toeplitz)."),
+    ROUTINE("slinalg.solve_circulant", 1, "c, b", "out", r_solve_circulant, NULL, "Solve a circulant system C x = b (scipy.linalg.solve_circulant)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),
