@@ -295,6 +295,51 @@ static void test_gemm(void)
     free(A); free(AT); free(B); free(BT); free(C); free(C2); free(Af); free(Bf); free(Cf);
 }
 
+static void test_axpy(void)
+{
+    const int64_t n = 50;
+    double *x = malloc(n * 8), *y = malloc(n * 8), *ref = malloc(n * 8);
+    for (int64_t i = 0; i < n; i++) { x[i] = sin(0.4 * i + 1); y[i] = cos(0.3 * i); }
+
+    /* f64 unit stride, alpha = -0.1 (an SGD step W -= lr*dW) */
+    for (int64_t i = 0; i < n; i++) ref[i] = y[i] + (-0.1) * x[i];
+    tsr_axpy(TSR_F64, n, -0.1, x, 1, y, 1);
+    double err = 0; for (int64_t i = 0; i < n; i++) err = fmax(err, fabs(y[i] - ref[i]));
+    CHECK(err < 1e-14, "axpy f64 unit err %.3e", err);
+
+    /* alpha = 0 is a no-op */
+    double *y0 = malloc(n * 8); for (int64_t i = 0; i < n; i++) y0[i] = y[i];
+    tsr_axpy(TSR_F64, n, 0.0, x, 1, y, 1);
+    err = 0; for (int64_t i = 0; i < n; i++) err = fmax(err, fabs(y[i] - y0[i]));
+    CHECK(err == 0.0, "axpy alpha=0 no-op");
+
+    /* non-unit stride: y[2i] += 3*x[3i], for i in 0..k-1 */
+    for (int64_t i = 0; i < n; i++) { x[i] = (double)(i + 1); y[i] = 0.0; }
+    const int64_t k = 10;
+    tsr_axpy(TSR_F64, k, 3.0, x, 3, y, 2);
+    err = 0; for (int64_t i = 0; i < k; i++) err = fmax(err, fabs(y[2 * i] - 3.0 * x[3 * i]));
+    CHECK(err == 0.0, "axpy strided");
+
+    /* negative stride (reference-BLAS): y walked forward, x from the far end */
+    for (int64_t i = 0; i < n; i++) { x[i] = (double)i; y[i] = 0.0; }
+    tsr_axpy(TSR_F64, 5, 1.0, x, -1, y, 1);   /* y[i] += x[(5-1-i)] = x[4-i] */
+    err = 0; for (int64_t i = 0; i < 5; i++) err = fmax(err, fabs(y[i] - x[4 - i]));
+    CHECK(err == 0.0, "axpy negative incx");
+
+    /* f32 path */
+    float *xf = malloc(n * 4), *yf = malloc(n * 4);
+    for (int64_t i = 0; i < n; i++) { xf[i] = (float)x[i]; yf[i] = 1.0f; }
+    tsr_axpy(TSR_F32, n, 2.5, xf, 1, yf, 1);
+    err = 0; for (int64_t i = 0; i < n; i++) err = fmax(err, fabs((double)yf[i] - (1.0 + 2.5 * x[i])));
+    CHECK(err < 1e-4, "axpy f32 err %.3e", err);
+
+    CHECK(tsr_axpy(TSR_I64, n, 1.0, x, 1, y, 1) == TSR_ETYPE, "axpy rejects int");
+    CHECK(tsr_axpy(TSR_F64, 0, 1.0, x, 1, y, 1) == TSR_OK, "axpy n=0 no-op ok");
+    CHECK(tsr_axpy(TSR_F64, -1, 1.0, x, 1, y, 1) == TSR_EARG, "axpy n<0 rejected");
+
+    free(x); free(y); free(ref); free(y0); free(xf); free(yf);
+}
+
 static void test_fft(void)
 {
     const int64_t sizes[] = {1, 2, 3, 4, 5, 6, 7, 8, 12, 15, 16, 30, 49, 97, 101, 128, 210, 1000, 1009, 1024, 4096};
@@ -823,6 +868,7 @@ int main(void)
     test_index();
     test_matmul();
     test_gemm();
+    test_axpy();
     test_fft();
     test_rng();
     test_sparse();
