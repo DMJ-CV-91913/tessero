@@ -127,6 +127,8 @@
 | `slinalg.matmul_toeplitz` | every call | rtol 1e-09 |
 | `slinalg.invhilbert` | every call | rtol 1e-09 |
 | `slinalg.eigh_tridiagonal` | every call | rtol 1e-09 |
+| `slinalg.eigvals_banded` | every call | rtol 1e-09 |
+| `slinalg.cholesky_banded` | every call | rtol 1e-09 |
 | `slinalg.khatri_rao` | every call | rtol 1e-09 |
 | `slinalg.diagsvd` | every call | rtol 1e-09 |
 | `slinalg.orth` | every call | rtol 1e-09 |
