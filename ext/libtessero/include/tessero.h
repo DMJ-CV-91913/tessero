@@ -127,6 +127,13 @@ int tsr_argsort(int dtype, int64_t n, const void *data, int64_t *out); /* stable
 /* ---- dense matrix product fallback (row-major, used when no BLAS is loaded) ---- */
 int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_t lda,
                const void *b, int64_t ldb, void *c, int64_t ldc);
+/* General matrix multiply, the BLAS xgemm contract (F64/F32): C = alpha*op(A)*op(B) + beta*C, row-major.
+   transa/transb: 0 (or CBLAS 111) = no transpose, nonzero (e.g. 1 or CBLAS 112) = transpose. op(A) is m x k,
+   op(B) is k x n, C is m x n. beta == 0 overwrites C without reading it. Mirrors cblas_{s,d}gemm so callers can
+   use this fallback and a loaded BLAS interchangeably. */
+int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
+             double alpha, const void *a, int64_t lda, const void *b, int64_t ldb,
+             double beta, void *c, int64_t ldc);
 double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const double *y, int64_t incy);
 
 /* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
