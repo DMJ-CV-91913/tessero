@@ -340,6 +340,23 @@ coh.append({'args': [F.enc(xh), F.enc(yh), F.enc(50.0), F.enc('hann'), F.enc(64)
 # DC coherence a 0/0 that is pure fp noise in any engine; detrend=False keeps every bin well-defined.
 coh.append({'args': [F.enc(xh), F.enc(yh), F.enc(1.0), F.enc('boxcar'), F.enc(50), None, None, F.enc(False)], 'kwargs': {}, 'expect': F.enc_result(sg.coherence(xh, yh, 1.0, 'boxcar', 50, None, None, False), ['f', 'Cxy']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# spectrogram (mode='psd')
+def _spg_case(args, pyargs):
+    return {'args': [F.enc(np.asarray(a) if isinstance(a, (list, np.ndarray)) else a) for a in args],
+            'kwargs': {}, 'expect': F.enc_result(sg.spectrogram(*pyargs), ['f', 't', 'Sxx']), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+spg = []
+xs200 = rng.uniform(-3, 3, 200)
+xs128 = rng.uniform(-3, 3, 128)
+spg.append(_spg_case([xs128], [xs128]))                                   # default periodic-Tukey(0.25) window
+spg.append(_spg_case([xs200, 1.0, 'boxcar', 50], [xs200, 1.0, 'boxcar', 50]))
+spg.append(_spg_case([xs200, 1.0, 'hann', 64], [xs200, 1.0, 'hann', 64]))
+spg.append(_spg_case([xs200, 100.0, 'hann', 64], [xs200, 100.0, 'hann', 64]))
+_wt = sg.windows.tukey(64, 0.25, sym=False)
+spg.append(_spg_case([xs200, 1.0, _wt], [xs200, 1.0, _wt]))               # explicit window array
+spg.append(_spg_case([xs200, 1.0, 'hann', 64, 48], [xs200, 1.0, 'hann', 64, 48]))   # noverlap=48
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -376,7 +393,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
                  {'fn': 'welch', 'cases': wel, 'tol': {'atol': 1e-12}},
                  {'fn': 'csd', 'cases': csdc, 'tol': {'atol': 1e-12}},
-                 {'fn': 'coherence', 'cases': coh, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'coherence', 'cases': coh, 'tol': {'atol': 1e-12}},
+                 {'fn': 'spectrogram', 'cases': spg, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

@@ -2237,6 +2237,89 @@ static int r_coherence(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* periodic Tukey window of length M with taper fraction alpha, into w (matches scipy windows.tukey sym=False). */
+static void sig_tukey_periodic(double *w, int64_t M, double alpha)
+{
+    if (alpha <= 0.0) { for (int64_t i = 0; i < M; i++) w[i] = 1.0; return; }
+    if (alpha >= 1.0) { for (int64_t i = 0; i < M; i++) w[i] = 0.5 - 0.5 * cos(2.0 * M_PI * (double)i / (double)M); return; }   /* hann periodic */
+    const int64_t Me = M + 1;                                /* periodic: compute on M+1, drop the last */
+    const int64_t width = (int64_t)(alpha * (double)(Me - 1) / 2.0);
+    for (int64_t n = 0; n < M; n++) {
+        if (n <= width) w[n] = 0.5 * (1.0 + cos(M_PI * (-1.0 + 2.0 * (double)n / alpha / (double)(Me - 1))));
+        else if (n >= Me - width - 1) w[n] = 0.5 * (1.0 + cos(M_PI * (-2.0 / alpha + 1.0 + 2.0 * (double)n / alpha / (double)(Me - 1))));
+        else w[n] = 1.0;
+    }
+}
+
+/* spectrogram(x, fs=1.0, window=('tukey',0.25), nperseg=None, noverlap=None, nfft=None, detrend='constant',
+   return_onesided=True, scaling='density', axis=-1, mode='psd'): per-segment PSD over time (scipy.signal.
+   spectrogram, mode='psd'). Default window is a periodic Tukey(0.25); noverlap defaults to nperseg//8.
+   Returns (f, t, Sxx) with Sxx shaped (nfreq, nseg). */
+static int r_spectrogram(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("spectrogram: x must be a 1-D real array"); return TSR_EARG; }
+    if (nargs > 10 && args[10].kind == 2 && args[10].str && strcmp(args[10].str, "psd") != 0) { fn_set_error("spectrogram: only mode='psd' is supported"); return TSR_EARG; }
+    int64_t nx; double *x = fn_arg_doubles(&args[0], &nx); if (!x) return TSR_ENOMEM;
+    const double fs = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1.0;
+    int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
+    const int win_boxcar = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "boxcar"));
+    const int win_hann = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "hann"));
+    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (warr ? nwin : (nx < 256 ? nx : 256));
+    if (nperseg > nx) nperseg = nx;
+    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : nperseg / 8;
+    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg;
+    int det = 1;
+    if (nargs > 6) { if (args[6].kind == 2 && args[6].str) det = !strcmp(args[6].str, "linear") ? 2 : 1; else if (args[6].kind == 4 && args[6].num == 0.0) det = 0; }
+    const int onesided = (nargs > 7 && args[7].kind == 4) ? (args[7].num != 0.0) : 1;
+    const int density = !(nargs > 8 && args[8].kind == 2 && args[8].str && !strcmp(args[8].str, "spectrum"));
+    const int64_t nstep = nperseg - noverlap;
+    int rc = TSR_OK;
+    if (nstep <= 0) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); fn_set_error("spectrogram: noverlap must be less than nperseg"); return TSR_EARG; }
+    const int64_t nseg = nperseg <= nx ? 1 + (nx - nperseg) / nstep : 0;
+    const int64_t nb = onesided ? nfft / 2 + 1 : nfft;
+    double *win = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    double *seg = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    double *in = (double *)calloc((size_t)(onesided ? nfft : 2 * nfft), sizeof(double));
+    double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * nb));
+    if (!win || !seg || !in || !Xf || (nargs > 2 && args[2].kind == 3 && !warr)) rc = TSR_ENOMEM;
+    else if (warr && nwin != nperseg) { fn_set_error("spectrogram: window length must equal nperseg"); rc = TSR_EARG; }
+    else if (nseg < 1) { fn_set_error("spectrogram: nperseg exceeds the signal length"); rc = TSR_EARG; }
+    else {
+        if (warr) for (int64_t i = 0; i < nperseg; i++) win[i] = warr[i];
+        else if (win_boxcar) for (int64_t i = 0; i < nperseg; i++) win[i] = 1.0;
+        else if (win_hann) for (int64_t i = 0; i < nperseg; i++) win[i] = 0.5 - 0.5 * cos(2.0 * M_PI * (double)i / (double)nperseg);
+        else sig_tukey_periodic(win, nperseg, 0.25);          /* default */
+        double sw2 = 0, sw = 0; for (int64_t i = 0; i < nperseg; i++) { sw2 += win[i] * win[i]; sw += win[i]; }
+        const double scale = density ? 1.0 / (fs * sw2) : 1.0 / (sw * sw);
+        double *f = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nb});
+        double *t = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nseg});
+        double *S = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){nb, nseg});
+        if (!f || !t || !S) rc = TSR_ENOMEM;
+        else {
+            for (int64_t k = 0; k < nb; k++) f[k] = onesided ? (double)k * fs / (double)nfft : ((k <= (nfft - 1) / 2 ? k : k - nfft) * fs / (double)nfft);
+            for (int64_t s = 0; s < nseg; s++) {
+                t[s] = ((double)nperseg / 2.0 + (double)(s * nstep)) / fs;
+                const double *src = x + s * nstep;
+                for (int64_t i = 0; i < nperseg; i++) seg[i] = src[i];
+                if (det == 1) { double m = 0; for (int64_t i = 0; i < nperseg; i++) m += seg[i]; m /= (double)nperseg; for (int64_t i = 0; i < nperseg; i++) seg[i] -= m; }
+                else if (det == 2 && nperseg > 1) { double st = 0, ss = 0, stt = 0, stx = 0; const double n = (double)nperseg; for (int64_t i = 0; i < nperseg; i++) { st += i; ss += seg[i]; stt += (double)i * i; stx += (double)i * seg[i]; } const double b = (n * stx - st * ss) / (n * stt - st * st), a = (ss - b * st) / n; for (int64_t i = 0; i < nperseg; i++) seg[i] -= a + b * (double)i; }
+                for (int64_t i = 0; i < nperseg; i++) seg[i] *= win[i];
+                if (onesided) { for (int64_t i = 0; i < nfft; i++) in[i] = i < nperseg ? seg[i] : 0.0; tsr_rfft(nfft, 1, in, Xf); }
+                else { for (int64_t i = 0; i < nfft; i++) { in[2 * i] = i < nperseg ? seg[i] : 0.0; in[2 * i + 1] = 0.0; } tsr_fft(nfft, 1, 0, in, Xf); }
+                for (int64_t k = 0; k < nb; k++) {
+                    double p = (Xf[2 * k] * Xf[2 * k] + Xf[2 * k + 1] * Xf[2 * k + 1]) * scale;
+                    if (onesided) { const int fold = (nfft % 2) ? (k >= 1) : (k >= 1 && k < nb - 1); if (fold) p *= 2.0; }
+                    S[k * nseg + s] = p;
+                }
+            }
+        }
+    }
+    free(win); free(seg); free(in); free(Xf); if (warr) fn_free_doubles(warr, nwin);
+    fn_free_doubles(x, nx);
+    return rc;
+}
+
 /* transpose an r x c interleaved-complex matrix into dst (c x r). */
 static void sig_ctranspose(const double *src, int64_t r, int64_t c, double *dst)
 {
@@ -2331,6 +2414,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.welch", 2, "x, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', return_onesided=True, scaling='density', axis=-1, average='mean'", "f, Pxx", r_welch, NULL, "Welch's averaged-periodogram power spectral density estimate (scipy.signal.welch)."),
     ROUTINE("signal.csd", 2, "x, y, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', return_onesided=True, scaling='density', axis=-1, average='mean'", "f, Pxy", r_csd, NULL, "Cross power spectral density by Welch's method (scipy.signal.csd)."),
     ROUTINE("signal.coherence", 2, "x, y, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', axis=-1", "f, Cxy", r_coherence, NULL, "Magnitude-squared coherence by Welch's method (scipy.signal.coherence)."),
+    ROUTINE("signal.spectrogram", 3, "x, fs=1.0, window='tukey', nperseg=None, noverlap=None, nfft=None, detrend='constant', return_onesided=True, scaling='density', axis=-1, mode='psd'", "f, t, Sxx", r_spectrogram, NULL, "Spectrogram (per-segment PSD over time) by Welch's segmenting; default window periodic Tukey(0.25) (scipy.signal.spectrogram, mode='psd')."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),

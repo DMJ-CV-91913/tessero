@@ -462,6 +462,7 @@
         "signal.sosfilt_zi": "pass",
         "signal.sosfiltfilt": "pass",
         "signal.sosfreqz": "pass",
+        "signal.spectrogram": "pass",
         "signal.square": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
@@ -2142,7 +2143,8 @@
             "signal.periodogram": 0.9897959183673469,
             "signal.welch": 2.6034782608695655,
             "signal.csd": 8.338666666666667,
-            "signal.coherence": 3.0352614568523472e-15
+            "signal.coherence": 3.0352614568523472e-15,
+            "signal.spectrogram": 3
         },
         "ext": {
             "np.median": 0,
@@ -3214,7 +3216,8 @@
             "signal.periodogram": 0.9897959183673469,
             "signal.welch": 2.6034782608695655,
             "signal.csd": 8.338666666666667,
-            "signal.coherence": 3.0352614568523472e-15
+            "signal.coherence": 3.0352614568523472e-15,
+            "signal.spectrogram": 3
         }
     },
     "ext": {
@@ -3680,6 +3683,7 @@
         "signal.sosfilt_zi": "pass",
         "signal.sosfiltfilt": "pass",
         "signal.sosfreqz": "pass",
+        "signal.spectrogram": "pass",
         "signal.square": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
