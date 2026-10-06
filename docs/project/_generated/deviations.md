@@ -118,6 +118,9 @@
 | `slinalg.dft` | every call | rtol 1e-09 |
 | `slinalg.solve_sylvester` | every call | rtol 1e-09 |
 | `slinalg.solve_continuous_lyapunov` | every call | rtol 1e-09 |
+| `slinalg.eigvalsh_tridiagonal` | every call | rtol 1e-09 |
+| `slinalg.issymmetric` | every call | rtol 1e-09 |
+| `slinalg.ishermitian` | every call | rtol 1e-09 |
 | `slinalg.khatri_rao` | every call | rtol 1e-09 |
 | `slinalg.diagsvd` | every call | rtol 1e-09 |
 | `slinalg.orth` | every call | rtol 1e-09 |

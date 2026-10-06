@@ -1843,6 +1843,12 @@
                 "doc": "Eigenvalues of a symmetric matrix, ascending (scipy.linalg.eigvalsh)."
             },
             {
+                "name": "eigvalshTridiagonal",
+                "static": true,
+                "sig": "eigvalshTridiagonal(mixed $d, mixed $e): mixed",
+                "doc": "Eigenvalues of a symmetric tridiagonal matrix via dsterf (scipy.linalg.eigvalsh_tridiagonal)."
+            },
+            {
                 "name": "expm",
                 "static": true,
                 "sig": "expm(mixed $a): mixed",
@@ -1895,6 +1901,18 @@
                 "static": true,
                 "sig": "invpascal(mixed $n, mixed $kind = 'symmetric'): mixed",
                 "doc": "Inverse of the Pascal matrix of order n (scipy.linalg.invpascal)."
+            },
+            {
+                "name": "ishermitian",
+                "static": true,
+                "sig": "ishermitian(mixed $a, mixed $atol = null, mixed $rtol = null): mixed",
+                "doc": "Whether a square matrix is Hermitian; for real input, symmetric (scipy.linalg.ishermitian)."
+            },
+            {
+                "name": "issymmetric",
+                "static": true,
+                "sig": "issymmetric(mixed $a, mixed $atol = null, mixed $rtol = null): mixed",
+                "doc": "Whether a square matrix is symmetric (scipy.linalg.issymmetric)."
             },
             {
                 "name": "khatriRao",
@@ -14632,6 +14650,24 @@
                 "name": "solveContinuousLyapunov",
                 "static": true,
                 "sig": "solveContinuousLyapunov($a, $q)",
+                "doc": ""
+            },
+            {
+                "name": "eigvalshTridiagonal",
+                "static": true,
+                "sig": "eigvalshTridiagonal($d, $e)",
+                "doc": ""
+            },
+            {
+                "name": "issymmetric",
+                "static": true,
+                "sig": "issymmetric($a, $atol = null, $rtol = null)",
+                "doc": ""
+            },
+            {
+                "name": "ishermitian",
+                "static": true,
+                "sig": "ishermitian($a, $atol = null, $rtol = null)",
                 "doc": ""
             },
             {
