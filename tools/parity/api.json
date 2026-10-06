@@ -1837,6 +1837,12 @@
                 "doc": "Matrix exponential via the Schur-Parlett method (scipy.linalg.expm; real spectrum)."
             },
             {
+                "name": "fiedler",
+                "static": true,
+                "sig": "fiedler(mixed $a): mixed",
+                "doc": "Symmetric Fiedler matrix of absolute differences |a_i - a_j| (scipy.linalg.fiedler)."
+            },
+            {
                 "name": "fractionalMatrixPower",
                 "static": true,
                 "sig": "fractionalMatrixPower(mixed $a, mixed $t): mixed",
@@ -1847,6 +1853,12 @@
                 "static": true,
                 "sig": "hadamard(mixed $n): mixed",
                 "doc": "Sylvester-Hadamard matrix of order n, a power of two (scipy.linalg.hadamard)."
+            },
+            {
+                "name": "hankel",
+                "static": true,
+                "sig": "hankel(mixed $c, mixed $r = null): mixed",
+                "doc": "Hankel matrix with first column c and last row r (scipy.linalg.hankel)."
             },
             {
                 "name": "hessenberg",
@@ -1877,6 +1889,12 @@
                 "static": true,
                 "sig": "ldl(mixed $a, mixed $lower = true): mixed",
                 "doc": "LDL^T factorisation of a symmetric matrix via dsytrf (scipy.linalg.ldl)."
+            },
+            {
+                "name": "leslie",
+                "static": true,
+                "sig": "leslie(mixed $f, mixed $s): mixed",
+                "doc": "Leslie population matrix with first row f and sub-diagonal s (scipy.linalg.leslie)."
             },
             {
                 "name": "logm",
@@ -14434,6 +14452,24 @@
                 "name": "hilbert",
                 "static": true,
                 "sig": "hilbert($n)",
+                "doc": ""
+            },
+            {
+                "name": "hankel",
+                "static": true,
+                "sig": "hankel($c, $r = null)",
+                "doc": ""
+            },
+            {
+                "name": "fiedler",
+                "static": true,
+                "sig": "fiedler($a)",
+                "doc": ""
+            },
+            {
+                "name": "leslie",
+                "static": true,
+                "sig": "leslie($f, $s)",
                 "doc": ""
             },
             {

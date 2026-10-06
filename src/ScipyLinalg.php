@@ -34,13 +34,16 @@ final class ScipyLinalg
     'eigvals' => 'eigvals',
     'eigvalsh' => 'eigvalsh',
     'expm' => 'expm',
+    'fiedler' => 'fiedler',
     'fractional_matrix_power' => 'fractionalMatrixPower',
     'hadamard' => 'hadamard',
+    'hankel' => 'hankel',
     'hessenberg' => 'hessenberg',
     'hilbert' => 'hilbert',
     'inv' => 'inv',
     'khatri_rao' => 'khatriRao',
     'ldl' => 'ldl',
+    'leslie' => 'leslie',
     'logm' => 'logm',
     'lstsq' => 'lstsq',
     'lu' => 'lu',
@@ -254,6 +257,16 @@ final class ScipyLinalg
     }
 
     /**
+     * Symmetric Fiedler matrix of absolute differences |a_i - a_j| (scipy.linalg.fiedler).
+     *
+     * scipy.linalg.fiedler
+     */
+    public static function fiedler(mixed $a): mixed
+    {
+        return Registry::routine('slinalg.fiedler', [$a]);
+    }
+
+    /**
      * Fractional matrix power a^t via the Schur-Parlett method (scipy.linalg.fractional_matrix_power; positive real spectrum).
      *
      * scipy.linalg.fractional_matrix_power
@@ -271,6 +284,16 @@ final class ScipyLinalg
     public static function hadamard(mixed $n): mixed
     {
         return Registry::routine('slinalg.hadamard', [$n]);
+    }
+
+    /**
+     * Hankel matrix with first column c and last row r (scipy.linalg.hankel).
+     *
+     * scipy.linalg.hankel
+     */
+    public static function hankel(mixed $c, mixed $r = null): mixed
+    {
+        return Registry::routine('slinalg.hankel', [$c, $r]);
     }
 
     /**
@@ -323,6 +346,16 @@ final class ScipyLinalg
     public static function ldl(mixed $a, mixed $lower = true): mixed
     {
         return Registry::routine('slinalg.ldl', [$a, $lower]);
+    }
+
+    /**
+     * Leslie population matrix with first row f and sub-diagonal s (scipy.linalg.leslie).
+     *
+     * scipy.linalg.leslie
+     */
+    public static function leslie(mixed $f, mixed $s): mixed
+    {
+        return Registry::routine('slinalg.leslie', [$f, $s]);
     }
 
     /**

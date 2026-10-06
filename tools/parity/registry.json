@@ -1940,12 +1940,22 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.fiedler": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.fractional_matrix_power": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
         "slinalg.hadamard": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.hankel": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -1974,6 +1984,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 3
+        },
+        "slinalg.leslie": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
         },
         "slinalg.logm": {
             "kind": "routine",

@@ -260,13 +260,16 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.eigvals` | `Tessero\ScipyLinalg::eigvals()` |
 | `scipy.linalg.eigvalsh` | `Tessero\ScipyLinalg::eigvalsh()` |
 | `scipy.linalg.expm` | `Tessero\ScipyLinalg::expm()` |
+| `scipy.linalg.fiedler` | `Tessero\ScipyLinalg::fiedler()` |
 | `scipy.linalg.fractional_matrix_power` | `Tessero\ScipyLinalg::fractionalMatrixPower()` |
 | `scipy.linalg.hadamard` | `Tessero\ScipyLinalg::hadamard()` |
+| `scipy.linalg.hankel` | `Tessero\ScipyLinalg::hankel()` |
 | `scipy.linalg.hessenberg` | `Tessero\ScipyLinalg::hessenberg()` |
 | `scipy.linalg.hilbert` | `Tessero\ScipyLinalg::hilbert()` |
 | `scipy.linalg.inv` | `Tessero\ScipyLinalg::inv()` |
 | `scipy.linalg.khatri_rao` | `Tessero\ScipyLinalg::khatriRao()` |
 | `scipy.linalg.ldl` | `Tessero\ScipyLinalg::ldl()` |
+| `scipy.linalg.leslie` | `Tessero\ScipyLinalg::leslie()` |
 | `scipy.linalg.logm` | `Tessero\ScipyLinalg::logm()` |
 | `scipy.linalg.lstsq` | `Tessero\ScipyLinalg::lstsq()` |
 | `scipy.linalg.lu` | `Tessero\ScipyLinalg::lu()` |
