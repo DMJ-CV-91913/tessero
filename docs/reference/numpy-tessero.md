@@ -967,6 +967,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.square` | `Tessero\Signal::square()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
+| `scipy.signal.welch` | `Tessero\Signal::welch()` |
 | `scipy.signal.zpk2tf` | `Tessero\Signal::zpk2tf()` |
 
 ## scipy.ndimage
