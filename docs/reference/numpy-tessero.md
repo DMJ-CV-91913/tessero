@@ -252,6 +252,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.block_diag` | `Tessero\ScipyLinalg::blockDiag()` |
 | `scipy.linalg.cho_factor` | `Tessero\ScipyLinalg::choFactor()` |
 | `scipy.linalg.cho_solve` | `Tessero\ScipyLinalg::choSolve()` |
+| `scipy.linalg.cho_solve_banded` | `Tessero\ScipyLinalg::choSolveBanded()` |
 | `scipy.linalg.cholesky` | `Tessero\ScipyLinalg::cholesky()` |
 | `scipy.linalg.cholesky_banded` | `Tessero\ScipyLinalg::choleskyBanded()` |
 | `scipy.linalg.circulant` | `Tessero\ScipyLinalg::circulant()` |
