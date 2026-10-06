@@ -35,6 +35,7 @@ final class Signal
     'gausspulse' => 'gausspulse',
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
+    'hilbert2' => 'hilbert2',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
     'lp2bp' => 'lp2bp',
@@ -259,6 +260,16 @@ final class Signal
     public static function hilbert(mixed $x, mixed $N = null): mixed
     {
         return Registry::routine('signal.hilbert', [$x, $N]);
+    }
+
+    /**
+     * 2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2).
+     *
+     * scipy.signal.hilbert2
+     */
+    public static function hilbert2(mixed $x, mixed $N = null): mixed
+    {
+        return Registry::routine('signal.hilbert2', [$x, $N]);
     }
 
     /**
