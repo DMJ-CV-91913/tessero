@@ -28,6 +28,7 @@ final class Signal
     'correlate' => 'correlate',
     'correlation_lags' => 'correlationLags',
     'csd' => 'csd',
+    'deconvolve' => 'deconvolve',
     'detrend' => 'detrend',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
@@ -197,6 +198,18 @@ final class Signal
     public static function csd(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed
     {
         return Registry::routine('signal.csd', [$x, $y, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $average]);
+    }
+
+    /**
+     * Deconvolve a divisor out of a signal by polynomial division (scipy.signal.deconvolve).
+     *
+     * scipy.signal.deconvolve
+     *
+     * @return mixed one array, or an array keyed by quotient, remainder when several results are requested
+     */
+    public static function deconvolve(mixed $signal, mixed $divisor): mixed
+    {
+        return Registry::routine('signal.deconvolve', [$signal, $divisor]);
     }
 
     /**

@@ -435,6 +435,15 @@ for (N, Wn, bt) in [(4, 0.3, 'low'), (6, 0.25, 'low'), (4, 0.5, 'high'), (3, 0.4
     s2z.append({'args': [F.enc(np.asarray(sos))], 'kwargs': {},
                 'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# deconvolve: polynomial division
+dcv = []
+for (sig, div) in [([1., 0., 0., 0.], [1., 1.]), ([0., 1., 2., 3., 4., 5.], [1., 2., 1.]),
+                   ([2., 4., 6., 8.], [2.]), ([1., 2., 3.], [1., 0., 0., 0., 1.]),  # divisor longer -> empty quotient
+                   ([5., 11., 14., 6.], [5., 1.])]:
+    q, r = sg.deconvolve(np.asarray(sig), np.asarray(div))
+    dcv.append({'args': [F.enc(np.asarray(sig)), F.enc(np.asarray(div))], 'kwargs': {},
+                'expect': F.enc_result((q, r), ['quotient', 'remainder']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -479,7 +488,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'kaiser_atten', 'cases': katt}, {'fn': 'kaiser_beta', 'cases': kbeta},
                  {'fn': 'kaiserord', 'cases': kord},
                  {'fn': 'firwin2', 'cases': fw2, 'tol': {'atol': 1e-12}},
-                 {'fn': 'sos2zpk', 'cases': s2z, 'tol': {'atol': 1e-10}}]}
+                 {'fn': 'sos2zpk', 'cases': s2z, 'tol': {'atol': 1e-10}},
+                 {'fn': 'deconvolve', 'cases': dcv, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

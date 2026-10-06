@@ -2472,6 +2472,39 @@ static int r_firwin2(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return rc;
 }
 
+/* deconvolve(signal, divisor): polynomial division signal = convolve(divisor, quotient) + remainder
+   (scipy.signal.deconvolve). Returns (quotient, remainder); remainder has the length of signal. */
+static int r_deconvolve(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("deconvolve: signal and divisor must be arrays"); return TSR_EARG; }
+    int64_t N, D; double *sig = fn_arg_doubles(&args[0], &N); if (!sig) return TSR_ENOMEM;
+    double *den = fn_arg_doubles(&args[1], &D); if (!den) { fn_free_doubles(sig, N); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (D < 1 || den[0] == 0.0) { fn_set_error("deconvolve: divisor must be nonzero (den[0] != 0)"); rc = TSR_EARG; }
+    else if (D > N) {                                        /* quotient empty, remainder = signal */
+        double *q = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){0});
+        double *r = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){N});
+        if (!r) rc = TSR_ENOMEM; else { (void)q; memcpy(r, sig, sizeof(double) * (size_t)N); }
+    } else {
+        const int64_t L = N - D + 1;                         /* quotient length */
+        double *work = (double *)malloc(sizeof(double) * (size_t)N);   /* long-division remainder */
+        double *q = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){L});
+        double *r = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){N});
+        if (!work || !q || !r) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < N; i++) work[i] = sig[i];
+            for (int64_t i = 0; i < L; i++) { const double c = work[i] / den[0]; q[i] = c; for (int64_t j = 0; j < D; j++) work[i + j] -= c * den[j]; }
+            for (int64_t i = 0; i < N; i++) r[i] = 0.0;       /* remainder = signal - convolve(quotient, divisor) */
+            for (int64_t i = 0; i < L; i++) for (int64_t j = 0; j < D; j++) r[i + j] += q[i] * den[j];
+            for (int64_t i = 0; i < N; i++) r[i] = sig[i] - r[i];
+        }
+        free(work);
+    }
+    fn_free_doubles(sig, N); fn_free_doubles(den, D);
+    return rc;
+}
+
 /* correlation_lags(in1_len, in2_len, mode='full'): the lag indices for signal.correlate's output
    (scipy.signal.correlation_lags). Integer array. */
 static int r_correlation_lags(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2702,6 +2735,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.kaiserord", 2, "ripple, width", "numtaps, beta", r_kaiserord, NULL, "Kaiser filter length and beta for a ripple and transition width (scipy.signal.kaiserord)."),
     ROUTINE("signal.firwin2", 1, "numtaps, freq, gain, nfreqs=None, window='hamming', antisymmetric=False, fs=None", "out", r_firwin2, NULL, "FIR filter design by frequency sampling (scipy.signal.firwin2)."),
     ROUTINE("signal.sos2zpk", 3, "sos", "z, p, k", r_sos2zpk, NULL, "Zeros, poles and gain from a second-order-sections cascade (scipy.signal.sos2zpk)."),
+    ROUTINE("signal.deconvolve", 2, "signal, divisor", "quotient, remainder", r_deconvolve, NULL, "Deconvolve a divisor out of a signal by polynomial division (scipy.signal.deconvolve)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
