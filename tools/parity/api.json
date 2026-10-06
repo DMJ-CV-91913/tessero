@@ -2831,6 +2831,12 @@
                 "doc": "Power spectral density estimate from a single segment (scipy.signal.periodogram)."
             },
             {
+                "name": "resample",
+                "static": true,
+                "sig": "resample(mixed $x, mixed $num, mixed $t = null, mixed $axis = 0, mixed $window = null, mixed $domain = 'time'): mixed",
+                "doc": "Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None)."
+            },
+            {
                 "name": "savgolCoeffs",
                 "static": true,
                 "sig": "savgolCoeffs(mixed $windowLength, mixed $polyorder, mixed $deriv = 0, mixed $delta = 1.0, mixed $pos = null, mixed $use = 'conv'): mixed",
@@ -15579,6 +15585,12 @@
                 "name": "correlationLags",
                 "static": true,
                 "sig": "correlationLags($in1Len, $in2Len, $mode = 'full')",
+                "doc": ""
+            },
+            {
+                "name": "resample",
+                "static": true,
+                "sig": "resample($x, $num, $t = null, $axis = 0, $window = null, $domain = 'time')",
                 "doc": ""
             }
         ]
