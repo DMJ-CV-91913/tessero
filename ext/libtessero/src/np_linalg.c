@@ -3104,6 +3104,11 @@ static int r_expm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 { (void)ctx; (void)nres; return matfun_impl(args, nargs, res, exp, "expm"); }
 static int r_tanm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return matfun_impl(args, nargs, res, tan, "tanm"); }
+/* matrix sign function: sign(A) via the Schur-Parlett method with f(x) = sign(x) (scipy.linalg.signm). For a
+   real matrix with a real, well-separated spectrum this is the value scipy's funm-based signm returns. */
+static double sl_signfun(double x) { return x > 0.0 ? 1.0 : (x < 0.0 ? -1.0 : 0.0); }
+static int r_signm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return matfun_impl(args, nargs, res, sl_signfun, "signm"); }
 
 /* fractional_matrix_power(a, t): a^t via the real Schur method and the Parlett recurrence with f(x) = x^t
    (scipy.linalg.fractional_matrix_power). Real spectrum with positive eigenvalues (so x^t is real and the
@@ -3813,6 +3818,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.subspace_angles", 2, "A, B", "out", r_subspace_angles, NULL, "Principal angles between the column spaces of A and B (scipy.linalg.subspace_angles)."),
     ROUTINE("slinalg.solve_continuous_are", 4, "a, b, q, r", "out", r_solve_continuous_are, NULL, "Stabilising solution of the continuous-time algebraic Riccati equation (scipy.linalg.solve_continuous_are)."),
     ROUTINE("slinalg.solve_discrete_are", 4, "a, b, q, r", "out", r_solve_discrete_are, NULL, "Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are)."),
+    ROUTINE("slinalg.signm", 1, "A", "out", r_signm, NULL, "Matrix sign function via the Schur-Parlett method (scipy.linalg.signm; real, well-separated spectrum)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),
