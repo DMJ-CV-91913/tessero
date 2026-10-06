@@ -2380,6 +2380,54 @@ static int r_matmul_toeplitz(const void *ctx, const tsr_arg *args, int nargs, ts
     return rc;
 }
 
+/* invhilbert(n): the inverse of the order-n Hilbert matrix, from the exact formula
+   H^-1[i][j] = (-1)^(i+j) (i+j+1) C(n+i, n-j-1) C(n+j, n-i-1) C(i+j, i)^2 (scipy.linalg.invhilbert). */
+static int r_invhilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    int64_t n; int rc = sl_int(&args[0], "n", &n);
+    if (rc < 0) return rc;
+    if (n < 0) { fn_set_error("invhilbert: n must be a non-negative integer"); return TSR_EARG; }
+    int64_t osh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) return TSR_ENOMEM;
+    for (int64_t i = 0; i < n; i++)
+        for (int64_t j = 0; j < n; j++) {
+            const double sign = ((i + j) & 1) ? -1.0 : 1.0;
+            const double cij = sl_binom(i + j, i);
+            out[i * n + j] = sign * (double)(i + j + 1) * sl_binom(n + i, n - j - 1) * sl_binom(n + j, n - i - 1) * cij * cij;
+        }
+    return TSR_OK;
+}
+
+/* eigh_tridiagonal(d, e): eigenvalues (ascending) and eigenvectors of a symmetric tridiagonal matrix via dstev;
+   eigenvector columns are sign-canonicalised as in eigh (scipy.linalg.eigh_tridiagonal). Returns (w, v). */
+static int r_eigh_tridiagonal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("eigh_tridiagonal: d and e must be 1-D arrays"); return TSR_EARG; }
+    int64_t n, ne;
+    double *d = mat_f64(&args[0], "d", &n); if (!d) return TSR_ENOMEM;
+    double *e = mat_f64(&args[1], "e", &ne); if (!e) { fn_free_doubles(d, n); return TSR_ENOMEM; }
+    if (ne != n - 1) { fn_free_doubles(d, n); fn_free_doubles(e, ne); fn_set_error("eigh_tridiagonal: e must have length len(d)-1"); return TSR_EARG; }
+    int64_t wsh[1] = {n}, vsh[2] = {n, n};
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, wsh);
+    double *z = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *v = (double *)fn_result_array(&res[1], TSR_F64, 2, vsh);
+    int rc = TSR_OK;
+    if (!w || !z || !v) rc = TSR_ENOMEM;
+    else {
+        if (n > 0) { lapack_int info = LAPACKE_dstev(LAPACK_ROW_MAJOR, 'V', (lapack_int)n, d, e, z, (lapack_int)n); if (info != 0) { rc = TSR_EARG; fn_set_error("eigh_tridiagonal: dstev failed to converge"); } }
+        if (rc == TSR_OK) {
+            for (int64_t i = 0; i < n; i++) w[i] = d[i];
+            sign_canon(z, n, n, n, NULL, 0);
+            for (int64_t i = 0; i < n * n; i++) v[i] = z[i];
+        }
+    }
+    free(z); fn_free_doubles(d, n); fn_free_doubles(e, ne);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2930,6 +2978,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.solve_toeplitz", 1, "c_or_cr, b", "out", r_solve_toeplitz, NULL, "Solve a Toeplitz system T x = b (scipy.linalg.solve_toeplitz)."),
     ROUTINE("slinalg.solve_circulant", 1, "c, b", "out", r_solve_circulant, NULL, "Solve a circulant system C x = b (scipy.linalg.solve_circulant)."),
     ROUTINE("slinalg.matmul_toeplitz", 1, "c_or_cr, x", "out", r_matmul_toeplitz, NULL, "The product of a Toeplitz matrix with x (scipy.linalg.matmul_toeplitz)."),
+    ROUTINE("slinalg.invhilbert", 1, "n", "out", r_invhilbert, NULL, "Inverse of the Hilbert matrix of order n (scipy.linalg.invhilbert)."),
+    ROUTINE("slinalg.eigh_tridiagonal", 2, "d, e", "eigenvalues, eigenvectors", r_eigh_tridiagonal, NULL, "Eigenvalues and eigenvectors of a symmetric tridiagonal matrix via dstev (scipy.linalg.eigh_tridiagonal)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

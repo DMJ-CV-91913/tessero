@@ -264,6 +264,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.eig` | `Tessero\ScipyLinalg::eig()` |
 | `scipy.linalg.eig_banded` | `Tessero\ScipyLinalg::eigBanded()` |
 | `scipy.linalg.eigh` | `Tessero\ScipyLinalg::eigh()` |
+| `scipy.linalg.eigh_tridiagonal` | `Tessero\ScipyLinalg::eighTridiagonal()` |
 | `scipy.linalg.eigvals` | `Tessero\ScipyLinalg::eigvals()` |
 | `scipy.linalg.eigvalsh` | `Tessero\ScipyLinalg::eigvalsh()` |
 | `scipy.linalg.eigvalsh_tridiagonal` | `Tessero\ScipyLinalg::eigvalshTridiagonal()` |
@@ -275,6 +276,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.hessenberg` | `Tessero\ScipyLinalg::hessenberg()` |
 | `scipy.linalg.hilbert` | `Tessero\ScipyLinalg::hilbert()` |
 | `scipy.linalg.inv` | `Tessero\ScipyLinalg::inv()` |
+| `scipy.linalg.invhilbert` | `Tessero\ScipyLinalg::invhilbert()` |
 | `scipy.linalg.invpascal` | `Tessero\ScipyLinalg::invpascal()` |
 | `scipy.linalg.ishermitian` | `Tessero\ScipyLinalg::ishermitian()` |
 | `scipy.linalg.issymmetric` | `Tessero\ScipyLinalg::issymmetric()` |

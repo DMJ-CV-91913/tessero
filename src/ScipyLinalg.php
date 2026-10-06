@@ -33,6 +33,7 @@ final class ScipyLinalg
     'eig' => 'eig',
     'eig_banded' => 'eigBanded',
     'eigh' => 'eigh',
+    'eigh_tridiagonal' => 'eighTridiagonal',
     'eigvals' => 'eigvals',
     'eigvalsh' => 'eigvalsh',
     'eigvalsh_tridiagonal' => 'eigvalshTridiagonal',
@@ -44,6 +45,7 @@ final class ScipyLinalg
     'hessenberg' => 'hessenberg',
     'hilbert' => 'hilbert',
     'inv' => 'inv',
+    'invhilbert' => 'invhilbert',
     'invpascal' => 'invpascal',
     'ishermitian' => 'ishermitian',
     'issymmetric' => 'issymmetric',
@@ -259,6 +261,18 @@ final class ScipyLinalg
     }
 
     /**
+     * Eigenvalues and eigenvectors of a symmetric tridiagonal matrix via dstev (scipy.linalg.eigh_tridiagonal).
+     *
+     * scipy.linalg.eigh_tridiagonal
+     *
+     * @return mixed one array, or an array keyed by eigenvalues, eigenvectors when several results are requested
+     */
+    public static function eighTridiagonal(mixed $d, mixed $e): mixed
+    {
+        return Registry::routine('slinalg.eigh_tridiagonal', [$d, $e]);
+    }
+
+    /**
      * Eigenvalues of a general matrix, complex, sorted (scipy.linalg.eigvals).
      *
      * scipy.linalg.eigvals
@@ -366,6 +380,16 @@ final class ScipyLinalg
     public static function inv(mixed $a): mixed
     {
         return Registry::routine('slinalg.inv', [$a]);
+    }
+
+    /**
+     * Inverse of the Hilbert matrix of order n (scipy.linalg.invhilbert).
+     *
+     * scipy.linalg.invhilbert
+     */
+    public static function invhilbert(mixed $n): mixed
+    {
+        return Registry::routine('slinalg.invhilbert', [$n]);
     }
 
     /**
