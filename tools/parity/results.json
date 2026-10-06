@@ -435,7 +435,10 @@
         "signal.detrend": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
+        "signal.freqs": "pass",
+        "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",
+        "signal.freqz_zpk": "pass",
         "signal.gausspulse": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
@@ -2120,7 +2123,10 @@
             "signal.lp2hp": 0,
             "signal.lp2bp": 0,
             "signal.lp2bs": 0,
-            "signal.bilinear": 0
+            "signal.bilinear": 0,
+            "signal.freqs": 0,
+            "signal.freqs_zpk": 5.906235915828799e-16,
+            "signal.freqz_zpk": 1
         },
         "ext": {
             "np.median": 0,
@@ -3181,7 +3187,10 @@
             "signal.lp2hp": 0,
             "signal.lp2bp": 0,
             "signal.lp2bs": 0,
-            "signal.bilinear": 0
+            "signal.bilinear": 0,
+            "signal.freqs": 0,
+            "signal.freqs_zpk": 5.906235915828799e-16,
+            "signal.freqz_zpk": 1
         }
     },
     "ext": {
@@ -3620,7 +3629,10 @@
         "signal.detrend": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
+        "signal.freqs": "pass",
+        "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",
+        "signal.freqz_zpk": "pass",
         "signal.gausspulse": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
