@@ -1960,6 +1960,11 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.eigvalsh_tridiagonal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.expm": {
             "kind": "routine",
             "nin": 0,
@@ -2001,6 +2006,16 @@
             "nout": 1
         },
         "slinalg.invpascal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.ishermitian": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.issymmetric": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

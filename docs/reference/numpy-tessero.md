@@ -264,6 +264,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.eigh` | `Tessero\ScipyLinalg::eigh()` |
 | `scipy.linalg.eigvals` | `Tessero\ScipyLinalg::eigvals()` |
 | `scipy.linalg.eigvalsh` | `Tessero\ScipyLinalg::eigvalsh()` |
+| `scipy.linalg.eigvalsh_tridiagonal` | `Tessero\ScipyLinalg::eigvalshTridiagonal()` |
 | `scipy.linalg.expm` | `Tessero\ScipyLinalg::expm()` |
 | `scipy.linalg.fiedler` | `Tessero\ScipyLinalg::fiedler()` |
 | `scipy.linalg.fractional_matrix_power` | `Tessero\ScipyLinalg::fractionalMatrixPower()` |
@@ -273,6 +274,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.hilbert` | `Tessero\ScipyLinalg::hilbert()` |
 | `scipy.linalg.inv` | `Tessero\ScipyLinalg::inv()` |
 | `scipy.linalg.invpascal` | `Tessero\ScipyLinalg::invpascal()` |
+| `scipy.linalg.ishermitian` | `Tessero\ScipyLinalg::ishermitian()` |
+| `scipy.linalg.issymmetric` | `Tessero\ScipyLinalg::issymmetric()` |
 | `scipy.linalg.khatri_rao` | `Tessero\ScipyLinalg::khatriRao()` |
 | `scipy.linalg.ldl` | `Tessero\ScipyLinalg::ldl()` |
 | `scipy.linalg.leslie` | `Tessero\ScipyLinalg::leslie()` |
