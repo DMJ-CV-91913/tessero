@@ -243,6 +243,20 @@ for N in (1, 2, 3):
     for (wn, whole) in ((16, False), (24, True)):
         frzz.append(_wh_case([zd, pd, float(kd), wn, whole], sg.freqz_zpk(zd, pd, kd, worN=wn, whole=whole)))
 
+# sosfreqz (SOS cascade response) and group_delay
+sfz2, gdl = [], []
+for (N, Wn, bt) in [(2, 0.3, 'low'), (3, 0.25, 'low'), (2, 0.5, 'high'), (4, 0.4, 'low')]:
+    sos = butter(N, Wn, btype=bt, output='sos')
+    for (wn, whole) in ((16, False), (24, True)):
+        w, h = sg.sosfreqz(sos, worN=wn, whole=whole)
+        sfz2.append({'args': [F.enc(np.asarray(sos)), F.enc(wn), F.enc(whole)], 'kwargs': {}, 'expect': F.enc_result((w, h), ['w', 'h']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+    bb, aa = butter(N, Wn, btype=bt)
+    # whole=False only: the [0, pi) grid excludes the Nyquist point where a filter's group delay can be
+    # singular (den -> 0, a huge cancellation-dominated value that no engine reproduces to tolerance).
+    for wn in (32, 48):
+        w, gd = sg.group_delay((bb, aa), w=wn, whole=False)
+        gdl.append({'args': [F.enc(bb), F.enc(aa), F.enc(wn), F.enc(False)], 'kwargs': {}, 'expect': F.enc_result((w, gd), ['w', 'gd']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -271,7 +285,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'bilinear', 'cases': blin, 'tol': {'atol': 1e-12}},
                  {'fn': 'freqs', 'cases': frqs, 'tol': {'atol': 1e-12}},
                  {'fn': 'freqs_zpk', 'cases': frzp, 'tol': {'atol': 1e-12}},
-                 {'fn': 'freqz_zpk', 'cases': frzz, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'freqz_zpk', 'cases': frzz, 'tol': {'atol': 1e-12}},
+                 {'fn': 'sosfreqz', 'cases': sfz2, 'tol': {'atol': 1e-12}},
+                 {'fn': 'group_delay', 'cases': gdl, 'tol': {'atol': 1e-9}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
