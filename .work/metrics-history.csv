@@ -63,3 +63,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-06,"scipy.linalg: eigvalsh_tridiagonal, issymmetric, ishermitian",87.4,86.6,60.3,60.1,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,"scipy.linalg: solve_toeplitz, solve_circulant",87.4,86.6,60.5,60.2,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,scipy.linalg: matmul_toeplitz,87.4,86.6,60.5,60.3,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-06,"numpy: poly, sort_complex",87.7,87.0,60.5,60.3,99.1,99.6,71.7,71.7,79.1,79.1

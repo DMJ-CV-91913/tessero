@@ -4025,6 +4025,41 @@ static int r_divmod(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return TSR_OK;
 }
 
+static int cmp_double_asc(const void *x, const void *y) { const double a = *(const double *)x, b = *(const double *)y; return (a > b) - (a < b); }
+
+/* poly(seq): the coefficients (highest degree first) of the monic polynomial whose roots are the 1-D seq;
+   p = conv(p, [1, -root]) for each root, matching numpy.poly. Real roots give real coefficients. */
+static int r_np_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("poly: seq must be a 1-D array of roots"); return TSR_EARG; }
+    int64_t n; double *r = fn_arg_doubles(&args[0], &n); if (!r) return TSR_ENOMEM;
+    int64_t sh[1] = {n + 1};
+    double *p = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    if (!p) { fn_free_doubles(r, n); return TSR_ENOMEM; }
+    p[0] = 1.0; for (int64_t i = 1; i <= n; i++) p[i] = 0.0;
+    for (int64_t j = 0; j < n; j++)
+        for (int64_t k = j + 1; k >= 1; k--) p[k] -= r[j] * p[k - 1];
+    fn_free_doubles(r, n);
+    return TSR_OK;
+}
+
+/* sort_complex(a): a complex copy of a 1-D array sorted by real part then imaginary part; for a real input the
+   values are sorted ascending and returned as complex (numpy.sort_complex). */
+static int r_sort_complex(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3) { fn_set_error("sort_complex: input must be an array"); return TSR_EARG; }
+    int64_t n; double *a = fn_arg_doubles(&args[0], &n); if (!a) return TSR_ENOMEM;
+    qsort(a, (size_t)(n > 0 ? n : 0), sizeof(double), cmp_double_asc);
+    int64_t sh[1] = {n};
+    double *out = (double *)fn_result_array(&res[0], TSR_C128, 1, sh);
+    if (!out) { fn_free_doubles(a, n); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) { out[2 * i] = a[i]; out[2 * i + 1] = 0.0; }
+    fn_free_doubles(a, n);
+    return TSR_OK;
+}
+
 /* ================================================================ table */
 
 static const fn_def DEFS[] = {
@@ -4101,6 +4136,8 @@ static const fn_def DEFS[] = {
     ROUTINE("np.right_shift", 1, "x1, x2", "out", r_bitwise, &BW_RSHIFT, "Shift the bits of each integer right by the per-element count (numpy.right_shift)."),
     ROUTINE("np.fromiter", 1, "iterable, dtype, count=-1", "out", r_fromiter, NULL, "A 1-D array built from the first count elements of an iterable, cast to dtype (numpy.fromiter)."),
     ROUTINE("np.can_cast", 1, "from_, to, casting='safe'", "out", r_can_cast, NULL, "Whether a cast between two dtypes is allowed under a casting rule (numpy.can_cast)."),
+    ROUTINE("np.poly", 1, "seq", "out", r_np_poly, NULL, "Coefficients of the polynomial with the given roots (numpy.poly)."),
+    ROUTINE("np.sort_complex", 1, "a", "out", r_sort_complex, NULL, "A complex copy of a sorted by real then imaginary part (numpy.sort_complex)."),
 };
 
 const fn_table TSR_NP_NUMERIC_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

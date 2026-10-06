@@ -139,6 +139,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.partition` | `Tessero\Np::partition()` |
 | `numpy.percentile` | `Tessero\Np::percentile()` |
 | `numpy.place` | `Tessero\Np::place()` |
+| `numpy.poly` | `Tessero\Np::poly()` |
 | `numpy.polyadd` | `Tessero\Np::polyadd()` |
 | `numpy.polyder` | `Tessero\Np::polyder()` |
 | `numpy.polydiv` | `Tessero\Np::polydiv()` |
@@ -172,6 +173,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.simpson` | `Tessero\Np::simpson()` |
 | `numpy.sinc` | `Tessero\Np::sinc()` |
 | `numpy.size` | `Tessero\Np::size()` |
+| `numpy.sort_complex` | `Tessero\Np::sortComplex()` |
 | `numpy.spacing` | `Tessero\Np::spacing()` |
 | `numpy.split` | `Tessero\Np::split()` |
 | `numpy.squeeze` | `Tessero\Np::squeeze()` |
