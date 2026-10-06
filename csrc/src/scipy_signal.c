@@ -1287,6 +1287,131 @@ static int r_win_tukey(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return TSR_OK;
 }
 
+/* ---- waveform generators (scipy.signal) ---- */
+
+/* square(t, duty=0.5): +1 where (t mod 2pi) < duty*2pi, else -1; NaN if duty is outside [0, 1]. */
+static int r_square(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("square: t must be an array"); return TSR_EARG; }
+    int64_t n; double *t = fn_arg_doubles(&args[0], &n); if (!t) return TSR_ENOMEM;
+    const double duty = (nargs > 1 && args[1].kind == 1) ? args[1].num : 0.5;
+    double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
+    int rc = TSR_OK;
+    if (!y) rc = TSR_ENOMEM;
+    else {
+        const double tp = 2.0 * M_PI;
+        const int bad = (duty > 1.0 || duty < 0.0);
+        for (int64_t i = 0; i < n; i++) {
+            if (bad) { y[i] = FN_NAN; continue; }
+            double tm = fmod(t[i], tp); if (tm < 0.0) tm += tp;
+            y[i] = (tm < duty * tp) ? 1.0 : -1.0;
+        }
+    }
+    fn_free_doubles(t, n);
+    return rc;
+}
+
+/* sawtooth(t, width=1): rising ramp over [0, width*2pi) then falling; NaN if width outside [0, 1]. */
+static int r_sawtooth(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("sawtooth: t must be an array"); return TSR_EARG; }
+    int64_t n; double *t = fn_arg_doubles(&args[0], &n); if (!t) return TSR_ENOMEM;
+    const double w = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1.0;
+    double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
+    int rc = TSR_OK;
+    if (!y) rc = TSR_ENOMEM;
+    else {
+        const double tp = 2.0 * M_PI;
+        const int bad = (w > 1.0 || w < 0.0);
+        for (int64_t i = 0; i < n; i++) {
+            if (bad) { y[i] = FN_NAN; continue; }
+            double tm = fmod(t[i], tp); if (tm < 0.0) tm += tp;
+            y[i] = (tm < w * tp) ? (tm / (M_PI * w) - 1.0) : ((M_PI * (w + 1.0) - tm) / (M_PI * (1.0 - w)));
+        }
+    }
+    fn_free_doubles(t, n);
+    return rc;
+}
+
+/* chirp(t, f0, t1, f1, method='linear', phi=0, vertex_zero=True): cos(phase(t) + pi*phi/180). */
+static int r_chirp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("chirp: t must be an array"); return TSR_EARG; }
+    int64_t n; double *t = fn_arg_doubles(&args[0], &n); if (!t) return TSR_ENOMEM;
+    const double f0 = args[1].num, t1 = args[2].num, f1 = args[3].num;
+    const char *method = (nargs > 4 && args[4].kind == 2 && args[4].str) ? args[4].str : "linear";
+    const double phi = (nargs > 5 && args[5].kind == 1) ? args[5].num : 0.0;
+    const int vertex_zero = !(nargs > 6 && (args[6].kind == 4 || args[6].kind == 1) && args[6].num == 0.0);
+    int meth = 0;                                            /* 0 linear, 1 quadratic, 2 log, 3 hyperbolic */
+    if (!strcmp(method, "quadratic") || !strcmp(method, "quad") || !strcmp(method, "q")) meth = 1;
+    else if (!strcmp(method, "logarithmic") || !strcmp(method, "log") || !strcmp(method, "lo")) meth = 2;
+    else if (!strcmp(method, "hyperbolic") || !strcmp(method, "hyp")) meth = 3;
+    else if (strcmp(method, "linear") && strcmp(method, "lin") && strcmp(method, "li")) { fn_free_doubles(t, n); fn_set_error("chirp: unknown method"); return TSR_EARG; }
+    if ((meth == 2 && f0 * f1 <= 0.0) || (meth == 3 && (f0 == 0.0 || f1 == 0.0))) { fn_free_doubles(t, n); fn_set_error("chirp: f0, f1 invalid for this method"); return TSR_EARG; }
+    double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
+    int rc = TSR_OK;
+    if (!y) rc = TSR_ENOMEM;
+    else {
+        const double phioff = M_PI * phi / 180.0;
+        const double beta_l = (f1 - f0) / t1, beta_q = (f1 - f0) / (t1 * t1);
+        const double sing = (meth == 3 && f0 != f1) ? -f1 * t1 / (f0 - f1) : 0.0;
+        const double beta_log = (meth == 2 && f0 != f1) ? t1 / log(f1 / f0) : 0.0;
+        for (int64_t i = 0; i < n; i++) {
+            const double x = t[i]; double ph;
+            if (meth == 0) ph = 2.0 * M_PI * (f0 * x + 0.5 * beta_l * x * x);
+            else if (meth == 1) ph = vertex_zero ? 2.0 * M_PI * (f0 * x + beta_q * x * x * x / 3.0)
+                                                  : 2.0 * M_PI * (f1 * x + beta_q * ((t1 - x) * (t1 - x) * (t1 - x) - t1 * t1 * t1) / 3.0);
+            else if (meth == 2) ph = (f0 == f1) ? 2.0 * M_PI * f0 * x : 2.0 * M_PI * beta_log * f0 * (pow(f1 / f0, x / t1) - 1.0);
+            else ph = (f0 == f1) ? 2.0 * M_PI * f0 * x : 2.0 * M_PI * (-sing * f0) * log(fabs(1.0 - x / sing));
+            y[i] = cos(ph + phioff);
+        }
+    }
+    fn_free_doubles(t, n);
+    return rc;
+}
+
+/* gausspulse(t, fc=1000, bw=0.5, bwr=-6): the real (in-phase) Gaussian-modulated sinusoid (default outputs). */
+static int r_gausspulse(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("gausspulse: t must be an array (string 'cutoff' is not supported)"); return TSR_EARG; }
+    int64_t n; double *t = fn_arg_doubles(&args[0], &n); if (!t) return TSR_ENOMEM;
+    const double fc = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1000.0;
+    const double bw = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.5;
+    const double bwr = (nargs > 3 && args[3].kind == 1) ? args[3].num : -6.0;
+    int rc = TSR_OK;
+    if (fc < 0.0 || bw <= 0.0 || bwr >= 0.0) { fn_free_doubles(t, n); fn_set_error("gausspulse: need fc>=0, bw>0, bwr<0"); return TSR_EARG; }
+    const double ref = pow(10.0, bwr / 20.0);
+    const double a = -(M_PI * fc * bw) * (M_PI * fc * bw) / (4.0 * log(ref));
+    double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
+    if (!y) rc = TSR_ENOMEM;
+    else for (int64_t i = 0; i < n; i++) y[i] = exp(-a * t[i] * t[i]) * cos(2.0 * M_PI * fc * t[i]);
+    fn_free_doubles(t, n);
+    return rc;
+}
+
+/* unit_impulse(shape, idx=None): a length-`shape` array of zeros with a 1 at idx (int, or 'mid'; default 0). */
+static int r_unit_impulse(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("unit_impulse: shape must be an integer length"); return TSR_EARG; }
+    const int64_t n = (int64_t)args[0].num;
+    if (n < 0) { fn_set_error("unit_impulse: shape must be non-negative"); return TSR_EARG; }
+    int64_t idx = 0;
+    if (nargs > 1) {
+        if (args[1].kind == 2 && args[1].str && !strcmp(args[1].str, "mid")) idx = n / 2;
+        else if (args[1].kind == 1) { idx = (int64_t)args[1].num; if (idx < 0) idx += n; }   /* numpy negative indexing */
+    }
+    double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
+    if (!y) return TSR_ENOMEM;
+    for (int64_t i = 0; i < n; i++) y[i] = 0.0;
+    if (idx >= 0 && idx < n) y[idx] = 1.0;
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -1306,6 +1431,11 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.detrend", 1, "data, axis=-1, type='linear', bp=0, overwrite_data=False", "out", r_detrend, NULL, "Remove a constant or piecewise-linear least-squares trend along an axis (scipy.signal.detrend)."),
     ROUTINE("signal.savgol_coeffs", 1, "window_length, polyorder, deriv=0, delta=1.0, pos=None, use='conv'", "out", r_savgol_coeffs, NULL, "Savitzky-Golay filter coefficients (scipy.signal.savgol_coeffs)."),
     ROUTINE("signal.savgol_filter", 1, "x, window_length, polyorder, deriv=0, delta=1.0, axis=-1, mode='interp', cval=0.0", "out", r_savgol_filter, NULL, "Apply a Savitzky-Golay filter to a 1-D signal (scipy.signal.savgol_filter)."),
+    ROUTINE("signal.square", 1, "t, duty=0.5", "out", r_square, NULL, "Square-wave of period 2pi with the given duty cycle (scipy.signal.square)."),
+    ROUTINE("signal.sawtooth", 1, "t, width=1", "out", r_sawtooth, NULL, "Sawtooth/triangle wave of period 2pi with the given rising width (scipy.signal.sawtooth)."),
+    ROUTINE("signal.chirp", 4, "t, f0, t1, f1, method='linear', phi=0, vertex_zero=True", "out", r_chirp, NULL, "Frequency-swept cosine (linear/quadratic/logarithmic/hyperbolic) (scipy.signal.chirp)."),
+    ROUTINE("signal.gausspulse", 1, "t, fc=1000, bw=0.5, bwr=-6", "out", r_gausspulse, NULL, "Gaussian-modulated sinusoid, in-phase component (scipy.signal.gausspulse)."),
+    ROUTINE("signal.unit_impulse", 1, "shape, idx=None", "out", r_unit_impulse, NULL, "Unit impulse: zeros with a single 1 at idx (scipy.signal.unit_impulse)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),

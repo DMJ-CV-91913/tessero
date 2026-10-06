@@ -82,3 +82,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-06,scipy.linalg: cossin,87.7,87.0,62.1,61.8,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,scipy.linalg: ordqz,87.7,87.0,62.1,61.9,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,"scipy.linalg: bandwidth, fiedler_companion, solve_lyapunov",87.7,87.0,62.3,62.0,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-06,"scipy.signal: square, sawtooth, chirp, gausspulse, unit_impulse",87.7,87.0,62.6,62.3,99.1,99.6,71.7,71.7,79.1,79.1
