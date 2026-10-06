@@ -1905,6 +1905,11 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.convolution_matrix": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.coshm": {
             "kind": "routine",
             "nin": 0,
@@ -1916,6 +1921,11 @@
             "nout": 1
         },
         "slinalg.det": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.dft": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

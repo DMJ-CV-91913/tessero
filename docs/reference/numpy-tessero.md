@@ -253,9 +253,11 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.cholesky` | `Tessero\ScipyLinalg::cholesky()` |
 | `scipy.linalg.circulant` | `Tessero\ScipyLinalg::circulant()` |
 | `scipy.linalg.companion` | `Tessero\ScipyLinalg::companion()` |
+| `scipy.linalg.convolution_matrix` | `Tessero\ScipyLinalg::convolutionMatrix()` |
 | `scipy.linalg.coshm` | `Tessero\ScipyLinalg::coshm()` |
 | `scipy.linalg.cosm` | `Tessero\ScipyLinalg::cosm()` |
 | `scipy.linalg.det` | `Tessero\ScipyLinalg::det()` |
+| `scipy.linalg.dft` | `Tessero\ScipyLinalg::dft()` |
 | `scipy.linalg.diagsvd` | `Tessero\ScipyLinalg::diagsvd()` |
 | `scipy.linalg.eig` | `Tessero\ScipyLinalg::eig()` |
 | `scipy.linalg.eig_banded` | `Tessero\ScipyLinalg::eigBanded()` |

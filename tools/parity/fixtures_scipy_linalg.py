@@ -233,6 +233,12 @@ def main():
         [call('pascal', [5], {'kind': 'lower'}), call('pascal', [5], {'kind': 'upper'})]
     blocks['invpascal'] = [call('invpascal', [n]) for n in (1, 4, 5)] + \
         [call('invpascal', [5], {'kind': 'lower'}), call('invpascal', [5], {'kind': 'upper'})]
+    blocks['convolution_matrix'] = [call('convolution_matrix', [rng.uniform(-3, 3, size=m), n]) for (m, n) in ((3, 5), (4, 4), (2, 6))] + \
+        [call('convolution_matrix', [rng.uniform(-3, 3, size=4), 6], {'mode': 'same'}),
+         call('convolution_matrix', [rng.uniform(-3, 3, size=4), 6], {'mode': 'valid'}),
+         call('convolution_matrix', [rng.uniform(-3, 3, size=5), 3], {'mode': 'same'})]
+    blocks['dft'] = [call('dft', [n]) for n in (1, 4, 5, 8)] + \
+        [call('dft', [5], {'scale': 'sqrtn'}), call('dft', [4], {'scale': 'n'})]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]

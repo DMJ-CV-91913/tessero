@@ -1776,6 +1776,69 @@ static int r_invpascal(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return TSR_OK;
 }
 
+/* convolution_matrix(a, n, mode='full'): the Toeplitz matrix A with A @ v = convolve(a, v, mode). a is length
+   m; the full matrix is (m+n-1, n) with A[i][j] = a[i-j] when 0 <= i-j < m; 'same'/'valid' take a centred /
+   fully-overlapping row slice (scipy.linalg.convolution_matrix). */
+static int r_convolution_matrix(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("convolution_matrix: a must be a 1-D array"); return TSR_ETYPE; }
+    int64_t n; int rc = sl_int(&args[1], "n", &n);
+    if (rc < 0) return rc;
+    if (n < 1) { fn_set_error("convolution_matrix: n must be a positive integer"); return TSR_EARG; }
+    int64_t m; double *a = mat_f64(&args[0], "a", &m);
+    if (!a) return TSR_ENOMEM;
+    if (m < 1) { fn_free_doubles(a, m); fn_set_error("convolution_matrix: a must have at least one element"); return TSR_EARG; }
+    int mode = 0; /* 0 full, 1 same, 2 valid */
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) {
+        if (!strcmp(args[2].str, "same")) mode = 1;
+        else if (!strcmp(args[2].str, "valid")) mode = 2;
+        else if (strcmp(args[2].str, "full") != 0) { fn_free_doubles(a, m); fn_set_error("convolution_matrix: mode must be 'full', 'same' or 'valid'"); return TSR_EARG; }
+    }
+    const int64_t mn = m < n ? m : n, mx = m > n ? m : n;
+    int64_t M, offset;
+    if (mode == 0) { M = m + n - 1; offset = 0; }
+    else if (mode == 1) { M = mx; offset = (mn - 1) / 2; }
+    else { M = mx - mn + 1; offset = mn - 1; }
+    int64_t osh[2] = {M, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) { fn_free_doubles(a, m); return TSR_ENOMEM; }
+    for (int64_t r = 0; r < M; r++) {
+        const int64_t i = r + offset;
+        for (int64_t j = 0; j < n; j++) { const int64_t k = i - j; out[r * n + j] = (k >= 0 && k < m) ? a[k] : 0.0; }
+    }
+    fn_free_doubles(a, m);
+    return TSR_OK;
+}
+
+/* dft(n, scale=None): the n x n DFT matrix D[j][k] = exp(-2*pi*i*j*k/n); scale 'sqrtn' divides by sqrt(n),
+   'n' by n (scipy.linalg.dft). Complex128 result, interleaved (re, im). */
+static int r_dft(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t n; int rc = sl_int(&args[0], "n", &n);
+    if (rc < 0) return rc;
+    if (n < 0) { fn_set_error("dft: n must be a non-negative integer"); return TSR_EARG; }
+    double sc = 1.0;
+    if (nargs > 1 && args[1].kind == 2 && args[1].str) {
+        if (!strcmp(args[1].str, "sqrtn")) sc = n > 0 ? 1.0 / sqrt((double)n) : 1.0;
+        else if (!strcmp(args[1].str, "n")) sc = n > 0 ? 1.0 / (double)n : 1.0;
+        else { fn_set_error("dft: scale must be None, 'sqrtn' or 'n'"); return TSR_EARG; }
+    }
+    int64_t osh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_C128, 2, osh);
+    if (!out) return TSR_ENOMEM;
+    const double twopi = 2.0 * 3.14159265358979323846;
+    for (int64_t j = 0; j < n; j++)
+        for (int64_t k = 0; k < n; k++) {
+            const double theta = -twopi * (double)((j * k) % n) / (double)n;   /* reduce j*k mod n for accuracy */
+            const int64_t idx = 2 * (j * n + k);
+            out[idx] = cos(theta) * sc;
+            out[idx + 1] = sin(theta) * sc;
+        }
+    return TSR_OK;
+}
+
 /* khatri_rao(a, b): the column-wise Kronecker product; a is (ra, k), b is (rb, k), result is (ra*rb, k)
    with result[i*rb + l][j] = a[i][j] * b[l][j] (scipy.linalg.khatri_rao). */
 static int r_khatri_rao(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2612,6 +2675,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.leslie", 1, "f, s", "out", r_leslie, NULL, "Leslie population matrix with first row f and sub-diagonal s (scipy.linalg.leslie)."),
     ROUTINE("slinalg.pascal", 1, "n, kind='symmetric'", "out", r_pascal, NULL, "Pascal matrix of order n (scipy.linalg.pascal)."),
     ROUTINE("slinalg.invpascal", 1, "n, kind='symmetric'", "out", r_invpascal, NULL, "Inverse of the Pascal matrix of order n (scipy.linalg.invpascal)."),
+    ROUTINE("slinalg.convolution_matrix", 1, "a, n, mode='full'", "out", r_convolution_matrix, NULL, "Toeplitz matrix A with A @ v = convolve(a, v, mode) (scipy.linalg.convolution_matrix)."),
+    ROUTINE("slinalg.dft", 1, "n, scale=None", "out", r_dft, NULL, "The n x n discrete Fourier transform matrix (scipy.linalg.dft)."),
     ROUTINE("slinalg.khatri_rao", 1, "a, b", "out", r_khatri_rao, NULL, "Column-wise Kronecker (Khatri-Rao) product (scipy.linalg.khatri_rao)."),
     ROUTINE("slinalg.diagsvd", 1, "s, M, N", "out", r_diagsvd, NULL, "M x N matrix with s on the diagonal (scipy.linalg.diagsvd)."),
     ROUTINE("slinalg.orth", 1, "A, rcond=None", "out", r_orth, NULL, "Orthonormal basis for the range of A via SVD (scipy.linalg.orth)."),

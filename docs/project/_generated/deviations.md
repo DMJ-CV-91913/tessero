@@ -114,6 +114,8 @@
 | `slinalg.leslie` | every call | rtol 1e-09 |
 | `slinalg.pascal` | every call | rtol 1e-09 |
 | `slinalg.invpascal` | every call | rtol 1e-09 |
+| `slinalg.convolution_matrix` | every call | rtol 1e-09 |
+| `slinalg.dft` | every call | rtol 1e-09 |
 | `slinalg.khatri_rao` | every call | rtol 1e-09 |
 | `slinalg.diagsvd` | every call | rtol 1e-09 |
 | `slinalg.orth` | every call | rtol 1e-09 |
