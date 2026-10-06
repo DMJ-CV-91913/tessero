@@ -2120,6 +2120,11 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.orthogonal_procrustes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "slinalg.pascal": {
             "kind": "routine",
             "nin": 0,
