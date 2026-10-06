@@ -170,6 +170,7 @@
 | `slinalg.subspace_angles` | every call | rtol 1e-09 |
 | `slinalg.solve_continuous_are` | every call | rtol 1e-09 |
 | `slinalg.solve_discrete_are` | every call | rtol 1e-09 |
+| `slinalg.signm` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |

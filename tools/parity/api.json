@@ -2107,6 +2107,12 @@
                 "doc": "Real Schur decomposition A = Z T Z^T via dgees (scipy.linalg.schur)."
             },
             {
+                "name": "signm",
+                "static": true,
+                "sig": "signm(mixed $A): mixed",
+                "doc": "Matrix sign function via the Schur-Parlett method (scipy.linalg.signm; real, well-separated spectrum)."
+            },
+            {
                 "name": "sinhm",
                 "static": true,
                 "sig": "sinhm(mixed $a): mixed",
@@ -14950,6 +14956,12 @@
                 "name": "solveDiscreteAre",
                 "static": true,
                 "sig": "solveDiscreteAre($a, $b, $q, $r)",
+                "doc": ""
+            },
+            {
+                "name": "signm",
+                "static": true,
+                "sig": "signm($A)",
                 "doc": ""
             },
             {

@@ -310,6 +310,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.rq` | `Tessero\ScipyLinalg::rq()` |
 | `scipy.linalg.rsf2csf` | `Tessero\ScipyLinalg::rsf2csf()` |
 | `scipy.linalg.schur` | `Tessero\ScipyLinalg::schur()` |
+| `scipy.linalg.signm` | `Tessero\ScipyLinalg::signm()` |
 | `scipy.linalg.sinhm` | `Tessero\ScipyLinalg::sinhm()` |
 | `scipy.linalg.sinm` | `Tessero\ScipyLinalg::sinm()` |
 | `scipy.linalg.solve` | `Tessero\ScipyLinalg::solve()` |
