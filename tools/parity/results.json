@@ -441,6 +441,7 @@
         "signal.freqz_zpk": "pass",
         "signal.gausspulse": "pass",
         "signal.group_delay": "pass",
+        "signal.hilbert": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
         "signal.lp2bp": "pass",
@@ -2130,7 +2131,8 @@
             "signal.freqs_zpk": 5.906235915828799e-16,
             "signal.freqz_zpk": 1,
             "signal.sosfreqz": 1,
-            "signal.group_delay": 2.1664513650495942e-11
+            "signal.group_delay": 2.1664513650495942e-11,
+            "signal.hilbert": 2
         },
         "ext": {
             "np.median": 0,
@@ -3196,7 +3198,8 @@
             "signal.freqs_zpk": 5.906235915828799e-16,
             "signal.freqz_zpk": 1,
             "signal.sosfreqz": 1,
-            "signal.group_delay": 2.1664513650495942e-11
+            "signal.group_delay": 2.1664513650495942e-11,
+            "signal.hilbert": 2
         }
     },
     "ext": {
@@ -3641,6 +3644,7 @@
         "signal.freqz_zpk": "pass",
         "signal.gausspulse": "pass",
         "signal.group_delay": "pass",
+        "signal.hilbert": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
         "signal.lp2bp": "pass",
