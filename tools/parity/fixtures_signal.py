@@ -314,6 +314,22 @@ wel.append(_welch_case([xw, 1.0, 'hann', 64, None, None, 'linear'],
 wel.append(_welch_case([xw, 1.0, 'hann', 64, None, None, 'constant', True, 'density', -1, 'median'],
                        [xw, 1.0, 'hann', 64, None, None, 'constant', True, 'density', -1, 'median']))   # median average (axis=-1 then average)
 
+# csd: cross power spectral density (Welch)
+def _csd_case(args, pyargs):
+    return {'args': [F.enc(np.asarray(a) if isinstance(a, (list, np.ndarray)) else a) for a in args],
+            'kwargs': {}, 'expect': F.enc_result(sg.csd(*pyargs), ['f', 'Pxy']), 'compare': 'tol', 'tol': {'atol': 1e-12}}
+
+
+csdc = []
+xc = rng.uniform(-3, 3, 200)
+yc = 0.5 * xc + rng.uniform(-1, 1, 200)
+csdc.append(_csd_case([xc, yc, 1.0, 'hann', 64], [xc, yc, 1.0, 'hann', 64]))
+csdc.append(_csd_case([xc, yc, 50.0, 'hann', 64], [xc, yc, 50.0, 'hann', 64]))
+csdc.append(_csd_case([xc, yc, 1.0, 'boxcar', 50], [xc, yc, 1.0, 'boxcar', 50]))
+csdc.append(_csd_case([xc, yc, 1.0, 'hann', 64, 16], [xc, yc, 1.0, 'hann', 64, 16]))
+csdc.append(_csd_case([xc, yc, 1.0, 'hann', 64, None, None, 'constant', False],
+                      [xc, yc, 1.0, 'hann', 64, None, None, 'constant', False]))   # two-sided
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -348,7 +364,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
-                 {'fn': 'welch', 'cases': wel, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'welch', 'cases': wel, 'tol': {'atol': 1e-12}},
+                 {'fn': 'csd', 'cases': csdc, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
