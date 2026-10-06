@@ -22,6 +22,7 @@ final class ScipyLinalg
     'cho_factor' => 'choFactor',
     'cho_solve' => 'choSolve',
     'cholesky' => 'cholesky',
+    'cholesky_banded' => 'choleskyBanded',
     'circulant' => 'circulant',
     'companion' => 'companion',
     'convolution_matrix' => 'convolutionMatrix',
@@ -35,6 +36,7 @@ final class ScipyLinalg
     'eigh' => 'eigh',
     'eigh_tridiagonal' => 'eighTridiagonal',
     'eigvals' => 'eigvals',
+    'eigvals_banded' => 'eigvalsBanded',
     'eigvalsh' => 'eigvalsh',
     'eigvalsh_tridiagonal' => 'eigvalshTridiagonal',
     'expm' => 'expm',
@@ -142,6 +144,16 @@ final class ScipyLinalg
     public static function cholesky(mixed $a, mixed $lower = false): mixed
     {
         return Registry::routine('slinalg.cholesky', [$a, $lower]);
+    }
+
+    /**
+     * Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded).
+     *
+     * scipy.linalg.cholesky_banded
+     */
+    public static function choleskyBanded(mixed $ab, mixed $lower = false): mixed
+    {
+        return Registry::routine('slinalg.cholesky_banded', [$ab, $lower]);
     }
 
     /**
@@ -280,6 +292,16 @@ final class ScipyLinalg
     public static function eigvals(mixed $a): mixed
     {
         return Registry::routine('slinalg.eigvals', [$a]);
+    }
+
+    /**
+     * Eigenvalues of a symmetric banded matrix in band storage via dsbevd (scipy.linalg.eigvals_banded).
+     *
+     * scipy.linalg.eigvals_banded
+     */
+    public static function eigvalsBanded(mixed $aBand, mixed $lower = false): mixed
+    {
+        return Registry::routine('slinalg.eigvals_banded', [$aBand, $lower]);
     }
 
     /**

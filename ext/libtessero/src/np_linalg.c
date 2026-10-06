@@ -2428,6 +2428,60 @@ static int r_eigh_tridiagonal(const void *ctx, const tsr_arg *args, int nargs, t
     return rc;
 }
 
+/* eigvals_banded(a_band, lower=False): eigenvalues (ascending) of a symmetric banded matrix given in band
+   storage (kd+1, n), via dsbevd with jobz='N' (scipy.linalg.eigvals_banded). */
+static int r_eigvals_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("eigvals_banded: a_band must be a 2-D array"); return TSR_ETYPE; }
+    const int64_t kd = args[0].arr.shape[0] - 1, n = args[0].arr.shape[1];
+    char uplo = 'U';
+    if (nargs > 1 && ((args[1].kind == 4 && args[1].num != 0) || (args[1].kind == 1 && (args[1].num != 0 || args[1].ival != 0)))) uplo = 'L';
+    int64_t nab; double *abd = mat_f64(&args[0], "a_band", &nab); if (!abd) return TSR_ENOMEM;
+    const int64_t ldab = kd + 1;
+    double *AB = (double *)malloc(sizeof(double) * (size_t)(ldab * n > 0 ? ldab * n : 1));
+    double *zc = (double *)malloc(sizeof(double));
+    int rc = TSR_OK;
+    if (!AB || !zc) rc = TSR_ENOMEM;
+    else {
+        for (int64_t j = 0; j < n; j++) for (int64_t r = 0; r < ldab; r++) AB[r + j * ldab] = abd[r * n + j];
+        int64_t wsh[1] = {n};
+        double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, wsh);
+        if (!w) rc = TSR_ENOMEM;
+        else if (n > 0) { lapack_int info = LAPACKE_dsbevd(LAPACK_COL_MAJOR, 'N', uplo, (lapack_int)n, (lapack_int)kd, AB, (lapack_int)ldab, w, zc, 1); if (info != 0) { rc = TSR_EARG; fn_set_error("eigvals_banded: dsbevd failed to converge"); } }
+    }
+    free(AB); free(zc); fn_free_doubles(abd, nab);
+    return rc;
+}
+
+/* cholesky_banded(ab, lower=False): the Cholesky factor of a symmetric positive-definite banded matrix given
+   in band storage (kd+1, n), via dpbtrf; the factor is returned in the same band storage (scipy.linalg.cholesky_banded). */
+static int r_cholesky_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("cholesky_banded: ab must be a 2-D array"); return TSR_ETYPE; }
+    const int64_t kd = args[0].arr.shape[0] - 1, n = args[0].arr.shape[1];
+    char uplo = 'U';
+    if (nargs > 1 && ((args[1].kind == 4 && args[1].num != 0) || (args[1].kind == 1 && (args[1].num != 0 || args[1].ival != 0)))) uplo = 'L';
+    int64_t nab; double *abd = mat_f64(&args[0], "ab", &nab); if (!abd) return TSR_ENOMEM;
+    const int64_t ldab = kd + 1;
+    double *AB = (double *)malloc(sizeof(double) * (size_t)(ldab * n > 0 ? ldab * n : 1));
+    int rc = TSR_OK;
+    if (!AB) rc = TSR_ENOMEM;
+    else {
+        for (int64_t j = 0; j < n; j++) for (int64_t r = 0; r < ldab; r++) AB[r + j * ldab] = abd[r * n + j];
+        int64_t osh[2] = {ldab, n};
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+        if (!out) rc = TSR_ENOMEM;
+        else {
+            if (n > 0) { lapack_int info = LAPACKE_dpbtrf(LAPACK_COL_MAJOR, uplo, (lapack_int)n, (lapack_int)kd, AB, (lapack_int)ldab); if (info != 0) { rc = TSR_EARG; fn_set_error("cholesky_banded: the matrix is not positive definite"); } }
+            if (rc == TSR_OK) for (int64_t j = 0; j < n; j++) for (int64_t r = 0; r < ldab; r++) out[r * n + j] = AB[r + j * ldab];
+        }
+    }
+    free(AB); fn_free_doubles(abd, nab);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2980,6 +3034,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.matmul_toeplitz", 1, "c_or_cr, x", "out", r_matmul_toeplitz, NULL, "The product of a Toeplitz matrix with x (scipy.linalg.matmul_toeplitz)."),
     ROUTINE("slinalg.invhilbert", 1, "n", "out", r_invhilbert, NULL, "Inverse of the Hilbert matrix of order n (scipy.linalg.invhilbert)."),
     ROUTINE("slinalg.eigh_tridiagonal", 2, "d, e", "eigenvalues, eigenvectors", r_eigh_tridiagonal, NULL, "Eigenvalues and eigenvectors of a symmetric tridiagonal matrix via dstev (scipy.linalg.eigh_tridiagonal)."),
+    ROUTINE("slinalg.eigvals_banded", 1, "a_band, lower=False", "out", r_eigvals_banded, NULL, "Eigenvalues of a symmetric banded matrix in band storage via dsbevd (scipy.linalg.eigvals_banded)."),
+    ROUTINE("slinalg.cholesky_banded", 1, "ab, lower=False", "out", r_cholesky_banded, NULL, "Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

@@ -253,6 +253,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.cho_factor` | `Tessero\ScipyLinalg::choFactor()` |
 | `scipy.linalg.cho_solve` | `Tessero\ScipyLinalg::choSolve()` |
 | `scipy.linalg.cholesky` | `Tessero\ScipyLinalg::cholesky()` |
+| `scipy.linalg.cholesky_banded` | `Tessero\ScipyLinalg::choleskyBanded()` |
 | `scipy.linalg.circulant` | `Tessero\ScipyLinalg::circulant()` |
 | `scipy.linalg.companion` | `Tessero\ScipyLinalg::companion()` |
 | `scipy.linalg.convolution_matrix` | `Tessero\ScipyLinalg::convolutionMatrix()` |
@@ -266,6 +267,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.eigh` | `Tessero\ScipyLinalg::eigh()` |
 | `scipy.linalg.eigh_tridiagonal` | `Tessero\ScipyLinalg::eighTridiagonal()` |
 | `scipy.linalg.eigvals` | `Tessero\ScipyLinalg::eigvals()` |
+| `scipy.linalg.eigvals_banded` | `Tessero\ScipyLinalg::eigvalsBanded()` |
 | `scipy.linalg.eigvalsh` | `Tessero\ScipyLinalg::eigvalsh()` |
 | `scipy.linalg.eigvalsh_tridiagonal` | `Tessero\ScipyLinalg::eigvalshTridiagonal()` |
 | `scipy.linalg.expm` | `Tessero\ScipyLinalg::expm()` |

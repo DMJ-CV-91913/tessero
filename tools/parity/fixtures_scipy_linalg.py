@@ -261,6 +261,11 @@ def main():
                                  call('matmul_toeplitz', [_ctoe, rng.uniform(-2, 2, size=(4, 3))])]
     blocks['invhilbert'] = [call('invhilbert', [n]) for n in (1, 3, 4, 5)]
     blocks['eigh_tridiagonal'] = [callc('eigh_tridiagonal', [rng.uniform(-2, 2, size=n), rng.uniform(-2, 2, size=n - 1)], None, ['eigenvalues', 'eigenvectors'], eigh_canon) for n in (3, 4, 5)]
+    # banded: SPD matrices in upper band storage (kd superdiagonals; row kd = diagonal).
+    _band1 = np.array([[0.0, 1.0, 1.0, 1.0], [4.0, 5.0, 6.0, 7.0]])                      # tridiagonal SPD, kd=1
+    _band2 = np.array([[0.0, 0.0, 0.5, 0.5], [0.0, 1.0, 1.0, 1.0], [6.0, 6.0, 6.0, 6.0]])  # kd=2 SPD
+    blocks['eigvals_banded'] = [call('eigvals_banded', [_band1]), call('eigvals_banded', [_band2])]
+    blocks['cholesky_banded'] = [call('cholesky_banded', [_band1]), call('cholesky_banded', [_band2])]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]
