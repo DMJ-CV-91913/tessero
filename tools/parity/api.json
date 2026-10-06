@@ -2729,6 +2729,12 @@
                 "doc": "Zero-phase forward-backward IIR filtering with odd padding (scipy.signal.filtfilt; 1-D)."
             },
             {
+                "name": "firwin",
+                "static": true,
+                "sig": "firwin(mixed $numtaps, mixed $cutoff, mixed $window = 'hamming', mixed $passZero = true, mixed $scale = true, mixed $fs = null): mixed",
+                "doc": "FIR filter design by the window method (scipy.signal.firwin)."
+            },
+            {
                 "name": "freqs",
                 "static": true,
                 "sig": "freqs(mixed $b, mixed $a, mixed $worN): mixed",
@@ -15591,6 +15597,12 @@
                 "name": "resample",
                 "static": true,
                 "sig": "resample($x, $num, $t = null, $axis = 0, $window = null, $domain = 'time')",
+                "doc": ""
+            },
+            {
+                "name": "firwin",
+                "static": true,
+                "sig": "firwin($numtaps, $cutoff, $window = 'hamming', $passZero = true, $scale = true, $fs = null)",
                 "doc": ""
             }
         ]
