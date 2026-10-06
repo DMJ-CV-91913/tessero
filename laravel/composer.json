@@ -1,0 +1,33 @@
+{
+    "name": "tessero/laravel",
+    "description": "Laravel integration for Tessero: service provider, config, Eloquent NDArray casts, facade, response macro, validation rule, Octane-safe runtime settings and artisan diagnostics.",
+    "type": "library",
+    "license": "BSD-3-Clause",
+    "require": {
+        "php": "^8.2",
+        "tessero/tessero": "^0.2",
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0",
+        "illuminate/contracts": "^10.0 || ^11.0 || ^12.0"
+    },
+    "suggest": {
+        "ext-tessero": "Native backend: no FFI configuration, 30x lower call overhead"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tessero\\Laravel\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Tessero\\Laravel\\TesseroServiceProvider"
+            ],
+            "aliases": {
+                "Tessero": "Tessero\\Laravel\\Facades\\Tessero"
+            }
+        },
+        "branch-alias": {
+            "dev-main": "0.2.x-dev"
+        }
+    }
+}

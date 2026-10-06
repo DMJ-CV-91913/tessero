@@ -1,0 +1,12055 @@
+{
+"numpy": "2.4.4",
+"scipy": "1.17.1",
+"symbols": [
+{
+"kind": "constant",
+"module": "numpy",
+"name": "False_"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "ScalarType"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "True_"
+},
+{
+"alias_of": "absolute",
+"kind": "ufunc",
+"module": "numpy",
+"name": "abs"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "absolute"
+},
+{
+"alias_of": "arccos",
+"kind": "ufunc",
+"module": "numpy",
+"name": "acos"
+},
+{
+"alias_of": "arccosh",
+"kind": "ufunc",
+"module": "numpy",
+"name": "acosh"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "add"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "all"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "allclose"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "amax"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "amin"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "angle"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "any"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "append"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "apply_along_axis"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "apply_over_axes"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "arange"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "arccos"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "arccosh"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "arcsin"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "arcsinh"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "arctan"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "arctan2"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "arctanh"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "argmax"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "argmin"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "argpartition"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "argsort"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "argwhere"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "around"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "array"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "array2string"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "array_equal"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "array_equiv"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "array_repr"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "array_split"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "array_str"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "asanyarray"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "asarray"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "asarray_chkfinite"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ascontiguousarray"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "asfortranarray"
+},
+{
+"alias_of": "arcsin",
+"kind": "ufunc",
+"module": "numpy",
+"name": "asin"
+},
+{
+"alias_of": "arcsinh",
+"kind": "ufunc",
+"module": "numpy",
+"name": "asinh"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "asmatrix"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "astype"
+},
+{
+"alias_of": "arctan",
+"kind": "ufunc",
+"module": "numpy",
+"name": "atan"
+},
+{
+"alias_of": "arctan2",
+"kind": "ufunc",
+"module": "numpy",
+"name": "atan2"
+},
+{
+"alias_of": "arctanh",
+"kind": "ufunc",
+"module": "numpy",
+"name": "atanh"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "atleast_1d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "atleast_2d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "atleast_3d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "average"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "bartlett"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "base_repr"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "binary_repr"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "bincount"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_and"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_count"
+},
+{
+"alias_of": "invert",
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_invert"
+},
+{
+"alias_of": "left_shift",
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_left_shift"
+},
+{
+"alias_of": "bitwise_invert",
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_not"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_or"
+},
+{
+"alias_of": "right_shift",
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_right_shift"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "bitwise_xor"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "blackman"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "block"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "bmat"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "bool"
+},
+{
+"alias_of": "bool",
+"kind": "class",
+"module": "numpy",
+"name": "bool_"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "broadcast"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "broadcast_arrays"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "broadcast_shapes"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "broadcast_to"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "busday_count"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "busday_offset"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "busdaycalendar"
+},
+{
+"alias_of": "int8",
+"kind": "class",
+"module": "numpy",
+"name": "byte"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "bytes_"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "c_"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "can_cast"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "cbrt"
+},
+{
+"alias_of": "complex128",
+"kind": "class",
+"module": "numpy",
+"name": "cdouble"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "ceil"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "character"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "choose"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "clip"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "clongdouble"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "column_stack"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "common_type"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "complex128"
+},
+{
+"alias_of": "clongdouble",
+"kind": "class",
+"module": "numpy",
+"name": "complex256"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "complex64"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "complexfloating"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "compress"
+},
+{
+"alias_of": "concatenate",
+"kind": "function",
+"module": "numpy",
+"name": "concat"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "concatenate"
+},
+{
+"alias_of": "conjugate",
+"kind": "ufunc",
+"module": "numpy",
+"name": "conj"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "conjugate"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "convolve"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "copy"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "copysign"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "copyto"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "corrcoef"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "correlate"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "cos"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "cosh"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "count_nonzero"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "cov"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "cross"
+},
+{
+"alias_of": "complex64",
+"kind": "class",
+"module": "numpy",
+"name": "csingle"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "cumprod"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "cumsum"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "cumulative_prod"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "cumulative_sum"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "datetime64"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "datetime_as_string"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "datetime_data"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "deg2rad"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "degrees"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "delete"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "diag"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "diag_indices"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "diag_indices_from"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "diagflat"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "diagonal"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "diff"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "digitize"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "divide"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "divmod"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "dot"
+},
+{
+"alias_of": "float64",
+"kind": "class",
+"module": "numpy",
+"name": "double"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "dsplit"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "dstack"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "dtype"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "e"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ediff1d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "einsum"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "einsum_path"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "empty"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "empty_like"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "equal"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "errstate"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "euler_gamma"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "exp"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "exp2"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "expand_dims"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "expm1"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "extract"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "eye"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "fabs"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fill_diagonal"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "finfo"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fix"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "flatiter"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "flatnonzero"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "flexible"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "flip"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fliplr"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "flipud"
+},
+{
+"alias_of": "longdouble",
+"kind": "class",
+"module": "numpy",
+"name": "float128"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "float16"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "float32"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "float64"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "float_power"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "floating"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "floor"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "floor_divide"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "fmax"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "fmin"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "fmod"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "format_float_positional"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "format_float_scientific"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "frexp"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "from_dlpack"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "frombuffer"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fromfile"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fromfunction"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fromiter"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "frompyfunc"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fromregex"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "fromstring"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "full"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "full_like"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "gcd"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "generic"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "genfromtxt"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "geomspace"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "get_include"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "get_printoptions"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "getbufsize"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "geterr"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "geterrcall"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "gradient"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "greater"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "greater_equal"
+},
+{
+"alias_of": "float16",
+"kind": "class",
+"module": "numpy",
+"name": "half"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "hamming"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "hanning"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "heaviside"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "histogram"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "histogram2d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "histogram_bin_edges"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "histogramdd"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "hsplit"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "hstack"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "hypot"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "i0"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "identity"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "iinfo"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "imag"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "index_exp"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "indices"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "inexact"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "inf"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "info"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "inner"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "insert"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "int16"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "int32"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "int64"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "int8"
+},
+{
+"alias_of": "int64",
+"kind": "class",
+"module": "numpy",
+"name": "int_"
+},
+{
+"alias_of": "int32",
+"kind": "class",
+"module": "numpy",
+"name": "intc"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "integer"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "interp"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "intersect1d"
+},
+{
+"alias_of": "int64",
+"kind": "class",
+"module": "numpy",
+"name": "intp"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "invert"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "is_busday"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isclose"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "iscomplex"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "iscomplexobj"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isdtype"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "isfinite"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isfortran"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isin"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "isinf"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "isnan"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "isnat"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isneginf"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isposinf"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isreal"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isrealobj"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "isscalar"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "issubdtype"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "iterable"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ix_"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "kaiser"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "kron"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "lcm"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "ldexp"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "left_shift"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "less"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "less_equal"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "lexsort"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "linspace"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "little_endian"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "load"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "loadtxt"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "log"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "log10"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "log1p"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "log2"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "logaddexp"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "logaddexp2"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "logical_and"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "logical_not"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "logical_or"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "logical_xor"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "logspace"
+},
+{
+"alias_of": "int64",
+"kind": "class",
+"module": "numpy",
+"name": "long"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "longdouble"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "longlong"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "mask_indices"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "matmul"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "matrix"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "matrix_transpose"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "matvec"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "max"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "maximum"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "may_share_memory"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "mean"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "median"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "memmap"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "meshgrid"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "mgrid"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "min"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "min_scalar_type"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "minimum"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "mintypecode"
+},
+{
+"alias_of": "remainder",
+"kind": "ufunc",
+"module": "numpy",
+"name": "mod"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "modf"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "moveaxis"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "multiply"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "nan"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nan_to_num"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanargmax"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanargmin"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nancumprod"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nancumsum"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanmax"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanmean"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanmedian"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanmin"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanpercentile"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanprod"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanquantile"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanstd"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nansum"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nanvar"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "ndarray"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "ndenumerate"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ndim"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "ndindex"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "nditer"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "negative"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nested_iters"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "newaxis"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "nextafter"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "nonzero"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "not_equal"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "number"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "object_"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "ogrid"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ones"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ones_like"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "outer"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "packbits"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "pad"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "partition"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "percentile"
+},
+{
+"alias_of": "transpose",
+"kind": "function",
+"module": "numpy",
+"name": "permute_dims"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "pi"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "piecewise"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "place"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "poly"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "poly1d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polyadd"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polyder"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polydiv"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polyfit"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polyint"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polymul"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polysub"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "polyval"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "positive"
+},
+{
+"alias_of": "power",
+"kind": "ufunc",
+"module": "numpy",
+"name": "pow"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "power"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "printoptions"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "prod"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "promote_types"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ptp"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "put"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "put_along_axis"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "putmask"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "quantile"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "r_"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "rad2deg"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "radians"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ravel"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "ravel_multi_index"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "real"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "real_if_close"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "recarray"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "reciprocal"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "record"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "remainder"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "repeat"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "require"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "reshape"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "resize"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "result_type"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "right_shift"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "rint"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "roll"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "rollaxis"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "roots"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "rot90"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "round"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "row_stack"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "s_"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "save"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "savetxt"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "savez"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "savez_compressed"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "sctypeDict"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "searchsorted"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "select"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "set_printoptions"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "setbufsize"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "setdiff1d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "seterr"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "seterrcall"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "setxor1d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "shape"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "shares_memory"
+},
+{
+"alias_of": "int16",
+"kind": "class",
+"module": "numpy",
+"name": "short"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "show_config"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "show_runtime"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "sign"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "signbit"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "signedinteger"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "sin"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "sinc"
+},
+{
+"alias_of": "float32",
+"kind": "class",
+"module": "numpy",
+"name": "single"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "sinh"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "size"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "sort"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "sort_complex"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "spacing"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "split"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "sqrt"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "square"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "squeeze"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "stack"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "std"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "str_"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "subtract"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "sum"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "swapaxes"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "take"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "take_along_axis"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "tan"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "tanh"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "tensordot"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "test"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "tile"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "timedelta64"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "trace"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "transpose"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "trapezoid"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "tri"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "tril"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "tril_indices"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "tril_indices_from"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "trim_zeros"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "triu"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "triu_indices"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "triu_indices_from"
+},
+{
+"alias_of": "divide",
+"kind": "ufunc",
+"module": "numpy",
+"name": "true_divide"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "trunc"
+},
+{
+"kind": "constant",
+"module": "numpy",
+"name": "typecodes"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "typename"
+},
+{
+"alias_of": "uint8",
+"kind": "class",
+"module": "numpy",
+"name": "ubyte"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "ufunc"
+},
+{
+"alias_of": "uint64",
+"kind": "class",
+"module": "numpy",
+"name": "uint"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "uint16"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "uint32"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "uint64"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "uint8"
+},
+{
+"alias_of": "uint32",
+"kind": "class",
+"module": "numpy",
+"name": "uintc"
+},
+{
+"alias_of": "uint64",
+"kind": "class",
+"module": "numpy",
+"name": "uintp"
+},
+{
+"alias_of": "uint64",
+"kind": "class",
+"module": "numpy",
+"name": "ulong"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "ulonglong"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "union1d"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unique"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unique_all"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unique_counts"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unique_inverse"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unique_values"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unpackbits"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unravel_index"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "unsignedinteger"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unstack"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "unwrap"
+},
+{
+"alias_of": "uint16",
+"kind": "class",
+"module": "numpy",
+"name": "ushort"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "vander"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "var"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "vdot"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "vecdot"
+},
+{
+"kind": "ufunc",
+"module": "numpy",
+"name": "vecmat"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "vectorize"
+},
+{
+"kind": "class",
+"module": "numpy",
+"name": "void"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "vsplit"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "vstack"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "where"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "zeros"
+},
+{
+"kind": "function",
+"module": "numpy",
+"name": "zeros_like"
+},
+{
+"kind": "class",
+"module": "numpy.linalg",
+"name": "LinAlgError"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "cholesky"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "cond"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "cross"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "det"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "diagonal"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "eig"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "eigh"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "eigvals"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "eigvalsh"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "inv"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "lstsq"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "matmul"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "matrix_norm"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "matrix_power"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "matrix_rank"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "matrix_transpose"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "multi_dot"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "norm"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "outer"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "pinv"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "qr"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "slogdet"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "solve"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "svd"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "svdvals"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "tensordot"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "tensorinv"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "tensorsolve"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "trace"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "vecdot"
+},
+{
+"kind": "function",
+"module": "numpy.linalg",
+"name": "vector_norm"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "fft"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "fft2"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "fftfreq"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "fftn"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "fftshift"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "hfft"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "ifft"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "ifft2"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "ifftn"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "ifftshift"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "ihfft"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "irfft"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "irfft2"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "irfftn"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "rfft"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "rfft2"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "rfftfreq"
+},
+{
+"kind": "function",
+"module": "numpy.fft",
+"name": "rfftn"
+},
+{
+"kind": "class",
+"module": "numpy.polynomial",
+"name": "Chebyshev"
+},
+{
+"kind": "class",
+"module": "numpy.polynomial",
+"name": "Hermite"
+},
+{
+"kind": "class",
+"module": "numpy.polynomial",
+"name": "HermiteE"
+},
+{
+"kind": "class",
+"module": "numpy.polynomial",
+"name": "Laguerre"
+},
+{
+"kind": "class",
+"module": "numpy.polynomial",
+"name": "Legendre"
+},
+{
+"kind": "class",
+"module": "numpy.polynomial",
+"name": "Polynomial"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial",
+"name": "set_default_printstyle"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "BitGenerator"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "Generator"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "MT19937"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "PCG64"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "PCG64DXSM"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "Philox"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "RandomState"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "SFC64"
+},
+{
+"kind": "class",
+"module": "numpy.random",
+"name": "SeedSequence"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "beta"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "binomial"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "bytes"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "chisquare"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "choice"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "default_rng"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "dirichlet"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "exponential"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "f"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "gamma"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "geometric"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "get_state"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "gumbel"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "hypergeometric"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "laplace"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "logistic"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "lognormal"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "logseries"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "multinomial"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "multivariate_normal"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "negative_binomial"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "noncentral_chisquare"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "noncentral_f"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "normal"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "pareto"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "permutation"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "poisson"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "power"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "rand"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "randint"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "randn"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "random"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "random_integers"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "random_sample"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "ranf"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "rayleigh"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "sample"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "seed"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "set_state"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "shuffle"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "standard_cauchy"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "standard_exponential"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "standard_gamma"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "standard_normal"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "standard_t"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "triangular"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "uniform"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "vonmises"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "wald"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "weibull"
+},
+{
+"kind": "function",
+"module": "numpy.random",
+"name": "zipf"
+},
+{
+"kind": "class",
+"module": "scipy.special",
+"name": "SpecialFunctionError"
+},
+{
+"kind": "class",
+"module": "scipy.special",
+"name": "SpecialFunctionWarning"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "agm"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ai_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "airy"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "airye"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "assoc_laguerre"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "assoc_legendre_p"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "assoc_legendre_p_all"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "bdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "bdtrc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "bdtri"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "bdtrik"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "bdtrin"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "bei"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "bei_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "beip"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "beip_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ber"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ber_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "bernoulli"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "berp"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "berp_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "besselpoly"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "beta"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "betainc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "betaincc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "betainccinv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "betaincinv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "betaln"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "bi_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "binom"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "boxcox"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "boxcox1p"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "btdtria"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "btdtrib"
+},
+{
+"alias_of": "roots_chebyc",
+"kind": "function",
+"module": "scipy.special",
+"name": "c_roots"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "cbrt"
+},
+{
+"alias_of": "roots_gegenbauer",
+"kind": "function",
+"module": "scipy.special",
+"name": "cg_roots"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chdtrc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chdtri"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chdtriv"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "chebyc"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "chebys"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "chebyt"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "chebyu"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chndtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chndtridf"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chndtrinc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "chndtrix"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "comb"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "cosdg"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "cosm1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "cotdg"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "dawsn"
+},
+{
+"alias_of": "psi",
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "digamma"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "diric"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ellip_harm"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ellip_harm_2"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ellip_normal"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ellipe"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ellipeinc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ellipj"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ellipk"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ellipkinc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ellipkm1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "elliprc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "elliprd"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "elliprf"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "elliprg"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "elliprj"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "entr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "erf"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "erf_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "erfc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "erfcinv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "erfcx"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "erfi"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "erfinv"
+},
+{
+"kind": "class",
+"module": "scipy.special",
+"name": "errstate"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "euler"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_chebyc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_chebys"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_chebyt"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_chebyu"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_gegenbauer"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_genlaguerre"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_hermite"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_hermitenorm"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_jacobi"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_laguerre"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_legendre"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_sh_chebyt"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_sh_chebyu"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_sh_jacobi"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "eval_sh_legendre"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "exp1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "exp10"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "exp2"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "expi"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "expit"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "expm1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "expn"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "exprel"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "factorial"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "factorial2"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "factorialk"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "fdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "fdtrc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "fdtri"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "fdtridfd"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "fresnel"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "fresnel_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "fresnelc_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "fresnels_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gamma"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gammainc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gammaincc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gammainccinv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gammaincinv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gammaln"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gammasgn"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gdtrc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gdtria"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gdtrib"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "gdtrix"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "gegenbauer"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "genlaguerre"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "geterr"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "h1vp"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "h2vp"
+},
+{
+"alias_of": "roots_hermite",
+"kind": "function",
+"module": "scipy.special",
+"name": "h_roots"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hankel1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hankel1e"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hankel2"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hankel2e"
+},
+{
+"alias_of": "roots_hermitenorm",
+"kind": "function",
+"module": "scipy.special",
+"name": "he_roots"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "hermite"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "hermitenorm"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "huber"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hyp0f1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hyp1f1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hyp2f1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "hyperu"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "i0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "i0e"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "i1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "i1e"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "inv_boxcox"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "inv_boxcox1p"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "it2i0k0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "it2j0y0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "it2struve0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "itairy"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "iti0k0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "itj0y0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "itmodstruve0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "itstruve0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "iv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ive"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ivp"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "j0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "j1"
+},
+{
+"alias_of": "roots_jacobi",
+"kind": "function",
+"module": "scipy.special",
+"name": "j_roots"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "jacobi"
+},
+{
+"alias_of": "jv",
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "jn"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "jn_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "jnjnp_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "jnp_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "jnyn_zeros"
+},
+{
+"alias_of": "roots_sh_jacobi",
+"kind": "function",
+"module": "scipy.special",
+"name": "js_roots"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "jv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "jve"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "jvp"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "k0"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "k0e"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "k1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "k1e"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kei"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "kei_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "keip"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "keip_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kelvin"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "kelvin_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ker"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ker_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kerp"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "kerp_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kl_div"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kn"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kolmogi"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kolmogorov"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "kve"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "kvp"
+},
+{
+"alias_of": "roots_laguerre",
+"kind": "function",
+"module": "scipy.special",
+"name": "l_roots"
+},
+{
+"alias_of": "roots_genlaguerre",
+"kind": "function",
+"module": "scipy.special",
+"name": "la_roots"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "laguerre"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "lambertw"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "legendre"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "legendre_p"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "legendre_p_all"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "lmbda"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "log1p"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "log_expit"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "log_ndtr"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "log_softmax"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "log_wright_bessel"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "loggamma"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "logit"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "logsumexp"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "lpmv"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "lqmn"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "lqn"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_a"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_b"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_cem"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "mathieu_even_coef"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_modcem1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_modcem2"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_modsem1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_modsem2"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "mathieu_odd_coef"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "mathieu_sem"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "modfresnelm"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "modfresnelp"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "modstruve"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "multigammaln"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nbdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nbdtrc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nbdtri"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nbdtrik"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nbdtrin"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ncfdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ncfdtri"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ncfdtridfd"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ncfdtridfn"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ncfdtrinc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nctdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nctdtridf"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nctdtrinc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nctdtrit"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ndtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ndtri"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "ndtri_exp"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nrdtrimn"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "nrdtrisd"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "obl_ang1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "obl_ang1_cv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "obl_cv"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "obl_cv_seq"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "obl_rad1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "obl_rad1_cv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "obl_rad2"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "obl_rad2_cv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "owens_t"
+},
+{
+"alias_of": "roots_legendre",
+"kind": "function",
+"module": "scipy.special",
+"name": "p_roots"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "pbdn_seq"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pbdv"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "pbdv_seq"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pbvv"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "pbvv_seq"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pbwa"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pdtrc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pdtri"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pdtrik"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "perm"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "poch"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "polygamma"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "powm1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pro_ang1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pro_ang1_cv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pro_cv"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "pro_cv_seq"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pro_rad1"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pro_rad1_cv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pro_rad2"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pro_rad2_cv"
+},
+{
+"alias_of": "roots_sh_legendre",
+"kind": "function",
+"module": "scipy.special",
+"name": "ps_roots"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "pseudo_huber"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "psi"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "radian"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "rel_entr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "rgamma"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "riccati_jn"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "riccati_yn"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_chebyc"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_chebys"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_chebyt"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_chebyu"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_gegenbauer"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_genlaguerre"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_hermite"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_hermitenorm"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_jacobi"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_laguerre"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_legendre"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_sh_chebyt"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_sh_chebyu"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_sh_jacobi"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "roots_sh_legendre"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "round"
+},
+{
+"alias_of": "roots_chebys",
+"kind": "function",
+"module": "scipy.special",
+"name": "s_roots"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "seterr"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sh_chebyt"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sh_chebyu"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sh_jacobi"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sh_legendre"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "shichi"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "sici"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sinc"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "sindg"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "smirnov"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "smirnovi"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "softmax"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "softplus"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "spence"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sph_harm_y"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sph_harm_y_all"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sph_legendre_p"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "sph_legendre_p_all"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "spherical_in"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "spherical_jn"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "spherical_kn"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "spherical_yn"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "stdtr"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "stdtridf"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "stdtrit"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "stirling2"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "struve"
+},
+{
+"alias_of": "roots_chebyt",
+"kind": "function",
+"module": "scipy.special",
+"name": "t_roots"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "tandg"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "tklmbda"
+},
+{
+"alias_of": "roots_sh_chebyt",
+"kind": "function",
+"module": "scipy.special",
+"name": "ts_roots"
+},
+{
+"alias_of": "roots_chebyu",
+"kind": "function",
+"module": "scipy.special",
+"name": "u_roots"
+},
+{
+"alias_of": "roots_sh_chebyu",
+"kind": "function",
+"module": "scipy.special",
+"name": "us_roots"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "voigt_profile"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "wofz"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "wright_bessel"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "wrightomega"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "xlog1py"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "xlogy"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "y0"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "y0_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "y1"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "y1_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "y1p_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "yn"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "yn_zeros"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "ynp_zeros"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "yv"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "yve"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "yvp"
+},
+{
+"kind": "function",
+"module": "scipy.special",
+"name": "zeta"
+},
+{
+"kind": "ufunc",
+"module": "scipy.special",
+"name": "zetac"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "Binomial"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "BootstrapMethod"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "CensoredData"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "ConstantInputWarning"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "Covariance"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "DegenerateDataWarning"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "FitError"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "Logistic"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "Mixture"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "MonteCarloMethod"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "NearConstantInputWarning"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "Normal"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "PermutationMethod"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "Uniform"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "abs"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "alexandergovern"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "alpha",
+"shapes": [
+"a"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "anderson"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "anderson_ksamp"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "anglit",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ansari"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "arcsine",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "argus",
+"shapes": [
+"chi"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "barnard_exact"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "bartlett"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "bayes_mvs"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "bernoulli",
+"shapes": [
+"p"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "beta",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "betabinom",
+"shapes": [
+"n",
+"a",
+"b"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "betanbinom",
+"shapes": [
+"n",
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "betaprime",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "binned_statistic"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "binned_statistic_2d"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "binned_statistic_dd"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "binom",
+"shapes": [
+"n",
+"p"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "binomtest"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "boltzmann",
+"shapes": [
+"lambda_",
+"N"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "bootstrap"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "boschloo_exact"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "boxcox"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "boxcox_llf"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "boxcox_normmax"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "boxcox_normplot"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "bradford",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "brunnermunzel"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "burr",
+"shapes": [
+"c",
+"d"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "burr12",
+"shapes": [
+"c",
+"d"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "bws_test"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "cauchy",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "chatterjeexi"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "chi",
+"shapes": [
+"df"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "chi2",
+"shapes": [
+"df"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "chi2_contingency"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "chisquare"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "circmean"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "circstd"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "circvar"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "combine_pvalues"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "cosine",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "cramervonmises"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "cramervonmises_2samp"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "crystalball",
+"shapes": [
+"beta",
+"m"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "cumfreq"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "describe"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "dgamma",
+"shapes": [
+"a"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "differential_entropy"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "directional_stats"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "dirichlet"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "dirichlet_multinomial"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "dlaplace",
+"shapes": [
+"a"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "dpareto_lognorm",
+"shapes": [
+"u",
+"s",
+"a",
+"b"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "dunnett"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "dweibull",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ecdf"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "energy_distance"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "entropy"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "epps_singleton_2samp"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "erlang",
+"shapes": [
+"a"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "exp"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "expectile"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "expon",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "exponnorm",
+"shapes": [
+"K"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "exponpow",
+"shapes": [
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "exponweib",
+"shapes": [
+"a",
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "f",
+"shapes": [
+"dfn",
+"dfd"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "f_oneway"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "false_discovery_control"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "fatiguelife",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "fisher_exact"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "fisk",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "fit"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "fligner"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "foldcauchy",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "foldnorm",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "friedmanchisquare"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gamma",
+"shapes": [
+"a"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gausshyper",
+"shapes": [
+"a",
+"b",
+"c",
+"z"
+]
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "gaussian_kde"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "genexpon",
+"shapes": [
+"a",
+"b",
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "genextreme",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gengamma",
+"shapes": [
+"a",
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "genhalflogistic",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "genhyperbolic",
+"shapes": [
+"p",
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "geninvgauss",
+"shapes": [
+"p",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "genlogistic",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gennorm",
+"shapes": [
+"beta"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "genpareto",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "geom",
+"shapes": [
+"p"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gibrat",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "gmean"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gompertz",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "goodness_of_fit"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "gstd"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gumbel_l",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "gumbel_r",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "gzscore"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "halfcauchy",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "halfgennorm",
+"shapes": [
+"beta"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "halflogistic",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "halfnorm",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "hmean"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "hypergeom",
+"shapes": [
+"M",
+"n",
+"N"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "hypsecant",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "invgamma",
+"shapes": [
+"a"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "invgauss",
+"shapes": [
+"mu"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "invweibull",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "invwishart"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "iqr"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "irwinhall",
+"shapes": [
+"n"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "jarque_bera"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "jf_skew_t",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "johnsonsb",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "johnsonsu",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "kappa3",
+"shapes": [
+"a"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "kappa4",
+"shapes": [
+"h",
+"k"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "kendalltau"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "kruskal"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ks_1samp"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ks_2samp"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "ksone",
+"shapes": [
+"n"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "kstat"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "kstatvar"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "kstest"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "kstwo",
+"shapes": [
+"n"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "kstwobign",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "kurtosis"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "kurtosistest"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "landau",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "laplace",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "laplace_asymmetric",
+"shapes": [
+"kappa"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "levene"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "levy",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "levy_l",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "levy_stable",
+"shapes": [
+"alpha",
+"beta"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "linregress"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "lmoment"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "log"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "loggamma",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "logistic",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "loglaplace",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "lognorm",
+"shapes": [
+"s"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "logrank"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "logser",
+"shapes": [
+"p"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "loguniform",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "lomax",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "make_distribution"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "mannwhitneyu"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "matrix_normal"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "matrix_t"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "maxwell",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "median_abs_deviation"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "median_test"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "mielke",
+"shapes": [
+"k",
+"s"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "mode"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "moment"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "monte_carlo_test"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "mood"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "moyal",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "multinomial"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "multiscale_graphcorr"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "multivariate_hypergeom"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "multivariate_normal"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "multivariate_t"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "mvsdist"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "nakagami",
+"shapes": [
+"nu"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "nbinom",
+"shapes": [
+"n",
+"p"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "ncf",
+"shapes": [
+"dfn",
+"dfd",
+"nc"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "nchypergeom_fisher",
+"shapes": [
+"M",
+"n",
+"N",
+"odds"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "nchypergeom_wallenius",
+"shapes": [
+"M",
+"n",
+"N",
+"odds"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "nct",
+"shapes": [
+"df",
+"nc"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "ncx2",
+"shapes": [
+"df",
+"nc"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "nhypergeom",
+"shapes": [
+"M",
+"n",
+"r"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "norm",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "normal_inverse_gamma"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "normaltest"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "norminvgauss",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "obrientransform"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "order_statistic"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ortho_group"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "page_trend_test"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "pareto",
+"shapes": [
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "pearson3",
+"shapes": [
+"skew"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "pearsonr"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "percentileofscore"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "permutation_test"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "planck",
+"shapes": [
+"lambda_"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "pmean"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "pointbiserialr"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "poisson",
+"shapes": [
+"mu"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "poisson_binom",
+"shapes": [
+"p"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "poisson_means_test"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "power"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "power_divergence"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "powerlaw",
+"shapes": [
+"a"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "powerlognorm",
+"shapes": [
+"c",
+"s"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "powernorm",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ppcc_max"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ppcc_plot"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "probplot"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "quantile"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "quantile_test"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "randint",
+"shapes": [
+"low",
+"high"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "random_correlation"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "random_table"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "rankdata"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ranksums"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "rayleigh",
+"shapes": []
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "rdist",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "recipinvgauss",
+"shapes": [
+"mu"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "reciprocal",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "rel_breitwigner",
+"shapes": [
+"rho"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "relfreq"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "rice",
+"shapes": [
+"b"
+]
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "rv_continuous"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "rv_discrete"
+},
+{
+"kind": "class",
+"module": "scipy.stats",
+"name": "rv_histogram"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "scoreatpercentile"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "sem"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "semicircular",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "shapiro"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "siegelslopes"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "sigmaclip"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "skellam",
+"shapes": [
+"mu1",
+"mu2"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "skew"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "skewcauchy",
+"shapes": [
+"a"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "skewnorm",
+"shapes": [
+"a"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "skewtest"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "sobol_indices"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "somersd"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "spearmanr"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "spearmanrho"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "special_ortho_group"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "studentized_range",
+"shapes": [
+"k",
+"df"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "t",
+"shapes": [
+"df"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "theilslopes"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tiecorrect"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tmax"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tmean"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tmin"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "trapezoid",
+"shapes": [
+"c",
+"d"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "triang",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "trim1"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "trim_mean"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "trimboth"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "truncate"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "truncexpon",
+"shapes": [
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "truncnorm",
+"shapes": [
+"a",
+"b"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "truncpareto",
+"shapes": [
+"b",
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "truncweibull_min",
+"shapes": [
+"c",
+"a",
+"b"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tsem"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tstd"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ttest_1samp"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ttest_ind"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ttest_ind_from_stats"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "ttest_rel"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tukey_hsd"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "tukeylambda",
+"shapes": [
+"lam"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "tvar"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "uniform",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "uniform_direction"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "unitary_group"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "variation"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "vonmises",
+"shapes": [
+"kappa"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "vonmises_fisher"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "vonmises_line",
+"shapes": [
+"kappa"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "wald",
+"shapes": []
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "wasserstein_distance"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "wasserstein_distance_nd"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "weibull_max",
+"shapes": [
+"c"
+]
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "weibull_min",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "weightedtau"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "wilcoxon"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "wishart"
+},
+{
+"discrete": false,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "wrapcauchy",
+"shapes": [
+"c"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "yeojohnson"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "yeojohnson_llf"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "yeojohnson_normmax"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "yeojohnson_normplot"
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "yulesimon",
+"shapes": [
+"alpha"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "zipf",
+"shapes": [
+"a"
+]
+},
+{
+"discrete": true,
+"kind": "distribution",
+"module": "scipy.stats",
+"name": "zipfian",
+"shapes": [
+"a",
+"n"
+]
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "zmap"
+},
+{
+"kind": "function",
+"module": "scipy.stats",
+"name": "zscore"
+},
+{
+"kind": "class",
+"module": "scipy.linalg",
+"name": "LinAlgError"
+},
+{
+"kind": "class",
+"module": "scipy.linalg",
+"name": "LinAlgWarning"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "bandwidth"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "block_diag"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cdf2rdf"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cho_factor"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cho_solve"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cho_solve_banded"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cholesky"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cholesky_banded"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "circulant"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "clarkson_woodruff_transform"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "companion"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "convolution_matrix"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "coshm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cosm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "cossin"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "det"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "dft"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "diagsvd"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eig"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eig_banded"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eigh"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eigh_tridiagonal"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eigvals"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eigvals_banded"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eigvalsh"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "eigvalsh_tridiagonal"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "expm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "expm_cond"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "expm_frechet"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "fiedler"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "fiedler_companion"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "find_best_blas_type"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "fractional_matrix_power"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "funm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "get_blas_funcs"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "get_lapack_funcs"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "hadamard"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "hankel"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "helmert"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "hessenberg"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "hilbert"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "inv"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "invhilbert"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "invpascal"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "ishermitian"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "issymmetric"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "khatri_rao"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "ldl"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "leslie"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "logm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "lstsq"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "lu"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "lu_factor"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "lu_solve"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "matmul_toeplitz"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "matrix_balance"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "norm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "null_space"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "ordqz"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "orth"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "orthogonal_procrustes"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "pascal"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "pinv"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "pinvh"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "polar"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "qr"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "qr_delete"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "qr_insert"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "qr_multiply"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "qr_update"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "qz"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "rq"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "rsf2csf"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "schur"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "signm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "sinhm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "sinm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_banded"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_circulant"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_continuous_are"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_continuous_lyapunov"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_discrete_are"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_discrete_lyapunov"
+},
+{
+"alias_of": "solve_continuous_lyapunov",
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_lyapunov"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_sylvester"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_toeplitz"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solve_triangular"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "solveh_banded"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "sqrtm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "subspace_angles"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "svd"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "svdvals"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "tanhm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "tanm"
+},
+{
+"kind": "function",
+"module": "scipy.linalg",
+"name": "toeplitz"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "BFGS"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "Bounds"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "BroydenFirst"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "HessianUpdateStrategy"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "InverseJacobian"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "KrylovJacobian"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "LbfgsInvHessProduct"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "LinearConstraint"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "NoConvergence"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "NonlinearConstraint"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "OptimizeResult"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "OptimizeWarning"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "RootResults"
+},
+{
+"kind": "class",
+"module": "scipy.optimize",
+"name": "SR1"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "anderson"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "approx_fprime"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "basinhopping"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "bisect"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "bracket"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "brent"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "brenth"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "brentq"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "broyden1"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "broyden2"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "brute"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "check_grad"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "curve_fit"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "diagbroyden"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "differential_evolution"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "direct"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "dual_annealing"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "excitingmixing"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fixed_point"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_bfgs"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_cg"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_cobyla"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_l_bfgs_b"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_ncg"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_powell"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_slsqp"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fmin_tnc"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fminbound"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "fsolve"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "golden"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "isotonic_regression"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "least_squares"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "leastsq"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "line_search"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "linear_sum_assignment"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "linearmixing"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "linprog"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "linprog_verbose_callback"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "lsq_linear"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "milp"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "minimize"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "minimize_scalar"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "newton"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "newton_krylov"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "nnls"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "quadratic_assignment"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "ridder"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "root"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "root_scalar"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "rosen"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "rosen_der"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "rosen_hess"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "rosen_hess_prod"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "shgo"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "show_options"
+},
+{
+"kind": "function",
+"module": "scipy.optimize",
+"name": "toms748"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "SparseEfficiencyWarning"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "SparseWarning"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "block_array"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "block_diag"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "bmat"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "bsr_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "bsr_matrix"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "coo_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "coo_matrix"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "csc_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "csc_matrix"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "csr_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "csr_matrix"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "dia_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "dia_matrix"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "diags"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "diags_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "dok_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "dok_matrix"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "expand_dims"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "eye"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "eye_array"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "find"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "get_index_dtype"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "hstack"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "identity"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "issparse"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix_bsr"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix_coo"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix_csc"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix_csr"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix_dia"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix_dok"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "isspmatrix_lil"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "kron"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "kronsum"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "lil_array"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "lil_matrix"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "load_npz"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "permute_dims"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "rand"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "random"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "random_array"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "safely_cast_index_arrays"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "save_npz"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "sparray"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "spdiags"
+},
+{
+"kind": "class",
+"module": "scipy.sparse",
+"name": "spmatrix"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "swapaxes"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "tril"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "triu"
+},
+{
+"kind": "function",
+"module": "scipy.sparse",
+"name": "vstack"
+},
+{
+"kind": "class",
+"module": "scipy.sparse.linalg",
+"name": "ArpackError"
+},
+{
+"kind": "class",
+"module": "scipy.sparse.linalg",
+"name": "ArpackNoConvergence"
+},
+{
+"kind": "class",
+"module": "scipy.sparse.linalg",
+"name": "LaplacianNd"
+},
+{
+"kind": "class",
+"module": "scipy.sparse.linalg",
+"name": "LinearOperator"
+},
+{
+"kind": "class",
+"module": "scipy.sparse.linalg",
+"name": "MatrixRankWarning"
+},
+{
+"kind": "class",
+"module": "scipy.sparse.linalg",
+"name": "SuperLU"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "aslinearoperator"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "bicg"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "bicgstab"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "cg"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "cgs"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "eigs"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "eigsh"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "expm"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "expm_multiply"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "factorized"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "funm_multiply_krylov"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "gcrotmk"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "gmres"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "inv"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "is_sptriangular"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "lgmres"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "lobpcg"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "lsmr"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "lsqr"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "matrix_power"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "minres"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "norm"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "onenormest"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "qmr"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "spbandwidth"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "spilu"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "splu"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "spsolve"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "spsolve_triangular"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "svds"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "tfqmr"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.linalg",
+"name": "use_solver"
+},
+{
+"kind": "class",
+"module": "scipy.sparse.csgraph",
+"name": "NegativeCycleError"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "bellman_ford"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "breadth_first_order"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "breadth_first_tree"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "connected_components"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "construct_dist_matrix"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "csgraph_from_dense"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "csgraph_from_masked"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "csgraph_masked_from_dense"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "csgraph_to_dense"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "csgraph_to_masked"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "depth_first_order"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "depth_first_tree"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "dijkstra"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "floyd_warshall"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "johnson"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "laplacian"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "maximum_bipartite_matching"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "maximum_flow"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "min_weight_full_bipartite_matching"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "minimum_spanning_tree"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "reconstruct_path"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "reverse_cuthill_mckee"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "shortest_path"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "structural_rank"
+},
+{
+"kind": "function",
+"module": "scipy.sparse.csgraph",
+"name": "yen"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "AAA"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "Akima1DInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "BPoly"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "BSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "BarycentricInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "BivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "CloughTocher2DInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "CubicHermiteSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "CubicSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "FloaterHormannInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "InterpolatedUnivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "KroghInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "LSQBivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "LSQSphereBivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "LSQUnivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "LinearNDInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "NdBSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "NdPPoly"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "NearestNDInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "PPoly"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "PchipInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "RBFInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "Rbf"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "RectBivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "RectSphereBivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "RegularGridInterpolator"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "SmoothBivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "SmoothSphereBivariateSpline"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "UnivariateSpline"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "approximate_taylor_polynomial"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "barycentric_interpolate"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "bisplev"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "bisplrep"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "generate_knots"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "griddata"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "insert"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "interp1d"
+},
+{
+"kind": "class",
+"module": "scipy.interpolate",
+"name": "interp2d"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "interpn"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "krogh_interpolate"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "lagrange"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "make_interp_spline"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "make_lsq_spline"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "make_smoothing_spline"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "make_splprep"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "make_splrep"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "pade"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "pchip_interpolate"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "spalde"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "splantider"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "splder"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "splev"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "splint"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "splprep"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "splrep"
+},
+{
+"kind": "function",
+"module": "scipy.interpolate",
+"name": "sproot"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "BadCoefficients"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "CZT"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "ShortTimeFFT"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "StateSpace"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "TransferFunction"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "ZerosPolesGain"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "ZoomFFT"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "abcd_normalize"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "argrelextrema"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "argrelmax"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "argrelmin"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "band_stop_obj"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "bessel"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "besselap"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "bilinear"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "bilinear_zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "bode"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "buttap"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "butter"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "buttord"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cheb1ap"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cheb1ord"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cheb2ap"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cheb2ord"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cheby1"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cheby2"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "check_COLA"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "check_NOLA"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "chirp"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "choose_conv_method"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "closest_STFT_dual_window"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "coherence"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cont2discrete"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "convolve"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "convolve2d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "correlate"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "correlate2d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "correlation_lags"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "csd"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cspline1d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cspline1d_eval"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "cspline2d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "czt"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "czt_points"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "dbode"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "decimate"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "deconvolve"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "detrend"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "dfreqresp"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "dimpulse"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "dlsim"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "dlti"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "dstep"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "ellip"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "ellipap"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "ellipord"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "envelope"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "fftconvolve"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "filtfilt"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "find_peaks"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "find_peaks_cwt"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "findfreqs"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "firls"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "firwin"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "firwin2"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "firwin_2d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "freqresp"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "freqs"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "freqs_zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "freqz"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "freqz_sos"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "freqz_zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "gammatone"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "gauss_spline"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "gausspulse"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "get_window"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "group_delay"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "hilbert"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "hilbert2"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "iircomb"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "iirdesign"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "iirfilter"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "iirnotch"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "iirpeak"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "impulse"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "invres"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "invresz"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "istft"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "kaiser_atten"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "kaiser_beta"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "kaiserord"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lfilter"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lfilter_zi"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lfiltic"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lombscargle"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2bp"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2bp_zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2bs"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2bs_zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2hp"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2hp_zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2lp"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lp2lp_zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "lsim"
+},
+{
+"kind": "class",
+"module": "scipy.signal",
+"name": "lti"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "max_len_seq"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "medfilt"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "medfilt2d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "minimum_phase"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "normalize"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "oaconvolve"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "order_filter"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "peak_prominences"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "peak_widths"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "periodogram"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "place_poles"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "qspline1d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "qspline1d_eval"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "qspline2d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "remez"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "resample"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "resample_poly"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "residue"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "residuez"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "savgol_coeffs"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "savgol_filter"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sawtooth"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sepfir2d"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sos2tf"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sos2zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sosfilt"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sosfilt_zi"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sosfiltfilt"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sosfreqz"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "spectrogram"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "spline_filter"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "square"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "ss2tf"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "ss2zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "step"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "stft"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "sweep_poly"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "symiirorder1"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "symiirorder2"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "tf2sos"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "tf2ss"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "tf2zpk"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "unique_roots"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "unit_impulse"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "upfirdn"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "vectorstrength"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "welch"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "wiener"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "zoom_fft"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "zpk2sos"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "zpk2ss"
+},
+{
+"kind": "function",
+"module": "scipy.signal",
+"name": "zpk2tf"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "barthann"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "bartlett"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "blackman"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "blackmanharris"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "bohman"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "boxcar"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "chebwin"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "cosine"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "dpss"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "exponential"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "flattop"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "gaussian"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "general_cosine"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "general_gaussian"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "general_hamming"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "get_window"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "hamming"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "hann"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "kaiser"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "kaiser_bessel_derived"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "lanczos"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "nuttall"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "parzen"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "taylor"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "triang"
+},
+{
+"kind": "function",
+"module": "scipy.signal.windows",
+"name": "tukey"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "BDF"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "DOP853"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "DenseOutput"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "IntegrationWarning"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "LSODA"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "ODEintWarning"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "OdeSolution"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "OdeSolver"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "RK23"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "RK45"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "Radau"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "complex_ode"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "cubature"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "cumulative_simpson"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "cumulative_trapezoid"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "dblquad"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "fixed_quad"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "lebedev_rule"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "newton_cotes"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "nquad"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "nsum"
+},
+{
+"kind": "class",
+"module": "scipy.integrate",
+"name": "ode"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "odeint"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "qmc_quad"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "quad"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "quad_vec"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "romb"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "simpson"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "solve_bvp"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "solve_ivp"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "tanhsinh"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "tplquad"
+},
+{
+"kind": "function",
+"module": "scipy.integrate",
+"name": "trapezoid"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "ConvexHull"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "Delaunay"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "HalfspaceIntersection"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "KDTree"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "QhullError"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "Rectangle"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "SphericalVoronoi"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "Voronoi"
+},
+{
+"kind": "class",
+"module": "scipy.spatial",
+"name": "cKDTree"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "convex_hull_plot_2d"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "delaunay_plot_2d"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "distance_matrix"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "geometric_slerp"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "minkowski_distance"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "minkowski_distance_p"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "procrustes"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "tsearch"
+},
+{
+"kind": "function",
+"module": "scipy.spatial",
+"name": "voronoi_plot_2d"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "braycurtis"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "canberra"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "cdist"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "chebyshev"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "cityblock"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "correlation"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "cosine"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "dice"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "directed_hausdorff"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "euclidean"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "hamming"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "is_valid_dm"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "is_valid_y"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "jaccard"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "jensenshannon"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "mahalanobis"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "minkowski"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "num_obs_dm"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "num_obs_y"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "pdist"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "rogerstanimoto"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "russellrao"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "seuclidean"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "sokalsneath"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "sqeuclidean"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "squareform"
+},
+{
+"kind": "function",
+"module": "scipy.spatial.distance",
+"name": "yule"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.vq",
+"name": "kmeans"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.vq",
+"name": "kmeans2"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.vq",
+"name": "vq"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.vq",
+"name": "whiten"
+},
+{
+"kind": "class",
+"module": "scipy.cluster.hierarchy",
+"name": "ClusterNode"
+},
+{
+"kind": "class",
+"module": "scipy.cluster.hierarchy",
+"name": "DisjointSet"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "average"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "centroid"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "complete"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "cophenet"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "correspond"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "cut_tree"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "dendrogram"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "fcluster"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "fclusterdata"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "from_mlab_linkage"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "inconsistent"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "is_isomorphic"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "is_monotonic"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "is_valid_im"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "is_valid_linkage"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "leaders"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "leaves_list"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "linkage"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "maxRstat"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "maxdists"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "maxinconsts"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "median"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "num_obs_linkage"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "optimal_leaf_ordering"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "set_link_color_palette"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "single"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "to_mlab_linkage"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "to_tree"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "ward"
+},
+{
+"kind": "function",
+"module": "scipy.cluster.hierarchy",
+"name": "weighted"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "affine_transform"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "binary_closing"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "binary_dilation"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "binary_erosion"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "binary_fill_holes"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "binary_hit_or_miss"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "binary_opening"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "binary_propagation"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "black_tophat"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "center_of_mass"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "convolve"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "convolve1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "correlate"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "correlate1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "distance_transform_bf"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "distance_transform_cdt"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "distance_transform_edt"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "extrema"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "find_objects"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "fourier_ellipsoid"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "fourier_gaussian"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "fourier_shift"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "fourier_uniform"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "gaussian_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "gaussian_filter1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "gaussian_gradient_magnitude"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "gaussian_laplace"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "generate_binary_structure"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "generic_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "generic_filter1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "generic_gradient_magnitude"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "generic_laplace"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "geometric_transform"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "grey_closing"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "grey_dilation"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "grey_erosion"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "grey_opening"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "histogram"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "iterate_structure"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "label"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "labeled_comprehension"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "laplace"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "map_coordinates"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "maximum"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "maximum_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "maximum_filter1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "maximum_position"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "mean"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "median"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "median_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "minimum"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "minimum_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "minimum_filter1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "minimum_position"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "morphological_gradient"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "morphological_laplace"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "percentile_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "prewitt"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "rank_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "rotate"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "shift"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "sobel"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "spline_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "spline_filter1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "standard_deviation"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "sum"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "sum_labels"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "uniform_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "uniform_filter1d"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "value_indices"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "variance"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "vectorized_filter"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "watershed_ift"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "white_tophat"
+},
+{
+"kind": "function",
+"module": "scipy.ndimage",
+"name": "zoom"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "dct"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "dctn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "dst"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "dstn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "fft"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "fft2"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "fftfreq"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "fftn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "fftshift"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "fht"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "fhtoffset"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "get_workers"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "hfft"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "hfft2"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "hfftn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "idct"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "idctn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "idst"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "idstn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ifft"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ifft2"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ifftn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ifftshift"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ifht"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ihfft"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ihfft2"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "ihfftn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "irfft"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "irfft2"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "irfftn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "next_fast_len"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "prev_fast_len"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "register_backend"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "rfft"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "rfft2"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "rfftfreq"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "rfftn"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "set_backend"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "set_global_backend"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "set_workers"
+},
+{
+"kind": "function",
+"module": "scipy.fft",
+"name": "skip_backend"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Avogadro"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Boltzmann"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Btu"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Btu_IT"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Btu_th"
+},
+{
+"kind": "class",
+"module": "scipy.constants",
+"name": "ConstantWarning"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "G"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Julian_year"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "N_A"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Planck"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "R"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Rydberg"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Stefan_Boltzmann"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "Wien"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "acre"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "alpha"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "angstrom"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "arcmin"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "arcminute"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "arcsec"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "arcsecond"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "astronomical_unit"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "atm"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "atmosphere"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "atomic_mass"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "atto"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "au"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "bar"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "barrel"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "bbl"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "blob"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "c"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "calorie"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "calorie_IT"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "calorie_th"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "carat"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "centi"
+},
+{
+"kind": "function",
+"module": "scipy.constants",
+"name": "convert_temperature"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "day"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "deci"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "degree"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "degree_Fahrenheit"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "deka"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "dyn"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "dyne"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "e"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "eV"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "electron_mass"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "electron_volt"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "elementary_charge"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "epsilon_0"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "erg"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "exa"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "exbi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "femto"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "fermi"
+},
+{
+"kind": "function",
+"module": "scipy.constants",
+"name": "find"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "fine_structure"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "fluid_ounce"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "fluid_ounce_US"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "fluid_ounce_imp"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "foot"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "g"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "gallon"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "gallon_US"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "gallon_imp"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "gas_constant"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "gibi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "giga"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "golden"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "golden_ratio"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "grain"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "gram"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "gravitational_constant"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "h"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "hbar"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "hectare"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "hecto"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "horsepower"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "hour"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "hp"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "inch"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "k"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "kgf"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "kibi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "kilo"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "kilogram_force"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "kmh"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "knot"
+},
+{
+"kind": "function",
+"module": "scipy.constants",
+"name": "lambda2nu"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "lb"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "lbf"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "light_year"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "liter"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "litre"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "long_ton"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "m_e"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "m_n"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "m_p"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "m_u"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mach"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mebi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mega"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "metric_ton"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "micro"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "micron"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mil"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mile"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "milli"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "minute"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mmHg"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mph"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "mu_0"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "nano"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "nautical_mile"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "neutron_mass"
+},
+{
+"kind": "function",
+"module": "scipy.constants",
+"name": "nu2lambda"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "ounce"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "oz"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "parsec"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "pebi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "peta"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "physical_constants"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "pi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "pico"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "point"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "pound"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "pound_force"
+},
+{
+"kind": "function",
+"module": "scipy.constants",
+"name": "precision"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "proton_mass"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "psi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "pt"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "quecto"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "quetta"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "ronna"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "ronto"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "short_ton"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "sigma"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "slinch"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "slug"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "speed_of_light"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "speed_of_sound"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "stone"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "survey_foot"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "survey_mile"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "tebi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "tera"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "ton_TNT"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "torr"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "troy_ounce"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "troy_pound"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "u"
+},
+{
+"kind": "function",
+"module": "scipy.constants",
+"name": "unit"
+},
+{
+"kind": "function",
+"module": "scipy.constants",
+"name": "value"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "week"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "yard"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "year"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "yobi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "yocto"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "yotta"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "zebi"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "zepto"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "zero_Celsius"
+},
+{
+"kind": "constant",
+"module": "scipy.constants",
+"name": "zetta"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "T"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "all"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "any"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "argmax"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "argmin"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "argpartition"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "argsort"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "astype"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "base"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "byteswap"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "choose"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "clip"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "compress"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "conj"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "conjugate"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "copy"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "ctypes"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "cumprod"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "cumsum"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "data"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "device"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "diagonal"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "dot"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "dtype"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "dump"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "dumps"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "fill"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "flags"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "flat"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "flatten"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "getfield"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "imag"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "item"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "itemsize"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "mT"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "max"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "mean"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "min"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "nbytes"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "ndim"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "nonzero"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "partition"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "prod"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "put"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "ravel"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "real"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "repeat"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "reshape"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "resize"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "round"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "searchsorted"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "setfield"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "setflags"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "shape"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "size"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "sort"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "squeeze"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "std"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "strides"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "sum"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "swapaxes"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "take"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "to_device"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "tobytes"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "tofile"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "tolist"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "trace"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "transpose"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "var"
+},
+{
+"kind": "method",
+"module": "numpy.ndarray",
+"name": "view"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "beta"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "binomial"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "bit_generator"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "bytes"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "chisquare"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "choice"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "dirichlet"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "exponential"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "f"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "gamma"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "geometric"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "gumbel"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "hypergeometric"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "integers"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "laplace"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "logistic"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "lognormal"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "logseries"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "multinomial"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "multivariate_hypergeometric"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "multivariate_normal"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "negative_binomial"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "noncentral_chisquare"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "noncentral_f"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "normal"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "pareto"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "permutation"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "permuted"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "poisson"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "power"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "random"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "rayleigh"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "shuffle"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "spawn"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "standard_cauchy"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "standard_exponential"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "standard_gamma"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "standard_normal"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "standard_t"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "triangular"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "uniform"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "vonmises"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "wald"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "weibull"
+},
+{
+"kind": "method",
+"module": "numpy.random.Generator",
+"name": "zipf"
+}
+]
+}

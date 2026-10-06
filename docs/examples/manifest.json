@@ -1,0 +1,375 @@
+{
+    "generated_by": "tools/gen-examples-manifest.php",
+    "total": 28,
+    "modules": {
+        "arrays": 2,
+        "csgraph": 1,
+        "fft": 2,
+        "io": 1,
+        "laravel": 1,
+        "linalg": 1,
+        "math": 2,
+        "mdp": 1,
+        "optimize": 7,
+        "random": 2,
+        "reductions": 1,
+        "sorting": 1,
+        "sparse": 1,
+        "special": 2,
+        "stats": 3
+    },
+    "examples": [
+        {
+            "id": "arrays/creation-and-indexing",
+            "module": "arrays",
+            "moduleTitle": "Arrays and indexing",
+            "name": "creation-and-indexing",
+            "file": "examples/arrays/creation-and-indexing.php",
+            "summary": "Create arrays and read elements/rows. Runs on both backends.",
+            "equivalent": "NumPy: np.arange(12).reshape(3, 4); a[1]; np.zeros((2, 3))",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "arrays/slicing-strides",
+            "module": "arrays",
+            "moduleTitle": "Arrays and indexing",
+            "name": "slicing-strides",
+            "file": "examples/arrays/slicing-strides.php",
+            "summary": "Strided and negative slicing (NumPy's start:stop:step on a 1-D array). Runs on both backends.",
+            "equivalent": "NumPy: v[::2]; v[::-1]; v[-3:]",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "csgraph/connected-components",
+            "module": "csgraph",
+            "moduleTitle": "Graphs (csgraph)",
+            "name": "connected-components",
+            "file": "examples/csgraph/connected-components.php",
+            "summary": "Connected components of a graph from its adjacency matrix.",
+            "equivalent": "SciPy: scipy.sparse.csgraph.connected_components(graph, directed=False)  ->  (n, labels)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "fft/dominant-frequency",
+            "module": "fft",
+            "moduleTitle": "FFT",
+            "name": "dominant-frequency",
+            "file": "examples/fft/dominant-frequency.php",
+            "summary": "Find the dominant frequency of a sampled signal with the real FFT. Both backends.",
+            "equivalent": "NumPy: F = np.fft.rfft(x); freqs = np.fft.rfftfreq(n, d=1/fs); freqs[np.argmax(np.abs(F))]",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "fft/roundtrip",
+            "module": "fft",
+            "moduleTitle": "FFT",
+            "name": "roundtrip",
+            "file": "examples/fft/roundtrip.php",
+            "summary": "The inverse FFT undoes the forward FFT. Both backends.",
+            "equivalent": "NumPy: np.fft.ifft(np.fft.fft(x)).real  ==  x",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "io/npy-roundtrip",
+            "module": "io",
+            "moduleTitle": ".npy / .npz and memory maps",
+            "name": "npy-roundtrip",
+            "file": "examples/io/npy-roundtrip.php",
+            "summary": "Save and load arrays in NumPy's .npy and .npz formats (interchangeable with NumPy).",
+            "equivalent": "NumPy: np.save / np.load; np.savez / np.load",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "laravel/validation-rule",
+            "module": "laravel",
+            "moduleTitle": "Laravel bridge",
+            "name": "validation-rule",
+            "file": "examples/laravel/validation-rule.php",
+            "summary": "Validate an incoming numeric array by shape and finiteness with the Laravel rule.",
+            "equivalent": "",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "linalg/solve-and-fit",
+            "module": "linalg",
+            "moduleTitle": "Linear algebra (dense)",
+            "name": "solve-and-fit",
+            "file": "examples/linalg/solve-and-fit.php",
+            "summary": "Dense linear algebra: solve a square system, and least-squares fit an overdetermined one.",
+            "equivalent": "NumPy: np.linalg.solve(A, b); np.linalg.lstsq(A, y, rcond=None)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "math/out-parameter",
+            "module": "math",
+            "moduleTitle": "Math and ufuncs",
+            "name": "out-parameter",
+            "file": "examples/math/out-parameter.php",
+            "summary": "Write ufunc results into a preallocated array with the out= parameter (no new allocation).",
+            "equivalent": "NumPy: np.sqrt(x, out=buf); np.multiply(x, 2, out=x)  (in place)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "math/ufuncs",
+            "module": "math",
+            "moduleTitle": "Math and ufuncs",
+            "name": "ufuncs",
+            "file": "examples/math/ufuncs.php",
+            "summary": "Element-wise math (ufuncs), scalar and array broadcasting. Runs on both backends.",
+            "equivalent": "NumPy: a + 1; np.sqrt(x); a.prod(); np.add(mat, col) broadcasting (3,) over (2, 3)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "mdp/value-iteration",
+            "module": "mdp",
+            "moduleTitle": "Markov decision processes",
+            "name": "value-iteration",
+            "file": "examples/mdp/value-iteration.php",
+            "summary": "Solve a small Markov decision process with value iteration.",
+            "equivalent": "",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "optimize/bounded-lbfgsb",
+            "module": "optimize",
+            "moduleTitle": "Optimize",
+            "name": "bounded-lbfgsb",
+            "file": "examples/optimize/bounded-lbfgsb.php",
+            "summary": "Box-constrained minimisation. Passing `bounds` switches minimize to L-BFGS-B automatically.",
+            "equivalent": "SciPy: scipy.optimize.minimize(f, x0, method='L-BFGS-B', bounds=[(-2, 0.5), (None, None)])",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "optimize/breakeven-brentq",
+            "module": "optimize",
+            "moduleTitle": "Optimize",
+            "name": "breakeven-brentq",
+            "file": "examples/optimize/breakeven-brentq.php",
+            "summary": "Bracketed root finding with Brent's method.",
+            "equivalent": "SciPy: scipy.optimize.brentq(f, a, b)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "optimize/decay-leastsq",
+            "module": "optimize",
+            "moduleTitle": "Optimize",
+            "name": "decay-leastsq",
+            "file": "examples/optimize/decay-leastsq.php",
+            "summary": "Nonlinear least squares from an explicit residual function (Levenberg-Marquardt).",
+            "equivalent": "SciPy: scipy.optimize.leastsq(residuals, p0)  /  least_squares(residuals, p0)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "optimize/demand-curve-fit",
+            "module": "optimize",
+            "moduleTitle": "Optimize",
+            "name": "demand-curve-fit",
+            "file": "examples/optimize/demand-curve-fit.php",
+            "summary": "Nonlinear curve fitting.",
+            "equivalent": "SciPy: scipy.optimize.curve_fit(model, xdata, ydata, p0)  ->  (params, covariance)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "optimize/implied-yield-newton",
+            "module": "optimize",
+            "moduleTitle": "Optimize",
+            "name": "implied-yield-newton",
+            "file": "examples/optimize/implied-yield-newton.php",
+            "summary": "Newton's method for a scalar root (no bracket needed, uses a numerical derivative here).",
+            "equivalent": "SciPy: scipy.optimize.newton(f, x0)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "optimize/nelder-mead-fmin",
+            "module": "optimize",
+            "moduleTitle": "Optimize",
+            "name": "nelder-mead-fmin",
+            "file": "examples/optimize/nelder-mead-fmin.php",
+            "summary": "Derivative-free minimisation with the Nelder-Mead simplex via fmin.",
+            "equivalent": "SciPy: scipy.optimize.fmin(func, x0)  (returns the minimiser)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "optimize/rosenbrock-bfgs",
+            "module": "optimize",
+            "moduleTitle": "Optimize",
+            "name": "rosenbrock-bfgs",
+            "file": "examples/optimize/rosenbrock-bfgs.php",
+            "summary": "Unconstrained minimisation with quasi-Newton BFGS.",
+            "equivalent": "SciPy: scipy.optimize.minimize(rosen, [-1.2, 1.0], method='BFGS')",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "random/monte-carlo",
+            "module": "random",
+            "moduleTitle": "Random",
+            "name": "monte-carlo",
+            "file": "examples/random/monte-carlo.php",
+            "summary": "A seeded Monte-Carlo simulation, vectorised. Runs on both backends.",
+            "equivalent": "NumPy: g = np.random.default_rng(2024); x = g.uniform(size=n); ((x**2+y**2)<=1).mean()*4",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "random/numpy-seed",
+            "module": "random",
+            "moduleTitle": "Random",
+            "name": "numpy-seed",
+            "file": "examples/random/numpy-seed.php",
+            "summary": "Reproduce a NumPy random stream from a seed, and snapshot/restore generator state.",
+            "equivalent": "NumPy: g = np.random.default_rng(42); g.integers(0, 100, 5); g.standard_normal(4)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "reductions/dataset-statistics",
+            "module": "reductions",
+            "moduleTitle": "Reductions and statistics",
+            "name": "dataset-statistics",
+            "file": "examples/reductions/dataset-statistics.php",
+            "summary": "Reductions along axes: per-column and per-row statistics of a small dataset. Both backends.",
+            "equivalent": "NumPy: a.sum(); a.mean(axis=0); a.std(axis=0, ddof=1); a.max(axis=1)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "sorting/leaderboard",
+            "module": "sorting",
+            "moduleTitle": "Sorting and searching",
+            "name": "leaderboard",
+            "file": "examples/sorting/leaderboard.php",
+            "summary": "Sort, rank, and binary-search a 1-D array. Both backends.",
+            "equivalent": "NumPy: np.sort(a) == a.sort-copy; a.argsort(); np.searchsorted(sorted, v)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "sparse/conjugate-gradient",
+            "module": "sparse",
+            "moduleTitle": "Sparse matrices",
+            "name": "conjugate-gradient",
+            "file": "examples/sparse/conjugate-gradient.php",
+            "summary": "Solve a sparse symmetric positive-definite system with conjugate gradient.",
+            "equivalent": "SciPy: scipy.sparse.linalg.cg(A, b)  ->  (x, info)   (info == 0 means converged)",
+            "backends": [
+                "ffi"
+            ]
+        },
+        {
+            "id": "special/combinatorics",
+            "module": "special",
+            "moduleTitle": "scipy.special",
+            "name": "combinatorics",
+            "file": "examples/special/combinatorics.php",
+            "summary": "Combinatorics with the gamma family. Both backends.",
+            "equivalent": "SciPy: scipy.special.comb(n, k); scipy.special.gammaln(x)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "special/logistic-and-erf",
+            "module": "special",
+            "moduleTitle": "scipy.special",
+            "name": "logistic-and-erf",
+            "file": "examples/special/logistic-and-erf.php",
+            "summary": "Two workhorse special functions: the logistic sigmoid and the error function. Both backends.",
+            "equivalent": "SciPy: scipy.special.expit(x); scipy.special.erf(x)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "stats/ab-test",
+            "module": "stats",
+            "moduleTitle": "scipy.stats",
+            "name": "ab-test",
+            "file": "examples/stats/ab-test.php",
+            "summary": "A/B test: a two-sample t-test on a per-user metric. Both backends.",
+            "equivalent": "SciPy: scipy.stats.ttest_ind(a, b)  ->  statistic, pvalue",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "stats/linear-regression",
+            "module": "stats",
+            "moduleTitle": "scipy.stats",
+            "name": "linear-regression",
+            "file": "examples/stats/linear-regression.php",
+            "summary": "Ordinary least-squares line fit with correlation and significance. Both backends.",
+            "equivalent": "SciPy: scipy.stats.linregress(x, y)  ->  slope, intercept, rvalue, pvalue, stderr, ...",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        },
+        {
+            "id": "stats/normal-distribution",
+            "module": "stats",
+            "moduleTitle": "scipy.stats",
+            "name": "normal-distribution",
+            "file": "examples/stats/normal-distribution.php",
+            "summary": "Work with a distribution object: pdf/cdf/ppf of the standard normal. Both backends.",
+            "equivalent": "SciPy: scipy.stats.norm(0, 1).cdf(1.96); .ppf(0.975)",
+            "backends": [
+                "ffi",
+                "ext"
+            ]
+        }
+    ]
+}

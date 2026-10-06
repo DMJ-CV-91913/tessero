@@ -1,0 +1,76 @@
+name: nightly
+
+# Long-running hardening that does not fit in a pull request: coverage-guided
+# fuzzing for 30 minutes per target, 5.5-hour soak runs of both backends in one
+# process each, and the property tests with 50x more random cases.
+# A 24-72 hour soak before each release is run by hand (docs/operations/soak-testing.md).
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      soak_seconds: { description: 'soak duration per backend (s)', default: '19800' }
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.target }} (30 min)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: { target: [slice, npy, mmap_plan, json] }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: csrc/build-fuzz/corpus_${{ matrix.target }}
+          key: fuzz-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-${{ matrix.target }}-
+      - run: make -C csrc fuzz FUZZ_TARGETS=${{ matrix.target }} FUZZ_TIME=1800 BUILD=./build-fuzz
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-${{ matrix.target }}
+          path: csrc/crash-*
+
+  soak:
+    name: soak ${{ matrix.backend }} (${{ matrix.jit }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { backend: ext, jit: 'jit off', ini: '' }
+          - { backend: ffi, jit: 'tracing JIT', ini: '-d opcache.enable_cli=1 -d opcache.jit=tracing -d opcache.jit_buffer_size=64M' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi, tools: phpize }
+      - run: make -C csrc
+      - name: build ext-tessero
+        if: matrix.backend == 'ext'
+        run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
+      - name: soak
+        run: |
+          EXT=""; [ "${{ matrix.backend }}" = ext ] && EXT="-d extension=$PWD/ext/modules/tessero.so"
+          php $EXT -d ffi.enable=1 ${{ matrix.ini }} tools/soak.php --backend=${{ matrix.backend }} \
+            --duration=${{ github.event.inputs.soak_seconds || '19800' }} --interval=60 --log=soak.jsonl
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soak-${{ matrix.backend }}
+          path: soak.jsonl
+
+  properties:
+    name: property tests x50
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi, tools: phpize }
+      - run: make -C csrc
+      - run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
+      - run: composer install --no-interaction --no-progress
+      - run: TESSERO_PROPERTY_CASES=2000 php -d ffi.enable=1 vendor/bin/phpunit --filter PropertyTest
+      - run: php -d extension=$PWD/ext/modules/tessero.so -d ffi.enable=1 vendor/bin/phpunit --filter BackendParityTest

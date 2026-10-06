@@ -1,0 +1,863 @@
+{
+ "generated": "2026-09-28",
+ "version": "0.2.0",
+ "revision": 3,
+ "issues": [
+  {
+   "id": "TSR-001",
+   "priority": "P0",
+   "title": "Run the CI matrix for the first time",
+   "labels": [
+    "ci",
+    "beta-exit"
+   ],
+   "estimate": "0.5",
+   "context": "ci.yml and nightly.yml have never executed. Every result so far comes from one Linux x86-64 host with PHP 8.4.",
+   "acceptance": [
+    "ci.yml green on push for PHP 8.1, 8.2, 8.3, 8.4 (NTS and ZTS) on ubuntu-latest",
+    "Kernel ASan/UBSan, extension phpt, FFI PHPUnit (JIT off/function/tracing), fuzz smoke and docs build jobs all pass",
+    "nightly.yml completes one full run (5.5 h soak per backend, 30 min fuzz per target)",
+    "Failures triaged into issues"
+   ]
+  },
+  {
+   "id": "TSR-002",
+   "priority": "P0",
+   "title": "Windows: build and test kernel, extension and FFI package",
+   "labels": [
+    "platform:windows",
+    "beta-exit"
+   ],
+   "estimate": "2",
+   "context": "The Win32 paths in csrc/src/mmap.c (CreateFileMapping/MapViewOfFile) and the C11 atomics in alloc.c have never been compiled. The extension must build with the PHP SDK (MSVC); the kernel DLL with MSVC or MinGW.",
+   "acceptance": [
+    "libtessero.dll builds; the C suite passes (270 checks)",
+    "php_tessero.dll builds with the PHP SDK for 8.3/8.4 NTS and TS; phpt passes",
+    "FFI suite passes against the DLL, including memmap modes r, r+, w+, c",
+    "MemorySafetyTest and BackendParityTest pass",
+    "Windows job added to ci.yml"
+   ]
+  },
+  {
+   "id": "TSR-003",
+   "priority": "P0",
+   "title": "macOS arm64 and x86_64 builds",
+   "labels": [
+    "platform:macos",
+    "beta-exit"
+   ],
+   "estimate": "1",
+   "context": "Apple clang has no OpenMP by default, Accelerate or OpenBLAS must be found for LAPACK, and the NEON paths in vmath.h and sort.c are untested.",
+   "acceptance": [
+    "Kernel builds with and without libomp (Homebrew)",
+    "The C suite and FFI suite pass on arm64 (M-series) and x86_64",
+    "Extension builds via phpize; phpt passes",
+    "exp/log accuracy test (< 1 ulp) passes on NEON",
+    "macOS jobs in ci.yml"
+   ]
+  },
+  {
+   "id": "TSR-004",
+   "priority": "P0",
+   "title": "Linux arm64 and Alpine/musl builds",
+   "labels": [
+    "platform:linux",
+    "beta-exit"
+   ],
+   "estimate": "0.5",
+   "context": "Docker images and Graviton servers are common deployment targets. musl differs in libm accuracy, dlopen and the default thread stack size.",
+   "acceptance": [
+    "All suites pass on ubuntu-24.04-arm",
+    "All suites pass in php:8.3-cli-alpine and php:8.4-fpm-alpine",
+    "The Dockerfile example in the docs builds on both architectures"
+   ]
+  },
+  {
+   "id": "TSR-005",
+   "priority": "P0",
+   "title": "Live Laravel application testing",
+   "labels": [
+    "laravel",
+    "beta-exit"
+   ],
+   "estimate": "1",
+   "context": "The bridge is covered by package tests only. It needs a real application: Laravel 10/11/12, database casts, queued jobs, Horizon, Octane (Swoole, RoadRunner, FrankenPHP).",
+   "acceptance": [
+    "Sample app: casts round-trip through MySQL/PostgreSQL/SQLite",
+    "Jobs that allocate arrays run 10 000 times under Horizon with memory_in_use back at baseline",
+    "Octane with each server: settings (threads, budget) reset per request and never leak between requests",
+    "tools/soak.php workload called from a route under load (wrk/k6) for 1 h with no growth",
+    "Findings recorded in docs/laravel"
+   ]
+  },
+  {
+   "id": "TSR-006",
+   "priority": "P0",
+   "title": "PHP-FPM with opcache preload under real traffic",
+   "labels": [
+    "deployment",
+    "beta-exit"
+   ],
+   "estimate": "0.5",
+   "context": "tests/e2e/preload.sh checks one CLI start. Real FPM pools with pm=dynamic, reloads and several pools sharing one preload are untested.",
+   "acceptance": [
+    "FPM with opcache.preload=resources/preload.php and ffi.enable=preload serves 1M requests without error",
+    "A graceful reload (kill -USR2) keeps working; no temp header files left behind",
+    "A bad TESSERO_LIB fails at start with the version-check message"
+   ]
+  },
+  {
+   "id": "TSR-007",
+   "priority": "P0",
+   "title": "24-72 hour soak runs on both backends",
+   "labels": [
+    "reliability",
+    "beta-exit"
+   ],
+   "estimate": "0.5 + wall-clock",
+   "context": "Only 30 minutes per backend have been run. The release checklist requires 24 h per backend and 72 h before 1.0.",
+   "acceptance": [
+    "php tools/soak.php --backend=ffi --duration=86400 --log=... reports PASS",
+    "Same for --backend=ext",
+    "JSONL logs attached to the release; RSS slope under 64 KiB/min"
+   ]
+  },
+  {
+   "id": "TSR-008",
+   "priority": "P0",
+   "title": "Coverage-guided fuzzing with libFuzzer",
+   "labels": [
+    "security",
+    "reliability",
+    "beta-exit"
+   ],
+   "estimate": "0.5",
+   "context": "The review environment could only run the standalone mutation driver (about 13M inputs). Real libFuzzer with coverage feedback has not run.",
+   "acceptance": [
+    "make -C csrc fuzz builds with clang -fsanitize=fuzzer,address,undefined",
+    "Each target (slice, npy, mmap_plan, json) runs 8 h with no crash",
+    "New corpus entries committed; the nightly job keeps running"
+   ]
+  },
+  {
+   "id": "TSR-009",
+   "priority": "P0",
+   "title": "ZTS / FrankenPHP: thread safety of process-wide settings",
+   "labels": [
+    "concurrency",
+    "beta-exit"
+   ],
+   "estimate": "1",
+   "context": "Thread count, memory budget and error state are process-wide in the kernel. Under ZTS (FrankenPHP worker mode, parallel extension) two PHP threads can change them concurrently.",
+   "acceptance": [
+    "Document which settings are process-wide and which are per-thread",
+    "Budget accounting is atomic under concurrent allocation (TSan run clean)",
+    "FrankenPHP worker mode test with 8 threads for 1 h: no data race reports, settings behave as documented"
+   ]
+  },
+  {
+   "id": "TSR-010",
+   "priority": "P0",
+   "title": "Independent code and security review of csrc/ and ext/",
+   "labels": [
+    "security",
+    "beta-exit"
+   ],
+   "estimate": "external",
+   "context": "One author so far. The memory-safety review (F-1 to F-9) was an internal audit.",
+   "acceptance": [
+    "A reviewer with C and Zend API experience signs off on csrc/ and ext/",
+    "Findings are filed as issues and fixed or accepted with a rationale",
+    "The security policy lists a private reporting contact"
+   ]
+  },
+  {
+   "id": "TSR-011",
+   "priority": "P0",
+   "title": "Publish on Packagist and PIE",
+   "labels": [
+    "release",
+    "beta-exit"
+   ],
+   "estimate": "0.5",
+   "context": "composer require and pie install work only from registered packages. tessero/laravel and tessero/tessero-ext need subtree splits.",
+   "acceptance": [
+    "tessero/tessero, tessero/laravel and tessero/tessero-ext on Packagist",
+    "pie install tessero/tessero-ext works on Linux and macOS",
+    "Install instructions in the docs verified from a clean machine"
+   ]
+  },
+  {
+   "id": "TSR-012",
+   "priority": "P0",
+   "title": "Cut 0.3.0-beta with signed artefacts and SBOM",
+   "labels": [
+    "release",
+    "beta-exit"
+   ],
+   "estimate": "0.5",
+   "context": "The first public beta must be reproducible and verifiable.",
+   "acceptance": [
+    "The RELEASING.md checklist is followed end to end",
+    "Tag signed; release binaries have checksums and an SBOM (CycloneDX)",
+    "Changelog finalised; docs deployed for the tag"
+   ]
+  },
+  {
+   "id": "TSR-101",
+   "priority": "P1",
+   "title": "Error-type parity between the extension and FFI",
+   "labels": [
+    "parity",
+    "bug"
+   ],
+   "estimate": "0.5",
+   "context": "Some invalid-argument paths raise different exception classes. Example: argmax with a list of axes throws ShapeException on the extension and TypeError on FFI.",
+   "acceptance": [
+    "BackendParityTest gains an error-path matrix (every method × representative bad inputs)",
+    "Both backends raise the documented exception family for each case",
+    "The exception mapping table in the docs is updated"
+   ]
+  },
+  {
+   "id": "TSR-102",
+   "priority": "P1",
+   "title": "Extension API phase 2: missing NDArray methods",
+   "labels": [
+    "parity",
+    "extension"
+   ],
+   "estimate": "1.5",
+   "context": "The extension lacks empty, view, expandDims/squeeze, swapAxes/moveAxis, broadcastTo, concatenate/stack, full take/put, filter/setWhere methods, diff, round, isclose/allclose, flatten, flatNonzero and contiguous.",
+   "acceptance": [
+    "Every method exists with the same signature as FFI",
+    "BackendParityTest covers each one",
+    "The coverage inventory shows no FFI-only rows in shape and indexing"
+   ]
+  },
+  {
+   "id": "TSR-103",
+   "priority": "P1",
+   "title": "Extension: linear algebra via LAPACKE",
+   "labels": [
+    "parity",
+    "extension",
+    "linalg"
+   ],
+   "estimate": "1.5",
+   "context": "Roadmap item 2.2. Load LAPACKE at runtime as the FFI package does.",
+   "acceptance": [
+    "Tessero\\Ext\\Linalg: solve inv det slogdet cholesky qr svd eig eigh lstsq pinv norm",
+    "Results match the FFI package to 1e-12 on the fixture set",
+    "A clear exception when LAPACKE is missing"
+   ]
+  },
+  {
+   "id": "TSR-104",
+   "priority": "P1",
+   "title": "Extension: full FFT using tsr_rfft",
+   "labels": [
+    "parity",
+    "extension",
+    "fft"
+   ],
+   "estimate": "0.5",
+   "context": "The extension exposes only a last-axis complex fft.",
+   "acceptance": [
+    "rfft, irfft, fft2, ifft2, fftfreq, rfftfreq, fftshift, ifftshift, any axis, norm modes",
+    "Parity tests against FFI"
+   ]
+  },
+  {
+   "id": "TSR-105",
+   "priority": "P1",
+   "title": "Extension Generator: choice, shuffle verification, serialisation",
+   "labels": [
+    "parity",
+    "extension",
+    "random"
+   ],
+   "estimate": "0.5",
+   "context": "Tessero\\Ext\\Random\\Generator (defaultRng, integers, permutation, getState/setState and every registry distribution method) is bit-identical to NumPy. choice is missing, and shuffle has no fixture yet because it works in place.",
+   "acceptance": [
+    "choice and shuffle verified by NumPy fixtures on both backends",
+    "Serialisable for queues"
+   ]
+  },
+  {
+   "id": "TSR-106",
+   "priority": "P1",
+   "title": "Extension: sort and argsort along an axis",
+   "labels": [
+    "parity",
+    "extension"
+   ],
+   "estimate": "0.5",
+   "context": "The extension flattens before sorting.",
+   "acceptance": [
+    "axis parameter with negative axes",
+    "Parity with FFI on 1-D to 4-D inputs, including strided views"
+   ]
+  },
+  {
+   "id": "TSR-107",
+   "priority": "P1",
+   "title": "Extension: .npz read and write",
+   "labels": [
+    "parity",
+    "extension",
+    "io"
+   ],
+   "estimate": "0.5",
+   "context": "FFI has Npy::saveZ/loadZ; the extension does not.",
+   "acceptance": [
+    "savez, savez_compressed and load .npz",
+    "Files interchangeable with NumPy"
+   ]
+  },
+  {
+   "id": "TSR-108",
+   "priority": "P1",
+   "title": "Cross-CPU last-bit determinism",
+   "labels": [
+    "numerics"
+   ],
+   "estimate": "1",
+   "context": "target_clones and compiler FMA contraction can change the last bit between CPUs (AVX2, AVX-512, NEON). Reductions and exp/log must produce the documented results everywhere. The reference side is settled by ADR 0012: fixtures are generated with NumPy's AVX-512 dispatch disabled, so the reference equals the C library's results on every CPU.",
+   "acceptance": [
+    "Decide and document the policy: bit-identical across ISAs, or within 1 ulp",
+    "-ffp-contract setting pinned in the build",
+    "A fixture test run on AVX2, AVX-512 and NEON in CI"
+   ]
+  },
+  {
+   "id": "TSR-109",
+   "priority": "P1",
+   "title": "Port NumPy's indexing and broadcasting tests",
+   "labels": [
+    "testing"
+   ],
+   "estimate": "1",
+   "context": "Our slicing tests are our own. NumPy's test_indexing.py and test_numeric broadcasting cases would catch edge cases we have not thought of.",
+   "acceptance": [
+    "The applicable cases are translated into PHPUnit data providers",
+    "They run on both backends",
+    "Differences are fixed or documented"
+   ]
+  },
+  {
+   "id": "TSR-110",
+   "priority": "P1",
+   "title": "HiGHS backend for large sparse LP/MILP",
+   "labels": [
+    "optimize",
+    "scale"
+   ],
+   "estimate": "1-2",
+   "context": "Roadmap 2.10. The dense simplex is practical only up to a few thousand rows.",
+   "acceptance": [
+    "HiGHS loaded at runtime when installed",
+    "Same result objects as linprog/milp",
+    "Netlib LP subset solved; 100k-row test model",
+    "Graceful fallback message when HiGHS is missing"
+   ]
+  },
+  {
+   "id": "TSR-111",
+   "priority": "P1",
+   "title": "Sparse direct solver (spsolve)",
+   "labels": [
+    "sparse",
+    "scale"
+   ],
+   "estimate": "2-3",
+   "context": "Roadmap 2.9. There are only iterative solvers (CG, BiCGSTAB).",
+   "acceptance": [
+    "Sparse LU with a fill-reducing ordering (AMD/COLAMD), BSD-compatible licence",
+    "spsolve and splu/factorized",
+    "SuiteSparse matrix collection subset matches SciPy to 1e-10"
+   ]
+  },
+  {
+   "id": "TSR-112",
+   "priority": "P1",
+   "title": "Complex-valued linear algebra",
+   "labels": [
+    "linalg"
+   ],
+   "estimate": "1",
+   "context": "Decompositions accept real float64 only.",
+   "acceptance": [
+    "complex128 solve, inv, eig, svd, qr, cholesky via zgesv etc.",
+    "Fixtures from NumPy"
+   ]
+  },
+  {
+   "id": "TSR-113",
+   "priority": "P1",
+   "title": "Track and work around upstream PHP JIT/FFI bugs",
+   "labels": [
+    "upstream"
+   ],
+   "estimate": "ongoing",
+   "context": "docs/project/upstream-bugs.md lists PHP issues that affect FFI under the JIT.",
+   "acceptance": [
+    "Each upstream bug has a linked php-src issue and a regression test",
+    "Workarounds are removed once fixed versions are the minimum supported"
+   ]
+  },
+  {
+   "id": "TSR-114",
+   "priority": "P1",
+   "title": "Declare big-endian unsupported, or support it",
+   "labels": [
+    "platform"
+   ],
+   "estimate": "0.25",
+   "context": ".npy byte-order handling assumes a little-endian host.",
+   "acceptance": [
+    "Documented as unsupported and detected at load with a clear error, or s390x CI added and passing"
+   ]
+  },
+  {
+   "id": "TSR-115",
+   "priority": "P1",
+   "title": "PHP 8.1-8.3 compatibility pass",
+   "labels": [
+    "platform",
+    "beta-exit"
+   ],
+   "estimate": "0.5",
+   "context": "composer.json allows ^8.1, but only 8.4 has been tested.",
+   "acceptance": [
+    "The full suites pass on 8.1, 8.2 and 8.3",
+    "Or the minimum version is raised and documented"
+   ]
+  },
+  {
+   "id": "TSR-201",
+   "priority": "P2",
+   "title": "Vectorised sin/cos/tan with Payne-Hanek reduction",
+   "labels": [
+    "performance"
+   ],
+   "estimate": "1",
+   "context": "Trigonometric functions call scalar libm and are several times slower than NumPy's SIMD versions.",
+   "acceptance": [
+    "< 1 ulp across the full range, verified against MPFR on 10^8 random inputs",
+    "4x or faster than the libm loop on AVX2"
+   ]
+  },
+  {
+   "id": "TSR-202",
+   "priority": "P2",
+   "title": "SIMD sorting network for small buckets",
+   "labels": [
+    "performance"
+   ],
+   "estimate": "1",
+   "context": "Sorting 1M float64 takes 30 ms against NumPy's 7.5 ms.",
+   "acceptance": [
+    "Within 2x of NumPy on AVX2 and AVX-512",
+    "NaN ordering and stability of argsort unchanged; property tests pass"
+   ]
+  },
+  {
+   "id": "TSR-203",
+   "priority": "P2",
+   "title": "Radix-4 / split-radix complex FFT",
+   "labels": [
+    "performance"
+   ],
+   "estimate": "1-2",
+   "context": "The complex FFT of 2^20 points takes 73 ms against 35 ms for pocketfft.",
+   "acceptance": [
+    "Within 1.3x of NumPy for powers of two and Bluestein lengths",
+    "Accuracy unchanged (round-trip error < 1e-12 relative)"
+   ]
+  },
+  {
+   "id": "TSR-204",
+   "priority": "P2",
+   "title": "Faster toList in the FFI package",
+   "labels": [
+    "performance",
+    "ffi"
+   ],
+   "estimate": "0.5",
+   "context": "FFI toList of 1M elements takes 58 ms against 21 ms for NumPy's tolist.",
+   "acceptance": [
+    "Bulk unpack via FFI::string plus unpack(), or a C JSON path",
+    "2x faster; results identical"
+   ]
+  },
+  {
+   "id": "TSR-205",
+   "priority": "P2",
+   "title": "Allocation pooling and page-fault reduction",
+   "labels": [
+    "performance"
+   ],
+   "estimate": "1",
+   "context": "Large temporaries are page-faulted on first touch every time.",
+   "acceptance": [
+    "Optional size-class cache that respects the memory budget",
+    "Measured with perf stat on a ufunc chain; no soak regressions"
+   ]
+  },
+  {
+   "id": "TSR-206",
+   "priority": "P2",
+   "title": "Calibrate benchmark gates on CI hardware",
+   "labels": [
+    "ci",
+    "performance"
+   ],
+   "estimate": "0.25",
+   "context": "Benchmark regression thresholds were set on the review host.",
+   "acceptance": [
+    "Baselines recorded per runner type",
+    "The gate fails on regressions over 15 %, with noise measured over 10 runs"
+   ]
+  },
+  {
+   "id": "TSR-304",
+   "priority": "P3",
+   "title": "scipy.stats: the remaining functions (multivariate, resampling, gaussian_kde, new distribution API)",
+   "labels": [
+    "feature",
+    "scipy"
+   ],
+   "estimate": "3-4",
+   "context": "The univariate distributions, descriptive statistics, correlation and hypothesis tests are implemented and verified by SciPy fixtures on both backends (see the coverage page). What remains is listed there as planned: multivariate distributions (multivariate_normal, dirichlet, wishart, ...), resampling (bootstrap, permutation_test, monte_carlo_test), gaussian_kde, probplot/ppcc, and SciPy 1.15's make_distribution/Normal/... API.",
+   "acceptance": [
+    "Each function through the kernel registry, verified by SciPy fixtures on both backends",
+    "scipy.stats M2 in the generated metrics reflects them"
+   ]
+  },
+  {
+   "id": "TSR-305",
+   "priority": "P3",
+   "title": "np.interp and scipy.interpolate (1-D)",
+   "labels": [
+    "feature",
+    "scipy"
+   ],
+   "estimate": "2-3",
+   "context": "Roadmap section 3, priority 2. np.interp is implemented through the kernel registry and verified by NumPy fixtures on both backends (PAR-2.3); scipy.interpolate is not.",
+   "acceptance": [
+    "CubicSpline, PchipInterpolator, make_interp_spline",
+    "RegularGridInterpolator (2-D)"
+   ]
+  },
+  {
+   "id": "TSR-306",
+   "priority": "P3",
+   "title": "Polynomials and signal basics",
+   "labels": [
+    "feature",
+    "numpy"
+   ],
+   "estimate": "1",
+   "context": "Implemented with NumPy fixtures on both backends (PAR-2.1, PAR-2.3): polyval, polyadd, polysub, polymul, polydiv, polyder, polyint, convolve, correlate, gradient, trapezoid, diff, unwrap. Missing: polyfit and roots (they need least squares and eigenvalues in the registry), the numpy.polynomial classes, and an FFT path for large convolutions.",
+   "acceptance": [
+    "polyfit and roots with NumPy fixtures on both backends",
+    "convolve switches to FFT for large inputs"
+   ]
+  },
+  {
+   "id": "TSR-307",
+   "priority": "P3",
+   "title": "CSV and Arrow/Parquet I/O",
+   "labels": [
+    "feature",
+    "io"
+   ],
+   "estimate": "1 + 3-4",
+   "context": "loadtxt/savetxt are missing; Arrow is roadmap section 3, priority 4.",
+   "acceptance": [
+    "loadtxt/savetxt with delimiter, skiprows, usecols",
+    "Arrow IPC and Parquet read/write, zero-copy where possible"
+   ]
+  },
+  {
+   "id": "TSR-308",
+   "priority": "P3",
+   "title": "More dtypes: int8/16, uint16/32/64, float16, complex64",
+   "labels": [
+    "feature",
+    "dtypes"
+   ],
+   "estimate": "2",
+   "context": "Dtype coverage is 17 %.",
+   "acceptance": [
+    "NumPy 2 promotion table extended; ufunc loops generated for each type",
+    "The .npy reader accepts them"
+   ]
+  },
+  {
+   "id": "TSR-309",
+   "priority": "P3",
+   "title": "Random: multivariate_normal, dirichlet, multinomial, multivariate_hypergeometric, permuted, bytes",
+   "labels": [
+    "feature",
+    "random"
+   ],
+   "estimate": "1",
+   "context": "The 33 univariate Generator methods draw bit-identical streams from NumPy's own distribution code on both backends. The multivariate methods and permuted/bytes remain.",
+   "acceptance": [
+    "Stream-identical to NumPy for each method, fixtures on both backends"
+   ]
+  },
+  {
+   "id": "TSR-310",
+   "priority": "P3",
+   "title": "einsum, tensordot, outer, kron, cross",
+   "labels": [
+    "feature",
+    "linalg"
+   ],
+   "estimate": "1",
+   "context": "Tensor products are missing.",
+   "acceptance": [
+    "einsum with an optimised contraction path for 2-3 operands; the rest on top of matmul"
+   ]
+  },
+  {
+   "id": "TSR-311",
+   "priority": "P3",
+   "title": "Constrained minimize (SLSQP) and minimize_scalar",
+   "labels": [
+    "feature",
+    "optimize"
+   ],
+   "estimate": "2",
+   "context": "Only unconstrained BFGS, L-BFGS-B and Nelder-Mead exist.",
+   "acceptance": [
+    "SLSQP matching SciPy on the Hock-Schittkowski subset",
+    "minimize_scalar with bounded Brent"
+   ]
+  },
+  {
+   "id": "TSR-312",
+   "priority": "P3",
+   "title": "scipy.signal basics",
+   "labels": [
+    "feature",
+    "scipy"
+   ],
+   "estimate": "2-3",
+   "context": "Roadmap section 3, priority 6.",
+   "acceptance": [
+    "fftconvolve, butter + sosfilt/filtfilt, welch, find_peaks, savgol_filter"
+   ]
+  },
+  {
+   "id": "TSR-313",
+   "priority": "P3",
+   "title": "More sparse formats and operations",
+   "labels": [
+    "feature",
+    "sparse"
+   ],
+   "estimate": "2",
+   "context": "Sparse coverage is 36 %.",
+   "acceptance": [
+    "CSC and COO; sparse×sparse, addition, hstack/vstack, diags",
+    "eigsh via Lanczos"
+   ]
+  },
+  {
+   "id": "TSR-401",
+   "priority": "P1",
+   "title": "Security contact and private vulnerability reporting",
+   "labels": [
+    "process",
+    "security"
+   ],
+   "estimate": "0.1",
+   "context": "The security policy needs a working address.",
+   "acceptance": [
+    "GitHub private vulnerability reporting enabled",
+    "A monitored contact in SECURITY.md"
+   ]
+  },
+  {
+   "id": "TSR-402",
+   "priority": "P1",
+   "title": "Deploy the documentation site",
+   "labels": [
+    "process",
+    "docs"
+   ],
+   "estimate": "0.25",
+   "context": "mkdocs build --strict passes locally; nothing is deployed yet.",
+   "acceptance": [
+    "docs workflow publishes to GitHub Pages on tag and on main",
+    "Version selector (mike) for 0.3 onwards"
+   ]
+  },
+  {
+   "id": "TSR-403",
+   "priority": "P2",
+   "title": "CODEOWNERS and issue/PR templates",
+   "labels": [
+    "process"
+   ],
+   "estimate": "0.1",
+   "status": "resolved",
+   "resolvedIn": 2,
+   "resolution": "CODEOWNERS + bug/feature/config issue templates + PR checklist template added (commit 20b6fa2).",
+   "context": "Needed once contributors arrive.",
+   "acceptance": [
+    "Bug-report template asks for bin/tessero doctor output",
+    "A PR template with a checklist"
+   ]
+  },
+  {
+   "id": "TSR-404",
+   "priority": "P1",
+   "title": "Recruit a second maintainer",
+   "labels": [
+    "process"
+   ],
+   "estimate": "external",
+   "context": "Single-maintainer numerics projects in PHP have not survived.",
+   "acceptance": [
+    "A second person has commit rights and has done a release dry run"
+   ]
+  },
+  {
+   "id": "TSR-116",
+   "priority": "P3",
+   "title": "scipy.special: the non-ufunc functions and complex-valued functions",
+   "labels": [
+    "feature",
+    "scipy"
+   ],
+   "estimate": "3",
+   "context": "All real-valued scipy.special ufuncs are implemented from SciPy's own code. Missing: the Python-level functions (comb, perm, factorial*, zeta, polygamma, spherical_*, logsumexp, softmax, the *_zeros and roots_* families, lqn/lqmn, ...) and complex-valued functions (hankel*, kelvin, wofz, sph_harm_y), which need complex operands in the kernel function registry.",
+   "acceptance": [
+    "SciPy fixtures on both backends",
+    "Complex ufunc support in the registry (complex128 inputs and outputs)"
+   ]
+  },
+  {
+   "id": "TSR-117",
+   "priority": "P3",
+   "title": "scipy.stats.poisson_binom needs array-valued shape parameters",
+   "labels": [
+    "feature",
+    "scipy"
+   ],
+   "estimate": "1",
+   "status": "resolved",
+   "resolvedIn": 3,
+   "resolution": "Implemented as a per-call PoissonBinom : Disc in the kernel (pmf by discrete convolution; cdf/ppf/stats/entropy/moment/rvs follow via the rv_discrete machinery), exposed on both backends (Tessero\\Stats\\PoissonBinom and Ext\\Stats::poissonBinom, plus a poissonBinomPmf shortcut); SciPy fixtures pass on both.",
+   "context": "poisson_binom's parameter p is a vector that describes one distribution; the distribution framework broadcasts scalar shape parameters. Its SciPy fixtures exist and report the function as not implemented.",
+   "acceptance": [
+    "Framework support for a vector shape parameter",
+    "stats.poisson_binom fixtures pass on both backends"
+   ]
+  },
+  {
+   "id": "TSR-118",
+   "priority": "P3",
+   "title": "BLOCKED: barnard_exact and boschloo_exact need scipy.optimize.shgo",
+   "labels": [
+    "feature",
+    "scipy",
+    "blocked"
+   ],
+   "estimate": "2",
+   "context": "Both tests maximise the p-value over the nuisance parameter with SciPy's shgo; matching SciPy's result needs shgo's exact sampling and local-minimisation sequence.",
+   "acceptance": [
+    "shgo (simplicial, default options) matching SciPy's iterates",
+    "Both tests verified by SciPy fixtures on both backends"
+   ]
+  },
+  {
+   "id": "TSR-119",
+   "priority": "P2",
+   "title": "Integer comparisons above 2^53 in argpartition and nanargmin/nanargmax",
+   "labels": [
+    "numerics"
+   ],
+   "estimate": "0.25",
+   "context": "ptp, the nan-reductions, cumulative sums and products, partition and correlate/convolve now compute integer inputs in int64 with NumPy's wrap-around (CORE_INT64). argpartition and nanargmin/nanargmax still compare int64 values as float64, so values that differ only above 2^53 can tie.",
+   "acceptance": [
+    "int64 comparisons for integer inputs",
+    "Fixtures with values above 2^53"
+   ]
+  },
+  {
+   "id": "TSR-120",
+   "priority": "P2",
+   "title": "Bound the work of untrusted size arguments",
+   "labels": [
+    "security",
+    "reliability"
+   ],
+   "estimate": "1",
+   "context": "Where SciPy's algorithm is slow for huge arguments, Tessero runs the same algorithm: orthogonal polynomials with n around 1e9 loop n times, and anderson_ksamp, siegelslopes and percentileofscore are quadratic in the sample size. SciPy behaves the same, but a PHP web worker fed untrusted sizes can be tied up. Memory is already bounded: allocations sized by a parameter respect the budget, and RAM when no budget is set.",
+   "acceptance": [
+    "A per-call work budget (tessero.max_work or similar) that raises instead of running unbounded loops",
+    "Documented in the operations manual"
+   ]
+  },
+  {
+   "id": "TSR-121",
+   "priority": "P1",
+   "title": "Coverage inventory understates real coverage (shipped facade classes and Np methods untracked)",
+   "labels": [
+    "bug",
+    "parity",
+    "docs",
+    "generated"
+   ],
+   "estimate": "0.5",
+   "context": "The generated coverage page (docs/project/numpy-scipy-coverage.md, rendered live at the website /docs/coverage) reports about 60% FFI and 43% extension, far below real coverage. Two causes. First, tools/api-dump.php's class list omits five shipped FFI facade classes (ScipyLinalg, Distance, Signal, Ndimage, Csgraph), so they never reach api.json and their areas read 0%. Second, tools/gap_inventory.py's curated rows leave many shipped functions with empty references (Np vstack/split/tile/pad/outer/einsum/polyfit/interp/gradient/trapezoid/logspace/diag and more, Special logsumexp/polygamma/comb/factorial, Integrate Quad::quad, Spatial KDTree::query, Datetime), which render as not-available. No gate step verifies that the inventory references every shipped class: the generator only catches references to functions that do not exist, never shipped functions that have no reference, so the page drifts silently.",
+   "acceptance": [
+    "api-dump.php dumps every generated facade class (ScipyLinalg, Distance, Signal, Ndimage, Csgraph)",
+    "gap_inventory.py rows and aliases reference all shipped functions; coverage.md regenerated",
+    "A gate check fails if any shipped facade class or public registry function is unreferenced by the inventory",
+    "The website /docs/coverage shows the corrected numbers"
+   ]
+  },
+  {
+   "id": "TSR-207",
+   "priority": "P2",
+   "title": "Re-baseline the pinned fixture environment from SkylakeX (AVX-512) to Haswell (AVX2)",
+   "labels": [
+    "process",
+    "numerics",
+    "ci"
+   ],
+   "estimate": "0.5",
+   "context": "The pinned reference environment (ADR 0012) forced OPENBLAS_CORETYPE=SkylakeX, an AVX-512 OpenBLAS kernel that is an illegal instruction on AVX2 hosts. The canonical fixture host is AVX2, so fixtures could not be regenerated there and adding any new function was blocked. Re-baselined to the Haswell OpenBLAS kernel, which runs on any AVX2+ CPU; single-threaded BLAS (OPENBLAS_NUM_THREADS=1) keeps the summation order deterministic. Transcendental fixtures also shift about 1 ulp from the old host because of glibc/libm version differences, within the test tolerances.",
+   "acceptance": [
+    "fixture_env.py and gen-fixtures.sh pin OPENBLAS_CORETYPE=Haswell; ADR 0012 updated",
+    "All fixtures regenerated on the canonical AVX2 host; full gate green on both backends",
+    "Fixture generation documented to require an AVX2+ host"
+   ]
+  },
+  {
+   "id": "TSR-314",
+   "priority": "P3",
+   "title": "NumPy/SciPy gap-closure roadmap (tiered register with algorithms and PHP-ecosystem analysis)",
+   "labels": [
+    "feature",
+    "parity",
+    "numpy",
+    "scipy"
+   ],
+   "estimate": "ongoing",
+   "context": "docs/project/numpy-scipy-gap-register.md enumerates every genuine remaining gap with the implementation algorithm, a portability verdict (including NumPy dtype/idiom features that do not map to a PHP numeric API), and whether the PHP ecosystem already covers it. Research finding: PHP has no implementation anywhere for all of scipy.signal, ODE solvers (solve_ivp/odeint), computational geometry (ConvexHull/Delaunay/Voronoi), scipy.ndimage array filters, the entire sparse ecosystem (formats, direct and iterative solvers, sparse eigensolvers), matrix functions (expm/logm/sqrtm), nonlinear and global optimization, Schur/QZ, NNLS, and N-D FFT. Tiers: 1 compose from shipped primitives; 2 real algorithm, no new dependency; 3 external C library (QHull/ARPACK/SuiteSparse/HiGHS) or heavy native; 4 not applicable to PHP. heaviside landed as the first Tier-1 item.",
+   "acceptance": [
+    "Tier-1 batch implemented and verified on both backends (nd-FFT, ufunc fills, multivariate randoms, softmax/log_softmax/perm, simpson/cumulative_trapezoid, minimize_scalar, sparse diags, Polynomial)",
+    "Tier-2 and Tier-3 items tracked as sub-issues",
+    "The coverage page reflects each capability as it lands"
+   ]
+  }
+ ]
+}

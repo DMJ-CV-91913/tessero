@@ -1,0 +1,24 @@
+# Build output and local scratch (not committed). The lib/ FFI binaries are built by
+# `make -C csrc`, not carried in git; releases ship them via packaging, not the repo.
+/csrc/build/
+/lib/*/libtessero.so
+/lib/*/libtessero.dylib
+/lib/*/tessero.dll
+/ext/modules/
+/ext/.libs/
+/ext/*.lo
+/ext/*.la
+/ext/Makefile
+/ext/config.h
+/ext/autom4te.cache/
+*.o
+*.lo
+__pycache__/
+*.pyc
+
+# Composer dev dependencies (PHPUnit etc.); installed with `composer install`, not committed
+/vendor/
+.phpunit.result.cache
+
+# Local pinned parity environment (tools/setup-reference-host.sh)
+/.venv-parity/

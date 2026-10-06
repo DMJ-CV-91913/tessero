@@ -1,0 +1,5 @@
+# The reference implementations the parity fixtures are generated with (ADR 0002, ADR 0011).
+# Regenerating fixtures with other versions changes tests/fixtures/parity/*.json; pin, then regenerate.
+numpy==2.4.4
+scipy==1.17.1
+PyYAML>=6

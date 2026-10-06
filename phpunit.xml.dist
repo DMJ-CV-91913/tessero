@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="parity">
+            <directory>tests/Parity</directory>
+        </testsuite>
+        <!-- skipped unless ext-tessero is loaded (php -d extension=tessero vendor/bin/phpunit, testsuite ext) -->
+        <testsuite name="ext">
+            <directory>tests/Ext</directory>
+        </testsuite>
+        <testsuite name="laravel">
+            <directory>laravel/tests</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <ini name="ffi.enable" value="1"/>
+        <ini name="memory_limit" value="1G"/>
+    </php>
+</phpunit>

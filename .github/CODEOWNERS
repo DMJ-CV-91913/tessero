@@ -1,0 +1,11 @@
+# Default owner for everything in the repository.
+* @DMJ-CV-91913
+
+# The C kernel and the Zend extension carry the memory-safety risk: require owner review.
+/csrc/ @DMJ-CV-91913
+/ext/  @DMJ-CV-91913
+
+# Release, security and CI configuration.
+/.github/ @DMJ-CV-91913
+/RELEASING.md @DMJ-CV-91913
+/SECURITY.md @DMJ-CV-91913

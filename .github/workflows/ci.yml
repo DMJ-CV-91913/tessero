@@ -1,0 +1,346 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  # ---------------------------------------------------------------- native library, 6 platforms
+  native:
+    name: libtessero ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux-x86_64,      runner: ubuntu-22.04 }            # glibc 2.35 baseline for wide compatibility
+          - { platform: linux-aarch64,     runner: ubuntu-22.04-arm }
+          - { platform: linux-musl-x86_64, runner: ubuntu-latest, container: 'alpine:3.20' }
+          - { platform: darwin-arm64,      runner: macos-14 }
+          - { platform: darwin-x86_64,     runner: macos-13 }
+          - { platform: windows-x86_64,    runner: windows-latest }
+    defaults:
+      run:
+        shell: ${{ matrix.platform == 'windows-x86_64' && 'msys2 {0}' || 'sh' }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.container
+        run: apk add --no-cache build-base
+      - if: matrix.platform == 'windows-x86_64'
+        uses: msys2/setup-msys2@v2
+        with: { msystem: MINGW64, install: 'make mingw-w64-x86_64-gcc' }
+      - name: build
+        run: make -C csrc
+      - name: C unit tests
+        run: make -C csrc test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lib-${{ matrix.platform }}
+          path: lib/${{ matrix.platform }}/
+
+  sanitizers:
+    name: ASan + UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make -C csrc sanitize
+      - run: CC=clang OPENMP= make -C csrc sanitize BUILD=./build-clang     # no libomp headers on the runner
+      - run: OPENMP= make -C csrc test BUILD=./build-noomp                   # serial build (macOS/Windows default)
+
+  fuzz:
+    name: fuzz (libFuzzer, 60 s per target)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: coverage-guided (clang + compiler-rt) - slice parser, .npy header, memmap planning, JSON writer
+        run: make -C csrc fuzz FUZZ_TIME=60 BUILD=./build-fuzz
+      - name: standalone mutation driver under gcc ASan + UBSan (the harness used where libFuzzer is missing)
+        run: make -C csrc fuzz-standalone FUZZ_RUNS=200000 BUILD=./build-fuzzsa
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: fuzz-crashes, path: 'csrc/crash-*' }
+
+  # ---------------------------------------------------------------- PHP matrix
+  php:
+    name: PHP ${{ matrix.php }} ${{ matrix.os }} jit=${{ matrix.jit }}
+    needs: native
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-14, windows-latest]
+        php: ['8.2', '8.3', '8.4', '8.5']
+        jit: ['off', 'tracing', 'function']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { pattern: 'lib-*', path: lib, merge-multiple: false }
+      - name: arrange prebuilt binaries
+        shell: bash
+        run: for d in lib/lib-*; do mv "$d" "lib/${d#lib/lib-}"; done; ls -R lib
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: ffi, opcache, zip
+          ini-values: >-
+            ffi.enable=1, opcache.enable_cli=1, memory_limit=1G,
+            opcache.jit=${{ matrix.jit == 'off' && 'disable' || matrix.jit }}, opcache.jit_buffer_size=${{ matrix.jit == 'off' && '0' || '128M' }}
+      - name: OpenBLAS for linalg (Linux/macOS)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y libopenblas0 liblapacke; fi
+          if [ "$RUNNER_OS" = "macOS" ]; then brew install openblas; fi
+      - run: composer install --no-interaction --no-progress
+      - run: php bin/tessero doctor || true
+      - run: vendor/bin/phpunit
+
+  preload:
+    name: FPM-style preload (ffi.enable=preload, non-CLI SAPI)
+    needs: native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi, opcache }
+      - run: sudo apt-get install -y libopenblas0 liblapacke
+      - run: bash tests/e2e/preload.sh
+
+  # ---------------------------------------------------------------- NumPy/SciPy parity (ADR 0002, 0011, 0012)
+  parity-records:
+    name: generated parity files and coverage claims are current
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r tools/parity/requirements.txt
+      - run: python3 tools/parity/census.py --check
+      - run: python3 tools/parity/gen_registry.py --check
+      - run: python3 tools/parity/report.py --check
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4' }
+      - run: php tools/parity/claims-check.php
+
+  parity-ffi:
+    name: NumPy/SciPy fixtures (FFI)
+    needs: native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi }
+      - run: sudo apt-get install -y libopenblas0 liblapacke
+      - run: php -d ffi.enable=1 tools/parity/gen-facades.php --check
+      - run: php -d ffi.enable=1 -d memory_limit=8G tools/parity/run-tests.php --backend=ffi --no-record
+
+  # ---------------------------------------------------------------- ext-tessero (native backend)
+  sync:
+    name: ext/libtessero matches csrc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash tools/sync-ext.sh --check
+
+  extension:
+    name: ext-tessero PHP ${{ matrix.php }} ${{ matrix.ts }}
+    needs: [native, sync]
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+        ts: ['nts']
+        include:
+          - { php: '8.4', ts: 'zts' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        env: { phpts: "${{ matrix.ts == 'zts' && 'ts' || 'nts' }}" }
+        with: { php-version: '${{ matrix.php }}', extensions: ffi, tools: 'phpize, php-config, composer' }
+      - name: build
+        run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
+      - name: phpt
+        run: cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests
+      - name: module exports only get_module
+        run: test "$(nm -D --defined-only ext/modules/tessero.so | awk '$2 ~ /[TtWwi]/ {print $3}' | grep -v '^_' | sort -u)" = "get_module"
+      - run: sudo apt-get install -y libopenblas0 liblapacke
+      - run: composer install --no-interaction --no-progress
+      - name: extension parity + both backends in one process
+        run: php -d extension=$PWD/ext/modules/tessero.so -d ffi.enable=1 vendor/bin/phpunit --testsuite ext,unit
+      - name: NumPy/SciPy fixtures (extension)
+        run: php -d extension=$PWD/ext/modules/tessero.so -d memory_limit=8G tools/parity/run-tests.php --backend=ext --no-record
+      - name: docs examples with both backends
+        run: php -d extension=$PWD/ext/modules/tessero.so -d ffi.enable=1 tests/docs/examples.php
+      - name: without OpenMP
+        run: cd ext && make clean && ./configure --enable-tessero --disable-tessero-openmp && make -j"$(nproc)" && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests
+
+  extension-asan:
+    name: ext-tessero under ASan + UBSan
+    needs: [native, sync]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi, tools: 'phpize, php-config, composer' }
+      - name: build with sanitizers
+        run: |
+          cd ext && phpize
+          ./configure --enable-tessero CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" LDFLAGS="-fsanitize=address,undefined"
+          make -j"$(nproc)"
+      - name: phpt + extension parity under ASan
+        env:
+          USE_ZEND_ALLOC: '0'
+          ZEND_DONT_UNLOAD_MODULES: '1'
+          # libgomp allocates a small thread-pool descriptor once at start-up and never frees it
+          LSAN_OPTIONS: 'suppressions=${{ github.workspace }}/.github/lsan.supp:print_suppressions=0'
+          UBSAN_OPTIONS: 'print_stacktrace=1:halt_on_error=1'
+        run: |
+          export LD_PRELOAD="$(gcc -print-file-name=libasan.so) $(gcc -print-file-name=libubsan.so)"
+          cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests && cd ..
+          composer install --no-interaction --no-progress
+          php -d extension=$PWD/ext/modules/tessero.so vendor/bin/phpunit --testsuite ext
+
+  # ---------------------------------------------------------------- Laravel
+  laravel:
+    name: tessero/laravel unit tests
+    needs: native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi, tools: composer }
+      - run: composer install --no-interaction --no-progress
+      - run: php -d ffi.enable=1 vendor/bin/phpunit --testsuite laravel
+
+  laravel-app:
+    name: service provider in Laravel ${{ matrix.laravel }}
+    needs: [native, extension]
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['10', '11', '12']
+    steps:
+      - uses: actions/checkout@v4
+        with: { path: tessero }
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: tessero/lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: ffi, tools: composer, ini-values: ffi.enable=1 }
+      - name: fresh application with tessero/laravel from this checkout
+        run: |
+          composer create-project laravel/laravel:^${{ matrix.laravel }}.0 app --no-interaction --prefer-dist
+          cd app
+          composer config repositories.tessero path ../tessero
+          composer config repositories.tessero-laravel path ../tessero/laravel
+          composer require tessero/tessero:@dev tessero/laravel:@dev --no-interaction
+      - name: provider boots, config publishes, doctor and macro work
+        run: |
+          cd app
+          php artisan vendor:publish --tag=tessero-config --no-interaction
+          test -f config/tessero.php
+          php artisan tessero:doctor --json | tee doctor.json
+          php -r '$d = json_decode(file_get_contents("doctor.json"), true); exit($d["backend"] === "ffi" ? 0 : 1);'
+          cat > routes/web.php <<'PHP'
+          <?php
+          use Illuminate\Support\Facades\Route;
+          use Tessero\Laravel\Facades\Tessero;
+          Route::get('/nd', fn () => response()->ndarray(Tessero::array([[1.5, 2.0], [3.0, 4.0]])));
+          Route::get('/lp', fn () => Tessero::linprog([-40, -30], [[2, 1], [1, 1]], [100, 80]));
+          PHP
+          php artisan serve --port=8123 & sleep 3
+          test "$(curl -s localhost:8123/nd)" = "[[1.5,2.0],[3.0,4.0]]"
+          curl -s localhost:8123/lp | php -r '$r = json_decode(stream_get_contents(STDIN), true); exit(abs($r["fun"] + 2600) < 1e-9 ? 0 : 1);'
+
+  parity-refresh:
+    name: parity fixtures match the latest NumPy/SciPy
+    needs: native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install numpy scipy
+      - run: python tests/fixtures/generate_parity.py
+      - run: python tests/fixtures/generate_ufunc.py
+      - run: python tests/fixtures/generate_npy.py
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi }
+      - run: composer install --no-interaction --no-progress
+      - run: vendor/bin/phpunit --testsuite parity
+      - run: vendor/bin/phpunit --filter 'MathTest|FilesTest'
+
+  bench:
+    name: benchmark gates
+    needs: native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi }
+      - run: sudo apt-get install -y libopenblas0 liblapacke
+      - run: php -d ffi.enable=1 -d memory_limit=2G bench/run.php
+
+  docs:
+    name: documentation site and examples
+    needs: native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: ffi, tools: 'phpize, php-config' }
+      - run: sudo apt-get install -y libopenblas0 liblapacke
+      - name: build the extension (the API reference documents both backends)
+        run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
+      - name: API reference is up to date
+        run: |
+          php -d ffi.enable=1 -d extension=$PWD/ext/modules/tessero.so tools/gen-api-docs.php
+          git diff --exit-code docs/reference/api || (echo "::error::run tools/gen-api-docs.php and commit the result"; exit 1)
+      - name: examples in the guides
+        run: php -d ffi.enable=1 -d extension=$PWD/ext/modules/tessero.so tests/docs/examples.php
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install mkdocs-material
+      - run: mkdocs build --strict
+      - uses: actions/upload-artifact@v4
+        with: { name: docs-site, path: site/ }
+
+  docker:
+    name: reference Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/Dockerfile -t tessero-fpm .
+      - run: docker run --rm tessero-fpm php -d ffi.enable=1 /opt/tessero/bin/tessero doctor
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [native, php, preload, sync, extension, extension-asan, laravel, laravel-app, sanitizers, docs, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { pattern: 'lib-*', path: dist }
+      - run: for d in dist/lib-*; do p="${d#dist/lib-}"; mkdir -p lib/$p && cp $d/* lib/$p/; done && tar czf tessero-binaries.tgz lib
+      - run: sha256sum tessero-binaries.tgz lib/*/* > SHA256SUMS && cat SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with: { files: 'tessero-binaries.tgz,SHA256SUMS' }

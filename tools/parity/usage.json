@@ -1,0 +1,3113 @@
+{
+ "corpus": [
+  {
+   "calls": 4337,
+   "commit": "866c0f51e7560ef0303cbcc5f159df5382ea9e3f",
+   "files": 277,
+   "name": "scikit-learn",
+   "repo": "scikit-learn/scikit-learn",
+   "tag": "1.9.1"
+  },
+  {
+   "calls": 2060,
+   "commit": "2905718b126579d2cf0fe5bae05bd75facb67d77",
+   "files": 290,
+   "name": "pandas",
+   "repo": "pandas-dev/pandas",
+   "tag": "v3.0.6"
+  },
+  {
+   "calls": 10575,
+   "commit": "278ff9950636cdd4939b4055e339a8e681d79cab",
+   "files": 454,
+   "name": "statsmodels",
+   "repo": "statsmodels/statsmodels",
+   "tag": "v0.15.0"
+  },
+  {
+   "calls": 2533,
+   "commit": "ee0a7a3ebd9ac8c2602f40e55bc015a3c8a81ae8",
+   "files": 197,
+   "name": "scikit-image",
+   "repo": "scikit-image/scikit-image",
+   "tag": "v0.26.0"
+  },
+  {
+   "calls": 3335,
+   "commit": "7c5a9c124ce84c76992016e89631566ad398aff7",
+   "files": 514,
+   "name": "astropy",
+   "repo": "astropy/astropy",
+   "tag": "v8.0.1"
+  },
+  {
+   "calls": 497,
+   "commit": "49ca2290b80c1389eb4d8d8e49dcba73f8fec016",
+   "files": 288,
+   "name": "networkx",
+   "repo": "networkx/networkx",
+   "tag": "networkx-3.7"
+  },
+  {
+   "calls": 2151,
+   "commit": "d3ca9172e392048ec242b90e8423e88d1a3000b2",
+   "files": 139,
+   "name": "matplotlib",
+   "repo": "matplotlib/matplotlib",
+   "tag": "v3.11.2"
+  },
+  {
+   "calls": 710,
+   "commit": "0238035a646a04a6d2b603cc5cee5cbefa304e23",
+   "files": 120,
+   "name": "xarray",
+   "repo": "pydata/xarray",
+   "tag": "v2026.07.0"
+  },
+  {
+   "calls": 406,
+   "commit": "9521ea1f29b5ce1df1aa2ed6f65f3bd1c63884bb",
+   "files": 54,
+   "name": "seaborn",
+   "repo": "mwaskom/seaborn",
+   "tag": "v0.13.2"
+  },
+  {
+   "calls": 1117,
+   "commit": "3e4ff7bf5898ac5b326e7dee56463b4b325b91cb",
+   "files": 35,
+   "name": "librosa",
+   "repo": "librosa/librosa",
+   "tag": "1.0.0"
+  },
+  {
+   "calls": 1190,
+   "commit": "43504c78fe65d8769475868236f31c9352157f62",
+   "files": 48,
+   "name": "arviz-stats",
+   "repo": "arviz-devs/arviz-stats",
+   "tag": "v1.3.3"
+  },
+  {
+   "calls": 7667,
+   "commit": "bf67729b805865b5bb0f2f97621e416278efd1b2",
+   "files": 419,
+   "name": "mne",
+   "repo": "mne-tools/mne-python",
+   "tag": "v1.13.2"
+  },
+  {
+   "calls": 1798,
+   "commit": "6c81c341d2b9e356c9b2cc94836985d8171482d2",
+   "files": 162,
+   "name": "nilearn",
+   "repo": "nilearn/nilearn",
+   "tag": "0.14.1"
+  },
+  {
+   "calls": 601,
+   "commit": "29c6d6d1eeb59bfd30e3b8424ed9504b1689eb7f",
+   "files": 20,
+   "name": "pingouin",
+   "repo": "raphaelvallat/pingouin",
+   "tag": "v0.7.0"
+  },
+  {
+   "calls": 626,
+   "commit": "a21e4328fa30bc107ae2a3e0276ec57e892e6504",
+   "files": 39,
+   "name": "lifelines",
+   "repo": "CamDavidsonPilon/lifelines",
+   "tag": "v0.30.3"
+  },
+  {
+   "calls": 1321,
+   "commit": "ba161f9962f7a95fb8bd052fe646ba8234e99d95",
+   "files": 67,
+   "name": "pvlib",
+   "repo": "pvlib/pvlib-python",
+   "tag": "v0.16.1"
+  },
+  {
+   "calls": 616,
+   "commit": "9c2c66a4414bf2f28940484464031fb1ccbebf3d",
+   "files": 128,
+   "name": "pymc",
+   "repo": "pymc-devs/pymc",
+   "tag": "v6.3.2"
+  },
+  {
+   "calls": 1011,
+   "commit": "ff2133115f639fccce9633aa7f5309c36a0972e7",
+   "files": 123,
+   "name": "scanpy",
+   "repo": "scverse/scanpy",
+   "tag": "1.12.4"
+  }
+ ],
+ "numpy": "2.4.4",
+ "scipy": "1.17.1",
+ "symbols": {
+  "numpy.absolute": {
+   "calls": 947,
+   "packages": 17
+  },
+  "numpy.add": {
+   "calls": 41,
+   "packages": 11
+  },
+  "numpy.all": {
+   "calls": 355,
+   "packages": 17
+  },
+  "numpy.allclose": {
+   "calls": 123,
+   "packages": 13
+  },
+  "numpy.amax": {
+   "calls": 12,
+   "packages": 5
+  },
+  "numpy.amin": {
+   "calls": 3,
+   "packages": 1
+  },
+  "numpy.angle": {
+   "calls": 13,
+   "packages": 5
+  },
+  "numpy.any": {
+   "calls": 594,
+   "packages": 17
+  },
+  "numpy.append": {
+   "calls": 111,
+   "packages": 17
+  },
+  "numpy.apply_along_axis": {
+   "calls": 44,
+   "packages": 13
+  },
+  "numpy.apply_over_axes": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.arange": {
+   "calls": 1455,
+   "packages": 18
+  },
+  "numpy.arccos": {
+   "calls": 22,
+   "packages": 5
+  },
+  "numpy.arcsin": {
+   "calls": 45,
+   "packages": 5
+  },
+  "numpy.arcsinh": {
+   "calls": 11,
+   "packages": 2
+  },
+  "numpy.arctan": {
+   "calls": 23,
+   "packages": 10
+  },
+  "numpy.arctan2": {
+   "calls": 78,
+   "packages": 9
+  },
+  "numpy.arctanh": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.argmax": {
+   "calls": 148,
+   "packages": 14
+  },
+  "numpy.argmin": {
+   "calls": 117,
+   "packages": 12
+  },
+  "numpy.argpartition": {
+   "calls": 12,
+   "packages": 5
+  },
+  "numpy.argsort": {
+   "calls": 261,
+   "packages": 18
+  },
+  "numpy.argwhere": {
+   "calls": 7,
+   "packages": 6
+  },
+  "numpy.around": {
+   "calls": 18,
+   "packages": 8
+  },
+  "numpy.array": {
+   "calls": 3265,
+   "packages": 18
+  },
+  "numpy.array2string": {
+   "calls": 13,
+   "packages": 3
+  },
+  "numpy.array_equal": {
+   "calls": 100,
+   "packages": 14
+  },
+  "numpy.array_equiv": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.array_repr": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.array_split": {
+   "calls": 49,
+   "packages": 8
+  },
+  "numpy.array_str": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.asanyarray": {
+   "calls": 218,
+   "packages": 11
+  },
+  "numpy.asarray": {
+   "calls": 2335,
+   "packages": 18
+  },
+  "numpy.asarray_chkfinite": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.ascontiguousarray": {
+   "calls": 114,
+   "packages": 10
+  },
+  "numpy.asfortranarray": {
+   "calls": 41,
+   "packages": 4
+  },
+  "numpy.atleast_1d": {
+   "calls": 325,
+   "packages": 16
+  },
+  "numpy.atleast_2d": {
+   "calls": 172,
+   "packages": 15
+  },
+  "numpy.atleast_3d": {
+   "calls": 15,
+   "packages": 5
+  },
+  "numpy.average": {
+   "calls": 65,
+   "packages": 10
+  },
+  "numpy.binary_repr": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.bincount": {
+   "calls": 124,
+   "packages": 11
+  },
+  "numpy.bitwise_and": {
+   "calls": 11,
+   "packages": 2
+  },
+  "numpy.bitwise_invert": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.bitwise_xor": {
+   "calls": 3,
+   "packages": 3
+  },
+  "numpy.block": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.bool": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.broadcast": {
+   "calls": 15,
+   "packages": 5
+  },
+  "numpy.broadcast_arrays": {
+   "calls": 43,
+   "packages": 5
+  },
+  "numpy.broadcast_shapes": {
+   "calls": 13,
+   "packages": 4
+  },
+  "numpy.broadcast_to": {
+   "calls": 88,
+   "packages": 10
+  },
+  "numpy.bytes_": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.can_cast": {
+   "calls": 11,
+   "packages": 6
+  },
+  "numpy.cbrt": {
+   "calls": 14,
+   "packages": 4
+  },
+  "numpy.ceil": {
+   "calls": 216,
+   "packages": 16
+  },
+  "numpy.choose": {
+   "calls": 12,
+   "packages": 3
+  },
+  "numpy.clip": {
+   "calls": 302,
+   "packages": 17
+  },
+  "numpy.column_stack": {
+   "calls": 209,
+   "packages": 12
+  },
+  "numpy.common_type": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.complex128": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.complex64": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.compress": {
+   "calls": 16,
+   "packages": 4
+  },
+  "numpy.concatenate": {
+   "calls": 823,
+   "packages": 17
+  },
+  "numpy.conjugate": {
+   "calls": 15,
+   "packages": 7
+  },
+  "numpy.convolve": {
+   "calls": 12,
+   "packages": 6
+  },
+  "numpy.copy": {
+   "calls": 77,
+   "packages": 11
+  },
+  "numpy.copysign": {
+   "calls": 5,
+   "packages": 2
+  },
+  "numpy.copyto": {
+   "calls": 10,
+   "packages": 3
+  },
+  "numpy.corrcoef": {
+   "calls": 19,
+   "packages": 7
+  },
+  "numpy.correlate": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.cos": {
+   "calls": 285,
+   "packages": 15
+  },
+  "numpy.cosh": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.count_nonzero": {
+   "calls": 42,
+   "packages": 9
+  },
+  "numpy.cov": {
+   "calls": 53,
+   "packages": 11
+  },
+  "numpy.cross": {
+   "calls": 29,
+   "packages": 3
+  },
+  "numpy.cumprod": {
+   "calls": 12,
+   "packages": 9
+  },
+  "numpy.cumsum": {
+   "calls": 233,
+   "packages": 16
+  },
+  "numpy.datetime64": {
+   "calls": 26,
+   "packages": 5
+  },
+  "numpy.datetime_as_string": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.datetime_data": {
+   "calls": 35,
+   "packages": 2
+  },
+  "numpy.deg2rad": {
+   "calls": 63,
+   "packages": 5
+  },
+  "numpy.degrees": {
+   "calls": 29,
+   "packages": 3
+  },
+  "numpy.delete": {
+   "calls": 70,
+   "packages": 10
+  },
+  "numpy.diag": {
+   "calls": 242,
+   "packages": 14
+  },
+  "numpy.diag_indices": {
+   "calls": 25,
+   "packages": 5
+  },
+  "numpy.diag_indices_from": {
+   "calls": 6,
+   "packages": 5
+  },
+  "numpy.diagflat": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.diagonal": {
+   "calls": 10,
+   "packages": 3
+  },
+  "numpy.diff": {
+   "calls": 261,
+   "packages": 16
+  },
+  "numpy.digitize": {
+   "calls": 6,
+   "packages": 5
+  },
+  "numpy.divide": {
+   "calls": 64,
+   "packages": 10
+  },
+  "numpy.divmod": {
+   "calls": 4,
+   "packages": 4
+  },
+  "numpy.dot": {
+   "calls": 1530,
+   "packages": 15
+  },
+  "numpy.dstack": {
+   "calls": 19,
+   "packages": 7
+  },
+  "numpy.dtype": {
+   "calls": 504,
+   "packages": 13
+  },
+  "numpy.ediff1d": {
+   "calls": 3,
+   "packages": 3
+  },
+  "numpy.einsum": {
+   "calls": 83,
+   "packages": 8
+  },
+  "numpy.empty": {
+   "calls": 800,
+   "packages": 18
+  },
+  "numpy.empty_like": {
+   "calls": 146,
+   "packages": 15
+  },
+  "numpy.equal": {
+   "calls": 19,
+   "packages": 7
+  },
+  "numpy.errstate": {
+   "calls": 220,
+   "packages": 16
+  },
+  "numpy.exp": {
+   "calls": 670,
+   "packages": 18
+  },
+  "numpy.expand_dims": {
+   "calls": 62,
+   "packages": 11
+  },
+  "numpy.expm1": {
+   "calls": 34,
+   "packages": 7
+  },
+  "numpy.extract": {
+   "calls": 5,
+   "packages": 4
+  },
+  "numpy.eye": {
+   "calls": 345,
+   "packages": 13
+  },
+  "numpy.fabs": {
+   "calls": 17,
+   "packages": 6
+  },
+  "numpy.fft.fft": {
+   "calls": 19,
+   "packages": 3
+  },
+  "numpy.fft.fftfreq": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.fft.fftshift": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.fft.ifft": {
+   "calls": 8,
+   "packages": 2
+  },
+  "numpy.fft.ifftshift": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.fft.irfft": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.fft.rfft": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.fft.rfftfreq": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.fill_diagonal": {
+   "calls": 34,
+   "packages": 8
+  },
+  "numpy.finfo": {
+   "calls": 192,
+   "packages": 13
+  },
+  "numpy.flatnonzero": {
+   "calls": 148,
+   "packages": 11
+  },
+  "numpy.flip": {
+   "calls": 12,
+   "packages": 7
+  },
+  "numpy.fliplr": {
+   "calls": 9,
+   "packages": 5
+  },
+  "numpy.flipud": {
+   "calls": 7,
+   "packages": 4
+  },
+  "numpy.float16": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.float32": {
+   "calls": 12,
+   "packages": 5
+  },
+  "numpy.float64": {
+   "calls": 47,
+   "packages": 9
+  },
+  "numpy.floor": {
+   "calls": 122,
+   "packages": 13
+  },
+  "numpy.floor_divide": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.fmax": {
+   "calls": 7,
+   "packages": 3
+  },
+  "numpy.fmin": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.format_float_positional": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.format_float_scientific": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.frombuffer": {
+   "calls": 119,
+   "packages": 9
+  },
+  "numpy.fromfile": {
+   "calls": 127,
+   "packages": 3
+  },
+  "numpy.fromiter": {
+   "calls": 15,
+   "packages": 6
+  },
+  "numpy.frompyfunc": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.fromstring": {
+   "calls": 7,
+   "packages": 1
+  },
+  "numpy.full": {
+   "calls": 246,
+   "packages": 17
+  },
+  "numpy.full_like": {
+   "calls": 73,
+   "packages": 10
+  },
+  "numpy.gcd": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.genfromtxt": {
+   "calls": 9,
+   "packages": 3
+  },
+  "numpy.geomspace": {
+   "calls": 6,
+   "packages": 4
+  },
+  "numpy.get_include": {
+   "calls": 10,
+   "packages": 1
+  },
+  "numpy.get_printoptions": {
+   "calls": 6,
+   "packages": 4
+  },
+  "numpy.getbufsize": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.geterr": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.gradient": {
+   "calls": 14,
+   "packages": 3
+  },
+  "numpy.greater": {
+   "calls": 6,
+   "packages": 4
+  },
+  "numpy.greater_equal": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.hamming": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.hanning": {
+   "calls": 10,
+   "packages": 4
+  },
+  "numpy.histogram": {
+   "calls": 19,
+   "packages": 8
+  },
+  "numpy.histogram2d": {
+   "calls": 6,
+   "packages": 5
+  },
+  "numpy.histogram_bin_edges": {
+   "calls": 6,
+   "packages": 5
+  },
+  "numpy.histogramdd": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.hsplit": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.hstack": {
+   "calls": 223,
+   "packages": 11
+  },
+  "numpy.hypot": {
+   "calls": 56,
+   "packages": 5
+  },
+  "numpy.identity": {
+   "calls": 25,
+   "packages": 7
+  },
+  "numpy.iinfo": {
+   "calls": 89,
+   "packages": 8
+  },
+  "numpy.imag": {
+   "calls": 18,
+   "packages": 8
+  },
+  "numpy.indices": {
+   "calls": 11,
+   "packages": 7
+  },
+  "numpy.inner": {
+   "calls": 12,
+   "packages": 3
+  },
+  "numpy.insert": {
+   "calls": 49,
+   "packages": 11
+  },
+  "numpy.int16": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.int32": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.int64": {
+   "calls": 41,
+   "packages": 8
+  },
+  "numpy.int8": {
+   "calls": 7,
+   "packages": 2
+  },
+  "numpy.interp": {
+   "calls": 78,
+   "packages": 12
+  },
+  "numpy.intersect1d": {
+   "calls": 44,
+   "packages": 8
+  },
+  "numpy.invert": {
+   "calls": 3,
+   "packages": 3
+  },
+  "numpy.isclose": {
+   "calls": 84,
+   "packages": 15
+  },
+  "numpy.iscomplex": {
+   "calls": 6,
+   "packages": 4
+  },
+  "numpy.iscomplexobj": {
+   "calls": 34,
+   "packages": 6
+  },
+  "numpy.isfinite": {
+   "calls": 325,
+   "packages": 16
+  },
+  "numpy.isfortran": {
+   "calls": 3,
+   "packages": 3
+  },
+  "numpy.isin": {
+   "calls": 122,
+   "packages": 12
+  },
+  "numpy.isinf": {
+   "calls": 65,
+   "packages": 14
+  },
+  "numpy.isnan": {
+   "calls": 457,
+   "packages": 17
+  },
+  "numpy.isnat": {
+   "calls": 8,
+   "packages": 4
+  },
+  "numpy.isneginf": {
+   "calls": 8,
+   "packages": 4
+  },
+  "numpy.isposinf": {
+   "calls": 8,
+   "packages": 5
+  },
+  "numpy.isreal": {
+   "calls": 13,
+   "packages": 7
+  },
+  "numpy.isrealobj": {
+   "calls": 9,
+   "packages": 3
+  },
+  "numpy.isscalar": {
+   "calls": 191,
+   "packages": 13
+  },
+  "numpy.issubdtype": {
+   "calls": 222,
+   "packages": 14
+  },
+  "numpy.iterable": {
+   "calls": 131,
+   "packages": 7
+  },
+  "numpy.ix_": {
+   "calls": 66,
+   "packages": 9
+  },
+  "numpy.kron": {
+   "calls": 46,
+   "packages": 3
+  },
+  "numpy.left_shift": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.less": {
+   "calls": 13,
+   "packages": 7
+  },
+  "numpy.less_equal": {
+   "calls": 17,
+   "packages": 6
+  },
+  "numpy.lexsort": {
+   "calls": 23,
+   "packages": 7
+  },
+  "numpy.linalg.LinAlgError": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.linalg.cholesky": {
+   "calls": 32,
+   "packages": 3
+  },
+  "numpy.linalg.cond": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.linalg.det": {
+   "calls": 46,
+   "packages": 11
+  },
+  "numpy.linalg.eig": {
+   "calls": 14,
+   "packages": 6
+  },
+  "numpy.linalg.eigh": {
+   "calls": 25,
+   "packages": 4
+  },
+  "numpy.linalg.eigvals": {
+   "calls": 12,
+   "packages": 2
+  },
+  "numpy.linalg.eigvalsh": {
+   "calls": 9,
+   "packages": 4
+  },
+  "numpy.linalg.inv": {
+   "calls": 191,
+   "packages": 13
+  },
+  "numpy.linalg.lstsq": {
+   "calls": 37,
+   "packages": 6
+  },
+  "numpy.linalg.matrix_power": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.linalg.matrix_rank": {
+   "calls": 59,
+   "packages": 6
+  },
+  "numpy.linalg.multi_dot": {
+   "calls": 12,
+   "packages": 2
+  },
+  "numpy.linalg.norm": {
+   "calls": 250,
+   "packages": 9
+  },
+  "numpy.linalg.pinv": {
+   "calls": 106,
+   "packages": 6
+  },
+  "numpy.linalg.qr": {
+   "calls": 16,
+   "packages": 5
+  },
+  "numpy.linalg.slogdet": {
+   "calls": 15,
+   "packages": 2
+  },
+  "numpy.linalg.solve": {
+   "calls": 114,
+   "packages": 7
+  },
+  "numpy.linalg.svd": {
+   "calls": 54,
+   "packages": 6
+  },
+  "numpy.linspace": {
+   "calls": 340,
+   "packages": 18
+  },
+  "numpy.load": {
+   "calls": 9,
+   "packages": 5
+  },
+  "numpy.loadtxt": {
+   "calls": 24,
+   "packages": 4
+  },
+  "numpy.log": {
+   "calls": 815,
+   "packages": 18
+  },
+  "numpy.log10": {
+   "calls": 136,
+   "packages": 13
+  },
+  "numpy.log1p": {
+   "calls": 35,
+   "packages": 9
+  },
+  "numpy.log2": {
+   "calls": 87,
+   "packages": 14
+  },
+  "numpy.logaddexp": {
+   "calls": 9,
+   "packages": 2
+  },
+  "numpy.logical_and": {
+   "calls": 129,
+   "packages": 12
+  },
+  "numpy.logical_not": {
+   "calls": 71,
+   "packages": 10
+  },
+  "numpy.logical_or": {
+   "calls": 53,
+   "packages": 11
+  },
+  "numpy.logical_xor": {
+   "calls": 6,
+   "packages": 2
+  },
+  "numpy.logspace": {
+   "calls": 15,
+   "packages": 6
+  },
+  "numpy.matmul": {
+   "calls": 36,
+   "packages": 5
+  },
+  "numpy.matrix": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.max": {
+   "calls": 376,
+   "packages": 16
+  },
+  "numpy.maximum": {
+   "calls": 280,
+   "packages": 16
+  },
+  "numpy.may_share_memory": {
+   "calls": 4,
+   "packages": 2
+  },
+  "numpy.mean": {
+   "calls": 452,
+   "packages": 17
+  },
+  "numpy.median": {
+   "calls": 117,
+   "packages": 13
+  },
+  "numpy.memmap": {
+   "calls": 7,
+   "packages": 1
+  },
+  "numpy.meshgrid": {
+   "calls": 67,
+   "packages": 11
+  },
+  "numpy.min": {
+   "calls": 256,
+   "packages": 17
+  },
+  "numpy.min_scalar_type": {
+   "calls": 18,
+   "packages": 5
+  },
+  "numpy.minimum": {
+   "calls": 118,
+   "packages": 17
+  },
+  "numpy.modf": {
+   "calls": 7,
+   "packages": 4
+  },
+  "numpy.moveaxis": {
+   "calls": 61,
+   "packages": 8
+  },
+  "numpy.multiply": {
+   "calls": 68,
+   "packages": 12
+  },
+  "numpy.nan_to_num": {
+   "calls": 28,
+   "packages": 11
+  },
+  "numpy.nanargmax": {
+   "calls": 4,
+   "packages": 4
+  },
+  "numpy.nanargmin": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.nanmax": {
+   "calls": 58,
+   "packages": 15
+  },
+  "numpy.nanmean": {
+   "calls": 23,
+   "packages": 8
+  },
+  "numpy.nanmedian": {
+   "calls": 9,
+   "packages": 5
+  },
+  "numpy.nanmin": {
+   "calls": 56,
+   "packages": 14
+  },
+  "numpy.nanpercentile": {
+   "calls": 16,
+   "packages": 6
+  },
+  "numpy.nanquantile": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.nanstd": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.nansum": {
+   "calls": 21,
+   "packages": 7
+  },
+  "numpy.nanvar": {
+   "calls": 6,
+   "packages": 3
+  },
+  "numpy.ndarray": {
+   "calls": 38,
+   "packages": 6
+  },
+  "numpy.ndenumerate": {
+   "calls": 3,
+   "packages": 3
+  },
+  "numpy.ndim": {
+   "calls": 75,
+   "packages": 12
+  },
+  "numpy.ndindex": {
+   "calls": 19,
+   "packages": 7
+  },
+  "numpy.nditer": {
+   "calls": 14,
+   "packages": 2
+  },
+  "numpy.negative": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.nextafter": {
+   "calls": 18,
+   "packages": 6
+  },
+  "numpy.nonzero": {
+   "calls": 159,
+   "packages": 13
+  },
+  "numpy.not_equal": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.ones": {
+   "calls": 724,
+   "packages": 18
+  },
+  "numpy.ones_like": {
+   "calls": 117,
+   "packages": 14
+  },
+  "numpy.outer": {
+   "calls": 95,
+   "packages": 10
+  },
+  "numpy.packbits": {
+   "calls": 3,
+   "packages": 1
+  },
+  "numpy.pad": {
+   "calls": 68,
+   "packages": 11
+  },
+  "numpy.partition": {
+   "calls": 10,
+   "packages": 5
+  },
+  "numpy.percentile": {
+   "calls": 76,
+   "packages": 14
+  },
+  "numpy.piecewise": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.place": {
+   "calls": 5,
+   "packages": 2
+  },
+  "numpy.poly1d": {
+   "calls": 6,
+   "packages": 2
+  },
+  "numpy.polyfit": {
+   "calls": 7,
+   "packages": 5
+  },
+  "numpy.polymul": {
+   "calls": 6,
+   "packages": 1
+  },
+  "numpy.polynomial.Polynomial": {
+   "calls": 15,
+   "packages": 2
+  },
+  "numpy.polyval": {
+   "calls": 7,
+   "packages": 3
+  },
+  "numpy.positive": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.power": {
+   "calls": 115,
+   "packages": 13
+  },
+  "numpy.printoptions": {
+   "calls": 6,
+   "packages": 3
+  },
+  "numpy.prod": {
+   "calls": 145,
+   "packages": 13
+  },
+  "numpy.promote_types": {
+   "calls": 33,
+   "packages": 7
+  },
+  "numpy.ptp": {
+   "calls": 36,
+   "packages": 8
+  },
+  "numpy.put": {
+   "calls": 4,
+   "packages": 3
+  },
+  "numpy.putmask": {
+   "calls": 48,
+   "packages": 5
+  },
+  "numpy.quantile": {
+   "calls": 13,
+   "packages": 3
+  },
+  "numpy.rad2deg": {
+   "calls": 51,
+   "packages": 5
+  },
+  "numpy.radians": {
+   "calls": 95,
+   "packages": 5
+  },
+  "numpy.random.Generator": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.random.PCG64": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.random.RandomState": {
+   "calls": 53,
+   "packages": 9
+  },
+  "numpy.random.SeedSequence": {
+   "calls": 4,
+   "packages": 3
+  },
+  "numpy.random.binomial": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.random.choice": {
+   "calls": 11,
+   "packages": 5
+  },
+  "numpy.random.default_rng": {
+   "calls": 68,
+   "packages": 13
+  },
+  "numpy.random.get_state": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.random.multivariate_normal": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.random.normal": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.random.permutation": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.random.poisson": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.random.rand": {
+   "calls": 10,
+   "packages": 2
+  },
+  "numpy.random.randint": {
+   "calls": 11,
+   "packages": 8
+  },
+  "numpy.random.randn": {
+   "calls": 12,
+   "packages": 4
+  },
+  "numpy.random.random": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.random.seed": {
+   "calls": 15,
+   "packages": 5
+  },
+  "numpy.random.set_state": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.random.uniform": {
+   "calls": 10,
+   "packages": 6
+  },
+  "numpy.ravel": {
+   "calls": 151,
+   "packages": 13
+  },
+  "numpy.ravel_multi_index": {
+   "calls": 11,
+   "packages": 6
+  },
+  "numpy.real": {
+   "calls": 30,
+   "packages": 10
+  },
+  "numpy.real_if_close": {
+   "calls": 7,
+   "packages": 1
+  },
+  "numpy.recarray": {
+   "calls": 7,
+   "packages": 1
+  },
+  "numpy.reciprocal": {
+   "calls": 3,
+   "packages": 3
+  },
+  "numpy.remainder": {
+   "calls": 40,
+   "packages": 12
+  },
+  "numpy.repeat": {
+   "calls": 194,
+   "packages": 15
+  },
+  "numpy.require": {
+   "calls": 29,
+   "packages": 6
+  },
+  "numpy.reshape": {
+   "calls": 155,
+   "packages": 13
+  },
+  "numpy.resize": {
+   "calls": 14,
+   "packages": 5
+  },
+  "numpy.result_type": {
+   "calls": 39,
+   "packages": 7
+  },
+  "numpy.rint": {
+   "calls": 15,
+   "packages": 7
+  },
+  "numpy.roll": {
+   "calls": 36,
+   "packages": 10
+  },
+  "numpy.rollaxis": {
+   "calls": 35,
+   "packages": 5
+  },
+  "numpy.roots": {
+   "calls": 7,
+   "packages": 2
+  },
+  "numpy.rot90": {
+   "calls": 8,
+   "packages": 2
+  },
+  "numpy.round": {
+   "calls": 181,
+   "packages": 16
+  },
+  "numpy.save": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.savetxt": {
+   "calls": 10,
+   "packages": 3
+  },
+  "numpy.savez": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.savez_compressed": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.sctypeDict": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.searchsorted": {
+   "calls": 152,
+   "packages": 15
+  },
+  "numpy.select": {
+   "calls": 7,
+   "packages": 1
+  },
+  "numpy.set_printoptions": {
+   "calls": 6,
+   "packages": 3
+  },
+  "numpy.setdiff1d": {
+   "calls": 63,
+   "packages": 7
+  },
+  "numpy.seterr": {
+   "calls": 12,
+   "packages": 5
+  },
+  "numpy.shape": {
+   "calls": 113,
+   "packages": 12
+  },
+  "numpy.shares_memory": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.show_config": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.sign": {
+   "calls": 125,
+   "packages": 15
+  },
+  "numpy.signbit": {
+   "calls": 5,
+   "packages": 4
+  },
+  "numpy.sin": {
+   "calls": 280,
+   "packages": 15
+  },
+  "numpy.sinc": {
+   "calls": 2,
+   "packages": 2
+  },
+  "numpy.sinh": {
+   "calls": 7,
+   "packages": 2
+  },
+  "numpy.size": {
+   "calls": 126,
+   "packages": 9
+  },
+  "numpy.sort": {
+   "calls": 160,
+   "packages": 17
+  },
+  "numpy.spacing": {
+   "calls": 11,
+   "packages": 4
+  },
+  "numpy.split": {
+   "calls": 31,
+   "packages": 9
+  },
+  "numpy.sqrt": {
+   "calls": 1362,
+   "packages": 18
+  },
+  "numpy.square": {
+   "calls": 47,
+   "packages": 10
+  },
+  "numpy.squeeze": {
+   "calls": 176,
+   "packages": 12
+  },
+  "numpy.stack": {
+   "calls": 112,
+   "packages": 13
+  },
+  "numpy.std": {
+   "calls": 92,
+   "packages": 13
+  },
+  "numpy.str_": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.subtract": {
+   "calls": 52,
+   "packages": 8
+  },
+  "numpy.sum": {
+   "calls": 1202,
+   "packages": 18
+  },
+  "numpy.swapaxes": {
+   "calls": 16,
+   "packages": 7
+  },
+  "numpy.take": {
+   "calls": 50,
+   "packages": 9
+  },
+  "numpy.take_along_axis": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.tan": {
+   "calls": 27,
+   "packages": 6
+  },
+  "numpy.tanh": {
+   "calls": 10,
+   "packages": 6
+  },
+  "numpy.tensordot": {
+   "calls": 3,
+   "packages": 1
+  },
+  "numpy.tile": {
+   "calls": 156,
+   "packages": 16
+  },
+  "numpy.timedelta64": {
+   "calls": 49,
+   "packages": 6
+  },
+  "numpy.trace": {
+   "calls": 43,
+   "packages": 4
+  },
+  "numpy.transpose": {
+   "calls": 85,
+   "packages": 12
+  },
+  "numpy.tri": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.tril": {
+   "calls": 7,
+   "packages": 3
+  },
+  "numpy.tril_indices": {
+   "calls": 22,
+   "packages": 3
+  },
+  "numpy.tril_indices_from": {
+   "calls": 7,
+   "packages": 4
+  },
+  "numpy.triu": {
+   "calls": 4,
+   "packages": 3
+  },
+  "numpy.triu_indices": {
+   "calls": 35,
+   "packages": 5
+  },
+  "numpy.triu_indices_from": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.trunc": {
+   "calls": 13,
+   "packages": 6
+  },
+  "numpy.uint16": {
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.uint32": {
+   "calls": 5,
+   "packages": 1
+  },
+  "numpy.uint64": {
+   "calls": 18,
+   "packages": 2
+  },
+  "numpy.uint8": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.union1d": {
+   "calls": 12,
+   "packages": 4
+  },
+  "numpy.unique": {
+   "calls": 496,
+   "packages": 18
+  },
+  "numpy.unpackbits": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.unravel_index": {
+   "calls": 50,
+   "packages": 11
+  },
+  "numpy.unwrap": {
+   "calls": 5,
+   "packages": 3
+  },
+  "numpy.vander": {
+   "calls": 7,
+   "packages": 2
+  },
+  "numpy.var": {
+   "calls": 60,
+   "packages": 7
+  },
+  "numpy.vdot": {
+   "calls": 3,
+   "packages": 1
+  },
+  "numpy.vectorize": {
+   "calls": 47,
+   "packages": 12
+  },
+  "numpy.void": {
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.vsplit": {
+   "calls": 3,
+   "packages": 2
+  },
+  "numpy.vstack": {
+   "calls": 233,
+   "packages": 17
+  },
+  "numpy.where": {
+   "calls": 751,
+   "packages": 18
+  },
+  "numpy.zeros": {
+   "calls": 2094,
+   "packages": 18
+  },
+  "numpy.zeros_like": {
+   "calls": 243,
+   "packages": 16
+  },
+  "scipy.cluster.hierarchy.dendrogram": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.cluster.hierarchy.leaves_list": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.cluster.hierarchy.linkage": {
+   "calls": 4,
+   "packages": 4
+  },
+  "scipy.cluster.hierarchy.optimal_leaf_ordering": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.cluster.hierarchy.ward": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.cluster.vq.kmeans": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.cluster.vq.kmeans2": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.constants.value": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.fft.dct": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.fft.fft": {
+   "calls": 10,
+   "packages": 4
+  },
+  "scipy.fft.fftfreq": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.fft.fftn": {
+   "calls": 6,
+   "packages": 1
+  },
+  "scipy.fft.fftshift": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.fft.idct": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.fft.ifft": {
+   "calls": 6,
+   "packages": 4
+  },
+  "scipy.fft.ifftn": {
+   "calls": 8,
+   "packages": 1
+  },
+  "scipy.fft.ifftshift": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.fft.irfft": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.fft.irfftn": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.fft.next_fast_len": {
+   "calls": 3,
+   "packages": 3
+  },
+  "scipy.fft.rfft": {
+   "calls": 8,
+   "packages": 2
+  },
+  "scipy.fft.rfftfreq": {
+   "calls": 5,
+   "packages": 1
+  },
+  "scipy.fft.rfftn": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.integrate.cumulative_trapezoid": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.integrate.dblquad": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.integrate.odeint": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.integrate.quad": {
+   "calls": 19,
+   "packages": 4
+  },
+  "scipy.integrate.simpson": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.integrate.trapezoid": {
+   "calls": 11,
+   "packages": 5
+  },
+  "scipy.interpolate.Akima1DInterpolator": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.BPoly": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.BSpline": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.interpolate.CubicSpline": {
+   "calls": 3,
+   "packages": 3
+  },
+  "scipy.interpolate.InterpolatedUnivariateSpline": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.LSQUnivariateSpline": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.LinearNDInterpolator": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.PchipInterpolator": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.Rbf": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.RectBivariateSpline": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.interpolate.RegularGridInterpolator": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.interpolate.UnivariateSpline": {
+   "calls": 3,
+   "packages": 3
+  },
+  "scipy.interpolate.interp1d": {
+   "calls": 36,
+   "packages": 9
+  },
+  "scipy.interpolate.interpn": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.interpolate.make_interp_spline": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.interpolate.splev": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.interpolate.splrep": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.linalg.LinAlgError": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.linalg.block_diag": {
+   "calls": 10,
+   "packages": 2
+  },
+  "scipy.linalg.cho_factor": {
+   "calls": 11,
+   "packages": 1
+  },
+  "scipy.linalg.cho_solve": {
+   "calls": 16,
+   "packages": 2
+  },
+  "scipy.linalg.cho_solve_banded": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.linalg.cholesky": {
+   "calls": 11,
+   "packages": 2
+  },
+  "scipy.linalg.circulant": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.linalg.eig": {
+   "calls": 3,
+   "packages": 3
+  },
+  "scipy.linalg.eigh": {
+   "calls": 24,
+   "packages": 5
+  },
+  "scipy.linalg.eigvals": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.linalg.eigvalsh": {
+   "calls": 6,
+   "packages": 2
+  },
+  "scipy.linalg.expm": {
+   "calls": 6,
+   "packages": 1
+  },
+  "scipy.linalg.fractional_matrix_power": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.linalg.get_blas_funcs": {
+   "calls": 6,
+   "packages": 2
+  },
+  "scipy.linalg.get_lapack_funcs": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.linalg.hankel": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.linalg.inv": {
+   "calls": 33,
+   "packages": 7
+  },
+  "scipy.linalg.issymmetric": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.linalg.lstsq": {
+   "calls": 10,
+   "packages": 3
+  },
+  "scipy.linalg.norm": {
+   "calls": 24,
+   "packages": 5
+  },
+  "scipy.linalg.orth": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.linalg.pinv": {
+   "calls": 9,
+   "packages": 4
+  },
+  "scipy.linalg.pinvh": {
+   "calls": 14,
+   "packages": 3
+  },
+  "scipy.linalg.qr": {
+   "calls": 12,
+   "packages": 4
+  },
+  "scipy.linalg.solve": {
+   "calls": 17,
+   "packages": 4
+  },
+  "scipy.linalg.solve_discrete_lyapunov": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.linalg.solve_sylvester": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.linalg.solve_triangular": {
+   "calls": 11,
+   "packages": 2
+  },
+  "scipy.linalg.sqrtm": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.linalg.svd": {
+   "calls": 21,
+   "packages": 4
+  },
+  "scipy.linalg.svdvals": {
+   "calls": 5,
+   "packages": 3
+  },
+  "scipy.linalg.toeplitz": {
+   "calls": 11,
+   "packages": 3
+  },
+  "scipy.ndimage.affine_transform": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.ndimage.binary_closing": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.ndimage.binary_dilation": {
+   "calls": 9,
+   "packages": 3
+  },
+  "scipy.ndimage.binary_erosion": {
+   "calls": 8,
+   "packages": 2
+  },
+  "scipy.ndimage.binary_fill_holes": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.ndimage.binary_opening": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.binary_propagation": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.ndimage.center_of_mass": {
+   "calls": 6,
+   "packages": 1
+  },
+  "scipy.ndimage.convolve": {
+   "calls": 19,
+   "packages": 2
+  },
+  "scipy.ndimage.correlate": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.distance_transform_cdt": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.distance_transform_edt": {
+   "calls": 7,
+   "packages": 2
+  },
+  "scipy.ndimage.find_objects": {
+   "calls": 7,
+   "packages": 3
+  },
+  "scipy.ndimage.gaussian_filter": {
+   "calls": 4,
+   "packages": 3
+  },
+  "scipy.ndimage.gaussian_filter1d": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.ndimage.gaussian_gradient_magnitude": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.gaussian_laplace": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.generate_binary_structure": {
+   "calls": 23,
+   "packages": 2
+  },
+  "scipy.ndimage.generic_filter": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.ndimage.grey_dilation": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.grey_erosion": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.label": {
+   "calls": 25,
+   "packages": 3
+  },
+  "scipy.ndimage.laplace": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.ndimage.map_coordinates": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.ndimage.maximum_filter": {
+   "calls": 7,
+   "packages": 2
+  },
+  "scipy.ndimage.maximum_filter1d": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.ndimage.median_filter": {
+   "calls": 6,
+   "packages": 2
+  },
+  "scipy.ndimage.minimum_filter": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.ndimage.rotate": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.shift": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.sobel": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.ndimage.sum": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.ndimage.uniform_filter": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.ndimage.uniform_filter1d": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.ndimage.zoom": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.optimize.Bounds": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.LinearConstraint": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.basinhopping": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.optimize.bisect": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.brent": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.optimize.brenth": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.optimize.brentq": {
+   "calls": 35,
+   "packages": 5
+  },
+  "scipy.optimize.brute": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.optimize.curve_fit": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.optimize.differential_evolution": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.optimize.fmin": {
+   "calls": 15,
+   "packages": 3
+  },
+  "scipy.optimize.fmin_bfgs": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.fmin_cg": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.fmin_cobyla": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.optimize.fmin_l_bfgs_b": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.optimize.fmin_ncg": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.fmin_powell": {
+   "calls": 6,
+   "packages": 1
+  },
+  "scipy.optimize.fmin_slsqp": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.fminbound": {
+   "calls": 4,
+   "packages": 1
+  },
+  "scipy.optimize.fsolve": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.optimize.isotonic_regression": {
+   "calls": 4,
+   "packages": 3
+  },
+  "scipy.optimize.least_squares": {
+   "calls": 6,
+   "packages": 3
+  },
+  "scipy.optimize.leastsq": {
+   "calls": 8,
+   "packages": 4
+  },
+  "scipy.optimize.linear_sum_assignment": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.optimize.linprog": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.optimize.minimize": {
+   "calls": 28,
+   "packages": 7
+  },
+  "scipy.optimize.minimize_scalar": {
+   "calls": 5,
+   "packages": 4
+  },
+  "scipy.optimize.newton": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.optimize.nnls": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.optimize.root": {
+   "calls": 5,
+   "packages": 4
+  },
+  "scipy.optimize.root_scalar": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.argrelmax": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.signal.butter": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.signal.chirp": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.convolve": {
+   "calls": 14,
+   "packages": 4
+  },
+  "scipy.signal.convolve2d": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.signal.correlate": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.signal.detrend": {
+   "calls": 6,
+   "packages": 1
+  },
+  "scipy.signal.fftconvolve": {
+   "calls": 4,
+   "packages": 3
+  },
+  "scipy.signal.filtfilt": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.signal.find_peaks": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.signal.firwin": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.signal.freqz": {
+   "calls": 6,
+   "packages": 2
+  },
+  "scipy.signal.get_window": {
+   "calls": 6,
+   "packages": 4
+  },
+  "scipy.signal.group_delay": {
+   "calls": 4,
+   "packages": 1
+  },
+  "scipy.signal.hilbert": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.signal.iirdesign": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.signal.iirfilter": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.lfilter": {
+   "calls": 19,
+   "packages": 3
+  },
+  "scipy.signal.lfilter_zi": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.lfiltic": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.signal.lombscargle": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.minimum_phase": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.signal.order_filter": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.resample": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.resample_poly": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.signal.savgol_filter": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.signal.sos2zpk": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.sosfilt": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.sosfiltfilt": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.signal.sosfreqz": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.tf2zpk": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.wiener": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.windows.dpss": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.windows.gaussian": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.signal.windows.hann": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.sparse.block_diag": {
+   "calls": 4,
+   "packages": 1
+  },
+  "scipy.sparse.coo_array": {
+   "calls": 30,
+   "packages": 6
+  },
+  "scipy.sparse.coo_matrix": {
+   "calls": 23,
+   "packages": 6
+  },
+  "scipy.sparse.csc_array": {
+   "calls": 22,
+   "packages": 5
+  },
+  "scipy.sparse.csc_matrix": {
+   "calls": 9,
+   "packages": 3
+  },
+  "scipy.sparse.csgraph.connected_components": {
+   "calls": 13,
+   "packages": 5
+  },
+  "scipy.sparse.csgraph.dijkstra": {
+   "calls": 5,
+   "packages": 1
+  },
+  "scipy.sparse.csgraph.laplacian": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.csgraph.minimum_spanning_tree": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.sparse.csgraph.shortest_path": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.sparse.csr_array": {
+   "calls": 76,
+   "packages": 6
+  },
+  "scipy.sparse.csr_matrix": {
+   "calls": 19,
+   "packages": 5
+  },
+  "scipy.sparse.dia_array": {
+   "calls": 34,
+   "packages": 5
+  },
+  "scipy.sparse.dia_matrix": {
+   "calls": 5,
+   "packages": 3
+  },
+  "scipy.sparse.diags": {
+   "calls": 5,
+   "packages": 3
+  },
+  "scipy.sparse.diags_array": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.sparse.eye": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.sparse.eye_array": {
+   "calls": 7,
+   "packages": 3
+  },
+  "scipy.sparse.find": {
+   "calls": 7,
+   "packages": 2
+  },
+  "scipy.sparse.hstack": {
+   "calls": 17,
+   "packages": 3
+  },
+  "scipy.sparse.issparse": {
+   "calls": 317,
+   "packages": 7
+  },
+  "scipy.sparse.isspmatrix": {
+   "calls": 6,
+   "packages": 1
+  },
+  "scipy.sparse.isspmatrix_csr": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.kron": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.lil_array": {
+   "calls": 5,
+   "packages": 3
+  },
+  "scipy.sparse.lil_matrix": {
+   "calls": 5,
+   "packages": 1
+  },
+  "scipy.sparse.linalg.LinearOperator": {
+   "calls": 7,
+   "packages": 3
+  },
+  "scipy.sparse.linalg.aslinearoperator": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.linalg.cg": {
+   "calls": 6,
+   "packages": 4
+  },
+  "scipy.sparse.linalg.eigs": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.sparse.linalg.eigsh": {
+   "calls": 10,
+   "packages": 4
+  },
+  "scipy.sparse.linalg.factorized": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.linalg.lobpcg": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.sparse.linalg.lsqr": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.sparse.linalg.matrix_power": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.linalg.spilu": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.linalg.splu": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.sparse.linalg.spsolve": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.sparse.linalg.svds": {
+   "calls": 7,
+   "packages": 4
+  },
+  "scipy.sparse.random": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.random_array": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.save_npz": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.spdiags": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.sparse.tril": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.sparse.triu": {
+   "calls": 6,
+   "packages": 2
+  },
+  "scipy.sparse.vstack": {
+   "calls": 6,
+   "packages": 3
+  },
+  "scipy.spatial.ConvexHull": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.spatial.Delaunay": {
+   "calls": 10,
+   "packages": 2
+  },
+  "scipy.spatial.KDTree": {
+   "calls": 7,
+   "packages": 4
+  },
+  "scipy.spatial.Voronoi": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.spatial.cKDTree": {
+   "calls": 14,
+   "packages": 4
+  },
+  "scipy.spatial.distance.cdist": {
+   "calls": 26,
+   "packages": 5
+  },
+  "scipy.spatial.distance.pdist": {
+   "calls": 25,
+   "packages": 6
+  },
+  "scipy.spatial.distance.squareform": {
+   "calls": 23,
+   "packages": 6
+  },
+  "scipy.spatial.distance_matrix": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.spatial.minkowski_distance": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.bdtr": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.bdtrik": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.beta": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.betainc": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.special.betaincinv": {
+   "calls": 4,
+   "packages": 1
+  },
+  "scipy.special.betaln": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.special.binom": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.chdtrc": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.chndtrinc": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.comb": {
+   "calls": 24,
+   "packages": 3
+  },
+  "scipy.special.elliprg": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.erf": {
+   "calls": 3,
+   "packages": 3
+  },
+  "scipy.special.erfinv": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.special.exp10": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.expit": {
+   "calls": 10,
+   "packages": 2
+  },
+  "scipy.special.expm1": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.special.factorial": {
+   "calls": 16,
+   "packages": 2
+  },
+  "scipy.special.fdtrc": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.gamma": {
+   "calls": 9,
+   "packages": 4
+  },
+  "scipy.special.gammainc": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.gammainccinv": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.gammaincinv": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.special.gammaln": {
+   "calls": 52,
+   "packages": 5
+  },
+  "scipy.special.hyp2f1": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.special.inv_boxcox": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.ive": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.special.jn_zeros": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.kv": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.log_wright_bessel": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.logit": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.logsumexp": {
+   "calls": 22,
+   "packages": 5
+  },
+  "scipy.special.lpmv": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.ncfdtr": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.ncfdtri": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.ncfdtrinc": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.special.nctdtr": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.nctdtrinc": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.special.ndtr": {
+   "calls": 4,
+   "packages": 1
+  },
+  "scipy.special.polygamma": {
+   "calls": 13,
+   "packages": 1
+  },
+  "scipy.special.psi": {
+   "calls": 30,
+   "packages": 2
+  },
+  "scipy.special.sph_harm_y": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.stdtr": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.special.wright_bessel": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.special.xlogy": {
+   "calls": 7,
+   "packages": 1
+  },
+  "scipy.special.zeta": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.anderson": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.bernoulli": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.stats.beta": {
+   "calls": 24,
+   "packages": 4
+  },
+  "scipy.stats.betabinom": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.binom": {
+   "calls": 22,
+   "packages": 3
+  },
+  "scipy.stats.binomtest": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.stats.boltzmann": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.bootstrap": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.boxcox": {
+   "calls": 12,
+   "packages": 2
+  },
+  "scipy.stats.chi": {
+   "calls": 5,
+   "packages": 1
+  },
+  "scipy.stats.chi2": {
+   "calls": 134,
+   "packages": 6
+  },
+  "scipy.stats.chisquare": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.stats.circmean": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.circstd": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.describe": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.dirichlet": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.entropy": {
+   "calls": 5,
+   "packages": 2
+  },
+  "scipy.stats.expon": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.f": {
+   "calls": 63,
+   "packages": 6
+  },
+  "scipy.stats.false_discovery_control": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.fatiguelife": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.gamma": {
+   "calls": 14,
+   "packages": 2
+  },
+  "scipy.stats.gaussian_kde": {
+   "calls": 10,
+   "packages": 5
+  },
+  "scipy.stats.geom": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.gmean": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.hypergeom": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.invgamma": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.invgauss": {
+   "calls": 3,
+   "packages": 1
+  },
+  "scipy.stats.kendalltau": {
+   "calls": 11,
+   "packages": 4
+  },
+  "scipy.stats.ks_2samp": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.kstwobign": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.kurtosis": {
+   "calls": 12,
+   "packages": 2
+  },
+  "scipy.stats.levy_stable": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.linregress": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.stats.lognorm": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.stats.logser": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.mannwhitneyu": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.median_abs_deviation": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.mode": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.stats.multivariate_normal": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.multivariate_t": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.nbinom": {
+   "calls": 11,
+   "packages": 1
+  },
+  "scipy.stats.ncf": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.nct": {
+   "calls": 4,
+   "packages": 1
+  },
+  "scipy.stats.ncx2": {
+   "calls": 3,
+   "packages": 2
+  },
+  "scipy.stats.norm": {
+   "calls": 225,
+   "packages": 9
+  },
+  "scipy.stats.normaltest": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.pearsonr": {
+   "calls": 13,
+   "packages": 6
+  },
+  "scipy.stats.poisson": {
+   "calls": 30,
+   "packages": 1
+  },
+  "scipy.stats.power_divergence": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.probplot": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.stats.rankdata": {
+   "calls": 19,
+   "packages": 5
+  },
+  "scipy.stats.recipinvgauss": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.scoreatpercentile": {
+   "calls": 10,
+   "packages": 2
+  },
+  "scipy.stats.sem": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.skew": {
+   "calls": 10,
+   "packages": 1
+  },
+  "scipy.stats.spearmanr": {
+   "calls": 7,
+   "packages": 4
+  },
+  "scipy.stats.studentized_range": {
+   "calls": 4,
+   "packages": 2
+  },
+  "scipy.stats.t": {
+   "calls": 54,
+   "packages": 4
+  },
+  "scipy.stats.tiecorrect": {
+   "calls": 2,
+   "packages": 2
+  },
+  "scipy.stats.truncnorm": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.ttest_1samp": {
+   "calls": 4,
+   "packages": 3
+  },
+  "scipy.stats.ttest_ind": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.ttest_ind_from_stats": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.ttest_rel": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.uniform": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.wasserstein_distance": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.wasserstein_distance_nd": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.weibull_min": {
+   "calls": 2,
+   "packages": 1
+  },
+  "scipy.stats.wilcoxon": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.yeojohnson": {
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.stats.zscore": {
+   "calls": 8,
+   "packages": 2
+  }
+ },
+ "total_calls": 42551
+}

@@ -1,0 +1,441 @@
+# Scope of the NumPy/SciPy parity program: how every census symbol is classified.
+#
+#   implemented  a Tessero function provides it and a fixture test verifies it on the backend(s) listed:
+#                - registry functions: automatically, from spec/*.yaml `ref:` + the fixture results;
+#                - functions that predate the registry: the `legacy` map below (test suites named per entry).
+#   excluded     one of the fixed categories E1..E7 (prompts/numpy-scipy-parity-program.md section 3.3).
+#   planned      everything else, assigned to a phase by `phases` (module default) and `phase_names` (overrides).
+#
+# Aliases (two names for one object, e.g. numpy.acos / numpy.arccos) inherit the status of their canonical
+# name and are not counted in the denominator.
+
+categories:
+  E1: object, string, bytes, structured and record dtypes
+  E2: numpy.ma masked arrays
+  E3: legacy or deprecated API (numpy.matrix, RandomState and the legacy numpy.random functions, deprecated names)
+  E4: Python-runtime specifics (testing, printing, error-state and buffer settings, type hierarchy, iteration protocol, DLPack, introspection)
+  E5: file formats other than .npy, .npz and text/CSV
+  E6: superseded in the reference itself
+  E7: interactive, plotting or dataset helpers
+
+exclude:
+  - {category: E1, module: numpy, names: [bytes_, str_, object_, void, character, flexible, record, recarray, fromregex, fromstring]}
+  - {category: E3, module: numpy, names: [matrix, asmatrix, bmat, row_stack, poly1d, asfarray, mintypecode, common_type, fix]}
+  - {category: E4, module: numpy, names: [array2string, array_repr, array_str, base_repr, binary_repr, format_float_positional,
+      format_float_scientific, get_printoptions, set_printoptions, printoptions, getbufsize, setbufsize, geterr, seterr,
+      geterrcall, seterrcall, errstate, show_config, show_runtime, get_include, info, test, typename, from_dlpack, frompyfunc,
+      iterable, isscalar, ndenumerate, ndindex, nditer, nested_iters, flatiter, broadcast, ScalarType, sctypeDict, typecodes,
+      generic, number, integer, inexact, floating, complexfloating, signedinteger, unsignedinteger, ufunc, dtype, ndarray,
+      little_endian, index_exp, s_, c_, r_, mgrid, ogrid, asanyarray, require, isdtype, issubdtype, min_scalar_type,
+      apply_along_axis, apply_over_axes, vectorize]}
+  - {category: E3, module: numpy.random, names: '*', except: [Generator, default_rng, SeedSequence, PCG64, BitGenerator]}
+  - {category: E4, module: numpy.random, names: [BitGenerator]}
+  - {category: E4, module: numpy.ndarray, names: [ctypes, dump, dumps, base, flags, flat, setflags, data, device, to_device, itemsize]}
+  - {category: E1, module: numpy.ndarray, names: [getfield, setfield]}
+  - {category: E4, module: numpy.random.Generator, names: [bit_generator, spawn]}
+  - {category: E4, module: numpy.polynomial, names: [set_default_printstyle]}
+  - {category: E4, module: scipy.special, names: [errstate, geterr, seterr, SpecialFunctionError, SpecialFunctionWarning]}
+  - {category: E4, module: scipy.stats, names: [ConstantInputWarning, DegenerateDataWarning, FitError, NearConstantInputWarning,
+      rv_continuous, rv_discrete, rv_frozen]}
+  - {category: E4, module: scipy.optimize, names: [OptimizeWarning, OptimizeResult, show_options, LbfgsInvHessProduct, HessianUpdateStrategy]}
+  - {category: E4, module: scipy.linalg, names: [LinAlgError, LinAlgWarning, get_blas_funcs, get_lapack_funcs, find_best_blas_type]}
+  - {category: E4, module: scipy.sparse, names: [SparseEfficiencyWarning, SparseWarning, issparse, isspmatrix, sparray, spmatrix,
+      isspmatrix_csr, isspmatrix_csc, isspmatrix_coo, isspmatrix_bsr, isspmatrix_dia, isspmatrix_lil, isspmatrix_dok,
+      get_index_dtype, safely_cast_index_arrays]}
+  - {category: E4, module: scipy.sparse.linalg, names: [ArpackError, ArpackNoConvergence, MatrixRankWarning, test, use_solver]}
+  - {category: E4, module: scipy.integrate, names: [IntegrationWarning, ODEintWarning, OdeSolution, OdeSolver, DenseOutput]}
+  - {category: E4, module: scipy.signal, names: [BadCoefficients]}
+  - {category: E4, module: scipy.fft, names: [set_backend, skip_backend, set_global_backend, register_backend, set_workers, get_workers]}
+  - {category: E4, module: scipy.constants, names: [ConstantWarning]}
+  - {category: E6, module: scipy.interpolate, names: [interp1d, interp2d, spline, splmake, spleval, spltopp]}
+  - {category: E7, module: scipy.cluster.hierarchy, names: [dendrogram, set_link_color_palette]}
+  - {category: E7, module: scipy.spatial, names: [delaunay_plot_2d, convex_hull_plot_2d, voronoi_plot_2d]}
+
+phases:
+  numpy: 4
+  numpy.linalg: 6
+  numpy.fft: 6
+  numpy.polynomial: 6
+  numpy.random: 3
+  numpy.random.Generator: 3
+  numpy.ndarray: 4
+  scipy.special: 1
+  scipy.stats: 3
+  scipy.linalg: 6
+  scipy.fft: 6
+  scipy.integrate: 7
+  scipy.interpolate: 7
+  scipy.signal: 8
+  scipy.signal.windows: 8
+  scipy.optimize: 9
+  scipy.sparse: 10
+  scipy.sparse.linalg: 10
+  scipy.sparse.csgraph: 10
+  scipy.spatial: 10
+  scipy.spatial.distance: 10
+  scipy.cluster.vq: 10
+  scipy.cluster.hierarchy: 10
+  scipy.ndimage: 10
+  scipy.constants: 11
+
+phase_names:
+  2:
+    numpy: [median, percentile, quantile, nanmedian, nanpercentile, nanquantile, average, ptp, count_nonzero, nansum, nanprod,
+      nanmin, nanmax, nanargmin, nanargmax, nanmean, nanvar, nanstd, nancumsum, nancumprod, histogram, histogram_bin_edges,
+      histogram2d, histogramdd, bincount, digitize, cov, corrcoef, correlate, convolve, unique, unique_values, unique_counts,
+      unique_inverse, unique_all, isin, intersect1d, union1d, setdiff1d, setxor1d, searchsorted, partition, argpartition,
+      lexsort, sort_complex, cumulative_sum, cumulative_prod, amin, amax]
+    numpy.ndarray: [partition, argpartition, searchsorted]
+  5:
+    numpy: [datetime64, timedelta64, datetime_as_string, datetime_data, busday_count, busday_offset, busdaycalendar, is_busday,
+      isnat, float16, half, complex64, longdouble, clongdouble, int8, int16, uint16, uint32, uint64, finfo, iinfo, can_cast,
+      result_type, promote_types, loadtxt, savetxt, genfromtxt, fromfile, packbits, unpackbits]
+    numpy.ndarray: [tofile, byteswap]
+  6:
+    numpy: [einsum, einsum_path, inner, outer, kron, cross, tensordot, vdot, vecdot, matvec, vecmat, matrix_transpose, trace,
+      polyfit, polyval, roots, poly, polyder, polyint, polyadd, polysub, polymul, polydiv, i0, sinc, bartlett, blackman,
+      hamming, hanning, kaiser, interp, gradient, trapezoid, unwrap, ediff1d]
+
+# Functions that predate the registry. Each lists the Tessero references per backend (checked against
+# tools/api-dump.php output) and the test suites that compare them with NumPy/SciPy fixtures.
+legacy_tests:
+  core: [tests/Parity/ParityTest.php, tests/Unit/NDArrayTest.php, tests/Ext/BackendParityTest.php, tests/Ext/ExtParityTest.php]
+  math: [tests/Unit/MathTest.php, tests/Ext/BackendParityTest.php]
+  linalg: [tests/Parity/ParityTest.php]
+  fft: [tests/Parity/ParityTest.php]
+  random: [tests/Parity/ParityTest.php]
+  io: [tests/Unit/FilesTest.php, tests/Ext/BackendParityTest.php]
+  solvers: [tests/Unit/SolversTest.php, tests/Parity/ParityTest.php]
+  sparse: [tests/Unit/NumericsTest.php]
+
+legacy:
+  numpy:
+    # datetime64/timedelta64 are represented as NumPy's own int64 counts at a unit (Tessero has no datetime dtype);
+    # the pure-PHP Tessero\Datetime\Datetime parses/formats and does the calendar maths, verified via datetime.json.
+    datetime64: {ffi: [DT::datetime64], ext: [DT::datetime64], fixtures: [datetime.datetime64]}
+    timedelta64: {ffi: [DT::timedelta64], ext: [DT::timedelta64], fixtures: [datetime.timedelta64]}
+    datetime_data: {ffi: [DT::datetimeData], ext: [DT::datetimeData], fixtures: [datetime.datetime_data]}
+    datetime_as_string: {ffi: [DT::datetimeAsString], ext: [DT::datetimeAsString], fixtures: [datetime.datetime_as_string]}
+    isnat: {ffi: [DT::isnat], ext: [DT::isnat], fixtures: [datetime.isnat]}
+    is_busday: {ffi: [DT::isBusday], ext: [DT::isBusday], fixtures: [datetime.is_busday]}
+    busday_count: {ffi: [DT::busdayCount], ext: [DT::busdayCount], fixtures: [datetime.busday_count]}
+    busday_offset: {ffi: [DT::busdayOffset], ext: [DT::busdayOffset], fixtures: [datetime.busday_offset]}
+    array: {ffi: [N::array], ext: [XN::array], tests: core}
+    asarray: {ffi: [N::asArray], ext: [XN::array], tests: core}
+    zeros: {ffi: [N::zeros], ext: [XN::zeros], tests: core}
+    ones: {ffi: [N::ones], ext: [XN::ones], tests: core}
+    empty: {ffi: [N::empty], ext: [XN::empty], tests: core}
+    full: {ffi: [N::full], ext: [XN::full], tests: core}
+    arange: {ffi: [N::arange], ext: [XN::arange], tests: core}
+    linspace: {ffi: [N::linspace], ext: [XN::linspace], tests: core}
+    eye: {ffi: [N::eye], ext: [XN::eye], tests: core}
+    frombuffer: {ffi: [N::fromBytes], ext: [XN::fromBytes], tests: core}
+    copy: {ffi: [N::copy], ext: [XN::copy], tests: core}
+    astype: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    reshape: {ffi: [N::reshape], ext: [XN::reshape], tests: core}
+    ravel: {ffi: [N::ravel], ext: [XN::ravel], tests: core}
+    transpose: {ffi: [N::transpose], ext: [XN::transpose], tests: core}
+    swapaxes: {ffi: [N::swapAxes], tests: core}
+    moveaxis: {ffi: [N::moveAxis], tests: core}
+    expand_dims: {ffi: [N::expandDims], tests: core}
+    squeeze: {ffi: [N::squeeze], tests: core}
+    broadcast_to: {ffi: [N::broadcastTo], tests: core}
+    broadcast_shapes: {ffi: [N::broadcastShapes], tests: core}
+    concatenate: {ffi: [N::concatenate], tests: core}
+    stack: {ffi: [N::stack], tests: core}
+    ascontiguousarray: {ffi: [N::contiguous], tests: core}
+    take: {ffi: [N::take], tests: core}
+    put: {ffi: [N::put], tests: core}
+    where: {ffi: [N::where], ext: [XN::where], tests: core}
+    flatnonzero: {ffi: [N::flatNonzero], tests: core}
+    clip: {ffi: [N::clip], ext: [XN::clip], tests: core}
+    round: {ffi: [N::round], tests: core}
+    sum: {ffi: [N::sum], ext: [XN::sum], tests: core}
+    prod: {ffi: [N::prod], ext: [XN::prod], tests: core}
+    min: {ffi: [N::min], ext: [XN::min], tests: core}
+    max: {ffi: [N::max], ext: [XN::max], tests: core}
+    amin: {ffi: [N::min], ext: [XN::min], tests: core}
+    amax: {ffi: [N::max], ext: [XN::max], tests: core}
+    argmin: {ffi: [N::argmin], ext: [XN::argmin], tests: core}
+    argmax: {ffi: [N::argmax], ext: [XN::argmax], tests: core}
+    any: {ffi: [N::any], ext: [XN::any], tests: core}
+    all: {ffi: [N::all], ext: [XN::all], tests: core}
+    mean: {ffi: [N::mean], ext: [XN::mean], tests: core}
+    var: {ffi: [N::var], ext: [XN::var], tests: core}
+    std: {ffi: [N::std], ext: [XN::std], tests: core}
+    cumsum: {ffi: [N::cumsum], ext: [XN::cumsum], tests: core}
+    cumprod: {ffi: [N::cumprod], ext: [XN::cumprod], tests: core}
+    diff: {ffi: [N::diff], tests: core}
+    isclose: {ffi: [N::isclose], tests: core}
+    allclose: {ffi: [N::allclose], tests: core}
+    sort: {ffi: [N::sort], ext: [XN::sort], tests: core}
+    argsort: {ffi: [N::argsort], ext: [XN::argsort], tests: core}
+    matmul: {ffi: [N::matmul], ext: [XN::matmul], tests: core}
+    dot: {ffi: [N::dot], ext: [XN::dot], tests: core}
+    save: {ffi: [N::save], ext: [XN::save], tests: io}
+    load: {ffi: [N::load], ext: [XN::load], tests: io}
+    memmap: {ffi: [N::memmap], ext: [XN::memmap], tests: io}
+    savez: {ffi: [Npy::saveZ], tests: io}
+    savez_compressed: {ffi: [Npy::saveZ], tests: io}
+    float64: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    float32: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    int64: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    int32: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    uint8: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    bool: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    complex128: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    logical_not: {ffi: [N::logicalNot], ext: [XN::logicalNot], tests: core}
+    absolute: {ffi: [M::absolute], ext: [XM::absolute], tests: math}
+    add: {ffi: [M::add], ext: [XM::add], tests: math}
+    subtract: {ffi: [M::subtract], ext: [XM::subtract], tests: math}
+    multiply: {ffi: [M::multiply], ext: [XM::multiply], tests: math}
+    divide: {ffi: [M::divide], ext: [XM::divide], tests: math}
+    power: {ffi: [M::power], ext: [XM::power], tests: math}
+    remainder: {ffi: [M::remainder], ext: [XM::remainder], tests: math}
+    floor_divide: {ffi: [M::floorDivide], ext: [XM::floorDivide], tests: math}
+    negative: {ffi: [M::negative], ext: [XM::negative], tests: math}
+    square: {ffi: [M::square], ext: [XM::square], tests: math}
+    sign: {ffi: [M::sign], ext: [XM::sign], tests: math}
+    sqrt: {ffi: [M::sqrt], ext: [XM::sqrt], tests: math}
+    cbrt: {ffi: [M::cbrt], ext: [XM::cbrt], tests: math}
+    exp: {ffi: [M::exp], ext: [XM::exp], tests: math}
+    exp2: {ffi: [M::exp2], ext: [XM::exp2], tests: math}
+    expm1: {ffi: [M::expm1], ext: [XM::expm1], tests: math}
+    log: {ffi: [M::log], ext: [XM::log], tests: math}
+    log10: {ffi: [M::log10], ext: [XM::log10], tests: math}
+    log2: {ffi: [M::log2], ext: [XM::log2], tests: math}
+    log1p: {ffi: [M::log1p], ext: [XM::log1p], tests: math}
+    sin: {ffi: [M::sin], ext: [XM::sin], tests: math}
+    cos: {ffi: [M::cos], ext: [XM::cos], tests: math}
+    tan: {ffi: [M::tan], ext: [XM::tan], tests: math}
+    arcsin: {ffi: [M::arcsin], ext: [XM::arcsin], tests: math}
+    arccos: {ffi: [M::arccos], ext: [XM::arccos], tests: math}
+    arctan: {ffi: [M::arctan], ext: [XM::arctan], tests: math}
+    arctan2: {ffi: [M::arctan2], ext: [XM::arctan2], tests: math}
+    sinh: {ffi: [M::sinh], ext: [XM::sinh], tests: math}
+    cosh: {ffi: [M::cosh], ext: [XM::cosh], tests: math}
+    tanh: {ffi: [M::tanh], ext: [XM::tanh], tests: math}
+    arcsinh: {ffi: [M::arcsinh], ext: [XM::arcsinh], tests: math}
+    arccosh: {ffi: [M::arccosh], ext: [XM::arccosh], tests: math}
+    arctanh: {ffi: [M::arctanh], ext: [XM::arctanh], tests: math}
+    degrees: {ffi: [M::degrees], ext: [XM::degrees], tests: math}
+    radians: {ffi: [M::radians], ext: [XM::radians], tests: math}
+    rad2deg: {ffi: [M::degrees], ext: [XM::degrees], tests: math}
+    deg2rad: {ffi: [M::radians], ext: [XM::radians], tests: math}
+    floor: {ffi: [M::floor], ext: [XM::floor], tests: math}
+    ceil: {ffi: [M::ceil], ext: [XM::ceil], tests: math}
+    rint: {ffi: [M::rint], ext: [XM::rint], tests: math}
+    trunc: {ffi: [M::trunc], ext: [XM::trunc], tests: math}
+    reciprocal: {ffi: [M::reciprocal], ext: [XM::reciprocal], tests: math}
+    maximum: {ffi: [M::maximum], ext: [XM::maximum], tests: math}
+    minimum: {ffi: [M::minimum], ext: [XM::minimum], tests: math}
+    fmax: {ffi: [M::fmax], ext: [XM::fmax], tests: math}
+    fmin: {ffi: [M::fmin], ext: [XM::fmin], tests: math}
+    fmod: {ffi: [M::fmod], ext: [XM::fmod], tests: math}
+    hypot: {ffi: [M::hypot], ext: [XM::hypot], tests: math}
+    copysign: {ffi: [M::copysign], ext: [XM::copysign], tests: math}
+    nextafter: {ffi: [M::nextafter], ext: [XM::nextafter], tests: math}
+    heaviside: {ffi: [M::heaviside], ext: [XM::heaviside], tests: math}
+    gcd: {ffi: [M::gcd], ext: [XM::gcd], tests: math}
+    lcm: {ffi: [M::lcm], ext: [XM::lcm], tests: math}
+    float_power: {ffi: [M::floatPower], ext: [XM::floatPower], tests: math}
+    signbit: {ffi: [M::signbit], ext: [XM::signbit], tests: math}
+    logaddexp: {ffi: [M::logaddexp], ext: [XM::logaddexp], tests: math}
+    logaddexp2: {ffi: [M::logaddexp2], ext: [XM::logaddexp2], tests: math}
+    equal: {ffi: [M::equal], ext: [XM::equal], tests: math}
+    not_equal: {ffi: [M::notEqual], ext: [XM::notEqual], tests: math}
+    less: {ffi: [M::less], ext: [XM::less], tests: math}
+    less_equal: {ffi: [M::lessEqual], ext: [XM::lessEqual], tests: math}
+    greater: {ffi: [M::greater], ext: [XM::greater], tests: math}
+    greater_equal: {ffi: [M::greaterEqual], ext: [XM::greaterEqual], tests: math}
+    logical_and: {ffi: [M::logicalAnd], ext: [XM::logicalAnd], tests: math}
+    logical_or: {ffi: [M::logicalOr], ext: [XM::logicalOr], tests: math}
+    logical_xor: {ffi: [M::logicalXor], ext: [XM::logicalXor], tests: math}
+    invert: {ffi: [M::invert], ext: [XM::invert], tests: math}
+    isnan: {ffi: [M::isnan], ext: [XM::isnan], tests: math}
+    isinf: {ffi: [M::isinf], ext: [XM::isinf], tests: math}
+    isfinite: {ffi: [M::isfinite], ext: [XM::isfinite], tests: math}
+    real: {ffi: [M::real], ext: [XM::real], tests: math}
+    imag: {ffi: [M::imag], ext: [XM::imag], tests: math}
+    conjugate: {ffi: [M::conj], ext: [XM::conj], tests: math}
+    angle: {ffi: [M::angle], ext: [XM::angle], tests: math}
+  numpy.ndarray:
+    T: {ffi: [N::t], ext: [XN::t], tests: core}
+    all: {ffi: [N::all], ext: [XN::all], tests: core}
+    any: {ffi: [N::any], ext: [XN::any], tests: core}
+    argmax: {ffi: [N::argmax], ext: [XN::argmax], tests: core}
+    argmin: {ffi: [N::argmin], ext: [XN::argmin], tests: core}
+    argsort: {ffi: [N::argsort], ext: [XN::argsort], tests: core}
+    astype: {ffi: [N::astype], ext: [XN::astype], tests: core}
+    clip: {ffi: [N::clip], ext: [XN::clip], tests: core}
+    conj: {ffi: [N::conj], ext: [XN::conj], tests: core}
+    conjugate: {ffi: [N::conj], ext: [XN::conj], tests: core}
+    copy: {ffi: [N::copy], ext: [XN::copy], tests: core}
+    cumprod: {ffi: [N::cumprod], ext: [XN::cumprod], tests: core}
+    cumsum: {ffi: [N::cumsum], ext: [XN::cumsum], tests: core}
+    dot: {ffi: [N::dot], ext: [XN::dot], tests: core}
+    dtype: {ffi: [N::dtype], ext: [XN::dtype], tests: core}
+    flatten: {ffi: [N::flatten], ext: [XN::flatten], tests: core}
+    imag: {ffi: [N::imag], ext: [XN::imag], tests: core}
+    real: {ffi: [N::real], ext: [XN::real], tests: core}
+    item: {ffi: [N::item], ext: [XN::item], tests: core}
+    max: {ffi: [N::max], ext: [XN::max], tests: core}
+    min: {ffi: [N::min], ext: [XN::min], tests: core}
+    mean: {ffi: [N::mean], ext: [XN::mean], tests: core}
+    nbytes: {ffi: [N::nbytes], ext: [XN::nbytes], tests: core}
+    ndim: {ffi: [N::ndim], ext: [XN::ndim], tests: core}
+    prod: {ffi: [N::prod], ext: [XN::prod], tests: core}
+    put: {ffi: [N::put], ext: [XN::put], tests: core}
+    ravel: {ffi: [N::ravel], ext: [XN::ravel], tests: core}
+    reshape: {ffi: [N::reshape], ext: [XN::reshape], tests: core}
+    round: {ffi: [N::round], ext: [XN::round], tests: core}
+    shape: {ffi: [N::shape], ext: [XN::shape], tests: core}
+    size: {ffi: [N::size], ext: [XN::size], tests: core}
+    sort: {ffi: [N::sort], ext: [XN::sort], tests: core}
+    squeeze: {ffi: [N::squeeze], ext: [XN::squeeze], tests: core}
+    std: {ffi: [N::std], ext: [XN::std], tests: core}
+    strides: {ffi: [N::strides], ext: [XN::strides], tests: core}
+    sum: {ffi: [N::sum], ext: [XN::sum], tests: core}
+    swapaxes: {ffi: [N::swapAxes], ext: [XN::swapAxes], tests: core}
+    take: {ffi: [N::take], ext: [XN::take], tests: core}
+    tobytes: {ffi: [N::toBytes], ext: [XN::toBytes], tests: core}
+    tolist: {ffi: [N::toList], ext: [XN::toList], tests: core}
+    transpose: {ffi: [N::transpose], ext: [XN::transpose], tests: core}
+    var: {ffi: [N::var], ext: [XN::var], tests: core}
+    view: {ffi: [N::view], ext: [XN::view], tests: core}
+  numpy.linalg:
+    # Every numpy.linalg function is a kernel registry routine (linalg.*), verified on both backends by
+    # tests/fixtures/parity/linalg.json and classified from the registry (scope.py PREFIX linalg -> numpy.linalg):
+    # solve, inv, det, slogdet, cholesky, svdvals, matrix_rank, cond, pinv, eigvalsh, lstsq, norm, eigh, svd, qr,
+    # eigvals, eig (factor signs canonicalised; eigenvalues sorted; complex128 results via interleaved data).
+    trace: {ffi: [L::trace], tests: linalg}
+    matmul: {ffi: [N::matmul], ext: [XN::matmul], tests: core}
+  numpy.fft:
+    # verified on both backends by fft.json (run-tests.php): FFI Tessero\Fft\Fft, ext Tessero\Ext\Fft\Fft
+    fft: {ffi: [F::fft], ext: [XF::fft], fixtures: [fft.fft]}
+    ifft: {ffi: [F::ifft], ext: [XF::ifft], fixtures: [fft.ifft]}
+    rfft: {ffi: [F::rfft], ext: [XF::rfft], fixtures: [fft.rfft]}
+    irfft: {ffi: [F::irfft], ext: [XF::irfft], fixtures: [fft.irfft]}
+    fft2: {ffi: [F::fft2], ext: [XF::fft2], fixtures: [fft.fft2]}
+    ifft2: {ffi: [F::ifft2], ext: [XF::ifft2], fixtures: [fft.ifft2]}
+    fftn: {ffi: [F::fftn], ext: [XF::fftn], fixtures: [fft.fftn]}
+    ifftn: {ffi: [F::ifftn], ext: [XF::ifftn], fixtures: [fft.ifftn]}
+    rfftn: {ffi: [F::rfftn], ext: [XF::rfftn], fixtures: [fft.rfftn]}
+    irfftn: {ffi: [F::irfftn], ext: [XF::irfftn], fixtures: [fft.irfftn]}
+    rfft2: {ffi: [F::rfft2], ext: [XF::rfft2], fixtures: [fft.rfft2]}
+    irfft2: {ffi: [F::irfft2], ext: [XF::irfft2], fixtures: [fft.irfft2]}
+    hfft: {ffi: [F::hfft], ext: [XF::hfft], fixtures: [fft.hfft]}
+    ihfft: {ffi: [F::ihfft], ext: [XF::ihfft], fixtures: [fft.ihfft]}
+    fftfreq: {ffi: [F::fftfreq], ext: [XF::fftfreq], fixtures: [fft.fftfreq]}
+    rfftfreq: {ffi: [F::rfftfreq], ext: [XF::rfftfreq], fixtures: [fft.rfftfreq]}
+    fftshift: {ffi: [F::fftshift], ext: [XF::fftshift], fixtures: [fft.fftshift]}
+    ifftshift: {ffi: [F::ifftshift], ext: [XF::ifftshift], fixtures: [fft.ifftshift]}
+  numpy.random:
+    Generator: {ffi: [R::defaultRng], ext: [XR::defaultRng], fixtures: [random.random, random.integers]}   # every seeded fixture
+    default_rng: {ffi: [R::defaultRng, T::rng], ext: [XR::defaultRng], fixtures: [random.random, random.integers]}
+    PCG64: {ffi: [R::defaultRng], ext: [XR::defaultRng], fixtures: [random.random, random.integers]}
+    SeedSequence: {ffi: [R::defaultRng], ext: [XR::defaultRng], fixtures: [random.random, random.integers]}
+  numpy.random.Generator:
+    random: {ffi: [R::random], tests: random}
+    uniform: {ffi: [R::uniform], tests: random}
+    normal: {ffi: [R::normal], tests: random}
+    standard_normal: {ffi: [R::standardNormal], tests: random}
+    integers: {ffi: [R::integers], ext: [XR::integers], fixtures: [random.integers]}
+    choice: {ffi: [R::choice], tests: random}
+    permutation: {ffi: [R::permutation], ext: [XR::permutation], fixtures: [random.permutation]}
+    shuffle: {ffi: [R::shuffle], tests: random}
+  scipy.special:
+    erf: {ffi: [M::erf], ext: [XM::erf], tests: math}
+    erfc: {ffi: [M::erfc], ext: [XM::erfc], tests: math}
+    gamma: {ffi: [M::gamma], ext: [XM::gamma], tests: math}
+    gammaln: {ffi: [M::lgamma], ext: [XM::lgamma], tests: math}
+  # scipy.linalg is fully on both backends via the kernel registry (slinalg.*), verified by
+  # tests/fixtures/parity/slinalg.json and classified from the registry (scope.py PREFIX slinalg -> scipy.linalg):
+  # solve, inv, det, svdvals, lstsq, pinv, norm, eigvalsh, svd, eigh, qr, cholesky, solve_triangular, lu, eigvals,
+  # eig. lu_factor, lu_solve and expm remain (piv-convention / matrix-exponential) as follow-ups.
+  scipy.linalg: {}
+  scipy.integrate:
+    # adaptive Gauss-Kronrod quadrature is pure PHP (calls the user's callable, no kernel) -> one class, both
+    # backends; verified against scipy's integral value by the integrate.json solver fixtures.
+    quad: {ffi: [Int::quad], ext: [Int::quad], fixtures: [integrate.quad]}
+    # scipy.integrate.trapezoid is numpy.trapezoid re-exported: credit the already-verified np.trapezoid routine
+    trapezoid: {ffi: [NpC::trapezoid], ext: [XNpC::trapezoid], fixtures: [np.trapezoid]}
+    # cumulative_trapezoid: the running trapezoid integral, implemented alongside trapezoid as an np.* routine
+    cumulative_trapezoid: {ffi: [NpC::cumulativeTrapezoid], ext: [XNpC::cumulativeTrapezoid], fixtures: [np.cumulative_trapezoid]}
+    # simpson: composite Simpson's rule (with Cartwright's even-interval correction), an np.* routine
+    simpson: {ffi: [NpC::simpson], ext: [XNpC::simpson], fixtures: [np.simpson]}
+  scipy.spatial:
+    # a pure-PHP k-d tree (exact nearest-neighbour query) -> one class, both backends; verified against scipy's
+    # distances and indices by the spatial.json fixtures.
+    cKDTree: {ffi: [KD::query], ext: [KD::query], fixtures: [spatial.cKDTree]}
+    KDTree: {ffi: [KD::query], ext: [KD::query], fixtures: [spatial.cKDTree]}
+  scipy.optimize:
+    # the scalar/BFGS/Nelder-Mead solvers are pure PHP (they call the user's callable, no kernel), so the one
+    # class serves both backends - unlike linprog/milp which are kernel-backed and need an Ext provider. They are
+    # verified against scipy on each backend by the optimize.json solver fixtures (run-tests.php solver_cases).
+    minimize: {ffi: [Min::minimize], ext: [Min::minimize], fixtures: [optimize.minimize]}
+    brentq: {ffi: [Root::brentq], ext: [Root::brentq], fixtures: [optimize.brentq]}
+    bisect: {ffi: [Root::bisect], ext: [Root::bisect], fixtures: [optimize.bisect]}
+    brenth: {ffi: [Root::brenth], ext: [Root::brenth], fixtures: [optimize.brenth]}
+    ridder: {ffi: [Root::ridder], ext: [Root::ridder], fixtures: [optimize.ridder]}
+    toms748: {ffi: [Root::toms748], ext: [Root::toms748], fixtures: [optimize.toms748]}
+    root_scalar: {ffi: [Root::rootScalar], ext: [Root::rootScalar], fixtures: [optimize.root_scalar]}
+    newton: {ffi: [Root::newton], ext: [Root::newton], fixtures: [optimize.newton]}
+    root: {ffi: [Root::root], ext: [Root::root], fixtures: [optimize.root]}
+    fsolve: {ffi: [Root::fsolve], ext: [Root::fsolve], fixtures: [optimize.fsolve]}
+    fixed_point: {ffi: [Root::fixedPoint], ext: [Root::fixedPoint], fixtures: [optimize.fixed_point]}
+    bracket: {ffi: [Min::bracket], ext: [Min::bracket], fixtures: [optimize.bracket]}
+    fmin: {ffi: [Min::fmin], ext: [Min::fmin], fixtures: [optimize.fmin]}
+    fminbound: {ffi: [Min::fminbound], ext: [Min::fminbound], fixtures: [optimize.fminbound]}
+    minimize_scalar: {ffi: [Min::minimizeScalar], ext: [Min::minimizeScalar], fixtures: [optimize.minimize_scalar]}
+    leastsq: {ffi: [LS::solve], ext: [LS::solve], fixtures: [optimize.leastsq]}
+    nnls: {ffi: [LS::nnls], ext: [LS::nnls], fixtures: [optimize.nnls]}
+    least_squares: {ffi: [LS::leastSquares], ext: [LS::leastSquares], fixtures: [optimize.least_squares]}
+    lsq_linear: {ffi: [LS::lsqLinear], ext: [LS::lsqLinear], fixtures: [optimize.lsq_linear]}
+    linear_sum_assignment: {ffi: [ASG::linearSumAssignment], ext: [ASG::linearSumAssignment], fixtures: [optimize.linear_sum_assignment]}
+    rosen: {ffi: [Min::rosen], ext: [Min::rosen], fixtures: [optimize.rosen]}
+    rosen_der: {ffi: [Min::rosenDer], ext: [Min::rosenDer], fixtures: [optimize.rosen_der]}
+    rosen_hess: {ffi: [Min::rosenHess], ext: [Min::rosenHess], fixtures: [optimize.rosen_hess]}
+    rosen_hess_prod: {ffi: [Min::rosenHessProd], ext: [Min::rosenHessProd], fixtures: [optimize.rosen_hess_prod]}
+    brent: {ffi: [Min::brent], ext: [Min::brent], fixtures: [optimize.brent]}
+    golden: {ffi: [Min::golden], ext: [Min::golden], fixtures: [optimize.golden]}
+    fmin_bfgs: {ffi: [Min::fminBfgs], ext: [Min::fminBfgs], fixtures: [optimize.fmin_bfgs]}
+    curve_fit: {ffi: [LS::curveFit], tests: solvers}
+    linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
+    milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
+    approx_fprime: {ffi: [Min::approxGrad], ext: [Min::approxGrad], tests: solvers}
+  scipy.constants:
+    convert_temperature: {ffi: [Const::convertTemperature], ext: [Const::convertTemperature], fixtures: [constants.convert_temperature]}
+    lambda2nu: {ffi: [Const::lambda2nu], ext: [Const::lambda2nu], fixtures: [constants.lambda2nu]}
+    nu2lambda: {ffi: [Const::nu2lambda], ext: [Const::nu2lambda], fixtures: [constants.nu2lambda]}
+  scipy.sparse:
+    csr_matrix: {ffi: [S::fromDense, S::fromTriplets], tests: sparse}
+    identity: {ffi: [S::identity], tests: sparse}
+  scipy.sparse.linalg:
+    cg: {ffi: [S::cg], tests: sparse}
+    bicgstab: {ffi: [S::bicgstab], tests: sparse}
+  scipy.fft:
+    fft: {ffi: [F::fft], ext: [XF::fft], fixtures: [fft.fft]}
+    ifft: {ffi: [F::ifft], ext: [XF::ifft], fixtures: [fft.ifft]}
+    rfft: {ffi: [F::rfft], ext: [XF::rfft], fixtures: [fft.rfft]}
+    irfft: {ffi: [F::irfft], ext: [XF::irfft], fixtures: [fft.irfft]}
+    fft2: {ffi: [F::fft2], ext: [XF::fft2], fixtures: [fft.fft2]}
+    ifft2: {ffi: [F::ifft2], ext: [XF::ifft2], fixtures: [fft.ifft2]}
+    fftn: {ffi: [F::fftn], ext: [XF::fftn], fixtures: [fft.fftn]}
+    ifftn: {ffi: [F::ifftn], ext: [XF::ifftn], fixtures: [fft.ifftn]}
+    rfftn: {ffi: [F::rfftn], ext: [XF::rfftn], fixtures: [fft.rfftn]}
+    irfftn: {ffi: [F::irfftn], ext: [XF::irfftn], fixtures: [fft.irfftn]}
+    rfft2: {ffi: [F::rfft2], ext: [XF::rfft2], fixtures: [fft.rfft2]}
+    irfft2: {ffi: [F::irfft2], ext: [XF::irfft2], fixtures: [fft.irfft2]}
+    hfft: {ffi: [F::hfft], ext: [XF::hfft], fixtures: [fft.hfft]}
+    ihfft: {ffi: [F::ihfft], ext: [XF::ihfft], fixtures: [fft.ihfft]}
+    hfftn: {ffi: [F::hfftn], ext: [XF::hfftn], fixtures: [fft.hfftn]}
+    hfft2: {ffi: [F::hfft2], ext: [XF::hfft2], fixtures: [fft.hfft2]}
+    ihfftn: {ffi: [F::ihfftn], ext: [XF::ihfftn], fixtures: [fft.ihfftn]}
+    ihfft2: {ffi: [F::ihfft2], ext: [XF::ihfft2], fixtures: [fft.ihfft2]}
+    next_fast_len: {ffi: [F::nextFastLen], ext: [XF::nextFastLen], fixtures: [fft.next_fast_len]}
+    prev_fast_len: {ffi: [F::prevFastLen], ext: [XF::prevFastLen], fixtures: [fft.prev_fast_len]}
+    fftfreq: {ffi: [F::fftfreq], ext: [XF::fftfreq], fixtures: [fft.fftfreq]}
+    rfftfreq: {ffi: [F::rfftfreq], ext: [XF::rfftfreq], fixtures: [fft.rfftfreq]}
+    fftshift: {ffi: [F::fftshift], ext: [XF::fftshift], fixtures: [fft.fftshift]}
+    ifftshift: {ffi: [F::ifftshift], ext: [XF::ifftshift], fixtures: [fft.ifftshift]}
