@@ -2236,6 +2236,47 @@ static int r_solve_continuous_lyapunov(const void *ctx, const tsr_arg *args, int
     return rc;
 }
 
+/* eigvalsh_tridiagonal(d, e): all eigenvalues (ascending) of the symmetric tridiagonal matrix with diagonal d
+   and off-diagonal e, via dsterf (scipy.linalg.eigvalsh_tridiagonal). */
+static int r_eigvalsh_tridiagonal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("eigvalsh_tridiagonal: d and e must be 1-D arrays"); return TSR_EARG; }
+    int64_t n, ne;
+    double *d = mat_f64(&args[0], "d", &n); if (!d) return TSR_ENOMEM;
+    double *e = mat_f64(&args[1], "e", &ne); if (!e) { fn_free_doubles(d, n); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (ne != n - 1) { fn_set_error("eigvalsh_tridiagonal: e must have length len(d)-1"); rc = TSR_EARG; }
+    else {
+        if (n > 0) { lapack_int info = LAPACKE_dsterf((lapack_int)n, d, e); if (info != 0) { fn_set_error("eigvalsh_tridiagonal: dsterf failed to converge"); rc = TSR_EARG; } }
+        if (rc == TSR_OK) {
+            int64_t sh[1] = {n};
+            double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+            if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n; i++) out[i] = d[i];
+        }
+    }
+    fn_free_doubles(d, n); fn_free_doubles(e, ne);
+    return rc;
+}
+
+static void la_set_bool(tsr_result *res, int ok) { memset(res, 0, sizeof *res); res->kind = 4; res->num = ok ? 1.0 : 0.0; }
+
+/* issymmetric(a) / ishermitian(a) for a real square matrix: exact equality a[i][j] == a[j][i], which is the
+   scipy default when atol and rtol are None (scipy.linalg.issymmetric / ishermitian). */
+static int r_issymmetric(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("issymmetric: a must be a square 2-D array"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    int64_t na; double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    int ok = 1;
+    for (int64_t i = 0; i < n && ok; i++)
+        for (int64_t j = i + 1; j < n; j++) if (a[i * n + j] != a[j * n + i]) { ok = 0; break; }
+    fn_free_doubles(a, na);
+    la_set_bool(res, ok);
+    return TSR_OK;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2780,6 +2821,9 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.schur", 2, "a, output='real'", "T, Z", r_schur, NULL, "Real Schur decomposition A = Z T Z^T via dgees (scipy.linalg.schur)."),
     ROUTINE("slinalg.solve_sylvester", 1, "a, b, q", "out", r_solve_sylvester, NULL, "Solve the Sylvester equation a x + x b = q (scipy.linalg.solve_sylvester)."),
     ROUTINE("slinalg.solve_continuous_lyapunov", 1, "a, q", "out", r_solve_continuous_lyapunov, NULL, "Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov)."),
+    ROUTINE("slinalg.eigvalsh_tridiagonal", 1, "d, e", "out", r_eigvalsh_tridiagonal, NULL, "Eigenvalues of a symmetric tridiagonal matrix via dsterf (scipy.linalg.eigvalsh_tridiagonal)."),
+    ROUTINE("slinalg.issymmetric", 1, "a, atol=None, rtol=None", "out", r_issymmetric, NULL, "Whether a square matrix is symmetric (scipy.linalg.issymmetric)."),
+    ROUTINE("slinalg.ishermitian", 1, "a, atol=None, rtol=None", "out", r_issymmetric, NULL, "Whether a square matrix is Hermitian; for real input, symmetric (scipy.linalg.ishermitian)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

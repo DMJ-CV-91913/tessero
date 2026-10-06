@@ -247,6 +247,10 @@ def main():
     _Aly = np.array([[-3.0, 1.0, 0.5], [0.0, -2.0, 0.3], [0.2, 0.0, -4.0]])
     _Qly = np.array([[2.0, 0.3, 0.1], [0.3, 3.0, 0.2], [0.1, 0.2, 1.5]])
     blocks['solve_continuous_lyapunov'] = [call('solve_continuous_lyapunov', [_Aly, _Qly])]
+    blocks['eigvalsh_tridiagonal'] = [call('eigvalsh_tridiagonal', [rng.uniform(-2, 2, size=n), rng.uniform(-2, 2, size=n - 1)]) for n in (3, 5, 6)]
+    _Ssym = rng.uniform(-2, 2, size=(4, 4)); _Ssym = _Ssym + _Ssym.T
+    blocks['issymmetric'] = [call('issymmetric', [_Ssym]), call('issymmetric', [rng.uniform(-2, 2, size=(4, 4))]), call('issymmetric', [np.array([[1.0, 2.0], [2.0, 1.0]])])]
+    blocks['ishermitian'] = [call('ishermitian', [_Ssym]), call('ishermitian', [rng.uniform(-2, 2, size=(3, 3))]), call('ishermitian', [np.eye(3)])]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]

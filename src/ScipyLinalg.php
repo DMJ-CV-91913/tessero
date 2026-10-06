@@ -35,6 +35,7 @@ final class ScipyLinalg
     'eigh' => 'eigh',
     'eigvals' => 'eigvals',
     'eigvalsh' => 'eigvalsh',
+    'eigvalsh_tridiagonal' => 'eigvalshTridiagonal',
     'expm' => 'expm',
     'fiedler' => 'fiedler',
     'fractional_matrix_power' => 'fractionalMatrixPower',
@@ -44,6 +45,8 @@ final class ScipyLinalg
     'hilbert' => 'hilbert',
     'inv' => 'inv',
     'invpascal' => 'invpascal',
+    'ishermitian' => 'ishermitian',
+    'issymmetric' => 'issymmetric',
     'khatri_rao' => 'khatriRao',
     'ldl' => 'ldl',
     'leslie' => 'leslie',
@@ -273,6 +276,16 @@ final class ScipyLinalg
     }
 
     /**
+     * Eigenvalues of a symmetric tridiagonal matrix via dsterf (scipy.linalg.eigvalsh_tridiagonal).
+     *
+     * scipy.linalg.eigvalsh_tridiagonal
+     */
+    public static function eigvalshTridiagonal(mixed $d, mixed $e): mixed
+    {
+        return Registry::routine('slinalg.eigvalsh_tridiagonal', [$d, $e]);
+    }
+
+    /**
      * Matrix exponential via the Schur-Parlett method (scipy.linalg.expm; real spectrum).
      *
      * scipy.linalg.expm
@@ -360,6 +373,26 @@ final class ScipyLinalg
     public static function invpascal(mixed $n, mixed $kind = 'symmetric'): mixed
     {
         return Registry::routine('slinalg.invpascal', [$n, $kind]);
+    }
+
+    /**
+     * Whether a square matrix is Hermitian; for real input, symmetric (scipy.linalg.ishermitian).
+     *
+     * scipy.linalg.ishermitian
+     */
+    public static function ishermitian(mixed $a, mixed $atol = null, mixed $rtol = null): mixed
+    {
+        return Registry::routine('slinalg.ishermitian', [$a, $atol, $rtol]);
+    }
+
+    /**
+     * Whether a square matrix is symmetric (scipy.linalg.issymmetric).
+     *
+     * scipy.linalg.issymmetric
+     */
+    public static function issymmetric(mixed $a, mixed $atol = null, mixed $rtol = null): mixed
+    {
+        return Registry::routine('slinalg.issymmetric', [$a, $atol, $rtol]);
     }
 
     /**
