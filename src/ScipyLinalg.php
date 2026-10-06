@@ -62,6 +62,7 @@ final class ScipyLinalg
     'lu_factor' => 'luFactor',
     'lu_solve' => 'luSolve',
     'matmul_toeplitz' => 'matmulToeplitz',
+    'matrix_balance' => 'matrixBalance',
     'norm' => 'norm',
     'null_space' => 'nullSpace',
     'orth' => 'orth',
@@ -565,6 +566,18 @@ final class ScipyLinalg
     public static function matmulToeplitz(mixed $cOrCr, mixed $x): mixed
     {
         return Registry::routine('slinalg.matmul_toeplitz', [$cOrCr, $x]);
+    }
+
+    /**
+     * Balance a matrix via dgebal; returns the balanced matrix and the scaling transform (scipy.linalg.matrix_balance).
+     *
+     * scipy.linalg.matrix_balance
+     *
+     * @return mixed one array, or an array keyed by B, T when several results are requested
+     */
+    public static function matrixBalance(mixed $A, mixed $permute = true, mixed $scale = true, mixed $separate = false): mixed
+    {
+        return Registry::routine('slinalg.matrix_balance', [$A, $permute, $scale, $separate]);
     }
 
     /**
