@@ -122,6 +122,8 @@
 | `signal.hilbert2` | call | rtol 0 |
 | `signal.periodogram` | every call | rtol 0 |
 | `signal.periodogram` | call | rtol 0 |
+| `signal.welch` | every call | rtol 0 |
+| `signal.welch` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

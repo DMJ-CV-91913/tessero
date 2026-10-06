@@ -463,6 +463,7 @@
         "signal.square": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
+        "signal.welch": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
         "slinalg.block_diag": "pass",
@@ -2136,7 +2137,8 @@
             "signal.group_delay": 2.1664513650495942e-11,
             "signal.hilbert": 2,
             "signal.hilbert2": 3.3391152022171014e-12,
-            "signal.periodogram": 0.9897959183673469
+            "signal.periodogram": 0.9897959183673469,
+            "signal.welch": 2.6034782608695655
         },
         "ext": {
             "np.median": 0,
@@ -3205,7 +3207,8 @@
             "signal.group_delay": 2.1664513650495942e-11,
             "signal.hilbert": 2,
             "signal.hilbert2": 3.3391152022171014e-12,
-            "signal.periodogram": 0.9897959183673469
+            "signal.periodogram": 0.9897959183673469,
+            "signal.welch": 2.6034782608695655
         }
     },
     "ext": {
@@ -3672,6 +3675,7 @@
         "signal.square": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
+        "signal.welch": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
         "slinalg.block_diag": "pass",

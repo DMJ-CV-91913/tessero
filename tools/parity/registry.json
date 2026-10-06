@@ -1985,6 +1985,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.welch": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.zpk2tf": {
             "kind": "routine",
             "nin": 0,
