@@ -69,6 +69,7 @@ final class ScipyLinalg
     'matrix_balance' => 'matrixBalance',
     'norm' => 'norm',
     'null_space' => 'nullSpace',
+    'ordqz' => 'ordqz',
     'orth' => 'orth',
     'orthogonal_procrustes' => 'orthogonalProcrustes',
     'pascal' => 'pascal',
@@ -657,6 +658,18 @@ final class ScipyLinalg
     public static function nullSpace(mixed $A, mixed $rcond = null): mixed
     {
         return Registry::routine('slinalg.null_space', [$A, $rcond]);
+    }
+
+    /**
+     * Reordered generalised Schur (QZ) decomposition via dgges and dtgsen (scipy.linalg.ordqz).
+     *
+     * scipy.linalg.ordqz
+     *
+     * @return mixed one array, or an array keyed by AA, BB, alpha, beta, Q, Z when several results are requested
+     */
+    public static function ordqz(mixed $A, mixed $B, mixed $sort = 'lhp', mixed $output = 'real'): mixed
+    {
+        return Registry::routine('slinalg.ordqz', [$A, $B, $sort, $output]);
     }
 
     /**

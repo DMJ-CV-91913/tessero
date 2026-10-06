@@ -494,6 +494,7 @@
         "slinalg.matrix_balance": "pass",
         "slinalg.norm": "pass",
         "slinalg.null_space": "pass",
+        "slinalg.ordqz": "pass",
         "slinalg.orth": "pass",
         "slinalg.orthogonal_procrustes": "pass",
         "slinalg.pascal": "pass",
@@ -2086,7 +2087,8 @@
             "slinalg.qr_update": 1.4753897781692936e-14,
             "slinalg.qr_insert": 8.323960068935482e-15,
             "slinalg.qr_delete": 9.556392921918726e-15,
-            "slinalg.cossin": 7.230087060678199e-14
+            "slinalg.cossin": 7.230087060678199e-14,
+            "slinalg.ordqz": 0
         },
         "ext": {
             "np.median": 0,
@@ -3130,7 +3132,8 @@
             "slinalg.qr_update": 1.4753897781692936e-14,
             "slinalg.qr_insert": 8.323960068935482e-15,
             "slinalg.qr_delete": 9.556392921918726e-15,
-            "slinalg.cossin": 7.230087060678199e-14
+            "slinalg.cossin": 7.230087060678199e-14,
+            "slinalg.ordqz": 0
         }
     },
     "ext": {
@@ -3628,6 +3631,7 @@
         "slinalg.matrix_balance": "pass",
         "slinalg.norm": "pass",
         "slinalg.null_space": "pass",
+        "slinalg.ordqz": "pass",
         "slinalg.orth": "pass",
         "slinalg.orthogonal_procrustes": "pass",
         "slinalg.pascal": "pass",

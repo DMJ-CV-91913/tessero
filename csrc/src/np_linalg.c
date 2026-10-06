@@ -4014,6 +4014,75 @@ static int r_cossin(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* ordqz(A, B, sort='lhp', output='real'): the generalised real Schur decomposition reordered so the eigenvalues
+   selected by `sort` (lhp/rhp/iuc/ouc) appear first, via dgges then dtgsen (scipy.linalg.ordqz). Returns
+   (AA, BB, alpha, beta, Q, Z); alpha is complex128, beta real. */
+static int r_ordqz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("ordqz: A and B must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[1].arr.shape[1] != n) { fn_set_error("ordqz: A and B must be square and the same size"); return TSR_EARG; }
+    int sort = 0;                                            /* 0 lhp, 1 rhp, 2 iuc, 3 ouc */
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) {
+        const char *s = args[2].str;
+        if (!strcmp(s, "lhp")) sort = 0; else if (!strcmp(s, "rhp")) sort = 1;
+        else if (!strcmp(s, "iuc")) sort = 2; else if (!strcmp(s, "ouc")) sort = 3;
+        else { fn_set_error("ordqz: sort must be 'lhp', 'rhp', 'iuc' or 'ouc'"); return TSR_EARG; }
+    }
+    if (nargs > 3 && args[3].kind == 2 && args[3].str && strcmp(args[3].str, "real") != 0) { fn_set_error("ordqz: only output='real' is supported"); return TSR_EARG; }
+    int64_t na, nb;
+    double *a = mat_f64(&args[0], "A", &na); if (!a) return TSR_ENOMEM;
+    double *b = mat_f64(&args[1], "B", &nb); if (!b) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    const size_t nz = (size_t)(n * n > 0 ? n * n : 1), nv = (size_t)(n > 0 ? n : 1);
+    double *alphar = (double *)malloc(sizeof(double) * nv);
+    double *alphai = (double *)malloc(sizeof(double) * nv);
+    double *beta = (double *)malloc(sizeof(double) * nv);
+    double *Q = (double *)malloc(sizeof(double) * nz);
+    double *Z = (double *)malloc(sizeof(double) * nz);
+    lapack_logical *sel = (lapack_logical *)malloc(sizeof(lapack_logical) * nv);
+    int rc = TSR_OK;
+    if (!alphar || !alphai || !beta || !Q || !Z || !sel) rc = TSR_ENOMEM;
+    else if (n > 0) {
+        lapack_int sdim = 0;
+        lapack_int info = LAPACKE_dgges(LAPACK_ROW_MAJOR, 'V', 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n, &sdim, alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n);
+        if (info != 0) { rc = TSR_EARG; fn_set_error("ordqz: dgges failed"); }
+        else {
+            for (int64_t i = 0; i < n; i++) {
+                const double ar = alphar[i], ai = alphai[i], be = beta[i];
+                int s;
+                if (sort == 0) s = (be != 0.0) && (ar / be < 0.0);
+                else if (sort == 1) s = (be != 0.0) && (ar / be > 0.0);
+                else if (sort == 2) s = (be != 0.0) && (ar * ar + ai * ai < be * be);
+                else { if (ar == 0.0 && ai == 0.0 && be == 0.0) s = 0; else if (be == 0.0) s = 1; else s = (ar * ar + ai * ai > be * be); }
+                sel[i] = s ? 1 : 0;
+            }
+            lapack_int mout = 0; double pl = 0.0, pr = 0.0, dif[2] = {0.0, 0.0};
+            lapack_int info2 = LAPACKE_dtgsen(LAPACK_ROW_MAJOR, 0, 1, 1, sel, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n,
+                                              alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n, &mout, &pl, &pr, dif);
+            if (info2 == 1) { rc = TSR_EARG; fn_set_error("ordqz: reordering failed (ill-conditioned pencil)"); }
+            else if (info2 != 0) { rc = TSR_EARG; fn_set_error("ordqz: dtgsen failed"); }
+        }
+    }
+    if (rc == TSR_OK) {
+        int64_t sh2[2] = {n, n}, sh1[1] = {n};
+        double *AA = (double *)fn_result_array(&res[0], TSR_F64, 2, sh2);
+        double *BB = (double *)fn_result_array(&res[1], TSR_F64, 2, sh2);
+        double *alpha = (double *)fn_result_array(&res[2], TSR_C128, 1, sh1);
+        double *bet = (double *)fn_result_array(&res[3], TSR_F64, 1, sh1);
+        double *Qo = (double *)fn_result_array(&res[4], TSR_F64, 2, sh2);
+        double *Zo = (double *)fn_result_array(&res[5], TSR_F64, 2, sh2);
+        if (!AA || !BB || !alpha || !bet || !Qo || !Zo) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < n * n; i++) { AA[i] = a[i]; BB[i] = b[i]; Qo[i] = Q[i]; Zo[i] = Z[i]; }
+            for (int64_t i = 0; i < n; i++) { alpha[2 * i] = alphar[i]; alpha[2 * i + 1] = alphai[i]; bet[i] = beta[i]; }
+        }
+    }
+    free(alphar); free(alphai); free(beta); free(Q); free(Z); free(sel);
+    fn_free_doubles(a, na); fn_free_doubles(b, nb);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -4092,6 +4161,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.qr_insert", 5, "Q, R, u, k, which='row'", "Q, R", r_qr_insert, NULL, "Economic QR after inserting a row/column, canonicalised (scipy.linalg.qr_insert)."),
     ROUTINE("slinalg.qr_delete", 5, "Q, R, k, p=1, which='row'", "Q, R", r_qr_delete, NULL, "Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete)."),
     ROUTINE("slinalg.cossin", 3, "X, p, q", "u, cs, vh", r_cossin, NULL, "Cosine-sine decomposition of a partitioned orthogonal matrix via dorcsd (scipy.linalg.cossin)."),
+    ROUTINE("slinalg.ordqz", 6, "A, B, sort='lhp', output='real'", "AA, BB, alpha, beta, Q, Z", r_ordqz, NULL, "Reordered generalised Schur (QZ) decomposition via dgges and dtgsen (scipy.linalg.ordqz)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),
