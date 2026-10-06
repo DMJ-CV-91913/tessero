@@ -1963,6 +1963,12 @@
                 "doc": "Solve a x = b from an lu_factor result; takes lu, piv, b unpacked (scipy.linalg.lu_solve)."
             },
             {
+                "name": "matmulToeplitz",
+                "static": true,
+                "sig": "matmulToeplitz(mixed $cOrCr, mixed $x): mixed",
+                "doc": "The product of a Toeplitz matrix with x (scipy.linalg.matmul_toeplitz)."
+            },
+            {
                 "name": "norm",
                 "static": true,
                 "sig": "norm(mixed $a, mixed $ord = null, mixed $axis = null, mixed $keepdims = false): mixed",
@@ -14692,6 +14698,12 @@
                 "name": "solveCirculant",
                 "static": true,
                 "sig": "solveCirculant($c, $b)",
+                "doc": ""
+            },
+            {
+                "name": "matmulToeplitz",
+                "static": true,
+                "sig": "matmulToeplitz($cOrCr, $x)",
                 "doc": ""
             },
             {
