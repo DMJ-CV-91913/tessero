@@ -2873,6 +2873,12 @@
                 "doc": "Frequency response of a second-order-sections cascade (scipy.signal.sosfreqz)."
             },
             {
+                "name": "spectrogram",
+                "static": true,
+                "sig": "spectrogram(mixed $x, mixed $fs = 1.0, mixed $window = 'tukey', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $mode = 'psd'): mixed",
+                "doc": "Spectrogram (per-segment PSD over time) by Welch's segmenting; default window periodic Tukey(0.25) (scipy.signal.spectrogram, mode='psd')."
+            },
+            {
                 "name": "square",
                 "static": true,
                 "sig": "square(mixed $t, mixed $duty = 0.5): mixed",
@@ -15555,6 +15561,12 @@
                 "name": "coherence",
                 "static": true,
                 "sig": "coherence($x, $y, $fs = 1.0, $window = 'hann', $nperseg = null, $noverlap = null, $nfft = null, $detrend = 'constant', $axis = -1)",
+                "doc": ""
+            },
+            {
+                "name": "spectrogram",
+                "static": true,
+                "sig": "spectrogram($x, $fs = 1.0, $window = 'tukey', $nperseg = null, $noverlap = null, $nfft = null, $detrend = 'constant', $returnOnesided = true, $scaling = 'density', $axis = -1, $mode = 'psd')",
                 "doc": ""
             }
         ]
