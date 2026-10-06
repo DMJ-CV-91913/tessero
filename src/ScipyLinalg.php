@@ -84,7 +84,9 @@ final class ScipyLinalg
     'solve' => 'solve',
     'solve_banded' => 'solveBanded',
     'solve_circulant' => 'solveCirculant',
+    'solve_continuous_are' => 'solveContinuousAre',
     'solve_continuous_lyapunov' => 'solveContinuousLyapunov',
+    'solve_discrete_are' => 'solveDiscreteAre',
     'solve_discrete_lyapunov' => 'solveDiscreteLyapunov',
     'solve_sylvester' => 'solveSylvester',
     'solve_toeplitz' => 'solveToeplitz',
@@ -814,6 +816,16 @@ final class ScipyLinalg
     }
 
     /**
+     * Stabilising solution of the continuous-time algebraic Riccati equation (scipy.linalg.solve_continuous_are).
+     *
+     * scipy.linalg.solve_continuous_are
+     */
+    public static function solveContinuousAre(mixed $a, mixed $b, mixed $q, mixed $r): mixed
+    {
+        return Registry::routine('slinalg.solve_continuous_are', [$a, $b, $q, $r]);
+    }
+
+    /**
      * Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov).
      *
      * scipy.linalg.solve_continuous_lyapunov
@@ -821,6 +833,16 @@ final class ScipyLinalg
     public static function solveContinuousLyapunov(mixed $a, mixed $q): mixed
     {
         return Registry::routine('slinalg.solve_continuous_lyapunov', [$a, $q]);
+    }
+
+    /**
+     * Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are).
+     *
+     * scipy.linalg.solve_discrete_are
+     */
+    public static function solveDiscreteAre(mixed $a, mixed $b, mixed $q, mixed $r): mixed
+    {
+        return Registry::routine('slinalg.solve_discrete_are', [$a, $b, $q, $r]);
     }
 
     /**

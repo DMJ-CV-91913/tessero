@@ -2215,10 +2215,20 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.solve_continuous_are": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "slinalg.solve_continuous_lyapunov": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "slinalg.solve_discrete_are": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
         },
         "slinalg.solve_discrete_lyapunov": {
             "kind": "routine",
