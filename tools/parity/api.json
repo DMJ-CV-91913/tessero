@@ -6390,6 +6390,12 @@
                 "doc": "Write successive values where the mask holds, in place (numpy.place)."
             },
             {
+                "name": "poly",
+                "static": true,
+                "sig": "poly(mixed $seq): mixed",
+                "doc": "Coefficients of the polynomial with the given roots (numpy.poly)."
+            },
+            {
                 "name": "polyadd",
                 "static": true,
                 "sig": "polyadd(mixed $a1, mixed $a2): mixed",
@@ -6586,6 +6592,12 @@
                 "static": true,
                 "sig": "size(mixed $a, mixed $axis = null): mixed",
                 "doc": "Number of elements, in total or along axes (numpy.size)."
+            },
+            {
+                "name": "sortComplex",
+                "static": true,
+                "sig": "sortComplex(mixed $a): mixed",
+                "doc": "A complex copy of a sorted by real then imaginary part (numpy.sort_complex)."
             },
             {
                 "name": "spacing",
@@ -11008,6 +11020,18 @@
                 "name": "canCast",
                 "static": true,
                 "sig": "canCast($from_, $to, $casting = 'safe')",
+                "doc": ""
+            },
+            {
+                "name": "poly",
+                "static": true,
+                "sig": "poly($seq)",
+                "doc": ""
+            },
+            {
+                "name": "sortComplex",
+                "static": true,
+                "sig": "sortComplex($a)",
                 "doc": ""
             },
             {

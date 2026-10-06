@@ -136,6 +136,8 @@ def main():
     for a, b in ((F(4), F(4, 3)), (F(5), F(5, 5)), (F(2, 3), F(2, 3, 4))):   # vecmat: (...,N) x (...,N,M)
         cs.append(call('vecmat', [a, b], tol=contract_tol(np.vecmat(a, b), np.vecmat(np.abs(a), np.abs(b)), a.shape[-1])))
     blocks['vecmat'] = cs
+    blocks['poly'] = [call('poly', [np.array([1.0, 2.0, 3.0])]), call('poly', [np.array([-1.0, 0.5, 2.0, -3.0])]), call('poly', [rng.uniform(-2, 2, size=5)])]
+    blocks['sort_complex'] = [call('sort_complex', [np.array([3.0, 1.0, 2.0, -1.0, 0.5])]), call('sort_complex', [rng.uniform(-3, 3, size=6)])]
 
     # ---- differences and integrals
     cs = []
