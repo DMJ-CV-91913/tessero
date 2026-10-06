@@ -31,14 +31,17 @@ final class Signal
     'gausspulse' => 'gausspulse',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
+    'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
     'savgol_coeffs' => 'savgolCoeffs',
     'savgol_filter' => 'savgolFilter',
     'sawtooth' => 'sawtooth',
+    'sos2tf' => 'sos2tf',
     'sosfilt' => 'sosfilt',
     'sosfilt_zi' => 'sosfiltZi',
     'sosfiltfilt' => 'sosfiltfilt',
     'square' => 'square',
+    'tf2zpk' => 'tf2zpk',
     'unit_impulse' => 'unitImpulse',
     'zpk2tf' => 'zpk2tf',
     ];
@@ -198,6 +201,18 @@ final class Signal
     }
 
     /**
+     * Normalize a transfer-function representation (scipy.signal.normalize).
+     *
+     * scipy.signal.normalize
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function normalize(mixed $b, mixed $a): mixed
+    {
+        return Registry::routine('signal.normalize', [$b, $a]);
+    }
+
+    /**
      * N-D convolution by the overlap-add method, modes full/same/valid (scipy.signal.oaconvolve; real).
      *
      * scipy.signal.oaconvolve
@@ -238,6 +253,18 @@ final class Signal
     }
 
     /**
+     * Transfer function (b, a) from a second-order-sections cascade (scipy.signal.sos2tf).
+     *
+     * scipy.signal.sos2tf
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function sos2tf(mixed $sos): mixed
+    {
+        return Registry::routine('signal.sos2tf', [$sos]);
+    }
+
+    /**
      * Filter a 1-D signal through a cascade of second-order sections (scipy.signal.sosfilt; zero initial state).
      *
      * scipy.signal.sosfilt
@@ -275,6 +302,18 @@ final class Signal
     public static function square(mixed $t, mixed $duty = 0.5): mixed
     {
         return Registry::routine('signal.square', [$t, $duty]);
+    }
+
+    /**
+     * Zeros, poles and gain from transfer-function coefficients (scipy.signal.tf2zpk).
+     *
+     * scipy.signal.tf2zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function tf2zpk(mixed $b, mixed $a): mixed
+    {
+        return Registry::routine('signal.tf2zpk', [$b, $a]);
     }
 
     /**

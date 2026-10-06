@@ -1412,6 +1412,149 @@ static int r_unit_impulse(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return TSR_OK;
 }
 
+/* ---- transfer-function / zpk / sos conversions (scipy.signal) ---- */
+
+static int sig_cplx_cmp(const void *a, const void *b)
+{
+    const double *x = (const double *)a, *y = (const double *)b;
+    if (x[0] < y[0]) return -1; if (x[0] > y[0]) return 1;
+    if (x[1] < y[1]) return -1; if (x[1] > y[1]) return 1;
+    return 0;
+}
+
+/* Roots of a real polynomial p (highest-degree first, length m) as a malloc'd interleaved-complex buffer sorted
+   by (re, im); *nz gets the count (0 for a constant, -1 on failure). Companion-matrix eigenvalues, as numpy.roots. */
+static double *sig_polyroots(const double *p, int64_t m, int64_t *nz)
+{
+    int64_t s = 0; while (s < m && p[s] == 0.0) s++;         /* strip leading zeros */
+    const int64_t n = (m - s) - 1;
+    if (n <= 0) { *nz = 0; return NULL; }
+    double *comp = (double *)calloc((size_t)(n * n), sizeof(double));
+    double *wr = (double *)malloc(sizeof(double) * (size_t)n), *wi = (double *)malloc(sizeof(double) * (size_t)n);
+    double *pairs = (double *)malloc(sizeof(double) * (size_t)(2 * n));
+    if (!comp || !wr || !wi || !pairs) { free(comp); free(wr); free(wi); free(pairs); *nz = -1; return NULL; }
+    const double p0 = p[s];
+    for (int64_t j = 0; j < n; j++) comp[j] = -p[s + 1 + j] / p0;
+    for (int64_t i = 1; i < n; i++) comp[i * n + (i - 1)] = 1.0;
+    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, comp, (lapack_int)n, wr, wi, NULL, 1, NULL, 1);
+    free(comp);
+    if (info != 0) { free(wr); free(wi); free(pairs); *nz = -1; return NULL; }
+    for (int64_t i = 0; i < n; i++) { pairs[2 * i] = wr[i]; pairs[2 * i + 1] = wi[i]; }
+    free(wr); free(wi);
+    qsort(pairs, (size_t)n, 2 * sizeof(double), sig_cplx_cmp);
+    *nz = n;
+    return pairs;
+}
+
+/* normalize(b, a) for 1-D b, a: trim a's leading exact zeros (keep >=1), scale both by a[0], then trim b's
+   leading entries with |.| <= 1e-14 (keep >=1). Writes b2/a2 into freshly malloc'd buffers; returns 0/-1. */
+static int sig_normalize(const double *b, int64_t nb, const double *a, int64_t na,
+                         double **b2, int64_t *nb2, double **a2, int64_t *na2)
+{
+    int64_t as = 0; while (as < na - 1 && a[as] == 0.0) as++;
+    const double a0 = a[as];
+    if (a0 == 0.0) return -1;
+    const int64_t alen = na - as;
+    double *bn = (double *)malloc(sizeof(double) * (size_t)(nb > 0 ? nb : 1));
+    double *an = (double *)malloc(sizeof(double) * (size_t)alen);
+    if (!bn || !an) { free(bn); free(an); return -1; }
+    for (int64_t i = 0; i < nb; i++) bn[i] = b[i] / a0;
+    for (int64_t i = 0; i < alen; i++) an[i] = a[as + i] / a0;
+    int64_t bs = 0; while (bs < nb - 1 && fabs(bn[bs]) <= 1e-14) bs++;
+    const int64_t blen = nb - bs;
+    double *bt = (double *)malloc(sizeof(double) * (size_t)(blen > 0 ? blen : 1));
+    if (!bt) { free(bn); free(an); return -1; }
+    for (int64_t i = 0; i < blen; i++) bt[i] = bn[bs + i];
+    free(bn);
+    *b2 = bt; *nb2 = blen; *a2 = an; *na2 = alen;
+    return 0;
+}
+
+/* normalize(b, a): return the normalized (b, a) of a transfer function (scipy.signal.normalize; 1-D). */
+static int r_signal_normalize(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("normalize: b and a must be arrays (a 1-D)"); return TSR_EARG; }
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
+    int rc = TSR_OK;
+    if (sig_normalize(b, nb, a, na, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("normalize: denominator has no nonzero element"); rc = TSR_EARG; }
+    else {
+        double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nb2});
+        double *oa = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){na2});
+        if (!ob || !oa) rc = TSR_ENOMEM; else { memcpy(ob, b2, sizeof(double) * (size_t)nb2); memcpy(oa, a2, sizeof(double) * (size_t)na2); }
+    }
+    free(b2); free(a2);
+    fn_free_doubles(b, nb); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* tf2zpk(b, a): zeros, poles and gain of a transfer function (scipy.signal.tf2zpk). Roots sorted by (re, im). */
+static int r_tf2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("tf2zpk: b and a must be arrays (a 1-D)"); return TSR_EARG; }
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
+    int rc = TSR_OK;
+    if (sig_normalize(b, nb, a, na, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("tf2zpk: normalize failed"); rc = TSR_EARG; }
+    else {
+        const double k = b2[0];
+        for (int64_t i = 0; i < nb2; i++) b2[i] /= k;        /* monic numerator for roots */
+        int64_t nz = 0, npz = 0;
+        double *z = sig_polyroots(b2, nb2, &nz);
+        double *p = sig_polyroots(a2, na2, &npz);
+        if (nz < 0 || npz < 0) { fn_set_error("tf2zpk: root solve failed"); rc = TSR_EARG; }
+        else {
+            double *oz = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){nz});
+            double *op = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){npz});
+            if (!oz || !op) rc = TSR_ENOMEM;
+            else { if (nz) memcpy(oz, z, sizeof(double) * (size_t)(2 * nz)); if (npz) memcpy(op, p, sizeof(double) * (size_t)(2 * npz)); fn_result_num(&res[2], k); }
+        }
+        free(z); free(p);
+    }
+    free(b2); free(a2);
+    fn_free_doubles(b, nb); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* sos2tf(sos): transfer function (b, a) of a second-order-sections cascade (scipy.signal.sos2tf). */
+static int r_sos2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[1] != 6) { fn_set_error("sos2tf: sos must be an (n, 6) array"); return TSR_EARG; }
+    const int64_t nsec = args[0].arr.shape[0];
+    int64_t ns; double *sos = fn_arg_doubles(&args[0], &ns); if (!sos) return TSR_ENOMEM;
+    const int64_t len = 2 * nsec + 1;
+    double *b = (double *)calloc((size_t)len, sizeof(double));
+    double *a = (double *)calloc((size_t)len, sizeof(double));
+    double *tb = (double *)calloc((size_t)len, sizeof(double));
+    double *ta = (double *)calloc((size_t)len, sizeof(double));
+    int rc = TSR_OK;
+    if (!b || !a || !tb || !ta) rc = TSR_ENOMEM;
+    else {
+        b[0] = 1.0; a[0] = 1.0; int64_t blen = 1, alen = 1;  /* current polynomial lengths */
+        for (int64_t sct = 0; sct < nsec; sct++) {
+            const double *sb = sos + sct * 6, *sa = sos + sct * 6 + 3;
+            for (int64_t i = 0; i < blen + 2; i++) tb[i] = 0.0;
+            for (int64_t i = 0; i < alen + 2; i++) ta[i] = 0.0;
+            for (int64_t i = 0; i < blen; i++) for (int64_t j = 0; j < 3; j++) tb[i + j] += b[i] * sb[j];
+            for (int64_t i = 0; i < alen; i++) for (int64_t j = 0; j < 3; j++) ta[i + j] += a[i] * sa[j];
+            blen += 2; alen += 2;
+            memcpy(b, tb, sizeof(double) * (size_t)blen);
+            memcpy(a, ta, sizeof(double) * (size_t)alen);
+        }
+        double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){len});
+        double *oa = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){len});
+        if (!ob || !oa) rc = TSR_ENOMEM; else { memcpy(ob, b, sizeof(double) * (size_t)len); memcpy(oa, a, sizeof(double) * (size_t)len); }
+    }
+    free(b); free(a); free(tb); free(ta);
+    fn_free_doubles(sos, ns);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -1436,6 +1579,9 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.chirp", 4, "t, f0, t1, f1, method='linear', phi=0, vertex_zero=True", "out", r_chirp, NULL, "Frequency-swept cosine (linear/quadratic/logarithmic/hyperbolic) (scipy.signal.chirp)."),
     ROUTINE("signal.gausspulse", 1, "t, fc=1000, bw=0.5, bwr=-6", "out", r_gausspulse, NULL, "Gaussian-modulated sinusoid, in-phase component (scipy.signal.gausspulse)."),
     ROUTINE("signal.unit_impulse", 1, "shape, idx=None", "out", r_unit_impulse, NULL, "Unit impulse: zeros with a single 1 at idx (scipy.signal.unit_impulse)."),
+    ROUTINE("signal.normalize", 2, "b, a", "b, a", r_signal_normalize, NULL, "Normalize a transfer-function representation (scipy.signal.normalize)."),
+    ROUTINE("signal.tf2zpk", 3, "b, a", "z, p, k", r_tf2zpk, NULL, "Zeros, poles and gain from transfer-function coefficients (scipy.signal.tf2zpk)."),
+    ROUTINE("signal.sos2tf", 2, "sos", "b, a", r_sos2tf, NULL, "Transfer function (b, a) from a second-order-sections cascade (scipy.signal.sos2tf)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),
