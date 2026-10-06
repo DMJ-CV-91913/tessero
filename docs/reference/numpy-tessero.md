@@ -955,6 +955,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.lp2lp` | `Tessero\Signal::lp2lp()` |
 | `scipy.signal.normalize` | `Tessero\Signal::normalize()` |
 | `scipy.signal.oaconvolve` | `Tessero\Signal::oaconvolve()` |
+| `scipy.signal.periodogram` | `Tessero\Signal::periodogram()` |
 | `scipy.signal.savgol_coeffs` | `Tessero\Signal::savgolCoeffs()` |
 | `scipy.signal.savgol_filter` | `Tessero\Signal::savgolFilter()` |
 | `scipy.signal.sawtooth` | `Tessero\Signal::sawtooth()` |
