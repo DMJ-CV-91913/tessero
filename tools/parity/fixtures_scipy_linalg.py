@@ -465,6 +465,13 @@ def main():
            callc('qr_delete', [Qu, Ru, 1, 1, 'col'], None, ['Q', 'R'], qr_canon)]
     blocks['qr_delete'] = qrd
 
+    # cossin: cosine-sine decomposition of partitioned orthogonal matrices (via LAPACK dorcsd).
+    cosn = []
+    for (mm, pp, qq) in ((4, 2, 2), (6, 3, 3), (6, 2, 3), (5, 2, 2), (6, 4, 2)):
+        Xo, _ = np.linalg.qr(rng.uniform(-1., 1., (mm, mm)))
+        cosn.append(call('cossin', [Xo, pp, qq], names=['u', 'cs', 'vh']))
+    blocks['cossin'] = cosn
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}

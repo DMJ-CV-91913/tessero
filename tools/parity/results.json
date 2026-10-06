@@ -455,6 +455,7 @@
         "slinalg.convolution_matrix": "pass",
         "slinalg.coshm": "pass",
         "slinalg.cosm": "pass",
+        "slinalg.cossin": "pass",
         "slinalg.det": "pass",
         "slinalg.dft": "pass",
         "slinalg.diagsvd": "pass",
@@ -2084,7 +2085,8 @@
             "slinalg.qr_multiply": 1.0139602752695136e-14,
             "slinalg.qr_update": 1.4753897781692936e-14,
             "slinalg.qr_insert": 8.323960068935482e-15,
-            "slinalg.qr_delete": 9.556392921918726e-15
+            "slinalg.qr_delete": 9.556392921918726e-15,
+            "slinalg.cossin": 7.230087060678199e-14
         },
         "ext": {
             "np.median": 0,
@@ -3127,7 +3129,8 @@
             "slinalg.qr_multiply": 1.0139602752695136e-14,
             "slinalg.qr_update": 1.4753897781692936e-14,
             "slinalg.qr_insert": 8.323960068935482e-15,
-            "slinalg.qr_delete": 9.556392921918726e-15
+            "slinalg.qr_delete": 9.556392921918726e-15,
+            "slinalg.cossin": 7.230087060678199e-14
         }
     },
     "ext": {
@@ -3586,6 +3589,7 @@
         "slinalg.convolution_matrix": "pass",
         "slinalg.coshm": "pass",
         "slinalg.cosm": "pass",
+        "slinalg.cossin": "pass",
         "slinalg.det": "pass",
         "slinalg.dft": "pass",
         "slinalg.diagsvd": "pass",
