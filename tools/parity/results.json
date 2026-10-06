@@ -260,6 +260,7 @@
         "np.kaiser": "pass",
         "np.kron": "pass",
         "np.ldexp": "pass",
+        "np.left_shift": "pass",
         "np.lexsort": "pass",
         "np.loadtxt": "pass",
         "np.logspace": "pass",
@@ -310,6 +311,7 @@
         "np.repeat": "pass",
         "np.resize": "pass",
         "np.result_type": "pass",
+        "np.right_shift": "pass",
         "np.roll": "pass",
         "np.rollaxis": "pass",
         "np.roots": "pass",
@@ -1041,8 +1043,8 @@
             "np.histogram_bin_edges": 0,
             "np.cov": 5.0225990847982474e-15,
             "np.corrcoef": 3.1384704941984763e-16,
-            "np.correlate": 4.544828258189545e-16,
-            "np.convolve": 2.0995376102981374e-16,
+            "np.correlate": 0,
+            "np.convolve": 0,
             "np.lexsort": 0,
             "random.random": 0,
             "random.standard_normal": 0,
@@ -1996,7 +1998,9 @@
             "linalg.vecdot": 0,
             "linalg.vector_norm": 2.0075539503959759e-16,
             "linalg.matrix_norm": 1.338471343771486e-16,
-            "linalg.matmul": 1.7418617253665887e-15
+            "linalg.matmul": 1.7418617253665887e-15,
+            "np.left_shift": 0,
+            "np.right_shift": 0
         },
         "ext": {
             "np.median": 0,
@@ -2040,8 +2044,8 @@
             "np.histogram_bin_edges": 0,
             "np.cov": 5.0225990847982474e-15,
             "np.corrcoef": 3.1384704941984763e-16,
-            "np.correlate": 4.544828258189545e-16,
-            "np.convolve": 2.0995376102981374e-16,
+            "np.correlate": 0,
+            "np.convolve": 0,
             "np.lexsort": 0,
             "random.random": 0,
             "random.standard_normal": 0,
@@ -2995,7 +2999,9 @@
             "linalg.vecdot": 0,
             "linalg.vector_norm": 2.0075539503959759e-16,
             "linalg.matrix_norm": 1.338471343771486e-16,
-            "linalg.matmul": 1.7418617253665887e-15
+            "linalg.matmul": 1.7418617253665887e-15,
+            "np.left_shift": 0,
+            "np.right_shift": 0
         }
     },
     "ext": {
@@ -3259,6 +3265,7 @@
         "np.kaiser": "pass",
         "np.kron": "pass",
         "np.ldexp": "pass",
+        "np.left_shift": "pass",
         "np.lexsort": "pass",
         "np.loadtxt": "pass",
         "np.logspace": "pass",
@@ -3309,6 +3316,7 @@
         "np.repeat": "pass",
         "np.resize": "pass",
         "np.result_type": "pass",
+        "np.right_shift": "pass",
         "np.roll": "pass",
         "np.rollaxis": "pass",
         "np.roots": "pass",

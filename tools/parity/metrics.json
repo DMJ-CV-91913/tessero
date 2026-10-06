@@ -65,25 +65,25 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 927,
-  "ffi": 927
+  "ext": 929,
+  "ffi": 929
  },
  "groups": {
   "NumPy core": {
-   "both": 447,
+   "both": 449,
    "excluded": 152,
-   "impl_ext": 447,
-   "impl_ffi": 451,
+   "impl_ext": 449,
+   "impl_ffi": 453,
    "in_scope": 522,
-   "m2_ext": 85.6,
-   "m2_ffi": 86.4,
+   "m2_ext": 86.0,
+   "m2_ffi": 86.8,
    "m3": 22.6,
-   "m4_ext": 85.6,
-   "m4_ffi": 86.4,
+   "m4_ext": 86.0,
+   "m4_ffi": 86.8,
    "m5": 99.1,
    "symbols": 674,
-   "verified_ext": 447,
-   "verified_ffi": 451
+   "verified_ext": 449,
+   "verified_ffi": 453
   },
   "SciPy": {
    "both": 890,
@@ -104,20 +104,20 @@
  },
  "modules": {
   "numpy": {
-   "both": 317,
+   "both": 319,
    "excluded": 80,
-   "impl_ext": 317,
-   "impl_ffi": 319,
+   "impl_ext": 319,
+   "impl_ffi": 321,
    "in_scope": 362,
-   "m2_ext": 87.6,
-   "m2_ffi": 88.1,
+   "m2_ext": 88.1,
+   "m2_ffi": 88.7,
    "m3": 18.1,
-   "m4_ext": 87.6,
-   "m4_ffi": 88.1,
+   "m4_ext": 88.1,
+   "m4_ffi": 88.7,
    "m5": 99.4,
    "symbols": 442,
-   "verified_ext": 317,
-   "verified_ffi": 319
+   "verified_ext": 319,
+   "verified_ffi": 321
   },
   "numpy.fft": {
    "both": 18,
@@ -505,7 +505,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 929,
+ "registry_functions": 931,
  "registry_untested": [
   "np.cumulativeTrapezoid",
   "special.logSoftmax"
@@ -514,9 +514,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 39833,
-   "covered_ext": 39833,
-   "covered_ffi": 39843,
+   "covered_both": 39837,
+   "covered_ext": 39837,
+   "covered_ffi": 39847,
    "excluded_calls": 2327,
    "excluded_share": 5.5,
    "in_scope_calls": 40221,
@@ -555,9 +555,9 @@
   "groups": {
    "NumPy core": {
     "calls": 39800,
-    "covered_both": 37733,
-    "covered_ext": 37733,
-    "covered_ffi": 37735,
+    "covered_both": 37737,
+    "covered_ext": 37737,
+    "covered_ffi": 37739,
     "excluded_calls": 1953,
     "excluded_share": 4.9,
     "in_scope_calls": 37847,

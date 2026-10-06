@@ -106,6 +106,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.kaiser` | `Tessero\Np::kaiser()` |
 | `numpy.kron` | `Tessero\Np::kron()` |
 | `numpy.ldexp` | `Tessero\Np::ldexp()` |
+| `numpy.left_shift` | `Tessero\Np::leftShift()` |
 | `numpy.lexsort` | `Tessero\Np::lexsort()` |
 | `numpy.loadtxt` | `Tessero\Np::loadtxt()` |
 | `numpy.logspace` | `Tessero\Np::logspace()` |
@@ -156,6 +157,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.repeat` | `Tessero\Np::repeat()` |
 | `numpy.resize` | `Tessero\Np::resize()` |
 | `numpy.result_type` | `Tessero\Np::resultType()` |
+| `numpy.right_shift` | `Tessero\Np::rightShift()` |
 | `numpy.roll` | `Tessero\Np::roll()` |
 | `numpy.rollaxis` | `Tessero\Np::rollaxis()` |
 | `numpy.roots` | `Tessero\Np::roots()` |

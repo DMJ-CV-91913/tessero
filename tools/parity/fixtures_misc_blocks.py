@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The completeness blocks of the "np" module fixtures: spacing, modf, bitwise_and/or/xor, fromiter and can_cast.
+"""The completeness blocks of the "np" module fixtures: spacing, modf, bitwise_and/or/xor, left/right_shift, fromiter and can_cast.
 
 These are integer, ulp (unit-in-the-last-place) and dtype-casting-rule operations: no BLAS and no transcendental
 loop, so their reference values are bit-for-bit host-independent. They are kept in literal form (no rng draws) in
@@ -39,6 +39,18 @@ def build(call):
             call(fn, [np.array([-1, -2, 5]), np.array([3, 6, -1])]),   # two's-complement negatives
             call(fn, [np.array([1, 2, 3, 4]), 0]),
             call(fn, [np.array([10, 20, 30]), -1]),
+        ]
+
+    for fn in ('left_shift', 'right_shift'):
+        b[fn] = [call(fn, [np.array(a), np.array(c)]) for a, c in (
+            ([1, 2, 3, 255, 1024], [0, 1, 4, 8, 10]),
+            ([[1, 2], [16, 256]], [[3, 0], [2, 4]]),
+            ([-1, -8, -256, -1024], [1, 2, 3, 4]),            # two's-complement negatives
+        )] + [
+            call(fn, [np.array([1, 2, 4, 8, 16]), 2]),        # broadcast a scalar count
+            call(fn, [np.array([1024, 2048, 4096]), np.array([3])]),   # length-1 operand
+            call(fn, [1, np.array([0, 1, 2, 3, 10, 30])]),    # scalar value, array count
+            call(fn, [np.array([123456789, -987654321]), 7]),
         ]
 
     b['fromiter'] = [

@@ -3783,7 +3783,7 @@ static int r_modf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     return TSR_OK;
 }
 
-static const int BW_AND = 0, BW_OR = 1, BW_XOR = 2;
+static const int BW_AND = 0, BW_OR = 1, BW_XOR = 2, BW_LSHIFT = 3, BW_RSHIFT = 4;
 
 /* bitwise_and/or/xor(x1, x2): element-wise over integers; equal shapes or a scalar operand (numpy.bitwise_*) */
 static int r_bitwise(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3810,7 +3810,17 @@ static int r_bitwise(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     const int64_t nz = tsr_shape_size(z.a.ndim, z.a.shape);
     for (int64_t i = 0; i < nz; i++) {
         const int64_t va = pa[na == 1 ? 0 : i], vb = pb[nb == 1 ? 0 : i];
-        pz[i] = op == BW_AND ? (va & vb) : op == BW_OR ? (va | vb) : (va ^ vb);
+        int64_t r;
+        switch (op) {
+        case BW_OR:     r = va | vb; break;
+        case BW_XOR:    r = va ^ vb; break;
+        /* shifts: wrap via unsigned (defined) for left, arithmetic for right; out-of-range counts saturate like a
+           two's-complement shift rather than invoking C undefined behaviour. */
+        case BW_LSHIFT: r = (vb < 0 || vb >= 64) ? 0 : (int64_t)((uint64_t)va << vb); break;
+        case BW_RSHIFT: r = (vb < 0) ? 0 : (vb >= 64) ? (va < 0 ? -1 : 0) : (va >> vb); break;
+        default:        r = va & vb; break;  /* BW_AND */
+        }
+        pz[i] = r;
     }
     own_free(&a); own_free(&b);
     return own_emit(res, &z);
@@ -4087,6 +4097,8 @@ static const fn_def DEFS[] = {
     ROUTINE("np.bitwise_and", 1, "x1, x2", "out", r_bitwise, &BW_AND, "Element-wise bitwise AND of two integer arrays (numpy.bitwise_and)."),
     ROUTINE("np.bitwise_or", 1, "x1, x2", "out", r_bitwise, &BW_OR, "Element-wise bitwise OR of two integer arrays (numpy.bitwise_or)."),
     ROUTINE("np.bitwise_xor", 1, "x1, x2", "out", r_bitwise, &BW_XOR, "Element-wise bitwise XOR of two integer arrays (numpy.bitwise_xor)."),
+    ROUTINE("np.left_shift", 1, "x1, x2", "out", r_bitwise, &BW_LSHIFT, "Shift the bits of each integer left by the per-element count (numpy.left_shift)."),
+    ROUTINE("np.right_shift", 1, "x1, x2", "out", r_bitwise, &BW_RSHIFT, "Shift the bits of each integer right by the per-element count (numpy.right_shift)."),
     ROUTINE("np.fromiter", 1, "iterable, dtype, count=-1", "out", r_fromiter, NULL, "A 1-D array built from the first count elements of an iterable, cast to dtype (numpy.fromiter)."),
     ROUTINE("np.can_cast", 1, "from_, to, casting='safe'", "out", r_can_cast, NULL, "Whether a cast between two dtypes is allowed under a casting rule (numpy.can_cast)."),
 };

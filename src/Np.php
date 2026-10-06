@@ -113,6 +113,7 @@ final class Np
     'kaiser' => 'kaiser',
     'kron' => 'kron',
     'ldexp' => 'ldexp',
+    'left_shift' => 'leftShift',
     'lexsort' => 'lexsort',
     'loadtxt' => 'loadtxt',
     'logspace' => 'logspace',
@@ -163,6 +164,7 @@ final class Np
     'repeat' => 'repeat',
     'resize' => 'resize',
     'result_type' => 'resultType',
+    'right_shift' => 'rightShift',
     'roll' => 'roll',
     'rollaxis' => 'rollaxis',
     'roots' => 'roots',
@@ -1190,6 +1192,16 @@ final class Np
     }
 
     /**
+     * Shift the bits of each integer left by the per-element count (numpy.left_shift).
+     *
+     * numpy.left_shift
+     */
+    public static function leftShift(mixed $x1, mixed $x2): mixed
+    {
+        return Registry::routine('np.left_shift', [$x1, $x2]);
+    }
+
+    /**
      * Indirect stable sort on several keys, the last key primary (numpy.lexsort).
      *
      * numpy.lexsort
@@ -1689,6 +1701,16 @@ final class Np
     public static function resultType(mixed ...$arraysAndDtypes): mixed
     {
         return Registry::routineVariadic('np.result_type', $arraysAndDtypes);
+    }
+
+    /**
+     * Shift the bits of each integer right by the per-element count (numpy.right_shift).
+     *
+     * numpy.right_shift
+     */
+    public static function rightShift(mixed $x1, mixed $x2): mixed
+    {
+        return Registry::routine('np.right_shift', [$x1, $x2]);
     }
 
     /**
