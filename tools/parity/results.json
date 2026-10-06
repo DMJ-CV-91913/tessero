@@ -443,6 +443,7 @@
         "signal.sosfilt_zi": "pass",
         "signal.sosfiltfilt": "pass",
         "signal.zpk2tf": "pass",
+        "slinalg.bandwidth": "pass",
         "slinalg.block_diag": "pass",
         "slinalg.cdf2rdf": "pass",
         "slinalg.cho_factor": "pass",
@@ -471,6 +472,7 @@
         "slinalg.expm_cond": "pass",
         "slinalg.expm_frechet": "pass",
         "slinalg.fiedler": "pass",
+        "slinalg.fiedler_companion": "pass",
         "slinalg.fractional_matrix_power": "pass",
         "slinalg.hadamard": "pass",
         "slinalg.hankel": "pass",
@@ -520,6 +522,7 @@
         "slinalg.solve_continuous_lyapunov": "pass",
         "slinalg.solve_discrete_are": "pass",
         "slinalg.solve_discrete_lyapunov": "pass",
+        "slinalg.solve_lyapunov": "pass",
         "slinalg.solve_sylvester": "pass",
         "slinalg.solve_toeplitz": "pass",
         "slinalg.solve_triangular": "pass",
@@ -2088,7 +2091,10 @@
             "slinalg.qr_insert": 8.323960068935482e-15,
             "slinalg.qr_delete": 9.556392921918726e-15,
             "slinalg.cossin": 7.230087060678199e-14,
-            "slinalg.ordqz": 0
+            "slinalg.ordqz": 0,
+            "slinalg.bandwidth": 0,
+            "slinalg.fiedler_companion": 0,
+            "slinalg.solve_lyapunov": 1.5400949856431495e-14
         },
         "ext": {
             "np.median": 0,
@@ -3133,7 +3139,10 @@
             "slinalg.qr_insert": 8.323960068935482e-15,
             "slinalg.qr_delete": 9.556392921918726e-15,
             "slinalg.cossin": 7.230087060678199e-14,
-            "slinalg.ordqz": 0
+            "slinalg.ordqz": 0,
+            "slinalg.bandwidth": 0,
+            "slinalg.fiedler_companion": 0,
+            "slinalg.solve_lyapunov": 1.5400949856431495e-14
         }
     },
     "ext": {
@@ -3580,6 +3589,7 @@
         "signal.sosfilt_zi": "pass",
         "signal.sosfiltfilt": "pass",
         "signal.zpk2tf": "pass",
+        "slinalg.bandwidth": "pass",
         "slinalg.block_diag": "pass",
         "slinalg.cdf2rdf": "pass",
         "slinalg.cho_factor": "pass",
@@ -3608,6 +3618,7 @@
         "slinalg.expm_cond": "pass",
         "slinalg.expm_frechet": "pass",
         "slinalg.fiedler": "pass",
+        "slinalg.fiedler_companion": "pass",
         "slinalg.fractional_matrix_power": "pass",
         "slinalg.hadamard": "pass",
         "slinalg.hankel": "pass",
@@ -3657,6 +3668,7 @@
         "slinalg.solve_continuous_lyapunov": "pass",
         "slinalg.solve_discrete_are": "pass",
         "slinalg.solve_discrete_lyapunov": "pass",
+        "slinalg.solve_lyapunov": "pass",
         "slinalg.solve_sylvester": "pass",
         "slinalg.solve_toeplitz": "pass",
         "slinalg.solve_triangular": "pass",

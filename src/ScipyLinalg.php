@@ -18,6 +18,7 @@ final class ScipyLinalg
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'bandwidth' => 'bandwidth',
     'block_diag' => 'blockDiag',
     'cdf2rdf' => 'cdf2rdf',
     'cho_factor' => 'choFactor',
@@ -46,6 +47,7 @@ final class ScipyLinalg
     'expm_cond' => 'expmCond',
     'expm_frechet' => 'expmFrechet',
     'fiedler' => 'fiedler',
+    'fiedler_companion' => 'fiedlerCompanion',
     'fractional_matrix_power' => 'fractionalMatrixPower',
     'hadamard' => 'hadamard',
     'hankel' => 'hankel',
@@ -95,6 +97,7 @@ final class ScipyLinalg
     'solve_continuous_lyapunov' => 'solveContinuousLyapunov',
     'solve_discrete_are' => 'solveDiscreteAre',
     'solve_discrete_lyapunov' => 'solveDiscreteLyapunov',
+    'solve_lyapunov' => 'solveLyapunov',
     'solve_sylvester' => 'solveSylvester',
     'solve_toeplitz' => 'solveToeplitz',
     'solve_triangular' => 'solveTriangular',
@@ -122,6 +125,18 @@ final class ScipyLinalg
         }
 
         return self::{self::FUNCTIONS[$name]}(...$args);
+    }
+
+    /**
+     * Lower and upper bandwidths of a 2-D array (scipy.linalg.bandwidth).
+     *
+     * scipy.linalg.bandwidth
+     *
+     * @return mixed one array, or an array keyed by lower, upper when several results are requested
+     */
+    public static function bandwidth(mixed $a): mixed
+    {
+        return Registry::routine('slinalg.bandwidth', [$a]);
     }
 
     /**
@@ -418,6 +433,16 @@ final class ScipyLinalg
     public static function fiedler(mixed $a): mixed
     {
         return Registry::routine('slinalg.fiedler', [$a]);
+    }
+
+    /**
+     * Fiedler companion matrix of a polynomial (scipy.linalg.fiedler_companion).
+     *
+     * scipy.linalg.fiedler_companion
+     */
+    public static function fiedlerCompanion(mixed $a): mixed
+    {
+        return Registry::routine('slinalg.fiedler_companion', [$a]);
     }
 
     /**
@@ -942,6 +967,16 @@ final class ScipyLinalg
     public static function solveDiscreteLyapunov(mixed $a, mixed $q): mixed
     {
         return Registry::routine('slinalg.solve_discrete_lyapunov', [$a, $q]);
+    }
+
+    /**
+     * Solve the continuous Lyapunov equation a x + x a^H = q; alias of solve_continuous_lyapunov (scipy.linalg.solve_lyapunov).
+     *
+     * scipy.linalg.solve_lyapunov
+     */
+    public static function solveLyapunov(mixed $a, mixed $q): mixed
+    {
+        return Registry::routine('slinalg.solve_lyapunov', [$a, $q]);
     }
 
     /**

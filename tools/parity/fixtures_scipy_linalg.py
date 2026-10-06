@@ -481,6 +481,28 @@ def main():
             oqz.append(call('ordqz', [A_, B_, srt], names=['AA', 'BB', 'alpha', 'beta', 'Q', 'Z']))
     blocks['ordqz'] = oqz
 
+    # bandwidth: lower/upper bandwidths of a matrix (named integer outputs).
+    band = [
+        call('bandwidth', [np.array([[1., 2., 0.], [3., 4., 5.], [0., 6., 7.]])], names=['lower', 'upper']),
+        call('bandwidth', [np.eye(4)], names=['lower', 'upper']),
+        call('bandwidth', [np.triu(rng.uniform(1, 2, (5, 5)))], names=['lower', 'upper']),
+        call('bandwidth', [np.tril(rng.uniform(1, 2, (5, 5)))], names=['lower', 'upper']),
+        call('bandwidth', [rng.uniform(1, 2, (4, 6))], names=['lower', 'upper']),
+        call('bandwidth', [np.diag([1., 2., 3., 4.]) + np.diag([5., 6.], 2)], names=['lower', 'upper']),
+    ]
+    blocks['bandwidth'] = band
+
+    # fiedler_companion: Fiedler (pentadiagonal) companion matrix of a polynomial.
+    blocks['fiedler_companion'] = [
+        call('fiedler_companion', [np.array([1., 2., 3., 4., 5.])]),
+        call('fiedler_companion', [np.array([2., -1., 0., 3.])]),
+        call('fiedler_companion', [rng.uniform(1, 3, 6)]),
+        call('fiedler_companion', [rng.uniform(1, 3, 7)]),
+        call('fiedler_companion', [np.array([3., 5.])]),
+    ]
+    # solve_lyapunov: deprecated alias of solve_continuous_lyapunov.
+    blocks['solve_lyapunov'] = [call('solve_lyapunov', [sym(n), sym(n)]) for n in (2, 3, 4)]
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}
