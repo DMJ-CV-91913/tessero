@@ -118,6 +118,7 @@ final class Np
     'loadtxt' => 'loadtxt',
     'logspace' => 'logspace',
     'matrix_transpose' => 'matrixTranspose',
+    'matvec' => 'matvec',
     'median' => 'median',
     'meshgrid' => 'meshgrid',
     'modf' => 'modf',
@@ -208,6 +209,8 @@ final class Np
     'unwrap' => 'unwrap',
     'vander' => 'vander',
     'vdot' => 'vdot',
+    'vecdot' => 'vecdot',
+    'vecmat' => 'vecmat',
     'vsplit' => 'vsplit',
     'vstack' => 'vstack',
     'zeros_like' => 'zerosLike',
@@ -1242,6 +1245,16 @@ final class Np
     }
 
     /**
+     * Matrix-vector product over the last two axes of x1 and the last axis of x2 (numpy.matvec).
+     *
+     * numpy.matvec
+     */
+    public static function matvec(mixed $x1, mixed $x2): mixed
+    {
+        return Registry::routine('np.matvec', [$x1, $x2]);
+    }
+
+    /**
      * Median along the given axes (numpy.median).
      *
      * numpy.median
@@ -2149,6 +2162,26 @@ final class Np
     public static function vdot(mixed $a, mixed $b): mixed
     {
         return Registry::routine('np.vdot', [$a, $b]);
+    }
+
+    /**
+     * Vector dot product over the last axis (numpy.vecdot).
+     *
+     * numpy.vecdot
+     */
+    public static function vecdot(mixed $x1, mixed $x2, mixed $axis = -1): mixed
+    {
+        return Registry::routine('np.vecdot', [$x1, $x2, $axis]);
+    }
+
+    /**
+     * Vector-matrix product; x1 is (..., N), x2 is (..., N, M) (numpy.vecmat).
+     *
+     * numpy.vecmat
+     */
+    public static function vecmat(mixed $x1, mixed $x2): mixed
+    {
+        return Registry::routine('np.vecmat', [$x1, $x2]);
     }
 
     /**

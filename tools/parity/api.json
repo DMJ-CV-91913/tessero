@@ -6150,6 +6150,12 @@
                 "doc": "Transpose the last two axes (numpy.matrix_transpose)."
             },
             {
+                "name": "matvec",
+                "static": true,
+                "sig": "matvec(mixed $x1, mixed $x2): mixed",
+                "doc": "Matrix-vector product over the last two axes of x1 and the last axis of x2 (numpy.matvec)."
+            },
+            {
                 "name": "median",
                 "static": true,
                 "sig": "median(mixed $a, array|int|null $axis = null, bool $keepdims = false): Tessero\\NDArray|int|float",
@@ -6688,6 +6694,18 @@
                 "static": true,
                 "sig": "vdot(mixed $a, mixed $b): mixed",
                 "doc": "Dot product of the flattened arrays (numpy.vdot)."
+            },
+            {
+                "name": "vecdot",
+                "static": true,
+                "sig": "vecdot(mixed $x1, mixed $x2, mixed $axis = -1): mixed",
+                "doc": "Vector dot product over the last axis (numpy.vecdot)."
+            },
+            {
+                "name": "vecmat",
+                "static": true,
+                "sig": "vecmat(mixed $x1, mixed $x2): mixed",
+                "doc": "Vector-matrix product; x1 is (..., N), x2 is (..., N, M) (numpy.vecmat)."
             },
             {
                 "name": "vsplit",
@@ -10918,6 +10936,24 @@
                 "name": "canCast",
                 "static": true,
                 "sig": "canCast($from_, $to, $casting = 'safe')",
+                "doc": ""
+            },
+            {
+                "name": "vecdot",
+                "static": true,
+                "sig": "vecdot($x1, $x2, $axis = -1)",
+                "doc": ""
+            },
+            {
+                "name": "matvec",
+                "static": true,
+                "sig": "matvec($x1, $x2)",
+                "doc": ""
+            },
+            {
+                "name": "vecmat",
+                "static": true,
+                "sig": "vecmat($x1, $x2)",
                 "doc": ""
             },
             {
