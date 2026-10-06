@@ -2023,6 +2023,12 @@
                 "doc": "Orthonormal basis for the range of A via SVD (scipy.linalg.orth)."
             },
             {
+                "name": "orthogonalProcrustes",
+                "static": true,
+                "sig": "orthogonalProcrustes(mixed $A, mixed $B): mixed",
+                "doc": "Orthogonal Procrustes solution R minimising ||A R - B|| and scale (scipy.linalg.orthogonal_procrustes)."
+            },
+            {
                 "name": "pascal",
                 "static": true,
                 "sig": "pascal(mixed $n, mixed $kind = 'symmetric'): mixed",
@@ -14824,6 +14830,12 @@
                 "name": "rq",
                 "static": true,
                 "sig": "rq($a, $mode = 'full')",
+                "doc": ""
+            },
+            {
+                "name": "orthogonalProcrustes",
+                "static": true,
+                "sig": "orthogonalProcrustes($A, $B)",
                 "doc": ""
             },
             {

@@ -65,6 +65,7 @@ final class ScipyLinalg
     'norm' => 'norm',
     'null_space' => 'nullSpace',
     'orth' => 'orth',
+    'orthogonal_procrustes' => 'orthogonalProcrustes',
     'pascal' => 'pascal',
     'pinv' => 'pinv',
     'pinvh' => 'pinvh',
@@ -594,6 +595,18 @@ final class ScipyLinalg
     public static function orth(mixed $A, mixed $rcond = null): mixed
     {
         return Registry::routine('slinalg.orth', [$A, $rcond]);
+    }
+
+    /**
+     * Orthogonal Procrustes solution R minimising ||A R - B|| and scale (scipy.linalg.orthogonal_procrustes).
+     *
+     * scipy.linalg.orthogonal_procrustes
+     *
+     * @return mixed one array, or an array keyed by R, scale when several results are requested
+     */
+    public static function orthogonalProcrustes(mixed $A, mixed $B): mixed
+    {
+        return Registry::routine('slinalg.orthogonal_procrustes', [$A, $B]);
     }
 
     /**
