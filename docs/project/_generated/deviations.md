@@ -136,6 +136,8 @@
 | `signal.firwin` | call | rtol 0 |
 | `signal.firwin2` | every call | rtol 0 |
 | `signal.firwin2` | call | rtol 0 |
+| `signal.sos2zpk` | every call | rtol 0 |
+| `signal.sos2zpk` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |
