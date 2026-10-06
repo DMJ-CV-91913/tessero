@@ -944,6 +944,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.freqz` | `Tessero\Signal::freqz()` |
 | `scipy.signal.freqz_zpk` | `Tessero\Signal::freqzZpk()` |
 | `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
+| `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.lfilter` | `Tessero\Signal::lfilter()` |
 | `scipy.signal.lfilter_zi` | `Tessero\Signal::lfilterZi()` |
 | `scipy.signal.lp2bp` | `Tessero\Signal::lp2bp()` |
@@ -959,6 +960,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.sosfilt` | `Tessero\Signal::sosfilt()` |
 | `scipy.signal.sosfilt_zi` | `Tessero\Signal::sosfiltZi()` |
 | `scipy.signal.sosfiltfilt` | `Tessero\Signal::sosfiltfilt()` |
+| `scipy.signal.sosfreqz` | `Tessero\Signal::sosfreqz()` |
 | `scipy.signal.square` | `Tessero\Signal::square()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
