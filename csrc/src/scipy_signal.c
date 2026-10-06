@@ -2275,6 +2275,47 @@ static int r_resample(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
 
 static double sig_sinc(double x) { if (x == 0.0) return 1.0; const double px = M_PI * x; return sin(px) / px; }
 
+static double sig_kaiser_beta(double a)
+{
+    if (a > 50.0) return 0.1102 * (a - 8.7);
+    if (a > 21.0) return 0.5842 * pow(a - 21.0, 0.4) + 0.07886 * (a - 21.0);
+    return 0.0;
+}
+
+/* kaiser_atten(numtaps, width): Kaiser-window attenuation (dB) for a filter length and transition width. */
+static int r_kaiser_atten(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("kaiser_atten: numtaps and width must be numbers"); return TSR_EARG; }
+    const double numtaps = args[0].num, width = args[1].num;
+    fn_result_num(&res[0], 2.285 * (numtaps - 1.0) * M_PI * width + 7.95);
+    return TSR_OK;
+}
+
+/* kaiser_beta(a): the Kaiser-window shape beta for a given attenuation a (dB). */
+static int r_kaiser_beta(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 1) { fn_set_error("kaiser_beta: a must be a number"); return TSR_EARG; }
+    fn_result_num(&res[0], sig_kaiser_beta(args[0].num));
+    return TSR_OK;
+}
+
+/* kaiserord(ripple, width): the Kaiser filter length and beta for a ripple attenuation and transition width
+   (scipy.signal.kaiserord). Returns (numtaps, beta). */
+static int r_kaiserord(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("kaiserord: ripple and width must be numbers"); return TSR_EARG; }
+    const double A = fabs(args[0].num), width = args[1].num;
+    if (A < 8.0) { fn_set_error("kaiserord: ripple attenuation is too small for the Kaiser formula"); return TSR_EARG; }
+    const double beta = sig_kaiser_beta(A);
+    const double nt = (A - 7.95) / 2.285 / (M_PI * width) + 1.0;
+    fn_result_int(&res[0], (int64_t)ceil(nt));
+    fn_result_num(&res[1], beta);
+    return TSR_OK;
+}
+
 /* firwin(numtaps, cutoff, window='hamming', pass_zero=True, scale=True, fs=None): FIR filter design by the
    window method (scipy.signal.firwin). cutoff is a 1-D array of band edges (normalised by fs/2); the passbands
    are built from pass_zero, summed as windowed sinc differences, and (if scale) normalised to unit gain at the
@@ -2558,6 +2599,9 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.correlation_lags", 1, "in1_len, in2_len, mode='full'", "out", r_correlation_lags, NULL, "Lag indices for the output of signal.correlate (scipy.signal.correlation_lags)."),
     ROUTINE("signal.resample", 1, "x, num, t=None, axis=0, window=None, domain='time'", "out", r_resample, NULL, "Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None)."),
     ROUTINE("signal.firwin", 1, "numtaps, cutoff, window='hamming', pass_zero=True, scale=True, fs=None", "out", r_firwin, NULL, "FIR filter design by the window method (scipy.signal.firwin)."),
+    ROUTINE("signal.kaiser_atten", 1, "numtaps, width", "out", r_kaiser_atten, NULL, "Kaiser-window attenuation (dB) for a filter length and transition width (scipy.signal.kaiser_atten)."),
+    ROUTINE("signal.kaiser_beta", 1, "a", "out", r_kaiser_beta, NULL, "Kaiser-window shape beta for a given attenuation (scipy.signal.kaiser_beta)."),
+    ROUTINE("signal.kaiserord", 2, "ripple, width", "numtaps, beta", r_kaiserord, NULL, "Kaiser filter length and beta for a ripple and transition width (scipy.signal.kaiserord)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
