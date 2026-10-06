@@ -2374,6 +2374,62 @@ static int r_firwin(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* firwin2(numtaps, freq, gain, nfreqs=None, window='hamming', antisymmetric=False, fs=None): FIR design by
+   frequency sampling (scipy.signal.firwin2, antisymmetric=False). Linearly interpolates the desired (freq,
+   gain) response onto a uniform mesh, applies the linear-phase shift, inverse-FFTs, and windows. */
+static int r_firwin2(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("firwin2: numtaps int, freq and gain arrays"); return TSR_EARG; }
+    const int64_t M = (int64_t)args[0].num;
+    const double fs = (nargs > 6 && args[6].kind == 1) ? args[6].num : 2.0;
+    const double nyq = 0.5 * fs;
+    if (nargs > 5 && args[5].kind == 4 && args[5].num != 0.0) { fn_set_error("firwin2: antisymmetric=True is not yet supported"); return TSR_EARG; }
+    int64_t nf, ng; double *freq = fn_arg_doubles(&args[1], &nf); if (!freq) return TSR_ENOMEM;
+    double *gain = fn_arg_doubles(&args[2], &ng); if (!gain) { fn_free_doubles(freq, nf); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    int64_t nwin = 0; double *warr = (nargs > 4 && args[4].kind == 3) ? fn_arg_doubles(&args[4], &nwin) : NULL;
+    const int win_boxcar = (nargs > 4 && args[4].kind == 2 && args[4].str && !strcmp(args[4].str, "boxcar"));
+    const int win_hann = (nargs > 4 && args[4].kind == 2 && args[4].str && !strcmp(args[4].str, "hann"));
+    if (M < 1 || nf != ng || nf < 2) { rc = TSR_EARG; fn_set_error("firwin2: bad numtaps or freq/gain lengths"); }
+    else if (freq[0] != 0.0 || fabs(freq[nf - 1] - nyq) > 1e-12 * nyq) { rc = TSR_EARG; fn_set_error("firwin2: freq must start at 0 and end at fs/2"); }
+    else if (warr && nwin != M) { rc = TSR_EARG; fn_set_error("firwin2: window length must equal numtaps"); }
+    else {
+        int64_t nfreqs = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 1 + (1LL << (int)ceil(log2((double)M)));
+        const int64_t nfull = 2 * (nfreqs - 1);
+        double *fx2 = (double *)malloc(sizeof(double) * (size_t)(2 * nfreqs));
+        double *outf = (double *)malloc(sizeof(double) * (size_t)nfull);
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){M});
+        if (!fx2 || !outf || !out) rc = TSR_ENOMEM;
+        else {
+            int64_t seg = 0;
+            for (int64_t i = 0; i < nfreqs; i++) {
+                const double xi = (double)i * nyq / (double)(nfreqs - 1);
+                while (seg < nf - 2 && freq[seg + 1] < xi) seg++;
+                double fxi;                                  /* linear interpolation of gain at xi */
+                if (xi <= freq[0]) fxi = gain[0];
+                else if (xi >= freq[nf - 1]) fxi = gain[nf - 1];
+                else { const double d = freq[seg + 1] - freq[seg]; fxi = d > 0 ? gain[seg] + (gain[seg + 1] - gain[seg]) * (xi - freq[seg]) / d : gain[seg]; }
+                const double ph = -0.5 * (double)(M - 1) * M_PI * xi / nyq;   /* shift = exp(-i*(M-1)/2*pi*x/nyq) */
+                fx2[2 * i] = fxi * cos(ph); fx2[2 * i + 1] = fxi * sin(ph);
+            }
+            tsr_irfft(nfull, 1, fx2, outf);
+            for (int64_t n = 0; n < M; n++) {
+                double w;
+                if (warr) w = warr[n];
+                else if (win_boxcar) w = 1.0;
+                else if (win_hann) w = (M == 1) ? 1.0 : 0.5 - 0.5 * cos(2.0 * M_PI * (double)n / (double)(M - 1));
+                else w = (M == 1) ? 1.0 : 0.54 - 0.46 * cos(2.0 * M_PI * (double)n / (double)(M - 1));   /* hamming */
+                out[n] = outf[n] * w;
+            }
+        }
+        free(fx2); free(outf);
+    }
+    if (warr) fn_free_doubles(warr, nwin);
+    fn_free_doubles(freq, nf); fn_free_doubles(gain, ng);
+    return rc;
+}
+
 /* correlation_lags(in1_len, in2_len, mode='full'): the lag indices for signal.correlate's output
    (scipy.signal.correlation_lags). Integer array. */
 static int r_correlation_lags(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2602,6 +2658,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.kaiser_atten", 1, "numtaps, width", "out", r_kaiser_atten, NULL, "Kaiser-window attenuation (dB) for a filter length and transition width (scipy.signal.kaiser_atten)."),
     ROUTINE("signal.kaiser_beta", 1, "a", "out", r_kaiser_beta, NULL, "Kaiser-window shape beta for a given attenuation (scipy.signal.kaiser_beta)."),
     ROUTINE("signal.kaiserord", 2, "ripple, width", "numtaps, beta", r_kaiserord, NULL, "Kaiser filter length and beta for a ripple and transition width (scipy.signal.kaiserord)."),
+    ROUTINE("signal.firwin2", 1, "numtaps, freq, gain, nfreqs=None, window='hamming', antisymmetric=False, fs=None", "out", r_firwin2, NULL, "FIR filter design by frequency sampling (scipy.signal.firwin2)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
