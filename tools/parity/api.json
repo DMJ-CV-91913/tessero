@@ -2747,6 +2747,12 @@
                 "doc": "Group delay of a digital filter (scipy.signal.group_delay)."
             },
             {
+                "name": "hilbert",
+                "static": true,
+                "sig": "hilbert(mixed $x, mixed $N = null): mixed",
+                "doc": "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."
+            },
+            {
                 "name": "lfilter",
                 "static": true,
                 "sig": "lfilter(mixed $b, mixed $a, mixed $x): mixed",
@@ -15483,6 +15489,12 @@
                 "name": "groupDelay",
                 "static": true,
                 "sig": "groupDelay($b, $a, $w = 512, $whole = false)",
+                "doc": ""
+            },
+            {
+                "name": "hilbert",
+                "static": true,
+                "sig": "hilbert($x, $N = null)",
                 "doc": ""
             }
         ]

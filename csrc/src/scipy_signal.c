@@ -17,6 +17,7 @@
 enum { CONV_FULL, CONV_SAME, CONV_VALID };
 
 static int gesolve(int n, double *A, double *b);   /* small dense solver, defined below */
+extern int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);   /* core FFT (fft.c) */
 
 static int parse_mode(const tsr_arg *a, int *mode)
 {
@@ -1902,6 +1903,38 @@ static int r_group_delay(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     return rc;
 }
 
+/* hilbert(x, N=None): the analytic signal of a real sequence, x + i*H{x}, via the FFT (scipy.signal.hilbert).
+   Xf = fft(x, N); double the positive-frequency bins and zero the negative ones; return ifft(Xf) (complex). */
+static int r_hilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("hilbert: x must be a 1-D real array"); return TSR_EARG; }
+    int64_t n0; double *x = fn_arg_doubles(&args[0], &n0); if (!x) return TSR_ENOMEM;
+    const int64_t N = (nargs > 1 && args[1].kind == 1) ? (int64_t)args[1].num : n0;
+    int rc = TSR_OK;
+    if (N <= 0) { fn_free_doubles(x, n0); fn_set_error("hilbert: N must be positive"); return TSR_EARG; }
+    double *in = (double *)calloc((size_t)(2 * N), sizeof(double));
+    double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * N));
+    double *out = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){N});
+    if (!in || !Xf || !out) rc = TSR_ENOMEM;
+    else {
+        const int64_t m = n0 < N ? n0 : N;
+        for (int64_t i = 0; i < m; i++) in[2 * i] = x[i];    /* real input, zero-padded/truncated to N */
+        tsr_fft(N, 1, 0, in, Xf);                            /* forward FFT */
+        const int64_t half = N / 2;
+        if (N % 2 == 0) {
+            for (int64_t k = 1; k < half; k++) { Xf[2 * k] *= 2.0; Xf[2 * k + 1] *= 2.0; }
+            for (int64_t k = half + 1; k < N; k++) { Xf[2 * k] = 0.0; Xf[2 * k + 1] = 0.0; }
+        } else {
+            for (int64_t k = 1; k <= half; k++) { Xf[2 * k] *= 2.0; Xf[2 * k + 1] *= 2.0; }   /* half=(N-1)/2 */
+            for (int64_t k = half + 1; k < N; k++) { Xf[2 * k] = 0.0; Xf[2 * k + 1] = 0.0; }
+        }
+        tsr_fft(N, 1, 1, Xf, out);                           /* inverse FFT (scales by 1/N) */
+    }
+    free(in); free(Xf); fn_free_doubles(x, n0);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -1939,6 +1972,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.freqz_zpk", 2, "z, p, k, worN=512, whole=False", "w, h", r_freqz_zpk, NULL, "Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk)."),
     ROUTINE("signal.sosfreqz", 2, "sos, worN=512, whole=False", "w, h", r_sosfreqz, NULL, "Frequency response of a second-order-sections cascade (scipy.signal.sosfreqz)."),
     ROUTINE("signal.group_delay", 2, "b, a, w=512, whole=False", "w, gd", r_group_delay, NULL, "Group delay of a digital filter (scipy.signal.group_delay)."),
+    ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),

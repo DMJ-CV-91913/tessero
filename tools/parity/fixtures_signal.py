@@ -257,6 +257,16 @@ for (N, Wn, bt) in [(2, 0.3, 'low'), (3, 0.25, 'low'), (2, 0.5, 'high'), (4, 0.4
         w, gd = sg.group_delay((bb, aa), w=wn, whole=False)
         gdl.append({'args': [F.enc(bb), F.enc(aa), F.enc(wn), F.enc(False)], 'kwargs': {}, 'expect': F.enc_result((w, gd), ['w', 'gd']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# hilbert: analytic signal via FFT
+hlb = []
+for n in (8, 16, 17, 31, 64):
+    xx = rng.uniform(-3, 3, n)
+    hlb.append({'args': [F.enc(xx)], 'kwargs': {}, 'expect': F.enc_result(sg.hilbert(xx), []), 'compare': 'tol', 'tol': {'atol': 1e-10}})
+# explicit N (zero-pad and truncate)
+xx = rng.uniform(-3, 3, 20)
+hlb.append({'args': [F.enc(xx), F.enc(32)], 'kwargs': {}, 'expect': F.enc_result(sg.hilbert(xx, 32), []), 'compare': 'tol', 'tol': {'atol': 1e-10}})
+hlb.append({'args': [F.enc(xx), F.enc(12)], 'kwargs': {}, 'expect': F.enc_result(sg.hilbert(xx, 12), []), 'compare': 'tol', 'tol': {'atol': 1e-10}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -287,7 +297,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'freqs_zpk', 'cases': frzp, 'tol': {'atol': 1e-12}},
                  {'fn': 'freqz_zpk', 'cases': frzz, 'tol': {'atol': 1e-12}},
                  {'fn': 'sosfreqz', 'cases': sfz2, 'tol': {'atol': 1e-12}},
-                 {'fn': 'group_delay', 'cases': gdl, 'tol': {'atol': 1e-9}}]}
+                 {'fn': 'group_delay', 'cases': gdl, 'tol': {'atol': 1e-9}},
+                 {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '
