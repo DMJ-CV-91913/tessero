@@ -1587,6 +1587,74 @@ static int r_hilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return TSR_OK;
 }
 
+/* hankel(c, r=None): Hankel matrix with first column c and last row r; H[i][j] = c[i+j] while i+j < len(c),
+   else r[i+j-len(c)+1]. r defaults to zeros, so the lower-right triangle is zero (scipy.linalg.hankel). */
+static int r_hankel(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim < 1) { fn_set_error("hankel: c must be an array"); return TSR_ETYPE; }
+    const int have_r = nargs > 1 && args[1].kind == 3 && args[1].arr.ndim >= 1;
+    int64_t m, nr = 0;
+    double *c = mat_f64(&args[0], "c", &m);
+    if (!c) return TSR_ENOMEM;
+    double *r = have_r ? mat_f64(&args[1], "r", &nr) : NULL;
+    if (have_r && !r) { fn_free_doubles(c, m); return TSR_ENOMEM; }
+    const int64_t n = have_r ? nr : m;
+    int64_t osh[2] = {m, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) { fn_free_doubles(c, m); if (r) fn_free_doubles(r, nr); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < m; i++)
+        for (int64_t j = 0; j < n; j++) {
+            const int64_t k = i + j;
+            out[i * n + j] = (k < m) ? c[k] : (r ? r[k - m + 1] : 0.0);
+        }
+    fn_free_doubles(c, m);
+    if (r) fn_free_doubles(r, nr);
+    return TSR_OK;
+}
+
+/* fiedler(a): the symmetric Fiedler matrix F[i][j] = |a[i] - a[j]| (scipy.linalg.fiedler). */
+static int r_fiedler(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("fiedler: a must be a 1-D array"); return TSR_ETYPE; }
+    int64_t n; double *a = mat_f64(&args[0], "a", &n);
+    if (!a) return TSR_ENOMEM;
+    int64_t osh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) { fn_free_doubles(a, n); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++)
+        for (int64_t j = 0; j < n; j++)
+            out[i * n + j] = fabs(a[i] - a[j]);
+    fn_free_doubles(a, n);
+    return TSR_OK;
+}
+
+/* leslie(f, s): the Leslie population matrix with first row f (length n) and sub-diagonal s (length n-1)
+   (scipy.linalg.leslie). */
+static int r_leslie(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("leslie: f must be a 1-D array"); return TSR_ETYPE; }
+    if (nargs < 2 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("leslie: s must be a 1-D array"); return TSR_ETYPE; }
+    int64_t nf, ns;
+    double *f = mat_f64(&args[0], "f", &nf);
+    if (!f) return TSR_ENOMEM;
+    double *s = mat_f64(&args[1], "s", &ns);
+    if (!s) { fn_free_doubles(f, nf); return TSR_ENOMEM; }
+    if (nf < 2) { fn_free_doubles(f, nf); fn_free_doubles(s, ns); fn_set_error("The length of f must be at least 2."); return TSR_EARG; }
+    if (ns != nf - 1) { fn_free_doubles(f, nf); fn_free_doubles(s, ns); fn_set_error("The length of s must be one less than the length of f."); return TSR_EARG; }
+    int64_t osh[2] = {nf, nf};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!out) { fn_free_doubles(f, nf); fn_free_doubles(s, ns); return TSR_ENOMEM; }
+    memset(out, 0, sizeof(double) * (size_t)(nf * nf));
+    for (int64_t j = 0; j < nf; j++) out[j] = f[j];
+    for (int64_t i = 1; i < nf; i++) out[i * nf + (i - 1)] = s[i - 1];
+    fn_free_doubles(f, nf);
+    fn_free_doubles(s, ns);
+    return TSR_OK;
+}
+
 /* khatri_rao(a, b): the column-wise Kronecker product; a is (ra, k), b is (rb, k), result is (ra*rb, k)
    with result[i*rb + l][j] = a[i][j] * b[l][j] (scipy.linalg.khatri_rao). */
 static int r_khatri_rao(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2418,6 +2486,9 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.companion", 1, "a", "out", r_companion, NULL, "Companion matrix of a polynomial (scipy.linalg.companion)."),
     ROUTINE("slinalg.hadamard", 1, "n", "out", r_hadamard, NULL, "Sylvester-Hadamard matrix of order n, a power of two (scipy.linalg.hadamard)."),
     ROUTINE("slinalg.hilbert", 1, "n", "out", r_hilbert, NULL, "Hilbert matrix of order n (scipy.linalg.hilbert)."),
+    ROUTINE("slinalg.hankel", 1, "c, r=None", "out", r_hankel, NULL, "Hankel matrix with first column c and last row r (scipy.linalg.hankel)."),
+    ROUTINE("slinalg.fiedler", 1, "a", "out", r_fiedler, NULL, "Symmetric Fiedler matrix of absolute differences |a_i - a_j| (scipy.linalg.fiedler)."),
+    ROUTINE("slinalg.leslie", 1, "f, s", "out", r_leslie, NULL, "Leslie population matrix with first row f and sub-diagonal s (scipy.linalg.leslie)."),
     ROUTINE("slinalg.khatri_rao", 1, "a, b", "out", r_khatri_rao, NULL, "Column-wise Kronecker (Khatri-Rao) product (scipy.linalg.khatri_rao)."),
     ROUTINE("slinalg.diagsvd", 1, "s, M, N", "out", r_diagsvd, NULL, "M x N matrix with s on the diagonal (scipy.linalg.diagsvd)."),
     ROUTINE("slinalg.orth", 1, "A, rcond=None", "out", r_orth, NULL, "Orthonormal basis for the range of A via SVD (scipy.linalg.orth)."),
