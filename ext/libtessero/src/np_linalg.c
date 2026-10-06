@@ -1259,6 +1259,62 @@ static int r_la_matmul(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* matvec(x1, x2): matrix-vector product over the last two axes of x1 and the last axis of x2 (numpy.matvec).
+   x1 is (..., M, N), x2 is (..., N); the result is (..., M). Leading (batch) dims must match. */
+static int r_matvec(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("matvec: inputs must be arrays"); return TSR_EARG; }
+    const tsr_array *A = &args[0].arr, *X = &args[1].arr;
+    if (A->ndim < 2 || X->ndim < 1) { fn_set_error("matvec: x1 must be >= 2-D and x2 >= 1-D"); return TSR_EARG; }
+    const int64_t M = A->shape[A->ndim - 2], N = A->shape[A->ndim - 1];
+    if (X->shape[X->ndim - 1] != N) { fn_set_error("matvec: core dimensions do not match"); return TSR_EARG; }
+    int64_t batchA = 1; for (int d = 0; d < A->ndim - 2; d++) batchA *= A->shape[d];
+    int64_t batchX = 1; for (int d = 0; d < X->ndim - 1; d++) batchX *= X->shape[d];
+    if (batchA != batchX) { fn_set_error("matvec: batch dimensions do not match"); return TSR_EARG; }
+    int64_t sza, szx; double *a = mat_f64(&args[0], "x1", &sza); if (!a) return TSR_ENOMEM;
+    double *x = mat_f64(&args[1], "x2", &szx); if (!x) { fn_free_doubles(a, sza); return TSR_ENOMEM; }
+    int64_t osh[TSR_MAXDIM]; const int ond = A->ndim - 1;
+    for (int d = 0; d < A->ndim - 2; d++) osh[d] = A->shape[d];
+    osh[ond - 1] = M;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, ond, osh);
+    if (!out) { fn_free_doubles(a, sza); fn_free_doubles(x, szx); return TSR_ENOMEM; }
+    for (int64_t bi = 0; bi < batchA; bi++) {
+        const double *am = a + bi * M * N, *xv = x + bi * N; double *ov = out + bi * M;
+        for (int64_t i = 0; i < M; i++) { double s = 0.0; for (int64_t j = 0; j < N; j++) s += am[i * N + j] * xv[j]; ov[i] = s; }
+    }
+    fn_free_doubles(a, sza); fn_free_doubles(x, szx);
+    return TSR_OK;
+}
+
+/* vecmat(x1, x2): vector-matrix product; x1 is (..., N), x2 is (..., N, M), the result is (..., M).
+   For real inputs this is sum_n x1[n] * x2[n, m] (numpy.vecmat conjugates x1 for complex). */
+static int r_vecmat(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("vecmat: inputs must be arrays"); return TSR_EARG; }
+    const tsr_array *V = &args[0].arr, *B = &args[1].arr;
+    if (V->ndim < 1 || B->ndim < 2) { fn_set_error("vecmat: x1 must be >= 1-D and x2 >= 2-D"); return TSR_EARG; }
+    const int64_t N = B->shape[B->ndim - 2], M = B->shape[B->ndim - 1];
+    if (V->shape[V->ndim - 1] != N) { fn_set_error("vecmat: core dimensions do not match"); return TSR_EARG; }
+    int64_t batchV = 1; for (int d = 0; d < V->ndim - 1; d++) batchV *= V->shape[d];
+    int64_t batchB = 1; for (int d = 0; d < B->ndim - 2; d++) batchB *= B->shape[d];
+    if (batchV != batchB) { fn_set_error("vecmat: batch dimensions do not match"); return TSR_EARG; }
+    int64_t szv, szb; double *v = mat_f64(&args[0], "x1", &szv); if (!v) return TSR_ENOMEM;
+    double *b = mat_f64(&args[1], "x2", &szb); if (!b) { fn_free_doubles(v, szv); return TSR_ENOMEM; }
+    int64_t osh[TSR_MAXDIM]; const int ond = B->ndim - 1;
+    for (int d = 0; d < B->ndim - 2; d++) osh[d] = B->shape[d];
+    osh[ond - 1] = M;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, ond, osh);
+    if (!out) { fn_free_doubles(v, szv); fn_free_doubles(b, szb); return TSR_ENOMEM; }
+    for (int64_t bi = 0; bi < batchB; bi++) {
+        const double *vv = v + bi * N, *bm = b + bi * N * M; double *ov = out + bi * M;
+        for (int64_t m = 0; m < M; m++) { double s = 0.0; for (int64_t n = 0; n < N; n++) s += vv[n] * bm[n * M + m]; ov[m] = s; }
+    }
+    fn_free_doubles(v, szv); fn_free_doubles(b, szb);
+    return TSR_OK;
+}
+
 /* ================================================================ table */
 
 static const fn_def DEFS[] = {
@@ -1270,6 +1326,9 @@ static const fn_def DEFS[] = {
     ROUTINE("linalg.outer", 1, "x1, x2", "out", r_la_outer, NULL, "Outer product of two 1-D arrays (numpy.linalg.outer)."),
     ROUTINE("linalg.cross", 1, "x1, x2, axis=-1", "out", r_la_cross, NULL, "Cross product of 3-element vectors (numpy.linalg.cross)."),
     ROUTINE("linalg.vecdot", 1, "x1, x2, axis=-1", "out", r_la_vecdot, NULL, "Dot product of two vectors (numpy.linalg.vecdot)."),
+    ROUTINE("np.vecdot", 1, "x1, x2, axis=-1", "out", r_la_vecdot, NULL, "Vector dot product over the last axis (numpy.vecdot)."),
+    ROUTINE("np.matvec", 1, "x1, x2", "out", r_matvec, NULL, "Matrix-vector product over the last two axes of x1 and the last axis of x2 (numpy.matvec)."),
+    ROUTINE("np.vecmat", 1, "x1, x2", "out", r_vecmat, NULL, "Vector-matrix product; x1 is (..., N), x2 is (..., N, M) (numpy.vecmat)."),
     ROUTINE("linalg.tensorsolve", 1, "a, b, axes=None", "out", r_tensorsolve, NULL, "Solve the tensor equation a x = b (numpy.linalg.tensorsolve)."),
     ROUTINE("linalg.tensorinv", 1, "a, ind=2", "out", r_tensorinv, NULL, "Inverse of an N-dimensional array as a tensor (numpy.linalg.tensorinv)."),
     ROUTINE("linalg.matrix_power", 1, "a, n", "out", r_matrix_power, NULL, "Raise a square matrix to the (integer) power n (numpy.linalg.matrix_power)."),
