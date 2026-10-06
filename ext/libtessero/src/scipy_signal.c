@@ -2173,6 +2173,70 @@ static int r_csd(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     return rc;
 }
 
+/* coherence(x, y, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', axis=-1):
+   the magnitude-squared coherence Cxy = |Pxy|^2 / (Pxx*Pyy) by Welch's method (scipy.signal.coherence). The
+   per-segment scale and one-sided doubling cancel in the ratio, so only the segment means are needed. (f, Cxy). */
+static int r_coherence(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("coherence: x and y must be 1-D real arrays"); return TSR_EARG; }
+    int64_t nx, ny; double *x = fn_arg_doubles(&args[0], &nx); if (!x) return TSR_ENOMEM;
+    double *y = fn_arg_doubles(&args[1], &ny); if (!y) { fn_free_doubles(x, nx); return TSR_ENOMEM; }
+    const int64_t nmin = nx < ny ? nx : ny;
+    const double fs = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    int64_t nwin = 0; double *warr = (nargs > 3 && args[3].kind == 3) ? fn_arg_doubles(&args[3], &nwin) : NULL;
+    const int win_boxcar = (nargs > 3 && args[3].kind == 2 && args[3].str && !strcmp(args[3].str, "boxcar"));
+    int64_t nperseg = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : (warr ? nwin : (nmin < 256 ? nmin : 256));
+    if (nperseg > nmin) nperseg = nmin;
+    const int64_t noverlap = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg / 2;
+    const int64_t nfft = (nargs > 6 && args[6].kind == 1) ? (int64_t)args[6].num : nperseg;
+    int det = 1;
+    if (nargs > 7) { if (args[7].kind == 2 && args[7].str) det = !strcmp(args[7].str, "linear") ? 2 : 1; else if (args[7].kind == 4 && args[7].num == 0.0) det = 0; }
+    const int64_t nstep = nperseg - noverlap;
+    int rc = TSR_OK;
+    if (nstep <= 0) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); fn_free_doubles(y, ny); fn_set_error("coherence: noverlap must be less than nperseg"); return TSR_EARG; }
+    const int64_t nseg = nperseg <= nmin ? 1 + (nmin - nperseg) / nstep : 0;
+    const int64_t nb = nfft / 2 + 1;                         /* coherence is one-sided */
+    double *win = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    double *sxx = (double *)calloc((size_t)(nb > 0 ? nb : 1), sizeof(double));
+    double *syy = (double *)calloc((size_t)(nb > 0 ? nb : 1), sizeof(double));
+    double *pr = (double *)calloc((size_t)(nb > 0 ? nb : 1), sizeof(double));
+    double *pi = (double *)calloc((size_t)(nb > 0 ? nb : 1), sizeof(double));
+    double *s1 = (double *)malloc(sizeof(double) * (size_t)nperseg), *s2 = (double *)malloc(sizeof(double) * (size_t)nperseg);
+    double *in1 = (double *)calloc((size_t)nfft, sizeof(double)), *in2 = (double *)calloc((size_t)nfft, sizeof(double));
+    double *F1 = (double *)malloc(sizeof(double) * (size_t)(2 * nb)), *F2 = (double *)malloc(sizeof(double) * (size_t)(2 * nb));
+    if (!win || !sxx || !syy || !pr || !pi || !s1 || !s2 || !in1 || !in2 || !F1 || !F2 || (nargs > 3 && args[3].kind == 3 && !warr)) rc = TSR_ENOMEM;
+    else if (warr && nwin != nperseg) { fn_set_error("coherence: window length must equal nperseg"); rc = TSR_EARG; }
+    else if (nseg < 1) { fn_set_error("coherence: nperseg exceeds the signal length"); rc = TSR_EARG; }
+    else {
+        for (int64_t i = 0; i < nperseg; i++) win[i] = warr ? warr[i] : (win_boxcar ? 1.0 : 0.5 - 0.5 * cos(2.0 * M_PI * (double)i / (double)nperseg));
+        for (int64_t s = 0; s < nseg; s++) {
+            const double *px = x + s * nstep, *py = y + s * nstep;
+            for (int64_t i = 0; i < nperseg; i++) { s1[i] = px[i]; s2[i] = py[i]; }
+            for (int pass = 0; pass < 2; pass++) {
+                double *seg = pass ? s2 : s1;
+                if (det == 1) { double m = 0; for (int64_t i = 0; i < nperseg; i++) m += seg[i]; m /= (double)nperseg; for (int64_t i = 0; i < nperseg; i++) seg[i] -= m; }
+                else if (det == 2 && nperseg > 1) { double st = 0, ss = 0, stt = 0, stx = 0; const double n = (double)nperseg; for (int64_t i = 0; i < nperseg; i++) { st += i; ss += seg[i]; stt += (double)i * i; stx += (double)i * seg[i]; } const double b = (n * stx - st * ss) / (n * stt - st * st), a = (ss - b * st) / n; for (int64_t i = 0; i < nperseg; i++) seg[i] -= a + b * (double)i; }
+                for (int64_t i = 0; i < nperseg; i++) seg[i] *= win[i];
+            }
+            for (int64_t i = 0; i < nfft; i++) { in1[i] = i < nperseg ? s1[i] : 0.0; in2[i] = i < nperseg ? s2[i] : 0.0; }
+            tsr_rfft(nfft, 1, in1, F1); tsr_rfft(nfft, 1, in2, F2);
+            for (int64_t k = 0; k < nb; k++) {
+                const double ar = F1[2 * k], ai = F1[2 * k + 1], br = F2[2 * k], bi = F2[2 * k + 1];
+                sxx[k] += ar * ar + ai * ai; syy[k] += br * br + bi * bi;
+                pr[k] += ar * br + ai * bi; pi[k] += ar * bi - ai * br;   /* conj(X)*Y */
+            }
+        }
+        double *f = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nb});
+        double *C = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nb});
+        if (!f || !C) rc = TSR_ENOMEM;
+        else for (int64_t k = 0; k < nb; k++) { const double den = sxx[k] * syy[k]; C[k] = den > 0.0 ? (pr[k] * pr[k] + pi[k] * pi[k]) / den : 0.0; f[k] = (double)k * fs / (double)nfft; }
+    }
+    free(win); free(sxx); free(syy); free(pr); free(pi); free(s1); free(s2); free(in1); free(in2); free(F1); free(F2);
+    if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); fn_free_doubles(y, ny);
+    return rc;
+}
+
 /* transpose an r x c interleaved-complex matrix into dst (c x r). */
 static void sig_ctranspose(const double *src, int64_t r, int64_t c, double *dst)
 {
@@ -2266,6 +2330,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.periodogram", 2, "x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True, scaling='density'", "f, Pxx", r_periodogram, NULL, "Power spectral density estimate from a single segment (scipy.signal.periodogram)."),
     ROUTINE("signal.welch", 2, "x, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', return_onesided=True, scaling='density', axis=-1, average='mean'", "f, Pxx", r_welch, NULL, "Welch's averaged-periodogram power spectral density estimate (scipy.signal.welch)."),
     ROUTINE("signal.csd", 2, "x, y, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', return_onesided=True, scaling='density', axis=-1, average='mean'", "f, Pxy", r_csd, NULL, "Cross power spectral density by Welch's method (scipy.signal.csd)."),
+    ROUTINE("signal.coherence", 2, "x, y, fs=1.0, window='hann', nperseg=None, noverlap=None, nfft=None, detrend='constant', axis=-1", "f, Cxy", r_coherence, NULL, "Magnitude-squared coherence by Welch's method (scipy.signal.coherence)."),
     ROUTINE("windows.general_cosine", 1, "M, a, sym=True", "out", r_win_general_cosine, NULL, "Generic weighted sum of cosines window (scipy.signal.windows.general_cosine)."),
     ROUTINE("windows.general_hamming", 1, "M, alpha, sym=True", "out", r_win_general_hamming, NULL, "Generalized Hamming window (scipy.signal.windows.general_hamming)."),
     ROUTINE("windows.hann", 1, "M, sym=True", "out", r_win_hann, NULL, "Hann window (scipy.signal.windows.hann)."),
