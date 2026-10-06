@@ -2542,6 +2542,42 @@ static int r_helmert(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return TSR_OK;
 }
 
+/* cho_solve_banded(cb, lower, b): solve A x = b given the banded Cholesky factor cb (from cholesky_banded) and
+   the lower flag, via dpbtrs. SciPy's ((cb, lower), b) tuple is taken unpacked here (scipy.linalg.cho_solve_banded). */
+static int r_cho_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[2].kind != 3) { fn_set_error("cho_solve_banded: cb must be 2-D and b an array"); return TSR_EARG; }
+    int lower = 0;
+    if (args[1].kind == 4 || args[1].kind == 1) lower = (args[1].num != 0 || args[1].ival != 0);
+    const char uplo = lower ? 'L' : 'U';
+    const int64_t kd = args[0].arr.shape[0] - 1, n = args[0].arr.shape[1];
+    const tsr_array *B = &args[2].arr;
+    const int vector = B->ndim == 1;
+    const int64_t nrhs = vector ? 1 : B->shape[1];
+    if (B->shape[0] != n) { fn_set_error("cho_solve_banded: b has the wrong number of rows"); return TSR_EARG; }
+    int64_t ncb, nb;
+    double *cbd = mat_f64(&args[0], "cb", &ncb); if (!cbd) return TSR_ENOMEM;
+    double *b = mat_f64(&args[2], "b", &nb); if (!b) { fn_free_doubles(cbd, ncb); return TSR_ENOMEM; }
+    const int64_t ldab = kd + 1;
+    double *AB = (double *)malloc(sizeof(double) * (size_t)(ldab * n > 0 ? ldab * n : 1));
+    double *bcm = (double *)malloc(sizeof(double) * (size_t)(n * nrhs > 0 ? n * nrhs : 1));
+    int rc = TSR_OK;
+    if (!AB || !bcm) rc = TSR_ENOMEM;
+    else {
+        for (int64_t j = 0; j < n; j++) for (int64_t r = 0; r < ldab; r++) AB[r + j * ldab] = cbd[r * n + j];
+        for (int64_t i = 0; i < n; i++) for (int64_t cc = 0; cc < nrhs; cc++) bcm[i + cc * n] = b[i * nrhs + cc];
+        if (n > 0) { lapack_int info = LAPACKE_dpbtrs(LAPACK_COL_MAJOR, uplo, (lapack_int)n, (lapack_int)kd, (lapack_int)nrhs, AB, (lapack_int)ldab, bcm, (lapack_int)n); if (info != 0) { rc = TSR_EARG; fn_set_error("cho_solve_banded: dpbtrs failed"); } }
+        if (rc == TSR_OK) {
+            int64_t rsh1[1] = {n}, rsh2[2] = {n, nrhs};
+            double *x = (double *)(vector ? fn_result_array(&res[0], TSR_F64, 1, rsh1) : fn_result_array(&res[0], TSR_F64, 2, rsh2));
+            if (!x) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n; i++) for (int64_t cc = 0; cc < nrhs; cc++) x[i * nrhs + cc] = bcm[i + cc * n];
+        }
+    }
+    free(AB); free(bcm); fn_free_doubles(cbd, ncb); fn_free_doubles(b, nb);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3098,6 +3134,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.cholesky_banded", 1, "ab, lower=False", "out", r_cholesky_banded, NULL, "Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded)."),
     ROUTINE("slinalg.solve_discrete_lyapunov", 1, "a, q", "out", r_solve_discrete_lyapunov, NULL, "Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov)."),
     ROUTINE("slinalg.helmert", 1, "n, full=False", "out", r_helmert, NULL, "Helmert matrix of order n (scipy.linalg.helmert)."),
+    ROUTINE("slinalg.cho_solve_banded", 1, "cb, lower, b", "out", r_cho_solve_banded, NULL, "Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

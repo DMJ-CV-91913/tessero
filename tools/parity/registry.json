@@ -1900,6 +1900,11 @@
             "nin": 0,
             "nout": 1
         },
+        "slinalg.cho_solve_banded": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "slinalg.cholesky": {
             "kind": "routine",
             "nin": 0,
