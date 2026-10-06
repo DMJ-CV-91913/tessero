@@ -464,6 +464,7 @@
         "slinalg.hessenberg": "pass",
         "slinalg.hilbert": "pass",
         "slinalg.inv": "pass",
+        "slinalg.invpascal": "pass",
         "slinalg.khatri_rao": "pass",
         "slinalg.ldl": "pass",
         "slinalg.leslie": "pass",
@@ -475,6 +476,7 @@
         "slinalg.norm": "pass",
         "slinalg.null_space": "pass",
         "slinalg.orth": "pass",
+        "slinalg.pascal": "pass",
         "slinalg.pinv": "pass",
         "slinalg.pinvh": "pass",
         "slinalg.polar": "pass",
@@ -2012,7 +2014,9 @@
             "slinalg.leslie": 0,
             "np.vecdot": 0,
             "np.matvec": 2.739647447687495e-16,
-            "np.vecmat": 6.804136052614522e-16
+            "np.vecmat": 6.804136052614522e-16,
+            "slinalg.pascal": 0,
+            "slinalg.invpascal": 0
         },
         "ext": {
             "np.median": 0,
@@ -3019,7 +3023,9 @@
             "slinalg.leslie": 0,
             "np.vecdot": 0,
             "np.matvec": 2.739647447687495e-16,
-            "np.vecmat": 6.804136052614522e-16
+            "np.vecmat": 6.804136052614522e-16,
+            "slinalg.pascal": 0,
+            "slinalg.invpascal": 0
         }
     },
     "ext": {
@@ -3487,6 +3493,7 @@
         "slinalg.hessenberg": "pass",
         "slinalg.hilbert": "pass",
         "slinalg.inv": "pass",
+        "slinalg.invpascal": "pass",
         "slinalg.khatri_rao": "pass",
         "slinalg.ldl": "pass",
         "slinalg.leslie": "pass",
@@ -3498,6 +3505,7 @@
         "slinalg.norm": "pass",
         "slinalg.null_space": "pass",
         "slinalg.orth": "pass",
+        "slinalg.pascal": "pass",
         "slinalg.pinv": "pass",
         "slinalg.pinvh": "pass",
         "slinalg.polar": "pass",

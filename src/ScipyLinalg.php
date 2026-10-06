@@ -41,6 +41,7 @@ final class ScipyLinalg
     'hessenberg' => 'hessenberg',
     'hilbert' => 'hilbert',
     'inv' => 'inv',
+    'invpascal' => 'invpascal',
     'khatri_rao' => 'khatriRao',
     'ldl' => 'ldl',
     'leslie' => 'leslie',
@@ -52,6 +53,7 @@ final class ScipyLinalg
     'norm' => 'norm',
     'null_space' => 'nullSpace',
     'orth' => 'orth',
+    'pascal' => 'pascal',
     'pinv' => 'pinv',
     'pinvh' => 'pinvh',
     'polar' => 'polar',
@@ -327,6 +329,16 @@ final class ScipyLinalg
     }
 
     /**
+     * Inverse of the Pascal matrix of order n (scipy.linalg.invpascal).
+     *
+     * scipy.linalg.invpascal
+     */
+    public static function invpascal(mixed $n, mixed $kind = 'symmetric'): mixed
+    {
+        return Registry::routine('slinalg.invpascal', [$n, $kind]);
+    }
+
+    /**
      * Column-wise Kronecker (Khatri-Rao) product (scipy.linalg.khatri_rao).
      *
      * scipy.linalg.khatri_rao
@@ -442,6 +454,16 @@ final class ScipyLinalg
     public static function orth(mixed $A, mixed $rcond = null): mixed
     {
         return Registry::routine('slinalg.orth', [$A, $rcond]);
+    }
+
+    /**
+     * Pascal matrix of order n (scipy.linalg.pascal).
+     *
+     * scipy.linalg.pascal
+     */
+    public static function pascal(mixed $n, mixed $kind = 'symmetric'): mixed
+    {
+        return Registry::routine('slinalg.pascal', [$n, $kind]);
     }
 
     /**

@@ -229,6 +229,10 @@ def main():
          call('hankel', [rng.uniform(-3, 3, size=5), rng.uniform(-3, 3, size=3)])]
     blocks['fiedler'] = [call('fiedler', [rng.uniform(-3, 3, size=n)]) for n in (2, 4, 5)]
     blocks['leslie'] = [call('leslie', [rng.uniform(0, 3, size=n), rng.uniform(0, 1, size=n - 1)]) for n in (2, 4, 5)]
+    blocks['pascal'] = [call('pascal', [n]) for n in (1, 4, 5)] + \
+        [call('pascal', [5], {'kind': 'lower'}), call('pascal', [5], {'kind': 'upper'})]
+    blocks['invpascal'] = [call('invpascal', [n]) for n in (1, 4, 5)] + \
+        [call('invpascal', [5], {'kind': 'lower'}), call('invpascal', [5], {'kind': 'upper'})]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]
