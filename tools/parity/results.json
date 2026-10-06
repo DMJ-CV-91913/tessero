@@ -447,6 +447,9 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.kaiser_atten": "pass",
+        "signal.kaiser_beta": "pass",
+        "signal.kaiserord": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
         "signal.lp2bp": "pass",
@@ -2150,7 +2153,10 @@
             "signal.spectrogram": 3,
             "signal.correlation_lags": 0,
             "signal.resample": 1.46249245661051e-12,
-            "signal.firwin": 5.013091982038477e-15
+            "signal.firwin": 5.013091982038477e-15,
+            "signal.kaiser_atten": 0,
+            "signal.kaiser_beta": 0,
+            "signal.kaiserord": 0
         },
         "ext": {
             "np.median": 0,
@@ -3226,7 +3232,10 @@
             "signal.spectrogram": 3,
             "signal.correlation_lags": 0,
             "signal.resample": 1.46249245661051e-12,
-            "signal.firwin": 5.013091982038477e-15
+            "signal.firwin": 5.013091982038477e-15,
+            "signal.kaiser_atten": 0,
+            "signal.kaiser_beta": 0,
+            "signal.kaiserord": 0
         }
     },
     "ext": {
@@ -3677,6 +3686,9 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.kaiser_atten": "pass",
+        "signal.kaiser_beta": "pass",
+        "signal.kaiserord": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
         "signal.lp2bp": "pass",

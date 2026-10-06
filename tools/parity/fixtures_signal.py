@@ -393,6 +393,16 @@ fwn = [
     _firwin_case(41, [0.15, 0.35, 0.6], pass_zero=False),  # multi-band
 ]
 
+# kaiser FIR helpers
+katt, kbeta, kord = [], [], []
+for (nt, w) in [(31, 0.1), (65, 0.05), (21, 0.2)]:
+    katt.append({'args': [F.enc(nt), F.enc(w)], 'kwargs': {}, 'expect': F.enc_result(sg.kaiser_atten(nt, w), []), 'compare': 'tol'})
+for a in (10.0, 25.0, 40.0, 60.0, 8.0):
+    kbeta.append({'args': [F.enc(a)], 'kwargs': {}, 'expect': F.enc_result(sg.kaiser_beta(a), []), 'compare': 'tol'})
+for (rip, w) in [(65.0, 0.1), (40.0, 0.05), (20.0, 0.2), (30.0, 0.15)]:
+    nt, beta = sg.kaiserord(rip, w)
+    kord.append({'args': [F.enc(rip), F.enc(w)], 'kwargs': {}, 'expect': F.enc_result((nt, beta), ['numtaps', 'beta']), 'compare': 'tol'})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -433,7 +443,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'spectrogram', 'cases': spg, 'tol': {'atol': 1e-12}},
                  {'fn': 'correlation_lags', 'cases': clg},
                  {'fn': 'resample', 'cases': rsmp, 'tol': {'atol': 1e-10}},
-                 {'fn': 'firwin', 'cases': fwn, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'firwin', 'cases': fwn, 'tol': {'atol': 1e-12}},
+                 {'fn': 'kaiser_atten', 'cases': katt}, {'fn': 'kaiser_beta', 'cases': kbeta},
+                 {'fn': 'kaiserord', 'cases': kord}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

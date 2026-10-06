@@ -951,6 +951,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
 | `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |
+| `scipy.signal.kaiser_atten` | `Tessero\Signal::kaiserAtten()` |
+| `scipy.signal.kaiser_beta` | `Tessero\Signal::kaiserBeta()` |
+| `scipy.signal.kaiserord` | `Tessero\Signal::kaiserord()` |
 | `scipy.signal.lfilter` | `Tessero\Signal::lfilter()` |
 | `scipy.signal.lfilter_zi` | `Tessero\Signal::lfilterZi()` |
 | `scipy.signal.lp2bp` | `Tessero\Signal::lp2bp()` |
