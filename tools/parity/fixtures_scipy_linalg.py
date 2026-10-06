@@ -446,6 +446,25 @@ def main():
     qrm.append(call('qr_multiply', [rng.uniform(-2, 2, (3, 5)), rng.uniform(-2, 2, (3, 2)), 'left'], names=['CQ', 'R']))
     blocks['qr_multiply'] = qrm
 
+    # qr_update / qr_insert / qr_delete: QR of a rank-1-updated / row-or-column-inserted / -deleted matrix.
+    # Inputs are an economic QR; results stay tall and full rank, so qr_canon makes them unique.
+    def _econ_qr(a):
+        return sla.qr(a, mode='economic')
+    Au = rng.uniform(-2, 2, (6, 4))
+    Qu, Ru = _econ_qr(Au)
+    qru = [callc('qr_update', [Qu, Ru, rng.uniform(-2, 2, 6), rng.uniform(-2, 2, 4)], None, ['Q', 'R'], qr_canon),
+           callc('qr_update', [Qu, Ru, rng.uniform(-2, 2, 6), rng.uniform(-2, 2, 4)], None, ['Q', 'R'], qr_canon)]
+    blocks['qr_update'] = qru
+    qri = [callc('qr_insert', [Qu, Ru, rng.uniform(-2, 2, 4), 3, 'row'], None, ['Q', 'R'], qr_canon),
+           callc('qr_insert', [Qu, Ru, rng.uniform(-2, 2, 4), 0, 'row'], None, ['Q', 'R'], qr_canon),
+           callc('qr_insert', [Qu, Ru, rng.uniform(-2, 2, 6), 2, 'col'], None, ['Q', 'R'], qr_canon),
+           callc('qr_insert', [Qu, Ru, rng.uniform(-2, 2, 6), 4, 'col'], None, ['Q', 'R'], qr_canon)]
+    blocks['qr_insert'] = qri
+    qrd = [callc('qr_delete', [Qu, Ru, 2, 1, 'row'], None, ['Q', 'R'], qr_canon),
+           callc('qr_delete', [Qu, Ru, 0, 2, 'row'], None, ['Q', 'R'], qr_canon),
+           callc('qr_delete', [Qu, Ru, 1, 1, 'col'], None, ['Q', 'R'], qr_canon)]
+    blocks['qr_delete'] = qrd
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}

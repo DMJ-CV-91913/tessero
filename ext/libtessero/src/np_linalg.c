@@ -3797,6 +3797,155 @@ static int r_qr_multiply(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     return rc;
 }
 
+/* Economic QR of an m x n row-major matrix, canonicalised exactly as the parity fixtures' qr_canon (R's
+   diagonal made non-negative, the matching Q column flipped), written into res[0]=Q (m x k) and res[1]=R
+   (k x n), k = min(m, n). Overwrites A. Returns TSR_OK or an error code. */
+static int sl_qr_canon_result(double *A, int64_t m, int64_t n, tsr_result *res)
+{
+    const int64_t k = m < n ? m : n;
+    int64_t qsh[2] = {m, k}, rsh[2] = {k, n};
+    double *q = (double *)fn_result_array(&res[0], TSR_F64, 2, qsh);
+    double *r = (double *)fn_result_array(&res[1], TSR_F64, 2, rsh);
+    double *tau = (double *)malloc(sizeof(double) * (size_t)(k > 0 ? k : 1));
+    if (!q || !r || !tau) { free(tau); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (k > 0) {
+        lapack_int info = LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)n, A, (lapack_int)n, tau);
+        if (info != 0) { rc = TSR_EARG; fn_set_error("qr update: dgeqrf failed"); }
+        else {
+            for (int64_t i = 0; i < k; i++) for (int64_t j = 0; j < n; j++) r[i * n + j] = j >= i ? A[i * n + j] : 0.0;
+            for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < k; j++) q[i * k + j] = j < n ? A[i * n + j] : 0.0;
+            lapack_int info2 = LAPACKE_dorgqr(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)k, (lapack_int)k, q, (lapack_int)k, tau);
+            if (info2 != 0) { rc = TSR_EARG; fn_set_error("qr update: dorgqr failed"); }
+            else for (int64_t i = 0; i < k; i++)
+                if (r[i * n + i] < 0.0) {
+                    for (int64_t j = 0; j < n; j++) r[i * n + j] = -r[i * n + j];
+                    for (int64_t row = 0; row < m; row++) q[row * k + i] = -q[row * k + i];
+                }
+        }
+    }
+    free(tau);
+    return rc;
+}
+
+/* Reconstruct A = Q R (Q m x kk, R kk x n) into a freshly allocated m x n buffer. NULL on OOM. */
+static double *sl_qr_reconstruct(const double *Q, const double *R, int64_t m, int64_t kk, int64_t n)
+{
+    double *A = (double *)malloc(sizeof(double) * (size_t)(m * n > 0 ? m * n : 1));
+    if (!A) return NULL;
+    for (int64_t i = 0; i < m; i++)
+        for (int64_t j = 0; j < n; j++) { double s = 0.0; for (int64_t l = 0; l < kk; l++) s += Q[i * kk + l] * R[l * n + j]; A[i * n + j] = s; }
+    return A;
+}
+
+static int sl_arg_int(const tsr_arg *a, int64_t *out)
+{
+    if (a->kind == 1) { *out = (a->flags & 1) ? a->ival : (int64_t)a->num; return 0; }
+    return -1;
+}
+
+/* qr_update(Q, R, u, v): the economic QR of (Q R + u v^T), canonicalised (scipy.linalg.qr_update). */
+static int r_qr_update(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[3].kind != 3) { fn_set_error("qr_update: Q, R must be 2-D and u, v arrays"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], kk = args[0].arr.shape[1], n = args[1].arr.shape[1];
+    int64_t nq, nr, nu, nv;
+    double *Q = mat_f64(&args[0], "Q", &nq); if (!Q) return TSR_ENOMEM;
+    double *R = mat_f64(&args[1], "R", &nr); if (!R) { fn_free_doubles(Q, nq); return TSR_ENOMEM; }
+    double *u = mat_f64(&args[2], "u", &nu); if (!u) { fn_free_doubles(Q, nq); fn_free_doubles(R, nr); return TSR_ENOMEM; }
+    double *v = mat_f64(&args[3], "v", &nv); if (!v) { fn_free_doubles(Q, nq); fn_free_doubles(R, nr); fn_free_doubles(u, nu); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (nu != m || nv != n) { fn_set_error("qr_update: u must have len m and v len n"); rc = TSR_EARG; }
+    else {
+        double *A = sl_qr_reconstruct(Q, R, m, kk, n);
+        if (!A) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) A[i * n + j] += u[i] * v[j]; rc = sl_qr_canon_result(A, m, n, res); free(A); }
+    }
+    fn_free_doubles(Q, nq); fn_free_doubles(R, nr); fn_free_doubles(u, nu); fn_free_doubles(v, nv);
+    return rc;
+}
+
+/* qr_insert(Q, R, u, k, which='row'): the economic QR of A = Q R with the row (len n) or column (len m) u
+   inserted at index k, canonicalised (scipy.linalg.qr_insert; single row/column). */
+static int r_qr_insert(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3) { fn_set_error("qr_insert: Q, R must be 2-D and u an array"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], kk = args[0].arr.shape[1], n = args[1].arr.shape[1];
+    int64_t kidx = 0;
+    if (nargs < 4 || sl_arg_int(&args[3], &kidx) != 0) { fn_set_error("qr_insert: k must be an integer"); return TSR_EARG; }
+    int col = 0;
+    if (nargs > 4 && args[4].kind == 2 && args[4].str) { if (!strcmp(args[4].str, "col") || !strcmp(args[4].str, "column")) col = 1; else if (strcmp(args[4].str, "row") != 0) { fn_set_error("qr_insert: which must be 'row' or 'col'"); return TSR_EARG; } }
+    int64_t nq, nr, nu;
+    double *Q = mat_f64(&args[0], "Q", &nq); if (!Q) return TSR_ENOMEM;
+    double *R = mat_f64(&args[1], "R", &nr); if (!R) { fn_free_doubles(Q, nq); return TSR_ENOMEM; }
+    double *u = mat_f64(&args[2], "u", &nu); if (!u) { fn_free_doubles(Q, nq); fn_free_doubles(R, nr); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    double *A = sl_qr_reconstruct(Q, R, m, kk, n);
+    if (!A) rc = TSR_ENOMEM;
+    else if (col) {                                          /* insert a column (len m) at col kidx -> m x (n+1) */
+        if (nu != m || kidx < 0 || kidx > n) { fn_set_error("qr_insert: bad column insert"); rc = TSR_EARG; }
+        else {
+            const int64_t nn = n + 1;
+            double *A2 = (double *)malloc(sizeof(double) * (size_t)(m * nn));
+            if (!A2) rc = TSR_ENOMEM;
+            else { for (int64_t i = 0; i < m; i++) { int64_t c = 0; for (int64_t j = 0; j < nn; j++) A2[i * nn + j] = (j == kidx) ? u[i] : A[i * n + (c++)]; } rc = sl_qr_canon_result(A2, m, nn, res); free(A2); }
+        }
+    } else {                                                 /* insert a row (len n) at row kidx -> (m+1) x n */
+        if (nu != n || kidx < 0 || kidx > m) { fn_set_error("qr_insert: bad row insert"); rc = TSR_EARG; }
+        else {
+            const int64_t mm = m + 1;
+            double *A2 = (double *)malloc(sizeof(double) * (size_t)(mm * n));
+            if (!A2) rc = TSR_ENOMEM;
+            else { int64_t ri = 0; for (int64_t i = 0; i < mm; i++) { if (i == kidx) for (int64_t j = 0; j < n; j++) A2[i * n + j] = u[j]; else { for (int64_t j = 0; j < n; j++) A2[i * n + j] = A[ri * n + j]; ri++; } } rc = sl_qr_canon_result(A2, mm, n, res); free(A2); }
+        }
+    }
+    free(A);
+    fn_free_doubles(Q, nq); fn_free_doubles(R, nr); fn_free_doubles(u, nu);
+    return rc;
+}
+
+/* qr_delete(Q, R, k, p=1, which='row'): the economic QR of A = Q R with p rows or columns removed starting at
+   index k, canonicalised (scipy.linalg.qr_delete). */
+static int r_qr_delete(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("qr_delete: Q and R must be 2-D arrays"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], kk = args[0].arr.shape[1], n = args[1].arr.shape[1];
+    int64_t kidx = 0, p = 1;
+    if (nargs < 3 || sl_arg_int(&args[2], &kidx) != 0) { fn_set_error("qr_delete: k must be an integer"); return TSR_EARG; }
+    if (nargs > 3 && args[3].kind == 1) sl_arg_int(&args[3], &p);
+    int col = 0;
+    if (nargs > 4 && args[4].kind == 2 && args[4].str) { if (!strcmp(args[4].str, "col") || !strcmp(args[4].str, "column")) col = 1; else if (strcmp(args[4].str, "row") != 0) { fn_set_error("qr_delete: which must be 'row' or 'col'"); return TSR_EARG; } }
+    int64_t nq, nr;
+    double *Q = mat_f64(&args[0], "Q", &nq); if (!Q) return TSR_ENOMEM;
+    double *R = mat_f64(&args[1], "R", &nr); if (!R) { fn_free_doubles(Q, nq); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    double *A = sl_qr_reconstruct(Q, R, m, kk, n);
+    if (!A) rc = TSR_ENOMEM;
+    else if (col) {                                          /* delete p columns at kidx -> m x (n-p) */
+        if (kidx < 0 || p < 1 || kidx + p > n) { fn_set_error("qr_delete: bad column delete"); rc = TSR_EARG; }
+        else {
+            const int64_t nn = n - p;
+            double *A2 = (double *)malloc(sizeof(double) * (size_t)(m * (nn > 0 ? nn : 1)));
+            if (!A2) rc = TSR_ENOMEM;
+            else { for (int64_t i = 0; i < m; i++) { int64_t c = 0; for (int64_t j = 0; j < n; j++) if (j < kidx || j >= kidx + p) A2[i * nn + (c++)] = A[i * n + j]; } rc = sl_qr_canon_result(A2, m, nn, res); free(A2); }
+        }
+    } else {                                                 /* delete p rows at kidx -> (m-p) x n */
+        if (kidx < 0 || p < 1 || kidx + p > m) { fn_set_error("qr_delete: bad row delete"); rc = TSR_EARG; }
+        else {
+            const int64_t mm = m - p;
+            double *A2 = (double *)malloc(sizeof(double) * (size_t)((mm > 0 ? mm : 1) * n));
+            if (!A2) rc = TSR_ENOMEM;
+            else { int64_t ri = 0; for (int64_t i = 0; i < m; i++) if (i < kidx || i >= kidx + p) { for (int64_t j = 0; j < n; j++) A2[ri * n + j] = A[i * n + j]; ri++; } rc = sl_qr_canon_result(A2, mm, n, res); free(A2); }
+        }
+    }
+    free(A);
+    fn_free_doubles(Q, nq); fn_free_doubles(R, nr);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -3871,6 +4020,9 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.solve_discrete_are", 4, "a, b, q, r", "out", r_solve_discrete_are, NULL, "Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are)."),
     ROUTINE("slinalg.signm", 1, "A", "out", r_signm, NULL, "Matrix sign function via the Schur-Parlett method (scipy.linalg.signm; real, well-separated spectrum)."),
     ROUTINE("slinalg.qr_multiply", 3, "a, c, mode='right'", "CQ, R", r_qr_multiply, NULL, "Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply)."),
+    ROUTINE("slinalg.qr_update", 4, "Q, R, u, v", "Q, R", r_qr_update, NULL, "Economic QR of (Q R + u v^T), canonicalised (scipy.linalg.qr_update)."),
+    ROUTINE("slinalg.qr_insert", 5, "Q, R, u, k, which='row'", "Q, R", r_qr_insert, NULL, "Economic QR after inserting a row/column, canonicalised (scipy.linalg.qr_insert)."),
+    ROUTINE("slinalg.qr_delete", 5, "Q, R, k, p=1, which='row'", "Q, R", r_qr_delete, NULL, "Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),

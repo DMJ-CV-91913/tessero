@@ -2083,10 +2083,28 @@
                 "doc": "QR factorisation (scipy.linalg.qr; mode 'full' or 'economic')."
             },
             {
+                "name": "qrDelete",
+                "static": true,
+                "sig": "qrDelete(mixed $Q, mixed $R, mixed $k, mixed $p = 1, mixed $which = 'row'): mixed",
+                "doc": "Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete)."
+            },
+            {
+                "name": "qrInsert",
+                "static": true,
+                "sig": "qrInsert(mixed $Q, mixed $R, mixed $u, mixed $k, mixed $which = 'row'): mixed",
+                "doc": "Economic QR after inserting a row/column, canonicalised (scipy.linalg.qr_insert)."
+            },
+            {
                 "name": "qrMultiply",
                 "static": true,
                 "sig": "qrMultiply(mixed $a, mixed $c, mixed $mode = 'right'): mixed",
                 "doc": "Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply)."
+            },
+            {
+                "name": "qrUpdate",
+                "static": true,
+                "sig": "qrUpdate(mixed $Q, mixed $R, mixed $u, mixed $v): mixed",
+                "doc": "Economic QR of (Q R + u v^T), canonicalised (scipy.linalg.qr_update)."
             },
             {
                 "name": "qz",
@@ -14974,6 +14992,24 @@
                 "name": "qrMultiply",
                 "static": true,
                 "sig": "qrMultiply($a, $c, $mode = 'right')",
+                "doc": ""
+            },
+            {
+                "name": "qrUpdate",
+                "static": true,
+                "sig": "qrUpdate($Q, $R, $u, $v)",
+                "doc": ""
+            },
+            {
+                "name": "qrInsert",
+                "static": true,
+                "sig": "qrInsert($Q, $R, $u, $k, $which = 'row')",
+                "doc": ""
+            },
+            {
+                "name": "qrDelete",
+                "static": true,
+                "sig": "qrDelete($Q, $R, $k, $p = 1, $which = 'row')",
                 "doc": ""
             },
             {
