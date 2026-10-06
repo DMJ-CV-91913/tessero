@@ -75,6 +75,7 @@ final class ScipyLinalg
     'pinvh' => 'pinvh',
     'polar' => 'polar',
     'qr' => 'qr',
+    'qr_multiply' => 'qrMultiply',
     'qz' => 'qz',
     'rq' => 'rq',
     'rsf2csf' => 'rsf2csf',
@@ -716,6 +717,18 @@ final class ScipyLinalg
     public static function qr(mixed $a, mixed $mode = 'full'): mixed
     {
         return Registry::routine('slinalg.qr', [$a, $mode]);
+    }
+
+    /**
+     * Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply).
+     *
+     * scipy.linalg.qr_multiply
+     *
+     * @return mixed one array, or an array keyed by CQ, R when several results are requested
+     */
+    public static function qrMultiply(mixed $a, mixed $c, mixed $mode = 'right'): mixed
+    {
+        return Registry::routine('slinalg.qr_multiply', [$a, $c, $mode]);
     }
 
     /**

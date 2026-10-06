@@ -437,6 +437,15 @@ def main():
         call('signm', [np.array([[6., 2.], [1., 5.]])]),
     ]
 
+    # qr_multiply: c @ Q (right) or Q @ c (left) with the economic, non-canonicalised Q (standard dgeqrf signs).
+    qrm = []
+    qrm.append(call('qr_multiply', [rng.uniform(-2, 2, (5, 3)), rng.uniform(-2, 2, (3, 2)), 'left'], names=['CQ', 'R']))
+    qrm.append(call('qr_multiply', [rng.uniform(-2, 2, (5, 3)), rng.uniform(-2, 2, (2, 5)), 'right'], names=['CQ', 'R']))
+    qrm.append(call('qr_multiply', [rng.uniform(-2, 2, (4, 4)), rng.uniform(-2, 2, (4, 3)), 'left'], names=['CQ', 'R']))
+    qrm.append(call('qr_multiply', [rng.uniform(-2, 2, (4, 4)), rng.uniform(-2, 2, (2, 4)), 'right'], names=['CQ', 'R']))
+    qrm.append(call('qr_multiply', [rng.uniform(-2, 2, (3, 5)), rng.uniform(-2, 2, (3, 2)), 'left'], names=['CQ', 'R']))
+    blocks['qr_multiply'] = qrm
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}
