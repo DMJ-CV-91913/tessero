@@ -1115,6 +1115,11 @@
             "nin": 0,
             "nout": 1
         },
+        "np.left_shift": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "np.lexsort": {
             "kind": "routine",
             "nin": 0,
@@ -1361,6 +1366,11 @@
             "nout": 1
         },
         "np.result_type": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.right_shift": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
