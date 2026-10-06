@@ -123,6 +123,7 @@
 | `slinalg.ishermitian` | every call | rtol 1e-09 |
 | `slinalg.solve_toeplitz` | every call | rtol 1e-09 |
 | `slinalg.solve_circulant` | every call | rtol 1e-09 |
+| `slinalg.matmul_toeplitz` | every call | rtol 1e-09 |
 | `slinalg.khatri_rao` | every call | rtol 1e-09 |
 | `slinalg.diagsvd` | every call | rtol 1e-09 |
 | `slinalg.orth` | every call | rtol 1e-09 |

@@ -2346,6 +2346,40 @@ static int r_solve_circulant(const void *ctx, const tsr_arg *args, int nargs, ts
     return rc;
 }
 
+/* matmul_toeplitz(c_or_cr, x): the product T @ x where T is the Toeplitz matrix with first column c and first
+   row r (a single 1-D c_or_cr gives r = c). x is (n,) or (n, k) (scipy.linalg.matmul_toeplitz). */
+static int r_matmul_toeplitz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    const tsr_arg *carg, *rarg;
+    if (args[0].kind == 5 && args[0].count >= 2) { carg = &args[0].items[0]; rarg = &args[0].items[1]; }
+    else if (args[0].kind == 3) { carg = &args[0]; rarg = &args[0]; }
+    else { fn_set_error("matmul_toeplitz: c_or_cr must be an array or a (c, r) pair"); return TSR_EARG; }
+    if (carg->kind != 3 || carg->arr.ndim != 1 || rarg->kind != 3 || rarg->arr.ndim != 1 || args[1].kind != 3) { fn_set_error("matmul_toeplitz: c, r must be 1-D and x an array"); return TSR_EARG; }
+    int64_t nc, nr = 0; double *c = mat_f64(carg, "c", &nc); if (!c) return TSR_ENOMEM;
+    double *r = (rarg == carg) ? c : mat_f64(rarg, "r", &nr); if (!r) { fn_free_doubles(c, nc); return TSR_ENOMEM; }
+    const int64_t m = nc, n = (rarg == carg) ? nc : nr;
+    const tsr_array *X = &args[1].arr;
+    const int vector = X->ndim == 1;
+    const int64_t k = vector ? 1 : X->shape[1];
+    int rc = TSR_OK;
+    if (X->shape[0] != n) { if (r != c) fn_free_doubles(r, nr); fn_free_doubles(c, nc); fn_set_error("matmul_toeplitz: x has the wrong number of rows"); return TSR_EARG; }
+    int64_t nx = 0; double *x = mat_f64(&args[1], "x", &nx);
+    int64_t osh[2] = {m, k};
+    double *out = x ? (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, osh) : NULL;
+    if (!x || !out) rc = TSR_ENOMEM;
+    else
+        for (int64_t i = 0; i < m; i++) for (int64_t col = 0; col < k; col++) {
+            double s = 0.0;
+            for (int64_t j = 0; j < n; j++) { const double t = (i >= j) ? c[i - j] : r[j - i]; s += t * x[j * k + col]; }
+            out[i * k + col] = s;
+        }
+    if (x) fn_free_doubles(x, nx);
+    if (r != c) fn_free_doubles(r, nr);
+    fn_free_doubles(c, nc);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2895,6 +2929,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.ishermitian", 1, "a, atol=None, rtol=None", "out", r_issymmetric, NULL, "Whether a square matrix is Hermitian; for real input, symmetric (scipy.linalg.ishermitian)."),
     ROUTINE("slinalg.solve_toeplitz", 1, "c_or_cr, b", "out", r_solve_toeplitz, NULL, "Solve a Toeplitz system T x = b (scipy.linalg.solve_toeplitz)."),
     ROUTINE("slinalg.solve_circulant", 1, "c, b", "out", r_solve_circulant, NULL, "Solve a circulant system C x = b (scipy.linalg.solve_circulant)."),
+    ROUTINE("slinalg.matmul_toeplitz", 1, "c_or_cr, x", "out", r_matmul_toeplitz, NULL, "The product of a Toeplitz matrix with x (scipy.linalg.matmul_toeplitz)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),

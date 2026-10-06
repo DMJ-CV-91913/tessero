@@ -55,6 +55,7 @@ final class ScipyLinalg
     'lu' => 'lu',
     'lu_factor' => 'luFactor',
     'lu_solve' => 'luSolve',
+    'matmul_toeplitz' => 'matmulToeplitz',
     'norm' => 'norm',
     'null_space' => 'nullSpace',
     'orth' => 'orth',
@@ -483,6 +484,16 @@ final class ScipyLinalg
     public static function luSolve(mixed $lu, mixed $piv, mixed $b, mixed $trans = 0): mixed
     {
         return Registry::routine('slinalg.lu_solve', [$lu, $piv, $b, $trans]);
+    }
+
+    /**
+     * The product of a Toeplitz matrix with x (scipy.linalg.matmul_toeplitz).
+     *
+     * scipy.linalg.matmul_toeplitz
+     */
+    public static function matmulToeplitz(mixed $cOrCr, mixed $x): mixed
+    {
+        return Registry::routine('slinalg.matmul_toeplitz', [$cOrCr, $x]);
     }
 
     /**
