@@ -1831,6 +1831,12 @@
                 "doc": "Eigenvalues and eigenvectors of a symmetric matrix (scipy.linalg.eigh)."
             },
             {
+                "name": "eighTridiagonal",
+                "static": true,
+                "sig": "eighTridiagonal(mixed $d, mixed $e): mixed",
+                "doc": "Eigenvalues and eigenvectors of a symmetric tridiagonal matrix via dstev (scipy.linalg.eigh_tridiagonal)."
+            },
+            {
                 "name": "eigvals",
                 "static": true,
                 "sig": "eigvals(mixed $a): mixed",
@@ -1895,6 +1901,12 @@
                 "static": true,
                 "sig": "inv(mixed $a): mixed",
                 "doc": "Inverse of a square matrix (scipy.linalg.inv)."
+            },
+            {
+                "name": "invhilbert",
+                "static": true,
+                "sig": "invhilbert(mixed $n): mixed",
+                "doc": "Inverse of the Hilbert matrix of order n (scipy.linalg.invhilbert)."
             },
             {
                 "name": "invpascal",
@@ -14728,6 +14740,18 @@
                 "name": "matmulToeplitz",
                 "static": true,
                 "sig": "matmulToeplitz($cOrCr, $x)",
+                "doc": ""
+            },
+            {
+                "name": "invhilbert",
+                "static": true,
+                "sig": "invhilbert($n)",
+                "doc": ""
+            },
+            {
+                "name": "eighTridiagonal",
+                "static": true,
+                "sig": "eighTridiagonal($d, $e)",
                 "doc": ""
             },
             {

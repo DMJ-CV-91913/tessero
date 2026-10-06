@@ -259,6 +259,8 @@ def main():
                                  call('solve_circulant', [_ccirc, rng.uniform(-2, 2, size=(5, 2))])]
     blocks['matmul_toeplitz'] = [call('matmul_toeplitz', [_ctoe, rng.uniform(-2, 2, size=4)]),
                                  call('matmul_toeplitz', [_ctoe, rng.uniform(-2, 2, size=(4, 3))])]
+    blocks['invhilbert'] = [call('invhilbert', [n]) for n in (1, 3, 4, 5)]
+    blocks['eigh_tridiagonal'] = [callc('eigh_tridiagonal', [rng.uniform(-2, 2, size=n), rng.uniform(-2, 2, size=n - 1)], None, ['eigenvalues', 'eigenvectors'], eigh_canon) for n in (3, 4, 5)]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]
