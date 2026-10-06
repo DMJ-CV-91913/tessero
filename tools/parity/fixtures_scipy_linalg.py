@@ -410,6 +410,23 @@ def main():
     sang.append(call('subspace_angles', [Ash, Bsh]))
     blocks['subspace_angles'] = sang
 
+    # solve_continuous_are / solve_discrete_are: the unique symmetric stabilising Riccati solution. Inputs are
+    # controllable (b full column rank or square), r positive definite and q positive semidefinite.
+    care = [
+        call('solve_continuous_are', [np.array([[0., 1.], [0., 0.]]), np.array([[0.], [1.]]), np.eye(2), np.array([[1.]])]),
+        call('solve_continuous_are', [rng.uniform(-2, 2, (3, 3)), np.eye(3), np.eye(3), np.eye(3)]),
+        call('solve_continuous_are', [rng.uniform(-2, 2, (2, 2)), np.eye(2), 2. * np.eye(2), np.diag([1., 3.])]),
+        call('solve_continuous_are', [rng.uniform(-1, 1, (4, 4)), np.eye(4), np.eye(4), np.eye(4)]),
+    ]
+    blocks['solve_continuous_are'] = care
+    dare = [
+        call('solve_discrete_are', [np.array([[1., 1.], [0., 1.]]), np.array([[0.], [1.]]), np.eye(2), np.array([[1.]])]),
+        call('solve_discrete_are', [0.5 * rng.uniform(-1, 1, (3, 3)) + np.eye(3), np.eye(3), np.eye(3), np.eye(3)]),
+        call('solve_discrete_are', [np.array([[0.9, 0.2], [0.1, 0.8]]), np.eye(2), 2. * np.eye(2), np.diag([1., 2.])]),
+        call('solve_discrete_are', [0.4 * rng.uniform(-1, 1, (4, 4)) + np.eye(4), np.eye(4), np.eye(4), np.eye(4)]),
+    ]
+    blocks['solve_discrete_are'] = dare
+
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'slinalg', 'numpy': np.__version__, 'scipy': __import__('scipy').__version__,
            'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v, 'tol': tol} for k, v in blocks.items()]}

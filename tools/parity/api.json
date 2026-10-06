@@ -2137,10 +2137,22 @@
                 "doc": "Solve a circulant system C x = b (scipy.linalg.solve_circulant)."
             },
             {
+                "name": "solveContinuousAre",
+                "static": true,
+                "sig": "solveContinuousAre(mixed $a, mixed $b, mixed $q, mixed $r): mixed",
+                "doc": "Stabilising solution of the continuous-time algebraic Riccati equation (scipy.linalg.solve_continuous_are)."
+            },
+            {
                 "name": "solveContinuousLyapunov",
                 "static": true,
                 "sig": "solveContinuousLyapunov(mixed $a, mixed $q): mixed",
                 "doc": "Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov)."
+            },
+            {
+                "name": "solveDiscreteAre",
+                "static": true,
+                "sig": "solveDiscreteAre(mixed $a, mixed $b, mixed $q, mixed $r): mixed",
+                "doc": "Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are)."
             },
             {
                 "name": "solveDiscreteLyapunov",
@@ -14926,6 +14938,18 @@
                 "name": "subspaceAngles",
                 "static": true,
                 "sig": "subspaceAngles($A, $B)",
+                "doc": ""
+            },
+            {
+                "name": "solveContinuousAre",
+                "static": true,
+                "sig": "solveContinuousAre($a, $b, $q, $r)",
+                "doc": ""
+            },
+            {
+                "name": "solveDiscreteAre",
+                "static": true,
+                "sig": "solveDiscreteAre($a, $b, $q, $r)",
                 "doc": ""
             },
             {

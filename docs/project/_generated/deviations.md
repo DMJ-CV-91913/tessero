@@ -168,6 +168,8 @@
 | `slinalg.rsf2csf` | every call | rtol 1e-09 |
 | `slinalg.cdf2rdf` | every call | rtol 1e-09 |
 | `slinalg.subspace_angles` | every call | rtol 1e-09 |
+| `slinalg.solve_continuous_are` | every call | rtol 1e-09 |
+| `slinalg.solve_discrete_are` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |

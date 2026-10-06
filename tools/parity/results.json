@@ -509,7 +509,9 @@
         "slinalg.solve": "pass",
         "slinalg.solve_banded": "pass",
         "slinalg.solve_circulant": "pass",
+        "slinalg.solve_continuous_are": "pass",
         "slinalg.solve_continuous_lyapunov": "pass",
+        "slinalg.solve_discrete_are": "pass",
         "slinalg.solve_discrete_lyapunov": "pass",
         "slinalg.solve_sylvester": "pass",
         "slinalg.solve_toeplitz": "pass",
@@ -2070,7 +2072,9 @@
             "slinalg.expm_cond": 3.9339171700390486e-16,
             "slinalg.rsf2csf": 1.125,
             "slinalg.cdf2rdf": 0,
-            "slinalg.subspace_angles": 0.02500842416944293
+            "slinalg.subspace_angles": 0.02500842416944293,
+            "slinalg.solve_continuous_are": 9.507078318468369e-15,
+            "slinalg.solve_discrete_are": 1.1060412554066825e-14
         },
         "ext": {
             "np.median": 0,
@@ -3106,7 +3110,9 @@
             "slinalg.expm_cond": 3.9339171700390486e-16,
             "slinalg.rsf2csf": 1.125,
             "slinalg.cdf2rdf": 0,
-            "slinalg.subspace_angles": 0.02500842416944293
+            "slinalg.subspace_angles": 0.02500842416944293,
+            "slinalg.solve_continuous_are": 9.507078318468369e-15,
+            "slinalg.solve_discrete_are": 1.1060412554066825e-14
         }
     },
     "ext": {
@@ -3619,7 +3625,9 @@
         "slinalg.solve": "pass",
         "slinalg.solve_banded": "pass",
         "slinalg.solve_circulant": "pass",
+        "slinalg.solve_continuous_are": "pass",
         "slinalg.solve_continuous_lyapunov": "pass",
+        "slinalg.solve_discrete_are": "pass",
         "slinalg.solve_discrete_lyapunov": "pass",
         "slinalg.solve_sylvester": "pass",
         "slinalg.solve_toeplitz": "pass",

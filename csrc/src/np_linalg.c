@@ -3588,6 +3588,159 @@ static int r_subspace_angles(const void *ctx, const tsr_arg *args, int nargs, ts
     return rc;
 }
 
+/* In-place inverse of an n x n row-major matrix via dgetrf + dgetri. 0 on success, -1 on singular/failure. */
+static int sl_inv(double *A, int64_t n)
+{
+    if (n == 0) return 0;
+    lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)n);
+    if (!ipiv) return -1;
+    lapack_int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, (lapack_int)n, (lapack_int)n, A, (lapack_int)n, ipiv);
+    if (info == 0) info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, (lapack_int)n, A, (lapack_int)n, ipiv);
+    free(ipiv);
+    return info == 0 ? 0 : -1;
+}
+
+/* Stable-eigenvalue selectors for the ordered real Schur form: continuous (open left half-plane) and discrete
+   (open unit disc). dgees puts the selected eigenvalues' Schur vectors in the leading columns. */
+static lapack_logical care_select(const double *wr, const double *wi) { (void)wi; return *wr < 0.0; }
+static lapack_logical dare_select(const double *wr, const double *wi) { return (*wr * *wr + *wi * *wi) < 1.0; }
+
+/* Given a 2m x 2m real matrix whose `select`-ed invariant subspace has dimension m, compute the Riccati
+   solution X = U2 U1^{-1} (symmetrised), where [U1; U2] are the first m ordered Schur vectors. X depends only
+   on the subspace, not the basis, so it is unique. Returns 0, or -1 on failure. Overwrites Hmat. */
+static int sl_riccati_from(double *Hmat, int64_t m, LAPACK_D_SELECT2 select, double *out)
+{
+    const int64_t N = 2 * m;
+    if (m == 0) return 0;
+    double *wr = (double *)malloc(sizeof(double) * (size_t)N);
+    double *wi = (double *)malloc(sizeof(double) * (size_t)N);
+    double *vs = (double *)malloc(sizeof(double) * (size_t)(N * N));
+    double *U1 = (double *)malloc(sizeof(double) * (size_t)(m * m));
+    double *U2 = (double *)malloc(sizeof(double) * (size_t)(m * m));
+    int rc = -1;
+    if (wr && wi && vs && U1 && U2) {
+        lapack_int sdim = 0;
+        lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'S', select, (lapack_int)N, Hmat, (lapack_int)N, &sdim, wr, wi, vs, (lapack_int)N);
+        if (info == 0 && sdim == (lapack_int)m) {
+            for (int64_t i = 0; i < m; i++)
+                for (int64_t j = 0; j < m; j++) { U1[i * m + j] = vs[i * N + j]; U2[i * m + j] = vs[(m + i) * N + j]; }
+            if (sl_inv(U1, m) == 0) {                        /* X = U2 @ inv(U1), then symmetrise */
+                for (int64_t i = 0; i < m; i++)
+                    for (int64_t j = 0; j < m; j++) { double s = 0.0; for (int64_t k = 0; k < m; k++) s += U2[i * m + k] * U1[k * m + j]; out[i * m + j] = s; }
+                for (int64_t i = 0; i < m; i++)
+                    for (int64_t j = i + 1; j < m; j++) { const double a = 0.5 * (out[i * m + j] + out[j * m + i]); out[i * m + j] = a; out[j * m + i] = a; }
+                rc = 0;
+            }
+        }
+    }
+    free(wr); free(wi); free(vs); free(U1); free(U2);
+    return rc;
+}
+
+/* B @ inv(R) @ B^T for B (m x n) and R (n x n), into G (m x m). Returns 0, or -1 if R is singular. */
+static int sl_bRinvBt(const double *B, const double *R, int64_t m, int64_t n, double *G)
+{
+    double *Rinv = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *BR = (double *)malloc(sizeof(double) * (size_t)(m * n > 0 ? m * n : 1));
+    int rc = -1;
+    if (Rinv && BR) {
+        memcpy(Rinv, R, sizeof(double) * (size_t)(n * n));
+        if (sl_inv(Rinv, n) == 0) {
+            for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) { double s = 0.0; for (int64_t k = 0; k < n; k++) s += B[i * n + k] * Rinv[k * n + j]; BR[i * n + j] = s; }
+            for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < m; j++) { double s = 0.0; for (int64_t k = 0; k < n; k++) s += BR[i * n + k] * B[j * n + k]; G[i * m + j] = s; }
+            rc = 0;
+        }
+    }
+    free(Rinv); free(BR);
+    return rc;
+}
+
+/* solve_continuous_are(a, b, q, r): the unique symmetric stabilising solution X of the continuous-time
+   algebraic Riccati equation a^T X + X a - X b r^{-1} b^T X + q = 0, via the stable invariant subspace of the
+   Hamiltonian H = [[a, -b r^{-1} b^T], [-q, -a^T]] (scipy.linalg.solve_continuous_are, real standard case). */
+static int r_solve_continuous_are(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("solve_continuous_are: a, b, q, r must be 2-D arrays"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], n = args[1].arr.shape[1];
+    if (args[0].arr.shape[1] != m || args[1].arr.shape[0] != m || args[2].arr.shape[0] != m || args[2].arr.shape[1] != m || args[3].arr.shape[0] != n || args[3].arr.shape[1] != n) { fn_set_error("solve_continuous_are: incompatible shapes"); return TSR_EARG; }
+    int64_t na, nb, nq, nr;
+    double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    double *b = mat_f64(&args[1], "b", &nb); if (!b) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    double *q = mat_f64(&args[2], "q", &nq); if (!q) { fn_free_doubles(a, na); fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    double *r = mat_f64(&args[3], "r", &nr); if (!r) { fn_free_doubles(a, na); fn_free_doubles(b, nb); fn_free_doubles(q, nq); return TSR_ENOMEM; }
+    const int64_t N = 2 * m;
+    double *G = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));
+    double *H = (double *)calloc((size_t)(N * N > 0 ? N * N : 1), sizeof(double));
+    int rc = TSR_OK;
+    if (!G || !H) rc = TSR_ENOMEM;
+    else if (sl_bRinvBt(b, r, m, n, G) != 0) { fn_set_error("solve_continuous_are: r is singular"); rc = TSR_EARG; }
+    else {
+        for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < m; j++) {
+            H[i * N + j] = a[i * m + j];
+            H[i * N + (m + j)] = -G[i * m + j];
+            H[(m + i) * N + j] = -q[i * m + j];
+            H[(m + i) * N + (m + j)] = -a[j * m + i];        /* -a^T */
+        }
+        int64_t osh[2] = {m, m};
+        double *x = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+        if (!x) rc = TSR_ENOMEM;
+        else if (sl_riccati_from(H, m, care_select, x) != 0) { fn_set_error("solve_continuous_are: failed to find a finite stabilising solution"); rc = TSR_EARG; }
+    }
+    free(G); free(H);
+    fn_free_doubles(a, na); fn_free_doubles(b, nb); fn_free_doubles(q, nq); fn_free_doubles(r, nr);
+    return rc;
+}
+
+/* solve_discrete_are(a, b, q, r): the unique symmetric stabilising solution X of the discrete-time algebraic
+   Riccati equation a^T X a - X - (a^T X b)(r + b^T X b)^{-1}(b^T X a) + q = 0, via the invariant subspace inside
+   the unit disc of the symplectic matrix Z = [[a + G a^{-T} q, -G a^{-T}], [-a^{-T} q, a^{-T}]], G = b r^{-1} b^T
+   (scipy.linalg.solve_discrete_are, real standard case with a invertible). */
+static int r_solve_discrete_are(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("solve_discrete_are: a, b, q, r must be 2-D arrays"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], n = args[1].arr.shape[1];
+    if (args[0].arr.shape[1] != m || args[1].arr.shape[0] != m || args[2].arr.shape[0] != m || args[2].arr.shape[1] != m || args[3].arr.shape[0] != n || args[3].arr.shape[1] != n) { fn_set_error("solve_discrete_are: incompatible shapes"); return TSR_EARG; }
+    int64_t na, nb, nq, nr;
+    double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    double *b = mat_f64(&args[1], "b", &nb); if (!b) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    double *q = mat_f64(&args[2], "q", &nq); if (!q) { fn_free_doubles(a, na); fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    double *r = mat_f64(&args[3], "r", &nr); if (!r) { fn_free_doubles(a, na); fn_free_doubles(b, nb); fn_free_doubles(q, nq); return TSR_ENOMEM; }
+    const int64_t N = 2 * m;
+    double *G = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));
+    double *AmT = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));   /* a^{-T} */
+    double *GA = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));    /* G a^{-T} */
+    double *Z = (double *)calloc((size_t)(N * N > 0 ? N * N : 1), sizeof(double));
+    int rc = TSR_OK;
+    if (!G || !AmT || !GA || !Z) rc = TSR_ENOMEM;
+    else if (sl_bRinvBt(b, r, m, n, G) != 0) { fn_set_error("solve_discrete_are: r is singular"); rc = TSR_EARG; }
+    else {
+        memcpy(AmT, a, sizeof(double) * (size_t)(m * m));
+        if (sl_inv(AmT, m) != 0) { fn_set_error("solve_discrete_are: a is singular"); rc = TSR_EARG; }
+        else {
+            /* transpose AmT in place: currently holds inv(a); we need inv(a)^T */
+            for (int64_t i = 0; i < m; i++) for (int64_t j = i + 1; j < m; j++) { const double t = AmT[i * m + j]; AmT[i * m + j] = AmT[j * m + i]; AmT[j * m + i] = t; }
+            for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < m; j++) { double s = 0.0; for (int64_t k = 0; k < m; k++) s += G[i * m + k] * AmT[k * m + j]; GA[i * m + j] = s; }  /* G a^{-T} */
+            for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < m; j++) {
+                double gaq = 0.0, amtq = 0.0;
+                for (int64_t k = 0; k < m; k++) { gaq += GA[i * m + k] * q[k * m + j]; amtq += AmT[i * m + k] * q[k * m + j]; }
+                Z[i * N + j] = a[i * m + j] + gaq;           /* a + G a^{-T} q */
+                Z[i * N + (m + j)] = -GA[i * m + j];         /* -G a^{-T} */
+                Z[(m + i) * N + j] = -amtq;                  /* -a^{-T} q */
+                Z[(m + i) * N + (m + j)] = AmT[i * m + j];   /* a^{-T} */
+            }
+            int64_t osh[2] = {m, m};
+            double *x = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+            if (!x) rc = TSR_ENOMEM;
+            else if (sl_riccati_from(Z, m, dare_select, x) != 0) { fn_set_error("solve_discrete_are: failed to find a finite stabilising solution"); rc = TSR_EARG; }
+        }
+    }
+    free(G); free(AmT); free(GA); free(Z);
+    fn_free_doubles(a, na); fn_free_doubles(b, nb); fn_free_doubles(q, nq); fn_free_doubles(r, nr);
+    return rc;
+}
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
@@ -3658,6 +3811,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.rsf2csf", 2, "T, Z", "T, Z", r_rsf2csf, NULL, "Convert a real Schur form to the complex (upper-triangular) Schur form (scipy.linalg.rsf2csf)."),
     ROUTINE("slinalg.cdf2rdf", 2, "w, v", "wr, vr", r_cdf2rdf, NULL, "Convert complex eigenvalues/eigenvectors to real block-diagonal form (scipy.linalg.cdf2rdf)."),
     ROUTINE("slinalg.subspace_angles", 2, "A, B", "out", r_subspace_angles, NULL, "Principal angles between the column spaces of A and B (scipy.linalg.subspace_angles)."),
+    ROUTINE("slinalg.solve_continuous_are", 4, "a, b, q, r", "out", r_solve_continuous_are, NULL, "Stabilising solution of the continuous-time algebraic Riccati equation (scipy.linalg.solve_continuous_are)."),
+    ROUTINE("slinalg.solve_discrete_are", 4, "a, b, q, r", "out", r_solve_discrete_are, NULL, "Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are)."),
     ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
     ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
     ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),
