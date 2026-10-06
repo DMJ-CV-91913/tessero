@@ -2029,6 +2029,18 @@
                 "doc": "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."
             },
             {
+                "name": "solveContinuousLyapunov",
+                "static": true,
+                "sig": "solveContinuousLyapunov(mixed $a, mixed $q): mixed",
+                "doc": "Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov)."
+            },
+            {
+                "name": "solveSylvester",
+                "static": true,
+                "sig": "solveSylvester(mixed $a, mixed $b, mixed $q): mixed",
+                "doc": "Solve the Sylvester equation a x + x b = q (scipy.linalg.solve_sylvester)."
+            },
+            {
                 "name": "solveTriangular",
                 "static": true,
                 "sig": "solveTriangular(mixed $a, mixed $b, mixed $trans = 0, mixed $lower = false, mixed $unitDiagonal = false): mixed",
@@ -14608,6 +14620,18 @@
                 "name": "schur",
                 "static": true,
                 "sig": "schur($a, $output = 'real')",
+                "doc": ""
+            },
+            {
+                "name": "solveSylvester",
+                "static": true,
+                "sig": "solveSylvester($a, $b, $q)",
+                "doc": ""
+            },
+            {
+                "name": "solveContinuousLyapunov",
+                "static": true,
+                "sig": "solveContinuousLyapunov($a, $q)",
                 "doc": ""
             },
             {

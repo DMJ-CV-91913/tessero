@@ -66,6 +66,8 @@ final class ScipyLinalg
     'sinm' => 'sinm',
     'solve' => 'solve',
     'solve_banded' => 'solveBanded',
+    'solve_continuous_lyapunov' => 'solveContinuousLyapunov',
+    'solve_sylvester' => 'solveSylvester',
     'solve_triangular' => 'solveTriangular',
     'solveh_banded' => 'solvehBanded',
     'sqrtm' => 'sqrtm',
@@ -594,6 +596,26 @@ final class ScipyLinalg
     public static function solveBanded(mixed $l, mixed $u, mixed $ab, mixed $b): mixed
     {
         return Registry::routine('slinalg.solve_banded', [$l, $u, $ab, $b]);
+    }
+
+    /**
+     * Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov).
+     *
+     * scipy.linalg.solve_continuous_lyapunov
+     */
+    public static function solveContinuousLyapunov(mixed $a, mixed $q): mixed
+    {
+        return Registry::routine('slinalg.solve_continuous_lyapunov', [$a, $q]);
+    }
+
+    /**
+     * Solve the Sylvester equation a x + x b = q (scipy.linalg.solve_sylvester).
+     *
+     * scipy.linalg.solve_sylvester
+     */
+    public static function solveSylvester(mixed $a, mixed $b, mixed $q): mixed
+    {
+        return Registry::routine('slinalg.solve_sylvester', [$a, $b, $q]);
     }
 
     /**

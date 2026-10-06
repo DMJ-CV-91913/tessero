@@ -2144,6 +2144,98 @@ static int r_schur(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return TSR_OK;
 }
 
+/* Real Schur of an n x n row-major matrix: overwrites `a` with the quasi-triangular T, fills z with the
+   orthogonal Schur vectors (A = Z T Z^T). 0 on success. */
+static int sl_schur(double *a, double *z, int64_t n)
+{
+    if (n == 0) return 0;
+    double *wr = (double *)malloc(sizeof(double) * (size_t)n);
+    double *wi = (double *)malloc(sizeof(double) * (size_t)n);
+    if (!wr || !wi) { free(wr); free(wi); return -1; }
+    lapack_int sdim = 0;
+    lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, z, (lapack_int)n);
+    free(wr); free(wi);
+    return info == 0 ? 0 : -1;
+}
+
+/* Solve the Sylvester equation A X + X B = Q (A: n x n, B: m x m, Q,X: n x m) by Bartels-Stewart:
+   Schur A = Ua Ta Ua^T, B = Ub Tb Ub^T; C = Ua^T Q Ub; Ta Y + Y Tb = C (dtrsyl); X = Ua Y Ub^T. 0 on success. */
+static int sl_sylvester(const double *A, const double *B, const double *Q, double *X, int64_t n, int64_t m)
+{
+    int rc = -1;
+    double *Ta = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *Ua = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *Tb = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));
+    double *Ub = (double *)malloc(sizeof(double) * (size_t)(m * m > 0 ? m * m : 1));
+    double *C  = (double *)malloc(sizeof(double) * (size_t)(n * m > 0 ? n * m : 1));
+    double *tmp = (double *)malloc(sizeof(double) * (size_t)(n * m > 0 ? n * m : 1));
+    if (!Ta || !Ua || !Tb || !Ub || !C || !tmp) goto done;
+    memcpy(Ta, A, sizeof(double) * (size_t)(n * n));
+    memcpy(Tb, B, sizeof(double) * (size_t)(m * m));
+    if (sl_schur(Ta, Ua, n) != 0 || sl_schur(Tb, Ub, m) != 0) goto done;
+    /* tmp = Ua^T Q  (tmp[i][j] = sum_k Ua[k][i] Q[k][j]) */
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < m; j++) { double s = 0; for (int64_t k = 0; k < n; k++) s += Ua[k * n + i] * Q[k * m + j]; tmp[i * m + j] = s; }
+    /* C = tmp Ub */
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < m; j++) { double s = 0; for (int64_t k = 0; k < m; k++) s += tmp[i * m + k] * Ub[k * m + j]; C[i * m + j] = s; }
+    {
+        double scale = 1.0;
+        lapack_int info = LAPACKE_dtrsyl(LAPACK_ROW_MAJOR, 'N', 'N', 1, (lapack_int)n, (lapack_int)m, Ta, (lapack_int)n, Tb, (lapack_int)m, C, (lapack_int)m, &scale);
+        if (info < 0) goto done;   /* info > 0: common eigenvalues, perturbed solution still returned (as scipy does) */
+        if (scale != 1.0 && scale != 0.0) for (int64_t i = 0; i < n * m; i++) C[i] /= scale;
+    }
+    /* tmp = Ua Y;  X = tmp Ub^T */
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < m; j++) { double s = 0; for (int64_t k = 0; k < n; k++) s += Ua[i * n + k] * C[k * m + j]; tmp[i * m + j] = s; }
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < m; j++) { double s = 0; for (int64_t k = 0; k < m; k++) s += tmp[i * m + k] * Ub[j * m + k]; X[i * m + j] = s; }
+    rc = 0;
+done:
+    free(Ta); free(Ua); free(Tb); free(Ub); free(C); free(tmp);
+    return rc;
+}
+
+/* solve_sylvester(a, b, q): solve a x + x b = q (scipy.linalg.solve_sylvester). */
+static int r_solve_sylvester(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("solve_sylvester: a, b, q must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], m = args[1].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[1] != m || args[2].arr.shape[0] != n || args[2].arr.shape[1] != m) { fn_set_error("solve_sylvester: incompatible shapes"); return TSR_EARG; }
+    int64_t na, nb, nq;
+    double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    double *b = mat_f64(&args[1], "b", &nb); if (!b) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    double *q = mat_f64(&args[2], "q", &nq); if (!q) { fn_free_doubles(a, na); fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    int64_t osh[2] = {n, m};
+    double *x = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    int rc = TSR_OK;
+    if (!x) rc = TSR_ENOMEM;
+    else if (sl_sylvester(a, b, q, x, n, m) != 0) { fn_set_error("solve_sylvester: the Sylvester solver failed (dgees/dtrsyl)"); rc = TSR_EARG; }
+    fn_free_doubles(a, na); fn_free_doubles(b, nb); fn_free_doubles(q, nq);
+    return rc;
+}
+
+/* solve_continuous_lyapunov(a, q): solve a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov). For a real
+   matrix a^H = a^T, so this is the Sylvester equation a x + x a^T = q. */
+static int r_solve_continuous_lyapunov(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("solve_continuous_lyapunov: a and q must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[1].arr.shape[1] != n) { fn_set_error("solve_continuous_lyapunov: a and q must be square and the same size"); return TSR_EARG; }
+    int64_t na, nq;
+    double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
+    double *q = mat_f64(&args[1], "q", &nq); if (!q) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    double *at = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    int rc = TSR_OK;
+    if (!at) { fn_free_doubles(a, na); fn_free_doubles(q, nq); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) at[i * n + j] = a[j * n + i];
+    int64_t osh[2] = {n, n};
+    double *x = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+    if (!x) rc = TSR_ENOMEM;
+    else if (sl_sylvester(a, at, q, x, n, n) != 0) { fn_set_error("solve_continuous_lyapunov: the solver failed (dgees/dtrsyl)"); rc = TSR_EARG; }
+    free(at);
+    fn_free_doubles(a, na); fn_free_doubles(q, nq);
+    return rc;
+}
+
 /* solve_banded(l, u, ab, b): solve a banded system a x = b (dgbsv). l/u are the sub/super-diagonal counts and ab
    is the (l+u+1) x n band storage ab[u+i-j, j] = a[i,j]; args are passed unpacked. Returns x. */
 static int r_solve_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2686,6 +2778,8 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.lu_solve", 1, "lu, piv, b, trans=0", "out", r_lu_solve, NULL, "Solve a x = b from an lu_factor result; takes lu, piv, b unpacked (scipy.linalg.lu_solve)."),
     ROUTINE("slinalg.hessenberg", 1, "a, calc_q=False", "out", r_hessenberg, NULL, "Upper Hessenberg form via dgehrd (scipy.linalg.hessenberg)."),
     ROUTINE("slinalg.schur", 2, "a, output='real'", "T, Z", r_schur, NULL, "Real Schur decomposition A = Z T Z^T via dgees (scipy.linalg.schur)."),
+    ROUTINE("slinalg.solve_sylvester", 1, "a, b, q", "out", r_solve_sylvester, NULL, "Solve the Sylvester equation a x + x b = q (scipy.linalg.solve_sylvester)."),
+    ROUTINE("slinalg.solve_continuous_lyapunov", 1, "a, q", "out", r_solve_continuous_lyapunov, NULL, "Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov)."),
     ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
     ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
     ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),
