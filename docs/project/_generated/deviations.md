@@ -128,6 +128,8 @@
 | `signal.csd` | call | rtol 0 |
 | `signal.coherence` | every call | rtol 0 |
 | `signal.coherence` | call | rtol 0 |
+| `signal.spectrogram` | every call | rtol 0 |
+| `signal.spectrogram` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

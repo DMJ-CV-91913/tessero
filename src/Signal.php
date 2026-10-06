@@ -55,6 +55,7 @@ final class Signal
     'sosfilt_zi' => 'sosfiltZi',
     'sosfiltfilt' => 'sosfiltfilt',
     'sosfreqz' => 'sosfreqz',
+    'spectrogram' => 'spectrogram',
     'square' => 'square',
     'tf2zpk' => 'tf2zpk',
     'unit_impulse' => 'unitImpulse',
@@ -484,6 +485,18 @@ final class Signal
     public static function sosfreqz(mixed $sos, mixed $worN = 512, mixed $whole = false): mixed
     {
         return Registry::routine('signal.sosfreqz', [$sos, $worN, $whole]);
+    }
+
+    /**
+     * Spectrogram (per-segment PSD over time) by Welch's segmenting; default window periodic Tukey(0.25) (scipy.signal.spectrogram, mode='psd').
+     *
+     * scipy.signal.spectrogram
+     *
+     * @return mixed one array, or an array keyed by f, t, Sxx when several results are requested
+     */
+    public static function spectrogram(mixed $x, mixed $fs = 1.0, mixed $window = 'tukey', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $mode = 'psd'): mixed
+    {
+        return Registry::routine('signal.spectrogram', [$x, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $mode]);
     }
 
     /**

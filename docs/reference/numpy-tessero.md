@@ -966,6 +966,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.sosfilt_zi` | `Tessero\Signal::sosfiltZi()` |
 | `scipy.signal.sosfiltfilt` | `Tessero\Signal::sosfiltfilt()` |
 | `scipy.signal.sosfreqz` | `Tessero\Signal::sosfreqz()` |
+| `scipy.signal.spectrogram` | `Tessero\Signal::spectrogram()` |
 | `scipy.signal.square` | `Tessero\Signal::square()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
