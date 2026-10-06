@@ -939,6 +939,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.correlate` | `Tessero\Signal::correlate()` |
 | `scipy.signal.correlation_lags` | `Tessero\Signal::correlationLags()` |
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
+| `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
 | `scipy.signal.detrend` | `Tessero\Signal::detrend()` |
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |

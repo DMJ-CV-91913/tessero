@@ -2711,6 +2711,12 @@
                 "doc": "Cross power spectral density by Welch's method (scipy.signal.csd)."
             },
             {
+                "name": "deconvolve",
+                "static": true,
+                "sig": "deconvolve(mixed $signal, mixed $divisor): mixed",
+                "doc": "Deconvolve a divisor out of a signal by polynomial division (scipy.signal.deconvolve)."
+            },
+            {
                 "name": "detrend",
                 "static": true,
                 "sig": "detrend(mixed $data, mixed $axis = -1, mixed $type = 'linear', mixed $bp = 0, mixed $overwriteData = false): mixed",
@@ -15663,6 +15669,12 @@
                 "name": "sos2zpk",
                 "static": true,
                 "sig": "sos2zpk($sos)",
+                "doc": ""
+            },
+            {
+                "name": "deconvolve",
+                "static": true,
+                "sig": "deconvolve($signal, $divisor)",
                 "doc": ""
             }
         ]
