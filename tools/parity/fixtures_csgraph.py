@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""scipy.sparse.csgraph.connected_components fixtures (weak connectivity) over a dense adjacency matrix. Pure
+integer graph traversal, host-independent, so this generator does not require the pinned environment."""
+import json, os
+import numpy as np
+import scipy.sparse as sp
+from scipy.sparse.csgraph import connected_components as cc
+import fixtures_np as F  # enc / enc_result
+
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'csgraph.json')
+rng = np.random.default_rng(20261001)
+
+
+def case(A, connection=None):
+    kw, pyk = {}, {}
+    if connection is not None:
+        kw['connection'] = F.enc(connection); pyk['connection'] = connection
+    return {'args': [F.enc(A)], 'kwargs': kw,
+            'expect': F.enc_result(cc(sp.csr_array(A), **pyk), ['n_components', 'labels']), 'compare': 'tol'}
+
+
+def undirected(n, p):
+    A = (rng.uniform(0, 1, (n, n)) < p).astype(float)
+    A = np.triu(A, 1)
+    return A + A.T
+
+
+two_plus_iso = np.array([[0., 1., 0., 0., 0.], [1., 0., 0., 0., 0.], [0., 0., 0., 1., 0.], [0., 0., 1., 0., 0.], [0., 0., 0., 0., 0.]])
+path5 = np.diag(np.ones(4), 1); path5 = path5 + path5.T
+MATS = [two_plus_iso, path5, np.zeros((4, 4)), np.ones((4, 4)) - np.eye(4), undirected(8, 0.25), undirected(10, 0.15), undirected(6, 0.5)]
+
+cases = [case(A) for A in MATS] + [case(two_plus_iso, connection='weak'), case(undirected(7, 0.3), connection='weak')]
+
+# ---- shortest paths (dense adjacency, 0 = no edge) ------------------------------------------------
+from scipy.sparse.csgraph import shortest_path, dijkstra, bellman_ford, johnson, floyd_warshall
+
+
+def dir_wgraph(n, p, lo=1, hi=9):
+    A = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            if i != j and rng.uniform() < p:
+                A[i, j] = float(rng.integers(lo, hi))
+    return A
+
+
+def undir_wgraph(n, p, lo=1, hi=9):
+    A = dir_wgraph(n, p, lo, hi)
+    A = np.triu(A, 1)
+    return A + A.T
+
+
+# explicit small graphs + random ones; some have unreachable nodes (inf in the result)
+g_dir = np.array([[0., 2., 0., 4., 0.], [0., 0., 1., 0., 7.], [0., 0., 0., 3., 0.], [0., 0., 0., 0., 1.], [0., 0., 0., 0., 0.]])
+g_iso = np.array([[0., 5., 0., 0.], [0., 0., 2., 0.], [0., 0., 0., 0.], [0., 0., 0., 0.]])   # node 3 unreachable
+g_neg = np.array([[0., 3., 8., 0.], [0., 0., -2., 0.], [0., 0., 0., 2.], [0., 0., 0., 0.]])  # negative edge, no cycle
+POS = [g_dir, g_iso, dir_wgraph(6, 0.4), dir_wgraph(8, 0.3), undir_wgraph(6, 0.4), undir_wgraph(7, 0.3)]
+
+
+def dist_case(fname, A, directed, unweighted):
+    pos = {'shortest_path': [F.enc(A), F.enc('auto'), F.enc(directed), F.enc(False), F.enc(unweighted)],
+           'floyd_warshall': [F.enc(A), F.enc(directed), F.enc(False), F.enc(unweighted)],
+           }.get(fname, [F.enc(A), F.enc(directed), F.enc(None), F.enc(False), F.enc(unweighted)])
+    fn = {'shortest_path': shortest_path, 'dijkstra': dijkstra, 'bellman_ford': bellman_ford,
+          'johnson': johnson, 'floyd_warshall': floyd_warshall}[fname]
+    r = fn(A, directed=directed, unweighted=unweighted)
+    return {'args': pos, 'kwargs': {}, 'expect': F.enc_result(r, []), 'compare': 'tol'}
+
+
+calls = [{'fn': 'connected_components', 'cases': cases}]
+for fname in ('shortest_path', 'dijkstra', 'floyd_warshall', 'johnson'):
+    cs = []
+    for A in POS:
+        cs.append(dist_case(fname, A, True, False))
+        cs.append(dist_case(fname, A, False, False))
+        cs.append(dist_case(fname, A, True, True))        # unweighted
+    calls.append({'fn': fname, 'cases': cs})
+# bellman_ford also on the negative-weight graph
+bf = []
+for A in POS + [g_neg]:
+    bf.append(dist_case('bellman_ford', A, True, False))
+    bf.append(dist_case('bellman_ford', A, False, False) if not np.array_equal(A, g_neg) else dist_case('bellman_ford', A, True, True))
+calls.append({'fn': 'bellman_ford', 'cases': bf})
+calls.append({'fn': 'floyd_warshall', 'cases': [dist_case('floyd_warshall', g_neg, True, False)]})
+
+out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
+with open(OUT, 'w') as f:
+    json.dump(out, f, separators=(',', ':'))
+print(f'csgraph: connected_components {len(cases)}, + shortest-path families ({sum(len(c["cases"]) for c in calls) - len(cases)} cases)')

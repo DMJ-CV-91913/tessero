@@ -1,0 +1,4649 @@
+{
+    "functions": {
+        "csgraph.bellman_ford": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "csgraph.connected_components": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "csgraph.dijkstra": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "csgraph.floyd_warshall": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "csgraph.johnson": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "csgraph.shortest_path": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.braycurtis": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.canberra": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.cdist": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.chebyshev": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.cityblock": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.correlation": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.cosine": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.dice": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.euclidean": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.hamming": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.is_valid_dm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.is_valid_y": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.jaccard": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.jensenshannon": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.mahalanobis": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.minkowski": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.num_obs_dm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.num_obs_y": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.pdist": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.rogerstanimoto": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.russellrao": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.seuclidean": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.sokalsneath": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.sqeuclidean": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.squareform": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.yule": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.cholesky": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.cond": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.cross": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.det": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.diagonal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.eig": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "linalg.eigh": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "linalg.eigvals": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.eigvalsh": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.inv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.lstsq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "linalg.matmul": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.matrix_norm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.matrix_power": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.matrix_rank": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.matrix_transpose": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.multi_dot": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.norm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.outer": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.pinv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.qr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "linalg.slogdet": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "linalg.solve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.svd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "linalg.svdvals": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.tensorinv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.tensorsolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.trace": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.vecdot": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "linalg.vector_norm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.affine_transform": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.binary_closing": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.binary_dilation": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.binary_erosion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.binary_fill_holes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.binary_hit_or_miss": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.binary_opening": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.binary_propagation": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.black_tophat": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.center_of_mass": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.convolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.convolve1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.correlate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.correlate1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.distance_transform_bf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.distance_transform_cdt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.distance_transform_edt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.extrema": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "ndimage.find_objects": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.fourier_ellipsoid": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.fourier_gaussian": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.fourier_shift": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.fourier_uniform": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.gaussian_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.gaussian_filter1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.gaussian_gradient_magnitude": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.gaussian_laplace": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.generate_binary_structure": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.grey_closing": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.grey_dilation": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.grey_erosion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.grey_opening": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.histogram": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.iterate_structure": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.label": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "ndimage.laplace": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.map_coordinates": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.maximum": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.maximum_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.maximum_filter1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.maximum_position": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.mean": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.median": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.median_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.minimum": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.minimum_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.minimum_filter1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.minimum_position": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.morphological_gradient": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.morphological_laplace": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.percentile_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.prewitt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.rank_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.rotate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.shift": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.sobel": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.spline_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.spline_filter1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.standard_deviation": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.sum": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.sum_labels": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.uniform_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.uniform_filter1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.variance": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.white_tophat": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.zoom": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.allclose": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.append": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.argpartition": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.argwhere": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.around": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.array_equal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.array_equiv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.array_split": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.ascontiguousarray": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.asfortranarray": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.atleast_1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.atleast_2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.atleast_3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.average": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.bartlett": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.bincount": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.bitwise_and": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.bitwise_count": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.bitwise_or": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.bitwise_xor": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.blackman": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.broadcast_arrays": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.broadcast_shapes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.broadcast_to": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.can_cast": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.choose": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.column_stack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.compress": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.concat": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.concatenate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.convolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.copyto": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 0
+        },
+        "np.corrcoef": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.correlate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.count_nonzero": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.cov": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.cross": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.cumulativeTrapezoid": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.cumulative_prod": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.cumulative_sum": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.delete": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.diag": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.diag_indices": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.diag_indices_from": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.diagflat": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.diagonal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.diff": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.digitize": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.divmod": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.dsplit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.dstack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.ediff1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.einsum": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.empty_like": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.expand_dims": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.extract": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.fabs": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.fill_diagonal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 0
+        },
+        "np.finfo": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 13
+        },
+        "np.flatnonzero": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.flip": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.fliplr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.flipud": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.frexp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.fromfile": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.fromiter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.full_like": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.geomspace": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.gradient": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.hamming": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.hanning": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.histogram": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "np.histogram_bin_edges": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.hsplit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.hstack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.i0": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.identity": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.iinfo": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "np.indices": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.inner": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.insert": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.interp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.intersect1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "np.isclose": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.iscomplex": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.iscomplexobj": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.isin": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.isneginf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.isposinf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.isreal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.isrealobj": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.ix_": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.kaiser": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.kron": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.ldexp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.lexsort": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.loadtxt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.logspace": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.matrix_transpose": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.median": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.meshgrid": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.modf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.moveaxis": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.nan_to_num": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.nanargmax": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanargmin": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nancumprod": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nancumsum": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanmax": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanmean": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanmedian": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanmin": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanpercentile": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.nanprod": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanquantile": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.nanstd": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nansum": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.nanvar": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.ndim": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.nonzero": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.ones_like": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.outer": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.pad": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.partition": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.percentile": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.place": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 0
+        },
+        "np.polyadd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.polyder": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.polydiv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.polyfit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.polyint": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.polymul": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.polysub": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.polyval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.promote_types": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.ptp": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "np.put": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 0
+        },
+        "np.put_along_axis": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 0
+        },
+        "np.putmask": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 0
+        },
+        "np.quantile": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.ravel_multi_index": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.real_if_close": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.repeat": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.resize": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.result_type": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.roll": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.rollaxis": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.rot90": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.round": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.searchsorted": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "np.select": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.setdiff1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.setxor1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.shape": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.simpson": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.sinc": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.size": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.spacing": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.split": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.squeeze": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.stack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.swapaxes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.take": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.take_along_axis": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.tensordot": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.tile": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.trace": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.trapezoid": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.tri": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.tril": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.tril_indices": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.tril_indices_from": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.trim_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.triu": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.triu_indices": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.triu_indices_from": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.union1d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.unique": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "np.unique_all": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "np.unique_counts": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "np.unique_inverse": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "np.unique_values": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.unravel_index": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.unstack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.unwrap": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.vander": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.vdot": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.vsplit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.vstack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.zeros_like": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "random.beta": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.binomial": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.chisquare": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.exponential": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.f": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.gamma": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.geometric": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.gumbel": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.hypergeometric": {
+            "kind": "random",
+            "nin": 3,
+            "nout": 1
+        },
+        "random.laplace": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.logistic": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.lognormal": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.logseries": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.negative_binomial": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.noncentral_chisquare": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.noncentral_f": {
+            "kind": "random",
+            "nin": 3,
+            "nout": 1
+        },
+        "random.normal": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.pareto": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.poisson": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.power": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.random": {
+            "kind": "random",
+            "nin": 0,
+            "nout": 1
+        },
+        "random.rayleigh": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.standard_cauchy": {
+            "kind": "random",
+            "nin": 0,
+            "nout": 1
+        },
+        "random.standard_exponential": {
+            "kind": "random",
+            "nin": 0,
+            "nout": 1
+        },
+        "random.standard_gamma": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.standard_normal": {
+            "kind": "random",
+            "nin": 0,
+            "nout": 1
+        },
+        "random.standard_t": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.triangular": {
+            "kind": "random",
+            "nin": 3,
+            "nout": 1
+        },
+        "random.uniform": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.vonmises": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.wald": {
+            "kind": "random",
+            "nin": 2,
+            "nout": 1
+        },
+        "random.weibull": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "random.zipf": {
+            "kind": "random",
+            "nin": 1,
+            "nout": 1
+        },
+        "signal.butter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.cheby1": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.cheby2": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.convolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.correlate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.detrend": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.fftconvolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.filtfilt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.freqz": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.lfilter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.lfilter_zi": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.oaconvolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.savgol_coeffs": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.savgol_filter": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.sosfilt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.sosfilt_zi": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.sosfiltfilt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.zpk2tf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.block_diag": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.cho_factor": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.cho_solve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.cholesky": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.circulant": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.companion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.coshm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.cosm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.det": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.diagsvd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.eig": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.eig_banded": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.eigh": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.eigvals": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.eigvalsh": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.expm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.fractional_matrix_power": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.hadamard": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.hessenberg": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.hilbert": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.inv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.khatri_rao": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.ldl": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "slinalg.logm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.lstsq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "slinalg.lu": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "slinalg.lu_factor": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.lu_solve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.norm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.null_space": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.orth": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.pinv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.pinvh": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.polar": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.qr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.qz": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "slinalg.schur": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "slinalg.sinhm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.sinm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.solve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.solve_banded": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.solve_triangular": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.solveh_banded": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.sqrtm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.svd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "slinalg.svdvals": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.tanhm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.tanm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "slinalg.toeplitz": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "sparse.coo_array": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.coo_matrix": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.csc_array": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.csc_matrix": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.csr_array": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.csr_matrix": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.dia_array": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "sparse.dia_matrix": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "sparse.hstack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.vstack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "special.agm": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.airy": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 4
+        },
+        "special.airye": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 4
+        },
+        "special.bdtr": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.bdtrc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.bdtri": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.bdtrik": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.bdtrin": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.bei": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.beip": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.ber": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.berp": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.besselpoly": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.beta": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.betainc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.betaincc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.betainccinv": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.betaincinv": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.betaln": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.binom": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.boxcox": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.boxcox1p": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.btdtria": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.btdtrib": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.cbrt": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.chdtr": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.chdtrc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.chdtri": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.chdtriv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.chndtr": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.chndtridf": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.chndtrinc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.chndtrix": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.comb": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.cosdg": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.cosm1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.cotdg": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.dawsn": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.digamma": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.ellipe": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.ellipeinc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.ellipj": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 4
+        },
+        "special.ellipk": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.ellipkinc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.ellipkm1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.elliprc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.elliprd": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.elliprf": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.elliprg": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.elliprj": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.entr": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.erf": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.erfc": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.erfcinv": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.erfcx": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.erfi": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.erfinv": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.eval_chebyc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_chebys": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_chebyt": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_chebyu": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_gegenbauer": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.eval_genlaguerre": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.eval_hermite": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_hermitenorm": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_jacobi": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.eval_laguerre": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_legendre": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_sh_chebyt": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_sh_chebyu": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.eval_sh_jacobi": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.eval_sh_legendre": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.exp1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.exp10": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.exp2": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.expi": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.expit": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.expm1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.expn": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.exprel": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.factorial": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.fdtr": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.fdtrc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.fdtri": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.fdtridfd": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.fresnel": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 2
+        },
+        "special.gamma": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.gammainc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.gammaincc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.gammainccinv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.gammaincinv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.gammaln": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.gammasgn": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.gdtr": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.gdtrc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.gdtria": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.gdtrib": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.gdtrix": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.hankel1": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.hankel1e": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.hankel2": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.hankel2e": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.huber": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.hyp0f1": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.hyp1f1": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.hyp2f1": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.hyperu": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.i0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.i0e": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.i1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.i1e": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.inv_boxcox": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.inv_boxcox1p": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.it2i0k0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 2
+        },
+        "special.it2j0y0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 2
+        },
+        "special.it2struve0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.itairy": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 4
+        },
+        "special.iti0k0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 2
+        },
+        "special.itj0y0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 2
+        },
+        "special.itmodstruve0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.itstruve0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.iv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.ive": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.j0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.j1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.jn": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.jv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.jve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.k0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.k0e": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.k1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.k1e": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.kei": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.keip": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.kelvin": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "special.ker": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.kerp": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.kl_div": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.kn": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.kolmogi": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.kolmogorov": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.kv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.kve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.lambertw": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.log1p": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.logSoftmax": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.log_expit": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.log_ndtr": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.log_wright_bessel": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.loggamma": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.logit": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.logsumexp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.lpmv": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.mathieu_a": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.mathieu_b": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.mathieu_cem": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 2
+        },
+        "special.mathieu_modcem1": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 2
+        },
+        "special.mathieu_modcem2": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 2
+        },
+        "special.mathieu_modsem1": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 2
+        },
+        "special.mathieu_modsem2": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 2
+        },
+        "special.mathieu_sem": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 2
+        },
+        "special.modstruve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.nbdtr": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nbdtrc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nbdtri": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nbdtrik": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nbdtrin": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.ncfdtr": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.ncfdtri": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.ncfdtridfd": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.ncfdtridfn": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.ncfdtrinc": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 1
+        },
+        "special.nctdtr": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nctdtridf": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nctdtrinc": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nctdtrit": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.ndtr": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.ndtri": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.ndtri_exp": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.nrdtrimn": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.nrdtrisd": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.obl_ang1": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 2
+        },
+        "special.obl_ang1_cv": {
+            "kind": "ufunc",
+            "nin": 5,
+            "nout": 2
+        },
+        "special.obl_cv": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.obl_rad1": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 2
+        },
+        "special.obl_rad1_cv": {
+            "kind": "ufunc",
+            "nin": 5,
+            "nout": 2
+        },
+        "special.obl_rad2": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 2
+        },
+        "special.obl_rad2_cv": {
+            "kind": "ufunc",
+            "nin": 5,
+            "nout": 2
+        },
+        "special.owens_t": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.pbdv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "special.pbvv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "special.pbwa": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "special.pdtr": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.pdtrc": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.pdtri": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.pdtrik": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.poch": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.polygamma": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.powm1": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.pro_ang1": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 2
+        },
+        "special.pro_ang1_cv": {
+            "kind": "ufunc",
+            "nin": 5,
+            "nout": 2
+        },
+        "special.pro_cv": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.pro_rad1": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 2
+        },
+        "special.pro_rad1_cv": {
+            "kind": "ufunc",
+            "nin": 5,
+            "nout": 2
+        },
+        "special.pro_rad2": {
+            "kind": "ufunc",
+            "nin": 4,
+            "nout": 2
+        },
+        "special.pro_rad2_cv": {
+            "kind": "ufunc",
+            "nin": 5,
+            "nout": 2
+        },
+        "special.pseudo_huber": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.psi": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.radian": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.rel_entr": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.rgamma": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.round": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.shichi": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 2
+        },
+        "special.sici": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 2
+        },
+        "special.sinc": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.sindg": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.smirnov": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.smirnovi": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.softmax": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.softplus": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.spence": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.sph_harm_y": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.spherical_in": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.spherical_jn": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.spherical_kn": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.spherical_yn": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.stdtr": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.stdtridf": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.stdtrit": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.struve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.tandg": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.tklmbda": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.voigt_profile": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.wofz": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.wright_bessel": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "special.wrightomega": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.xlog1py": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.xlogy": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.y0": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.y1": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "special.yn": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.yv": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.yve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.zetac": {
+            "kind": "ufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.alexandergovern": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.alpha": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.anderson": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.anderson_ksamp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.anglit": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.ansari": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.arcsine": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.argus": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.bartlett": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.bernoulli": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.beta": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.betabinom": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.betanbinom": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.betaprime": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.binned_statistic": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.binned_statistic_2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.binned_statistic_dd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.binom": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.binomtest": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 5
+        },
+        "stats.boltzmann": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.boxcox": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.boxcox_llf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.bradford": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.brunnermunzel": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.burr": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.burr12": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.bws_test": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.cauchy": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.chatterjeexi": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "stats.chi": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.chi2": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.chi2_contingency": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.chisquare": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.circmean": {
+            "kind": "gufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "stats.circstd": {
+            "kind": "gufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "stats.circvar": {
+            "kind": "gufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "stats.combine_pvalues": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.cosine": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.cramervonmises": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.cramervonmises_2samp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.crystalball": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.cumfreq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.describe": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 6
+        },
+        "stats.dgamma": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.differential_entropy": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.dlaplace": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.dpareto_lognorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.dweibull": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.energy_distance": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.entropy": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.epps_singleton_2samp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.erlang": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.expectile": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.expon": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.exponnorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.exponpow": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.exponweib": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.f": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.f_oneway": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.false_discovery_control": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.fatiguelife": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.fisher_exact": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.fisk": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.fligner": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.foldcauchy": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.foldnorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.friedmanchisquare": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.gamma": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gausshyper": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.genexpon": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.genextreme": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gengamma": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.genhalflogistic": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.genhyperbolic": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.geninvgauss": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.genlogistic": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gennorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.genpareto": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.geom": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gibrat": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gmean": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.gompertz": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gstd": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.gumbel_l": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gumbel_r": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.gzscore": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.halfcauchy": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.halfgennorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.halflogistic": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.halfnorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.hmean": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.hypergeom": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.hypsecant": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.invgamma": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.invgauss": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.invweibull": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.iqr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.irwinhall": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.jarque_bera": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.jf_skew_t": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.johnsonsb": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.johnsonsu": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.kappa3": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.kappa4": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.kendalltau": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "stats.kruskal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.ks_1samp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.ks_2samp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.ksone": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.kstat": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.kstatvar": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.kstest": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.kstwo": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.kstwobign": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.kurtosis": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.kurtosistest": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.landau": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.laplace": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.laplace_asymmetric": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.levene": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.levy": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.levy_l": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.levy_stable": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.linregress": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 6
+        },
+        "stats.lmoment": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.loggamma": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.logistic": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.loglaplace": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.lognorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.logser": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.loguniform": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.lomax": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.mannwhitneyu": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.maxwell": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.median_abs_deviation": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.median_test": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.mielke": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.mode": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.moment": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.mood": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.moyal": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.nakagami": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.nbinom": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.ncf": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.nchypergeom_fisher": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.nchypergeom_wallenius": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.nct": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.ncx2": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.nhypergeom": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.norm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.normaltest": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.norminvgauss": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.obrientransform": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.page_trend_test": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.pareto": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.pearson3": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.pearsonr": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "stats.percentileofscore": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.planck": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.pmean": {
+            "kind": "gufunc",
+            "nin": 3,
+            "nout": 1
+        },
+        "stats.pointbiserialr": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "stats.poisson": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.poisson_means_test": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.power_divergence": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.powerlaw": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.powerlognorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.powernorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.quantile": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.quantile_test": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.randint": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.rankdata": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.ranksums": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.rayleigh": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.rdist": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.recipinvgauss": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.reciprocal": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.rel_breitwigner": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.relfreq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.rice": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.scoreatpercentile": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.sem": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.semicircular": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.shapiro": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.siegelslopes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.sigmaclip": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.skellam": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.skew": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.skewcauchy": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.skewnorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.skewtest": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.somersd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.spearmanr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.spearmanrho": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 2
+        },
+        "stats.studentized_range": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.t": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.theilslopes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "stats.tiecorrect": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.tmax": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.tmean": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.tmin": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.trapezoid": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.triang": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.trim1": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.trim_mean": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.trimboth": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.truncexpon": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.truncnorm": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.truncpareto": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.truncweibull_min": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.tsem": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.tstd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.ttest_1samp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.ttest_ind": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.ttest_ind_from_stats": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.ttest_rel": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.tukeylambda": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.tvar": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.uniform": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.variation": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "stats.vonmises": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.vonmises_line": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.wald": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.wasserstein_distance": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.weibull_max": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.weibull_min": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.weightedtau": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.wilcoxon": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "stats.wrapcauchy": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.yeojohnson": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.yeojohnson_llf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.yulesimon": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.zipf": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.zipfian": {
+            "kind": "dist",
+            "nin": null,
+            "nout": null
+        },
+        "stats.zmap": {
+            "kind": "gufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "stats.zscore": {
+            "kind": "gufunc",
+            "nin": 1,
+            "nout": 1
+        },
+        "windows.barthann": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.bartlett": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.blackman": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.blackmanharris": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.bohman": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.boxcar": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.cosine": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.exponential": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.flattop": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.gaussian": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.general_cosine": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.general_gaussian": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.general_hamming": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.hamming": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.hann": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.kaiser": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.lanczos": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.nuttall": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.parzen": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.triang": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "windows.tukey": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        }
+    }
+}

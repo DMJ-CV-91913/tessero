@@ -1,0 +1,63 @@
+{
+    "name": "tessero/tessero",
+    "description": "N-dimensional arrays, linear algebra, FFT, random numbers, sparse matrices, linear/mixed-integer programming and Markov decision processes for PHP, on a SIMD C kernel library (FFI or native extension).",
+    "type": "library",
+    "license": "BSD-3-Clause",
+    "keywords": [
+        "numpy",
+        "scipy",
+        "ndarray",
+        "linear algebra",
+        "fft",
+        "blas",
+        "lapack",
+        "ffi",
+        "scientific computing",
+        "linear programming",
+        "mdp"
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-ffi": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5 || ^11.0"
+    },
+    "suggest": {
+        "ext-opcache": "Preload libtessero for PHP-FPM with ffi.enable=preload (resources/preload.php)",
+        "ext-tessero": "Native backend: operators ($a + $b) on NDArray, 30x lower call overhead, no FFI configuration (pie install tessero/tessero-ext)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tessero\\": "src/"
+        },
+        "files": [
+            "src/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tessero\\Tests\\": "tests/",
+            "Tessero\\Laravel\\": "laravel/src/",
+            "Tessero\\Laravel\\Tests\\": "laravel/tests/"
+        }
+    },
+    "bin": [
+        "bin/tessero"
+    ],
+    "scripts": {
+        "test": "phpunit",
+        "build-native": "make -C csrc",
+        "bench": "php bench/run.php",
+        "docs": "mkdocs build --strict",
+        "api-docs": "php -d ffi.enable=1 tools/gen-api-docs.php"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.2.x-dev"
+        }
+    }
+}

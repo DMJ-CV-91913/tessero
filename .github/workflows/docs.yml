@@ -1,0 +1,46 @@
+name: docs
+
+# TSR-402: publish the MkDocs site to GitHub Pages on main and on version tags.
+# (A `mike` version selector for 0.3+ is a follow-up; this deploys the current build.)
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel an in-progress release deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install MkDocs Material
+        run: pip install mkdocs-material
+      - name: Build the site (strict - fails on broken links or stale nav)
+        run: mkdocs build --strict --site-dir site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

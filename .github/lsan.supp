@@ -1,0 +1,4 @@
+# LeakSanitizer suppressions for the extension ASan job
+# libgomp allocates its thread-pool descriptor once at initialisation and never frees it
+leak:libgomp.so
+leak:gomp_

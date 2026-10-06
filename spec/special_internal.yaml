@@ -1,0 +1,541 @@
+# The private scipy.special ufuncs (scipy.special._ufuncs._*) that scipy.stats calls, for the C++ API of
+# cxx/gen_sc.hpp (not registered as public functions). Bootstrapped by
+# tools/parity/bootstrap_special.py <scipy>/scipy/special --internal from SciPy 1.17.1 wiring.
+module: special_internal
+internal: true
+functions:
+  - name: _beta_pdf
+    ref: scipy.special._ufuncs._beta_pdf
+    args: [x, a, b]
+    outs: [y]
+    impl: "o[0] = beta_pdf_double(i[0], i[1], i[2]);"
+    doc: "Probability density function of beta distribution."
+  - name: _beta_ppf
+    ref: scipy.special._ufuncs._beta_ppf
+    args: [x, a, b]
+    outs: [y]
+    impl: "o[0] = beta_ppf_double(i[0], i[1], i[2]);"
+    doc: "Percent point function of beta distribution."
+  - name: _binom_cdf
+    ref: scipy.special._ufuncs._binom_cdf
+    args: [x, n, p]
+    outs: [y]
+    impl: "o[0] = binom_cdf_double(i[0], i[1], i[2]);"
+    doc: "Cumulative density function of binomial distribution."
+  - name: _binom_isf
+    ref: scipy.special._ufuncs._binom_isf
+    args: [x, n, p]
+    outs: [y]
+    impl: "o[0] = binom_isf_double(i[0], i[1], i[2]);"
+    doc: "Inverse survival function of binomial distribution."
+  - name: _binom_pmf
+    ref: scipy.special._ufuncs._binom_pmf
+    args: [x, n, p]
+    outs: [y]
+    impl: "o[0] = binom_pmf_double(i[0], i[1], i[2]);"
+    doc: "Probability mass function of binomial distribution."
+  - name: _binom_ppf
+    ref: scipy.special._ufuncs._binom_ppf
+    args: [x, n, p]
+    outs: [y]
+    impl: "o[0] = binom_ppf_double(i[0], i[1], i[2]);"
+    doc: "Percent point function of binomial distribution."
+  - name: _binom_sf
+    ref: scipy.special._ufuncs._binom_sf
+    args: [x, n, p]
+    outs: [y]
+    impl: "o[0] = binom_sf_double(i[0], i[1], i[2]);"
+    doc: "Survival function of binomial distribution."
+  - name: _cauchy_isf
+    ref: scipy.special._ufuncs._cauchy_isf
+    args: [p, loc, scale]
+    outs: [y]
+    impl: "o[0] = cauchy_isf_double(i[0], i[1], i[2]);"
+    doc: "Inverse survival function of the Cauchy distribution."
+  - name: _cauchy_ppf
+    ref: scipy.special._ufuncs._cauchy_ppf
+    args: [p, loc, scale]
+    outs: [y]
+    impl: "o[0] = cauchy_ppf_double(i[0], i[1], i[2]);"
+    doc: "Percent point function (i.e. quantile) of the Cauchy distribution."
+  - name: _cosine_cdf
+    ref: scipy.special._ufuncs._cosine_cdf
+    args: [x]
+    outs: [y]
+    impl: "o[0] = cosine_cdf(i[0]);"
+    doc: "Cumulative distribution function (CDF) of the cosine distribution::."
+  - name: _cosine_invcdf
+    ref: scipy.special._ufuncs._cosine_invcdf
+    args: [p]
+    outs: [y]
+    impl: "o[0] = cosine_invcdf(i[0]);"
+    doc: "Inverse of the cumulative distribution function (CDF) of the cosine distribution."
+  - name: _cospi
+    ref: scipy.special._ufuncs._cospi
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = xsf::cospi(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _factorial
+    ref: scipy.special._ufuncs._factorial
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = scipy_port::factorial(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _gen_harmonic
+    ref: scipy.special._ufuncs._gen_harmonic
+    args: [n, a]
+    outs: [y]
+    impl: "o[0] = gen_harmonic(i[0], i[1]);"
+    int_impl: "o[0] = gen_harmonic((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Internal private function."
+  - name: _hypergeom_cdf
+    ref: scipy.special._ufuncs._hypergeom_cdf
+    args: [x, r, N, M]
+    outs: [y]
+    impl: "o[0] = hypergeom_cdf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Cumulative density function of hypergeometric distribution."
+  - name: _hypergeom_mean
+    ref: scipy.special._ufuncs._hypergeom_mean
+    args: [r, N, M]
+    outs: [y]
+    impl: "o[0] = hypergeom_mean_double(i[0], i[1], i[2]);"
+    doc: "Mean of hypergeometric distribution."
+  - name: _hypergeom_pmf
+    ref: scipy.special._ufuncs._hypergeom_pmf
+    args: [x, r, N, M]
+    outs: [y]
+    impl: "o[0] = hypergeom_pmf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Probability mass function of hypergeometric distribution."
+  - name: _hypergeom_sf
+    ref: scipy.special._ufuncs._hypergeom_sf
+    args: [x, r, N, M]
+    outs: [y]
+    impl: "o[0] = hypergeom_sf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Survival function of hypergeometric distribution."
+  - name: _hypergeom_skewness
+    ref: scipy.special._ufuncs._hypergeom_skewness
+    args: [r, N, M]
+    outs: [y]
+    impl: "o[0] = hypergeom_skewness_double(i[0], i[1], i[2]);"
+    doc: "Skewness of hypergeometric distribution."
+  - name: _hypergeom_variance
+    ref: scipy.special._ufuncs._hypergeom_variance
+    args: [r, N, M]
+    outs: [y]
+    impl: "o[0] = hypergeom_variance_double(i[0], i[1], i[2]);"
+    doc: "Mean of hypergeometric distribution."
+  - name: _igam_fac
+    ref: scipy.special._ufuncs._igam_fac
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::cephes_igam_fac(i[0], i[1]);"
+    doc: "Internal function, do not use."
+  - name: _invgauss_isf
+    ref: scipy.special._ufuncs._invgauss_isf
+    args: [x, mu, s]
+    outs: [y]
+    impl: "o[0] = invgauss_isf_double(i[0], i[1], i[2]);"
+    doc: "Inverse survival function of inverse gaussian distribution."
+  - name: _invgauss_ppf
+    ref: scipy.special._ufuncs._invgauss_ppf
+    args: [x0, x1, x2]
+    outs: [y]
+    impl: "o[0] = invgauss_ppf_double(i[0], i[1], i[2]);"
+    doc: "Percent point function of inverse gaussian distribution."
+  - name: _iv_ratio
+    ref: scipy.special._ufuncs._iv_ratio
+    args: [v, x]
+    outs: [y]
+    impl: "o[0] = xsf::iv_ratio(i[0], i[1]);"
+    doc: "Internal function."
+  - name: _iv_ratio_c
+    ref: scipy.special._ufuncs._iv_ratio_c
+    args: [v, x]
+    outs: [y]
+    impl: "o[0] = xsf::iv_ratio_c(i[0], i[1]);"
+    doc: "Internal function."
+  - name: _kolmogc
+    ref: scipy.special._ufuncs._kolmogc
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_kolmogc(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _kolmogci
+    ref: scipy.special._ufuncs._kolmogci
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_kolmogci(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _kolmogp
+    ref: scipy.special._ufuncs._kolmogp
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::xsf_kolmogp(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _lanczos_sum_expg_scaled
+    ref: scipy.special._ufuncs._lanczos_sum_expg_scaled
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::cephes_lanczos_sum_expg_scaled(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _landau_cdf
+    ref: scipy.special._ufuncs._landau_cdf
+    args: [x, loc, scale]
+    outs: [y]
+    impl: "o[0] = landau_cdf_double(i[0], i[1], i[2]);"
+    doc: "Cumulative distribution function of the Landau distribution."
+  - name: _landau_isf
+    ref: scipy.special._ufuncs._landau_isf
+    args: [p, loc, scale]
+    outs: [y]
+    impl: "o[0] = landau_isf_double(i[0], i[1], i[2]);"
+    doc: "Inverse survival function of the Landau distribution."
+  - name: _landau_pdf
+    ref: scipy.special._ufuncs._landau_pdf
+    args: [x, loc, scale]
+    outs: [y]
+    impl: "o[0] = landau_pdf_double(i[0], i[1], i[2]);"
+    doc: "Probability density function of the Landau distribution."
+  - name: _landau_ppf
+    ref: scipy.special._ufuncs._landau_ppf
+    args: [p, loc, scale]
+    outs: [y]
+    impl: "o[0] = landau_ppf_double(i[0], i[1], i[2]);"
+    doc: "Percent point function of the Landau distribution."
+  - name: _landau_sf
+    ref: scipy.special._ufuncs._landau_sf
+    args: [x, loc, scale]
+    outs: [y]
+    impl: "o[0] = landau_sf_double(i[0], i[1], i[2]);"
+    doc: "Survival function of the Landau distribution."
+  - name: _lgam1p
+    ref: scipy.special._ufuncs._lgam1p
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = scipy_xsfw::cephes_lgam1p(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _log1mexp
+    ref: scipy.special._ufuncs._log1mexp
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = xsf::log1mexp(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _log1pmx
+    ref: scipy.special._ufuncs._log1pmx
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = xsf::log1pmx(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _nbinom_cdf
+    ref: scipy.special._ufuncs._nbinom_cdf
+    args: [x, r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_cdf_double(i[0], i[1], i[2]);"
+    doc: "Cumulative density function of negative binomial distribution."
+  - name: _nbinom_isf
+    ref: scipy.special._ufuncs._nbinom_isf
+    args: [x, r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_isf_double(i[0], i[1], i[2]);"
+    doc: "Inverse survival function of negative binomial distribution."
+  - name: _nbinom_kurtosis_excess
+    ref: scipy.special._ufuncs._nbinom_kurtosis_excess
+    args: [r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_kurtosis_excess_double(i[0], i[1]);"
+    doc: "Kurtosis excess of negative binomial distribution."
+  - name: _nbinom_mean
+    ref: scipy.special._ufuncs._nbinom_mean
+    args: [r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_mean_double(i[0], i[1]);"
+    doc: "Mean of negative binomial distribution."
+  - name: _nbinom_pmf
+    ref: scipy.special._ufuncs._nbinom_pmf
+    args: [x, r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_pmf_double(i[0], i[1], i[2]);"
+    doc: "Probability mass function of negative binomial distribution."
+  - name: _nbinom_ppf
+    ref: scipy.special._ufuncs._nbinom_ppf
+    args: [x, r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_ppf_double(i[0], i[1], i[2]);"
+    doc: "Percent point function of negative binomial distribution."
+  - name: _nbinom_sf
+    ref: scipy.special._ufuncs._nbinom_sf
+    args: [x, r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_sf_double(i[0], i[1], i[2]);"
+    doc: "Survival function of negative binomial distribution."
+  - name: _nbinom_skewness
+    ref: scipy.special._ufuncs._nbinom_skewness
+    args: [r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_skewness_double(i[0], i[1]);"
+    doc: "Skewness of negative binomial distribution."
+  - name: _nbinom_variance
+    ref: scipy.special._ufuncs._nbinom_variance
+    args: [r, p]
+    outs: [y]
+    impl: "o[0] = nbinom_variance_double(i[0], i[1]);"
+    doc: "Variance of negative binomial distribution."
+  - name: _ncf_isf
+    ref: scipy.special._ufuncs._ncf_isf
+    args: [x, v1, v2, l]
+    outs: [y]
+    impl: "o[0] = ncf_isf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Inverse survival function of noncentral F-distribution."
+  - name: _ncf_kurtosis_excess
+    ref: scipy.special._ufuncs._ncf_kurtosis_excess
+    args: [v1, v2, l]
+    outs: [y]
+    impl: "o[0] = ncf_kurtosis_excess_double(i[0], i[1], i[2]);"
+    doc: "Kurtosis excess of noncentral F-distribution."
+  - name: _ncf_mean
+    ref: scipy.special._ufuncs._ncf_mean
+    args: [v1, v2, l]
+    outs: [y]
+    impl: "o[0] = ncf_mean_double(i[0], i[1], i[2]);"
+    doc: "Mean of noncentral F-distribution."
+  - name: _ncf_pdf
+    ref: scipy.special._ufuncs._ncf_pdf
+    args: [x, v1, v2, l]
+    outs: [y]
+    impl: "o[0] = ncf_pdf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Probability density function of noncentral F-distribution."
+  - name: _ncf_sf
+    ref: scipy.special._ufuncs._ncf_sf
+    args: [x, v1, v2, l]
+    outs: [y]
+    impl: "o[0] = ncf_sf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Survival function of noncentral F-distribution."
+  - name: _ncf_skewness
+    ref: scipy.special._ufuncs._ncf_skewness
+    args: [v1, v2, l]
+    outs: [y]
+    impl: "o[0] = ncf_skewness_double(i[0], i[1], i[2]);"
+    doc: "Skewness of noncentral F-distribution."
+  - name: _ncf_variance
+    ref: scipy.special._ufuncs._ncf_variance
+    args: [v1, v2, l]
+    outs: [y]
+    impl: "o[0] = ncf_variance_double(i[0], i[1], i[2]);"
+    doc: "Variance of noncentral F-distribution."
+  - name: _nct_isf
+    ref: scipy.special._ufuncs._nct_isf
+    args: [x, v, l]
+    outs: [y]
+    impl: "o[0] = nct_isf_double(i[0], i[1], i[2]);"
+    doc: "Inverse survival function of noncentral t-distribution."
+  - name: _nct_kurtosis_excess
+    ref: scipy.special._ufuncs._nct_kurtosis_excess
+    args: [v, l]
+    outs: [y]
+    impl: "o[0] = nct_kurtosis_excess_double(i[0], i[1]);"
+    doc: "Kurtosis excess of noncentral t-distribution."
+  - name: _nct_mean
+    ref: scipy.special._ufuncs._nct_mean
+    args: [v, l]
+    outs: [y]
+    impl: "o[0] = nct_mean_double(i[0], i[1]);"
+    doc: "Mean of noncentral t-distribution."
+  - name: _nct_pdf
+    ref: scipy.special._ufuncs._nct_pdf
+    args: [x, v, l]
+    outs: [y]
+    impl: "o[0] = nct_pdf_double(i[0], i[1], i[2]);"
+    doc: "Probability density function of noncentral t-distribution."
+  - name: _nct_sf
+    ref: scipy.special._ufuncs._nct_sf
+    args: [x, v, l]
+    outs: [y]
+    impl: "o[0] = nct_sf_double(i[0], i[1], i[2]);"
+    doc: "Survival function of noncentral t-distribution."
+  - name: _nct_skewness
+    ref: scipy.special._ufuncs._nct_skewness
+    args: [v, l]
+    outs: [y]
+    impl: "o[0] = nct_skewness_double(i[0], i[1]);"
+    doc: "Skewness of noncentral t-distribution."
+  - name: _nct_variance
+    ref: scipy.special._ufuncs._nct_variance
+    args: [v, l]
+    outs: [y]
+    impl: "o[0] = nct_variance_double(i[0], i[1]);"
+    doc: "Variance of noncentral t-distribution."
+  - name: _ncx2_isf
+    ref: scipy.special._ufuncs._ncx2_isf
+    args: [x, k, l]
+    outs: [y]
+    impl: "o[0] = ncx2_isf_double(i[0], i[1], i[2]);"
+    doc: "Inverse survival function of Non-central chi-squared distribution."
+  - name: _ncx2_pdf
+    ref: scipy.special._ufuncs._ncx2_pdf
+    args: [x, k, l]
+    outs: [y]
+    impl: "o[0] = ncx2_pdf_double(i[0], i[1], i[2]);"
+    doc: "Probability density function of Non-central chi-squared distribution."
+  - name: _ncx2_sf
+    ref: scipy.special._ufuncs._ncx2_sf
+    args: [x, k, l]
+    outs: [y]
+    impl: "o[0] = ncx2_sf_double(i[0], i[1], i[2]);"
+    doc: "Survival function of Non-central chi-squared distribution."
+  - name: _normalized_gen_harmonic
+    ref: scipy.special._ufuncs._normalized_gen_harmonic
+    args: [j, k, n, a]
+    outs: [y]
+    impl: "o[0] = normalized_gen_harmonic(i[0], i[1], i[2], i[3]);"
+    doc: "Internal private function."
+  - name: _riemann_zeta
+    ref: scipy.special._ufuncs._riemann_zeta
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = xsf::riemann_zeta(i[0]);"
+    doc: "Internal function, use `zeta` instead."
+  - name: _scaled_exp1
+    ref: scipy.special._ufuncs._scaled_exp1
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = xsf::scaled_exp1(i[0]);"
+    doc: "Compute the scaled exponential integral."
+  - name: _sinpi
+    ref: scipy.special._ufuncs._sinpi
+    args: [x0]
+    outs: [y]
+    impl: "o[0] = xsf::sinpi(i[0]);"
+    doc: "Internal function, do not use."
+  - name: _skewnorm_cdf
+    ref: scipy.special._ufuncs._skewnorm_cdf
+    args: [x, l, sc, sh]
+    outs: [y]
+    impl: "o[0] = skewnorm_cdf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Cumulative density function of skewnorm distribution."
+  - name: _skewnorm_isf
+    ref: scipy.special._ufuncs._skewnorm_isf
+    args: [x, l, sc, sh]
+    outs: [y]
+    impl: "o[0] = skewnorm_isf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Inverse survival function of skewnorm distribution."
+  - name: _skewnorm_ppf
+    ref: scipy.special._ufuncs._skewnorm_ppf
+    args: [x, l, sc, sh]
+    outs: [y]
+    impl: "o[0] = skewnorm_ppf_double(i[0], i[1], i[2], i[3]);"
+    doc: "Percent point function of skewnorm distribution."
+  - name: _smirnovc
+    ref: scipy.special._ufuncs._smirnovc
+    args: [n, d]
+    outs: [y]
+    impl: "o[0] = scipy_port::smirnovc_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_smirnovc_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: ""
+  - name: _smirnovci
+    ref: scipy.special._ufuncs._smirnovci
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = scipy_port::smirnovci_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_smirnovci_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: "Internal function, do not use."
+  - name: _smirnovp
+    ref: scipy.special._ufuncs._smirnovp
+    args: [n, p]
+    outs: [y]
+    impl: "o[0] = scipy_port::smirnovp_unsafe(i[0], i[1]);"
+    int_impl: "o[0] = scipy_xsfw::cephes_smirnovp_wrap((long)i[0], i[1]);"
+    int_args: [0]
+    doc: ""
+  - name: _spherical_in
+    ref: scipy.special._ufuncs._spherical_in
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_i((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_in` instead."
+  - name: _spherical_in_d
+    ref: scipy.special._ufuncs._spherical_in_d
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_i_jac((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_in` instead."
+  - name: _spherical_jn
+    ref: scipy.special._ufuncs._spherical_jn
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_j((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_jn` instead."
+  - name: _spherical_jn_d
+    ref: scipy.special._ufuncs._spherical_jn_d
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_j_jac((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_jn` instead."
+  - name: _spherical_kn
+    ref: scipy.special._ufuncs._spherical_kn
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_k((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_kn` instead."
+  - name: _spherical_kn_d
+    ref: scipy.special._ufuncs._spherical_kn_d
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_k_jac((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_kn` instead."
+  - name: _spherical_yn
+    ref: scipy.special._ufuncs._spherical_yn
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_y((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_yn` instead."
+  - name: _spherical_yn_d
+    ref: scipy.special._ufuncs._spherical_yn_d
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = xsf::sph_bessel_y_jac((long)i[0], i[1]);"
+    integer_only: [0]
+    doc: "Internal function, use `spherical_yn` instead."
+  - name: _stirling2_inexact
+    ref: scipy.special._ufuncs._stirling2_inexact
+    args: [x0, x1]
+    outs: [y]
+    impl: "o[0] = _stirling2_inexact(i[0], i[1]);"
+    doc: "Internal function, do not use."
+  - name: _struve_asymp_large_z
+    ref: scipy.special._ufuncs._struve_asymp_large_z
+    args: [v, z, is_h]
+    outs: [y, err]
+    impl: "o[0] = scipy_xsfw::cephes__struve_asymp_large_z(i[0], i[1], (long)i[2], &o[1]);"
+    integer_only: [2]
+    doc: "Internal function for testing `struve` & `modstruve`."
+  - name: _struve_bessel_series
+    ref: scipy.special._ufuncs._struve_bessel_series
+    args: [v, z, is_h]
+    outs: [y, err]
+    impl: "o[0] = scipy_xsfw::cephes__struve_bessel_series(i[0], i[1], (long)i[2], &o[1]);"
+    integer_only: [2]
+    doc: "Internal function for testing `struve` & `modstruve`."
+  - name: _struve_power_series
+    ref: scipy.special._ufuncs._struve_power_series
+    args: [v, z, is_h]
+    outs: [y, err]
+    impl: "o[0] = scipy_xsfw::cephes__struve_power_series(i[0], i[1], (long)i[2], &o[1]);"
+    integer_only: [2]
+    doc: "Internal function for testing `struve` & `modstruve`."
+  - name: _zeta
+    ref: scipy.special._ufuncs._zeta
+    args: [x, q]
+    outs: [y]
+    impl: "o[0] = xsf::zeta(i[0], i[1]);"
+    doc: "Internal function, Hurwitz zeta."

@@ -1,0 +1,18 @@
+ARG_ENABLE("tessero", "Tessero native extension", "no");
+if (PHP_TESSERO != "no") {
+    // BEGIN sources (tools/sync-ext.sh)
+    var TESSERO_KERNEL = "alloc.c array.c elementwise.c fft.c fn_core.c fn_tables.c gen_special_table.c index.c lp.c matmul.c mdp.c mmap.c np_io.c np_linalg.c np_numeric.c np_poly.c np_random.c np_sets.c np_shape.c np_stats.c reduce.c rng.c scipy_csgraph.c scipy_ndimage.c scipy_signal.c scipy_sparse.c sort.c sparse.c spatial_distance.c ufunc.c";
+    var TESSERO_KERNEL_CXX = "dist_basic.cpp dist_cont1.cpp dist_cont2.cpp dist_cont3.cpp dist_cont4.cpp dist_cont5.cpp dist_cont6.cpp dist_disc.cpp fn_guard.cpp gen_special.cpp stats_dist.cpp stats_fn_corr.cpp stats_fn_desc.cpp stats_fn_tests2.cpp stats_fn_tests.cpp";
+    // END sources
+    var TP = configure_module_dirname + "/libtessero/third_party";
+    EXTENSION("tessero", "tessero.c tessero_ndarray.c tessero_solvers.c tessero_ufunc.c tessero_memmap.c tessero_fn.c tessero_dist.c tessero_random.c", PHP_TESSERO_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+    ADD_SOURCES(configure_module_dirname + "/libtessero/src", TESSERO_KERNEL, "tessero");
+    ADD_SOURCES(TP + "/scipy", "cdflib.c _cosine.c", "tessero");
+    ADD_SOURCES(TP + "/scipy/quadpack", "quadpack.c", "tessero");
+    ADD_SOURCES(TP + "/scipy/zeros", "brentq.c", "tessero");
+    ADD_SOURCES(TP + "/numpy/random/src", "distributions.c logfactorial.c random_hypergeometric.c random_mvhg_count.c random_mvhg_marginals.c", "tessero");
+    ADD_FLAG("CFLAGS_TESSERO", "/std:c++17 /EHsc /DBOOST_MATH_STANDALONE /D_USE_MATH_DEFINES /DNOMINMAX /I" + TP + " /I" + TP + "/xsf /I" + TP + "/scipy /I" + TP + "/boost /I" + TP + "/numpy/include");
+    ADD_SOURCES(configure_module_dirname + "/libtessero/cxx", TESSERO_KERNEL_CXX, "tessero");
+    ADD_SOURCES(TP + "/scipy", "wright.cc", "tessero");
+    ADD_EXTENSION_DEP("tessero", "json");
+}
