@@ -224,6 +224,11 @@ def main():
                            call('companion', [np.array([2.0, 0.0, -1.0, 0.5])])]
     blocks['hadamard'] = [call('hadamard', [n]) for n in (1, 2, 4, 8)]
     blocks['hilbert'] = [call('hilbert', [n]) for n in (1, 3, 5)]
+    blocks['hankel'] = [call('hankel', [rng.uniform(-3, 3, size=n)]) for n in (3, 5)] + \
+        [call('hankel', [rng.uniform(-3, 3, size=4), rng.uniform(-3, 3, size=5)]),
+         call('hankel', [rng.uniform(-3, 3, size=5), rng.uniform(-3, 3, size=3)])]
+    blocks['fiedler'] = [call('fiedler', [rng.uniform(-3, 3, size=n)]) for n in (2, 4, 5)]
+    blocks['leslie'] = [call('leslie', [rng.uniform(0, 3, size=n), rng.uniform(0, 1, size=n - 1)]) for n in (2, 4, 5)]
     blocks['khatri_rao'] = [call('khatri_rao', [rng.uniform(-3, 3, size=(3, 2)), rng.uniform(-3, 3, size=(4, 2))]),
                             call('khatri_rao', [rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(2, 3))])]
     blocks['diagsvd'] = [call('diagsvd', [rng.uniform(0, 3, size=k), M, N]) for (k, M, N) in ((3, 3, 5), (3, 5, 3), (4, 4, 4), (2, 2, 4))]
