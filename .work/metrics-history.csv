@@ -92,3 +92,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-06,scipy.signal: periodogram,87.7,87.0,63.6,63.4,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,scipy.signal: welch,87.7,87.0,63.7,63.4,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-06,scipy.signal: csd,87.7,87.0,63.8,63.5,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-06,scipy.signal: coherence,87.7,87.0,63.8,63.6,99.1,99.6,71.7,71.7,79.1,79.1
