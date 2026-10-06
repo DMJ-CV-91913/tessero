@@ -2735,6 +2735,12 @@
                 "doc": "FIR filter design by the window method (scipy.signal.firwin)."
             },
             {
+                "name": "firwin2",
+                "static": true,
+                "sig": "firwin2(mixed $numtaps, mixed $freq, mixed $gain, mixed $nfreqs = null, mixed $window = 'hamming', mixed $antisymmetric = false, mixed $fs = null): mixed",
+                "doc": "FIR filter design by frequency sampling (scipy.signal.firwin2)."
+            },
+            {
                 "name": "freqs",
                 "static": true,
                 "sig": "freqs(mixed $b, mixed $a, mixed $worN): mixed",
@@ -15639,6 +15645,12 @@
                 "name": "kaiserord",
                 "static": true,
                 "sig": "kaiserord($ripple, $width)",
+                "doc": ""
+            },
+            {
+                "name": "firwin2",
+                "static": true,
+                "sig": "firwin2($numtaps, $freq, $gain, $nfreqs = null, $window = 'hamming', $antisymmetric = false, $fs = null)",
                 "doc": ""
             }
         ]

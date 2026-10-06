@@ -32,6 +32,7 @@ final class Signal
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
     'firwin' => 'firwin',
+    'firwin2' => 'firwin2',
     'freqs' => 'freqs',
     'freqs_zpk' => 'freqsZpk',
     'freqz' => 'freqz',
@@ -235,6 +236,16 @@ final class Signal
     public static function firwin(mixed $numtaps, mixed $cutoff, mixed $window = 'hamming', mixed $passZero = true, mixed $scale = true, mixed $fs = null): mixed
     {
         return Registry::routine('signal.firwin', [$numtaps, $cutoff, $window, $passZero, $scale, $fs]);
+    }
+
+    /**
+     * FIR filter design by frequency sampling (scipy.signal.firwin2).
+     *
+     * scipy.signal.firwin2
+     */
+    public static function firwin2(mixed $numtaps, mixed $freq, mixed $gain, mixed $nfreqs = null, mixed $window = 'hamming', mixed $antisymmetric = false, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.firwin2', [$numtaps, $freq, $gain, $nfreqs, $window, $antisymmetric, $fs]);
     }
 
     /**

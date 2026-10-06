@@ -1865,6 +1865,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.firwin2": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.freqs": {
             "kind": "routine",
             "nin": 0,
