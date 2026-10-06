@@ -124,6 +124,19 @@ def main():
         cs.append(call('tensordot', [a, b], {'axes': ax}, tol=t))
     blocks['tensordot'] = cs
 
+    cs = []
+    for a, b in ((F(5), F(5)), (F(3), F(3)), (F(40), F(40))):   # vecdot: 1-D . 1-D
+        cs.append(call('vecdot', [a, b], tol=contract_tol(np.vecdot(a, b), np.vecdot(np.abs(a), np.abs(b)), a.shape[-1])))
+    blocks['vecdot'] = cs
+    cs = []
+    for a, b in ((F(3, 4), F(4)), (F(5, 5), F(5)), (F(2, 3, 4), F(2, 4))):   # matvec: (...,M,N) x (...,N)
+        cs.append(call('matvec', [a, b], tol=contract_tol(np.matvec(a, b), np.matvec(np.abs(a), np.abs(b)), a.shape[-1])))
+    blocks['matvec'] = cs
+    cs = []
+    for a, b in ((F(4), F(4, 3)), (F(5), F(5, 5)), (F(2, 3), F(2, 3, 4))):   # vecmat: (...,N) x (...,N,M)
+        cs.append(call('vecmat', [a, b], tol=contract_tol(np.vecmat(a, b), np.vecmat(np.abs(a), np.abs(b)), a.shape[-1])))
+    blocks['vecmat'] = cs
+
     # ---- differences and integrals
     cs = []
     for a in (F(8), I(3, 5), B(6), F(2, 3, 4), np.array([2 ** 62, -(2 ** 62), 5])):

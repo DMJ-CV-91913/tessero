@@ -1140,6 +1140,11 @@
             "nin": 0,
             "nout": 1
         },
+        "np.matvec": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "np.median": {
             "kind": "gufunc",
             "nin": 1,
@@ -1586,6 +1591,16 @@
             "nout": 1
         },
         "np.vdot": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.vecdot": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.vecmat": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

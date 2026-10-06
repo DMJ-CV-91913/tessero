@@ -265,6 +265,7 @@
         "np.loadtxt": "pass",
         "np.logspace": "pass",
         "np.matrix_transpose": "pass",
+        "np.matvec": "pass",
         "np.median": "pass",
         "np.meshgrid": "pass",
         "np.modf": "pass",
@@ -355,6 +356,8 @@
         "np.unwrap": "pass",
         "np.vander": "pass",
         "np.vdot": "pass",
+        "np.vecdot": "pass",
+        "np.vecmat": "pass",
         "np.vsplit": "pass",
         "np.vstack": "pass",
         "np.zeros_like": "pass",
@@ -1786,7 +1789,7 @@
             "special.softmax": 2.1851336581537145e-16,
             "special.log_softmax": 1.9506335403222065e-16,
             "np.cumulative_trapezoid": 0,
-            "np.simpson": 1.1875317239275916e-15,
+            "np.simpson": 3.32107928550973e-16,
             "slinalg.circulant": 0,
             "slinalg.companion": 0,
             "slinalg.hadamard": 0,
@@ -2006,7 +2009,10 @@
             "np.right_shift": 0,
             "slinalg.hankel": 0,
             "slinalg.fiedler": 0,
-            "slinalg.leslie": 0
+            "slinalg.leslie": 0,
+            "np.vecdot": 0,
+            "np.matvec": 2.739647447687495e-16,
+            "np.vecmat": 6.804136052614522e-16
         },
         "ext": {
             "np.median": 0,
@@ -2790,7 +2796,7 @@
             "special.softmax": 2.1851336581537145e-16,
             "special.log_softmax": 1.9506335403222065e-16,
             "np.cumulative_trapezoid": 0,
-            "np.simpson": 1.1875317239275916e-15,
+            "np.simpson": 3.32107928550973e-16,
             "slinalg.circulant": 0,
             "slinalg.companion": 0,
             "slinalg.hadamard": 0,
@@ -3010,7 +3016,10 @@
             "np.right_shift": 0,
             "slinalg.hankel": 0,
             "slinalg.fiedler": 0,
-            "slinalg.leslie": 0
+            "slinalg.leslie": 0,
+            "np.vecdot": 0,
+            "np.matvec": 2.739647447687495e-16,
+            "np.vecmat": 6.804136052614522e-16
         }
     },
     "ext": {
@@ -3279,6 +3288,7 @@
         "np.loadtxt": "pass",
         "np.logspace": "pass",
         "np.matrix_transpose": "pass",
+        "np.matvec": "pass",
         "np.median": "pass",
         "np.meshgrid": "pass",
         "np.modf": "pass",
@@ -3369,6 +3379,8 @@
         "np.unwrap": "pass",
         "np.vander": "pass",
         "np.vdot": "pass",
+        "np.vecdot": "pass",
+        "np.vecmat": "pass",
         "np.vsplit": "pass",
         "np.vstack": "pass",
         "np.zeros_like": "pass",

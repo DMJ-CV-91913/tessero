@@ -111,6 +111,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.loadtxt` | `Tessero\Np::loadtxt()` |
 | `numpy.logspace` | `Tessero\Np::logspace()` |
 | `numpy.matrix_transpose` | `Tessero\Np::matrixTranspose()` |
+| `numpy.matvec` | `Tessero\Np::matvec()` |
 | `numpy.median` | `Tessero\Np::median()` |
 | `numpy.meshgrid` | `Tessero\Np::meshgrid()` |
 | `numpy.modf` | `Tessero\Np::modf()` |
@@ -201,6 +202,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.unwrap` | `Tessero\Np::unwrap()` |
 | `numpy.vander` | `Tessero\Np::vander()` |
 | `numpy.vdot` | `Tessero\Np::vdot()` |
+| `numpy.vecdot` | `Tessero\Np::vecdot()` |
+| `numpy.vecmat` | `Tessero\Np::vecmat()` |
 | `numpy.vsplit` | `Tessero\Np::vsplit()` |
 | `numpy.vstack` | `Tessero\Np::vstack()` |
 | `numpy.zeros_like` | `Tessero\Np::zerosLike()` |

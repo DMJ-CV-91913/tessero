@@ -83,7 +83,6 @@
 | `linalg.matrix_norm` | every call | rtol 1e-09 |
 | `np.polyfit` | call | rtol 1e-06 to 1e-05 (3 calls) |
 | `np.roots` | call | rtol 1e-06 |
-| `np.polymul` | call | rtol 2.63e-11: convolution by dot products: summation order differs; bound 2 gamma_n sum|a_k b_k| / |result| |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |
