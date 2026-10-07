@@ -930,6 +930,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | NumPy / SciPy | Tessero |
 |---|---|
 | `scipy.signal.abcd_normalize` | `Tessero\Signal::abcdNormalize()` |
+| `scipy.signal.argrelmax` | `Tessero\Signal::argrelmax()` |
+| `scipy.signal.argrelmin` | `Tessero\Signal::argrelmin()` |
 | `scipy.signal.bilinear` | `Tessero\Signal::bilinear()` |
 | `scipy.signal.bilinear_zpk` | `Tessero\Signal::bilinearZpk()` |
 | `scipy.signal.buttap` | `Tessero\Signal::buttap()` |
