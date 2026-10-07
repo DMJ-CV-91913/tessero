@@ -479,6 +479,8 @@
         "signal.order_filter": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
+        "signal.residue": "pass",
+        "signal.residuez": "pass",
         "signal.savgol_coeffs": "pass",
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",
@@ -2204,7 +2206,9 @@
             "signal.order_filter": 0,
             "signal.unique_roots": 0,
             "signal.invres": 0,
-            "signal.invresz": 0
+            "signal.invresz": 0,
+            "signal.residue": 0,
+            "signal.residuez": 2.449293598294707e-16
         },
         "ext": {
             "np.median": 0,
@@ -3307,7 +3311,9 @@
             "signal.order_filter": 0,
             "signal.unique_roots": 0,
             "signal.invres": 0,
-            "signal.invresz": 0
+            "signal.invresz": 0,
+            "signal.residue": 0,
+            "signal.residuez": 2.449293598294707e-16
         }
     },
     "ext": {
@@ -3790,6 +3796,8 @@
         "signal.order_filter": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
+        "signal.residue": "pass",
+        "signal.residuez": "pass",
         "signal.savgol_coeffs": "pass",
         "signal.savgol_filter": "pass",
         "signal.sawtooth": "pass",

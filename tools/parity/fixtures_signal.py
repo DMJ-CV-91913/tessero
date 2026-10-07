@@ -244,6 +244,21 @@ for (rr, pp, kk) in [([1., 2.], [1., 2.], []), ([2., -1., 3.], [0.5, 1., 2.], [1
                 'expect': F.enc_result((np.asarray(bz, dtype=float), np.asarray(az, dtype=float)), ['b', 'a']),
                 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# residue / residuez (real-root denominators, distinct magnitudes -> unambiguous pole order)
+rsd, rsz = [], []
+for (b, a) in [([1., 3., 3.], [1., 6., 11., 6.]), ([1., 0.], [1., 3., 2.]),
+               ([1., 0., 0., 0.], [1., 3., 2.])]:
+    r, p, k = sg.residue(b, a)
+    rsd.append({'args': [F.enc(np.asarray(b)), F.enc(np.asarray(a))], 'kwargs': {},
+                'expect': F.enc_result((r.astype(complex), p.astype(complex), np.asarray(k, dtype=float)), ['r', 'p', 'k']),
+                'compare': 'tol', 'tol': {'atol': 1e-9}})
+for (b, a) in [([1.], [1., -0.5]), ([1., -0.3], [1., -0.6, 0.08]),
+               ([1., 0., 0.], [1., -0.6, 0.08])]:
+    r, p, k = sg.residuez(b, a)
+    rsz.append({'args': [F.enc(np.asarray(b)), F.enc(np.asarray(a))], 'kwargs': {},
+                'expect': F.enc_result((r.astype(complex), p.astype(complex), np.asarray(k, dtype=float)), ['r', 'p', 'k']),
+                'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 # rank / median filters (zero-padded)
 mdf, mdf2, ordf = [], [], []
 _rng_mf = np.random.default_rng(7)
@@ -591,6 +606,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'unique_roots', 'cases': uroo, 'tol': {'atol': 1e-9}},
                  {'fn': 'invres', 'cases': ivr, 'tol': {'atol': 1e-10}},
                  {'fn': 'invresz', 'cases': ivz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
+                 {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2hp', 'cases': lphp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2bp', 'cases': lpbp, 'tol': {'atol': 1e-12}},

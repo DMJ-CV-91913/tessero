@@ -72,6 +72,8 @@ final class Signal
     'order_filter' => 'orderFilter',
     'periodogram' => 'periodogram',
     'resample' => 'resample',
+    'residue' => 'residue',
+    'residuez' => 'residuez',
     'savgol_coeffs' => 'savgolCoeffs',
     'savgol_filter' => 'savgolFilter',
     'sawtooth' => 'sawtooth',
@@ -707,6 +709,30 @@ final class Signal
     public static function resample(mixed $x, mixed $num, mixed $t = null, mixed $axis = 0, mixed $window = null, mixed $domain = 'time'): mixed
     {
         return Registry::routine('signal.resample', [$x, $num, $t, $axis, $window, $domain]);
+    }
+
+    /**
+     * Partial-fraction expansion of b(s)/a(s), positive powers (scipy.signal.residue).
+     *
+     * scipy.signal.residue
+     *
+     * @return mixed one array, or an array keyed by r, p, k when several results are requested
+     */
+    public static function residue(mixed $b, mixed $a, mixed $tol = 1e-3, mixed $rtype = 'avg'): mixed
+    {
+        return Registry::routine('signal.residue', [$b, $a, $tol, $rtype]);
+    }
+
+    /**
+     * Partial-fraction expansion of b(z)/a(z), negative powers of z (scipy.signal.residuez).
+     *
+     * scipy.signal.residuez
+     *
+     * @return mixed one array, or an array keyed by r, p, k when several results are requested
+     */
+    public static function residuez(mixed $b, mixed $a, mixed $tol = 1e-3, mixed $rtype = 'avg'): mixed
+    {
+        return Registry::routine('signal.residuez', [$b, $a, $tol, $rtype]);
     }
 
     /**
