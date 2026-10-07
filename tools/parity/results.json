@@ -432,8 +432,11 @@
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
+        "signal.buttord": "pass",
         "signal.cheb1ap": "pass",
+        "signal.cheb1ord": "pass",
         "signal.cheb2ap": "pass",
+        "signal.cheb2ord": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
         "signal.chirp": "pass",
@@ -446,6 +449,7 @@
         "signal.csd": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
+        "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
         "signal.firwin": "pass",
@@ -2212,7 +2216,11 @@
             "signal.residue": 0,
             "signal.residuez": 2.449293598294707e-16,
             "signal.argrelmax": 0,
-            "signal.argrelmin": 0
+            "signal.argrelmin": 0,
+            "signal.buttord": 0,
+            "signal.cheb1ord": 0,
+            "signal.cheb2ord": 0,
+            "signal.ellipord": 0
         },
         "ext": {
             "np.median": 0,
@@ -3319,7 +3327,11 @@
             "signal.residue": 0,
             "signal.residuez": 2.449293598294707e-16,
             "signal.argrelmax": 0,
-            "signal.argrelmin": 0
+            "signal.argrelmin": 0,
+            "signal.buttord": 0,
+            "signal.cheb1ord": 0,
+            "signal.cheb2ord": 0,
+            "signal.ellipord": 0
         }
     },
     "ext": {
@@ -3755,8 +3767,11 @@
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
+        "signal.buttord": "pass",
         "signal.cheb1ap": "pass",
+        "signal.cheb1ord": "pass",
         "signal.cheb2ap": "pass",
+        "signal.cheb2ord": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
         "signal.chirp": "pass",
@@ -3769,6 +3784,7 @@
         "signal.csd": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
+        "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
         "signal.firwin": "pass",

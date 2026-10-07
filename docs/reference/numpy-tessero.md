@@ -936,8 +936,11 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.bilinear_zpk` | `Tessero\Signal::bilinearZpk()` |
 | `scipy.signal.buttap` | `Tessero\Signal::buttap()` |
 | `scipy.signal.butter` | `Tessero\Signal::butter()` |
+| `scipy.signal.buttord` | `Tessero\Signal::buttord()` |
 | `scipy.signal.cheb1ap` | `Tessero\Signal::cheb1ap()` |
+| `scipy.signal.cheb1ord` | `Tessero\Signal::cheb1ord()` |
 | `scipy.signal.cheb2ap` | `Tessero\Signal::cheb2ap()` |
+| `scipy.signal.cheb2ord` | `Tessero\Signal::cheb2ord()` |
 | `scipy.signal.cheby1` | `Tessero\Signal::cheby1()` |
 | `scipy.signal.cheby2` | `Tessero\Signal::cheby2()` |
 | `scipy.signal.chirp` | `Tessero\Signal::chirp()` |
@@ -950,6 +953,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
 | `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
 | `scipy.signal.detrend` | `Tessero\Signal::detrend()` |
+| `scipy.signal.ellipord` | `Tessero\Signal::ellipord()` |
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |
 | `scipy.signal.firwin` | `Tessero\Signal::firwin()` |

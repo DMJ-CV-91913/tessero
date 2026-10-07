@@ -1830,15 +1830,30 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.buttord": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.cheb1ap": {
             "kind": "routine",
             "nin": 0,
             "nout": 3
         },
+        "signal.cheb1ord": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.cheb2ap": {
             "kind": "routine",
             "nin": 0,
             "nout": 3
+        },
+        "signal.cheb2ord": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "signal.cheby1": {
             "kind": "routine",
@@ -1899,6 +1914,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "signal.ellipord": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "signal.fftconvolve": {
             "kind": "routine",

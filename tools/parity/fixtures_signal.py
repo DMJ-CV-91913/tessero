@@ -244,6 +244,18 @@ for (rr, pp, kk) in [([1., 2.], [1., 2.], []), ([2., -1., 3.], [0.5, 1., 2.], [1
                 'expect': F.enc_result((np.asarray(bz, dtype=float), np.asarray(az, dtype=float)), ['b', 'a']),
                 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# IIR order selection (lowpass/highpass; low/high are closed-form, no optimiser)
+btord, c1ord, c2ord, elord = [], [], [], []
+for (wp, ws, gp, gs, an) in [(0.2, 0.3, 1.0, 40.0, False), (0.3, 0.2, 1.0, 40.0, False),
+                             (0.1, 0.4, 0.5, 60.0, False), (0.4, 0.15, 2.0, 50.0, False),
+                             (20.0, 50.0, 3.0, 40.0, True), (50.0, 20.0, 3.0, 40.0, True)]:
+    pyk = {'analog': an}
+    args = [F.enc(float(wp)), F.enc(float(ws)), F.enc(float(gp)), F.enc(float(gs)), F.enc(bool(an))]
+    for fn, acc in (('buttord', btord), ('cheb1ord', c1ord), ('cheb2ord', c2ord), ('ellipord', elord)):
+        o, wn = getattr(sg, fn)(wp, ws, gp, gs, **pyk)
+        acc.append({'args': args, 'kwargs': {}, 'expect': F.enc_result((int(o), float(wn)), ['ord', 'wn']),
+                    'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 # argrelmax / argrelmin (1-D, mode='clip')
 armax, armin = [], []
 _rng_ar = np.random.default_rng(13)
@@ -617,6 +629,10 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'unique_roots', 'cases': uroo, 'tol': {'atol': 1e-9}},
                  {'fn': 'invres', 'cases': ivr, 'tol': {'atol': 1e-10}},
                  {'fn': 'invresz', 'cases': ivz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'buttord', 'cases': btord, 'tol': {'atol': 1e-9}},
+                 {'fn': 'cheb1ord', 'cases': c1ord, 'tol': {'atol': 1e-9}},
+                 {'fn': 'cheb2ord', 'cases': c2ord, 'tol': {'atol': 1e-9}},
+                 {'fn': 'ellipord', 'cases': elord, 'tol': {'atol': 1e-9}},
                  {'fn': 'argrelmax', 'cases': armax},
                  {'fn': 'argrelmin', 'cases': armin},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},

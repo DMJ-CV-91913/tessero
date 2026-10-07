@@ -25,8 +25,11 @@ final class Signal
     'bilinear_zpk' => 'bilinearZpk',
     'buttap' => 'buttap',
     'butter' => 'butter',
+    'buttord' => 'buttord',
     'cheb1ap' => 'cheb1ap',
+    'cheb1ord' => 'cheb1ord',
     'cheb2ap' => 'cheb2ap',
+    'cheb2ord' => 'cheb2ord',
     'cheby1' => 'cheby1',
     'cheby2' => 'cheby2',
     'chirp' => 'chirp',
@@ -39,6 +42,7 @@ final class Signal
     'csd' => 'csd',
     'deconvolve' => 'deconvolve',
     'detrend' => 'detrend',
+    'ellipord' => 'ellipord',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
     'firwin' => 'firwin',
@@ -194,6 +198,18 @@ final class Signal
     }
 
     /**
+     * Butterworth filter order selection, lowpass/highpass (scipy.signal.buttord).
+     *
+     * scipy.signal.buttord
+     *
+     * @return mixed one array, or an array keyed by ord, wn when several results are requested
+     */
+    public static function buttord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.buttord', [$wp, $ws, $gpass, $gstop, $analog, $fs]);
+    }
+
+    /**
      * Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap).
      *
      * scipy.signal.cheb1ap
@@ -206,6 +222,18 @@ final class Signal
     }
 
     /**
+     * Chebyshev type I filter order selection, lowpass/highpass (scipy.signal.cheb1ord).
+     *
+     * scipy.signal.cheb1ord
+     *
+     * @return mixed one array, or an array keyed by ord, wn when several results are requested
+     */
+    public static function cheb1ord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.cheb1ord', [$wp, $ws, $gpass, $gstop, $analog, $fs]);
+    }
+
+    /**
      * Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap).
      *
      * scipy.signal.cheb2ap
@@ -215,6 +243,18 @@ final class Signal
     public static function cheb2ap(mixed $N, mixed $rs): mixed
     {
         return Registry::routine('signal.cheb2ap', [$N, $rs]);
+    }
+
+    /**
+     * Chebyshev type II filter order selection, lowpass/highpass (scipy.signal.cheb2ord).
+     *
+     * scipy.signal.cheb2ord
+     *
+     * @return mixed one array, or an array keyed by ord, wn when several results are requested
+     */
+    public static function cheb2ord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.cheb2ord', [$wp, $ws, $gpass, $gstop, $analog, $fs]);
     }
 
     /**
@@ -345,6 +385,18 @@ final class Signal
     public static function detrend(mixed $data, mixed $axis = -1, mixed $type = 'linear', mixed $bp = 0, mixed $overwriteData = false): mixed
     {
         return Registry::routine('signal.detrend', [$data, $axis, $type, $bp, $overwriteData]);
+    }
+
+    /**
+     * Elliptic filter order selection, lowpass/highpass (scipy.signal.ellipord).
+     *
+     * scipy.signal.ellipord
+     *
+     * @return mixed one array, or an array keyed by ord, wn when several results are requested
+     */
+    public static function ellipord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.ellipord', [$wp, $ws, $gpass, $gstop, $analog, $fs]);
     }
 
     /**
