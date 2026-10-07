@@ -470,8 +470,11 @@
         "signal.lp2hp_zpk": "pass",
         "signal.lp2lp": "pass",
         "signal.lp2lp_zpk": "pass",
+        "signal.medfilt": "pass",
+        "signal.medfilt2d": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
+        "signal.order_filter": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
         "signal.savgol_coeffs": "pass",
@@ -2192,7 +2195,10 @@
             "signal.correlate2d": 9.590451008180848e-15,
             "signal.tf2ss": 0,
             "signal.abcd_normalize": 0,
-            "signal.ss2tf": 0
+            "signal.ss2tf": 0,
+            "signal.medfilt": 0,
+            "signal.medfilt2d": 0,
+            "signal.order_filter": 0
         },
         "ext": {
             "np.median": 0,
@@ -3289,7 +3295,10 @@
             "signal.correlate2d": 9.590451008180848e-15,
             "signal.tf2ss": 0,
             "signal.abcd_normalize": 0,
-            "signal.ss2tf": 0
+            "signal.ss2tf": 0,
+            "signal.medfilt": 0,
+            "signal.medfilt2d": 0,
+            "signal.order_filter": 0
         }
     },
     "ext": {
@@ -3763,8 +3772,11 @@
         "signal.lp2hp_zpk": "pass",
         "signal.lp2lp": "pass",
         "signal.lp2lp_zpk": "pass",
+        "signal.medfilt": "pass",
+        "signal.medfilt2d": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
+        "signal.order_filter": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
         "signal.savgol_coeffs": "pass",
