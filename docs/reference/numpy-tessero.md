@@ -974,8 +974,11 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.lp2hp_zpk` | `Tessero\Signal::lp2hpZpk()` |
 | `scipy.signal.lp2lp` | `Tessero\Signal::lp2lp()` |
 | `scipy.signal.lp2lp_zpk` | `Tessero\Signal::lp2lpZpk()` |
+| `scipy.signal.medfilt` | `Tessero\Signal::medfilt()` |
+| `scipy.signal.medfilt2d` | `Tessero\Signal::medfilt2d()` |
 | `scipy.signal.normalize` | `Tessero\Signal::normalize()` |
 | `scipy.signal.oaconvolve` | `Tessero\Signal::oaconvolve()` |
+| `scipy.signal.order_filter` | `Tessero\Signal::orderFilter()` |
 | `scipy.signal.periodogram` | `Tessero\Signal::periodogram()` |
 | `scipy.signal.resample` | `Tessero\Signal::resample()` |
 | `scipy.signal.savgol_coeffs` | `Tessero\Signal::savgolCoeffs()` |

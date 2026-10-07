@@ -102,6 +102,12 @@
 | `signal.abcd_normalize` | call | rtol 0 |
 | `signal.ss2tf` | every call | rtol 0 |
 | `signal.ss2tf` | call | rtol 0 |
+| `signal.medfilt` | every call | rtol 0 |
+| `signal.medfilt` | call | rtol 0 |
+| `signal.medfilt2d` | every call | rtol 0 |
+| `signal.medfilt2d` | call | rtol 0 |
+| `signal.order_filter` | every call | rtol 0 |
+| `signal.order_filter` | call | rtol 0 |
 | `signal.lp2lp` | every call | rtol 0 |
 | `signal.lp2lp` | call | rtol 0 |
 | `signal.lp2hp` | every call | rtol 0 |

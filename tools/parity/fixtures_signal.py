@@ -223,6 +223,25 @@ for (num, den) in [([1., 3., 3.], [1., 2., 1.]), ([1., 2.], [1., 3., 2.]),
     s2tf.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D)], 'kwargs': {},
                  'expect': F.enc_result((np.atleast_2d(nu), de), ['num', 'den']), 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# rank / median filters (zero-padded)
+mdf, mdf2, ordf = [], [], []
+_rng_mf = np.random.default_rng(7)
+for arr, ks in [(np.array([2., 80., 6., 3.]), 3), (_rng_mf.standard_normal(9), 5),
+                (_rng_mf.standard_normal((4, 5)), 3), (_rng_mf.standard_normal((5, 6)), [3, 5]),
+                (_rng_mf.standard_normal((3, 4, 3)), 3)]:
+    mdf.append({'args': [F.enc(arr), F.enc(ks if np.isscalar(ks) else np.asarray(ks))], 'kwargs': {},
+                'expect': F.enc_result(sg.medfilt(arr, ks), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+for arr, ks in [(_rng_mf.standard_normal((5, 6)), 3), (_rng_mf.standard_normal((6, 5)), [5, 3]),
+                (_rng_mf.standard_normal((7, 7)), 5)]:
+    mdf2.append({'args': [F.enc(arr), F.enc(ks if np.isscalar(ks) else np.asarray(ks))], 'kwargs': {},
+                 'expect': F.enc_result(sg.medfilt2d(arr, ks), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+for arr, dom, rank in [(_rng_mf.standard_normal((5, 6)), np.ones((3, 3)), 4),
+                       (_rng_mf.standard_normal((6, 6)), np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]]), 0),
+                       (_rng_mf.standard_normal((5, 5)), np.ones((3, 5)), 14),
+                       (_rng_mf.standard_normal(10), np.ones(5), 2)]:
+    ordf.append({'args': [F.enc(arr), F.enc(dom), F.enc(int(rank))], 'kwargs': {},
+                 'expect': F.enc_result(sg.order_filter(arr, dom, rank), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 # analog lowpass-prototype transforms
 def _tf_case(args, bo, ao):
     return {'args': [F.enc(np.asarray(x) if isinstance(x, (list, np.ndarray)) else x) for x in args],
@@ -545,6 +564,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'tf2ss', 'cases': t2ss, 'tol': {'atol': 1e-11}},
                  {'fn': 'abcd_normalize', 'cases': abn, 'tol': {'atol': 1e-12}},
                  {'fn': 'ss2tf', 'cases': s2tf, 'tol': {'atol': 1e-10}},
+                 {'fn': 'medfilt', 'cases': mdf, 'tol': {'atol': 1e-12}},
+                 {'fn': 'medfilt2d', 'cases': mdf2, 'tol': {'atol': 1e-12}},
+                 {'fn': 'order_filter', 'cases': ordf, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2hp', 'cases': lphp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2bp', 'cases': lpbp, 'tol': {'atol': 1e-12}},
