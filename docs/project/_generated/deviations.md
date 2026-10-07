@@ -160,6 +160,10 @@
 | `signal.gauss_spline` | call | rtol 0 |
 | `signal.vectorstrength` | every call | rtol 0 |
 | `signal.vectorstrength` | call | rtol 0 |
+| `signal.convolve2d` | every call | rtol 0 |
+| `signal.convolve2d` | call | rtol 0 |
+| `signal.correlate2d` | every call | rtol 0 |
+| `signal.correlate2d` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

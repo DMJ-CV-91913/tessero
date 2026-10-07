@@ -940,7 +940,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.chirp` | `Tessero\Signal::chirp()` |
 | `scipy.signal.coherence` | `Tessero\Signal::coherence()` |
 | `scipy.signal.convolve` | `Tessero\Signal::convolve()` |
+| `scipy.signal.convolve2d` | `Tessero\Signal::convolve2d()` |
 | `scipy.signal.correlate` | `Tessero\Signal::correlate()` |
+| `scipy.signal.correlate2d` | `Tessero\Signal::correlate2d()` |
 | `scipy.signal.correlation_lags` | `Tessero\Signal::correlationLags()` |
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
 | `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
