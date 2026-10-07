@@ -477,6 +477,16 @@ for N in (2, 3, 4):
         lpbpz.append(_zpk_case('lp2bp_zpk', z0, p0, k0, (wo, bw)))
         lpbsz.append(_zpk_case('lp2bs_zpk', z0, p0, k0, (wo, bw)))
 
+# Chebyshev analog prototypes (poles/zeros compared as (re,im)-sorted sets)
+c1ap, c2ap = [], []
+for N in (1, 2, 3, 4, 5):
+    for rp in (0.5, 1.0, 3.0):
+        z, p, kk = sg.cheb1ap(N, rp)
+        c1ap.append({'args': [F.enc(N), F.enc(rp)], 'kwargs': {}, 'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+    for rs in (20.0, 40.0, 60.0):
+        z, p, kk = sg.cheb2ap(N, rs)
+        c2ap.append({'args': [F.enc(N), F.enc(rs)], 'kwargs': {}, 'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -528,7 +538,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'lp2hp_zpk', 'cases': lphpz, 'tol': {'atol': 1e-10}},
                  {'fn': 'bilinear_zpk', 'cases': blnz, 'tol': {'atol': 1e-10}},
                  {'fn': 'lp2bp_zpk', 'cases': lpbpz, 'tol': {'atol': 1e-10}},
-                 {'fn': 'lp2bs_zpk', 'cases': lpbsz, 'tol': {'atol': 1e-10}}]}
+                 {'fn': 'lp2bs_zpk', 'cases': lpbsz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'cheb1ap', 'cases': c1ap, 'tol': {'atol': 1e-11}},
+                 {'fn': 'cheb2ap', 'cases': c2ap, 'tol': {'atol': 1e-11}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

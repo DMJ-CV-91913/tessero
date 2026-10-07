@@ -2556,6 +2556,60 @@ static int r_bilinear_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return rc;
 }
 
+/* cheb1ap(N, rp): the analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap): no zeros, poles on an
+   ellipse in the left half-plane, gain set for the ripple rp (dB). (z, p, k), poles sorted by (re, im). */
+static int r_cheb1ap(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("cheb1ap: N and rp must be numbers"); return TSR_EARG; }
+    const int64_t N = (int64_t)args[0].num; const double rp = args[1].num;
+    if (N < 0) { fn_set_error("cheb1ap: filter order must be nonnegative"); return TSR_EARG; }
+    if (N == 0) { double *z = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0}); double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){0}); if (!z || !p) return TSR_ENOMEM; fn_result_num(&res[2], pow(10.0, -rp / 20.0)); return TSR_OK; }
+    const double eps = sqrt(pow(10.0, 0.1 * rp) - 1.0);
+    const double mu = asinh(1.0 / eps) / (double)N;
+    double complex *po = (double complex *)malloc(sizeof(double complex) * (size_t)N);
+    double complex *zo = (double complex *)malloc(sizeof(double complex));   /* empty */
+    int rc;
+    if (!po || !zo) rc = TSR_ENOMEM;
+    else {
+        double complex prod = 1.0;
+        for (int64_t i = 0; i < N; i++) { const double theta = M_PI * (double)(-N + 1 + 2 * i) / (2.0 * (double)N); po[i] = -csinh(mu + I * theta); prod *= -po[i]; }
+        double k = creal(prod);
+        if (N % 2 == 0) k /= sqrt(1.0 + eps * eps);
+        rc = sig_emit_zpk(zo, 0, po, N, k, res);
+    }
+    free(po); free(zo);
+    return rc;
+}
+
+/* cheb2ap(N, rs): the analog Chebyshev type II (inverse Chebyshev) lowpass prototype (scipy.signal.cheb2ap):
+   zeros on the imaginary axis, poles, gain set for the stopband attenuation rs (dB). (z, p, k), sorted. */
+static int r_cheb2ap(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("cheb2ap: N and rs must be numbers"); return TSR_EARG; }
+    const int64_t N = (int64_t)args[0].num; const double rs = args[1].num;
+    if (N < 0) { fn_set_error("cheb2ap: filter order must be nonnegative"); return TSR_EARG; }
+    if (N == 0) { double *z = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0}); double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){0}); if (!z || !p) return TSR_ENOMEM; fn_result_num(&res[2], 1.0); return TSR_OK; }
+    const double de = 1.0 / sqrt(pow(10.0, 0.1 * rs) - 1.0);
+    const double mu = asinh(1.0 / de) / (double)N;
+    const int64_t nz = (N % 2) ? N - 1 : N;
+    double complex *zo = (double complex *)malloc(sizeof(double complex) * (size_t)(nz ? nz : 1));
+    double complex *po = (double complex *)malloc(sizeof(double complex) * (size_t)N);
+    int rc;
+    if (!zo || !po) rc = TSR_ENOMEM;
+    else {
+        int64_t zi = 0;                                      /* zeros: m = (-N+1..-2, 2..N-1) for odd N, else -N+1..N-1 */
+        for (int64_t m = -N + 1; m <= N - 1; m += 2) { if ((N % 2) && m == 0) continue; zo[zi++] = I / sin((double)m * M_PI / (2.0 * (double)N)); }
+        double complex pz = 1.0, pp = 1.0;
+        for (int64_t i = 0; i < N; i++) { const double theta = M_PI * (double)(-N + 1 + 2 * i) / (2.0 * (double)N); po[i] = -1.0 / csinh(mu + I * theta); pp *= -po[i]; }
+        for (int64_t i = 0; i < nz; i++) pz *= -zo[i];
+        rc = sig_emit_zpk(zo, nz, po, N, creal(pp / pz), res);
+    }
+    free(zo); free(po);
+    return rc;
+}
+
 /* lp2bp_zpk(z, p, k, wo=1.0, bw=1.0): analog lowpass zpk -> bandpass (scipy.signal.lp2bp_zpk). */
 static int r_lp2bp_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -2898,6 +2952,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.bilinear_zpk", 3, "z, p, k, fs", "z, p, k", r_bilinear_zpk, NULL, "Bilinear transform of an analog zpk to a digital zpk (scipy.signal.bilinear_zpk)."),
     ROUTINE("signal.lp2bp_zpk", 3, "z, p, k, wo=1.0, bw=1.0", "z, p, k", r_lp2bp_zpk, NULL, "Transform an analog lowpass zpk prototype to bandpass (scipy.signal.lp2bp_zpk)."),
     ROUTINE("signal.lp2bs_zpk", 3, "z, p, k, wo=1.0, bw=1.0", "z, p, k", r_lp2bs_zpk, NULL, "Transform an analog lowpass zpk prototype to bandstop (scipy.signal.lp2bs_zpk)."),
+    ROUTINE("signal.cheb1ap", 3, "N, rp", "z, p, k", r_cheb1ap, NULL, "Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap)."),
+    ROUTINE("signal.cheb2ap", 3, "N, rs", "z, p, k", r_cheb2ap, NULL, "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

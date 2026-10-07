@@ -933,6 +933,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.bilinear_zpk` | `Tessero\Signal::bilinearZpk()` |
 | `scipy.signal.buttap` | `Tessero\Signal::buttap()` |
 | `scipy.signal.butter` | `Tessero\Signal::butter()` |
+| `scipy.signal.cheb1ap` | `Tessero\Signal::cheb1ap()` |
+| `scipy.signal.cheb2ap` | `Tessero\Signal::cheb2ap()` |
 | `scipy.signal.cheby1` | `Tessero\Signal::cheby1()` |
 | `scipy.signal.cheby2` | `Tessero\Signal::cheby2()` |
 | `scipy.signal.chirp` | `Tessero\Signal::chirp()` |

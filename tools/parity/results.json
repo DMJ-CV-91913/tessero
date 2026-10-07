@@ -429,6 +429,8 @@
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
+        "signal.cheb1ap": "pass",
+        "signal.cheb2ap": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
         "signal.chirp": "pass",
@@ -2174,7 +2176,9 @@
             "signal.lp2hp_zpk": 0,
             "signal.bilinear_zpk": 1.6705754377351397e-16,
             "signal.lp2bp_zpk": 0,
-            "signal.lp2bs_zpk": 0
+            "signal.lp2bs_zpk": 0,
+            "signal.cheb1ap": 3.389602864453695e-16,
+            "signal.cheb2ap": 5.204167825844554e-16
         },
         "ext": {
             "np.median": 0,
@@ -3262,7 +3266,9 @@
             "signal.lp2hp_zpk": 0,
             "signal.bilinear_zpk": 1.6705754377351397e-16,
             "signal.lp2bp_zpk": 0,
-            "signal.lp2bs_zpk": 0
+            "signal.lp2bs_zpk": 0,
+            "signal.cheb1ap": 3.389602864453695e-16,
+            "signal.cheb2ap": 5.204167825844554e-16
         }
     },
     "ext": {
@@ -3695,6 +3701,8 @@
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
+        "signal.cheb1ap": "pass",
+        "signal.cheb2ap": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
         "signal.chirp": "pass",

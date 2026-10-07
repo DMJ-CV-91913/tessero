@@ -22,6 +22,8 @@ final class Signal
     'bilinear_zpk' => 'bilinearZpk',
     'buttap' => 'buttap',
     'butter' => 'butter',
+    'cheb1ap' => 'cheb1ap',
+    'cheb2ap' => 'cheb2ap',
     'cheby1' => 'cheby1',
     'cheby2' => 'cheby2',
     'chirp' => 'chirp',
@@ -140,6 +142,30 @@ final class Signal
     public static function butter(mixed $N, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed
     {
         return Registry::routine('signal.butter', [$N, $Wn, $btype, $analog, $output, $fs]);
+    }
+
+    /**
+     * Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap).
+     *
+     * scipy.signal.cheb1ap
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function cheb1ap(mixed $N, mixed $rp): mixed
+    {
+        return Registry::routine('signal.cheb1ap', [$N, $rp]);
+    }
+
+    /**
+     * Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap).
+     *
+     * scipy.signal.cheb2ap
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function cheb2ap(mixed $N, mixed $rs): mixed
+    {
+        return Registry::routine('signal.cheb2ap', [$N, $rs]);
     }
 
     /**
