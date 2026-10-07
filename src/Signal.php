@@ -42,6 +42,7 @@ final class Signal
     'freqs_zpk' => 'freqsZpk',
     'freqz' => 'freqz',
     'freqz_zpk' => 'freqzZpk',
+    'gauss_spline' => 'gaussSpline',
     'gausspulse' => 'gausspulse',
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
@@ -76,6 +77,7 @@ final class Signal
     'square' => 'square',
     'tf2zpk' => 'tf2zpk',
     'unit_impulse' => 'unitImpulse',
+    'vectorstrength' => 'vectorstrength',
     'welch' => 'welch',
     'zpk2tf' => 'zpk2tf',
     ];
@@ -364,6 +366,16 @@ final class Signal
     public static function freqzZpk(mixed $z, mixed $p, mixed $k, mixed $worN = 512, mixed $whole = false): mixed
     {
         return Registry::routine('signal.freqz_zpk', [$z, $p, $k, $worN, $whole]);
+    }
+
+    /**
+     * Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
+     *
+     * scipy.signal.gauss_spline
+     */
+    public static function gaussSpline(mixed $x, mixed $n): mixed
+    {
+        return Registry::routine('signal.gauss_spline', [$x, $n]);
     }
 
     /**
@@ -738,6 +750,18 @@ final class Signal
     public static function unitImpulse(mixed $shape, mixed $idx = null): mixed
     {
         return Registry::routine('signal.unit_impulse', [$shape, $idx]);
+    }
+
+    /**
+     * Vector strength and mean phase of events over a period (scipy.signal.vectorstrength).
+     *
+     * scipy.signal.vectorstrength
+     *
+     * @return mixed one array, or an array keyed by strength, phase when several results are requested
+     */
+    public static function vectorstrength(mixed $events, mixed $period): mixed
+    {
+        return Registry::routine('signal.vectorstrength', [$events, $period]);
     }
 
     /**

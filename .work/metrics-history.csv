@@ -105,3 +105,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-07,"scipy.signal: lp2lp_zpk, lp2hp_zpk, bilinear_zpk",87.7,87.0,64.8,64.5,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-07,"scipy.signal: lp2bp_zpk, lp2bs_zpk",87.7,87.0,64.9,64.6,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-07,"scipy.signal: cheb1ap, cheb2ap",87.7,87.0,65.0,64.8,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-07,"scipy.signal: gauss_spline, vectorstrength",87.7,87.0,65.2,64.9,99.1,99.6,71.7,71.7,79.1,79.1
