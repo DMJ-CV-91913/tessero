@@ -1850,7 +1850,17 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.convolve2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.correlate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.correlate2d": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
