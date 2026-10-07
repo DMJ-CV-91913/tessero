@@ -1004,12 +1004,14 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.spectrogram` | `Tessero\Signal::spectrogram()` |
 | `scipy.signal.square` | `Tessero\Signal::square()` |
 | `scipy.signal.ss2tf` | `Tessero\Signal::ss2tf()` |
+| `scipy.signal.ss2zpk` | `Tessero\Signal::ss2zpk()` |
 | `scipy.signal.tf2ss` | `Tessero\Signal::tf2ss()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unique_roots` | `Tessero\Signal::uniqueRoots()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
 | `scipy.signal.vectorstrength` | `Tessero\Signal::vectorstrength()` |
 | `scipy.signal.welch` | `Tessero\Signal::welch()` |
+| `scipy.signal.zpk2ss` | `Tessero\Signal::zpk2ss()` |
 | `scipy.signal.zpk2tf` | `Tessero\Signal::zpk2tf()` |
 
 ## scipy.ndimage

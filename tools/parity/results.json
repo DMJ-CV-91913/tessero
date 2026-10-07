@@ -500,12 +500,14 @@
         "signal.spectrogram": "pass",
         "signal.square": "pass",
         "signal.ss2tf": "pass",
+        "signal.ss2zpk": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
+        "signal.zpk2ss": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
         "slinalg.block_diag": "pass",
@@ -2222,7 +2224,9 @@
             "signal.cheb1ord": 0,
             "signal.cheb2ord": 0,
             "signal.ellipord": 0,
-            "signal.cont2discrete": 3.6465695357008e-16
+            "signal.cont2discrete": 3.6465695357008e-16,
+            "signal.zpk2ss": 1.2195307883631899e-16,
+            "signal.ss2zpk": 0
         },
         "ext": {
             "np.median": 0,
@@ -3334,7 +3338,9 @@
             "signal.cheb1ord": 0,
             "signal.cheb2ord": 0,
             "signal.ellipord": 0,
-            "signal.cont2discrete": 3.6465695357008e-16
+            "signal.cont2discrete": 3.6465695357008e-16,
+            "signal.zpk2ss": 1.2195307883631899e-16,
+            "signal.ss2zpk": 0
         }
     },
     "ext": {
@@ -3838,12 +3844,14 @@
         "signal.spectrogram": "pass",
         "signal.square": "pass",
         "signal.ss2tf": "pass",
+        "signal.ss2zpk": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
+        "signal.zpk2ss": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
         "slinalg.block_diag": "pass",

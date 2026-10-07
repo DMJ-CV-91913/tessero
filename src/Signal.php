@@ -93,12 +93,14 @@ final class Signal
     'spectrogram' => 'spectrogram',
     'square' => 'square',
     'ss2tf' => 'ss2tf',
+    'ss2zpk' => 'ss2zpk',
     'tf2ss' => 'tf2ss',
     'tf2zpk' => 'tf2zpk',
     'unique_roots' => 'uniqueRoots',
     'unit_impulse' => 'unitImpulse',
     'vectorstrength' => 'vectorstrength',
     'welch' => 'welch',
+    'zpk2ss' => 'zpk2ss',
     'zpk2tf' => 'zpk2tf',
     ];
 
@@ -953,6 +955,18 @@ final class Signal
     }
 
     /**
+     * Zeros, poles and gain from a single-output state-space system (scipy.signal.ss2zpk).
+     *
+     * scipy.signal.ss2zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function ss2zpk(mixed $A, mixed $B, mixed $C, mixed $D, mixed $input = 0): mixed
+    {
+        return Registry::routine('signal.ss2zpk', [$A, $B, $C, $D, $input]);
+    }
+
+    /**
      * Controller-canonical state-space from transfer-function coefficients (scipy.signal.tf2ss).
      *
      * scipy.signal.tf2ss
@@ -1020,6 +1034,18 @@ final class Signal
     public static function welch(mixed $x, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed
     {
         return Registry::routine('signal.welch', [$x, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $average]);
+    }
+
+    /**
+     * State-space (A, B, C, D) from zeros, poles and gain (scipy.signal.zpk2ss).
+     *
+     * scipy.signal.zpk2ss
+     *
+     * @return mixed one array, or an array keyed by A, B, C, D when several results are requested
+     */
+    public static function zpk2ss(mixed $z, mixed $p, mixed $k): mixed
+    {
+        return Registry::routine('signal.zpk2ss', [$z, $p, $k]);
     }
 
     /**

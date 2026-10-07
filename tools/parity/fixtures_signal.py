@@ -223,6 +223,19 @@ for (num, den) in [([1., 3., 3.], [1., 2., 1.]), ([1., 2.], [1., 3., 2.]),
     s2tf.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D)], 'kwargs': {},
                  'expect': F.enc_result((np.atleast_2d(nu), de), ['num', 'den']), 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# zpk2ss / ss2zpk
+z2ss, s2zpk = [], []
+for (N, Wn, bt) in [(2, 0.3, 'low'), (3, 0.25, 'low'), (2, 0.5, 'high')]:
+    z, p, k = butter(N, Wn, btype=bt, output='zpk')
+    A, B, C, D = sg.zpk2ss(z, p, k)
+    z2ss.append({'args': [F.enc(np.asarray(z)), F.enc(np.asarray(p)), F.enc(float(k))], 'kwargs': {},
+                 'expect': F.enc_result((A, B, C, D), ['A', 'B', 'C', 'D']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    bb, aa = butter(N, Wn, btype=bt)
+    A2, B2, C2, D2 = sg.tf2ss(bb, aa)
+    zz, pp, kk = sg.ss2zpk(A2, B2, C2, D2)
+    s2zpk.append({'args': [F.enc(A2), F.enc(B2), F.enc(C2), F.enc(D2)], 'kwargs': {},
+                  'expect': F.enc_result((_sortc(zz), _sortc(pp), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 # cont2discrete (state-space form)
 c2d = []
 _c2d_sys = [(np.array([[-0.5, 0.0], [0.0, -1.0]]), np.array([[1.0], [0.5]]), np.array([[1.0, 1.0]]), np.array([[0.0]])),
@@ -641,6 +654,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'abcd_normalize', 'cases': abn, 'tol': {'atol': 1e-12}},
                  {'fn': 'ss2tf', 'cases': s2tf, 'tol': {'atol': 1e-10}},
                  {'fn': 'cont2discrete', 'cases': c2d, 'tol': {'atol': 1e-10}},
+                 {'fn': 'zpk2ss', 'cases': z2ss, 'tol': {'atol': 1e-9}},
+                 {'fn': 'ss2zpk', 'cases': s2zpk, 'tol': {'atol': 1e-9}},
                  {'fn': 'medfilt', 'cases': mdf, 'tol': {'atol': 1e-12}},
                  {'fn': 'medfilt2d', 'cases': mdf2, 'tol': {'atol': 1e-12}},
                  {'fn': 'order_filter', 'cases': ordf, 'tol': {'atol': 1e-12}},
