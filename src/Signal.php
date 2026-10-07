@@ -50,7 +50,9 @@ final class Signal
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
     'lp2bp' => 'lp2bp',
+    'lp2bp_zpk' => 'lp2bpZpk',
     'lp2bs' => 'lp2bs',
+    'lp2bs_zpk' => 'lp2bsZpk',
     'lp2hp' => 'lp2hp',
     'lp2hp_zpk' => 'lp2hpZpk',
     'lp2lp' => 'lp2lp',
@@ -445,6 +447,18 @@ final class Signal
     }
 
     /**
+     * Transform an analog lowpass zpk prototype to bandpass (scipy.signal.lp2bp_zpk).
+     *
+     * scipy.signal.lp2bp_zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function lp2bpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0, mixed $bw = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2bp_zpk', [$z, $p, $k, $wo, $bw]);
+    }
+
+    /**
      * Transform a lowpass analog prototype to bandstop (scipy.signal.lp2bs).
      *
      * scipy.signal.lp2bs
@@ -454,6 +468,18 @@ final class Signal
     public static function lp2bs(mixed $b, mixed $a, mixed $wo = 1.0, mixed $bw = 1.0): mixed
     {
         return Registry::routine('signal.lp2bs', [$b, $a, $wo, $bw]);
+    }
+
+    /**
+     * Transform an analog lowpass zpk prototype to bandstop (scipy.signal.lp2bs_zpk).
+     *
+     * scipy.signal.lp2bs_zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function lp2bsZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0, mixed $bw = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2bs_zpk', [$z, $p, $k, $wo, $bw]);
     }
 
     /**

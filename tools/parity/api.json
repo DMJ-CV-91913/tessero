@@ -2843,10 +2843,22 @@
                 "doc": "Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp)."
             },
             {
+                "name": "lp2bpZpk",
+                "static": true,
+                "sig": "lp2bpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0, mixed $bw = 1.0): mixed",
+                "doc": "Transform an analog lowpass zpk prototype to bandpass (scipy.signal.lp2bp_zpk)."
+            },
+            {
                 "name": "lp2bs",
                 "static": true,
                 "sig": "lp2bs(mixed $b, mixed $a, mixed $wo = 1.0, mixed $bw = 1.0): mixed",
                 "doc": "Transform a lowpass analog prototype to bandstop (scipy.signal.lp2bs)."
+            },
+            {
+                "name": "lp2bsZpk",
+                "static": true,
+                "sig": "lp2bsZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0, mixed $bw = 1.0): mixed",
+                "doc": "Transform an analog lowpass zpk prototype to bandstop (scipy.signal.lp2bs_zpk)."
             },
             {
                 "name": "lp2hp",
@@ -15723,6 +15735,18 @@
                 "name": "bilinearZpk",
                 "static": true,
                 "sig": "bilinearZpk($z, $p, $k, $fs)",
+                "doc": ""
+            },
+            {
+                "name": "lp2bpZpk",
+                "static": true,
+                "sig": "lp2bpZpk($z, $p, $k, $wo = 1.0, $bw = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "lp2bsZpk",
+                "static": true,
+                "sig": "lp2bsZpk($z, $p, $k, $wo = 1.0, $bw = 1.0)",
                 "doc": ""
             }
         ]

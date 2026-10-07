@@ -2556,6 +2556,57 @@ static int r_bilinear_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return rc;
 }
 
+/* lp2bp_zpk(z, p, k, wo=1.0, bw=1.0): analog lowpass zpk -> bandpass (scipy.signal.lp2bp_zpk). */
+static int r_lp2bp_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nz, np_; double complex *z = read_carr(&args[0], &nz); if (!z) return TSR_ENOMEM;
+    double complex *p = read_carr(&args[1], &np_); if (!p) { free(z); return TSR_ENOMEM; }
+    const double k = (args[2].kind == 1) ? args[2].num : 1.0;
+    const double wo = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
+    const double bw = (nargs > 4 && args[4].kind == 1) ? args[4].num : 1.0;
+    const int64_t degree = np_ - nz;
+    double complex *zo = (double complex *)malloc(sizeof(double complex) * (size_t)((2 * nz + degree) ? (2 * nz + degree) : 1));
+    double complex *po = (double complex *)malloc(sizeof(double complex) * (size_t)((2 * np_) ? (2 * np_) : 1));
+    int rc;
+    if (!zo || !po) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < nz; i++) { const double complex zl = z[i] * bw / 2.0, s = csqrt(zl * zl - wo * wo); zo[i] = zl + s; zo[nz + i] = zl - s; }
+        for (int64_t i = 0; i < degree; i++) zo[2 * nz + i] = 0.0;
+        for (int64_t i = 0; i < np_; i++) { const double complex pl = p[i] * bw / 2.0, s = csqrt(pl * pl - wo * wo); po[i] = pl + s; po[np_ + i] = pl - s; }
+        rc = sig_emit_zpk(zo, 2 * nz + degree, po, 2 * np_, k * pow(bw, (double)degree), res);
+    }
+    free(zo); free(po); free(z); free(p);
+    return rc;
+}
+
+/* lp2bs_zpk(z, p, k, wo=1.0, bw=1.0): analog lowpass zpk -> bandstop (scipy.signal.lp2bs_zpk). */
+static int r_lp2bs_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nz, np_; double complex *z = read_carr(&args[0], &nz); if (!z) return TSR_ENOMEM;
+    double complex *p = read_carr(&args[1], &np_); if (!p) { free(z); return TSR_ENOMEM; }
+    const double k = (args[2].kind == 1) ? args[2].num : 1.0;
+    const double wo = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
+    const double bw = (nargs > 4 && args[4].kind == 1) ? args[4].num : 1.0;
+    const int64_t degree = np_ - nz;
+    double complex pz = 1.0, pp = 1.0;
+    for (int64_t i = 0; i < nz; i++) pz *= -z[i];
+    for (int64_t i = 0; i < np_; i++) pp *= -p[i];
+    double complex *zo = (double complex *)malloc(sizeof(double complex) * (size_t)((2 * nz + 2 * degree) ? (2 * nz + 2 * degree) : 1));
+    double complex *po = (double complex *)malloc(sizeof(double complex) * (size_t)((2 * np_) ? (2 * np_) : 1));
+    int rc;
+    if (!zo || !po) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < nz; i++) { const double complex zh = (bw / 2.0) / z[i], s = csqrt(zh * zh - wo * wo); zo[i] = zh + s; zo[nz + i] = zh - s; }
+        for (int64_t i = 0; i < degree; i++) { zo[2 * nz + i] = I * wo; zo[2 * nz + degree + i] = -I * wo; }
+        for (int64_t i = 0; i < np_; i++) { const double complex ph = (bw / 2.0) / p[i], s = csqrt(ph * ph - wo * wo); po[i] = ph + s; po[np_ + i] = ph - s; }
+        rc = sig_emit_zpk(zo, 2 * nz + 2 * degree, po, 2 * np_, k * creal(pz / pp), res);
+    }
+    free(zo); free(po); free(z); free(p);
+    return rc;
+}
+
 /* buttap(N): the analog Butterworth lowpass prototype of order N (scipy.signal.buttap): no zeros, poles
    p = -exp(1j*pi*m/(2N)) for m = -N+1, -N+3, ..., N-1, gain 1. Poles returned sorted by (re, im). (z, p, k). */
 static int r_buttap(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2845,6 +2896,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.lp2lp_zpk", 3, "z, p, k, wo=1.0", "z, p, k", r_lp2lp_zpk, NULL, "Scale an analog lowpass zpk prototype to a new cutoff (scipy.signal.lp2lp_zpk)."),
     ROUTINE("signal.lp2hp_zpk", 3, "z, p, k, wo=1.0", "z, p, k", r_lp2hp_zpk, NULL, "Transform an analog lowpass zpk prototype to highpass (scipy.signal.lp2hp_zpk)."),
     ROUTINE("signal.bilinear_zpk", 3, "z, p, k, fs", "z, p, k", r_bilinear_zpk, NULL, "Bilinear transform of an analog zpk to a digital zpk (scipy.signal.bilinear_zpk)."),
+    ROUTINE("signal.lp2bp_zpk", 3, "z, p, k, wo=1.0, bw=1.0", "z, p, k", r_lp2bp_zpk, NULL, "Transform an analog lowpass zpk prototype to bandpass (scipy.signal.lp2bp_zpk)."),
+    ROUTINE("signal.lp2bs_zpk", 3, "z, p, k, wo=1.0, bw=1.0", "z, p, k", r_lp2bs_zpk, NULL, "Transform an analog lowpass zpk prototype to bandstop (scipy.signal.lp2bs_zpk)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
