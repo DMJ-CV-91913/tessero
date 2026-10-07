@@ -1766,6 +1766,221 @@ static int r_ss2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
+/* ---- partial-fraction expansion (scipy.signal) ---- */
+
+enum { RT_MIN, RT_MAX, RT_AVG };
+static int sig_rtype(const tsr_arg *a, int dflt)
+{
+    if (!a || a->kind != 2 || !a->str) return dflt;
+    if (!strcmp(a->str, "max") || !strcmp(a->str, "maximum")) return RT_MAX;
+    if (!strcmp(a->str, "min") || !strcmp(a->str, "minimum")) return RT_MIN;
+    if (!strcmp(a->str, "avg") || !strcmp(a->str, "mean")) return RT_AVG;
+    return dflt;
+}
+
+/* reduce a group of complex values per rtype (min/max compare real then imag; avg = mean) */
+static double complex sig_creduce(const double complex *v, int64_t n, int rt)
+{
+    if (rt == RT_AVG) { double complex s = 0; for (int64_t i = 0; i < n; i++) s += v[i]; return s / (double)n; }
+    double complex best = v[0];
+    for (int64_t i = 1; i < n; i++) {
+        const int gt = (creal(v[i]) > creal(best)) || (creal(v[i]) == creal(best) && cimag(v[i]) > cimag(best));
+        if ((rt == RT_MAX) == (gt != 0) && v[i] != best) best = v[i];
+    }
+    return best;
+}
+
+/* unique_roots(p, tol=1e-3, rtype='min'): group roots within Euclidean tol, in input order
+   (scipy.signal.unique_roots). Returns (unique complex, multiplicity int64). */
+static int r_unique_roots(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t n; double complex *p = read_carr(&args[0], &n); if (!p) return TSR_ENOMEM;
+    const double tol = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1e-3;
+    const int rt = sig_rtype(nargs > 2 ? &args[2] : NULL, RT_MIN);
+    unsigned char *used = (unsigned char *)calloc((size_t)(n > 0 ? n : 1), 1);
+    double complex *uq = (double complex *)malloc(sizeof(double complex) * (size_t)(n > 0 ? n : 1));
+    int64_t *mult = (int64_t *)malloc(sizeof(int64_t) * (size_t)(n > 0 ? n : 1));
+    double complex *grp = (double complex *)malloc(sizeof(double complex) * (size_t)(n > 0 ? n : 1));
+    int rc = TSR_OK;
+    if (!used || !uq || !mult || !grp) rc = TSR_ENOMEM;
+    else {
+        int64_t nu = 0;
+        for (int64_t i = 0; i < n; i++) {
+            if (used[i]) continue;
+            int64_t g = 0;
+            for (int64_t j = 0; j < n; j++) {
+                if (used[j]) continue;
+                const double dr = creal(p[j]) - creal(p[i]), di = cimag(p[j]) - cimag(p[i]);
+                if (sqrt(dr * dr + di * di) <= tol) { grp[g++] = p[j]; used[j] = 1; }
+            }
+            uq[nu] = sig_creduce(grp, g, rt); mult[nu] = g; nu++;
+        }
+        double *ou = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){nu});
+        int64_t *om = (int64_t *)fn_result_array(&res[1], TSR_I64, 1, (int64_t[]){nu});
+        if (!ou || !om) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < nu; i++) { ou[2 * i] = creal(uq[i]); ou[2 * i + 1] = cimag(uq[i]); om[i] = mult[i]; } }
+    }
+    free(used); free(uq); free(mult); free(grp); free(p);
+    return rc;
+}
+
+/* real polynomial multiply (highest-first), r = a*b, length na+nb-1 (malloc'd; *nr set, -1 on OOM) */
+static double *rp_mul(const double *a, int64_t na, const double *b, int64_t nb, int64_t *nr)
+{
+    const int64_t n = na + nb - 1;
+    double *r = (double *)calloc((size_t)(n > 0 ? n : 1), sizeof(double));
+    if (!r) { *nr = -1; return NULL; }
+    for (int64_t i = 0; i < na; i++) for (int64_t j = 0; j < nb; j++) r[i + j] += a[i] * b[j];
+    *nr = n; return r;
+}
+
+/* real polynomial add (highest-first, tail-aligned), r = a + b; length max(na,nb) (malloc'd) */
+static double *rp_add(const double *a, int64_t na, const double *b, int64_t nb, int64_t *nr)
+{
+    const int64_t n = (na > nb) ? na : nb;
+    double *r = (double *)calloc((size_t)(n > 0 ? n : 1), sizeof(double));
+    if (!r) { *nr = -1; return NULL; }
+    for (int64_t t = 0; t < n; t++) {
+        const double av = (t < na) ? a[na - 1 - t] : 0.0, bv = (t < nb) ? b[nb - 1 - t] : 0.0;
+        r[n - 1 - t] = av + bv;
+    }
+    *nr = n; return r;
+}
+
+/* _group_poles: adjacent grouping (scipy.signal._group_poles); representative is each run's first pole. */
+static void sig_group_poles(const double *p, int64_t n, double tol, double *uq, int64_t *mult, int64_t *nu)
+{
+    int64_t k = 0;
+    if (n == 0) { *nu = 0; return; }
+    double pole = p[0]; int64_t cnt = 1;
+    for (int64_t i = 1; i < n; i++) {
+        if (fabs(p[i] - pole) <= tol) cnt++;
+        else { uq[k] = pole; mult[k] = cnt; k++; pole = p[i]; cnt = 1; }
+    }
+    uq[k] = pole; mult[k] = cnt; k++;
+    *nu = k;
+}
+
+/* _compute_factors(include_powers=True) for real poles: factors[t] = product of all (x-p_j)^m_j divided by
+   (x-p_i)^(t+1) for each repeated-power term; also returns the full denominator. factors stored as rows in
+   a flat buffer of width (total+1); returns total number of factors (= sum of multiplicities). */
+static int sig_compute_factors(const double *up, const int64_t *mult, int64_t nu,
+                               double **facs, int64_t **faclen, int64_t *nfac,
+                               double **den, int64_t *nden)
+{
+    int64_t total = 0; for (int64_t i = 0; i < nu; i++) total += mult[i];
+    const int64_t W = total + 1;                         /* max factor length */
+    /* suffixes[i] = product_{j>i} (x-p_j)^m_j, highest-first; store flat rows of width W with lengths */
+    double *suf = (double *)calloc((size_t)(nu * W), sizeof(double));
+    int64_t *sufn = (int64_t *)malloc(sizeof(int64_t) * (size_t)(nu > 0 ? nu : 1));
+    double *facbuf = (double *)calloc((size_t)(total * W), sizeof(double));
+    int64_t *flen = (int64_t *)malloc(sizeof(int64_t) * (size_t)(total > 0 ? total : 1));
+    if (!suf || !sufn || !facbuf || !flen) { free(suf); free(sufn); free(facbuf); free(flen); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    /* build suffixes from the last pole down to index 1 */
+    double *cur = (double *)malloc(sizeof(double) * (size_t)W); int64_t ncur = 1; cur[0] = 1.0;
+    /* suffixes list in forward index: suffix[nu-1] = [1]; fill descending */
+    if (nu > 0) { suf[(nu - 1) * W] = 1.0; sufn[nu - 1] = 1; }
+    for (int64_t i = nu - 1; i >= 1 && rc == TSR_OK; i--) {
+        const double mono[2] = {1.0, -up[i]};
+        for (int64_t t = 0; t < mult[i]; t++) {
+            int64_t nn; double *nx = rp_mul(cur, ncur, mono, 2, &nn);
+            if (!nx) { rc = TSR_ENOMEM; break; }
+            free(cur); cur = nx; ncur = nn;
+        }
+        if (rc == TSR_OK) { memcpy(suf + (i - 1) * W, cur, sizeof(double) * (size_t)ncur); sufn[i - 1] = ncur; }
+    }
+    free(cur);
+    /* forward pass accumulating `current` = product_{j<i}; emit factor rows */
+    double *current = (double *)malloc(sizeof(double) * (size_t)W); int64_t nce = 1; current[0] = 1.0;
+    int64_t fi = 0;
+    for (int64_t i = 0; i < nu && rc == TSR_OK; i++) {
+        const double mono[2] = {1.0, -up[i]};
+        for (int64_t t = 0; t < mult[i] && rc == TSR_OK; t++) {
+            int64_t nb; double *blk = rp_mul(current, nce, suf + i * W, sufn[i], &nb);
+            if (!blk) { rc = TSR_ENOMEM; break; }
+            /* store into reversed position within this pole's block (reversed(block)) */
+            memcpy(facbuf + (fi + (mult[i] - 1 - t)) * W, blk, sizeof(double) * (size_t)nb);
+            flen[fi + (mult[i] - 1 - t)] = nb;
+            free(blk);
+            int64_t nn; double *nx = rp_mul(current, nce, mono, 2, &nn);
+            if (!nx) { rc = TSR_ENOMEM; break; }
+            free(current); current = nx; nce = nn;
+        }
+        fi += mult[i];
+    }
+    if (rc == TSR_OK) { *den = current; *nden = nce; *facs = facbuf; *faclen = flen; *nfac = total; }
+    else { free(current); free(facbuf); free(flen); }
+    free(suf); free(sufn);
+    return rc;
+}
+
+/* shared back-end for invres/invresz; z_domain reverses polynomials (negative powers of z). */
+static int sig_invres_common(const tsr_arg *args, int nargs, int z_domain, const char *who, tsr_result *res)
+{
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("%s: r and p must be arrays", who); return TSR_EARG; }
+    int64_t nr, np_, nk = 0;
+    double *r = fn_arg_doubles(&args[0], &nr); if (!r) return TSR_ENOMEM;
+    double *p = fn_arg_doubles(&args[1], &np_); if (!p) { fn_free_doubles(r, nr); return TSR_ENOMEM; }
+    double *kk = NULL;
+    if (nargs > 2 && args[2].kind == 3 && args[2].arr.ndim >= 1 && args[2].arr.shape[0] > 0) kk = fn_arg_doubles(&args[2], &nk);
+    const double tol = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1e-3;
+    /* trim k: 'f' (front) for invres, 'b' (back) for invresz */
+    int64_t ks = 0, ke = nk;
+    if (kk) { if (z_domain) { while (ke > 0 && kk[ke - 1] == 0.0) ke--; } else { while (ks < ke && kk[ks] == 0.0) ks++; } }
+    const int64_t nkt = ke - ks;
+    double *up = (double *)malloc(sizeof(double) * (size_t)(np_ > 0 ? np_ : 1));
+    int64_t *mult = (int64_t *)malloc(sizeof(int64_t) * (size_t)(np_ > 0 ? np_ : 1));
+    int rc = TSR_OK;
+    double *facs = NULL, *den = NULL; int64_t *flen = NULL, nfac = 0, nden = 0, nu = 0;
+    if (!up || !mult) rc = TSR_ENOMEM;
+    else {
+        sig_group_poles(p, np_, tol, up, mult, &nu);
+        rc = sig_compute_factors(up, mult, nu, &facs, &flen, &nfac, &den, &nden);
+    }
+    if (rc == TSR_OK && nfac != nr) { fn_set_error("%s: number of residues must match the number of poles", who); rc = TSR_EARG; }
+    if (rc == TSR_OK) {
+        const int64_t W = nfac + 1;
+        /* numerator accumulator (highest-first in the working domain) */
+        double *num = NULL; int64_t nnum = 0;
+        if (nkt == 0) { num = (double *)calloc(1, sizeof(double)); nnum = 1; }
+        else {
+            double *kt = (double *)malloc(sizeof(double) * (size_t)nkt);
+            for (int64_t i = 0; i < nkt; i++) kt[i] = z_domain ? kk[ke - 1 - i] : kk[ks + i];   /* k[::-1] for z */
+            double *dd = den; int64_t ndd = nden; double *drev = NULL;
+            if (z_domain) { drev = (double *)malloc(sizeof(double) * (size_t)nden); for (int64_t i = 0; i < nden; i++) drev[i] = den[nden - 1 - i]; dd = drev; }
+            num = rp_mul(kt, nkt, dd, ndd, &nnum);
+            free(kt); free(drev);
+            if (!num) rc = TSR_ENOMEM;
+        }
+        for (int64_t i = 0; i < nfac && rc == TSR_OK; i++) {
+            double *fac = facs + i * W; int64_t nf = flen[i];
+            double *scaled = (double *)malloc(sizeof(double) * (size_t)nf);
+            for (int64_t t = 0; t < nf; t++) scaled[t] = r[i] * (z_domain ? fac[nf - 1 - t] : fac[t]);   /* factor[::-1] for z */
+            int64_t nsum; double *s = rp_add(num, nnum, scaled, nf, &nsum);
+            free(scaled); free(num);
+            if (!s) { rc = TSR_ENOMEM; num = NULL; break; }
+            num = s; nnum = nsum;
+        }
+        if (rc == TSR_OK) {
+            /* invresz returns numerator[::-1]; invres returns it as-is */
+            double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nnum});
+            double *oa = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nden});
+            if (!ob || !oa) rc = TSR_ENOMEM;
+            else { for (int64_t i = 0; i < nnum; i++) ob[i] = z_domain ? num[nnum - 1 - i] : num[i]; memcpy(oa, den, sizeof(double) * (size_t)nden); }
+        }
+        free(num);
+    }
+    free(facs); free(flen); free(den); free(up); free(mult);
+    fn_free_doubles(r, nr); fn_free_doubles(p, np_); if (kk) fn_free_doubles(kk, nk);
+    return rc;
+}
+static int r_invres(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return sig_invres_common(args, nargs, 0, "invres", res); }
+static int r_invresz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return sig_invres_common(args, nargs, 1, "invresz", res); }
+
 /* ---- analog lowpass-prototype transforms (scipy.signal) ---- */
 
 static double sig_comb(int64_t n, int64_t k)
@@ -3236,6 +3451,9 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.tf2ss", 4, "num, den", "A, B, C, D", r_tf2ss, NULL, "Controller-canonical state-space from transfer-function coefficients (scipy.signal.tf2ss)."),
     ROUTINE("signal.abcd_normalize", 4, "A, B, C, D", "A, B, C, D", r_abcd_normalize, NULL, "Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize)."),
     ROUTINE("signal.ss2tf", 2, "A, B, C, D, input=0", "num, den", r_ss2tf, NULL, "Transfer function (num, den) from a state-space system (scipy.signal.ss2tf)."),
+    ROUTINE("signal.unique_roots", 2, "p, tol=1e-3, rtype='min'", "unique, multiplicity", r_unique_roots, NULL, "Unique roots and multiplicities from a list of roots (scipy.signal.unique_roots)."),
+    ROUTINE("signal.invres", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invres, NULL, "Transfer function (b, a) from a partial-fraction expansion, positive powers (scipy.signal.invres)."),
+    ROUTINE("signal.invresz", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invresz, NULL, "Transfer function (b, a) from a partial-fraction expansion, negative powers of z (scipy.signal.invresz)."),
     ROUTINE("signal.lp2lp", 2, "b, a, wo=1.0", "b, a", r_lp2lp, NULL, "Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp)."),
     ROUTINE("signal.lp2hp", 2, "b, a, wo=1.0", "b, a", r_lp2hp, NULL, "Transform a lowpass analog prototype to highpass (scipy.signal.lp2hp)."),
     ROUTINE("signal.lp2bp", 2, "b, a, wo=1.0, bw=1.0", "b, a", r_lp2bp, NULL, "Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp)."),
