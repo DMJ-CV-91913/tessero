@@ -451,6 +451,24 @@ for N in (1, 2, 3, 4, 5, 8):
     bap.append({'args': [F.enc(N)], 'kwargs': {},
                 'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# zpk-domain transforms (compare z, p as (re,im)-sorted sets)
+def _zpk_case(fn, z, p, k, extra):
+    zz, pp, kk = getattr(sg, fn)(np.asarray(z, complex), np.asarray(p, complex), k, *extra)
+    return {'args': [F.enc(np.asarray(z, complex)), F.enc(np.asarray(p, complex)), F.enc(float(k))] + [F.enc(e) for e in extra],
+            'kwargs': {}, 'expect': F.enc_result((_sortc2(zz), _sortc2(pp), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-10}}
+
+
+lplpz, lphpz, blnz = [], [], []
+for N in (2, 3, 4):
+    z0, p0, k0 = sg.buttap(N)
+    for wo in (2.0, 0.5):
+        lplpz.append(_zpk_case('lp2lp_zpk', z0, p0, k0, (wo,)))
+        lphpz.append(_zpk_case('lp2hp_zpk', z0, p0, k0, (wo,)))
+    for fsv in (2.0, 10.0):
+        # scale prototype first so the digital filter is sensible, then bilinear
+        zl, pl, kl = sg.lp2lp_zpk(z0, p0, k0, 0.3)
+        blnz.append(_zpk_case('bilinear_zpk', zl, pl, kl, (fsv,)))
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -497,7 +515,10 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'firwin2', 'cases': fw2, 'tol': {'atol': 1e-12}},
                  {'fn': 'sos2zpk', 'cases': s2z, 'tol': {'atol': 1e-10}},
                  {'fn': 'deconvolve', 'cases': dcv, 'tol': {'atol': 1e-12}},
-                 {'fn': 'buttap', 'cases': bap, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'buttap', 'cases': bap, 'tol': {'atol': 1e-12}},
+                 {'fn': 'lp2lp_zpk', 'cases': lplpz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'lp2hp_zpk', 'cases': lphpz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'bilinear_zpk', 'cases': blnz, 'tol': {'atol': 1e-10}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

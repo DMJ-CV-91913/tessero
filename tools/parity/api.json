@@ -2657,6 +2657,12 @@
                 "doc": "Bilinear transform of an analog filter to a digital filter (scipy.signal.bilinear)."
             },
             {
+                "name": "bilinearZpk",
+                "static": true,
+                "sig": "bilinearZpk(mixed $z, mixed $p, mixed $k, mixed $fs): mixed",
+                "doc": "Bilinear transform of an analog zpk to a digital zpk (scipy.signal.bilinear_zpk)."
+            },
+            {
                 "name": "buttap",
                 "static": true,
                 "sig": "buttap(mixed $N): mixed",
@@ -2849,10 +2855,22 @@
                 "doc": "Transform a lowpass analog prototype to highpass (scipy.signal.lp2hp)."
             },
             {
+                "name": "lp2hpZpk",
+                "static": true,
+                "sig": "lp2hpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0): mixed",
+                "doc": "Transform an analog lowpass zpk prototype to highpass (scipy.signal.lp2hp_zpk)."
+            },
+            {
                 "name": "lp2lp",
                 "static": true,
                 "sig": "lp2lp(mixed $b, mixed $a, mixed $wo = 1.0): mixed",
                 "doc": "Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp)."
+            },
+            {
+                "name": "lp2lpZpk",
+                "static": true,
+                "sig": "lp2lpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0): mixed",
+                "doc": "Scale an analog lowpass zpk prototype to a new cutoff (scipy.signal.lp2lp_zpk)."
             },
             {
                 "name": "normalize",
@@ -15687,6 +15705,24 @@
                 "name": "buttap",
                 "static": true,
                 "sig": "buttap($N)",
+                "doc": ""
+            },
+            {
+                "name": "lp2lpZpk",
+                "static": true,
+                "sig": "lp2lpZpk($z, $p, $k, $wo = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "lp2hpZpk",
+                "static": true,
+                "sig": "lp2hpZpk($z, $p, $k, $wo = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "bilinearZpk",
+                "static": true,
+                "sig": "bilinearZpk($z, $p, $k, $fs)",
                 "doc": ""
             }
         ]
