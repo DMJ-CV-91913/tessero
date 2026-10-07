@@ -2991,6 +2991,105 @@ static int r_kaiserord(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return TSR_OK;
 }
 
+extern void tsr_special_ellipk(const void *ctx, const double *in, double *out);
+extern void tsr_special_ellipkm1(const void *ctx, const double *in, double *out);
+
+/* shared front-end for the IIR order-selection routines (scipy.signal.*ord), lowpass/highpass only:
+   validate scalar wp/ws, pre-warp (digital) and compute the lowpass-prototype natural frequency `nat`.
+   filter_type 1=low, 2=high. Returns the passband edge in *passb, analog flag and fs for post-processing. */
+static int sig_ord_prep(const tsr_arg *args, int nargs, int *ftype, double *passb, double *nat, int *analog, double *fsv)
+{
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("filter order: only a scalar wp/ws (lowpass/highpass) is supported"); return TSR_EARG; }
+    double wp = args[0].num, ws = args[1].num;
+    const int an = (nargs > 4 && (args[4].kind == 1 || args[4].kind == 4) && args[4].num != 0.0);
+    double fs = -1.0;
+    if (nargs > 5 && args[5].kind == 1) {
+        if (an) { fn_set_error("filter order: fs cannot be specified for an analog filter"); return TSR_EARG; }
+        fs = args[5].num; wp = 2.0 * wp / fs; ws = 2.0 * ws / fs;
+    }
+    const int ft = (wp >= ws) ? 2 : 1;
+    const double pb = an ? wp : tan(M_PI * wp / 2.0);
+    const double sb = an ? ws : tan(M_PI * ws / 2.0);
+    *ftype = ft; *passb = pb; *nat = fabs(ft == 1 ? sb / pb : pb / sb); *analog = an; *fsv = fs;
+    return TSR_OK;
+}
+static double sig_postprocess_wn(double WN, int analog, double fsv)
+{
+    double wn = analog ? WN : atan(WN) * 2.0 / M_PI;
+    if (fsv > 0.0) wn *= fsv / 2.0;
+    return wn;
+}
+
+/* buttord(wp, ws, gpass, gstop, analog=False, fs=None): Butterworth order and natural frequency
+   (scipy.signal.buttord), lowpass/highpass. */
+static int r_buttord(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int ft, analog; double pb, nat, fsv;
+    int rc = sig_ord_prep(args, nargs, &ft, &pb, &nat, &analog, &fsv); if (rc != TSR_OK) return rc;
+    const double gpass = args[2].num, gstop = args[3].num;
+    const double GSTOP = pow(10.0, 0.1 * fabs(gstop)), GPASS = pow(10.0, 0.1 * fabs(gpass));
+    const int ord = (int)ceil(log10((GSTOP - 1.0) / (GPASS - 1.0)) / (2.0 * log10(nat)));
+    const double W0 = pow(GPASS - 1.0, -1.0 / (2.0 * (double)ord));
+    const double WN = (ft == 1) ? W0 * pb : pb / W0;
+    fn_result_int(&res[0], ord);
+    fn_result_num(&res[1], sig_postprocess_wn(WN, analog, fsv));
+    return TSR_OK;
+}
+
+/* cheb1ord(wp, ws, gpass, gstop, analog=False, fs=None): Chebyshev-I order and natural frequency
+   (scipy.signal.cheb1ord), lowpass/highpass. */
+static int r_cheb1ord(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int ft, analog; double pb, nat, fsv;
+    int rc = sig_ord_prep(args, nargs, &ft, &pb, &nat, &analog, &fsv); if (rc != TSR_OK) return rc;
+    const double gpass = args[2].num, gstop = args[3].num;
+    const double GSTOP = pow(10.0, 0.1 * fabs(gstop)), GPASS = pow(10.0, 0.1 * fabs(gpass));
+    const double v = acosh(sqrt((GSTOP - 1.0) / (GPASS - 1.0)));
+    const int ord = (int)ceil(v / acosh(nat));
+    fn_result_int(&res[0], ord);
+    fn_result_num(&res[1], sig_postprocess_wn(pb, analog, fsv));   /* natural freq = passband edge */
+    return TSR_OK;
+}
+
+/* cheb2ord(wp, ws, gpass, gstop, analog=False, fs=None): Chebyshev-II order and natural frequency
+   (scipy.signal.cheb2ord), lowpass/highpass. */
+static int r_cheb2ord(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int ft, analog; double pb, nat, fsv;
+    int rc = sig_ord_prep(args, nargs, &ft, &pb, &nat, &analog, &fsv); if (rc != TSR_OK) return rc;
+    const double gpass = args[2].num, gstop = args[3].num;
+    const double GSTOP = pow(10.0, 0.1 * fabs(gstop)), GPASS = pow(10.0, 0.1 * fabs(gpass));
+    const double v = acosh(sqrt((GSTOP - 1.0) / (GPASS - 1.0)));
+    const int ord = (int)ceil(v / acosh(nat));
+    const double new_freq = 1.0 / cosh((1.0 / (double)ord) * v);
+    const double WN = (ft == 1) ? pb / new_freq : pb * new_freq;
+    fn_result_int(&res[0], ord);
+    fn_result_num(&res[1], sig_postprocess_wn(WN, analog, fsv));
+    return TSR_OK;
+}
+
+/* ellipord(wp, ws, gpass, gstop, analog=False, fs=None): elliptic order and natural frequency
+   (scipy.signal.ellipord), lowpass/highpass. */
+static int r_ellipord(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int ft, analog; double pb, nat, fsv; (void)ft;
+    int rc = sig_ord_prep(args, nargs, &ft, &pb, &nat, &analog, &fsv); if (rc != TSR_OK) return rc;
+    const double gpass = args[2].num, gstop = args[3].num;
+    const double arg1_sq = expm1(0.1 * gpass * M_LN10) / expm1(0.1 * gstop * M_LN10);   /* _pow10m1 ratio */
+    const double m0 = 1.0 / (nat * nat);
+    double k0, km1_0, k1, km1_1;
+    tsr_special_ellipk(NULL, &m0, &k0); tsr_special_ellipkm1(NULL, &m0, &km1_0);
+    tsr_special_ellipk(NULL, &arg1_sq, &k1); tsr_special_ellipkm1(NULL, &arg1_sq, &km1_1);
+    const int ord = (int)ceil(k0 * km1_1 / (km1_0 * k1));
+    fn_result_int(&res[0], ord);
+    fn_result_num(&res[1], sig_postprocess_wn(pb, analog, fsv));
+    return TSR_OK;
+}
+
 /* firwin(numtaps, cutoff, window='hamming', pass_zero=True, scale=True, fs=None): FIR filter design by the
    window method (scipy.signal.firwin). cutoff is a 1-D array of band edges (normalised by fs/2); the passbands
    are built from pass_zero, summed as windowed sinc differences, and (if scale) normalised to unit gain at the
@@ -3792,6 +3891,10 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.kaiser_atten", 1, "numtaps, width", "out", r_kaiser_atten, NULL, "Kaiser-window attenuation (dB) for a filter length and transition width (scipy.signal.kaiser_atten)."),
     ROUTINE("signal.kaiser_beta", 1, "a", "out", r_kaiser_beta, NULL, "Kaiser-window shape beta for a given attenuation (scipy.signal.kaiser_beta)."),
     ROUTINE("signal.kaiserord", 2, "ripple, width", "numtaps, beta", r_kaiserord, NULL, "Kaiser filter length and beta for a ripple and transition width (scipy.signal.kaiserord)."),
+    ROUTINE("signal.buttord", 2, "wp, ws, gpass, gstop, analog=False, fs=None", "ord, wn", r_buttord, NULL, "Butterworth filter order selection, lowpass/highpass (scipy.signal.buttord)."),
+    ROUTINE("signal.cheb1ord", 2, "wp, ws, gpass, gstop, analog=False, fs=None", "ord, wn", r_cheb1ord, NULL, "Chebyshev type I filter order selection, lowpass/highpass (scipy.signal.cheb1ord)."),
+    ROUTINE("signal.cheb2ord", 2, "wp, ws, gpass, gstop, analog=False, fs=None", "ord, wn", r_cheb2ord, NULL, "Chebyshev type II filter order selection, lowpass/highpass (scipy.signal.cheb2ord)."),
+    ROUTINE("signal.ellipord", 2, "wp, ws, gpass, gstop, analog=False, fs=None", "ord, wn", r_ellipord, NULL, "Elliptic filter order selection, lowpass/highpass (scipy.signal.ellipord)."),
     ROUTINE("signal.firwin2", 1, "numtaps, freq, gain, nfreqs=None, window='hamming', antisymmetric=False, fs=None", "out", r_firwin2, NULL, "FIR filter design by frequency sampling (scipy.signal.firwin2)."),
     ROUTINE("signal.sos2zpk", 3, "sos", "z, p, k", r_sos2zpk, NULL, "Zeros, poles and gain from a second-order-sections cascade (scipy.signal.sos2zpk)."),
     ROUTINE("signal.deconvolve", 2, "signal, divisor", "quotient, remainder", r_deconvolve, NULL, "Deconvolve a divisor out of a signal by polynomial division (scipy.signal.deconvolve)."),
