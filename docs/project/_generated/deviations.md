@@ -96,6 +96,12 @@
 | `signal.tf2zpk` | call | rtol 0 |
 | `signal.sos2tf` | every call | rtol 0 |
 | `signal.sos2tf` | call | rtol 0 |
+| `signal.tf2ss` | every call | rtol 0 |
+| `signal.tf2ss` | call | rtol 0 |
+| `signal.abcd_normalize` | every call | rtol 0 |
+| `signal.abcd_normalize` | call | rtol 0 |
+| `signal.ss2tf` | every call | rtol 0 |
+| `signal.ss2tf` | call | rtol 0 |
 | `signal.lp2lp` | every call | rtol 0 |
 | `signal.lp2lp` | call | rtol 0 |
 | `signal.lp2hp` | every call | rtol 0 |

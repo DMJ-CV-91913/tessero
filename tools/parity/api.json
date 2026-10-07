@@ -2651,6 +2651,12 @@
                 "doc": "Call a function by its SciPy/NumPy name: Signal::apply('log_ndtr', $x)."
             },
             {
+                "name": "abcdNormalize",
+                "static": true,
+                "sig": "abcdNormalize(mixed $A, mixed $B, mixed $C, mixed $D): mixed",
+                "doc": "Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize)."
+            },
+            {
                 "name": "bilinear",
                 "static": true,
                 "sig": "bilinear(mixed $b, mixed $a, mixed $fs = 1.0): mixed",
@@ -3003,6 +3009,18 @@
                 "static": true,
                 "sig": "square(mixed $t, mixed $duty = 0.5): mixed",
                 "doc": "Square-wave of period 2pi with the given duty cycle (scipy.signal.square)."
+            },
+            {
+                "name": "ss2tf",
+                "static": true,
+                "sig": "ss2tf(mixed $A, mixed $B, mixed $C, mixed $D, mixed $input = 0): mixed",
+                "doc": "Transfer function (num, den) from a state-space system (scipy.signal.ss2tf)."
+            },
+            {
+                "name": "tf2ss",
+                "static": true,
+                "sig": "tf2ss(mixed $num, mixed $den): mixed",
+                "doc": "Controller-canonical state-space from transfer-function coefficients (scipy.signal.tf2ss)."
             },
             {
                 "name": "tf2zpk",
@@ -15591,6 +15609,24 @@
                 "name": "sos2tf",
                 "static": true,
                 "sig": "sos2tf($sos)",
+                "doc": ""
+            },
+            {
+                "name": "tf2ss",
+                "static": true,
+                "sig": "tf2ss($num, $den)",
+                "doc": ""
+            },
+            {
+                "name": "abcdNormalize",
+                "static": true,
+                "sig": "abcdNormalize($A, $B, $C, $D)",
+                "doc": ""
+            },
+            {
+                "name": "ss2tf",
+                "static": true,
+                "sig": "ss2tf($A, $B, $C, $D, $input = 0)",
                 "doc": ""
             },
             {

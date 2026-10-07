@@ -1608,6 +1608,164 @@ static int r_sos2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* ---- state-space <-> transfer function (scipy.signal) ---- */
+
+/* Characteristic polynomial of an n*n row-major matrix, matching numpy.poly(A): eigenvalues via dgeev, then
+   the monic polynomial prod(x - lambda_i) formed by complex convolution, real part kept. out has length n+1.
+   Returns 0 on success, -1 on allocation/LAPACK failure. */
+static int ss_charpoly(const double *M, int64_t n, double *out)
+{
+    out[0] = 1.0;
+    if (n == 0) return 0;
+    double *a = (double *)malloc(sizeof(double) * (size_t)(n * n));
+    double *wr = (double *)malloc(sizeof(double) * (size_t)n);
+    double *wi = (double *)malloc(sizeof(double) * (size_t)n);
+    double *cr = (double *)calloc((size_t)(n + 1), sizeof(double));
+    double *ci = (double *)calloc((size_t)(n + 1), sizeof(double));
+    if (!a || !wr || !wi || !cr || !ci) { free(a); free(wr); free(wi); free(cr); free(ci); return -1; }
+    memcpy(a, M, sizeof(double) * (size_t)(n * n));
+    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, NULL, 1, NULL, 1);
+    free(a);
+    if (info != 0) { free(wr); free(wi); free(cr); free(ci); return -1; }
+    cr[0] = 1.0; ci[0] = 0.0;
+    int64_t L = 1;                                            /* current coefficient count */
+    for (int64_t i = 0; i < n; i++) {
+        const double zr = wr[i], zi = wi[i];
+        cr[L] = 0.0; ci[L] = 0.0;
+        for (int64_t k = L; k >= 1; k--) {                    /* c[k] = c[k] - z*c[k-1], high->low */
+            const double pr = cr[k - 1], pi = ci[k - 1];
+            cr[k] -= zr * pr - zi * pi;
+            ci[k] -= zr * pi + zi * pr;
+        }
+        L++;
+    }
+    for (int64_t k = 0; k <= n; k++) out[k] = cr[k];          /* conjugate-symmetric roots -> real */
+    free(wr); free(wi); free(cr); free(ci);
+    return 0;
+}
+
+/* tf2ss(num, den): controller-canonical state-space (A, B, C, D) of a SISO transfer function
+   (scipy.signal.tf2ss; 1-D num/den). */
+static int r_tf2ss(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[0].arr.ndim != 1 || args[1].arr.ndim != 1) {
+        fn_set_error("tf2ss: num and den must be 1-D arrays"); return TSR_EARG; }
+    int64_t nb, na; double *num = fn_arg_doubles(&args[0], &nb); if (!num) return TSR_ENOMEM;
+    double *den = fn_arg_doubles(&args[1], &na); if (!den) { fn_free_doubles(num, nb); return TSR_ENOMEM; }
+    double *b2 = NULL, *a2 = NULL; int64_t M = 0, K = 0;
+    int rc = TSR_OK;
+    if (sig_normalize(num, nb, den, na, &b2, &M, &a2, &K) != 0) { fn_set_error("tf2ss: normalize failed"); rc = TSR_EARG; }
+    else if (M > K) { fn_set_error("tf2ss: improper transfer function (num longer than den)"); rc = TSR_EARG; }
+    else {
+        /* pad numerator on the left to length K */
+        double *np_ = (double *)calloc((size_t)(K > 0 ? K : 1), sizeof(double));
+        if (!np_) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < M; i++) np_[K - M + i] = b2[i];
+            const double D0 = np_[0];
+            if (K <= 1) {                                     /* null / gain-only system */
+                double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){1, 1});
+                double *B = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){1, 1});
+                double *C = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){1, 1});
+                double *D = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){1, 1});
+                if (!A || !B || !C || !D) rc = TSR_ENOMEM;
+                else { A[0] = 0.0; B[0] = 0.0; C[0] = 0.0; D[0] = D0; }
+            } else {
+                const int64_t m = K - 1;                      /* number of states */
+                double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){m, m});
+                double *B = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){m, 1});
+                double *C = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){1, m});
+                double *D = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){1, 1});
+                if (!A || !B || !C || !D) rc = TSR_ENOMEM;
+                else {
+                    for (int64_t j = 0; j < m; j++) A[j] = -a2[1 + j];          /* row 0 = -den[1:] */
+                    for (int64_t r = 1; r < m; r++) for (int64_t c = 0; c < m; c++) A[r * m + c] = (c == r - 1) ? 1.0 : 0.0;
+                    B[0] = 1.0; for (int64_t r = 1; r < m; r++) B[r] = 0.0;
+                    for (int64_t j = 0; j < m; j++) C[j] = np_[1 + j] - np_[0] * a2[1 + j];
+                    D[0] = D0;
+                }
+            }
+            free(np_);
+        }
+    }
+    free(b2); free(a2);
+    fn_free_doubles(num, nb); fn_free_doubles(den, na);
+    return rc;
+}
+
+/* abcd_normalize(A, B, C, D): validate state-space matrix shapes and return them as 2-D arrays
+   (scipy.signal.abcd_normalize; all four matrices supplied, 2-D). */
+static int r_abcd_normalize(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) {
+        fn_set_error("abcd_normalize: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    const int64_t p = args[1].arr.shape[1];
+    const int64_t q = args[2].arr.shape[0];
+    if (args[0].arr.shape[1] != n) { fn_set_error("abcd_normalize: A must be square"); return TSR_EARG; }
+    if (args[1].arr.shape[0] != n) { fn_set_error("abcd_normalize: A and B must agree on the number of states"); return TSR_EARG; }
+    if (args[2].arr.shape[1] != n) { fn_set_error("abcd_normalize: A and C must agree on the number of states"); return TSR_EARG; }
+    if (args[3].arr.shape[0] != q || args[3].arr.shape[1] != p) { fn_set_error("abcd_normalize: C and D (or B and D) are inconsistent"); return TSR_EARG; }
+    const int64_t shp[4][2] = {{n, n}, {n, p}, {q, n}, {q, p}};
+    int rc = TSR_OK;
+    for (int i = 0; i < 4 && rc == TSR_OK; i++) {
+        int64_t cnt; double *src = fn_arg_doubles(&args[i], &cnt);
+        if (!src) { rc = TSR_ENOMEM; break; }
+        double *out = (double *)fn_result_array(&res[i], TSR_F64, 2, (int64_t[]){shp[i][0], shp[i][1]});
+        if (!out) rc = TSR_ENOMEM; else memcpy(out, src, sizeof(double) * (size_t)cnt);
+        fn_free_doubles(src, cnt);
+    }
+    return rc;
+}
+
+/* ss2tf(A, B, C, D, input=0): transfer function (num, den) of a state-space system, selecting one input
+   (scipy.signal.ss2tf). num has one row per output; den = poly(A). */
+static int r_ss2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) {
+        fn_set_error("ss2tf: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    const int64_t p = args[3].arr.shape[1];
+    const int64_t q = args[3].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n ||
+        args[1].arr.shape[1] != p || args[2].arr.shape[0] != q) { fn_set_error("ss2tf: inconsistent state-space shapes"); return TSR_EARG; }
+    int64_t inp = 0;
+    if (nargs > 4 && args[4].kind == 1) inp = (int64_t)args[4].num;
+    if (inp < 0 || inp >= p) { fn_set_error("ss2tf: system does not have the input specified"); return TSR_EARG; }
+    int64_t na_, nb_, nc_, nd_;
+    double *A = fn_arg_doubles(&args[0], &na_); double *B = fn_arg_doubles(&args[1], &nb_);
+    double *C = fn_arg_doubles(&args[2], &nc_); double *D = fn_arg_doubles(&args[3], &nd_);
+    int rc = TSR_OK;
+    double *den = (double *)malloc(sizeof(double) * (size_t)(n + 1));
+    double *tmp = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *numk = (double *)malloc(sizeof(double) * (size_t)(n + 1));
+    if (!A || !B || !C || !D || !den || !tmp || !numk) rc = TSR_ENOMEM;
+    else if (ss_charpoly(A, n, den) != 0) { fn_set_error("ss2tf: eigenvalue computation failed"); rc = TSR_EARG; }
+    else {
+        double *num = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){q, n + 1});
+        double *od  = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){n + 1});
+        if (!num || !od) rc = TSR_ENOMEM;
+        else {
+            memcpy(od, den, sizeof(double) * (size_t)(n + 1));
+            for (int64_t k = 0; k < q && rc == TSR_OK; k++) {
+                /* tmp = A - B[:,inp] (outer) C[k,:] */
+                for (int64_t i = 0; i < n; i++)
+                    for (int64_t j = 0; j < n; j++)
+                        tmp[i * n + j] = A[i * n + j] - B[i * p + inp] * C[k * n + j];
+                if (ss_charpoly(tmp, n, numk) != 0) { fn_set_error("ss2tf: eigenvalue computation failed"); rc = TSR_EARG; break; }
+                const double dk = D[k * p + inp];
+                for (int64_t j = 0; j <= n; j++) num[k * (n + 1) + j] = numk[j] + (dk - 1.0) * den[j];
+            }
+        }
+    }
+    free(den); free(tmp); free(numk);
+    fn_free_doubles(A, na_); fn_free_doubles(B, nb_); fn_free_doubles(C, nc_); fn_free_doubles(D, nd_);
+    return rc;
+}
+
 /* ---- analog lowpass-prototype transforms (scipy.signal) ---- */
 
 static double sig_comb(int64_t n, int64_t k)
@@ -2951,6 +3109,9 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.normalize", 2, "b, a", "b, a", r_signal_normalize, NULL, "Normalize a transfer-function representation (scipy.signal.normalize)."),
     ROUTINE("signal.tf2zpk", 3, "b, a", "z, p, k", r_tf2zpk, NULL, "Zeros, poles and gain from transfer-function coefficients (scipy.signal.tf2zpk)."),
     ROUTINE("signal.sos2tf", 2, "sos", "b, a", r_sos2tf, NULL, "Transfer function (b, a) from a second-order-sections cascade (scipy.signal.sos2tf)."),
+    ROUTINE("signal.tf2ss", 4, "num, den", "A, B, C, D", r_tf2ss, NULL, "Controller-canonical state-space from transfer-function coefficients (scipy.signal.tf2ss)."),
+    ROUTINE("signal.abcd_normalize", 4, "A, B, C, D", "A, B, C, D", r_abcd_normalize, NULL, "Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize)."),
+    ROUTINE("signal.ss2tf", 2, "A, B, C, D, input=0", "num, den", r_ss2tf, NULL, "Transfer function (num, den) from a state-space system (scipy.signal.ss2tf)."),
     ROUTINE("signal.lp2lp", 2, "b, a, wo=1.0", "b, a", r_lp2lp, NULL, "Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp)."),
     ROUTINE("signal.lp2hp", 2, "b, a, wo=1.0", "b, a", r_lp2hp, NULL, "Transform a lowpass analog prototype to highpass (scipy.signal.lp2hp)."),
     ROUTINE("signal.lp2bp", 2, "b, a, wo=1.0, bw=1.0", "b, a", r_lp2bp, NULL, "Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp)."),
