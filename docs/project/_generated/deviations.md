@@ -142,6 +142,12 @@
 | `signal.deconvolve` | call | rtol 0 |
 | `signal.buttap` | every call | rtol 0 |
 | `signal.buttap` | call | rtol 0 |
+| `signal.lp2lp_zpk` | every call | rtol 0 |
+| `signal.lp2lp_zpk` | call | rtol 0 |
+| `signal.lp2hp_zpk` | every call | rtol 0 |
+| `signal.lp2hp_zpk` | call | rtol 0 |
+| `signal.bilinear_zpk` | every call | rtol 0 |
+| `signal.bilinear_zpk` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

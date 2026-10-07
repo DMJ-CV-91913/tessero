@@ -19,6 +19,7 @@ final class Signal
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'bilinear' => 'bilinear',
+    'bilinear_zpk' => 'bilinearZpk',
     'buttap' => 'buttap',
     'butter' => 'butter',
     'cheby1' => 'cheby1',
@@ -51,7 +52,9 @@ final class Signal
     'lp2bp' => 'lp2bp',
     'lp2bs' => 'lp2bs',
     'lp2hp' => 'lp2hp',
+    'lp2hp_zpk' => 'lp2hpZpk',
     'lp2lp' => 'lp2lp',
+    'lp2lp_zpk' => 'lp2lpZpk',
     'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
     'periodogram' => 'periodogram',
@@ -99,6 +102,18 @@ final class Signal
     public static function bilinear(mixed $b, mixed $a, mixed $fs = 1.0): mixed
     {
         return Registry::routine('signal.bilinear', [$b, $a, $fs]);
+    }
+
+    /**
+     * Bilinear transform of an analog zpk to a digital zpk (scipy.signal.bilinear_zpk).
+     *
+     * scipy.signal.bilinear_zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function bilinearZpk(mixed $z, mixed $p, mixed $k, mixed $fs): mixed
+    {
+        return Registry::routine('signal.bilinear_zpk', [$z, $p, $k, $fs]);
     }
 
     /**
@@ -454,6 +469,18 @@ final class Signal
     }
 
     /**
+     * Transform an analog lowpass zpk prototype to highpass (scipy.signal.lp2hp_zpk).
+     *
+     * scipy.signal.lp2hp_zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function lp2hpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2hp_zpk', [$z, $p, $k, $wo]);
+    }
+
+    /**
      * Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp).
      *
      * scipy.signal.lp2lp
@@ -463,6 +490,18 @@ final class Signal
     public static function lp2lp(mixed $b, mixed $a, mixed $wo = 1.0): mixed
     {
         return Registry::routine('signal.lp2lp', [$b, $a, $wo]);
+    }
+
+    /**
+     * Scale an analog lowpass zpk prototype to a new cutoff (scipy.signal.lp2lp_zpk).
+     *
+     * scipy.signal.lp2lp_zpk
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function lp2lpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0): mixed
+    {
+        return Registry::routine('signal.lp2lp_zpk', [$z, $p, $k, $wo]);
     }
 
     /**

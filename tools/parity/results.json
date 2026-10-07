@@ -426,6 +426,7 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "signal.bilinear": "pass",
+        "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
         "signal.cheby1": "pass",
@@ -458,7 +459,9 @@
         "signal.lp2bp": "pass",
         "signal.lp2bs": "pass",
         "signal.lp2hp": "pass",
+        "signal.lp2hp_zpk": "pass",
         "signal.lp2lp": "pass",
+        "signal.lp2lp_zpk": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.periodogram": "pass",
@@ -2164,7 +2167,10 @@
             "signal.firwin2": 0.7922821494108989,
             "signal.sos2zpk": 0,
             "signal.deconvolve": 0,
-            "signal.buttap": 0
+            "signal.buttap": 0,
+            "signal.lp2lp_zpk": 0,
+            "signal.lp2hp_zpk": 0,
+            "signal.bilinear_zpk": 1.6705754377351397e-16
         },
         "ext": {
             "np.median": 0,
@@ -3247,7 +3253,10 @@
             "signal.firwin2": 0.7922821494108989,
             "signal.sos2zpk": 0,
             "signal.deconvolve": 0,
-            "signal.buttap": 0
+            "signal.buttap": 0,
+            "signal.lp2lp_zpk": 0,
+            "signal.lp2hp_zpk": 0,
+            "signal.bilinear_zpk": 1.6705754377351397e-16
         }
     },
     "ext": {
@@ -3677,6 +3686,7 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "signal.bilinear": "pass",
+        "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
         "signal.cheby1": "pass",
@@ -3709,7 +3719,9 @@
         "signal.lp2bp": "pass",
         "signal.lp2bs": "pass",
         "signal.lp2hp": "pass",
+        "signal.lp2hp_zpk": "pass",
         "signal.lp2lp": "pass",
+        "signal.lp2lp_zpk": "pass",
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.periodogram": "pass",
