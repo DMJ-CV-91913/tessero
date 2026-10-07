@@ -2657,6 +2657,12 @@
                 "doc": "Bilinear transform of an analog filter to a digital filter (scipy.signal.bilinear)."
             },
             {
+                "name": "buttap",
+                "static": true,
+                "sig": "buttap(mixed $N): mixed",
+                "doc": "Analog Butterworth lowpass prototype of order N (scipy.signal.buttap)."
+            },
+            {
                 "name": "butter",
                 "static": true,
                 "sig": "butter(mixed $N, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed",
@@ -15675,6 +15681,12 @@
                 "name": "deconvolve",
                 "static": true,
                 "sig": "deconvolve($signal, $divisor)",
+                "doc": ""
+            },
+            {
+                "name": "buttap",
+                "static": true,
+                "sig": "buttap($N)",
                 "doc": ""
             }
         ]
