@@ -2675,6 +2675,18 @@
                 "doc": "Butterworth IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.butter)."
             },
             {
+                "name": "cheb1ap",
+                "static": true,
+                "sig": "cheb1ap(mixed $N, mixed $rp): mixed",
+                "doc": "Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap)."
+            },
+            {
+                "name": "cheb2ap",
+                "static": true,
+                "sig": "cheb2ap(mixed $N, mixed $rs): mixed",
+                "doc": "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."
+            },
+            {
                 "name": "cheby1",
                 "static": true,
                 "sig": "cheby1(mixed $N, mixed $rp, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed",
@@ -15747,6 +15759,18 @@
                 "name": "lp2bsZpk",
                 "static": true,
                 "sig": "lp2bsZpk($z, $p, $k, $wo = 1.0, $bw = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "cheb1ap",
+                "static": true,
+                "sig": "cheb1ap($N, $rp)",
+                "doc": ""
+            },
+            {
+                "name": "cheb2ap",
+                "static": true,
+                "sig": "cheb2ap($N, $rs)",
                 "doc": ""
             }
         ]

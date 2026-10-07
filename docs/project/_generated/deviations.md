@@ -152,6 +152,10 @@
 | `signal.lp2bp_zpk` | call | rtol 0 |
 | `signal.lp2bs_zpk` | every call | rtol 0 |
 | `signal.lp2bs_zpk` | call | rtol 0 |
+| `signal.cheb1ap` | every call | rtol 0 |
+| `signal.cheb1ap` | call | rtol 0 |
+| `signal.cheb2ap` | every call | rtol 0 |
+| `signal.cheb2ap` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |
