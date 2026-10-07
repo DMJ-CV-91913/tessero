@@ -208,6 +208,21 @@ for (N, Wn, bt) in [(2, 0.2, 'low'), (3, 0.3, 'low'), (4, 0.25, 'high'), (3, 0.5
     s2t.append({'args': [F.enc(np.asarray(sos))], 'kwargs': {},
                 'expect': F.enc_result((b2, a2), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# state-space <-> transfer function
+t2ss, abn, s2tf = [], [], []
+for (num, den) in [([1., 3., 3.], [1., 2., 1.]), ([1., 2.], [1., 3., 2.]),
+                   ([2., 0., -1.], [1., 0.5, 0.25, 0.1]), ([1.], [1., 0.4, 0.05]),
+                   ([1., 0., 0.], [1., -1.5, 0.7])]:
+    A, B, C, D = sg.tf2ss(num, den)
+    t2ss.append({'args': [F.enc(np.asarray(num)), F.enc(np.asarray(den))], 'kwargs': {},
+                 'expect': F.enc_result((A, B, C, D), ['A', 'B', 'C', 'D']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+    An, Bn, Cn, Dn = sg.abcd_normalize(A, B, C, D)
+    abn.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D)], 'kwargs': {},
+                'expect': F.enc_result((An, Bn, Cn, Dn), ['A', 'B', 'C', 'D']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+    nu, de = sg.ss2tf(A, B, C, D)
+    s2tf.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D)], 'kwargs': {},
+                 'expect': F.enc_result((np.atleast_2d(nu), de), ['num', 'den']), 'compare': 'tol', 'tol': {'atol': 1e-10}})
+
 # analog lowpass-prototype transforms
 def _tf_case(args, bo, ao):
     return {'args': [F.enc(np.asarray(x) if isinstance(x, (list, np.ndarray)) else x) for x in args],
@@ -527,6 +542,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'normalize', 'cases': nrm, 'tol': {'atol': 1e-12}},
                  {'fn': 'tf2zpk', 'cases': t2z, 'tol': {'atol': 1e-12}},
                  {'fn': 'sos2tf', 'cases': s2t, 'tol': {'atol': 1e-12}},
+                 {'fn': 'tf2ss', 'cases': t2ss, 'tol': {'atol': 1e-11}},
+                 {'fn': 'abcd_normalize', 'cases': abn, 'tol': {'atol': 1e-12}},
+                 {'fn': 'ss2tf', 'cases': s2tf, 'tol': {'atol': 1e-10}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2hp', 'cases': lphp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2bp', 'cases': lpbp, 'tol': {'atol': 1e-12}},

@@ -929,6 +929,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 
 | NumPy / SciPy | Tessero |
 |---|---|
+| `scipy.signal.abcd_normalize` | `Tessero\Signal::abcdNormalize()` |
 | `scipy.signal.bilinear` | `Tessero\Signal::bilinear()` |
 | `scipy.signal.bilinear_zpk` | `Tessero\Signal::bilinearZpk()` |
 | `scipy.signal.buttap` | `Tessero\Signal::buttap()` |
@@ -988,6 +989,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.sosfreqz` | `Tessero\Signal::sosfreqz()` |
 | `scipy.signal.spectrogram` | `Tessero\Signal::spectrogram()` |
 | `scipy.signal.square` | `Tessero\Signal::square()` |
+| `scipy.signal.ss2tf` | `Tessero\Signal::ss2tf()` |
+| `scipy.signal.tf2ss` | `Tessero\Signal::tf2ss()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
 | `scipy.signal.vectorstrength` | `Tessero\Signal::vectorstrength()` |

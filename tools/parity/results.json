@@ -425,6 +425,7 @@
         "random.wald": "pass",
         "random.weibull": "pass",
         "random.zipf": "pass",
+        "signal.abcd_normalize": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
@@ -484,6 +485,8 @@
         "signal.sosfreqz": "pass",
         "signal.spectrogram": "pass",
         "signal.square": "pass",
+        "signal.ss2tf": "pass",
+        "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
@@ -2186,7 +2189,10 @@
             "signal.gauss_spline": 0,
             "signal.vectorstrength": 1.5463828117252039e-15,
             "signal.convolve2d": 3.395524534445979e-15,
-            "signal.correlate2d": 9.590451008180848e-15
+            "signal.correlate2d": 9.590451008180848e-15,
+            "signal.tf2ss": 0,
+            "signal.abcd_normalize": 0,
+            "signal.ss2tf": 0
         },
         "ext": {
             "np.median": 0,
@@ -3280,7 +3286,10 @@
             "signal.gauss_spline": 0,
             "signal.vectorstrength": 1.5463828117252039e-15,
             "signal.convolve2d": 3.395524534445979e-15,
-            "signal.correlate2d": 9.590451008180848e-15
+            "signal.correlate2d": 9.590451008180848e-15,
+            "signal.tf2ss": 0,
+            "signal.abcd_normalize": 0,
+            "signal.ss2tf": 0
         }
     },
     "ext": {
@@ -3709,6 +3718,7 @@
         "random.wald": "pass",
         "random.weibull": "pass",
         "random.zipf": "pass",
+        "signal.abcd_normalize": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
@@ -3768,6 +3778,8 @@
         "signal.sosfreqz": "pass",
         "signal.spectrogram": "pass",
         "signal.square": "pass",
+        "signal.ss2tf": "pass",
+        "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
