@@ -2975,6 +2975,18 @@
                 "doc": "Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None)."
             },
             {
+                "name": "residue",
+                "static": true,
+                "sig": "residue(mixed $b, mixed $a, mixed $tol = 0.001, mixed $rtype = 'avg'): mixed",
+                "doc": "Partial-fraction expansion of b(s)/a(s), positive powers (scipy.signal.residue)."
+            },
+            {
+                "name": "residuez",
+                "static": true,
+                "sig": "residuez(mixed $b, mixed $a, mixed $tol = 0.001, mixed $rtype = 'avg'): mixed",
+                "doc": "Partial-fraction expansion of b(z)/a(z), negative powers of z (scipy.signal.residuez)."
+            },
+            {
                 "name": "savgolCoeffs",
                 "static": true,
                 "sig": "savgolCoeffs(mixed $windowLength, mixed $polyorder, mixed $deriv = 0, mixed $delta = 1.0, mixed $pos = null, mixed $use = 'conv'): mixed",
@@ -15681,6 +15693,18 @@
                 "name": "invresz",
                 "static": true,
                 "sig": "invresz($r, $p, $k, $tol = 0.001, $rtype = 'avg')",
+                "doc": ""
+            },
+            {
+                "name": "residue",
+                "static": true,
+                "sig": "residue($b, $a, $tol = 0.001, $rtype = 'avg')",
+                "doc": ""
+            },
+            {
+                "name": "residuez",
+                "static": true,
+                "sig": "residuez($b, $a, $tol = 0.001, $rtype = 'avg')",
                 "doc": ""
             },
             {
