@@ -104,6 +104,10 @@
 | `signal.ss2tf` | call | rtol 0 |
 | `signal.cont2discrete` | every call | rtol 0 |
 | `signal.cont2discrete` | call | rtol 0 |
+| `signal.zpk2ss` | every call | rtol 0 |
+| `signal.zpk2ss` | call | rtol 0 |
+| `signal.ss2zpk` | every call | rtol 0 |
+| `signal.ss2zpk` | call | rtol 0 |
 | `signal.medfilt` | every call | rtol 0 |
 | `signal.medfilt` | call | rtol 0 |
 | `signal.medfilt2d` | every call | rtol 0 |
