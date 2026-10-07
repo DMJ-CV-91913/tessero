@@ -2065,6 +2065,16 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.residue": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "signal.residuez": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "signal.savgol_coeffs": {
             "kind": "routine",
             "nin": 0,

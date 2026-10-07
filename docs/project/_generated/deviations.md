@@ -114,6 +114,10 @@
 | `signal.invres` | call | rtol 0 |
 | `signal.invresz` | every call | rtol 0 |
 | `signal.invresz` | call | rtol 0 |
+| `signal.residue` | every call | rtol 0 |
+| `signal.residue` | call | rtol 0 |
+| `signal.residuez` | every call | rtol 0 |
+| `signal.residuez` | call | rtol 0 |
 | `signal.lp2lp` | every call | rtol 0 |
 | `signal.lp2lp` | call | rtol 0 |
 | `signal.lp2hp` | every call | rtol 0 |

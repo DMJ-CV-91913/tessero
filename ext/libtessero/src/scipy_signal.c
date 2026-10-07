@@ -1981,6 +1981,264 @@ static int r_invres(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 static int r_invresz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return sig_invres_common(args, nargs, 1, "invresz", res); }
 
+/* complex polynomial helpers (highest-first) for residue/residuez */
+static double complex cp_val(const double complex *p, int64_t n, double complex x)
+{ double complex r = 0; for (int64_t i = 0; i < n; i++) r = r * x + p[i]; return r; }
+
+static double complex *cp_mul(const double complex *a, int64_t na, const double complex *b, int64_t nb, int64_t *nr)
+{
+    const int64_t n = na + nb - 1;
+    double complex *r = (double complex *)calloc((size_t)(n > 0 ? n : 1), sizeof(double complex));
+    if (!r) { *nr = -1; return NULL; }
+    for (int64_t i = 0; i < na; i++) for (int64_t j = 0; j < nb; j++) r[i + j] += a[i] * b[j];
+    *nr = n; return r;
+}
+static double complex *cp_addsub(const double complex *a, int64_t na, const double complex *b, int64_t nb, int sub, int64_t *nr)
+{
+    const int64_t n = (na > nb) ? na : nb;
+    double complex *r = (double complex *)calloc((size_t)(n > 0 ? n : 1), sizeof(double complex));
+    if (!r) { *nr = -1; return NULL; }
+    for (int64_t t = 0; t < n; t++) {
+        const double complex av = (t < na) ? a[na - 1 - t] : 0.0, bv = (t < nb) ? b[nb - 1 - t] : 0.0;
+        r[n - 1 - t] = sub ? av - bv : av + bv;
+    }
+    *nr = n; return r;
+}
+/* numpy.polydiv (complex): quotient length max(nu-nv+1,1), remainder with leading |.|<=1e-8 trimmed (len>=1). */
+static int cp_div(const double complex *u, int64_t nu, const double complex *v, int64_t nv,
+                  double complex **q, int64_t *nq, double complex **r, int64_t *nr)
+{
+    const int64_t m = nu - 1, n = nv - 1;
+    const double complex scale = 1.0 / v[0];
+    const int64_t lq = (m - n + 1 > 1) ? (m - n + 1) : 1;
+    double complex *Q = (double complex *)calloc((size_t)lq, sizeof(double complex));
+    double complex *R = (double complex *)malloc(sizeof(double complex) * (size_t)nu);
+    if (!Q || !R) { free(Q); free(R); return TSR_ENOMEM; }
+    memcpy(R, u, sizeof(double complex) * (size_t)nu);
+    for (int64_t k = 0; k <= m - n; k++) { const double complex d = scale * R[k]; Q[k] = d; for (int64_t j = 0; j <= n; j++) R[k + j] -= d * v[j]; }
+    int64_t s = 0; while (s < nu - 1 && cabs(R[s]) <= 1e-8) s++;
+    const int64_t rn = nu - s;
+    double complex *RR = (double complex *)malloc(sizeof(double complex) * (size_t)rn);
+    if (!RR) { free(Q); free(R); return TSR_ENOMEM; }
+    memcpy(RR, R + s, sizeof(double complex) * (size_t)rn); free(R);
+    *q = Q; *nq = lq; *r = RR; *nr = rn;
+    return TSR_OK;
+}
+
+/* complex _compute_factors(include_powers=False): one factor per unique pole = full denominator / (x-p_i)^m_i.
+   factors stored as flat rows of width (total+1); den returned separately. */
+static int cp_compute_factors(const double complex *up, const int64_t *mult, int64_t nu,
+                              double complex **facs, int64_t **faclen, double complex **den, int64_t *nden)
+{
+    int64_t total = 0; for (int64_t i = 0; i < nu; i++) total += mult[i];
+    const int64_t W = total + 1;
+    double complex *suf = (double complex *)calloc((size_t)(nu * W), sizeof(double complex));
+    int64_t *sufn = (int64_t *)malloc(sizeof(int64_t) * (size_t)(nu > 0 ? nu : 1));
+    double complex *facbuf = (double complex *)calloc((size_t)((nu ? nu : 1) * W), sizeof(double complex));
+    int64_t *flen = (int64_t *)malloc(sizeof(int64_t) * (size_t)(nu > 0 ? nu : 1));
+    if (!suf || !sufn || !facbuf || !flen) { free(suf); free(sufn); free(facbuf); free(flen); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    double complex *cur = (double complex *)malloc(sizeof(double complex) * (size_t)W); int64_t ncur = 1; cur[0] = 1.0;
+    if (nu > 0) { suf[(nu - 1) * W] = 1.0; sufn[nu - 1] = 1; }
+    for (int64_t i = nu - 1; i >= 1 && rc == TSR_OK; i--) {
+        const double complex mono[2] = {1.0, -up[i]};
+        for (int64_t t = 0; t < mult[i]; t++) { int64_t nn; double complex *nx = cp_mul(cur, ncur, mono, 2, &nn); if (!nx) { rc = TSR_ENOMEM; break; } free(cur); cur = nx; ncur = nn; }
+        if (rc == TSR_OK) { memcpy(suf + (i - 1) * W, cur, sizeof(double complex) * (size_t)ncur); sufn[i - 1] = ncur; }
+    }
+    free(cur);
+    double complex *current = (double complex *)malloc(sizeof(double complex) * (size_t)W); int64_t nce = 1; current[0] = 1.0;
+    for (int64_t i = 0; i < nu && rc == TSR_OK; i++) {
+        int64_t nb; double complex *blk = cp_mul(current, nce, suf + i * W, sufn[i], &nb);
+        if (!blk) { rc = TSR_ENOMEM; break; }
+        memcpy(facbuf + i * W, blk, sizeof(double complex) * (size_t)nb); flen[i] = nb; free(blk);
+        const double complex mono[2] = {1.0, -up[i]};
+        for (int64_t t = 0; t < mult[i] && rc == TSR_OK; t++) { int64_t nn; double complex *nx = cp_mul(current, nce, mono, 2, &nn); if (!nx) { rc = TSR_ENOMEM; break; } free(current); current = nx; nce = nn; }
+    }
+    if (rc == TSR_OK) { *den = current; *nden = nce; *facs = facbuf; *faclen = flen; }
+    else { free(current); free(facbuf); free(flen); }
+    free(suf); free(sufn);
+    return rc;
+}
+
+/* complex _compute_residues (scipy.signal._compute_residues). residues length = sum(mult). */
+static int cp_compute_residues(const double complex *up, const int64_t *mult, int64_t nu,
+                               const double complex *numer, int64_t nnumer, double complex **out, int64_t *nout)
+{
+    double complex *facs = NULL, *den = NULL; int64_t *flen = NULL, nden = 0;
+    int rc = cp_compute_factors(up, mult, nu, &facs, &flen, &den, &nden);
+    if (rc != TSR_OK) return rc;
+    const int64_t W = nden;                              /* den length = total+1 */
+    int64_t total = 0; for (int64_t i = 0; i < nu; i++) total += mult[i];
+    double complex *R = (double complex *)malloc(sizeof(double complex) * (size_t)(total > 0 ? total : 1));
+    if (!R) { free(facs); free(flen); free(den); return TSR_ENOMEM; }
+    int64_t ri = 0;
+    for (int64_t i = 0; i < nu && rc == TSR_OK; i++) {
+        const double complex pole = up[i]; const int64_t m = mult[i];
+        double complex *factor = facs + i * W; int64_t nf = flen[i];
+        if (m == 1) { R[ri++] = cp_val(numer, nnumer, pole) / cp_val(factor, nf, pole); }
+        else {
+            const double complex mono[2] = {1.0, -pole};
+            double complex *fq = NULL, *fd = NULL; int64_t nfq = 0, nfd = 0;
+            rc = cp_div(factor, nf, mono, 2, &fq, &nfq, &fd, &nfd);
+            if (rc != TSR_OK) break;
+            double complex *numc = (double complex *)malloc(sizeof(double complex) * (size_t)nnumer);
+            memcpy(numc, numer, sizeof(double complex) * (size_t)nnumer); int64_t nnc = nnumer;
+            double complex *block = (double complex *)malloc(sizeof(double complex) * (size_t)m);
+            for (int64_t t = 0; t < m && rc == TSR_OK; t++) {
+                double complex *nq = NULL, *nn = NULL; int64_t nnq = 0, nnn = 0;
+                rc = cp_div(numc, nnc, mono, 2, &nq, &nnq, &nn, &nnn);
+                if (rc != TSR_OK) { free(nq); free(nn); break; }
+                const double complex rr = nn[0] / fd[0];
+                block[t] = rr;
+                /* numc = polysub(nq_was_numer_quotient?, rr*fq) -- scipy: numer=nq; numer=polysub(numer, rr*factor) */
+                double complex *scaled = (double complex *)malloc(sizeof(double complex) * (size_t)nfq);
+                for (int64_t z = 0; z < nfq; z++) scaled[z] = rr * fq[z];
+                int64_t ns; double complex *sub = cp_addsub(nq, nnq, scaled, nfq, 1, &ns);
+                free(scaled); free(nn); free(nq); free(numc);
+                if (!sub) { rc = TSR_ENOMEM; numc = NULL; break; }
+                numc = sub; nnc = ns;
+            }
+            for (int64_t t = 0; t < m; t++) R[ri + t] = block[m - 1 - t];   /* reversed(block) */
+            ri += m;
+            free(block); free(numc); free(fq); free(fd);
+        }
+    }
+    free(facs); free(flen); free(den);
+    if (rc == TSR_OK) { *out = R; *nout = ri; } else free(R);
+    return rc;
+}
+
+/* sort unique poles by magnitude (ascending, stable); carry multiplicities. */
+static void cp_cmplx_sort(double complex *up, int64_t *mult, int64_t nu)
+{
+    for (int64_t i = 1; i < nu; i++) {
+        double complex kp = up[i]; int64_t km = mult[i]; const double ka = cabs(kp);
+        int64_t j = i - 1;
+        while (j >= 0 && cabs(up[j]) > ka) { up[j + 1] = up[j]; mult[j + 1] = mult[j]; j--; }
+        up[j + 1] = kp; mult[j + 1] = km;
+    }
+}
+
+/* shared residue/residuez back-end (real b, a). z_domain selects negative powers of z. */
+static int sig_residue_common(const tsr_arg *args, int nargs, int z_domain, const char *who, tsr_result *res)
+{
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("%s: b and a must be arrays", who); return TSR_EARG; }
+    int64_t nb0, na0;
+    double *bb = fn_arg_doubles(&args[0], &nb0); if (!bb) return TSR_ENOMEM;
+    double *aa = fn_arg_doubles(&args[1], &na0); if (!aa) { fn_free_doubles(bb, nb0); return TSR_ENOMEM; }
+    const double tol = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1e-3;
+    const int rt = sig_rtype(nargs > 3 ? &args[3] : NULL, RT_AVG);
+    /* trim_zeros: 'f' (front) for residue, 'b' (back) for residuez */
+    int64_t bs = 0, be = nb0, as = 0, ae = na0;
+    if (z_domain) { while (be > bs && bb[be - 1] == 0.0) be--; while (ae > as && aa[ae - 1] == 0.0) ae--; }
+    else { while (bs < be && bb[bs] == 0.0) bs++; while (as < ae && aa[as] == 0.0) as++; }
+    const int64_t nbt = be - bs, nat = ae - as;
+    int rc = TSR_OK;
+    double *aTrim = NULL; double *rootbuf = NULL;
+    double complex *poles = NULL; int64_t npoles = 0;
+    double complex *up = NULL; int64_t *mult = NULL; int64_t nu = 0;
+    double complex *resid = NULL; int64_t nresid = 0;
+    double *kout = NULL; int64_t nk = 0;
+    if (nat < 1) { fn_set_error("%s: denominator `a` is zero", who); rc = TSR_EARG; }
+    else {
+        /* roots of the trimmed real denominator */
+        aTrim = (double *)malloc(sizeof(double) * (size_t)nat);
+        for (int64_t i = 0; i < nat; i++) aTrim[i] = aa[as + i];
+        int64_t nz = 0; rootbuf = sig_polyroots(aTrim, nat, &nz);
+        npoles = (nz > 0) ? nz : 0;
+        if (nz < 0) { fn_set_error("%s: root solve failed", who); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        /* numerator polynomial (complex), reversed if z_domain */
+        const double a_scale = z_domain ? aa[ae - 1] : aa[as];   /* a_rev[0]=a[-1] ; a[0] for residue */
+        double *bwork = (double *)malloc(sizeof(double) * (size_t)(nbt > 0 ? nbt : 1));
+        for (int64_t i = 0; i < nbt; i++) bwork[i] = z_domain ? bb[be - 1 - i] : bb[bs + i];
+        double *awork = (double *)malloc(sizeof(double) * (size_t)(nat > 0 ? nat : 1));
+        for (int64_t i = 0; i < nat; i++) awork[i] = z_domain ? aa[ae - 1 - i] : aa[as + i];
+        /* k, b = polydiv(b, a) when numerator degree >= denominator degree */
+        double complex *bcx = (double complex *)malloc(sizeof(double complex) * (size_t)(nbt > 0 ? nbt : 1));
+        for (int64_t i = 0; i < nbt; i++) bcx[i] = bwork[i];
+        int64_t nbcx = nbt;
+        if (nbt == 0) { /* numerator is zero: residues all zero, k empty */
+            nresid = npoles; resid = (double complex *)calloc((size_t)(npoles > 0 ? npoles : 1), sizeof(double complex));
+            /* sorted poles for output */
+            double complex *ps = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
+            int64_t *m1 = (int64_t *)malloc(sizeof(int64_t) * (size_t)(npoles > 0 ? npoles : 1));
+            for (int64_t i = 0; i < npoles; i++) { ps[i] = rootbuf[2 * i] + I * rootbuf[2 * i + 1]; m1[i] = 1; }
+            cp_cmplx_sort(ps, m1, npoles);
+            free(rootbuf); rootbuf = NULL; poles = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
+            for (int64_t i = 0; i < npoles; i++) poles[i] = ps[i];
+            free(ps); free(m1);
+            up = NULL; nk = 0;
+            free(bcx); free(bwork); free(awork);
+            goto emit;
+        }
+        if (nbt >= nat) {
+            double complex *acx = (double complex *)malloc(sizeof(double complex) * (size_t)nat);
+            for (int64_t i = 0; i < nat; i++) acx[i] = awork[i];
+            double complex *q = NULL, *r = NULL; int64_t nq = 0, nr = 0;
+            rc = cp_div(bcx, nbcx, acx, nat, &q, &nq, &r, &nr);
+            free(acx);
+            if (rc == TSR_OK) { kout = (double *)malloc(sizeof(double) * (size_t)nq); for (int64_t i = 0; i < nq; i++) kout[i] = creal(q[i]); nk = nq; free(bcx); bcx = r; nbcx = nr; free(q); }
+            else { free(q); free(r); }
+        }
+        if (rc == TSR_OK) {
+            /* unique_roots on the (unsorted) complex poles, then cmplx_sort */
+            up = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
+            mult = (int64_t *)malloc(sizeof(int64_t) * (size_t)(npoles > 0 ? npoles : 1));
+            double complex *grp = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
+            unsigned char *used = (unsigned char *)calloc((size_t)(npoles > 0 ? npoles : 1), 1);
+            double complex *pc = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
+            for (int64_t i = 0; i < npoles; i++) pc[i] = rootbuf[2 * i] + I * rootbuf[2 * i + 1];
+            nu = 0;
+            for (int64_t i = 0; i < npoles; i++) {
+                if (used[i]) continue; int64_t g = 0;
+                for (int64_t j = 0; j < npoles; j++) { if (used[j]) continue; const double dr = creal(pc[j]) - creal(pc[i]), di = cimag(pc[j]) - cimag(pc[i]); if (sqrt(dr * dr + di * di) <= tol) { grp[g++] = pc[j]; used[j] = 1; } }
+                up[nu] = sig_creduce(grp, g, rt); mult[nu] = g; nu++;
+            }
+            free(grp); free(used); free(pc);
+            cp_cmplx_sort(up, mult, nu);
+            /* numerator for compute_residues (residuez uses 1/unique_poles) */
+            double complex *cpoles = up;
+            double complex *recip = NULL;
+            if (z_domain) { recip = (double complex *)malloc(sizeof(double complex) * (size_t)(nu > 0 ? nu : 1)); for (int64_t i = 0; i < nu; i++) recip[i] = 1.0 / up[i]; cpoles = recip; }
+            rc = cp_compute_residues(cpoles, mult, nu, bcx, nbcx, &resid, &nresid);
+            free(recip);
+            if (rc == TSR_OK) {
+                /* expand poles and scale residues */
+                double complex *pexp = (double complex *)malloc(sizeof(double complex) * (size_t)(nresid > 0 ? nresid : 1));
+                int64_t idx = 0;
+                for (int64_t i = 0; i < nu; i++) for (int64_t t = 0; t < mult[i]; t++) pexp[idx++] = up[i];
+                if (z_domain) {
+                    int64_t pidx = 0;
+                    for (int64_t i = 0; i < nu; i++) for (int64_t t = 0; t < mult[i]; t++) { const double complex pw = cpow(-up[i], (double)(t + 1)); resid[pidx] = resid[pidx] * pw / a_scale; pidx++; }
+                } else { for (int64_t i = 0; i < nresid; i++) resid[i] = resid[i] / a_scale; }
+                poles = pexp; npoles = nresid;
+            }
+        }
+        free(bcx); free(bwork); free(awork);
+    }
+emit:
+    if (rc == TSR_OK) {
+        double *orr = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){nresid});
+        double *opp = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){npoles});
+        double *okk = (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){nk});
+        if (!orr || !opp || !okk) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < nresid; i++) { orr[2 * i] = creal(resid[i]); orr[2 * i + 1] = cimag(resid[i]); }
+            for (int64_t i = 0; i < npoles; i++) { opp[2 * i] = creal(poles[i]); opp[2 * i + 1] = cimag(poles[i]); }
+            for (int64_t i = 0; i < nk; i++) okk[i] = z_domain ? kout[nk - 1 - i] : kout[i];   /* k_rev[::-1] for z */
+        }
+    }
+    free(resid); free(poles); free(rootbuf); free(up); free(mult); free(kout); free(aTrim);
+    fn_free_doubles(bb, nb0); fn_free_doubles(aa, na0);
+    return rc;
+}
+static int r_residue(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return sig_residue_common(args, nargs, 0, "residue", res); }
+static int r_residuez(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return sig_residue_common(args, nargs, 1, "residuez", res); }
+
 /* ---- analog lowpass-prototype transforms (scipy.signal) ---- */
 
 static double sig_comb(int64_t n, int64_t k)
@@ -3454,6 +3712,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.unique_roots", 2, "p, tol=1e-3, rtype='min'", "unique, multiplicity", r_unique_roots, NULL, "Unique roots and multiplicities from a list of roots (scipy.signal.unique_roots)."),
     ROUTINE("signal.invres", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invres, NULL, "Transfer function (b, a) from a partial-fraction expansion, positive powers (scipy.signal.invres)."),
     ROUTINE("signal.invresz", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invresz, NULL, "Transfer function (b, a) from a partial-fraction expansion, negative powers of z (scipy.signal.invresz)."),
+    ROUTINE("signal.residue", 3, "b, a, tol=1e-3, rtype='avg'", "r, p, k", r_residue, NULL, "Partial-fraction expansion of b(s)/a(s), positive powers (scipy.signal.residue)."),
+    ROUTINE("signal.residuez", 3, "b, a, tol=1e-3, rtype='avg'", "r, p, k", r_residuez, NULL, "Partial-fraction expansion of b(z)/a(z), negative powers of z (scipy.signal.residuez)."),
     ROUTINE("signal.lp2lp", 2, "b, a, wo=1.0", "b, a", r_lp2lp, NULL, "Transform a lowpass analog prototype to a different cutoff (scipy.signal.lp2lp)."),
     ROUTINE("signal.lp2hp", 2, "b, a, wo=1.0", "b, a", r_lp2hp, NULL, "Transform a lowpass analog prototype to highpass (scipy.signal.lp2hp)."),
     ROUTINE("signal.lp2bp", 2, "b, a, wo=1.0, bw=1.0", "b, a", r_lp2bp, NULL, "Transform a lowpass analog prototype to bandpass (scipy.signal.lp2bp)."),
