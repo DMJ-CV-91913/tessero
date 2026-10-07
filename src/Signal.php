@@ -29,7 +29,9 @@ final class Signal
     'chirp' => 'chirp',
     'coherence' => 'coherence',
     'convolve' => 'convolve',
+    'convolve2d' => 'convolve2d',
     'correlate' => 'correlate',
+    'correlate2d' => 'correlate2d',
     'correlation_lags' => 'correlationLags',
     'csd' => 'csd',
     'deconvolve' => 'deconvolve',
@@ -227,6 +229,16 @@ final class Signal
     }
 
     /**
+     * 2-D convolution, zero-fill boundary (scipy.signal.convolve2d).
+     *
+     * scipy.signal.convolve2d
+     */
+    public static function convolve2d(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $boundary = 'fill', mixed $fillvalue = 0): mixed
+    {
+        return Registry::routine('signal.convolve2d', [$in1, $in2, $mode, $boundary, $fillvalue]);
+    }
+
+    /**
      * N-D cross-correlation of two arrays, modes full/same/valid (scipy.signal.correlate; real).
      *
      * scipy.signal.correlate
@@ -234,6 +246,16 @@ final class Signal
     public static function correlate(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $method = 'auto'): mixed
     {
         return Registry::routine('signal.correlate', [$in1, $in2, $mode, $method]);
+    }
+
+    /**
+     * 2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d).
+     *
+     * scipy.signal.correlate2d
+     */
+    public static function correlate2d(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $boundary = 'fill', mixed $fillvalue = 0): mixed
+    {
+        return Registry::routine('signal.correlate2d', [$in1, $in2, $mode, $boundary, $fillvalue]);
     }
 
     /**

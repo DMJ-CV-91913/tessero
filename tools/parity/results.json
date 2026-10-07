@@ -436,7 +436,9 @@
         "signal.chirp": "pass",
         "signal.coherence": "pass",
         "signal.convolve": "pass",
+        "signal.convolve2d": "pass",
         "signal.correlate": "pass",
+        "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
         "signal.deconvolve": "pass",
@@ -2182,7 +2184,9 @@
             "signal.cheb1ap": 3.389602864453695e-16,
             "signal.cheb2ap": 5.204167825844554e-16,
             "signal.gauss_spline": 0,
-            "signal.vectorstrength": 1.5463828117252039e-15
+            "signal.vectorstrength": 1.5463828117252039e-15,
+            "signal.convolve2d": 3.395524534445979e-15,
+            "signal.correlate2d": 9.590451008180848e-15
         },
         "ext": {
             "np.median": 0,
@@ -3274,7 +3278,9 @@
             "signal.cheb1ap": 3.389602864453695e-16,
             "signal.cheb2ap": 5.204167825844554e-16,
             "signal.gauss_spline": 0,
-            "signal.vectorstrength": 1.5463828117252039e-15
+            "signal.vectorstrength": 1.5463828117252039e-15,
+            "signal.convolve2d": 3.395524534445979e-15,
+            "signal.correlate2d": 9.590451008180848e-15
         }
     },
     "ext": {
@@ -3714,7 +3720,9 @@
         "signal.chirp": "pass",
         "signal.coherence": "pass",
         "signal.convolve": "pass",
+        "signal.convolve2d": "pass",
         "signal.correlate": "pass",
+        "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
         "signal.deconvolve": "pass",

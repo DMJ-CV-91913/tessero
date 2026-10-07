@@ -591,7 +591,9 @@ done:
 /* N-D convolution / correlation by direct computation, sliced per mode. scipy computes fftconvolve/oaconvolve
    via the FFT, but the result is the same operation; a direct sum matches it to within tolerance. correlate is
    convolve with the second input reversed in every axis (real inputs; the conjugate is a no-op). Real float64. */
-static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse_v, const char *who, tsr_result *res)
+/* corr2d_same: use scipy's correlate2d 'same' centering (offset s2/2) instead of the convolve/ correlate
+   centering ((f-s1)/2); the two differ by one for even kernel dimensions. */
+static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse_v, int corr2d_same, const char *who, tsr_result *res)
 {
     if (A->kind != 3 || V->kind != 3) { fn_set_error("%s: inputs must be arrays", who); return TSR_EARG; }
     const int32_t nd = A->arr.ndim;
@@ -634,7 +636,7 @@ static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse
     int64_t osh[TSR_MAXDIM], ost[TSR_MAXDIM];
     for (int32_t d = 0; d < nd; d++) {
         if (mode == CONV_FULL) { osh[d] = f[d]; ost[d] = 0; }
-        else if (mode == CONV_SAME) { osh[d] = s1[d]; ost[d] = (f[d] - s1[d]) / 2; }
+        else if (mode == CONV_SAME) { osh[d] = s1[d]; ost[d] = corr2d_same ? s2[d] / 2 : (f[d] - s1[d]) / 2; }
         else {                                                /* valid: in1 must be >= in2 in every axis */
             if (s1[d] < s2[d]) { free(full); fn_free_doubles(a, n1); fn_free_doubles(v, n2);
                 fn_set_error("%s: for 'valid' mode, in1 must be at least as large as in2 in every dimension", who); return TSR_EARG; }
@@ -667,7 +669,7 @@ static int r_fftconvolve(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     (void)ctx; (void)nres;
     int mode, rc; if ((rc = parse_mode(nargs > 2 ? &args[2] : NULL, &mode)) < 0) return rc;
     if ((rc = no_axes(args, nargs, 3, "fftconvolve")) < 0) return rc;
-    return nd_convolve(&args[0], &args[1], mode, 0, "fftconvolve", &res[0]);
+    return nd_convolve(&args[0], &args[1], mode, 0, 0, "fftconvolve", &res[0]);
 }
 
 /* oaconvolve(in1, in2, mode='full', axes=None): overlap-add convolution; same result as fftconvolve */
@@ -676,7 +678,7 @@ static int r_oaconvolve(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     (void)ctx; (void)nres;
     int mode, rc; if ((rc = parse_mode(nargs > 2 ? &args[2] : NULL, &mode)) < 0) return rc;
     if ((rc = no_axes(args, nargs, 3, "oaconvolve")) < 0) return rc;
-    return nd_convolve(&args[0], &args[1], mode, 0, "oaconvolve", &res[0]);
+    return nd_convolve(&args[0], &args[1], mode, 0, 0, "oaconvolve", &res[0]);
 }
 
 /* correlate(in1, in2, mode='full', method='auto'): N-D cross-correlation (scipy.signal.correlate) */
@@ -684,7 +686,7 @@ static int r_correlate(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
 {
     (void)ctx; (void)nres;
     int mode, rc; if ((rc = parse_mode(nargs > 2 ? &args[2] : NULL, &mode)) < 0) return rc;
-    return nd_convolve(&args[0], &args[1], mode, 1, "correlate", &res[0]);
+    return nd_convolve(&args[0], &args[1], mode, 1, 0, "correlate", &res[0]);
 }
 
 /* -------------------------------------------------- detrend / savgol (least-squares helpers) ----- */
@@ -2556,6 +2558,22 @@ static int r_bilinear_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return rc;
 }
 
+/* convolve2d(in1, in2, mode='full', boundary='fill', fillvalue=0) / correlate2d(...): 2-D convolution and
+   cross-correlation, the zero-fill-boundary case handled by the shared N-D direct-sum core (scipy.signal). */
+static int conv2d_common(const tsr_arg *args, int nargs, int reverse_v, const char *who, tsr_result *res)
+{
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("%s: in1 and in2 must be 2-D arrays", who); return TSR_EARG; }
+    if (nargs > 3 && args[3].kind == 2 && args[3].str && strcmp(args[3].str, "fill") != 0) { fn_set_error("%s: only boundary='fill' is supported", who); return TSR_EARG; }
+    if (nargs > 4 && args[4].kind == 1 && args[4].num != 0.0) { fn_set_error("%s: only fillvalue=0 is supported", who); return TSR_EARG; }
+    int mode = CONV_FULL;
+    if (nargs > 2 && parse_mode(&args[2], &mode) != TSR_OK) return TSR_EARG;
+    return nd_convolve(&args[0], &args[1], mode, reverse_v, reverse_v, who, res);
+}
+static int r_convolve2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return conv2d_common(args, nargs, 0, "convolve2d", res); }
+static int r_correlate2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return conv2d_common(args, nargs, 1, "correlate2d", res); }
+
 /* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
    1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
 static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2990,6 +3008,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.cheb2ap", 3, "N, rs", "z, p, k", r_cheb2ap, NULL, "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."),
     ROUTINE("signal.gauss_spline", 1, "x, n", "out", r_gauss_spline, NULL, "Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline)."),
     ROUTINE("signal.vectorstrength", 2, "events, period", "strength, phase", r_vectorstrength, NULL, "Vector strength and mean phase of events over a period (scipy.signal.vectorstrength)."),
+    ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
+    ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

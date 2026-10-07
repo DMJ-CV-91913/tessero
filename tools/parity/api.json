@@ -2717,10 +2717,22 @@
                 "doc": "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."
             },
             {
+                "name": "convolve2d",
+                "static": true,
+                "sig": "convolve2d(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $boundary = 'fill', mixed $fillvalue = 0): mixed",
+                "doc": "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."
+            },
+            {
                 "name": "correlate",
                 "static": true,
                 "sig": "correlate(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $method = 'auto'): mixed",
                 "doc": "N-D cross-correlation of two arrays, modes full/same/valid (scipy.signal.correlate; real)."
+            },
+            {
+                "name": "correlate2d",
+                "static": true,
+                "sig": "correlate2d(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $boundary = 'fill', mixed $fillvalue = 0): mixed",
+                "doc": "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."
             },
             {
                 "name": "correlationLags",
@@ -15795,6 +15807,18 @@
                 "name": "vectorstrength",
                 "static": true,
                 "sig": "vectorstrength($events, $period)",
+                "doc": ""
+            },
+            {
+                "name": "convolve2d",
+                "static": true,
+                "sig": "convolve2d($in1, $in2, $mode = 'full', $boundary = 'fill', $fillvalue = 0)",
+                "doc": ""
+            },
+            {
+                "name": "correlate2d",
+                "static": true,
+                "sig": "correlate2d($in1, $in2, $mode = 'full', $boundary = 'fill', $fillvalue = 0)",
                 "doc": ""
             }
         ]
