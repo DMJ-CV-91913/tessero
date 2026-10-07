@@ -2795,6 +2795,12 @@
                 "doc": "Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk)."
             },
             {
+                "name": "gaussSpline",
+                "static": true,
+                "sig": "gaussSpline(mixed $x, mixed $n): mixed",
+                "doc": "Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline)."
+            },
+            {
                 "name": "gausspulse",
                 "static": true,
                 "sig": "gausspulse(mixed $t, mixed $fc = 1000, mixed $bw = 0.5, mixed $bwr = -6): mixed",
@@ -2997,6 +3003,12 @@
                 "static": true,
                 "sig": "unitImpulse(mixed $shape, mixed $idx = null): mixed",
                 "doc": "Unit impulse: zeros with a single 1 at idx (scipy.signal.unit_impulse)."
+            },
+            {
+                "name": "vectorstrength",
+                "static": true,
+                "sig": "vectorstrength(mixed $events, mixed $period): mixed",
+                "doc": "Vector strength and mean phase of events over a period (scipy.signal.vectorstrength)."
             },
             {
                 "name": "welch",
@@ -15771,6 +15783,18 @@
                 "name": "cheb2ap",
                 "static": true,
                 "sig": "cheb2ap($N, $rs)",
+                "doc": ""
+            },
+            {
+                "name": "gaussSpline",
+                "static": true,
+                "sig": "gaussSpline($x, $n)",
+                "doc": ""
+            },
+            {
+                "name": "vectorstrength",
+                "static": true,
+                "sig": "vectorstrength($events, $period)",
                 "doc": ""
             }
         ]

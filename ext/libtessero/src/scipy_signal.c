@@ -2556,6 +2556,40 @@ static int r_bilinear_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return rc;
 }
 
+/* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
+   1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
+static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 1) { fn_set_error("gauss_spline: x must be an array and n an integer"); return TSR_EARG; }
+    int64_t n; double *x = fn_arg_doubles(&args[0], &n); if (!x) return TSR_ENOMEM;
+    const double s = ((double)args[1].num + 1.0) / 12.0;
+    const double c = 1.0 / sqrt(2.0 * M_PI * s);
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, args[0].arr.ndim, args[0].arr.shape);
+    int rc = TSR_OK;
+    if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n; i++) out[i] = c * exp(-x[i] * x[i] / 2.0 / s);
+    fn_free_doubles(x, n);
+    return rc;
+}
+
+/* vectorstrength(events, period): the vector strength (phase synchrony) and mean phase of events over a single
+   period (scipy.signal.vectorstrength, scalar period). Returns (strength, phase). */
+static int r_vectorstrength(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 1) { fn_set_error("vectorstrength: events must be an array and period a scalar"); return TSR_EARG; }
+    const double period = args[1].num;
+    if (period <= 0.0) { fn_set_error("vectorstrength: period must be positive"); return TSR_EARG; }
+    int64_t ne; double *ev = fn_arg_doubles(&args[0], &ne); if (!ev) return TSR_ENOMEM;
+    double sr = 0.0, si = 0.0;
+    for (int64_t i = 0; i < ne; i++) { const double ph = 2.0 * M_PI * ev[i] / period; sr += cos(ph); si += sin(ph); }
+    if (ne > 0) { sr /= (double)ne; si /= (double)ne; }
+    fn_free_doubles(ev, ne);
+    fn_result_num(&res[0], hypot(sr, si));
+    fn_result_num(&res[1], atan2(si, sr));
+    return TSR_OK;
+}
+
 /* cheb1ap(N, rp): the analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap): no zeros, poles on an
    ellipse in the left half-plane, gain set for the ripple rp (dB). (z, p, k), poles sorted by (re, im). */
 static int r_cheb1ap(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2954,6 +2988,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.lp2bs_zpk", 3, "z, p, k, wo=1.0, bw=1.0", "z, p, k", r_lp2bs_zpk, NULL, "Transform an analog lowpass zpk prototype to bandstop (scipy.signal.lp2bs_zpk)."),
     ROUTINE("signal.cheb1ap", 3, "N, rp", "z, p, k", r_cheb1ap, NULL, "Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap)."),
     ROUTINE("signal.cheb2ap", 3, "N, rs", "z, p, k", r_cheb2ap, NULL, "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."),
+    ROUTINE("signal.gauss_spline", 1, "x, n", "out", r_gauss_spline, NULL, "Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline)."),
+    ROUTINE("signal.vectorstrength", 2, "events, period", "strength, phase", r_vectorstrength, NULL, "Vector strength and mean phase of events over a period (scipy.signal.vectorstrength)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

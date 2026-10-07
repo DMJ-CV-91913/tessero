@@ -156,6 +156,10 @@
 | `signal.cheb1ap` | call | rtol 0 |
 | `signal.cheb2ap` | every call | rtol 0 |
 | `signal.cheb2ap` | call | rtol 0 |
+| `signal.gauss_spline` | every call | rtol 0 |
+| `signal.gauss_spline` | call | rtol 0 |
+| `signal.vectorstrength` | every call | rtol 0 |
+| `signal.vectorstrength` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

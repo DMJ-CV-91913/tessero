@@ -449,6 +449,7 @@
         "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",
         "signal.freqz_zpk": "pass",
+        "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
@@ -483,6 +484,7 @@
         "signal.square": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
+        "signal.vectorstrength": "pass",
         "signal.welch": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
@@ -2178,7 +2180,9 @@
             "signal.lp2bp_zpk": 0,
             "signal.lp2bs_zpk": 0,
             "signal.cheb1ap": 3.389602864453695e-16,
-            "signal.cheb2ap": 5.204167825844554e-16
+            "signal.cheb2ap": 5.204167825844554e-16,
+            "signal.gauss_spline": 0,
+            "signal.vectorstrength": 1.5463828117252039e-15
         },
         "ext": {
             "np.median": 0,
@@ -3268,7 +3272,9 @@
             "signal.lp2bp_zpk": 0,
             "signal.lp2bs_zpk": 0,
             "signal.cheb1ap": 3.389602864453695e-16,
-            "signal.cheb2ap": 5.204167825844554e-16
+            "signal.cheb2ap": 5.204167825844554e-16,
+            "signal.gauss_spline": 0,
+            "signal.vectorstrength": 1.5463828117252039e-15
         }
     },
     "ext": {
@@ -3721,6 +3727,7 @@
         "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",
         "signal.freqz_zpk": "pass",
+        "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
@@ -3755,6 +3762,7 @@
         "signal.square": "pass",
         "signal.tf2zpk": "pass",
         "signal.unit_impulse": "pass",
+        "signal.vectorstrength": "pass",
         "signal.welch": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",

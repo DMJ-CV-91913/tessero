@@ -487,6 +487,15 @@ for N in (1, 2, 3, 4, 5):
         z, p, kk = sg.cheb2ap(N, rs)
         c2ap.append({'args': [F.enc(N), F.enc(rs)], 'kwargs': {}, 'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
 
+# gauss_spline + vectorstrength
+gsp, vst = [], []
+for n in (0, 1, 2, 3, 5):
+    xg = np.linspace(-3, 3, 25)
+    gsp.append({'args': [F.enc(xg), F.enc(n)], 'kwargs': {}, 'expect': F.enc_result(sg.gauss_spline(xg, n), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+for (ev, per) in [(rng.uniform(0, 10, 40), 2.0), (rng.uniform(0, 5, 30), 1.0), (np.array([0.0, 1.0, 2.0, 3.0]), 1.0), (rng.uniform(0, 20, 60), 3.5)]:
+    s, ph = sg.vectorstrength(ev, per)
+    vst.append({'args': [F.enc(np.asarray(ev)), F.enc(float(per))], 'kwargs': {}, 'expect': F.enc_result((float(s), float(ph)), ['strength', 'phase']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -540,7 +549,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'lp2bp_zpk', 'cases': lpbpz, 'tol': {'atol': 1e-10}},
                  {'fn': 'lp2bs_zpk', 'cases': lpbsz, 'tol': {'atol': 1e-10}},
                  {'fn': 'cheb1ap', 'cases': c1ap, 'tol': {'atol': 1e-11}},
-                 {'fn': 'cheb2ap', 'cases': c2ap, 'tol': {'atol': 1e-11}}]}
+                 {'fn': 'cheb2ap', 'cases': c2ap, 'tol': {'atol': 1e-11}},
+                 {'fn': 'gauss_spline', 'cases': gsp, 'tol': {'atol': 1e-12}},
+                 {'fn': 'vectorstrength', 'cases': vst, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

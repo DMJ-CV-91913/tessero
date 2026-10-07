@@ -953,6 +953,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.freqs_zpk` | `Tessero\Signal::freqsZpk()` |
 | `scipy.signal.freqz` | `Tessero\Signal::freqz()` |
 | `scipy.signal.freqz_zpk` | `Tessero\Signal::freqzZpk()` |
+| `scipy.signal.gauss_spline` | `Tessero\Signal::gaussSpline()` |
 | `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
 | `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
@@ -987,6 +988,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.square` | `Tessero\Signal::square()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
+| `scipy.signal.vectorstrength` | `Tessero\Signal::vectorstrength()` |
 | `scipy.signal.welch` | `Tessero\Signal::welch()` |
 | `scipy.signal.zpk2tf` | `Tessero\Signal::zpk2tf()` |
 
