@@ -1766,6 +1766,98 @@ static int r_ss2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
+extern int sl_expm(const double *A, int64_t n, double *out);                 /* np_linalg.c */
+extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);    /* np_linalg.c (row-major dgesv) */
+
+/* out(xr x yc) = X(xr x xc) @ Y(xc x yc), row-major */
+static void sig_mm(const double *X, int64_t xr, int64_t xc, const double *Y, int64_t yc, double *out)
+{
+    for (int64_t i = 0; i < xr; i++) for (int64_t j = 0; j < yc; j++) { double s = 0.0; for (int64_t k = 0; k < xc; k++) s += X[i * xc + k] * Y[k * yc + j]; out[i * yc + j] = s; }
+}
+
+/* cont2discrete((A,B,C,D), dt, method='zoh', alpha=None): convert a continuous state-space system to discrete
+   (scipy.signal.cont2discrete), state-space form. Methods: zoh, gbt (needs alpha), bilinear/tustin (alpha=0.5),
+   euler/forward_diff (alpha=0), backward_diff (alpha=1). Returns (Ad, Bd, Cd, Dd, dt). */
+static int r_cont2discrete(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("cont2discrete: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
+    if (args[4].kind != 1) { fn_set_error("cont2discrete: dt must be a number"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], m = args[1].arr.shape[1], q = args[2].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n ||
+        args[3].arr.shape[0] != q || args[3].arr.shape[1] != m) { fn_set_error("cont2discrete: inconsistent state-space shapes"); return TSR_EARG; }
+    const double dt = args[4].num;
+    const char *method = (nargs > 5 && args[5].kind == 2 && args[5].str) ? args[5].str : "zoh";
+    int64_t na, nb, nc, nd;
+    double *A = fn_arg_doubles(&args[0], &na), *B = fn_arg_doubles(&args[1], &nb);
+    double *C = fn_arg_doubles(&args[2], &nc), *D = fn_arg_doubles(&args[3], &nd);
+    int rc = TSR_OK;
+    if (!A || !B || !C || !D) rc = TSR_ENOMEM;
+    else if (!strcmp(method, "zoh")) {
+        const int64_t N = n + m;
+        double *M = (double *)calloc((size_t)(N * N), sizeof(double));
+        double *EM = (double *)malloc(sizeof(double) * (size_t)(N * N));
+        if (!M || !EM) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < n; i++) { for (int64_t j = 0; j < n; j++) M[i * N + j] = dt * A[i * n + j]; for (int64_t j = 0; j < m; j++) M[i * N + n + j] = dt * B[i * m + j]; }
+            if (sl_expm(M, N, EM) != 0) { fn_set_error("cont2discrete: the matrix exponential failed"); rc = TSR_EARG; }
+            else {
+                double *Ad = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
+                double *Bd = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){n, m});
+                double *Cd = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){q, n});
+                double *Dd = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){q, m});
+                if (!Ad || !Bd || !Cd || !Dd) rc = TSR_ENOMEM;
+                else {
+                    for (int64_t i = 0; i < n; i++) { for (int64_t j = 0; j < n; j++) Ad[i * n + j] = EM[i * N + j]; for (int64_t j = 0; j < m; j++) Bd[i * m + j] = EM[i * N + n + j]; }
+                    memcpy(Cd, C, sizeof(double) * (size_t)(q * n)); memcpy(Dd, D, sizeof(double) * (size_t)(q * m));
+                    fn_result_num(&res[4], dt);
+                }
+            }
+        }
+        free(M); free(EM);
+    } else {
+        double alpha;
+        if (!strcmp(method, "gbt")) { if (nargs <= 6 || args[6].kind != 1) { fn_set_error("cont2discrete: alpha must be specified for the gbt method"); rc = TSR_EARG; alpha = 0.0; } else alpha = args[6].num; }
+        else if (!strcmp(method, "bilinear") || !strcmp(method, "tustin")) alpha = 0.5;
+        else if (!strcmp(method, "euler") || !strcmp(method, "forward_diff")) alpha = 0.0;
+        else if (!strcmp(method, "backward_diff")) alpha = 1.0;
+        else { fn_set_error("cont2discrete: unknown or unsupported method '%s'", method); rc = TSR_EARG; alpha = 0.0; }
+        if (rc == TSR_OK) {
+            double *ima = (double *)malloc(sizeof(double) * (size_t)(n * n));
+            double *imac = (double *)malloc(sizeof(double) * (size_t)(n * n));
+            double *imaT = (double *)malloc(sizeof(double) * (size_t)(n * n));
+            double *CT = (double *)malloc(sizeof(double) * (size_t)(n * q));
+            double *Cbd = (double *)malloc(sizeof(double) * (size_t)(q * m));
+            double *Ad = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
+            double *Bd = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){n, m});
+            double *Cd = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){q, n});
+            double *Dd = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){q, m});
+            if (!ima || !imac || !imaT || !CT || !Cbd || !Ad || !Bd || !Cd || !Dd) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) ima[i * n + j] = (i == j ? 1.0 : 0.0) - alpha * dt * A[i * n + j];
+                /* Ad = solve(ima, I + (1-alpha)*dt*A) */
+                for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) Ad[i * n + j] = (i == j ? 1.0 : 0.0) + (1.0 - alpha) * dt * A[i * n + j];
+                memcpy(imac, ima, sizeof(double) * (size_t)(n * n));
+                if (sl_dense_solve(imac, Ad, n, n) != 0) { fn_set_error("cont2discrete: (I - alpha*dt*A) is singular"); rc = TSR_EARG; }
+                /* Bd = solve(ima, dt*B) */
+                if (rc == TSR_OK) { for (int64_t i = 0; i < n * m; i++) Bd[i] = dt * B[i]; memcpy(imac, ima, sizeof(double) * (size_t)(n * n)); if (sl_dense_solve(imac, Bd, n, m) != 0) { fn_set_error("cont2discrete: singular system"); rc = TSR_EARG; } }
+                /* Cd = solve(ima^T, C^T)^T */
+                if (rc == TSR_OK) {
+                    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) imaT[i * n + j] = ima[j * n + i];
+                    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < q; j++) CT[i * q + j] = C[j * n + i];
+                    if (sl_dense_solve(imaT, CT, n, q) != 0) { fn_set_error("cont2discrete: singular system"); rc = TSR_EARG; }
+                    else { for (int64_t i = 0; i < q; i++) for (int64_t j = 0; j < n; j++) Cd[i * n + j] = CT[j * q + i]; }
+                }
+                /* Dd = D + alpha * C @ Bd */
+                if (rc == TSR_OK) { sig_mm(C, q, n, Bd, m, Cbd); for (int64_t i = 0; i < q * m; i++) Dd[i] = D[i] + alpha * Cbd[i]; fn_result_num(&res[4], dt); }
+            }
+            free(ima); free(imac); free(imaT); free(CT); free(Cbd);
+        }
+    }
+    fn_free_doubles(A, na); fn_free_doubles(B, nb); fn_free_doubles(C, nc); fn_free_doubles(D, nd);
+    return rc;
+}
+
 /* ---- partial-fraction expansion (scipy.signal) ---- */
 
 enum { RT_MIN, RT_MAX, RT_AVG };
@@ -3842,6 +3934,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.tf2ss", 4, "num, den", "A, B, C, D", r_tf2ss, NULL, "Controller-canonical state-space from transfer-function coefficients (scipy.signal.tf2ss)."),
     ROUTINE("signal.abcd_normalize", 4, "A, B, C, D", "A, B, C, D", r_abcd_normalize, NULL, "Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize)."),
     ROUTINE("signal.ss2tf", 2, "A, B, C, D, input=0", "num, den", r_ss2tf, NULL, "Transfer function (num, den) from a state-space system (scipy.signal.ss2tf)."),
+    ROUTINE("signal.cont2discrete", 5, "A, B, C, D, dt, method='zoh', alpha=None", "Ad, Bd, Cd, Dd, dt", r_cont2discrete, NULL, "Continuous to discrete state-space conversion (scipy.signal.cont2discrete)."),
     ROUTINE("signal.unique_roots", 2, "p, tol=1e-3, rtype='min'", "unique, multiplicity", r_unique_roots, NULL, "Unique roots and multiplicities from a list of roots (scipy.signal.unique_roots)."),
     ROUTINE("signal.invres", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invres, NULL, "Transfer function (b, a) from a partial-fraction expansion, positive powers (scipy.signal.invres)."),
     ROUTINE("signal.invresz", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invresz, NULL, "Transfer function (b, a) from a partial-fraction expansion, negative powers of z (scipy.signal.invresz)."),

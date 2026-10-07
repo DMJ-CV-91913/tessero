@@ -2747,6 +2747,12 @@
                 "doc": "Magnitude-squared coherence by Welch's method (scipy.signal.coherence)."
             },
             {
+                "name": "cont2discrete",
+                "static": true,
+                "sig": "cont2discrete(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $method = 'zoh', mixed $alpha = null): mixed",
+                "doc": "Continuous to discrete state-space conversion (scipy.signal.cont2discrete)."
+            },
+            {
                 "name": "convolve",
                 "static": true,
                 "sig": "convolve(mixed $a, mixed $v, mixed $mode = 'full'): mixed",
@@ -15711,6 +15717,12 @@
                 "name": "ss2tf",
                 "static": true,
                 "sig": "ss2tf($A, $B, $C, $D, $input = 0)",
+                "doc": ""
+            },
+            {
+                "name": "cont2discrete",
+                "static": true,
+                "sig": "cont2discrete($A, $B, $C, $D, $dt, $method = 'zoh', $alpha = null)",
                 "doc": ""
             },
             {
