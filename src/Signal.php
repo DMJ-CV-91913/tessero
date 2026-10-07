@@ -19,6 +19,7 @@ final class Signal
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'bilinear' => 'bilinear',
+    'buttap' => 'buttap',
     'butter' => 'butter',
     'cheby1' => 'cheby1',
     'cheby2' => 'cheby2',
@@ -98,6 +99,18 @@ final class Signal
     public static function bilinear(mixed $b, mixed $a, mixed $fs = 1.0): mixed
     {
         return Registry::routine('signal.bilinear', [$b, $a, $fs]);
+    }
+
+    /**
+     * Analog Butterworth lowpass prototype of order N (scipy.signal.buttap).
+     *
+     * scipy.signal.buttap
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function buttap(mixed $N): mixed
+    {
+        return Registry::routine('signal.buttap', [$N]);
     }
 
     /**
