@@ -223,6 +223,27 @@ for (num, den) in [([1., 3., 3.], [1., 2., 1.]), ([1., 2.], [1., 3., 2.]),
     s2tf.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D)], 'kwargs': {},
                  'expect': F.enc_result((np.atleast_2d(nu), de), ['num', 'den']), 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# partial-fraction expansion
+uroo, ivr, ivz = [], [], []
+for (pp, tol, rt) in [([1., 1., 2., 3., 3., 3.], 1e-3, 'min'),
+                      ([1.0, 1.0005, 2.0, 2.0003], 1e-2, 'avg'),
+                      ([1., 2., 3., 4.], 1e-3, 'max'),
+                      ([1. + 1.j, 1. + 1.j, 2. + 0.j, 3. - 1.j], 1e-3, 'min')]:
+    u, m = sg.unique_roots(pp, tol=tol, rtype=rt)
+    uroo.append({'args': [F.enc(np.asarray(pp)), F.enc(float(tol)), F.enc(rt)], 'kwargs': {},
+                 'expect': F.enc_result((u.astype(complex), m.astype(np.int64)), ['unique', 'multiplicity']),
+                 'compare': 'tol', 'tol': {'atol': 1e-9}})
+for (rr, pp, kk) in [([1., 2.], [1., 2.], []), ([2., -1., 3.], [0.5, 1., 2.], [1.]),
+                     ([1., 1.], [-1., -2.], []), ([3., -2., 1.], [0.2, 0.5, 0.9], [2., 1.])]:
+    b, a = sg.invres(rr, pp, kk)
+    ivr.append({'args': [F.enc(np.asarray(rr)), F.enc(np.asarray(pp)), F.enc(np.asarray(kk, dtype=float))], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(b, dtype=float), np.asarray(a, dtype=float)), ['b', 'a']),
+                'compare': 'tol', 'tol': {'atol': 1e-10}})
+    bz, az = sg.invresz(rr, pp, kk)
+    ivz.append({'args': [F.enc(np.asarray(rr)), F.enc(np.asarray(pp)), F.enc(np.asarray(kk, dtype=float))], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(bz, dtype=float), np.asarray(az, dtype=float)), ['b', 'a']),
+                'compare': 'tol', 'tol': {'atol': 1e-10}})
+
 # rank / median filters (zero-padded)
 mdf, mdf2, ordf = [], [], []
 _rng_mf = np.random.default_rng(7)
@@ -567,6 +588,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'medfilt', 'cases': mdf, 'tol': {'atol': 1e-12}},
                  {'fn': 'medfilt2d', 'cases': mdf2, 'tol': {'atol': 1e-12}},
                  {'fn': 'order_filter', 'cases': ordf, 'tol': {'atol': 1e-12}},
+                 {'fn': 'unique_roots', 'cases': uroo, 'tol': {'atol': 1e-9}},
+                 {'fn': 'invres', 'cases': ivr, 'tol': {'atol': 1e-10}},
+                 {'fn': 'invresz', 'cases': ivz, 'tol': {'atol': 1e-10}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2hp', 'cases': lphp, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2bp', 'cases': lpbp, 'tol': {'atol': 1e-12}},

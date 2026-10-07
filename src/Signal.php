@@ -50,6 +50,8 @@ final class Signal
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
+    'invres' => 'invres',
+    'invresz' => 'invresz',
     'kaiser_atten' => 'kaiserAtten',
     'kaiser_beta' => 'kaiserBeta',
     'kaiserord' => 'kaiserord',
@@ -84,6 +86,7 @@ final class Signal
     'ss2tf' => 'ss2tf',
     'tf2ss' => 'tf2ss',
     'tf2zpk' => 'tf2zpk',
+    'unique_roots' => 'uniqueRoots',
     'unit_impulse' => 'unitImpulse',
     'vectorstrength' => 'vectorstrength',
     'welch' => 'welch',
@@ -461,6 +464,30 @@ final class Signal
     }
 
     /**
+     * Transfer function (b, a) from a partial-fraction expansion, positive powers (scipy.signal.invres).
+     *
+     * scipy.signal.invres
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function invres(mixed $r, mixed $p, mixed $k, mixed $tol = 1e-3, mixed $rtype = 'avg'): mixed
+    {
+        return Registry::routine('signal.invres', [$r, $p, $k, $tol, $rtype]);
+    }
+
+    /**
+     * Transfer function (b, a) from a partial-fraction expansion, negative powers of z (scipy.signal.invresz).
+     *
+     * scipy.signal.invresz
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function invresz(mixed $r, mixed $p, mixed $k, mixed $tol = 1e-3, mixed $rtype = 'avg'): mixed
+    {
+        return Registry::routine('signal.invresz', [$r, $p, $k, $tol, $rtype]);
+    }
+
+    /**
      * Kaiser-window attenuation (dB) for a filter length and transition width (scipy.signal.kaiser_atten).
      *
      * scipy.signal.kaiser_atten
@@ -834,6 +861,18 @@ final class Signal
     public static function tf2zpk(mixed $b, mixed $a): mixed
     {
         return Registry::routine('signal.tf2zpk', [$b, $a]);
+    }
+
+    /**
+     * Unique roots and multiplicities from a list of roots (scipy.signal.unique_roots).
+     *
+     * scipy.signal.unique_roots
+     *
+     * @return mixed one array, or an array keyed by unique, multiplicity when several results are requested
+     */
+    public static function uniqueRoots(mixed $p, mixed $tol = 1e-3, mixed $rtype = 'min'): mixed
+    {
+        return Registry::routine('signal.unique_roots', [$p, $tol, $rtype]);
     }
 
     /**

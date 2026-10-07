@@ -2843,6 +2843,18 @@
                 "doc": "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."
             },
             {
+                "name": "invres",
+                "static": true,
+                "sig": "invres(mixed $r, mixed $p, mixed $k, mixed $tol = 0.001, mixed $rtype = 'avg'): mixed",
+                "doc": "Transfer function (b, a) from a partial-fraction expansion, positive powers (scipy.signal.invres)."
+            },
+            {
+                "name": "invresz",
+                "static": true,
+                "sig": "invresz(mixed $r, mixed $p, mixed $k, mixed $tol = 0.001, mixed $rtype = 'avg'): mixed",
+                "doc": "Transfer function (b, a) from a partial-fraction expansion, negative powers of z (scipy.signal.invresz)."
+            },
+            {
                 "name": "kaiserAtten",
                 "static": true,
                 "sig": "kaiserAtten(mixed $numtaps, mixed $width): mixed",
@@ -3045,6 +3057,12 @@
                 "static": true,
                 "sig": "tf2zpk(mixed $b, mixed $a): mixed",
                 "doc": "Zeros, poles and gain from transfer-function coefficients (scipy.signal.tf2zpk)."
+            },
+            {
+                "name": "uniqueRoots",
+                "static": true,
+                "sig": "uniqueRoots(mixed $p, mixed $tol = 0.001, mixed $rtype = 'min'): mixed",
+                "doc": "Unique roots and multiplicities from a list of roots (scipy.signal.unique_roots)."
             },
             {
                 "name": "unitImpulse",
@@ -15645,6 +15663,24 @@
                 "name": "ss2tf",
                 "static": true,
                 "sig": "ss2tf($A, $B, $C, $D, $input = 0)",
+                "doc": ""
+            },
+            {
+                "name": "uniqueRoots",
+                "static": true,
+                "sig": "uniqueRoots($p, $tol = 0.001, $rtype = 'min')",
+                "doc": ""
+            },
+            {
+                "name": "invres",
+                "static": true,
+                "sig": "invres($r, $p, $k, $tol = 0.001, $rtype = 'avg')",
+                "doc": ""
+            },
+            {
+                "name": "invresz",
+                "static": true,
+                "sig": "invresz($r, $p, $k, $tol = 0.001, $rtype = 'avg')",
                 "doc": ""
             },
             {
