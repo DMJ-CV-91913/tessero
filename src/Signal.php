@@ -34,6 +34,7 @@ final class Signal
     'cheby2' => 'cheby2',
     'chirp' => 'chirp',
     'coherence' => 'coherence',
+    'cont2discrete' => 'cont2discrete',
     'convolve' => 'convolve',
     'convolve2d' => 'convolve2d',
     'correlate' => 'correlate',
@@ -301,6 +302,18 @@ final class Signal
     public static function coherence(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $axis = -1): mixed
     {
         return Registry::routine('signal.coherence', [$x, $y, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $axis]);
+    }
+
+    /**
+     * Continuous to discrete state-space conversion (scipy.signal.cont2discrete).
+     *
+     * scipy.signal.cont2discrete
+     *
+     * @return mixed one array, or an array keyed by Ad, Bd, Cd, Dd, dt when several results are requested
+     */
+    public static function cont2discrete(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $method = 'zoh', mixed $alpha = null): mixed
+    {
+        return Registry::routine('signal.cont2discrete', [$A, $B, $C, $D, $dt, $method, $alpha]);
     }
 
     /**

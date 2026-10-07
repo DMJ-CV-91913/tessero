@@ -441,6 +441,7 @@
         "signal.cheby2": "pass",
         "signal.chirp": "pass",
         "signal.coherence": "pass",
+        "signal.cont2discrete": "pass",
         "signal.convolve": "pass",
         "signal.convolve2d": "pass",
         "signal.correlate": "pass",
@@ -2220,7 +2221,8 @@
             "signal.buttord": 0,
             "signal.cheb1ord": 0,
             "signal.cheb2ord": 0,
-            "signal.ellipord": 0
+            "signal.ellipord": 0,
+            "signal.cont2discrete": 3.6465695357008e-16
         },
         "ext": {
             "np.median": 0,
@@ -3331,7 +3333,8 @@
             "signal.buttord": 0,
             "signal.cheb1ord": 0,
             "signal.cheb2ord": 0,
-            "signal.ellipord": 0
+            "signal.ellipord": 0,
+            "signal.cont2discrete": 3.6465695357008e-16
         }
     },
     "ext": {
@@ -3776,6 +3779,7 @@
         "signal.cheby2": "pass",
         "signal.chirp": "pass",
         "signal.coherence": "pass",
+        "signal.cont2discrete": "pass",
         "signal.convolve": "pass",
         "signal.convolve2d": "pass",
         "signal.correlate": "pass",

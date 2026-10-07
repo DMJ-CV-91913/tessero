@@ -1875,6 +1875,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.cont2discrete": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 5
+        },
         "signal.convolve": {
             "kind": "routine",
             "nin": 0,

@@ -2278,7 +2278,7 @@ static int r_issymmetric(const void *ctx, const tsr_arg *args, int nargs, tsr_re
 }
 
 /* Solve the dense n x n system M x = b in place (b is n x nrhs, row-major) via dgesv. 0 on success. */
-static int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs)
+int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs)
 {
     if (n == 0) return 0;
     lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)n);
@@ -3189,7 +3189,7 @@ static void mm_nn(const double *X, const double *Y, double *C, int64_t n)
 /* Matrix exponential of an n x n row-major real matrix via scaling and squaring with the degree-13 Padé
    approximant (Higham, 2005). Writes the result into out (caller-allocated n*n). This is the reusable core the
    Frechet-derivative routines below rely on through the block-enlarge identity. 0 on success, -1 on failure. */
-static int sl_expm(const double *A, int64_t n, double *out)
+int sl_expm(const double *A, int64_t n, double *out)
 {
     if (n == 0) return 0;
     const size_t nn = (size_t)(n * n);

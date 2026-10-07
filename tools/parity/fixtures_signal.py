@@ -223,6 +223,23 @@ for (num, den) in [([1., 3., 3.], [1., 2., 1.]), ([1., 2.], [1., 3., 2.]),
     s2tf.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D)], 'kwargs': {},
                  'expect': F.enc_result((np.atleast_2d(nu), de), ['num', 'den']), 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# cont2discrete (state-space form)
+c2d = []
+_c2d_sys = [(np.array([[-0.5, 0.0], [0.0, -1.0]]), np.array([[1.0], [0.5]]), np.array([[1.0, 1.0]]), np.array([[0.0]])),
+            (np.array([[0.0, 1.0], [-2.0, -3.0]]), np.array([[0.0], [1.0]]), np.array([[1.0, 0.0]]), np.array([[0.0]])),
+            (np.array([[-1.0]]), np.array([[2.0]]), np.array([[3.0]]), np.array([[0.5]]))]
+for (A, B, C, D) in _c2d_sys:
+    for dt in (0.1, 0.05):
+        for method, alpha in [('zoh', None), ('bilinear', None), ('euler', None), ('backward_diff', None), ('gbt', 0.3)]:
+            pyk = {'method': method} if alpha is None else {'method': method, 'alpha': alpha}
+            Ad, Bd, Cd, Dd, dtret = sg.cont2discrete((A, B, C, D), dt, **pyk)
+            args = [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(float(dt)), F.enc(method)]
+            if alpha is not None:
+                args.append(F.enc(float(alpha)))
+            c2d.append({'args': args, 'kwargs': {},
+                        'expect': F.enc_result((Ad, Bd, Cd, Dd, float(dtret)), ['Ad', 'Bd', 'Cd', 'Dd', 'dt']),
+                        'compare': 'tol', 'tol': {'atol': 1e-10}})
+
 # partial-fraction expansion
 uroo, ivr, ivz = [], [], []
 for (pp, tol, rt) in [([1., 1., 2., 3., 3., 3.], 1e-3, 'min'),
@@ -623,6 +640,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'tf2ss', 'cases': t2ss, 'tol': {'atol': 1e-11}},
                  {'fn': 'abcd_normalize', 'cases': abn, 'tol': {'atol': 1e-12}},
                  {'fn': 'ss2tf', 'cases': s2tf, 'tol': {'atol': 1e-10}},
+                 {'fn': 'cont2discrete', 'cases': c2d, 'tol': {'atol': 1e-10}},
                  {'fn': 'medfilt', 'cases': mdf, 'tol': {'atol': 1e-12}},
                  {'fn': 'medfilt2d', 'cases': mdf2, 'tol': {'atol': 1e-12}},
                  {'fn': 'order_filter', 'cases': ordf, 'tol': {'atol': 1e-12}},
