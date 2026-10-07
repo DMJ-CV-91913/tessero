@@ -108,6 +108,12 @@
 | `signal.medfilt2d` | call | rtol 0 |
 | `signal.order_filter` | every call | rtol 0 |
 | `signal.order_filter` | call | rtol 0 |
+| `signal.unique_roots` | every call | rtol 0 |
+| `signal.unique_roots` | call | rtol 0 |
+| `signal.invres` | every call | rtol 0 |
+| `signal.invres` | call | rtol 0 |
+| `signal.invresz` | every call | rtol 0 |
+| `signal.invresz` | call | rtol 0 |
 | `signal.lp2lp` | every call | rtol 0 |
 | `signal.lp2lp` | call | rtol 0 |
 | `signal.lp2hp` | every call | rtol 0 |

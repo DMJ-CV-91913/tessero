@@ -961,6 +961,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
 | `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |
+| `scipy.signal.invres` | `Tessero\Signal::invres()` |
+| `scipy.signal.invresz` | `Tessero\Signal::invresz()` |
 | `scipy.signal.kaiser_atten` | `Tessero\Signal::kaiserAtten()` |
 | `scipy.signal.kaiser_beta` | `Tessero\Signal::kaiserBeta()` |
 | `scipy.signal.kaiserord` | `Tessero\Signal::kaiserord()` |
@@ -995,6 +997,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.ss2tf` | `Tessero\Signal::ss2tf()` |
 | `scipy.signal.tf2ss` | `Tessero\Signal::tf2ss()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
+| `scipy.signal.unique_roots` | `Tessero\Signal::uniqueRoots()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
 | `scipy.signal.vectorstrength` | `Tessero\Signal::vectorstrength()` |
 | `scipy.signal.welch` | `Tessero\Signal::welch()` |

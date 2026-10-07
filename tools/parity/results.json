@@ -457,6 +457,8 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.invres": "pass",
+        "signal.invresz": "pass",
         "signal.kaiser_atten": "pass",
         "signal.kaiser_beta": "pass",
         "signal.kaiserord": "pass",
@@ -491,6 +493,7 @@
         "signal.ss2tf": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
+        "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
@@ -2198,7 +2201,10 @@
             "signal.ss2tf": 0,
             "signal.medfilt": 0,
             "signal.medfilt2d": 0,
-            "signal.order_filter": 0
+            "signal.order_filter": 0,
+            "signal.unique_roots": 0,
+            "signal.invres": 0,
+            "signal.invresz": 0
         },
         "ext": {
             "np.median": 0,
@@ -3298,7 +3304,10 @@
             "signal.ss2tf": 0,
             "signal.medfilt": 0,
             "signal.medfilt2d": 0,
-            "signal.order_filter": 0
+            "signal.order_filter": 0,
+            "signal.unique_roots": 0,
+            "signal.invres": 0,
+            "signal.invresz": 0
         }
     },
     "ext": {
@@ -3759,6 +3768,8 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.invres": "pass",
+        "signal.invresz": "pass",
         "signal.kaiser_atten": "pass",
         "signal.kaiser_beta": "pass",
         "signal.kaiserord": "pass",
@@ -3793,6 +3804,7 @@
         "signal.ss2tf": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
+        "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
