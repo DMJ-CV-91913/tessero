@@ -1800,6 +1800,16 @@
             "nin": 0,
             "nout": 4
         },
+        "signal.argrelmax": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.argrelmin": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.bilinear": {
             "kind": "routine",
             "nin": 0,

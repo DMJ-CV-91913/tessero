@@ -2657,6 +2657,18 @@
                 "doc": "Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize)."
             },
             {
+                "name": "argrelmax",
+                "static": true,
+                "sig": "argrelmax(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed",
+                "doc": "Indices of relative maxima of a 1-D array (scipy.signal.argrelmax)."
+            },
+            {
+                "name": "argrelmin",
+                "static": true,
+                "sig": "argrelmin(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed",
+                "doc": "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."
+            },
+            {
                 "name": "bilinear",
                 "static": true,
                 "sig": "bilinear(mixed $b, mixed $a, mixed $fs = 1.0): mixed",
@@ -15939,6 +15951,18 @@
                 "name": "orderFilter",
                 "static": true,
                 "sig": "orderFilter($a, $domain, $rank)",
+                "doc": ""
+            },
+            {
+                "name": "argrelmax",
+                "static": true,
+                "sig": "argrelmax($data, $axis = 0, $order = 1, $mode = 'clip')",
+                "doc": ""
+            },
+            {
+                "name": "argrelmin",
+                "static": true,
+                "sig": "argrelmin($data, $axis = 0, $order = 1, $mode = 'clip')",
                 "doc": ""
             },
             {

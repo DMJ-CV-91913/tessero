@@ -244,6 +244,17 @@ for (rr, pp, kk) in [([1., 2.], [1., 2.], []), ([2., -1., 3.], [0.5, 1., 2.], [1
                 'expect': F.enc_result((np.asarray(bz, dtype=float), np.asarray(az, dtype=float)), ['b', 'a']),
                 'compare': 'tol', 'tol': {'atol': 1e-10}})
 
+# argrelmax / argrelmin (1-D, mode='clip')
+armax, armin = [], []
+_rng_ar = np.random.default_rng(13)
+for data, order in [(np.array([2., 1., 2., 3., 2., 0., 1., 0.]), 1),
+                    (_rng_ar.standard_normal(20), 1), (_rng_ar.standard_normal(30), 2),
+                    (np.sin(np.linspace(0, 6 * np.pi, 50)), 3)]:
+    armax.append({'args': [F.enc(data), F.enc(0), F.enc(int(order))], 'kwargs': {},
+                  'expect': F.enc_result(np.asarray(sg.argrelmax(data, order=order)[0], dtype=np.int64), []), 'compare': 'tol'})
+    armin.append({'args': [F.enc(data), F.enc(0), F.enc(int(order))], 'kwargs': {},
+                  'expect': F.enc_result(np.asarray(sg.argrelmin(data, order=order)[0], dtype=np.int64), []), 'compare': 'tol'})
+
 # residue / residuez (real-root denominators, distinct magnitudes -> unambiguous pole order)
 rsd, rsz = [], []
 for (b, a) in [([1., 3., 3.], [1., 6., 11., 6.]), ([1., 0.], [1., 3., 2.]),
@@ -606,6 +617,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'unique_roots', 'cases': uroo, 'tol': {'atol': 1e-9}},
                  {'fn': 'invres', 'cases': ivr, 'tol': {'atol': 1e-10}},
                  {'fn': 'invresz', 'cases': ivz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'argrelmax', 'cases': armax},
+                 {'fn': 'argrelmin', 'cases': armin},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
                  {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},

@@ -19,6 +19,8 @@ final class Signal
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'abcd_normalize' => 'abcdNormalize',
+    'argrelmax' => 'argrelmax',
+    'argrelmin' => 'argrelmin',
     'bilinear' => 'bilinear',
     'bilinear_zpk' => 'bilinearZpk',
     'buttap' => 'buttap',
@@ -121,6 +123,26 @@ final class Signal
     public static function abcdNormalize(mixed $A, mixed $B, mixed $C, mixed $D): mixed
     {
         return Registry::routine('signal.abcd_normalize', [$A, $B, $C, $D]);
+    }
+
+    /**
+     * Indices of relative maxima of a 1-D array (scipy.signal.argrelmax).
+     *
+     * scipy.signal.argrelmax
+     */
+    public static function argrelmax(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed
+    {
+        return Registry::routine('signal.argrelmax', [$data, $axis, $order, $mode]);
+    }
+
+    /**
+     * Indices of relative minima of a 1-D array (scipy.signal.argrelmin).
+     *
+     * scipy.signal.argrelmin
+     */
+    public static function argrelmin(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed
+    {
+        return Registry::routine('signal.argrelmin', [$data, $axis, $order, $mode]);
     }
 
     /**

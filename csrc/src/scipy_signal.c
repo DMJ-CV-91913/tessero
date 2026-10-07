@@ -3329,6 +3329,40 @@ static int r_order_filter_sig(const void *ctx, const tsr_arg *args, int nargs, t
     return rc;
 }
 
+static const int SIG_ARGREL_MAX = 1, SIG_ARGREL_MIN = -1;
+/* argrelmax/argrelmin (1-D, mode='clip'): indices of relative extrema -- points strictly greater (ctx=+1) or
+   less (ctx=-1) than their `order` neighbours on each side, clamped at the edges (scipy.signal.argrel*). */
+static int r_argrel(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)nres;
+    const int want_max = ctx && *(const int *)ctx > 0;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("argrel: data must be a 1-D array"); return TSR_EARG; }
+    const int64_t order = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 1;
+    if (order < 1) { fn_set_error("argrel: order must be an int >= 1"); return TSR_EARG; }
+    int64_t n; double *a = fn_arg_doubles(&args[0], &n); if (!a) return TSR_ENOMEM;
+    int64_t *idx = (int64_t *)malloc(sizeof(int64_t) * (size_t)(n > 0 ? n : 1));
+    int rc = TSR_OK;
+    if (!idx) rc = TSR_ENOMEM;
+    else {
+        int64_t cnt = 0;
+        for (int64_t i = 0; i < n; i++) {
+            int ext = 1;
+            for (int64_t s = 1; s <= order && ext; s++) {
+                int64_t ip = i + s, im = i - s;                 /* clip boundary */
+                if (ip > n - 1) ip = n - 1; if (im < 0) im = 0;
+                const double hi = a[i];
+                if (want_max) { if (!(hi > a[ip]) || !(hi > a[im])) ext = 0; }
+                else { if (!(hi < a[ip]) || !(hi < a[im])) ext = 0; }
+            }
+            if (ext) idx[cnt++] = i;
+        }
+        int64_t *out = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, (int64_t[]){cnt});
+        if (!out) rc = TSR_ENOMEM; else memcpy(out, idx, sizeof(int64_t) * (size_t)cnt);
+    }
+    free(idx); fn_free_doubles(a, n);
+    return rc;
+}
+
 /* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
    1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
 static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3774,6 +3808,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.medfilt", 1, "volume, kernel_size=None", "out", r_medfilt, NULL, "Zero-padded N-D median filter (scipy.signal.medfilt)."),
     ROUTINE("signal.medfilt2d", 1, "input, kernel_size=3", "out", r_medfilt2d, NULL, "Zero-padded 2-D median filter (scipy.signal.medfilt2d)."),
     ROUTINE("signal.order_filter", 1, "a, domain, rank", "out", r_order_filter_sig, NULL, "Rank-order filter over a footprint (scipy.signal.order_filter)."),
+    ROUTINE("signal.argrelmax", 1, "data, axis=0, order=1, mode='clip'", "out", r_argrel, &SIG_ARGREL_MAX, "Indices of relative maxima of a 1-D array (scipy.signal.argrelmax)."),
+    ROUTINE("signal.argrelmin", 1, "data, axis=0, order=1, mode='clip'", "out", r_argrel, &SIG_ARGREL_MIN, "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."),
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
 };

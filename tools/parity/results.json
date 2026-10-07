@@ -426,6 +426,8 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "signal.abcd_normalize": "pass",
+        "signal.argrelmax": "pass",
+        "signal.argrelmin": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
@@ -2208,7 +2210,9 @@
             "signal.invres": 0,
             "signal.invresz": 0,
             "signal.residue": 0,
-            "signal.residuez": 2.449293598294707e-16
+            "signal.residuez": 2.449293598294707e-16,
+            "signal.argrelmax": 0,
+            "signal.argrelmin": 0
         },
         "ext": {
             "np.median": 0,
@@ -3313,7 +3317,9 @@
             "signal.invres": 0,
             "signal.invresz": 0,
             "signal.residue": 0,
-            "signal.residuez": 2.449293598294707e-16
+            "signal.residuez": 2.449293598294707e-16,
+            "signal.argrelmax": 0,
+            "signal.argrelmin": 0
         }
     },
     "ext": {
@@ -3743,6 +3749,8 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "signal.abcd_normalize": "pass",
+        "signal.argrelmax": "pass",
+        "signal.argrelmin": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
         "signal.buttap": "pass",
