@@ -469,6 +469,14 @@ for N in (2, 3, 4):
         zl, pl, kl = sg.lp2lp_zpk(z0, p0, k0, 0.3)
         blnz.append(_zpk_case('bilinear_zpk', zl, pl, kl, (fsv,)))
 
+# bandpass/bandstop zpk transforms
+lpbpz, lpbsz = [], []
+for N in (2, 3, 4):
+    z0, p0, k0 = sg.buttap(N)
+    for (wo, bw) in ((1.0, 0.5), (2.0, 1.0)):
+        lpbpz.append(_zpk_case('lp2bp_zpk', z0, p0, k0, (wo, bw)))
+        lpbsz.append(_zpk_case('lp2bs_zpk', z0, p0, k0, (wo, bw)))
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -518,7 +526,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'buttap', 'cases': bap, 'tol': {'atol': 1e-12}},
                  {'fn': 'lp2lp_zpk', 'cases': lplpz, 'tol': {'atol': 1e-10}},
                  {'fn': 'lp2hp_zpk', 'cases': lphpz, 'tol': {'atol': 1e-10}},
-                 {'fn': 'bilinear_zpk', 'cases': blnz, 'tol': {'atol': 1e-10}}]}
+                 {'fn': 'bilinear_zpk', 'cases': blnz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'lp2bp_zpk', 'cases': lpbpz, 'tol': {'atol': 1e-10}},
+                 {'fn': 'lp2bs_zpk', 'cases': lpbsz, 'tol': {'atol': 1e-10}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

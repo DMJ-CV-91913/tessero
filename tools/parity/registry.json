@@ -1955,10 +1955,20 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.lp2bp_zpk": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "signal.lp2bs": {
             "kind": "routine",
             "nin": 0,
             "nout": 2
+        },
+        "signal.lp2bs_zpk": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
         },
         "signal.lp2hp": {
             "kind": "routine",
