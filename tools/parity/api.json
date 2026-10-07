@@ -2693,16 +2693,34 @@
                 "doc": "Butterworth IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.butter)."
             },
             {
+                "name": "buttord",
+                "static": true,
+                "sig": "buttord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed",
+                "doc": "Butterworth filter order selection, lowpass/highpass (scipy.signal.buttord)."
+            },
+            {
                 "name": "cheb1ap",
                 "static": true,
                 "sig": "cheb1ap(mixed $N, mixed $rp): mixed",
                 "doc": "Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap)."
             },
             {
+                "name": "cheb1ord",
+                "static": true,
+                "sig": "cheb1ord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed",
+                "doc": "Chebyshev type I filter order selection, lowpass/highpass (scipy.signal.cheb1ord)."
+            },
+            {
                 "name": "cheb2ap",
                 "static": true,
                 "sig": "cheb2ap(mixed $N, mixed $rs): mixed",
                 "doc": "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."
+            },
+            {
+                "name": "cheb2ord",
+                "static": true,
+                "sig": "cheb2ord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed",
+                "doc": "Chebyshev type II filter order selection, lowpass/highpass (scipy.signal.cheb2ord)."
             },
             {
                 "name": "cheby1",
@@ -2775,6 +2793,12 @@
                 "static": true,
                 "sig": "detrend(mixed $data, mixed $axis = -1, mixed $type = 'linear', mixed $bp = 0, mixed $overwriteData = false): mixed",
                 "doc": "Remove a constant or piecewise-linear least-squares trend along an axis (scipy.signal.detrend)."
+            },
+            {
+                "name": "ellipord",
+                "static": true,
+                "sig": "ellipord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed",
+                "doc": "Elliptic filter order selection, lowpass/highpass (scipy.signal.ellipord)."
             },
             {
                 "name": "fftconvolve",
@@ -15855,6 +15879,30 @@
                 "name": "kaiserord",
                 "static": true,
                 "sig": "kaiserord($ripple, $width)",
+                "doc": ""
+            },
+            {
+                "name": "buttord",
+                "static": true,
+                "sig": "buttord($wp, $ws, $gpass, $gstop, $analog = false, $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "cheb1ord",
+                "static": true,
+                "sig": "cheb1ord($wp, $ws, $gpass, $gstop, $analog = false, $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "cheb2ord",
+                "static": true,
+                "sig": "cheb2ord($wp, $ws, $gpass, $gstop, $analog = false, $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "ellipord",
+                "static": true,
+                "sig": "ellipord($wp, $ws, $gpass, $gstop, $analog = false, $fs = null)",
                 "doc": ""
             },
             {

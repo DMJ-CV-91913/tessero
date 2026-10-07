@@ -114,6 +114,14 @@
 | `signal.invres` | call | rtol 0 |
 | `signal.invresz` | every call | rtol 0 |
 | `signal.invresz` | call | rtol 0 |
+| `signal.buttord` | every call | rtol 0 |
+| `signal.buttord` | call | rtol 0 |
+| `signal.cheb1ord` | every call | rtol 0 |
+| `signal.cheb1ord` | call | rtol 0 |
+| `signal.cheb2ord` | every call | rtol 0 |
+| `signal.cheb2ord` | call | rtol 0 |
+| `signal.ellipord` | every call | rtol 0 |
+| `signal.ellipord` | call | rtol 0 |
 | `signal.residue` | every call | rtol 0 |
 | `signal.residue` | call | rtol 0 |
 | `signal.residuez` | every call | rtol 0 |
