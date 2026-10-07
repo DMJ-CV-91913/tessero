@@ -1795,6 +1795,11 @@
             "nin": 1,
             "nout": 1
         },
+        "signal.abcd_normalize": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "signal.bilinear": {
             "kind": "routine",
             "nin": 0,
@@ -2089,6 +2094,16 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "signal.ss2tf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.tf2ss": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
         },
         "signal.tf2zpk": {
             "kind": "routine",

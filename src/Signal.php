@@ -18,6 +18,7 @@ final class Signal
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'abcd_normalize' => 'abcdNormalize',
     'bilinear' => 'bilinear',
     'bilinear_zpk' => 'bilinearZpk',
     'buttap' => 'buttap',
@@ -77,6 +78,8 @@ final class Signal
     'sosfreqz' => 'sosfreqz',
     'spectrogram' => 'spectrogram',
     'square' => 'square',
+    'ss2tf' => 'ss2tf',
+    'tf2ss' => 'tf2ss',
     'tf2zpk' => 'tf2zpk',
     'unit_impulse' => 'unitImpulse',
     'vectorstrength' => 'vectorstrength',
@@ -98,6 +101,18 @@ final class Signal
         }
 
         return self::{self::FUNCTIONS[$name]}(...$args);
+    }
+
+    /**
+     * Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize).
+     *
+     * scipy.signal.abcd_normalize
+     *
+     * @return mixed one array, or an array keyed by A, B, C, D when several results are requested
+     */
+    public static function abcdNormalize(mixed $A, mixed $B, mixed $C, mixed $D): mixed
+    {
+        return Registry::routine('signal.abcd_normalize', [$A, $B, $C, $D]);
     }
 
     /**
@@ -750,6 +765,30 @@ final class Signal
     public static function square(mixed $t, mixed $duty = 0.5): mixed
     {
         return Registry::routine('signal.square', [$t, $duty]);
+    }
+
+    /**
+     * Transfer function (num, den) from a state-space system (scipy.signal.ss2tf).
+     *
+     * scipy.signal.ss2tf
+     *
+     * @return mixed one array, or an array keyed by num, den when several results are requested
+     */
+    public static function ss2tf(mixed $A, mixed $B, mixed $C, mixed $D, mixed $input = 0): mixed
+    {
+        return Registry::routine('signal.ss2tf', [$A, $B, $C, $D, $input]);
+    }
+
+    /**
+     * Controller-canonical state-space from transfer-function coefficients (scipy.signal.tf2ss).
+     *
+     * scipy.signal.tf2ss
+     *
+     * @return mixed one array, or an array keyed by A, B, C, D when several results are requested
+     */
+    public static function tf2ss(mixed $num, mixed $den): mixed
+    {
+        return Registry::routine('signal.tf2ss', [$num, $den]);
     }
 
     /**
