@@ -1800,6 +1800,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.buttap": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "signal.butter": {
             "kind": "routine",
             "nin": 0,

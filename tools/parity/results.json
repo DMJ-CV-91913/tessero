@@ -426,6 +426,7 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "signal.bilinear": "pass",
+        "signal.buttap": "pass",
         "signal.butter": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
@@ -2162,7 +2163,8 @@
             "signal.kaiserord": 0,
             "signal.firwin2": 0.7922821494108989,
             "signal.sos2zpk": 0,
-            "signal.deconvolve": 0
+            "signal.deconvolve": 0,
+            "signal.buttap": 0
         },
         "ext": {
             "np.median": 0,
@@ -3244,7 +3246,8 @@
             "signal.kaiserord": 0,
             "signal.firwin2": 0.7922821494108989,
             "signal.sos2zpk": 0,
-            "signal.deconvolve": 0
+            "signal.deconvolve": 0,
+            "signal.buttap": 0
         }
     },
     "ext": {
@@ -3674,6 +3677,7 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "signal.bilinear": "pass",
+        "signal.buttap": "pass",
         "signal.butter": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",

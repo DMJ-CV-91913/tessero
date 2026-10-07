@@ -2472,6 +2472,27 @@ static int r_firwin2(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return rc;
 }
 
+/* buttap(N): the analog Butterworth lowpass prototype of order N (scipy.signal.buttap): no zeros, poles
+   p = -exp(1j*pi*m/(2N)) for m = -N+1, -N+3, ..., N-1, gain 1. Poles returned sorted by (re, im). (z, p, k). */
+static int r_buttap(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 1) { fn_set_error("buttap: N must be an integer"); return TSR_EARG; }
+    const int64_t N = (int64_t)args[0].num;
+    if (N < 0) { fn_set_error("buttap: filter order must be nonnegative"); return TSR_EARG; }
+    double *z = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0});
+    double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){N});
+    if ((N > 0 && !p) || !z) return TSR_ENOMEM;
+    double *tmp = (double *)malloc(sizeof(double) * (size_t)(2 * (N ? N : 1)));
+    if (!tmp) return TSR_ENOMEM;
+    for (int64_t i = 0; i < N; i++) { const double m = (double)(-N + 1 + 2 * i); const double ang = M_PI * m / (2.0 * (double)N); tmp[2 * i] = -cos(ang); tmp[2 * i + 1] = -sin(ang); }
+    qsort(tmp, (size_t)N, 2 * sizeof(double), sig_cplx_cmp);
+    for (int64_t i = 0; i < N; i++) { p[2 * i] = tmp[2 * i]; p[2 * i + 1] = tmp[2 * i + 1]; }
+    free(tmp);
+    fn_result_num(&res[2], 1.0);
+    return TSR_OK;
+}
+
 /* deconvolve(signal, divisor): polynomial division signal = convolve(divisor, quotient) + remainder
    (scipy.signal.deconvolve). Returns (quotient, remainder); remainder has the length of signal. */
 static int r_deconvolve(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2736,6 +2757,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.firwin2", 1, "numtaps, freq, gain, nfreqs=None, window='hamming', antisymmetric=False, fs=None", "out", r_firwin2, NULL, "FIR filter design by frequency sampling (scipy.signal.firwin2)."),
     ROUTINE("signal.sos2zpk", 3, "sos", "z, p, k", r_sos2zpk, NULL, "Zeros, poles and gain from a second-order-sections cascade (scipy.signal.sos2zpk)."),
     ROUTINE("signal.deconvolve", 2, "signal, divisor", "quotient, remainder", r_deconvolve, NULL, "Deconvolve a divisor out of a signal by polynomial division (scipy.signal.deconvolve)."),
+    ROUTINE("signal.buttap", 3, "N", "z, p, k", r_buttap, NULL, "Analog Butterworth lowpass prototype of order N (scipy.signal.buttap)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
