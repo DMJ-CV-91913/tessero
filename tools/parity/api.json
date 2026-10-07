@@ -2921,6 +2921,18 @@
                 "doc": "Scale an analog lowpass zpk prototype to a new cutoff (scipy.signal.lp2lp_zpk)."
             },
             {
+                "name": "medfilt",
+                "static": true,
+                "sig": "medfilt(mixed $volume, mixed $kernelSize = null): mixed",
+                "doc": "Zero-padded N-D median filter (scipy.signal.medfilt)."
+            },
+            {
+                "name": "medfilt2d",
+                "static": true,
+                "sig": "medfilt2d(mixed $input, mixed $kernelSize = 3): mixed",
+                "doc": "Zero-padded 2-D median filter (scipy.signal.medfilt2d)."
+            },
+            {
                 "name": "normalize",
                 "static": true,
                 "sig": "normalize(mixed $b, mixed $a): mixed",
@@ -2931,6 +2943,12 @@
                 "static": true,
                 "sig": "oaconvolve(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $axes = null): mixed",
                 "doc": "N-D convolution by the overlap-add method, modes full/same/valid (scipy.signal.oaconvolve; real)."
+            },
+            {
+                "name": "orderFilter",
+                "static": true,
+                "sig": "orderFilter(mixed $a, mixed $domain, mixed $rank): mixed",
+                "doc": "Rank-order filter over a footprint (scipy.signal.order_filter)."
             },
             {
                 "name": "periodogram",
@@ -15843,6 +15861,24 @@
                 "name": "vectorstrength",
                 "static": true,
                 "sig": "vectorstrength($events, $period)",
+                "doc": ""
+            },
+            {
+                "name": "medfilt",
+                "static": true,
+                "sig": "medfilt($volume, $kernelSize = null)",
+                "doc": ""
+            },
+            {
+                "name": "medfilt2d",
+                "static": true,
+                "sig": "medfilt2d($input, $kernelSize = 3)",
+                "doc": ""
+            },
+            {
+                "name": "orderFilter",
+                "static": true,
+                "sig": "orderFilter($a, $domain, $rank)",
                 "doc": ""
             },
             {

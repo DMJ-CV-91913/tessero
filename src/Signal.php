@@ -63,8 +63,11 @@ final class Signal
     'lp2hp_zpk' => 'lp2hpZpk',
     'lp2lp' => 'lp2lp',
     'lp2lp_zpk' => 'lp2lpZpk',
+    'medfilt' => 'medfilt',
+    'medfilt2d' => 'medfilt2d',
     'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
+    'order_filter' => 'orderFilter',
     'periodogram' => 'periodogram',
     'resample' => 'resample',
     'savgol_coeffs' => 'savgolCoeffs',
@@ -606,6 +609,26 @@ final class Signal
     }
 
     /**
+     * Zero-padded N-D median filter (scipy.signal.medfilt).
+     *
+     * scipy.signal.medfilt
+     */
+    public static function medfilt(mixed $volume, mixed $kernelSize = null): mixed
+    {
+        return Registry::routine('signal.medfilt', [$volume, $kernelSize]);
+    }
+
+    /**
+     * Zero-padded 2-D median filter (scipy.signal.medfilt2d).
+     *
+     * scipy.signal.medfilt2d
+     */
+    public static function medfilt2d(mixed $input, mixed $kernelSize = 3): mixed
+    {
+        return Registry::routine('signal.medfilt2d', [$input, $kernelSize]);
+    }
+
+    /**
      * Normalize a transfer-function representation (scipy.signal.normalize).
      *
      * scipy.signal.normalize
@@ -625,6 +648,16 @@ final class Signal
     public static function oaconvolve(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $axes = null): mixed
     {
         return Registry::routine('signal.oaconvolve', [$in1, $in2, $mode, $axes]);
+    }
+
+    /**
+     * Rank-order filter over a footprint (scipy.signal.order_filter).
+     *
+     * scipy.signal.order_filter
+     */
+    public static function orderFilter(mixed $a, mixed $domain, mixed $rank): mixed
+    {
+        return Registry::routine('signal.order_filter', [$a, $domain, $rank]);
     }
 
     /**

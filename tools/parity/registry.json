@@ -2020,12 +2020,27 @@
             "nin": 0,
             "nout": 3
         },
+        "signal.medfilt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.medfilt2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.normalize": {
             "kind": "routine",
             "nin": 0,
             "nout": 2
         },
         "signal.oaconvolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.order_filter": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

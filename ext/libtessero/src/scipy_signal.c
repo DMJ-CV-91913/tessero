@@ -2732,6 +2732,130 @@ static int r_convolve2d(const void *ctx, const tsr_arg *args, int nargs, tsr_res
 static int r_correlate2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return conv2d_common(args, nargs, 1, "correlate2d", res); }
 
+/* N-D order-statistic filter over an arbitrary footprint, zero-padded at the borders (scipy.ndimage.rank_filter
+   with mode='constant', cval=0). The footprint is centred over each pixel (fshape[d] must be odd). For each
+   output pixel the selected neighbours (footprint nonzero; out-of-bounds taken as 0) are sorted ascending and
+   the rank-th (0-based) element is returned. Backs scipy.signal.order_filter/medfilt/medfilt2d. */
+static int sig_order_filter_nd(const double *a, const int64_t *shape, int32_t nd,
+                               const int64_t *fshape, const unsigned char *fp, int64_t rank,
+                               const char *who, tsr_result *res)
+{
+    int64_t total = 1, ftot = 1, fcount = 0;
+    for (int32_t d = 0; d < nd; d++) { total *= shape[d]; ftot *= fshape[d]; }
+    for (int64_t i = 0; i < ftot; i++) if (fp[i]) fcount++;
+    if (fcount == 0) { fn_set_error("%s: footprint has no nonzero element", who); return TSR_EARG; }
+    if (rank < 0) rank += fcount;
+    if (rank < 0 || rank >= fcount) { fn_set_error("%s: rank is out of range", who); return TSR_EARG; }
+    double *out = (double *)fn_result_array(res, TSR_F64, nd, (int64_t *)shape);
+    if (!out) return TSR_ENOMEM;
+    double *win = (double *)malloc(sizeof(double) * (size_t)fcount);
+    if (!win) return TSR_ENOMEM;
+    int64_t ist[TSR_MAXDIM], c[TSR_MAXDIM];
+    { int64_t acc = 1; for (int32_t d = nd - 1; d >= 0; d--) { ist[d] = acc; acc *= shape[d]; } }
+    for (int32_t d = 0; d < nd; d++) c[d] = fshape[d] / 2;
+    int64_t O[TSR_MAXDIM]; for (int32_t d = 0; d < nd; d++) O[d] = 0;
+    for (int64_t idx = 0; idx < total; idx++) {
+        int64_t w = 0, K[TSR_MAXDIM]; for (int32_t d = 0; d < nd; d++) K[d] = 0;
+        for (int64_t fi = 0; fi < ftot; fi++) {
+            if (fp[fi]) {
+                int64_t off = 0; int inb = 1;
+                for (int32_t d = 0; d < nd; d++) {
+                    const int64_t ii = O[d] + K[d] - c[d];
+                    if (ii < 0 || ii >= shape[d]) inb = 0;
+                    off += ii * ist[d];
+                }
+                win[w++] = inb ? a[off] : 0.0;
+            }
+            for (int32_t d = nd - 1; d >= 0; d--) { if (++K[d] < fshape[d]) break; K[d] = 0; }
+        }
+        qsort(win, (size_t)fcount, sizeof(double), cmp_double_sig);
+        out[idx] = win[rank];
+        for (int32_t d = nd - 1; d >= 0; d--) { if (++O[d] < shape[d]) break; O[d] = 0; }
+    }
+    free(win);
+    return TSR_OK;
+}
+
+/* a scalar or an nd-length sequence/array -> one odd kernel size per axis (default dflt). */
+static int sig_perax_odd(const tsr_arg *a, int32_t nd, int64_t dflt, int64_t *out, const char *who)
+{
+    if (!a || a->kind == 0) { for (int32_t d = 0; d < nd; d++) out[d] = dflt; }
+    else if (a->kind == 1) { const int64_t v = (int64_t)a->num; for (int32_t d = 0; d < nd; d++) out[d] = v; }
+    else if (a->kind == 3 && a->arr.ndim == 1 && a->arr.shape[0] == nd) {
+        int64_t t; double *p = fn_arg_doubles(a, &t); if (!p) return TSR_ENOMEM;
+        for (int32_t d = 0; d < nd; d++) out[d] = (int64_t)p[d]; fn_free_doubles(p, t);
+    } else { fn_set_error("%s: kernel_size must be a scalar or a length-%d sequence", who, (int)nd); return TSR_EARG; }
+    for (int32_t d = 0; d < nd; d++) if ((out[d] % 2) != 1) { fn_set_error("%s: each element of kernel_size should be odd", who); return TSR_EARG; }
+    return TSR_OK;
+}
+
+/* medfilt(volume, kernel_size=None): zero-padded N-D median filter (scipy.signal.medfilt). */
+static int r_medfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("medfilt: volume must be an array"); return TSR_EARG; }
+    const int32_t nd = args[0].arr.ndim;
+    if (nd < 1 || nd > TSR_MAXDIM) { fn_set_error("medfilt: unsupported dimensionality"); return TSR_EARG; }
+    int64_t ks[TSR_MAXDIM];
+    int rc = sig_perax_odd(nargs > 1 ? &args[1] : NULL, nd, 3, ks, "medfilt");
+    if (rc != TSR_OK) return rc;
+    int64_t V = 1; for (int32_t d = 0; d < nd; d++) V *= ks[d];
+    unsigned char *fp = (unsigned char *)malloc((size_t)V);
+    if (!fp) return TSR_ENOMEM;
+    memset(fp, 1, (size_t)V);
+    int64_t na; double *a = fn_arg_doubles(&args[0], &na);
+    if (!a) { free(fp); return TSR_ENOMEM; }
+    rc = sig_order_filter_nd(a, args[0].arr.shape, nd, ks, fp, V / 2, "medfilt", &res[0]);
+    free(fp); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* medfilt2d(input, kernel_size=3): zero-padded 2-D median filter (scipy.signal.medfilt2d). */
+static int r_medfilt2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("medfilt2d: input must be a 2-D array"); return TSR_EARG; }
+    int64_t ks[2];
+    int rc = sig_perax_odd(nargs > 1 ? &args[1] : NULL, 2, 3, ks, "medfilt2d");
+    if (rc != TSR_OK) return rc;
+    const int64_t V = ks[0] * ks[1];
+    unsigned char *fp = (unsigned char *)malloc((size_t)V);
+    if (!fp) return TSR_ENOMEM;
+    memset(fp, 1, (size_t)V);
+    int64_t na; double *a = fn_arg_doubles(&args[0], &na);
+    if (!a) { free(fp); return TSR_ENOMEM; }
+    rc = sig_order_filter_nd(a, args[0].arr.shape, 2, ks, fp, V / 2, "medfilt2d", &res[0]);
+    free(fp); fn_free_doubles(a, na);
+    return rc;
+}
+
+/* order_filter(a, domain, rank): rank-th order statistic over the footprint `domain` (scipy.signal.order_filter). */
+static int r_order_filter_sig(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("order_filter: a and domain must be arrays"); return TSR_EARG; }
+    const int32_t nd = args[0].arr.ndim;
+    if (args[1].arr.ndim != nd) { fn_set_error("order_filter: a and domain must have the same number of dimensions"); return TSR_EARG; }
+    if (nd < 1 || nd > TSR_MAXDIM) { fn_set_error("order_filter: unsupported dimensionality"); return TSR_EARG; }
+    int64_t fshape[TSR_MAXDIM], ftot = 1;
+    for (int32_t d = 0; d < nd; d++) {
+        fshape[d] = args[1].arr.shape[d]; ftot *= fshape[d];
+        if ((fshape[d] % 2) != 1) { fn_set_error("order_filter: each dimension of domain should have an odd number of elements"); return TSR_EARG; }
+    }
+    const int64_t rank = (args[2].kind == 1) ? (int64_t)args[2].num : 0;
+    int64_t nd2; double *dom = fn_arg_doubles(&args[1], &nd2);
+    if (!dom) return TSR_ENOMEM;
+    unsigned char *fp = (unsigned char *)malloc((size_t)(ftot > 0 ? ftot : 1));
+    if (!fp) { fn_free_doubles(dom, nd2); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < ftot; i++) fp[i] = (dom[i] != 0.0) ? 1 : 0;
+    fn_free_doubles(dom, nd2);
+    int64_t na; double *a = fn_arg_doubles(&args[0], &na);
+    if (!a) { free(fp); return TSR_ENOMEM; }
+    int rc = sig_order_filter_nd(a, args[0].arr.shape, nd, fshape, fp, rank, "order_filter", &res[0]);
+    free(fp); fn_free_doubles(a, na);
+    return rc;
+}
+
 /* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
    1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
 static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -3169,6 +3293,9 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.cheb2ap", 3, "N, rs", "z, p, k", r_cheb2ap, NULL, "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."),
     ROUTINE("signal.gauss_spline", 1, "x, n", "out", r_gauss_spline, NULL, "Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline)."),
     ROUTINE("signal.vectorstrength", 2, "events, period", "strength, phase", r_vectorstrength, NULL, "Vector strength and mean phase of events over a period (scipy.signal.vectorstrength)."),
+    ROUTINE("signal.medfilt", 1, "volume, kernel_size=None", "out", r_medfilt, NULL, "Zero-padded N-D median filter (scipy.signal.medfilt)."),
+    ROUTINE("signal.medfilt2d", 1, "input, kernel_size=3", "out", r_medfilt2d, NULL, "Zero-padded 2-D median filter (scipy.signal.medfilt2d)."),
+    ROUTINE("signal.order_filter", 1, "a, domain, rank", "out", r_order_filter_sig, NULL, "Rank-order filter over a footprint (scipy.signal.order_filter)."),
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
 };
