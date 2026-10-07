@@ -1501,6 +1501,28 @@ static int r_signal_normalize(const void *ctx, const tsr_arg *args, int nargs, t
     return rc;
 }
 
+/* zeros, poles and gain of a transfer function (num b, den a), emitting (z, p, k). Shared by tf2zpk and ss2zpk. */
+static int sig_tf2zpk_emit(const double *b, int64_t nb, const double *a, int64_t na, tsr_result *res)
+{
+    double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
+    int rc = TSR_OK;
+    if (sig_normalize(b, nb, a, na, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("tf2zpk: normalize failed"); return TSR_EARG; }
+    const double k = b2[0];
+    for (int64_t i = 0; i < nb2; i++) b2[i] /= k;            /* monic numerator for roots */
+    int64_t nz = 0, npz = 0;
+    double *z = sig_polyroots(b2, nb2, &nz);
+    double *p = sig_polyroots(a2, na2, &npz);
+    if (nz < 0 || npz < 0) { fn_set_error("tf2zpk: root solve failed"); rc = TSR_EARG; }
+    else {
+        double *oz = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){nz});
+        double *op = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){npz});
+        if (!oz || !op) rc = TSR_ENOMEM;
+        else { if (nz) memcpy(oz, z, sizeof(double) * (size_t)(2 * nz)); if (npz) memcpy(op, p, sizeof(double) * (size_t)(2 * npz)); fn_result_num(&res[2], k); }
+    }
+    free(z); free(p); free(b2); free(a2);
+    return rc;
+}
+
 /* tf2zpk(b, a): zeros, poles and gain of a transfer function (scipy.signal.tf2zpk). Roots sorted by (re, im). */
 static int r_tf2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -1508,25 +1530,7 @@ static int r_tf2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("tf2zpk: b and a must be arrays (a 1-D)"); return TSR_EARG; }
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
-    double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
-    int rc = TSR_OK;
-    if (sig_normalize(b, nb, a, na, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("tf2zpk: normalize failed"); rc = TSR_EARG; }
-    else {
-        const double k = b2[0];
-        for (int64_t i = 0; i < nb2; i++) b2[i] /= k;        /* monic numerator for roots */
-        int64_t nz = 0, npz = 0;
-        double *z = sig_polyroots(b2, nb2, &nz);
-        double *p = sig_polyroots(a2, na2, &npz);
-        if (nz < 0 || npz < 0) { fn_set_error("tf2zpk: root solve failed"); rc = TSR_EARG; }
-        else {
-            double *oz = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){nz});
-            double *op = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){npz});
-            if (!oz || !op) rc = TSR_ENOMEM;
-            else { if (nz) memcpy(oz, z, sizeof(double) * (size_t)(2 * nz)); if (npz) memcpy(op, p, sizeof(double) * (size_t)(2 * npz)); fn_result_num(&res[2], k); }
-        }
-        free(z); free(p);
-    }
-    free(b2); free(a2);
+    int rc = sig_tf2zpk_emit(b, nb, a, na, res);
     fn_free_doubles(b, nb); fn_free_doubles(a, na);
     return rc;
 }
@@ -1644,6 +1648,44 @@ static int ss_charpoly(const double *M, int64_t n, double *out)
     return 0;
 }
 
+/* Controller-canonical (A, B, C, D) from a SISO transfer function (num, den), emitting the four results.
+   Shared by tf2ss and zpk2ss. */
+static int sig_tf2ss_emit(const double *num, int64_t nb, const double *den, int64_t na, tsr_result *res)
+{
+    double *b2 = NULL, *a2 = NULL; int64_t M = 0, K = 0;
+    int rc = TSR_OK;
+    if (sig_normalize(num, nb, den, na, &b2, &M, &a2, &K) != 0) { fn_set_error("tf2ss: normalize failed"); return TSR_EARG; }
+    if (M > K) { free(b2); free(a2); fn_set_error("tf2ss: improper transfer function (num longer than den)"); return TSR_EARG; }
+    double *np_ = (double *)calloc((size_t)(K > 0 ? K : 1), sizeof(double));
+    if (!np_) { free(b2); free(a2); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < M; i++) np_[K - M + i] = b2[i];
+    const double D0 = np_[0];
+    if (K <= 1) {                                             /* null / gain-only system */
+        double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){1, 1});
+        double *B = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){1, 1});
+        double *C = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){1, 1});
+        double *D = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){1, 1});
+        if (!A || !B || !C || !D) rc = TSR_ENOMEM;
+        else { A[0] = 0.0; B[0] = 0.0; C[0] = 0.0; D[0] = D0; }
+    } else {
+        const int64_t m = K - 1;                              /* number of states */
+        double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){m, m});
+        double *B = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){m, 1});
+        double *C = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){1, m});
+        double *D = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){1, 1});
+        if (!A || !B || !C || !D) rc = TSR_ENOMEM;
+        else {
+            for (int64_t j = 0; j < m; j++) A[j] = -a2[1 + j];          /* row 0 = -den[1:] */
+            for (int64_t r = 1; r < m; r++) for (int64_t c = 0; c < m; c++) A[r * m + c] = (c == r - 1) ? 1.0 : 0.0;
+            B[0] = 1.0; for (int64_t r = 1; r < m; r++) B[r] = 0.0;
+            for (int64_t j = 0; j < m; j++) C[j] = np_[1 + j] - np_[0] * a2[1 + j];
+            D[0] = D0;
+        }
+    }
+    free(np_); free(b2); free(a2);
+    return rc;
+}
+
 /* tf2ss(num, den): controller-canonical state-space (A, B, C, D) of a SISO transfer function
    (scipy.signal.tf2ss; 1-D num/den). */
 static int r_tf2ss(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -1653,44 +1695,24 @@ static int r_tf2ss(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
         fn_set_error("tf2ss: num and den must be 1-D arrays"); return TSR_EARG; }
     int64_t nb, na; double *num = fn_arg_doubles(&args[0], &nb); if (!num) return TSR_ENOMEM;
     double *den = fn_arg_doubles(&args[1], &na); if (!den) { fn_free_doubles(num, nb); return TSR_ENOMEM; }
-    double *b2 = NULL, *a2 = NULL; int64_t M = 0, K = 0;
-    int rc = TSR_OK;
-    if (sig_normalize(num, nb, den, na, &b2, &M, &a2, &K) != 0) { fn_set_error("tf2ss: normalize failed"); rc = TSR_EARG; }
-    else if (M > K) { fn_set_error("tf2ss: improper transfer function (num longer than den)"); rc = TSR_EARG; }
-    else {
-        /* pad numerator on the left to length K */
-        double *np_ = (double *)calloc((size_t)(K > 0 ? K : 1), sizeof(double));
-        if (!np_) rc = TSR_ENOMEM;
-        else {
-            for (int64_t i = 0; i < M; i++) np_[K - M + i] = b2[i];
-            const double D0 = np_[0];
-            if (K <= 1) {                                     /* null / gain-only system */
-                double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){1, 1});
-                double *B = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){1, 1});
-                double *C = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){1, 1});
-                double *D = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){1, 1});
-                if (!A || !B || !C || !D) rc = TSR_ENOMEM;
-                else { A[0] = 0.0; B[0] = 0.0; C[0] = 0.0; D[0] = D0; }
-            } else {
-                const int64_t m = K - 1;                      /* number of states */
-                double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){m, m});
-                double *B = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){m, 1});
-                double *C = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){1, m});
-                double *D = (double *)fn_result_array(&res[3], TSR_F64, 2, (int64_t[]){1, 1});
-                if (!A || !B || !C || !D) rc = TSR_ENOMEM;
-                else {
-                    for (int64_t j = 0; j < m; j++) A[j] = -a2[1 + j];          /* row 0 = -den[1:] */
-                    for (int64_t r = 1; r < m; r++) for (int64_t c = 0; c < m; c++) A[r * m + c] = (c == r - 1) ? 1.0 : 0.0;
-                    B[0] = 1.0; for (int64_t r = 1; r < m; r++) B[r] = 0.0;
-                    for (int64_t j = 0; j < m; j++) C[j] = np_[1 + j] - np_[0] * a2[1 + j];
-                    D[0] = D0;
-                }
-            }
-            free(np_);
-        }
-    }
-    free(b2); free(a2);
+    int rc = sig_tf2ss_emit(num, nb, den, na, res);
     fn_free_doubles(num, nb); fn_free_doubles(den, na);
+    return rc;
+}
+
+/* zpk2ss(z, p, k): state-space (A, B, C, D) from zeros, poles and gain (scipy.signal.zpk2ss = tf2ss(zpk2tf)). */
+static int r_zpk2ss(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nz, np_; double complex *z = read_carr(&args[0], &nz); if (!z) return TSR_ENOMEM;
+    double complex *p = read_carr(&args[1], &np_); if (!p) { free(z); return TSR_ENOMEM; }
+    const double k = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    double *b = (double *)malloc(sizeof(double) * (size_t)(nz + 1));
+    double *a = (double *)malloc(sizeof(double) * (size_t)(np_ + 1));
+    int rc = TSR_OK;
+    if (!b || !a) rc = TSR_ENOMEM;
+    else { zpk2tf_real(z, (int)nz, p, (int)np_, k, b, a); rc = sig_tf2ss_emit(b, nz + 1, a, np_ + 1, res); }
+    free(b); free(a); free(z); free(p);
     return rc;
 }
 
@@ -1762,6 +1784,43 @@ static int r_ss2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
         }
     }
     free(den); free(tmp); free(numk);
+    fn_free_doubles(A, na_); fn_free_doubles(B, nb_); fn_free_doubles(C, nc_); fn_free_doubles(D, nd_);
+    return rc;
+}
+
+/* ss2zpk(A, B, C, D, input=0): zeros, poles and gain of a single-output state-space system
+   (scipy.signal.ss2zpk = tf2zpk(ss2tf(...))). */
+static int r_ss2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) {
+        fn_set_error("ss2zpk: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], p = args[3].arr.shape[1], q = args[3].arr.shape[0];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n ||
+        args[1].arr.shape[1] != p || args[2].arr.shape[0] != q) { fn_set_error("ss2zpk: inconsistent state-space shapes"); return TSR_EARG; }
+    if (q != 1) { fn_set_error("ss2zpk: only single-output systems are supported"); return TSR_EARG; }
+    int64_t inp = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : 0;
+    if (inp < 0 || inp >= p) { fn_set_error("ss2zpk: system does not have the input specified"); return TSR_EARG; }
+    int64_t na_, nb_, nc_, nd_;
+    double *A = fn_arg_doubles(&args[0], &na_); double *B = fn_arg_doubles(&args[1], &nb_);
+    double *C = fn_arg_doubles(&args[2], &nc_); double *D = fn_arg_doubles(&args[3], &nd_);
+    double *den = (double *)malloc(sizeof(double) * (size_t)(n + 1));
+    double *tmp = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
+    double *numk = (double *)malloc(sizeof(double) * (size_t)(n + 1));
+    double *num = (double *)malloc(sizeof(double) * (size_t)(n + 1));
+    int rc = TSR_OK;
+    if (!A || !B || !C || !D || !den || !tmp || !numk || !num) rc = TSR_ENOMEM;
+    else if (ss_charpoly(A, n, den) != 0) { fn_set_error("ss2zpk: eigenvalue computation failed"); rc = TSR_EARG; }
+    else {
+        for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) tmp[i * n + j] = A[i * n + j] - B[i * p + inp] * C[j];
+        if (ss_charpoly(tmp, n, numk) != 0) { fn_set_error("ss2zpk: eigenvalue computation failed"); rc = TSR_EARG; }
+        else {
+            const double dk = D[inp];
+            for (int64_t j = 0; j <= n; j++) num[j] = numk[j] + (dk - 1.0) * den[j];
+            rc = sig_tf2zpk_emit(num, n + 1, den, n + 1, res);
+        }
+    }
+    free(den); free(tmp); free(numk); free(num);
     fn_free_doubles(A, na_); fn_free_doubles(B, nb_); fn_free_doubles(C, nc_); fn_free_doubles(D, nd_);
     return rc;
 }
@@ -3935,6 +3994,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.abcd_normalize", 4, "A, B, C, D", "A, B, C, D", r_abcd_normalize, NULL, "Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize)."),
     ROUTINE("signal.ss2tf", 2, "A, B, C, D, input=0", "num, den", r_ss2tf, NULL, "Transfer function (num, den) from a state-space system (scipy.signal.ss2tf)."),
     ROUTINE("signal.cont2discrete", 5, "A, B, C, D, dt, method='zoh', alpha=None", "Ad, Bd, Cd, Dd, dt", r_cont2discrete, NULL, "Continuous to discrete state-space conversion (scipy.signal.cont2discrete)."),
+    ROUTINE("signal.zpk2ss", 4, "z, p, k", "A, B, C, D", r_zpk2ss, NULL, "State-space (A, B, C, D) from zeros, poles and gain (scipy.signal.zpk2ss)."),
+    ROUTINE("signal.ss2zpk", 3, "A, B, C, D, input=0", "z, p, k", r_ss2zpk, NULL, "Zeros, poles and gain from a single-output state-space system (scipy.signal.ss2zpk)."),
     ROUTINE("signal.unique_roots", 2, "p, tol=1e-3, rtype='min'", "unique, multiplicity", r_unique_roots, NULL, "Unique roots and multiplicities from a list of roots (scipy.signal.unique_roots)."),
     ROUTINE("signal.invres", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invres, NULL, "Transfer function (b, a) from a partial-fraction expansion, positive powers (scipy.signal.invres)."),
     ROUTINE("signal.invresz", 2, "r, p, k, tol=1e-3, rtype='avg'", "b, a", r_invresz, NULL, "Transfer function (b, a) from a partial-fraction expansion, negative powers of z (scipy.signal.invresz)."),

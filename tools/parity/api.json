@@ -3101,6 +3101,12 @@
                 "doc": "Transfer function (num, den) from a state-space system (scipy.signal.ss2tf)."
             },
             {
+                "name": "ss2zpk",
+                "static": true,
+                "sig": "ss2zpk(mixed $A, mixed $B, mixed $C, mixed $D, mixed $input = 0): mixed",
+                "doc": "Zeros, poles and gain from a single-output state-space system (scipy.signal.ss2zpk)."
+            },
+            {
                 "name": "tf2ss",
                 "static": true,
                 "sig": "tf2ss(mixed $num, mixed $den): mixed",
@@ -3135,6 +3141,12 @@
                 "static": true,
                 "sig": "welch(mixed $x, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed",
                 "doc": "Welch's averaged-periodogram power spectral density estimate (scipy.signal.welch)."
+            },
+            {
+                "name": "zpk2ss",
+                "static": true,
+                "sig": "zpk2ss(mixed $z, mixed $p, mixed $k): mixed",
+                "doc": "State-space (A, B, C, D) from zeros, poles and gain (scipy.signal.zpk2ss)."
             },
             {
                 "name": "zpk2tf",
@@ -15723,6 +15735,18 @@
                 "name": "cont2discrete",
                 "static": true,
                 "sig": "cont2discrete($A, $B, $C, $D, $dt, $method = 'zoh', $alpha = null)",
+                "doc": ""
+            },
+            {
+                "name": "zpk2ss",
+                "static": true,
+                "sig": "zpk2ss($z, $p, $k)",
+                "doc": ""
+            },
+            {
+                "name": "ss2zpk",
+                "static": true,
+                "sig": "ss2zpk($A, $B, $C, $D, $input = 0)",
                 "doc": ""
             },
             {
