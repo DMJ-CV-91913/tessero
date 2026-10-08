@@ -70,6 +70,7 @@
 | `interpolate.RegularGridInterpolator` | call | rtol 0 |
 | `interpolate.interpn` | call | rtol 0 |
 | `interpolate.RBFInterpolator` | call | rtol 0 |
+| `interpolate.make_lsq_spline` | call | rtol 0 |
 | `linalg.solve` | every call | rtol 1e-09 |
 | `linalg.inv` | every call | rtol 1e-09 |
 | `linalg.det` | every call | rtol 1e-09 |

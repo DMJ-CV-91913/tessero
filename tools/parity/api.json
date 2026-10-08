@@ -3907,6 +3907,12 @@
                 "doc": "Interpolating spline (k=1 linear or k=3 not-a-knot cubic) evaluated at xnew (scipy.interpolate.make_interp_spline)."
             },
             {
+                "name": "makeLsqSpline",
+                "static": true,
+                "sig": "makeLsqSpline(mixed $x, mixed $y, mixed $t, mixed $k, mixed $xnew): mixed",
+                "doc": "Least-squares B-spline fit with given knots t and degree k, evaluated at xnew (scipy.interpolate.make_lsq_spline)."
+            },
+            {
                 "name": "pade",
                 "static": true,
                 "sig": "pade(mixed $an, mixed $m, mixed $n = null): mixed",
@@ -17172,6 +17178,12 @@
                 "name": "RBFInterpolator",
                 "static": true,
                 "sig": "RBFInterpolator($y, $d, $xi, $kernel = 'thin_plate_spline')",
+                "doc": ""
+            },
+            {
+                "name": "makeLsqSpline",
+                "static": true,
+                "sig": "makeLsqSpline($x, $y, $t, $k, $xnew)",
                 "doc": ""
             }
         ]

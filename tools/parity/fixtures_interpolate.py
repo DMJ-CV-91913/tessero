@@ -9,14 +9,14 @@ from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInte
                                barycentric_interpolate, krogh_interpolate,
                                make_interp_spline, BSpline, pade, splev,
                                splrep, splder, splantider, splint, sproot, lagrange,
-                               RegularGridInterpolator, interpn, RBFInterpolator)
+                               RegularGridInterpolator, interpn, RBFInterpolator, make_lsq_spline)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr, lag, rgi, ipn, rbf = ([] for _ in range(19))
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr, lag, rgi, ipn, rbf, lsq = ([] for _ in range(20))
 
 
 def xyc(xi, yi, xnew, vals):
@@ -150,6 +150,20 @@ for kern in ('thin_plate_spline', 'linear'):
         rbf.append({'args': [F.enc(yk), F.enc(dk), F.enc(xk), F.enc(kern)], 'kwargs': {},
                     'expect': F.enc_result(np.asarray(RBFInterpolator(yk, dk, kernel=kern)(xk)), []), 'compare': 'tol', 'tol': {'atol': 1e-8}})
 
+# make_lsq_spline: least-squares cubic B-spline fit with an explicit clamped knot vector (a few interior knots at
+# data quantiles), evaluated at xnew. Well-conditioned (plenty of data per coefficient) so the normal-equations
+# solve matches scipy's banded least-squares.
+for npts in (24, 32):
+    xs = np.sort(np.unique(rng.uniform(0.0, 10.0, npts)))
+    ys = np.sin(0.8 * xs) + 0.1 * rng.normal(size=len(xs))
+    kk = 3
+    nint = 3
+    interior = np.quantile(xs, np.linspace(0, 1, nint + 2)[1:-1])
+    tk = np.r_[[xs[0]] * (kk + 1), interior, [xs[-1]] * (kk + 1)]
+    xn = np.linspace(xs[0], xs[-1], 17)
+    lsq.append({'args': [F.enc(xs), F.enc(ys), F.enc(np.asarray(tk, float)), F.enc(kk), F.enc(xn)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(make_lsq_spline(xs, ys, tk, kk)(xn)), []), 'compare': 'tol', 'tol': {'atol': 1e-8}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
@@ -160,7 +174,7 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'splint', 'cases': spi}, {'fn': 'sproot', 'cases': spr},
          {'fn': 'lagrange', 'cases': lag},
          {'fn': 'RegularGridInterpolator', 'cases': rgi}, {'fn': 'interpn', 'cases': ipn},
-         {'fn': 'RBFInterpolator', 'cases': rbf}]
+         {'fn': 'RBFInterpolator', 'cases': rbf}, {'fn': 'make_lsq_spline', 'cases': lsq}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
