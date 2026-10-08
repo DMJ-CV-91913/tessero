@@ -985,6 +985,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.kaiserord` | `Tessero\Signal::kaiserord()` |
 | `scipy.signal.lfilter` | `Tessero\Signal::lfilter()` |
 | `scipy.signal.lfilter_zi` | `Tessero\Signal::lfilterZi()` |
+| `scipy.signal.lombscargle` | `Tessero\Signal::lombscargle()` |
 | `scipy.signal.lp2bp` | `Tessero\Signal::lp2bp()` |
 | `scipy.signal.lp2bp_zpk` | `Tessero\Signal::lp2bpZpk()` |
 | `scipy.signal.lp2bs` | `Tessero\Signal::lp2bs()` |

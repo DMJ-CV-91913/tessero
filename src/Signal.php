@@ -73,6 +73,7 @@ final class Signal
     'kaiserord' => 'kaiserord',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
+    'lombscargle' => 'lombscargle',
     'lp2bp' => 'lp2bp',
     'lp2bp_zpk' => 'lp2bpZpk',
     'lp2bs' => 'lp2bs',
@@ -747,6 +748,16 @@ final class Signal
     public static function lfilterZi(mixed $b, mixed $a): mixed
     {
         return Registry::routine('signal.lfilter_zi', [$b, $a]);
+    }
+
+    /**
+     * Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle).
+     *
+     * scipy.signal.lombscargle
+     */
+    public static function lombscargle(mixed $x, mixed $y, mixed $freqs): mixed
+    {
+        return Registry::routine('signal.lombscargle', [$x, $y, $freqs]);
     }
 
     /**

@@ -2981,6 +2981,12 @@
                 "doc": "Steady-state step-response initial conditions for lfilter (scipy.signal.lfilter_zi)."
             },
             {
+                "name": "lombscargle",
+                "static": true,
+                "sig": "lombscargle(mixed $x, mixed $y, mixed $freqs): mixed",
+                "doc": "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."
+            },
+            {
                 "name": "lp2bp",
                 "static": true,
                 "sig": "lp2bp(mixed $b, mixed $a, mixed $wo = 1.0, mixed $bw = 1.0): mixed",
@@ -16337,6 +16343,12 @@
                 "name": "correlate2d",
                 "static": true,
                 "sig": "correlate2d($in1, $in2, $mode = 'full', $boundary = 'fill', $fillvalue = 0)",
+                "doc": ""
+            },
+            {
+                "name": "lombscargle",
+                "static": true,
+                "sig": "lombscargle($x, $y, $freqs)",
                 "doc": ""
             }
         ]

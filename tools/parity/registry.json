@@ -2175,6 +2175,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.lombscargle": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.lp2bp": {
             "kind": "routine",
             "nin": 0,
