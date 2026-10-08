@@ -706,6 +706,19 @@ for (nx, nf) in [(30, 40), (45, 25), (60, 50)]:
     lsc.append({'args': [F.enc(xs), F.enc(ys), F.enc(frq)], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(sg.lombscargle(xs, ys, frq)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# get_window: dispatch a window name / (name, *params) spec / float to the windows.* routines, periodic
+# (fftbins=True) or symmetric (fftbins=False).
+gw = []
+gw_specs = ['hann', 'hamming', 'blackman', 'bartlett', 'boxcar', 'triang', 'blackmanharris',
+            'nuttall', 'flattop', 'cosine', 'bohman', 'barthann', 'parzen', 'lanczos', 'tukey',
+            ('kaiser', 8.6), ('gaussian', 2.5), ('general_gaussian', 1.5, 2.0), ('general_hamming', 0.7),
+            ('tukey', 0.3), 2.5, ('boxcar',), 'rect', 'rectangular']
+for spec in gw_specs:
+    for fftbins in (True, False):
+        for Nx in (10, 11):
+            gw.append({'args': [F.enc(spec), F.enc(Nx), F.enc(fftbins)], 'kwargs': {},
+                       'expect': F.enc_result(np.asarray(sg.get_window(spec, Nx, fftbins=fftbins)), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -795,7 +808,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'vectorstrength', 'cases': vst, 'tol': {'atol': 1e-12}},
                  {'fn': 'convolve2d', 'cases': cv2, 'tol': {'atol': 1e-11}},
                  {'fn': 'correlate2d', 'cases': cr2, 'tol': {'atol': 1e-11}},
-                 {'fn': 'lombscargle', 'cases': lsc, 'tol': {'atol': 1e-9}}]}
+                 {'fn': 'lombscargle', 'cases': lsc, 'tol': {'atol': 1e-9}},
+                 {'fn': 'get_window', 'cases': gw, 'tol': {'atol': 1e-12}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

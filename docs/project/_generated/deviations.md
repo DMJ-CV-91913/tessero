@@ -244,6 +244,8 @@
 | `signal.correlate2d` | call | rtol 0 |
 | `signal.lombscargle` | every call | rtol 0 |
 | `signal.lombscargle` | call | rtol 0 |
+| `signal.get_window` | every call | rtol 0 |
+| `signal.get_window` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |

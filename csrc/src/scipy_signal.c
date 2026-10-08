@@ -4457,6 +4457,61 @@ static int r_lombscargle(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     return rc;
 }
 
+/* get_window(window, Nx, fftbins=True): build a length-Nx window from a name or (name, *params) spec, dispatching
+   to the windows.* routines (scipy.signal.get_window). fftbins=True (default) selects the periodic form, i.e.
+   sym=False in the wrapped window; fftbins=False selects the symmetric form. Equivalent to calling the named
+   window with sym=not fftbins. A bare float is a Kaiser beta; parametric windows take their parameters from the
+   tuple (tukey defaults to alpha=0.5). */
+static int r_get_window(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || args[1].kind != 1) { fn_set_error("get_window: Nx must be an integer"); return TSR_EARG; }
+    const int64_t Nx = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int sym = 1;                                    /* fftbins default True -> sym = False */
+    if (nargs > 2 && (args[2].kind == 4 || args[2].kind == 1)) sym = (args[2].num != 0.0) ? 0 : 1;
+    else if (nargs <= 2 || args[2].kind == 0) sym = 0;
+    const char *name = NULL; double params[2]; int nparam = 0;
+    const tsr_arg *w = &args[0];
+    if (w->kind == 1) { name = "kaiser"; params[0] = (w->flags & 1) ? (double)w->ival : w->num; nparam = 1; }
+    else if (w->kind == 2 && w->str) { name = w->str; }
+    else if (w->kind == 5 && w->count >= 1 && w->items[0].kind == 2 && w->items[0].str) {
+        name = w->items[0].str;
+        for (int64_t i = 1; i < w->count && nparam < 2; i++) {
+            const tsr_arg *p = &w->items[i];
+            params[nparam++] = (p->kind == 1) ? ((p->flags & 1) ? (double)p->ival : p->num) : 0.0;
+        }
+    } else { fn_set_error("get_window: window must be a string, a (name, *params) tuple, or a float"); return TSR_EARG; }
+    fn_routine fn = NULL; int need = 0;
+#define NM(s) (strcmp(name, (s)) == 0)
+    if (NM("hann") || NM("hanning") || NM("han")) fn = r_win_hann;
+    else if (NM("hamming") || NM("hamm") || NM("ham")) fn = r_win_hamming;
+    else if (NM("blackman") || NM("black") || NM("blk")) fn = r_win_blackman;
+    else if (NM("blackmanharris") || NM("blackharr") || NM("bkh")) fn = r_win_blackmanharris;
+    else if (NM("nuttall") || NM("nutl") || NM("nut")) fn = r_win_nuttall;
+    else if (NM("flattop") || NM("flat") || NM("flt")) fn = r_win_flattop;
+    else if (NM("boxcar") || NM("box") || NM("ones") || NM("rect") || NM("rectangular")) fn = r_win_boxcar;
+    else if (NM("triang") || NM("triangle")) fn = r_win_triang;
+    else if (NM("bartlett") || NM("bart") || NM("brt")) fn = r_win_bartlett;
+    else if (NM("cosine") || NM("halfcosine")) fn = r_win_cosine;
+    else if (NM("lanczos") || NM("sinc")) fn = r_win_lanczos;
+    else if (NM("bohman") || NM("bman") || NM("bmn")) fn = r_win_bohman;
+    else if (NM("barthann") || NM("brthan") || NM("bth")) fn = r_win_barthann;
+    else if (NM("parzen") || NM("parz") || NM("par")) fn = r_win_parzen;
+    else if (NM("kaiser") || NM("ksr")) { fn = r_win_kaiser; need = 1; }
+    else if (NM("gaussian") || NM("gauss") || NM("gss")) { fn = r_win_gaussian; need = 1; }
+    else if (NM("general_hamming")) { fn = r_win_general_hamming; need = 1; }
+    else if (NM("general_gaussian") || NM("general gaussian") || NM("ggs")) { fn = r_win_general_gaussian; need = 2; }
+    else if (NM("tukey") || NM("tuk")) { fn = r_win_tukey; need = 1; if (nparam == 0) { params[0] = 0.5; nparam = 1; } }
+#undef NM
+    if (!fn) { fn_set_error("get_window: unknown or unsupported window type '%s'", name); return TSR_EARG; }
+    if (nparam < need) { fn_set_error("get_window: the '%s' window needs %d parameter(s)", name, need); return TSR_EARG; }
+    tsr_arg syn[4]; memset(syn, 0, sizeof syn);
+    syn[0].kind = 1; syn[0].flags = 1; syn[0].ival = Nx; syn[0].num = (double)Nx;
+    for (int i = 0; i < need; i++) { syn[1 + i].kind = 1; syn[1 + i].num = params[i]; }
+    syn[1 + need].kind = 1; syn[1 + need].num = sym ? 1.0 : 0.0;
+    return fn(NULL, syn, need + 2, res, 1);
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -4575,6 +4630,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),
+    ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

@@ -2897,6 +2897,12 @@
                 "doc": "Gaussian-modulated sinusoid, in-phase component (scipy.signal.gausspulse)."
             },
             {
+                "name": "getWindow",
+                "static": true,
+                "sig": "getWindow(mixed $window, mixed $Nx, mixed $fftbins = true): mixed",
+                "doc": "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."
+            },
+            {
                 "name": "groupDelay",
                 "static": true,
                 "sig": "groupDelay(mixed $b, mixed $a, mixed $w = 512, mixed $whole = false): mixed",
@@ -16349,6 +16355,12 @@
                 "name": "lombscargle",
                 "static": true,
                 "sig": "lombscargle($x, $y, $freqs)",
+                "doc": ""
+            },
+            {
+                "name": "getWindow",
+                "static": true,
+                "sig": "getWindow($window, $Nx, $fftbins = true)",
                 "doc": ""
             }
         ]

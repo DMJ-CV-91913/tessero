@@ -59,6 +59,7 @@ final class Signal
     'freqz_zpk' => 'freqzZpk',
     'gauss_spline' => 'gaussSpline',
     'gausspulse' => 'gausspulse',
+    'get_window' => 'getWindow',
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
@@ -592,6 +593,16 @@ final class Signal
     public static function gausspulse(mixed $t, mixed $fc = 1000, mixed $bw = 0.5, mixed $bwr = -6): mixed
     {
         return Registry::routine('signal.gausspulse', [$t, $fc, $bw, $bwr]);
+    }
+
+    /**
+     * Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window).
+     *
+     * scipy.signal.get_window
+     */
+    public static function getWindow(mixed $window, mixed $Nx, mixed $fftbins = true): mixed
+    {
+        return Registry::routine('signal.get_window', [$window, $Nx, $fftbins]);
     }
 
     /**
