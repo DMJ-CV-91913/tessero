@@ -23,6 +23,7 @@ final class Signal
     'argrelmin' => 'argrelmin',
     'bilinear' => 'bilinear',
     'bilinear_zpk' => 'bilinearZpk',
+    'bode' => 'bode',
     'buttap' => 'buttap',
     'butter' => 'butter',
     'buttord' => 'buttord',
@@ -41,6 +42,7 @@ final class Signal
     'correlate2d' => 'correlate2d',
     'correlation_lags' => 'correlationLags',
     'csd' => 'csd',
+    'dbode' => 'dbode',
     'deconvolve' => 'deconvolve',
     'detrend' => 'detrend',
     'ellipord' => 'ellipord',
@@ -174,6 +176,18 @@ final class Signal
     public static function bilinearZpk(mixed $z, mixed $p, mixed $k, mixed $fs): mixed
     {
         return Registry::routine('signal.bilinear_zpk', [$z, $p, $k, $fs]);
+    }
+
+    /**
+     * Bode magnitude (dB) and phase (deg) of a continuous system (scipy.signal.bode).
+     *
+     * scipy.signal.bode
+     *
+     * @return mixed one array, or an array keyed by w, mag, phase when several results are requested
+     */
+    public static function bode(mixed $num, mixed $den, mixed $w): mixed
+    {
+        return Registry::routine('signal.bode', [$num, $den, $w]);
     }
 
     /**
@@ -378,6 +392,18 @@ final class Signal
     public static function csd(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed
     {
         return Registry::routine('signal.csd', [$x, $y, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $average]);
+    }
+
+    /**
+     * Bode magnitude (dB) and phase (deg) of a discrete system (scipy.signal.dbode).
+     *
+     * scipy.signal.dbode
+     *
+     * @return mixed one array, or an array keyed by w, mag, phase when several results are requested
+     */
+    public static function dbode(mixed $num, mixed $den, mixed $worN = 512, mixed $whole = false): mixed
+    {
+        return Registry::routine('signal.dbode', [$num, $den, $worN, $whole]);
     }
 
     /**

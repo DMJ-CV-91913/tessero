@@ -934,6 +934,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.argrelmin` | `Tessero\Signal::argrelmin()` |
 | `scipy.signal.bilinear` | `Tessero\Signal::bilinear()` |
 | `scipy.signal.bilinear_zpk` | `Tessero\Signal::bilinearZpk()` |
+| `scipy.signal.bode` | `Tessero\Signal::bode()` |
 | `scipy.signal.buttap` | `Tessero\Signal::buttap()` |
 | `scipy.signal.butter` | `Tessero\Signal::butter()` |
 | `scipy.signal.buttord` | `Tessero\Signal::buttord()` |
@@ -952,6 +953,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.correlate2d` | `Tessero\Signal::correlate2d()` |
 | `scipy.signal.correlation_lags` | `Tessero\Signal::correlationLags()` |
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
+| `scipy.signal.dbode` | `Tessero\Signal::dbode()` |
 | `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
 | `scipy.signal.detrend` | `Tessero\Signal::detrend()` |
 | `scipy.signal.ellipord` | `Tessero\Signal::ellipord()` |
