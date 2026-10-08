@@ -381,6 +381,25 @@ for (N, Wn) in ((2, 0.3), (3, 0.25), (4, 0.4)):
         dbodc.append({'args': [F.enc(bd), F.enc(ad), F.enc(n_)], 'kwargs': {},
                       'expect': F.enc_result((w_, mag_, ph_), ['w', 'mag', 'phase']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# lsim / impulse / step: continuous state-space time responses (expm-based, equally-spaced T)
+lsimc, impc, stpc = [], [], []
+_Ts = np.linspace(0.0, 8.0, 40)
+for (order, Wn) in ((2, 1.0), (3, 0.8)):
+    bb, aa = sg.butter(order, Wn, analog=True)
+    A, B, C, D = sg.tf2ss(bb, aa)
+    A = np.asarray(A, float); B = np.asarray(B, float).reshape(-1, 1)
+    C = np.asarray(C, float).reshape(1, -1); D = np.atleast_2d(np.asarray(D, float))
+    U = np.sin(_Ts) + 0.5
+    tt, yy, xx = sg.lsim((A, B, C, D), U, _Ts)
+    lsimc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(U), F.enc(_Ts)], 'kwargs': {},
+                  'expect': F.enc_result((tt, yy, xx), ['tout', 'yout', 'xout']), 'compare': 'tol', 'tol': {'atol': 1e-8}})
+    ti, hi = sg.impulse((A, B, C, D), T=_Ts)
+    impc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(_Ts)], 'kwargs': {},
+                 'expect': F.enc_result((ti, hi), ['tout', 'yout']), 'compare': 'tol', 'tol': {'atol': 1e-8}})
+    ts, ys = sg.step((A, B, C, D), T=_Ts)
+    stpc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(_Ts)], 'kwargs': {},
+                 'expect': F.enc_result((ts, ys), ['tout', 'yout']), 'compare': 'tol', 'tol': {'atol': 1e-8}})
+
 # sosfreqz (SOS cascade response) and group_delay
 sfz2, gdl = [], []
 for (N, Wn, bt) in [(2, 0.3, 'low'), (3, 0.25, 'low'), (2, 0.5, 'high'), (4, 0.4, 'low')]:
@@ -697,6 +716,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'group_delay', 'cases': gdl, 'tol': {'atol': 1e-9}},
                  {'fn': 'bode', 'cases': bodc, 'tol': {'atol': 1e-9}},
                  {'fn': 'dbode', 'cases': dbodc, 'tol': {'atol': 1e-9}},
+                 {'fn': 'lsim', 'cases': lsimc, 'tol': {'atol': 1e-8}},
+                 {'fn': 'impulse', 'cases': impc, 'tol': {'atol': 1e-8}},
+                 {'fn': 'step', 'cases': stpc, 'tol': {'atol': 1e-8}},
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
