@@ -9,14 +9,14 @@ from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInte
                                barycentric_interpolate, krogh_interpolate,
                                make_interp_spline, BSpline, pade, splev,
                                splrep, splder, splantider, splint, sproot, lagrange,
-                               RegularGridInterpolator, interpn)
+                               RegularGridInterpolator, interpn, RBFInterpolator)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr, lag, rgi, ipn = ([] for _ in range(18))
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr, lag, rgi, ipn, rbf = ([] for _ in range(19))
 
 
 def xyc(xi, yi, xnew, vals):
@@ -138,6 +138,18 @@ for n in (1, 2, 3):
     ipn.append({'args': [F.enc(pts), F.enc(vals), F.enc(xq)], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(interpn(tuple(pts), vals, xq)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# RBFInterpolator: scattered-data RBF interpolation, default thin_plate_spline (degree-1 tail) and linear
+# (degree-0) kernels. Small, well-separated node sets over a moderate range so the augmented system is
+# well-conditioned (the kernels are scale-invariant; higher-degree / epsilon-dependent kernels are out of scope).
+for kern in ('thin_plate_spline', 'linear'):
+    for ndim in (1, 2):
+        pnum = 7 if ndim == 1 else 9
+        yk = rng.uniform(-2.0, 2.0, (pnum, ndim))
+        dk = np.sin(yk.sum(axis=1)) + 0.3 * rng.normal(size=pnum)
+        xk = rng.uniform(-1.5, 1.5, (6, ndim))
+        rbf.append({'args': [F.enc(yk), F.enc(dk), F.enc(xk), F.enc(kern)], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(RBFInterpolator(yk, dk, kernel=kern)(xk)), []), 'compare': 'tol', 'tol': {'atol': 1e-8}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
@@ -147,7 +159,8 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'splder', 'cases': sdr}, {'fn': 'splantider', 'cases': sai},
          {'fn': 'splint', 'cases': spi}, {'fn': 'sproot', 'cases': spr},
          {'fn': 'lagrange', 'cases': lag},
-         {'fn': 'RegularGridInterpolator', 'cases': rgi}, {'fn': 'interpn', 'cases': ipn}]
+         {'fn': 'RegularGridInterpolator', 'cases': rgi}, {'fn': 'interpn', 'cases': ipn},
+         {'fn': 'RBFInterpolator', 'cases': rbf}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

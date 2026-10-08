@@ -3865,6 +3865,12 @@
                 "doc": "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."
             },
             {
+                "name": "RBFInterpolator",
+                "static": true,
+                "sig": "RBFInterpolator(mixed $y, mixed $d, mixed $xi, mixed $kernel = 'thin_plate_spline'): mixed",
+                "doc": "Radial basis function interpolation (thin_plate_spline or linear kernel) evaluated at xi (scipy.interpolate.RBFInterpolator)."
+            },
+            {
                 "name": "RegularGridInterpolator",
                 "static": true,
                 "sig": "RegularGridInterpolator(mixed $points, mixed $values, mixed $xi): mixed",
@@ -17160,6 +17166,12 @@
                 "name": "interpn",
                 "static": true,
                 "sig": "interpn($points, $values, $xi)",
+                "doc": ""
+            },
+            {
+                "name": "RBFInterpolator",
+                "static": true,
+                "sig": "RBFInterpolator($y, $d, $xi, $kernel = 'thin_plate_spline')",
                 "doc": ""
             }
         ]

@@ -74,6 +74,7 @@
         "interpolate.CubicHermiteSpline": "pass",
         "interpolate.CubicSpline": "pass",
         "interpolate.PchipInterpolator": "pass",
+        "interpolate.RBFInterpolator": "pass",
         "interpolate.RegularGridInterpolator": "pass",
         "interpolate.barycentric_interpolate": "pass",
         "interpolate.interp1d": "pass",
@@ -2274,7 +2275,7 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 1.122189832408002e-15,
+            "interpolate.barycentric_interpolate": 1.7634411652125737e-15,
             "interpolate.krogh_interpolate": 2.9751199482921395e-15,
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
@@ -2286,7 +2287,8 @@
             "interpolate.sproot": 2.119937782374293e-16,
             "interpolate.lagrange": 0,
             "interpolate.RegularGridInterpolator": 2.526919795196609e-16,
-            "interpolate.interpn": 2.526919795196609e-16
+            "interpolate.interpn": 2.526919795196609e-16,
+            "interpolate.RBFInterpolator": 6.381216216081151e-14
         },
         "ext": {
             "np.median": 0,
@@ -3418,7 +3420,7 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 1.122189832408002e-15,
+            "interpolate.barycentric_interpolate": 1.7634411652125737e-15,
             "interpolate.krogh_interpolate": 2.9751199482921395e-15,
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
@@ -3430,7 +3432,8 @@
             "interpolate.sproot": 2.119937782374293e-16,
             "interpolate.lagrange": 0,
             "interpolate.RegularGridInterpolator": 2.526919795196609e-16,
-            "interpolate.interpn": 2.526919795196609e-16
+            "interpolate.interpn": 2.526919795196609e-16,
+            "interpolate.RBFInterpolator": 6.381216216081151e-14
         }
     },
     "ext": {
@@ -3508,6 +3511,7 @@
         "interpolate.CubicHermiteSpline": "pass",
         "interpolate.CubicSpline": "pass",
         "interpolate.PchipInterpolator": "pass",
+        "interpolate.RBFInterpolator": "pass",
         "interpolate.RegularGridInterpolator": "pass",
         "interpolate.barycentric_interpolate": "pass",
         "interpolate.interp1d": "pass",
