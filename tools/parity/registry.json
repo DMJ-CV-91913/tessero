@@ -165,6 +165,11 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.BSpline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.CubicHermiteSpline": {
             "kind": "routine",
             "nin": 0,

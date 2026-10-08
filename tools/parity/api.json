@@ -3841,6 +3841,12 @@
                 "doc": "Akima piecewise-cubic interpolation evaluated at xnew (scipy.interpolate.Akima1DInterpolator)."
             },
             {
+                "name": "BSpline",
+                "static": true,
+                "sig": "BSpline(mixed $t, mixed $c, mixed $k, mixed $x): mixed",
+                "doc": "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline)."
+            },
+            {
                 "name": "CubicHermiteSpline",
                 "static": true,
                 "sig": "CubicHermiteSpline(mixed $x, mixed $y, mixed $dydx, mixed $xnew): mixed",
@@ -17028,6 +17034,12 @@
                 "name": "kroghInterpolate",
                 "static": true,
                 "sig": "kroghInterpolate($xi, $yi, $x)",
+                "doc": ""
+            },
+            {
+                "name": "BSpline",
+                "static": true,
+                "sig": "BSpline($t, $c, $k, $x)",
                 "doc": ""
             }
         ]
