@@ -3835,6 +3835,30 @@
                 "doc": "Call a function by its SciPy/NumPy name: Interpolate::apply('log_ndtr', $x)."
             },
             {
+                "name": "Akima1DInterpolator",
+                "static": true,
+                "sig": "Akima1DInterpolator(mixed $x, mixed $y, mixed $xnew): mixed",
+                "doc": "Akima piecewise-cubic interpolation evaluated at xnew (scipy.interpolate.Akima1DInterpolator)."
+            },
+            {
+                "name": "CubicHermiteSpline",
+                "static": true,
+                "sig": "CubicHermiteSpline(mixed $x, mixed $y, mixed $dydx, mixed $xnew): mixed",
+                "doc": "Cubic Hermite spline with given derivatives evaluated at xnew (scipy.interpolate.CubicHermiteSpline)."
+            },
+            {
+                "name": "CubicSpline",
+                "static": true,
+                "sig": "CubicSpline(mixed $x, mixed $y, mixed $xnew): mixed",
+                "doc": "Not-a-knot cubic spline evaluated at xnew (scipy.interpolate.CubicSpline)."
+            },
+            {
+                "name": "PchipInterpolator",
+                "static": true,
+                "sig": "PchipInterpolator(mixed $x, mixed $y, mixed $xnew): mixed",
+                "doc": "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."
+            },
+            {
                 "name": "pchipInterpolate",
                 "static": true,
                 "sig": "pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
@@ -16956,6 +16980,30 @@
                 "name": "pchipInterpolate",
                 "static": true,
                 "sig": "pchipInterpolate($xi, $yi, $x)",
+                "doc": ""
+            },
+            {
+                "name": "PchipInterpolator",
+                "static": true,
+                "sig": "PchipInterpolator($x, $y, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "Akima1DInterpolator",
+                "static": true,
+                "sig": "Akima1DInterpolator($x, $y, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "CubicSpline",
+                "static": true,
+                "sig": "CubicSpline($x, $y, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "CubicHermiteSpline",
+                "static": true,
+                "sig": "CubicHermiteSpline($x, $y, $dydx, $xnew)",
                 "doc": ""
             }
         ]

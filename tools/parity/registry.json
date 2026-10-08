@@ -160,6 +160,26 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.Akima1DInterpolator": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.CubicHermiteSpline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.CubicSpline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.PchipInterpolator": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.pchip_interpolate": {
             "kind": "routine",
             "nin": 0,

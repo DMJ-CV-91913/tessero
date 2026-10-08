@@ -9,7 +9,7 @@ namespace Tessero;
 use Tessero\Native\Registry;
 
 /**
- * scipy.interpolate: monotone piecewise-cubic interpolation (pchip_interpolate) evaluated at query points, shared by both backends through the kernel.
+ * scipy.interpolate: 1-D piecewise-cubic interpolation evaluated at query points (pchip_interpolate, PchipInterpolator, Akima1DInterpolator, CubicSpline not-a-knot, CubicHermiteSpline), shared by both backends through the kernel.
  *
  * Names are the SciPy/NumPy names in camelCase (log_ndtr -> logNdtr); apply() also takes the original names.
  * The native extension provides the same class as Tessero\Ext\Interpolate.
@@ -18,6 +18,10 @@ final class Interpolate
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'Akima1DInterpolator' => 'Akima1DInterpolator',
+    'CubicHermiteSpline' => 'CubicHermiteSpline',
+    'CubicSpline' => 'CubicSpline',
+    'PchipInterpolator' => 'PchipInterpolator',
     'pchip_interpolate' => 'pchipInterpolate',
     ];
 
@@ -35,6 +39,46 @@ final class Interpolate
         }
 
         return self::{self::FUNCTIONS[$name]}(...$args);
+    }
+
+    /**
+     * Akima piecewise-cubic interpolation evaluated at xnew (scipy.interpolate.Akima1DInterpolator).
+     *
+     * scipy.interpolate.Akima1DInterpolator
+     */
+    public static function Akima1DInterpolator(mixed $x, mixed $y, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.Akima1DInterpolator', [$x, $y, $xnew]);
+    }
+
+    /**
+     * Cubic Hermite spline with given derivatives evaluated at xnew (scipy.interpolate.CubicHermiteSpline).
+     *
+     * scipy.interpolate.CubicHermiteSpline
+     */
+    public static function CubicHermiteSpline(mixed $x, mixed $y, mixed $dydx, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.CubicHermiteSpline', [$x, $y, $dydx, $xnew]);
+    }
+
+    /**
+     * Not-a-knot cubic spline evaluated at xnew (scipy.interpolate.CubicSpline).
+     *
+     * scipy.interpolate.CubicSpline
+     */
+    public static function CubicSpline(mixed $x, mixed $y, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.CubicSpline', [$x, $y, $xnew]);
+    }
+
+    /**
+     * PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator).
+     *
+     * scipy.interpolate.PchipInterpolator
+     */
+    public static function PchipInterpolator(mixed $x, mixed $y, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.PchipInterpolator', [$x, $y, $xnew]);
     }
 
     /**

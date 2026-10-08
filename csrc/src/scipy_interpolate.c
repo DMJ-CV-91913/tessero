@@ -1,10 +1,15 @@
 /* scipy.interpolate ("interpolate." prefix -> Tessero\Interpolate facade).
  *
- *   interpolate.pchip_interpolate(xi, yi, x)   monotone piecewise-cubic (PCHIP) interpolation at x
+ *   interpolate.pchip_interpolate(xi, yi, x)     monotone piecewise-cubic (PCHIP) interpolation
+ *   interpolate.PchipInterpolator(x, y, xnew)    PCHIP, evaluated form of the class
+ *   interpolate.Akima1DInterpolator(x, y, xnew)  Akima piecewise-cubic
+ *   interpolate.CubicSpline(x, y, xnew)          not-a-knot cubic spline
+ *   interpolate.CubicHermiteSpline(x, y, dydx, xnew)   cubic Hermite with given derivatives
  *
- * pchip_interpolate(xi, yi, x) == PchipInterpolator(xi, yi)(x). The shape-preserving derivatives follow SciPy's
- * Fritsch-Carlson construction (_find_derivatives / _edge_case) exactly; the piecewise cubic is then evaluated
- * in the Hermite basis (algebraically identical to SciPy's Bernstein form, up to basis-level rounding).
+ * Each builds the per-knot first derivatives d[k] its own way, then evaluates the piecewise cubic in the
+ * Hermite basis (algebraically identical to SciPy's PPoly/BPoly forms up to basis-level rounding). The node
+ * derivatives replicate SciPy's constructions exactly: PCHIP Fritsch-Carlson, Akima's extended-slope blend,
+ * and the not-a-knot tridiagonal system (solved with the shared LAPACK dense solver).
  */
 #include "fn.h"
 
@@ -12,9 +17,28 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
+
 static double ip_sign(double v) { return v > 0.0 ? 1.0 : (v < 0.0 ? -1.0 : 0.0); }
 
-/* SciPy PchipInterpolator._edge_case: one-sided three-point derivative estimate, shape-limited. */
+/* Evaluate a piecewise cubic Hermite spline (knots x, values y, node derivatives d) at the points xq. */
+static void ip_hermite(const double *x, const double *y, const double *d, int64_t n,
+                       const double *xq, int64_t q, double *out)
+{
+    for (int64_t j = 0; j < q; j++) {
+        const double v = xq[j];
+        int64_t lo = 0, hi = n;                            /* searchsorted(x, v, side='right') */
+        while (lo < hi) { const int64_t mid = (lo + hi) / 2; if (x[mid] <= v) lo = mid + 1; else hi = mid; }
+        int64_t idx = lo - 1;
+        if (idx < 0) idx = 0; else if (idx > n - 2) idx = n - 2;
+        const double h = x[idx + 1] - x[idx], s = (v - x[idx]) / h, s2 = s * s, s3 = s2 * s;
+        const double h00 = 2.0 * s3 - 3.0 * s2 + 1.0, h01 = -2.0 * s3 + 3.0 * s2;
+        const double h10 = s3 - 2.0 * s2 + s, h11 = s3 - s2;
+        out[j] = y[idx] * h00 + y[idx + 1] * h01 + d[idx] * h * h10 + d[idx + 1] * h * h11;
+    }
+}
+
+/* SciPy PchipInterpolator._edge_case + _find_derivatives: shape-preserving monotone slopes d[0..n-1]. */
 static double pchip_edge(double h0, double h1, double m0, double m1)
 {
     double d = ((2.0 * h0 + h1) * m0 - h0 * m1) / (h0 + h1);
@@ -23,21 +47,19 @@ static double pchip_edge(double h0, double h1, double m0, double m1)
     return d;
 }
 
-/* SciPy PchipInterpolator._find_derivatives: per-knot slopes d[0..n-1] (n>=2). */
-static int pchip_derivatives(const double *x, const double *y, int64_t n, double *d)
+static int ip_pchip_deriv(const double *x, const double *y, int64_t n, double *d)
 {
     double *hk = (double *)malloc((size_t)(n - 1) * sizeof(double));
     double *mk = (double *)malloc((size_t)(n - 1) * sizeof(double));
     if (!hk || !mk) { free(hk); free(mk); return TSR_ENOMEM; }
     for (int64_t k = 0; k < n - 1; k++) { hk[k] = x[k + 1] - x[k]; mk[k] = (y[k + 1] - y[k]) / hk[k]; }
     if (n == 2) { d[0] = mk[0]; d[1] = mk[0]; free(hk); free(mk); return TSR_OK; }
-    for (int64_t i = 0; i < n - 2; i++) {                 /* interior knots k = i+1 */
+    for (int64_t i = 0; i < n - 2; i++) {
         const int cond = (ip_sign(mk[i + 1]) != ip_sign(mk[i])) || mk[i + 1] == 0.0 || mk[i] == 0.0;
         if (cond) d[i + 1] = 0.0;
         else {
             const double w1 = 2.0 * hk[i + 1] + hk[i], w2 = hk[i + 1] + 2.0 * hk[i];
-            const double whmean = (w1 / mk[i] + w2 / mk[i + 1]) / (w1 + w2);
-            d[i + 1] = 1.0 / whmean;
+            d[i + 1] = 1.0 / ((w1 / mk[i] + w2 / mk[i + 1]) / (w1 + w2));
         }
     }
     d[0] = pchip_edge(hk[0], hk[1], mk[0], mk[1]);
@@ -46,43 +68,113 @@ static int pchip_derivatives(const double *x, const double *y, int64_t n, double
     return TSR_OK;
 }
 
-/* pchip_interpolate(xi, yi, x): monotone cubic interpolation evaluated at x (scipy.interpolate.pchip_interpolate,
-   der=0). xi strictly increasing. */
-static int r_pchip_interpolate(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+/* SciPy Akima1DInterpolator (method='akima'): extended slope array with the shape-preserving blend. */
+static int ip_akima_deriv(const double *x, const double *y, int64_t n, double *t)
 {
-    (void)ctx; (void)nres; (void)nargs;
-    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
-        args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("pchip_interpolate: xi, yi and x must be 1-D arrays"); return TSR_EARG; }
-    const int64_t n = args[0].arr.shape[0], q = args[2].arr.shape[0];
-    if (args[1].arr.shape[0] != n) { fn_set_error("pchip_interpolate: xi and yi must have the same length"); return TSR_EARG; }
-    if (n < 2) { fn_set_error("pchip_interpolate: need at least two sample points"); return TSR_EARG; }
-    int64_t lx, ly, lq;
-    double *x = fn_arg_doubles(&args[0], &lx);
-    double *y = x ? fn_arg_doubles(&args[1], &ly) : NULL;
-    double *xq = y ? fn_arg_doubles(&args[2], &lq) : NULL;
-    double *d = xq ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
-    double *out = d ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
-    int rc = (!x || !y || !xq || !d || !out) ? TSR_ENOMEM : pchip_derivatives(x, y, n, d);
-    if (rc == TSR_OK) {
-        for (int64_t j = 0; j < q; j++) {
-            const double v = xq[j];
-            int64_t lo = 0, hi = n;                        /* searchsorted(x, v, side='right') */
-            while (lo < hi) { const int64_t mid = (lo + hi) / 2; if (x[mid] <= v) lo = mid + 1; else hi = mid; }
-            int64_t idx = lo - 1;
-            if (idx < 0) idx = 0; else if (idx > n - 2) idx = n - 2;
-            const double h = x[idx + 1] - x[idx], s = (v - x[idx]) / h, s2 = s * s, s3 = s2 * s;
-            const double h00 = 2.0 * s3 - 3.0 * s2 + 1.0, h01 = -2.0 * s3 + 3.0 * s2;
-            const double h10 = s3 - 2.0 * s2 + s, h11 = s3 - s2;
-            out[j] = y[idx] * h00 + y[idx + 1] * h01 + d[idx] * h * h10 + d[idx + 1] * h * h11;
-        }
+    if (n == 2) { const double m = (y[1] - y[0]) / (x[1] - x[0]); t[0] = m; t[1] = m; return TSR_OK; }
+    double *M = (double *)malloc((size_t)(n + 3) * sizeof(double));     /* indices 0..n+2 */
+    double *dm = (double *)malloc((size_t)(n + 2) * sizeof(double));
+    if (!M || !dm) { free(M); free(dm); return TSR_ENOMEM; }
+    for (int64_t j = 0; j < n - 1; j++) M[2 + j] = (y[j + 1] - y[j]) / (x[j + 1] - x[j]);
+    M[1] = 2.0 * M[2] - M[3]; M[0] = 2.0 * M[1] - M[2];
+    M[n + 1] = 2.0 * M[n] - M[n - 1]; M[n + 2] = 2.0 * M[n + 1] - M[n];
+    for (int64_t j = 0; j < n + 2; j++) dm[j] = fabs(M[j + 1] - M[j]);
+    double mmax = -INFINITY;
+    for (int64_t k = 0; k < n; k++) { const double f12 = dm[k] + dm[k + 2]; if (f12 > mmax) mmax = f12; }
+    for (int64_t k = 0; k < n; k++) {
+        const double f2 = dm[k], f1 = dm[k + 2], f12 = f1 + f2;
+        if (f12 > 1e-9 * mmax) t[k] = M[k + 1] + (f2 / f12) * (M[k + 2] - M[k + 1]);
+        else t[k] = 0.5 * (M[k] + M[k + 3]);
     }
-    free(d);
-    fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(xq, lq);
+    free(M); free(dm);
+    return TSR_OK;
+}
+
+/* SciPy CubicSpline (bc_type='not-a-knot'): node derivatives s[0..n-1] from a tridiagonal system (dense solve). */
+static int ip_cubicspline_deriv(const double *x, const double *y, int64_t n, double *s)
+{
+    double *dx = (double *)malloc((size_t)(n - 1) * sizeof(double));
+    double *sl = (double *)malloc((size_t)(n - 1) * sizeof(double));
+    if (!dx || !sl) { free(dx); free(sl); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n - 1; i++) { dx[i] = x[i + 1] - x[i]; sl[i] = (y[i + 1] - y[i]) / dx[i]; }
+    if (n == 2) { s[0] = sl[0]; s[1] = sl[0]; free(dx); free(sl); return TSR_OK; }
+    double *M = (double *)calloc((size_t)(n * n), sizeof(double));
+    double *b = (double *)malloc((size_t)n * sizeof(double));
+    int rc = (!M || !b) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        if (n == 3) {                                      /* not-a-knot n==3: parabola through the points */
+            M[0 * 3 + 0] = 1.0; M[0 * 3 + 1] = 1.0; b[0] = 2.0 * sl[0];
+            M[1 * 3 + 0] = dx[1]; M[1 * 3 + 1] = 2.0 * (dx[0] + dx[1]); M[1 * 3 + 2] = dx[0];
+            b[1] = 3.0 * (dx[0] * sl[1] + dx[1] * sl[0]);
+            M[2 * 3 + 1] = 1.0; M[2 * 3 + 2] = 1.0; b[2] = 2.0 * sl[1];
+        } else {
+            const double d0 = x[2] - x[0];
+            M[0] = dx[1]; M[1] = d0; b[0] = ((dx[0] + 2.0 * d0) * dx[1] * sl[0] + dx[0] * dx[0] * sl[1]) / d0;
+            for (int64_t i = 1; i < n - 1; i++) {
+                M[i * n + (i - 1)] = dx[i]; M[i * n + i] = 2.0 * (dx[i - 1] + dx[i]); M[i * n + (i + 1)] = dx[i - 1];
+                b[i] = 3.0 * (dx[i] * sl[i - 1] + dx[i - 1] * sl[i]);
+            }
+            const double de = x[n - 1] - x[n - 3];
+            M[(n - 1) * n + (n - 2)] = de; M[(n - 1) * n + (n - 1)] = dx[n - 3];
+            b[n - 1] = (dx[n - 2] * dx[n - 2] * sl[n - 3] + (2.0 * de + dx[n - 2]) * dx[n - 3] * sl[n - 2]) / de;
+        }
+        rc = sl_dense_solve(M, b, n, 1);
+        if (rc == TSR_OK) for (int64_t i = 0; i < n; i++) s[i] = b[i];
+        else fn_set_error("CubicSpline: the spline system is singular");
+    }
+    free(M); free(b); free(dx); free(sl);
     return rc;
 }
 
+/* common entry: read x, y (and query), build derivatives via `deriv`, Hermite-evaluate at xnew. `der_given`
+   points to an externally supplied derivative array (CubicHermiteSpline) when deriv is NULL. */
+static int ip_spline_eval(const tsr_arg *args, tsr_result *res, int (*deriv)(const double *, const double *, int64_t, double *),
+                          int has_dydx, const char *name)
+{
+    const int qi = has_dydx ? 3 : 2;                       /* index of the query array */
+    for (int i = 0; i <= qi; i++) if (args[i].kind != 3 || args[i].arr.ndim != 1) { fn_set_error("%s: inputs must be 1-D arrays", name); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], qn = args[qi].arr.shape[0];
+    if (args[1].arr.shape[0] != n || (has_dydx && args[2].arr.shape[0] != n)) { fn_set_error("%s: x, y (and dydx) must have the same length", name); return TSR_EARG; }
+    if (n < 2) { fn_set_error("%s: need at least two sample points", name); return TSR_EARG; }
+    int64_t lx, ly, lq, ld = 0;
+    double *x = fn_arg_doubles(&args[0], &lx);
+    double *y = x ? fn_arg_doubles(&args[1], &ly) : NULL;
+    double *dydx = (y && has_dydx) ? fn_arg_doubles(&args[2], &ld) : NULL;
+    double *xq = (y && (!has_dydx || dydx)) ? fn_arg_doubles(&args[qi], &lq) : NULL;
+    double *d = xq ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
+    double *out = d ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){qn}) : NULL;
+    int rc = (!x || !y || (has_dydx && !dydx) || !xq || !d || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        if (has_dydx) memcpy(d, dydx, (size_t)n * sizeof(double));
+        else rc = deriv(x, y, n, d);
+    }
+    if (rc == TSR_OK) ip_hermite(x, y, d, n, xq, qn, out);
+    free(d);
+    fn_free_doubles(x, lx); fn_free_doubles(y, ly); if (dydx) fn_free_doubles(dydx, ld); fn_free_doubles(xq, lq);
+    return rc;
+}
+
+static int r_pchip_interpolate(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nargs; (void)nres; return ip_spline_eval(args, res, ip_pchip_deriv, 0, "pchip_interpolate"); }
+
+static int r_pchip_class(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nargs; (void)nres; return ip_spline_eval(args, res, ip_pchip_deriv, 0, "PchipInterpolator"); }
+
+static int r_akima(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nargs; (void)nres; return ip_spline_eval(args, res, ip_akima_deriv, 0, "Akima1DInterpolator"); }
+
+static int r_cubicspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nargs; (void)nres; return ip_spline_eval(args, res, ip_cubicspline_deriv, 0, "CubicSpline"); }
+
+static int r_cubic_hermite(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nargs; (void)nres; return ip_spline_eval(args, res, NULL, 1, "CubicHermiteSpline"); }
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
+    ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
+    ROUTINE("interpolate.Akima1DInterpolator", 1, "x, y, xnew", "y", r_akima, NULL, "Akima piecewise-cubic interpolation evaluated at xnew (scipy.interpolate.Akima1DInterpolator)."),
+    ROUTINE("interpolate.CubicSpline", 1, "x, y, xnew", "y", r_cubicspline, NULL, "Not-a-knot cubic spline evaluated at xnew (scipy.interpolate.CubicSpline)."),
+    ROUTINE("interpolate.CubicHermiteSpline", 1, "x, y, dydx, xnew", "y", r_cubic_hermite, NULL, "Cubic Hermite spline with given derivatives evaluated at xnew (scipy.interpolate.CubicHermiteSpline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
