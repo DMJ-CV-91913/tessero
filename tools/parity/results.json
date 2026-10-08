@@ -80,6 +80,8 @@
         "interpolate.make_interp_spline": "pass",
         "interpolate.pade": "pass",
         "interpolate.pchip_interpolate": "pass",
+        "interpolate.splantider": "pass",
+        "interpolate.splder": "pass",
         "interpolate.splev": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
@@ -2272,7 +2274,9 @@
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
             "interpolate.make_interp_spline": 7.380690589199218e-16,
-            "interpolate.splev": 4.42542524411263e-16
+            "interpolate.splev": 4.42542524411263e-16,
+            "interpolate.splder": 0,
+            "interpolate.splantider": 0
         },
         "ext": {
             "np.median": 0,
@@ -3409,7 +3413,9 @@
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
             "interpolate.make_interp_spline": 7.380690589199218e-16,
-            "interpolate.splev": 4.42542524411263e-16
+            "interpolate.splev": 4.42542524411263e-16,
+            "interpolate.splder": 0,
+            "interpolate.splantider": 0
         }
     },
     "ext": {
@@ -3493,6 +3499,8 @@
         "interpolate.make_interp_spline": "pass",
         "interpolate.pade": "pass",
         "interpolate.pchip_interpolate": "pass",
+        "interpolate.splantider": "pass",
+        "interpolate.splder": "pass",
         "interpolate.splev": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",

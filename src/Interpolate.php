@@ -28,6 +28,8 @@ final class Interpolate
     'make_interp_spline' => 'makeInterpSpline',
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
+    'splantider' => 'splantider',
+    'splder' => 'splder',
     'splev' => 'splev',
     ];
 
@@ -147,6 +149,30 @@ final class Interpolate
     public static function pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.pchip_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Antiderivative of a B-spline in (t, c, k) form (scipy.interpolate.splantider).
+     *
+     * scipy.interpolate.splantider
+     *
+     * @return mixed one array, or an array keyed by t, c, k when several results are requested
+     */
+    public static function splantider(mixed $t, mixed $c, mixed $k, mixed $n = 1): mixed
+    {
+        return Registry::routine('interpolate.splantider', [$t, $c, $k, $n]);
+    }
+
+    /**
+     * Derivative of a B-spline in (t, c, k) form (scipy.interpolate.splder).
+     *
+     * scipy.interpolate.splder
+     *
+     * @return mixed one array, or an array keyed by t, c, k when several results are requested
+     */
+    public static function splder(mixed $t, mixed $c, mixed $k, mixed $n = 1): mixed
+    {
+        return Registry::routine('interpolate.splder', [$t, $c, $k, $n]);
     }
 
     /**

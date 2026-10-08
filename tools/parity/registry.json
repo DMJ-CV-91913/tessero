@@ -210,6 +210,16 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.splantider": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "interpolate.splder": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "interpolate.splev": {
             "kind": "routine",
             "nin": 0,

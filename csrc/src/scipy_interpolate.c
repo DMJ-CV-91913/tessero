@@ -336,6 +336,93 @@ static int r_make_interp_spline(const void *ctx, const tsr_arg *args, int nargs,
     return rc;
 }
 
+/* splder(t, c, k, n=1): derivative of a B-spline in FITPACK (t, c, k) form (scipy.interpolate.splder). c is the
+   FITPACK-padded coefficient array (length len(t)). Each pass: c' = (c[1:]-c[:-1])*k/(t[k+1:-1]-t[1:-k-1]) padded
+   with k zeros, knots t[1:-1], degree k-1. Returns (t, c, k). */
+static int r_splder(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("splder: t and c must be 1-D arrays"); return TSR_EARG; }
+    if (args[2].kind != 1) { fn_set_error("splder: k must be an integer degree"); return TSR_EARG; }
+    const int64_t nt = args[0].arr.shape[0];
+    int kk = (int)args[2].num;
+    const int nn = (nargs > 3 && args[3].kind == 1) ? (int)args[3].num : 1;
+    if (nn < 0 || nn > kk) { fn_set_error("splder: order of derivative must be 0 <= n <= k"); return TSR_EARG; }
+    int64_t lt, lc;
+    double *t0 = fn_arg_doubles(&args[0], &lt), *c0 = t0 ? fn_arg_doubles(&args[1], &lc) : NULL;
+    double *tcur = t0 ? (double *)malloc((size_t)nt * sizeof(double)) : NULL;
+    double *ccur = tcur ? (double *)malloc((size_t)(nt > args[1].arr.shape[0] ? nt : args[1].arr.shape[0]) * sizeof(double)) : NULL;
+    int rc = (!t0 || !c0 || !tcur || !ccur) ? TSR_ENOMEM : TSR_OK;
+    int64_t tn = nt;
+    if (rc == TSR_OK) {
+        memcpy(tcur, t0, (size_t)nt * sizeof(double));
+        memcpy(ccur, c0, (size_t)args[1].arr.shape[0] * sizeof(double));
+        for (int j = 0; j < nn && rc == TSR_OK; j++) {
+            const int64_t ld = tn - kk - 2;                /* core length */
+            double *cnew = (double *)malloc((size_t)(tn - 2) * sizeof(double));
+            if (!cnew) { rc = TSR_ENOMEM; break; }
+            for (int64_t i = 0; i < ld; i++) { const double dt = tcur[kk + 1 + i] - tcur[1 + i]; cnew[i] = (ccur[1 + i] - ccur[i]) * (double)kk / dt; }
+            for (int64_t i = ld; i < tn - 2; i++) cnew[i] = 0.0;   /* pad with k zeros */
+            for (int64_t i = 0; i < tn - 2; i++) tcur[i] = tcur[i + 1];   /* t[1:-1] */
+            tn -= 2; free(ccur); ccur = cnew; kk -= 1;
+        }
+    }
+    if (rc == TSR_OK) {
+        double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){tn});
+        double *rcc = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){tn});
+        if (!rt || !rcc) rc = TSR_ENOMEM;
+        else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)tn * sizeof(double)); fn_result_int(&res[2], (int64_t)kk); }
+    }
+    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc);
+    return rc;
+}
+
+/* splantider(t, c, k, n=1): antiderivative of a B-spline (scipy.interpolate.splantider). Inverse of splder:
+   c_new = [0, cumsum(c[:-k-1]*(t[k+1:]-t[:-k-1]))/(k+1), (last) x (k+2)], knots [t[0], t, t[-1]], degree k+1. */
+static int r_splantider(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("splantider: t and c must be 1-D arrays"); return TSR_EARG; }
+    if (args[2].kind != 1) { fn_set_error("splantider: k must be an integer degree"); return TSR_EARG; }
+    const int64_t nt = args[0].arr.shape[0];
+    int kk = (int)args[2].num;
+    const int nn = (nargs > 3 && args[3].kind == 1) ? (int)args[3].num : 1;
+    if (nn < 0) { fn_set_error("splantider: order must be nonnegative"); return TSR_EARG; }
+    int64_t lt, lc;
+    double *t0 = fn_arg_doubles(&args[0], &lt), *c0 = t0 ? fn_arg_doubles(&args[1], &lc) : NULL;
+    const int64_t cap = nt + 2 * (int64_t)nn + 2;
+    double *tcur = t0 ? (double *)malloc((size_t)cap * sizeof(double)) : NULL;
+    double *ccur = tcur ? (double *)malloc((size_t)cap * sizeof(double)) : NULL;
+    int rc = (!t0 || !c0 || !tcur || !ccur) ? TSR_ENOMEM : TSR_OK;
+    int64_t tn = nt;
+    if (rc == TSR_OK) {
+        memcpy(tcur, t0, (size_t)nt * sizeof(double));
+        memcpy(ccur, c0, (size_t)args[1].arr.shape[0] * sizeof(double));
+        for (int j = 0; j < nn && rc == TSR_OK; j++) {
+            const int64_t ld = tn - kk - 1;                /* core length */
+            double *cnew = (double *)malloc((size_t)(tn + 2) * sizeof(double));
+            double *tnew = (double *)malloc((size_t)(tn + 2) * sizeof(double));
+            if (!cnew || !tnew) { free(cnew); free(tnew); rc = TSR_ENOMEM; break; }
+            cnew[0] = 0.0; double acc = 0.0;
+            for (int64_t i = 0; i < ld; i++) { const double dt = tcur[kk + 1 + i] - tcur[i]; acc += ccur[i] * dt; cnew[1 + i] = acc / (double)(kk + 1); }
+            const double last = cnew[ld];
+            for (int64_t i = 0; i < kk + 2; i++) cnew[1 + ld + i] = last;
+            tnew[0] = tcur[0];
+            for (int64_t i = 0; i < tn; i++) tnew[1 + i] = tcur[i];
+            tnew[tn + 1] = tcur[tn - 1];
+            free(tcur); free(ccur); tcur = tnew; ccur = cnew; tn += 2; kk += 1;
+        }
+    }
+    if (rc == TSR_OK) {
+        double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){tn});
+        double *rcc = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){tn});
+        if (!rt || !rcc) rc = TSR_ENOMEM;
+        else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)tn * sizeof(double)); fn_result_int(&res[2], (int64_t)kk); }
+    }
+    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -348,6 +435,8 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.pade", 2, "an, m, n=None", "p, q", r_pade, NULL, "Pade rational approximant (numerator p, denominator q) from Taylor coefficients (scipy.interpolate.pade)."),
     ROUTINE("interpolate.make_interp_spline", 1, "x, y, k, xnew", "y", r_make_interp_spline, NULL, "Interpolating spline (k=1 linear or k=3 not-a-knot cubic) evaluated at xnew (scipy.interpolate.make_interp_spline)."),
     ROUTINE("interpolate.splev", 1, "t, c, k, x", "y", r_splev, NULL, "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.splev)."),
+    ROUTINE("interpolate.splder", 3, "t, c, k, n=1", "t, c, k", r_splder, NULL, "Derivative of a B-spline in (t, c, k) form (scipy.interpolate.splder)."),
+    ROUTINE("interpolate.splantider", 3, "t, c, k, n=1", "t, c, k", r_splantider, NULL, "Antiderivative of a B-spline in (t, c, k) form (scipy.interpolate.splantider)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

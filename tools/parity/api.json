@@ -3895,6 +3895,18 @@
                 "doc": "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."
             },
             {
+                "name": "splantider",
+                "static": true,
+                "sig": "splantider(mixed $t, mixed $c, mixed $k, mixed $n = 1): mixed",
+                "doc": "Antiderivative of a B-spline in (t, c, k) form (scipy.interpolate.splantider)."
+            },
+            {
+                "name": "splder",
+                "static": true,
+                "sig": "splder(mixed $t, mixed $c, mixed $k, mixed $n = 1): mixed",
+                "doc": "Derivative of a B-spline in (t, c, k) form (scipy.interpolate.splder)."
+            },
+            {
                 "name": "splev",
                 "static": true,
                 "sig": "splev(mixed $t, mixed $c, mixed $k, mixed $x): mixed",
@@ -17076,6 +17088,18 @@
                 "name": "splev",
                 "static": true,
                 "sig": "splev($t, $c, $k, $x)",
+                "doc": ""
+            },
+            {
+                "name": "splder",
+                "static": true,
+                "sig": "splder($t, $c, $k, $n = 1)",
+                "doc": ""
+            },
+            {
+                "name": "splantider",
+                "static": true,
+                "sig": "splantider($t, $c, $k, $n = 1)",
                 "doc": ""
             }
         ]
