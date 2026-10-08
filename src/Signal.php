@@ -21,6 +21,7 @@ final class Signal
     'abcd_normalize' => 'abcdNormalize',
     'argrelmax' => 'argrelmax',
     'argrelmin' => 'argrelmin',
+    'besselap' => 'besselap',
     'bilinear' => 'bilinear',
     'bilinear_zpk' => 'bilinearZpk',
     'bode' => 'bode',
@@ -163,6 +164,18 @@ final class Signal
     public static function argrelmin(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed
     {
         return Registry::routine('signal.argrelmin', [$data, $axis, $order, $mode]);
+    }
+
+    /**
+     * Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap).
+     *
+     * scipy.signal.besselap
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function besselap(mixed $N, mixed $norm = 'phase'): mixed
+    {
+        return Registry::routine('signal.besselap', [$N, $norm]);
     }
 
     /**
