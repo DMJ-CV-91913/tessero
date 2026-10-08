@@ -639,6 +639,70 @@ static int r_lagrange(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     return rc;
 }
 
+/* RegularGridInterpolator(points, values, xi) / interpn(points, values, xi): multilinear ('linear') interpolation
+   on a regular (rectilinear) n-D grid (scipy.interpolate.RegularGridInterpolator / interpn). points is a sequence
+   of n strictly-increasing 1-D coordinate arrays (one per axis); values is the n-D sample array on that grid; xi
+   is an (m, n) array of in-bounds query points. Per axis d the query lands in [g[i], g[i+1]] with normalized
+   distance y=(x-g[i])/(g[i+1]-g[i]) (i = searchsorted(g, x)-1, clamped); the result sums values over the 2^n
+   hypercube corners, each weighted by the product of (1-y) at the lower node and y at the upper node. Returns (m,). */
+static int r_rgi(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 5 || args[0].count < 1) { fn_set_error("interpn: points must be a sequence of 1-D coordinate arrays"); return TSR_EARG; }
+    const int64_t n = args[0].count;
+    if (n > 20) { fn_set_error("interpn: too many grid dimensions"); return TSR_EARG; }
+    if (args[1].kind != 3 || args[1].arr.ndim != n) { fn_set_error("interpn: values must be an n-D array matching points"); return TSR_EARG; }
+    if (args[2].kind != 3 || args[2].arr.ndim != 2 || args[2].arr.shape[1] != n) { fn_set_error("interpn: xi must be an (m, n) array"); return TSR_EARG; }
+    const int64_t m = args[2].arr.shape[0];
+    double **grid = (double **)calloc((size_t)n, sizeof(double *));
+    int64_t *glen = (int64_t *)calloc((size_t)n, sizeof(int64_t));   /* grid length per axis (= values shape[d]) */
+    int64_t *gfl = (int64_t *)calloc((size_t)n, sizeof(int64_t));    /* fn_free_doubles length per grid */
+    int64_t *stride = (int64_t *)calloc((size_t)n, sizeof(int64_t));
+    int64_t *idx = (int64_t *)calloc((size_t)n, sizeof(int64_t));
+    double *yv = (double *)calloc((size_t)n, sizeof(double));
+    int64_t lv, lx;
+    double *values = fn_arg_doubles(&args[1], &lv), *xi = values ? fn_arg_doubles(&args[2], &lx) : NULL;
+    int rc = (!grid || !glen || !gfl || !stride || !idx || !yv || !values || !xi) ? TSR_ENOMEM : TSR_OK;
+    for (int64_t d = 0; d < n && rc == TSR_OK; d++) {
+        const tsr_arg *it = &args[0].items[d];
+        if (it->kind != 3 || it->arr.ndim != 1) { fn_set_error("interpn: each points[d] must be a 1-D array"); rc = TSR_EARG; break; }
+        glen[d] = it->arr.shape[0];
+        if (glen[d] != args[1].arr.shape[d]) { fn_set_error("interpn: values shape does not match points"); rc = TSR_EARG; break; }
+        if (glen[d] < 2) { fn_set_error("interpn: each grid axis needs at least 2 points"); rc = TSR_EARG; break; }
+        grid[d] = fn_arg_doubles(it, &gfl[d]);
+        if (!grid[d]) { rc = TSR_ENOMEM; break; }
+    }
+    if (rc == TSR_OK) {
+        stride[n - 1] = 1;
+        for (int64_t d = n - 2; d >= 0; d--) stride[d] = stride[d + 1] * glen[d + 1];
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){m});
+        if (!out) rc = TSR_ENOMEM;
+        else for (int64_t q = 0; q < m; q++) {
+            for (int64_t d = 0; d < n; d++) {
+                const double x = xi[q * n + d], *g = grid[d]; const int64_t L = glen[d];
+                int64_t lo = 0, hi = L; while (lo < hi) { const int64_t mid = (lo + hi) / 2; if (g[mid] < x) lo = mid + 1; else hi = mid; }
+                int64_t i = lo - 1; if (i < 0) i = 0; else if (i > L - 2) i = L - 2;   /* searchsorted(g, x)-1, clamped */
+                idx[d] = i; yv[d] = (x - g[i]) / (g[i + 1] - g[i]);
+            }
+            double acc = 0.0;
+            for (int64_t b = 0; b < ((int64_t)1 << n); b++) {
+                double w = 1.0; int64_t fi = 0;
+                for (int64_t d = 0; d < n; d++) {
+                    const int64_t bit = (b >> d) & 1;
+                    w *= bit ? yv[d] : (1.0 - yv[d]);
+                    fi += (idx[d] + bit) * stride[d];
+                }
+                acc += w * values[fi];
+            }
+            out[q] = acc;
+        }
+    }
+    for (int64_t d = 0; d < n; d++) if (grid && grid[d]) fn_free_doubles(grid[d], gfl[d]);
+    free(grid); free(glen); free(gfl); free(stride); free(idx); free(yv);
+    fn_free_doubles(values, lv); fn_free_doubles(xi, lx);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -656,6 +720,8 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.splint", 1, "a, b, t, c, k", "integral", r_splint, NULL, "Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint)."),
     ROUTINE("interpolate.sproot", 1, "t, c, k, mest=10", "zeros", r_sproot, NULL, "Roots of a cubic (k=3) B-spline, sorted ascending, at most mest of them (scipy.interpolate.sproot)."),
     ROUTINE("interpolate.lagrange", 1, "x, w", "c", r_lagrange, NULL, "Lagrange interpolating polynomial through (x, w) as poly1d coefficients, highest-degree first (scipy.interpolate.lagrange)."),
+    ROUTINE("interpolate.RegularGridInterpolator", 1, "points[], values, xi", "y", r_rgi, NULL, "Multilinear interpolation on a regular n-D grid, evaluated at xi (scipy.interpolate.RegularGridInterpolator)."),
+    ROUTINE("interpolate.interpn", 1, "points[], values, xi", "y", r_rgi, NULL, "Multilinear interpolation on a regular n-D grid at points xi (scipy.interpolate.interpn)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
