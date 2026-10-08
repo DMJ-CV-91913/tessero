@@ -727,6 +727,13 @@ for norm in ('phase', 'delay'):
         bsl.append({'args': [F.enc(N), F.enc(norm)], 'kwargs': {},
                     'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# ellipap: analog elliptic (Cauer) prototype (z, p, k); zeros/poles compared as (re,im)-lexsorted sets.
+elp = []
+for (N, rp, rs) in [(2, 1.0, 40.0), (3, 0.5, 60.0), (4, 2.0, 50.0), (5, 1.0, 80.0), (6, 0.1, 50.0), (7, 1.5, 45.0), (8, 0.5, 70.0)]:
+    z, p, kk = sg.ellipap(N, rp, rs)
+    elp.append({'args': [F.enc(N), F.enc(rp), F.enc(rs)], 'kwargs': {},
+                'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -818,7 +825,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'correlate2d', 'cases': cr2, 'tol': {'atol': 1e-11}},
                  {'fn': 'lombscargle', 'cases': lsc, 'tol': {'atol': 1e-9}},
                  {'fn': 'get_window', 'cases': gw, 'tol': {'atol': 1e-12}},
-                 {'fn': 'besselap', 'cases': bsl, 'tol': {'atol': 1e-9}}]}
+                 {'fn': 'besselap', 'cases': bsl, 'tol': {'atol': 1e-9}},
+                 {'fn': 'ellipap', 'cases': elp, 'tol': {'atol': 1e-9}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

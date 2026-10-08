@@ -961,6 +961,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.dimpulse` | `Tessero\Signal::dimpulse()` |
 | `scipy.signal.dlsim` | `Tessero\Signal::dlsim()` |
 | `scipy.signal.dstep` | `Tessero\Signal::dstep()` |
+| `scipy.signal.ellipap` | `Tessero\Signal::ellipap()` |
 | `scipy.signal.ellipord` | `Tessero\Signal::ellipord()` |
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |
