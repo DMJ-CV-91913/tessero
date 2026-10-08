@@ -5,7 +5,7 @@
 | Scope | Calls | To excluded symbols | In scope | Verified FFI | Verified extension | Verified on both |
 |---|---:|---:|---:|---:|---:|---:|
 | **NumPy core** | 39800 | 1953 (4.9 %) | 37847 | 99.7 % | 99.7 % | **99.7 %** |
-| **SciPy** | 2748 | 374 (13.6 %) | 2374 | 90.4 % | 90.1 % | **90.1 %** |
+| **SciPy** | 2748 | 374 (13.6 %) | 2374 | 90.6 % | 90.2 % | **90.2 %** |
 | **NumPy and SciPy** | 42548 | 2327 (5.5 %) | 40221 | 99.2 % | 99.1 % | **99.1 %** |
 
 The most-called in-scope symbols, and how many of them are verified:
@@ -15,7 +15,7 @@ The most-called in-scope symbols, and how many of them are verified:
 | top 25 | 25 of 25 (25, 25) | 25 of 25 (25, 25) | 25 of 25 (25, 25) |
 | top 50 | 50 of 50 (50, 50) | 50 of 50 (50, 50) | 50 of 50 (50, 50) |
 | top 100 | 100 of 100 (100, 100) | 88 of 100 (89, 88) | 100 of 100 (100, 100) |
-| top 250 | 245 of 250 (245, 245) | 187 of 250 (189, 187) | 248 of 250 (248, 248) |
+| top 250 | 245 of 250 (245, 245) | 188 of 250 (190, 188) | 248 of 250 (248, 248) |
 
 The 100 most-called in-scope symbols (calls in the corpus, packages calling them, verified per backend):
 
@@ -122,6 +122,6 @@ The 100 most-called in-scope symbols (calls in the corpus, packages calling them
 | 99 | `numpy.multiply` | 68 | 12 | ✔ | ✔ |
 | 100 | `numpy.pad` | 68 | 11 | ✔ | ✔ |
 
-The most-called in-scope symbols not yet verified on both backends: `numpy.uint64` 18 (neither), `numpy.polynomial.Polynomial` 15 (neither), `numpy.savetxt` 10 (neither), `scipy.sparse.linalg.eigsh` 10 (neither), `scipy.spatial.Delaunay` 10 (neither), `scipy.stats.gaussian_kde` 10 (neither), `numpy.genfromtxt` 9 (neither), `numpy.int8` 7 (neither), `scipy.sparse.eye_array` 7 (neither), `scipy.sparse.find` 7 (neither), `scipy.sparse.linalg.LinearOperator` 7 (neither), `scipy.sparse.linalg.svds` 7 (neither), `numpy.histogram2d` 6 (neither), `scipy.optimize.fmin_powell` 6 (neither), `scipy.signal.get_window` 6 (neither), `scipy.sparse.linalg.cg` 6 (FFI only), `scipy.sparse.triu` 6 (neither), `numpy.histogramdd` 5 (neither), `numpy.uint32` 5 (neither), `numpy.unpackbits` 5 (neither), `scipy.integrate.odeint` 5 (neither), `scipy.sparse.diags` 5 (neither), `scipy.sparse.lil_array` 5 (neither), `scipy.sparse.lil_matrix` 5 (neither), `scipy.spatial.ConvexHull` 5 (neither), `numpy.block` 4 (neither), `numpy.linalg.LinAlgError` 4 (neither), `numpy.may_share_memory` 4 (neither), `scipy.cluster.hierarchy.linkage` 4 (neither), `scipy.interpolate.splev` 4 (neither).
+The most-called in-scope symbols not yet verified on both backends: `numpy.uint64` 18 (neither), `numpy.polynomial.Polynomial` 15 (neither), `numpy.savetxt` 10 (neither), `scipy.sparse.linalg.eigsh` 10 (neither), `scipy.spatial.Delaunay` 10 (neither), `scipy.stats.gaussian_kde` 10 (neither), `numpy.genfromtxt` 9 (neither), `numpy.int8` 7 (neither), `scipy.sparse.eye_array` 7 (neither), `scipy.sparse.find` 7 (neither), `scipy.sparse.linalg.LinearOperator` 7 (neither), `scipy.sparse.linalg.svds` 7 (neither), `numpy.histogram2d` 6 (neither), `scipy.optimize.fmin_powell` 6 (neither), `scipy.signal.get_window` 6 (neither), `scipy.sparse.linalg.cg` 6 (FFI only), `scipy.sparse.triu` 6 (neither), `numpy.histogramdd` 5 (neither), `numpy.uint32` 5 (neither), `numpy.unpackbits` 5 (neither), `scipy.integrate.odeint` 5 (neither), `scipy.sparse.diags` 5 (neither), `scipy.sparse.lil_array` 5 (neither), `scipy.sparse.lil_matrix` 5 (neither), `scipy.spatial.ConvexHull` 5 (neither), `numpy.block` 4 (neither), `numpy.linalg.LinAlgError` 4 (neither), `numpy.may_share_memory` 4 (neither), `scipy.cluster.hierarchy.linkage` 4 (neither), `scipy.optimize.isotonic_regression` 4 (neither).
 
 The most-called excluded symbols: `numpy.dtype` 504 (E4), `scipy.sparse.issparse` 317 (E4), `numpy.issubdtype` 222 (E4), `numpy.errstate` 220 (E4), `numpy.asanyarray` 218 (E4), `numpy.isscalar` 191 (E4), `numpy.iterable` 131 (E4), `numpy.random.RandomState` 53 (E3), `numpy.vectorize` 47 (E4), `numpy.apply_along_axis` 44 (E4), `numpy.ndarray` 38 (E4), `scipy.interpolate.interp1d` 36 (E6). Their calls are counted above but not weighted into the in-scope figures.

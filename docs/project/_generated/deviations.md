@@ -61,6 +61,7 @@
 | `interpolate.BSpline` | call | rtol 0 |
 | `interpolate.pade` | call | rtol 0 |
 | `interpolate.make_interp_spline` | call | rtol 0 |
+| `interpolate.splev` | call | rtol 0 |
 | `linalg.solve` | every call | rtol 1e-09 |
 | `linalg.inv` | every call | rtol 1e-09 |
 | `linalg.det` | every call | rtol 1e-09 |

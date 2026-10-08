@@ -7,14 +7,14 @@ import numpy as np
 from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInterpolator,
                                CubicSpline, CubicHermiteSpline,
                                barycentric_interpolate, krogh_interpolate,
-                               make_interp_spline, BSpline, pade)
+                               make_interp_spline, BSpline, pade, splev)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis = [], [], [], [], [], [], [], [], [], []
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv = [], [], [], [], [], [], [], [], [], [], []
 
 
 def xyc(xi, yi, xnew, vals):
@@ -59,6 +59,8 @@ for kk in (2, 3):
         xnew = np.linspace(xi[0], xi[-1], 21)
         bsp.append({'args': [F.enc(t), F.enc(c), F.enc(kk), F.enc(xnew)], 'kwargs': {},
                     'expect': F.enc_result(BSpline(t, c, kk)(xnew), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+        spv.append({'args': [F.enc(t), F.enc(c), F.enc(kk), F.enc(xnew)], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(splev(xnew, (t, c, kk))), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
 # pade: rational approximant from Taylor coefficients (use exp's series -> all coefficients nonzero)
 for (m, nn) in ((2, 2), (3, 2), (2, 3), (3, 3)):
@@ -81,7 +83,7 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'CubicHermiteSpline', 'cases': chc},
          {'fn': 'barycentric_interpolate', 'cases': bcc}, {'fn': 'krogh_interpolate', 'cases': kgc},
          {'fn': 'BSpline', 'cases': bsp}, {'fn': 'pade', 'cases': pdc},
-         {'fn': 'make_interp_spline', 'cases': mis}]
+         {'fn': 'make_interp_spline', 'cases': mis}, {'fn': 'splev', 'cases': spv}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
