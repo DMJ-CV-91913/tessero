@@ -83,6 +83,7 @@
         "interpolate.splantider": "pass",
         "interpolate.splder": "pass",
         "interpolate.splev": "pass",
+        "interpolate.splint": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
         "linalg.cross": "pass",
@@ -2269,14 +2270,15 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 1.7634411652125737e-15,
+            "interpolate.barycentric_interpolate": 1.442815498810288e-15,
             "interpolate.krogh_interpolate": 2.9751199482921395e-15,
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
             "interpolate.make_interp_spline": 7.380690589199218e-16,
             "interpolate.splev": 4.42542524411263e-16,
             "interpolate.splder": 0,
-            "interpolate.splantider": 0
+            "interpolate.splantider": 0,
+            "interpolate.splint": 1.7081528815850905e-16
         },
         "ext": {
             "np.median": 0,
@@ -3408,14 +3410,15 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 1.7634411652125737e-15,
+            "interpolate.barycentric_interpolate": 1.442815498810288e-15,
             "interpolate.krogh_interpolate": 2.9751199482921395e-15,
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
             "interpolate.make_interp_spline": 7.380690589199218e-16,
             "interpolate.splev": 4.42542524411263e-16,
             "interpolate.splder": 0,
-            "interpolate.splantider": 0
+            "interpolate.splantider": 0,
+            "interpolate.splint": 1.7081528815850905e-16
         }
     },
     "ext": {
@@ -3502,6 +3505,7 @@
         "interpolate.splantider": "pass",
         "interpolate.splder": "pass",
         "interpolate.splev": "pass",
+        "interpolate.splint": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
         "linalg.cross": "pass",

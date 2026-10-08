@@ -31,6 +31,7 @@ final class Interpolate
     'splantider' => 'splantider',
     'splder' => 'splder',
     'splev' => 'splev',
+    'splint' => 'splint',
     ];
 
     private function __construct()
@@ -183,5 +184,15 @@ final class Interpolate
     public static function splev(mixed $t, mixed $c, mixed $k, mixed $x): mixed
     {
         return Registry::routine('interpolate.splev', [$t, $c, $k, $x]);
+    }
+
+    /**
+     * Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint).
+     *
+     * scipy.interpolate.splint
+     */
+    public static function splint(mixed $a, mixed $b, mixed $t, mixed $c, mixed $k): mixed
+    {
+        return Registry::routine('interpolate.splint', [$a, $b, $t, $c, $k]);
     }
 }

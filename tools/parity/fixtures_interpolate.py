@@ -8,14 +8,14 @@ from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInte
                                CubicSpline, CubicHermiteSpline,
                                barycentric_interpolate, krogh_interpolate,
                                make_interp_spline, BSpline, pade, splev,
-                               splrep, splder, splantider)
+                               splrep, splder, splantider, splint)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai = ([] for _ in range(13))
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi = ([] for _ in range(14))
 
 
 def xyc(xi, yi, xnew, vals):
@@ -92,6 +92,12 @@ for n in (6, 9):
     ta, ca, ka = splantider((t, c, k), 1)
     sai.append({'args': [F.enc(t), F.enc(c), F.enc(int(k)), F.enc(1)], 'kwargs': {},
                 'expect': F.enc_result((np.asarray(ta), np.asarray(ca), ka), ['t', 'c', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    # splint: definite integral over [a, b] -- interior, full span, limits beyond the base interval (clamped),
+    # a fully-outside interval (exactly zero) and a reversed interval (negative sign)
+    for (a, b) in [(xi[1], xi[-2]), (xi[0], xi[-1]), (xi[0] - 1.0, xi[-1] + 1.0),
+                   (xi[-1] + 0.5, xi[-1] + 1.0), (xi[-2], xi[1])]:
+        spi.append({'args': [F.enc(float(a)), F.enc(float(b)), F.enc(t), F.enc(c), F.enc(int(k))], 'kwargs': {},
+                    'expect': F.enc_result(float(splint(a, b, (t, c, k))), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
@@ -99,7 +105,8 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'barycentric_interpolate', 'cases': bcc}, {'fn': 'krogh_interpolate', 'cases': kgc},
          {'fn': 'BSpline', 'cases': bsp}, {'fn': 'pade', 'cases': pdc},
          {'fn': 'make_interp_spline', 'cases': mis}, {'fn': 'splev', 'cases': spv},
-         {'fn': 'splder', 'cases': sdr}, {'fn': 'splantider', 'cases': sai}]
+         {'fn': 'splder', 'cases': sdr}, {'fn': 'splantider', 'cases': sai},
+         {'fn': 'splint', 'cases': spi}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
