@@ -2837,6 +2837,12 @@
                 "doc": "Step response of a discrete-time state-space system (scipy.signal.dstep)."
             },
             {
+                "name": "ellip",
+                "static": true,
+                "sig": "ellip(mixed $N, mixed $rp, mixed $rs, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed",
+                "doc": "Elliptic (Cauer) IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.ellip)."
+            },
+            {
                 "name": "ellipap",
                 "static": true,
                 "sig": "ellipap(mixed $N, mixed $rp, mixed $rs): mixed",
@@ -16385,6 +16391,12 @@
                 "name": "ellipap",
                 "static": true,
                 "sig": "ellipap($N, $rp, $rs)",
+                "doc": ""
+            },
+            {
+                "name": "ellip",
+                "static": true,
+                "sig": "ellip($N, $rp, $rs, $Wn, $btype = 'low', $analog = false, $output = 'ba', $fs = null)",
                 "doc": ""
             }
         ]
