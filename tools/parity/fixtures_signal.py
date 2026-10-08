@@ -400,6 +400,14 @@ for (order, Wn) in ((2, 1.0), (3, 0.8)):
     stpc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(_Ts)], 'kwargs': {},
                  'expect': F.enc_result((ts, ys), ['tout', 'yout']), 'compare': 'tol', 'tol': {'atol': 1e-8}})
 
+# iirnotch / iirpeak: second-order notch/peak digital filter design (closed form)
+notc, peakc = [], []
+for (w0, Q) in ((0.25, 30.0), (0.5, 10.0), (0.1, 5.0)):
+    bn, an = sg.iirnotch(w0, Q)
+    notc.append({'args': [F.enc(w0), F.enc(Q)], 'kwargs': {}, 'expect': F.enc_result((bn, an), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+    bp, ap = sg.iirpeak(w0, Q)
+    peakc.append({'args': [F.enc(w0), F.enc(Q)], 'kwargs': {}, 'expect': F.enc_result((bp, ap), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 # dlsim / dimpulse / dstep: discrete state-space responses (no expm; Ad,Bd are the given discrete system)
 dlsc, dimc, dstc = [], [], []
 _dt = 0.1
@@ -741,6 +749,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'dlsim', 'cases': dlsc, 'tol': {'atol': 1e-9}},
                  {'fn': 'dimpulse', 'cases': dimc, 'tol': {'atol': 1e-9}},
                  {'fn': 'dstep', 'cases': dstc, 'tol': {'atol': 1e-9}},
+                 {'fn': 'iirnotch', 'cases': notc, 'tol': {'atol': 1e-12}},
+                 {'fn': 'iirpeak', 'cases': peakc, 'tol': {'atol': 1e-12}},
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
