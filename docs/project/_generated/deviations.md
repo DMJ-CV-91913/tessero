@@ -52,6 +52,10 @@
 | `fft.fftshift` | every call | rtol 1e-09 |
 | `fft.ifftshift` | every call | rtol 1e-09 |
 | `interpolate.pchip_interpolate` | call | rtol 0 |
+| `interpolate.PchipInterpolator` | call | rtol 0 |
+| `interpolate.Akima1DInterpolator` | call | rtol 0 |
+| `interpolate.CubicSpline` | call | rtol 0 |
+| `interpolate.CubicHermiteSpline` | call | rtol 0 |
 | `linalg.solve` | every call | rtol 1e-09 |
 | `linalg.inv` | every call | rtol 1e-09 |
 | `linalg.det` | every call | rtol 1e-09 |
