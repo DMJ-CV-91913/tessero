@@ -49,6 +49,7 @@ final class Signal
     'dimpulse' => 'dimpulse',
     'dlsim' => 'dlsim',
     'dstep' => 'dstep',
+    'ellipap' => 'ellipap',
     'ellipord' => 'ellipord',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
@@ -486,6 +487,18 @@ final class Signal
     public static function dstep(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $n = 100): mixed
     {
         return Registry::routine('signal.dstep', [$A, $B, $C, $D, $dt, $n]);
+    }
+
+    /**
+     * Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap).
+     *
+     * scipy.signal.ellipap
+     *
+     * @return mixed one array, or an array keyed by z, p, k when several results are requested
+     */
+    public static function ellipap(mixed $N, mixed $rp, mixed $rs): mixed
+    {
+        return Registry::routine('signal.ellipap', [$N, $rp, $rs]);
     }
 
     /**

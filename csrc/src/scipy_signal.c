@@ -4512,6 +4512,48 @@ static int r_get_window(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return fn(NULL, syn, need + 2, res, 1);
 }
 
+extern void tsr_special_ellipj(const void *ctx, const double *in, double *out);   /* in={u,m}, out={sn,cn,dn,ph} */
+
+/* ---- scipy.signal.ellipap helpers (Orfanidis elliptic filter notes) ---- */
+#define EA_LN10 2.302585092994046
+static double ea_pow10m1(double x) { return expm1(EA_LN10 * x); }
+static double complex ea_comp_c(double complex z) { return csqrt((1.0 - z) * (1.0 + z)); }
+
+/* solve the degree equation n K(m)/K'(m) = K1/K1' for m, via nomes (scipy _ellipdeg, _ELLIPDEG_MMAX=7). */
+static double ea_ellipdeg(int n, double m1)
+{
+    double K1, K1p;
+    tsr_special_ellipk(NULL, &m1, &K1); tsr_special_ellipkm1(NULL, &m1, &K1p);
+    const double q1 = exp(-M_PI * K1p / K1), q = pow(q1, 1.0 / (double)n);
+    double num = 0.0, den = 1.0;
+    for (int mm = 0; mm <= 7; mm++) num += pow(q, (double)(mm * (mm + 1)));
+    for (int mm = 1; mm <= 8; mm++) den += 2.0 * pow(q, (double)(mm * mm));
+    const double r = num / den;
+    return 16.0 * q * r * r * r * r;
+}
+
+/* real inverse Jacobi sc with complementary modulus: solve w = sc(z, 1-m), return z (scipy _arc_jac_sc1 via
+   _arc_jac_sn with the descending Landen sequence). w is real here. */
+static double ea_arc_jac_sc1(double w, double m)
+{
+    const double k = sqrt(m);
+    double ks[16]; int nk = 0; ks[nk++] = k;
+    while (ks[nk - 1] != 0.0 && nk < 16) {
+        const double kp = sqrt((1.0 - ks[nk - 1]) * (1.0 + ks[nk - 1]));
+        ks[nk] = (1.0 - kp) / (1.0 + kp); nk++;
+    }
+    double K = 1.0;
+    for (int i = 1; i < nk; i++) K *= (1.0 + ks[i]);
+    K *= M_PI / 2.0;
+    double complex wn = I * w;                                /* _arc_jac_sn(1j*w, m) */
+    for (int i = 0; i + 1 < nk; i++) {
+        const double kn = ks[i], knext = ks[i + 1];
+        wn = 2.0 * wn / ((1.0 + knext) * (1.0 + ea_comp_c(kn * wn)));
+    }
+    const double complex u = (2.0 / M_PI) * casin(wn), z = K * u;
+    return cimag(z);
+}
+
 /* canonical complex order (ascending real, ties ascending imaginary) matching the fixtures' numpy.lexsort of the
    poles, so the comparison is order-independent. */
 static int besselap_pole_cmp(const void *A, const void *B)
@@ -4562,6 +4604,87 @@ static int r_besselap(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
         else { for (int64_t i = 0; i < 2 * N; i++) p[i] = roots[i]; fn_result_num(&res[2], is_phase ? 1.0 : a_last); }
     }
     free(hi); free(roots);
+    return rc;
+}
+
+/* ellipap(N, rp, rs): (z, p, k) analog elliptic (Cauer) filter prototype (scipy.signal.ellipap). Reproduces
+   scipy's construction: pole/zero locations from Jacobi elliptic functions on the modulus solved by the degree
+   equation. z and p are emitted in the fixtures' canonical lexsort order; z is empty for N=1. */
+static int r_ellipap(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 1 || args[1].kind != 1 || args[2].kind != 1) { fn_set_error("ellipap: N, rp, rs must be numbers"); return TSR_EARG; }
+    const int N = (args[0].flags & 1) ? (int)args[0].ival : (int)args[0].num;
+    const double rp = args[1].num, rs = args[2].num;
+    if (N < 1 || N > 25) { fn_set_error("ellipap: order N must be between 1 and 25"); return TSR_EARG; }
+    const double EPS = 2e-16;
+    if (N == 1) {                                             /* single real pole, no zeros */
+        const double p1 = -sqrt(1.0 / ea_pow10m1(0.1 * rp));
+        double *z = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0}); (void)z;
+        double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){1});
+        if (!p) return TSR_ENOMEM;
+        p[0] = p1; p[1] = 0.0; fn_result_num(&res[2], -p1);
+        return TSR_OK;
+    }
+    const double eps_sq = ea_pow10m1(0.1 * rp), eps = sqrt(eps_sq);
+    const double ck1_sq = eps_sq / ea_pow10m1(0.1 * rs);
+    if (ck1_sq == 0.0) { fn_set_error("ellipap: cannot design a filter with the given rp and rs"); return TSR_EARG; }
+    double val0; tsr_special_ellipk(NULL, &ck1_sq, &val0);
+    const double m = ea_ellipdeg(N, ck1_sq);
+    double capk; tsr_special_ellipk(NULL, &m, &capk);
+    const int jj = (N % 2) ? (N + 1) / 2 : N / 2;
+    const int j0 = 1 - (N % 2);                               /* j = j0, j0+2, ... */
+    double *sj = (double *)malloc((size_t)jj * sizeof(double)), *cj = (double *)malloc((size_t)jj * sizeof(double)), *dj = (double *)malloc((size_t)jj * sizeof(double));
+    double complex *zh = (double complex *)malloc((size_t)jj * sizeof(double complex));
+    double complex *ph = (double complex *)malloc((size_t)jj * sizeof(double complex));
+    double complex *zf = (double complex *)malloc((size_t)(2 * jj) * sizeof(double complex));
+    double complex *pf = (double complex *)malloc((size_t)(2 * jj) * sizeof(double complex));
+    int rc = (!sj || !cj || !dj || !zh || !ph || !zf || !pf) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        int nzh = 0;
+        for (int i = 0; i < jj; i++) {
+            const double in[2] = {(double)(j0 + 2 * i) * capk / (double)N, m}; double out[4];
+            tsr_special_ellipj(NULL, in, out);
+            sj[i] = out[0]; cj[i] = out[1]; dj[i] = out[2];
+            if (fabs(sj[i]) > EPS) zh[nzh++] = I * (1.0 / (sqrt(m) * sj[i]));   /* 1j / (sqrt(m) sn) */
+        }
+        const double r = ea_arc_jac_sc1(1.0 / eps, ck1_sq), v0 = capk * r / ((double)N * val0);
+        const double inv[2] = {v0, 1.0 - m}; double ov[4];
+        tsr_special_ellipj(NULL, inv, ov);
+        const double sv = ov[0], cv = ov[1], dv = ov[2];
+        double psum = 0.0;
+        for (int i = 0; i < jj; i++) {
+            const double denom = 1.0 - (dj[i] * sv) * (dj[i] * sv);
+            ph[i] = -(cj[i] * dj[i] * sv * cv + I * sj[i] * dv) / denom;
+            psum += creal(ph[i] * conj(ph[i]));
+        }
+        int nz = 0, np_ = 0;
+        for (int i = 0; i < nzh; i++) { zf[nz++] = zh[i]; zf[nz++] = conj(zh[i]); }      /* z + conj(z) */
+        if (N % 2) {
+            const double thr = EPS * sqrt(psum);
+            for (int i = 0; i < jj; i++) pf[np_++] = ph[i];
+            for (int i = 0; i < jj; i++) if (fabs(cimag(ph[i])) > thr) pf[np_++] = conj(ph[i]);
+        } else {
+            for (int i = 0; i < jj; i++) pf[np_++] = ph[i];
+            for (int i = 0; i < jj; i++) pf[np_++] = conj(ph[i]);
+        }
+        double complex prodp = 1.0, prodz = 1.0;
+        for (int i = 0; i < np_; i++) prodp *= -pf[i];
+        for (int i = 0; i < nz; i++) prodz *= -zf[i];
+        double k = creal(prodp / prodz);
+        if (N % 2 == 0) k /= sqrt(1.0 + eps_sq);
+        qsort(zf, (size_t)nz, sizeof(double complex), besselap_pole_cmp);
+        qsort(pf, (size_t)np_, sizeof(double complex), besselap_pole_cmp);
+        double *zout = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){nz});
+        double *pout = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){np_});
+        if (!zout || !pout) rc = TSR_ENOMEM;
+        else {
+            for (int i = 0; i < nz; i++) { zout[2 * i] = creal(zf[i]); zout[2 * i + 1] = cimag(zf[i]); }
+            for (int i = 0; i < np_; i++) { pout[2 * i] = creal(pf[i]); pout[2 * i + 1] = cimag(pf[i]); }
+            fn_result_num(&res[2], k);
+        }
+    }
+    free(sj); free(cj); free(dj); free(zh); free(ph); free(zf); free(pf);
     return rc;
 }
 
@@ -4685,6 +4808,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
+    ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

@@ -2837,6 +2837,12 @@
                 "doc": "Step response of a discrete-time state-space system (scipy.signal.dstep)."
             },
             {
+                "name": "ellipap",
+                "static": true,
+                "sig": "ellipap(mixed $N, mixed $rp, mixed $rs): mixed",
+                "doc": "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."
+            },
+            {
                 "name": "ellipord",
                 "static": true,
                 "sig": "ellipord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed",
@@ -16373,6 +16379,12 @@
                 "name": "besselap",
                 "static": true,
                 "sig": "besselap($N, $norm = 'phase')",
+                "doc": ""
+            },
+            {
+                "name": "ellipap",
+                "static": true,
+                "sig": "ellipap($N, $rp, $rs)",
                 "doc": ""
             }
         ]
