@@ -2093,6 +2093,130 @@ static int r_step(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     return rc;
 }
 
+/* ---- discrete-time LTI responses: dlsim / dimpulse / dstep (scipy.signal) ---- */
+
+/* numpy linspace(0, (ns-1)*dt, ns): tout[i]=i*step, tout[ns-1]=stop exactly (matches scipy dlsim's tout). */
+static void sig_linspace_dt(double *tout, int64_t ns, double dt)
+{
+    if (ns == 1) { tout[0] = 0.0; return; }
+    const double stop = (double)(ns - 1) * dt, step = stop / (double)(ns - 1);
+    for (int64_t i = 0; i < ns - 1; i++) tout[i] = (double)i * step;
+    tout[ns - 1] = stop;
+}
+
+/* Discrete state-space simulation, replicating scipy.signal.dlsim's loop exactly (column-vector convention,
+   no expm). A:n*n B:n*m C:p*n D:p*m U:ns*m (row-major). X0: length n or NULL. Writes xout (ns*n), yout (ns*p). */
+static void sig_dlsim_core(const double *A, int64_t n, const double *B, int64_t m,
+                           const double *C, int64_t p, const double *D,
+                           const double *U, int64_t ns, const double *X0, double *xout, double *yout)
+{
+    for (int64_t j = 0; j < n; j++) xout[j] = X0 ? X0[j] : 0.0;
+    for (int64_t i = 0; i + 1 < ns; i++) {
+        for (int64_t j = 0; j < n; j++) {                      /* x[i+1] = A@x[i] + B@u[i] */
+            double s = 0; for (int64_t k = 0; k < n; k++) s += A[j * n + k] * xout[i * n + k];
+            for (int64_t l = 0; l < m; l++) s += B[j * m + l] * U[i * m + l];
+            xout[(i + 1) * n + j] = s;
+        }
+        for (int64_t q = 0; q < p; q++) {                      /* y[i] = C@x[i] + D@u[i] */
+            double s = 0; for (int64_t j = 0; j < n; j++) s += C[q * n + j] * xout[i * n + j];
+            for (int64_t l = 0; l < m; l++) s += D[q * m + l] * U[i * m + l];
+            yout[i * p + q] = s;
+        }
+    }
+    for (int64_t q = 0; q < p; q++) {                          /* last point */
+        double s = 0; for (int64_t j = 0; j < n; j++) s += C[q * n + j] * xout[(ns - 1) * n + j];
+        for (int64_t l = 0; l < m; l++) s += D[q * m + l] * U[(ns - 1) * m + l];
+        yout[(ns - 1) * p + q] = s;
+    }
+}
+
+/* dlsim(A, B, C, D, dt, U): simulate a discrete state-space system (scipy.signal.dlsim, t=None path).
+   Returns (tout, yout, xout); yout (ns,p) and xout (ns,n) are NOT squeezed (unlike continuous lsim). */
+static int r_dlsim(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("dlsim: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
+    if (args[4].kind != 1) { fn_set_error("dlsim: dt must be a number"); return TSR_EARG; }
+    if (args[5].kind != 3) { fn_set_error("dlsim: U must be an array"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], m = args[1].arr.shape[1], p = args[2].arr.shape[0], ns = args[5].arr.shape[0];
+    const int64_t mu = (args[5].arr.ndim == 1) ? 1 : args[5].arr.shape[1];
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n || args[3].arr.shape[0] != p || args[3].arr.shape[1] != m || mu != m) { fn_set_error("dlsim: inconsistent shapes"); return TSR_EARG; }
+    const double dt = args[4].num;
+    int64_t la, lb, lc, ld, lu;
+    double *A = fn_arg_doubles(&args[0], &la), *B = fn_arg_doubles(&args[1], &lb), *C = fn_arg_doubles(&args[2], &lc), *D = fn_arg_doubles(&args[3], &ld), *U = fn_arg_doubles(&args[5], &lu);
+    double *xout = (A && B && C && D && U) ? (double *)malloc((size_t)(ns * n) * sizeof(double)) : NULL;
+    double *yout = xout ? (double *)malloc((size_t)(ns * p) * sizeof(double)) : NULL;
+    int rc = (!A || !B || !C || !D || !U || !xout || !yout) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) sig_dlsim_core(A, n, B, m, C, p, D, U, ns, NULL, xout, yout);
+    if (rc == TSR_OK) {
+        double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ns});
+        double *ry = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){ns, p});
+        double *rx = (double *)fn_result_array(&res[2], TSR_F64, 2, (int64_t[]){ns, n});
+        if (!rt || !ry || !rx) rc = TSR_ENOMEM;
+        else { sig_linspace_dt(rt, ns, dt); memcpy(ry, yout, (size_t)(ns * p) * sizeof(double)); memcpy(rx, xout, (size_t)(ns * n) * sizeof(double)); }
+    }
+    free(xout); free(yout);
+    fn_free_doubles(A, la); fn_free_doubles(B, lb); fn_free_doubles(C, lc); fn_free_doubles(D, ld); fn_free_doubles(U, lu);
+    return rc;
+}
+
+/* dimpulse(A, B, C, D, dt, n=100): discrete impulse response (scipy.signal.dimpulse, single input). Returns
+   (tout, yout); scipy returns yout as a 1-tuple of (ns,1) per input -- the fixture extracts the single element. */
+static int r_dimpulse(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("dimpulse: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
+    if (args[4].kind != 1) { fn_set_error("dimpulse: dt must be a number"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], m = args[1].arr.shape[1], p = args[2].arr.shape[0];
+    const int64_t ns = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : 100;
+    if (m != 1) { fn_set_error("dimpulse: single-input systems only"); return TSR_EARG; }
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n || args[3].arr.shape[0] != p || args[3].arr.shape[1] != m || ns < 1) { fn_set_error("dimpulse: inconsistent shapes"); return TSR_EARG; }
+    const double dt = args[4].num;
+    int64_t la, lb, lc, ld;
+    double *A = fn_arg_doubles(&args[0], &la), *B = fn_arg_doubles(&args[1], &lb), *C = fn_arg_doubles(&args[2], &lc), *D = fn_arg_doubles(&args[3], &ld);
+    double *U = (A && B && C && D) ? (double *)calloc((size_t)(ns * m), sizeof(double)) : NULL;
+    double *xout = U ? (double *)malloc((size_t)(ns * n) * sizeof(double)) : NULL;
+    double *yout = xout ? (double *)malloc((size_t)(ns * p) * sizeof(double)) : NULL;
+    int rc = (!A || !B || !C || !D || !U || !xout || !yout) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) { U[0] = 1.0; sig_dlsim_core(A, n, B, m, C, p, D, U, ns, NULL, xout, yout); }   /* unit impulse at sample 0 */
+    if (rc == TSR_OK) {
+        double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ns});
+        double *ry = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){ns, p});
+        if (!rt || !ry) rc = TSR_ENOMEM; else { sig_linspace_dt(rt, ns, dt); memcpy(ry, yout, (size_t)(ns * p) * sizeof(double)); }
+    }
+    free(U); free(xout); free(yout);
+    fn_free_doubles(A, la); fn_free_doubles(B, lb); fn_free_doubles(C, lc); fn_free_doubles(D, ld);
+    return rc;
+}
+
+/* dstep(A, B, C, D, dt, n=100): discrete step response (scipy.signal.dstep, single input). Returns (tout, yout). */
+static int r_dstep(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("dstep: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
+    if (args[4].kind != 1) { fn_set_error("dstep: dt must be a number"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], m = args[1].arr.shape[1], p = args[2].arr.shape[0];
+    const int64_t ns = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : 100;
+    if (m != 1) { fn_set_error("dstep: single-input systems only"); return TSR_EARG; }
+    if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n || args[3].arr.shape[0] != p || args[3].arr.shape[1] != m || ns < 1) { fn_set_error("dstep: inconsistent shapes"); return TSR_EARG; }
+    const double dt = args[4].num;
+    int64_t la, lb, lc, ld;
+    double *A = fn_arg_doubles(&args[0], &la), *B = fn_arg_doubles(&args[1], &lb), *C = fn_arg_doubles(&args[2], &lc), *D = fn_arg_doubles(&args[3], &ld);
+    double *U = (A && B && C && D) ? (double *)malloc((size_t)(ns * m) * sizeof(double)) : NULL;
+    double *xout = U ? (double *)malloc((size_t)(ns * n) * sizeof(double)) : NULL;
+    double *yout = xout ? (double *)malloc((size_t)(ns * p) * sizeof(double)) : NULL;
+    int rc = (!A || !B || !C || !D || !U || !xout || !yout) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) { for (int64_t i = 0; i < ns * m; i++) U[i] = 1.0; sig_dlsim_core(A, n, B, m, C, p, D, U, ns, NULL, xout, yout); }
+    if (rc == TSR_OK) {
+        double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ns});
+        double *ry = (double *)fn_result_array(&res[1], TSR_F64, 2, (int64_t[]){ns, p});
+        if (!rt || !ry) rc = TSR_ENOMEM; else { sig_linspace_dt(rt, ns, dt); memcpy(ry, yout, (size_t)(ns * p) * sizeof(double)); }
+    }
+    free(U); free(xout); free(yout);
+    fn_free_doubles(A, la); fn_free_doubles(B, lb); fn_free_doubles(C, lc); fn_free_doubles(D, ld);
+    return rc;
+}
+
 /* ---- partial-fraction expansion (scipy.signal) ---- */
 
 enum { RT_MIN, RT_MAX, RT_AVG };
@@ -4283,6 +4407,9 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.lsim", 3, "A, B, C, D, U, T, interp=True", "tout, yout, xout", r_lsim, NULL, "Simulate a continuous-time state-space system (scipy.signal.lsim)."),
     ROUTINE("signal.impulse", 2, "A, B, C, D, T", "tout, yout", r_impulse, NULL, "Impulse response of a continuous-time state-space system (scipy.signal.impulse)."),
     ROUTINE("signal.step", 2, "A, B, C, D, T", "tout, yout", r_step, NULL, "Step response of a continuous-time state-space system (scipy.signal.step)."),
+    ROUTINE("signal.dlsim", 3, "A, B, C, D, dt, U", "tout, yout, xout", r_dlsim, NULL, "Simulate a discrete-time state-space system (scipy.signal.dlsim)."),
+    ROUTINE("signal.dimpulse", 2, "A, B, C, D, dt, n=100", "tout, yout", r_dimpulse, NULL, "Impulse response of a discrete-time state-space system (scipy.signal.dimpulse)."),
+    ROUTINE("signal.dstep", 2, "A, B, C, D, dt, n=100", "tout, yout", r_dstep, NULL, "Step response of a discrete-time state-space system (scipy.signal.dstep)."),
     ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
     ROUTINE("signal.hilbert2", 1, "x, N=None", "out", r_hilbert2, NULL, "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."),
     ROUTINE("signal.periodogram", 2, "x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True, scaling='density'", "f, Pxx", r_periodogram, NULL, "Power spectral density estimate from a single segment (scipy.signal.periodogram)."),

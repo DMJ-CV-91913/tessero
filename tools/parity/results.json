@@ -452,6 +452,9 @@
         "signal.dbode": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
+        "signal.dimpulse": "pass",
+        "signal.dlsim": "pass",
+        "signal.dstep": "pass",
         "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
@@ -2236,7 +2239,10 @@
             "signal.dbode": 1.3068991204809567e-5,
             "signal.lsim": 1.4983002347443584e-12,
             "signal.impulse": 4.945586183303216e-12,
-            "signal.step": 3.507668188838256e-15
+            "signal.step": 3.507668188838256e-15,
+            "signal.dlsim": 8.484813829922335e-15,
+            "signal.dimpulse": 9.787648236404475e-15,
+            "signal.dstep": 4.440891041420716e-16
         },
         "ext": {
             "np.median": 0,
@@ -3355,7 +3361,10 @@
             "signal.dbode": 1.3068991204809567e-5,
             "signal.lsim": 1.4983002347443584e-12,
             "signal.impulse": 4.945586183303216e-12,
-            "signal.step": 3.507668188838256e-15
+            "signal.step": 3.507668188838256e-15,
+            "signal.dlsim": 8.484813829922335e-15,
+            "signal.dimpulse": 9.787648236404475e-15,
+            "signal.dstep": 4.440891041420716e-16
         }
     },
     "ext": {
@@ -3811,6 +3820,9 @@
         "signal.dbode": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
+        "signal.dimpulse": "pass",
+        "signal.dlsim": "pass",
+        "signal.dstep": "pass",
         "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",

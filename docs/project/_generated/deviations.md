@@ -162,6 +162,12 @@
 | `signal.impulse` | call | rtol 0 |
 | `signal.step` | every call | rtol 0 |
 | `signal.step` | call | rtol 0 |
+| `signal.dlsim` | every call | rtol 0 |
+| `signal.dlsim` | call | rtol 0 |
+| `signal.dimpulse` | every call | rtol 0 |
+| `signal.dimpulse` | call | rtol 0 |
+| `signal.dstep` | every call | rtol 0 |
+| `signal.dstep` | call | rtol 0 |
 | `signal.hilbert` | every call | rtol 0 |
 | `signal.hilbert` | call | rtol 0 |
 | `signal.hilbert2` | every call | rtol 0 |

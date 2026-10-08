@@ -400,6 +400,25 @@ for (order, Wn) in ((2, 1.0), (3, 0.8)):
     stpc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(_Ts)], 'kwargs': {},
                  'expect': F.enc_result((ts, ys), ['tout', 'yout']), 'compare': 'tol', 'tol': {'atol': 1e-8}})
 
+# dlsim / dimpulse / dstep: discrete state-space responses (no expm; Ad,Bd are the given discrete system)
+dlsc, dimc, dstc = [], [], []
+_dt = 0.1
+for (order, Wn) in ((2, 0.3), (3, 0.25)):
+    bb, aa = sg.butter(order, Wn)                       # digital filter -> discrete state space
+    A, B, C, D = sg.tf2ss(bb, aa)
+    A = np.asarray(A, float); B = np.asarray(B, float).reshape(-1, 1)
+    C = np.asarray(C, float).reshape(1, -1); D = np.atleast_2d(np.asarray(D, float))
+    U = np.sin(np.arange(30) * 0.3) + 0.5
+    tt, yy, xx = sg.dlsim((A, B, C, D, _dt), U)
+    dlsc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(_dt), F.enc(U)], 'kwargs': {},
+                 'expect': F.enc_result((tt, yy, xx), ['tout', 'yout', 'xout']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    ti, yimp = sg.dimpulse((A, B, C, D, _dt), n=30)
+    dimc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(_dt), F.enc(30)], 'kwargs': {},
+                 'expect': F.enc_result((ti, yimp[0]), ['tout', 'yout']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    ts, ystp = sg.dstep((A, B, C, D, _dt), n=30)
+    dstc.append({'args': [F.enc(A), F.enc(B), F.enc(C), F.enc(D), F.enc(_dt), F.enc(30)], 'kwargs': {},
+                 'expect': F.enc_result((ts, ystp[0]), ['tout', 'yout']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 # sosfreqz (SOS cascade response) and group_delay
 sfz2, gdl = [], []
 for (N, Wn, bt) in [(2, 0.3, 'low'), (3, 0.25, 'low'), (2, 0.5, 'high'), (4, 0.4, 'low')]:
@@ -719,6 +738,9 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'lsim', 'cases': lsimc, 'tol': {'atol': 1e-8}},
                  {'fn': 'impulse', 'cases': impc, 'tol': {'atol': 1e-8}},
                  {'fn': 'step', 'cases': stpc, 'tol': {'atol': 1e-8}},
+                 {'fn': 'dlsim', 'cases': dlsc, 'tol': {'atol': 1e-9}},
+                 {'fn': 'dimpulse', 'cases': dimc, 'tol': {'atol': 1e-9}},
+                 {'fn': 'dstep', 'cases': dstc, 'tol': {'atol': 1e-9}},
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
