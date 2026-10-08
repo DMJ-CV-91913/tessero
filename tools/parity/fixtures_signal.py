@@ -719,6 +719,14 @@ for spec in gw_specs:
             gw.append({'args': [F.enc(spec), F.enc(Nx), F.enc(fftbins)], 'kwargs': {},
                        'expect': F.enc_result(np.asarray(sg.get_window(spec, Nx, fftbins=fftbins)), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# besselap: analog Bessel prototype (z, p, k); poles compared as an (re,im)-lexsorted set, norm 'phase' / 'delay'.
+bsl = []
+for norm in ('phase', 'delay'):
+    for N in (1, 2, 3, 4, 5, 6, 8):
+        z, p, kk = sg.besselap(N, norm=norm)
+        bsl.append({'args': [F.enc(N), F.enc(norm)], 'kwargs': {},
+                    'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -809,7 +817,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'convolve2d', 'cases': cv2, 'tol': {'atol': 1e-11}},
                  {'fn': 'correlate2d', 'cases': cr2, 'tol': {'atol': 1e-11}},
                  {'fn': 'lombscargle', 'cases': lsc, 'tol': {'atol': 1e-9}},
-                 {'fn': 'get_window', 'cases': gw, 'tol': {'atol': 1e-12}}]}
+                 {'fn': 'get_window', 'cases': gw, 'tol': {'atol': 1e-12}},
+                 {'fn': 'besselap', 'cases': bsl, 'tol': {'atol': 1e-9}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

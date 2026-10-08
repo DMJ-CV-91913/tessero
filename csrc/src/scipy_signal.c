@@ -4512,6 +4512,59 @@ static int r_get_window(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return fn(NULL, syn, need + 2, res, 1);
 }
 
+/* canonical complex order (ascending real, ties ascending imaginary) matching the fixtures' numpy.lexsort of the
+   poles, so the comparison is order-independent. */
+static int besselap_pole_cmp(const void *A, const void *B)
+{
+    const double *a = (const double *)A, *b = (const double *)B;
+    if (a[0] != b[0]) return a[0] < b[0] ? -1 : 1;
+    if (a[1] != b[1]) return a[1] < b[1] ? -1 : 1;
+    return 0;
+}
+
+/* besselap(N, norm='phase'): (z, p, k) analog Bessel filter prototype (scipy.signal.besselap). The poles are the
+   roots of the monic reverse Bessel polynomial theta_N (coeff of x^k is (2N-k)!/(2^(N-k)(N-k)!k!), via lgamma),
+   found with the shared companion-matrix root finder and ordered by descending imaginary part. norm='phase' (the
+   default) scales the poles by a_last^(-1/N) with gain k=1; norm='delay' leaves them with k=a_last. z is empty. */
+static int r_besselap(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("besselap: N must be an integer order"); return TSR_EARG; }
+    const int N = (args[0].flags & 1) ? (int)args[0].ival : (int)args[0].num;
+    if (N < 1 || N > 25) { fn_set_error("besselap: order N must be between 1 and 25"); return TSR_EARG; }
+    const char *norm = (nargs > 1 && args[1].kind == 2 && args[1].str) ? args[1].str : "phase";
+    int is_phase;
+    if (strcmp(norm, "phase") == 0) is_phase = 1;
+    else if (strcmp(norm, "delay") == 0) is_phase = 0;
+    else { fn_set_error("besselap: only norm='phase' and norm='delay' are supported here"); return TSR_EARG; }
+    double *hi = (double *)malloc((size_t)(N + 1) * sizeof(double));   /* theta_N coeffs, highest degree first */
+    int rc = hi ? TSR_OK : TSR_ENOMEM;
+    int64_t nz = 0; double *roots = NULL; double a_last = 1.0;
+    if (rc == TSR_OK) {
+        const double ln2 = log(2.0);
+        for (int i = 0; i <= N; i++) {                                /* hi[i] = coeff of x^(N-i) = a_{N-i} */
+            const int k = N - i;
+            hi[i] = exp(lgamma((double)(2 * N - k) + 1.0) - (double)(N - k) * ln2 - lgamma((double)(N - k) + 1.0) - lgamma((double)k + 1.0));
+        }
+        a_last = hi[N];                                               /* a_0 = (2N)!/(2^N N!) */
+        roots = sig_polyroots(hi, N + 1, &nz);                        /* interleaved (re, im); nz == N */
+        if (nz < 0) { fn_set_error("besselap: pole computation failed"); rc = TSR_ECONVERGE; }
+        else if (nz != N) { fn_set_error("besselap: unexpected pole count"); rc = TSR_ECONVERGE; }
+    }
+    if (rc == TSR_OK) {
+        const double scale = is_phase ? pow(a_last, -1.0 / (double)N) : 1.0;
+        for (int64_t i = 0; i < N; i++) { roots[2 * i] *= scale; roots[2 * i + 1] *= scale; }
+        qsort(roots, (size_t)N, 2 * sizeof(double), besselap_pole_cmp);
+        double *z = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){0});
+        double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){N});
+        (void)z;
+        if (!p) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < 2 * N; i++) p[i] = roots[i]; fn_result_num(&res[2], is_phase ? 1.0 : a_last); }
+    }
+    free(hi); free(roots);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -4631,6 +4684,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
+    ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
