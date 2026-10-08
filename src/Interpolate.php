@@ -19,6 +19,7 @@ final class Interpolate
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'Akima1DInterpolator' => 'Akima1DInterpolator',
+    'BSpline' => 'BSpline',
     'CubicHermiteSpline' => 'CubicHermiteSpline',
     'CubicSpline' => 'CubicSpline',
     'PchipInterpolator' => 'PchipInterpolator',
@@ -51,6 +52,16 @@ final class Interpolate
     public static function Akima1DInterpolator(mixed $x, mixed $y, mixed $xnew): mixed
     {
         return Registry::routine('interpolate.Akima1DInterpolator', [$x, $y, $xnew]);
+    }
+
+    /**
+     * Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline).
+     *
+     * scipy.interpolate.BSpline
+     */
+    public static function BSpline(mixed $t, mixed $c, mixed $k, mixed $x): mixed
+    {
+        return Registry::routine('interpolate.BSpline', [$t, $c, $k, $x]);
     }
 
     /**
