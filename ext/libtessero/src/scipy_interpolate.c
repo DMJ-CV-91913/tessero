@@ -256,6 +256,48 @@ static int r_bspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return rc;
 }
 
+/* pade(an, m, n=None): Pade [m/n] rational approximant from Taylor coefficients an (scipy.interpolate.pade).
+   Builds C = [eye(N+1, n+1) | Bkj], solves C @ pq = an, returns numerator p and denominator q coefficients in
+   highest-degree-first order (as numpy.poly1d.coeffs). N = m+n. */
+static int r_pade(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("pade: an must be a 1-D array"); return TSR_EARG; }
+    if (args[1].kind != 1) { fn_set_error("pade: m must be an integer"); return TSR_EARG; }
+    const int64_t L = args[0].arr.shape[0], m = (int64_t)args[1].num;
+    const int64_t n = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : (L - 1 - m);
+    if (m < 0 || n < 0) { fn_set_error("pade: m and n must be nonnegative"); return TSR_EARG; }
+    const int64_t N = m + n;
+    if (N > L - 1) { fn_set_error("pade: m + n must be smaller than len(an)"); return TSR_EARG; }
+    int64_t la; double *an = fn_arg_doubles(&args[0], &la);
+    if (!an) return TSR_ENOMEM;
+    const int64_t S = N + 1;
+    double *C = (double *)calloc((size_t)(S * S), sizeof(double));
+    double *b = (double *)malloc((size_t)S * sizeof(double));
+    int rc = (!C || !b) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i <= n; i++) C[i * S + i] = 1.0;                  /* Akj = eye(S, n+1) */
+        for (int64_t row = 1; row <= N; row++) {                             /* Bkj (columns n+1..n+m) */
+            const int64_t cmax = (row <= m) ? row : m;
+            for (int64_t cc = 0; cc < cmax; cc++) C[row * S + (n + 1 + cc)] = -an[row - 1 - cc];
+        }
+        for (int64_t i = 0; i < S; i++) b[i] = an[i];
+        rc = sl_dense_solve(C, b, S, 1);
+        if (rc != TSR_OK) fn_set_error("pade: the Pade linear system is singular");
+    }
+    if (rc == TSR_OK) {
+        double *rp = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n + 1});
+        double *rq = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){m + 1});
+        if (!rp || !rq) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i <= n; i++) rp[i] = b[n - i];                /* p[::-1] */
+            for (int64_t i = 0; i <= m; i++) { const int64_t j = m - i; rq[i] = (j == 0) ? 1.0 : b[n + j]; }  /* q[::-1], q=[1, pq[n+1:]] */
+        }
+    }
+    free(C); free(b); fn_free_doubles(an, la);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -265,6 +307,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.barycentric_interpolate", 1, "xi, yi, x", "y", r_barycentric, NULL, "Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate)."),
     ROUTINE("interpolate.krogh_interpolate", 1, "xi, yi, x", "y", r_krogh, NULL, "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."),
     ROUTINE("interpolate.BSpline", 1, "t, c, k, x", "y", r_bspline, NULL, "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline)."),
+    ROUTINE("interpolate.pade", 2, "an, m, n=None", "p, q", r_pade, NULL, "Pade rational approximant (numerator p, denominator q) from Taylor coefficients (scipy.interpolate.pade)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
