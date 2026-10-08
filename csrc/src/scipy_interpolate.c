@@ -298,6 +298,38 @@ static int r_pade(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     return rc;
 }
 
+/* make_interp_spline(x, y, k, xnew): interpolating spline evaluated at xnew (scipy.interpolate.make_interp_spline,
+   default bc). k=1 is piecewise linear; k=3 is the not-a-knot cubic (same spline as CubicSpline, evaluated via
+   its node derivatives). Other degrees are not supported here. */
+static int r_make_interp_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
+        args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("make_interp_spline: x, y and xnew must be 1-D arrays"); return TSR_EARG; }
+    if (args[2].kind != 1) { fn_set_error("make_interp_spline: k must be an integer degree"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], q = args[3].arr.shape[0];
+    const int k = (int)args[2].num;
+    if (args[1].arr.shape[0] != n) { fn_set_error("make_interp_spline: x and y must have the same length"); return TSR_EARG; }
+    if (n < 2) { fn_set_error("make_interp_spline: need at least two sample points"); return TSR_EARG; }
+    if (k != 1 && k != 3) { fn_set_error("make_interp_spline: only k=1 and k=3 are supported"); return TSR_EARG; }
+    int64_t lx, ly, lq;
+    double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL, *xq = y ? fn_arg_doubles(&args[3], &lq) : NULL;
+    double *d = (xq && k == 3) ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
+    double *out = (xq && (k == 1 || d)) ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
+    int rc = (!x || !y || !xq || !out || (k == 3 && !d)) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        if (k == 3) { rc = ip_cubicspline_deriv(x, y, n, d); if (rc == TSR_OK) ip_hermite(x, y, d, n, xq, q, out); }
+        else for (int64_t j = 0; j < q; j++) {              /* k == 1: piecewise linear */
+            const double v = xq[j];
+            int64_t lo = 0, hi = n; while (lo < hi) { const int64_t mid = (lo + hi) / 2; if (x[mid] <= v) lo = mid + 1; else hi = mid; }
+            int64_t idx = lo - 1; if (idx < 0) idx = 0; else if (idx > n - 2) idx = n - 2;
+            out[j] = y[idx] + (y[idx + 1] - y[idx]) * (v - x[idx]) / (x[idx + 1] - x[idx]);
+        }
+    }
+    free(d); fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(xq, lq);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -308,6 +340,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.krogh_interpolate", 1, "xi, yi, x", "y", r_krogh, NULL, "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."),
     ROUTINE("interpolate.BSpline", 1, "t, c, k, x", "y", r_bspline, NULL, "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline)."),
     ROUTINE("interpolate.pade", 2, "an, m, n=None", "p, q", r_pade, NULL, "Pade rational approximant (numerator p, denominator q) from Taylor coefficients (scipy.interpolate.pade)."),
+    ROUTINE("interpolate.make_interp_spline", 1, "x, y, k, xnew", "y", r_make_interp_spline, NULL, "Interpolating spline (k=1 linear or k=3 not-a-knot cubic) evaluated at xnew (scipy.interpolate.make_interp_spline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
