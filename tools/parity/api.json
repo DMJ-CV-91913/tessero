@@ -2897,6 +2897,12 @@
                 "doc": "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."
             },
             {
+                "name": "impulse",
+                "static": true,
+                "sig": "impulse(mixed $A, mixed $B, mixed $C, mixed $D, mixed $T): mixed",
+                "doc": "Impulse response of a continuous-time state-space system (scipy.signal.impulse)."
+            },
+            {
                 "name": "invres",
                 "static": true,
                 "sig": "invres(mixed $r, mixed $p, mixed $k, mixed $tol = 0.001, mixed $rtype = 'avg'): mixed",
@@ -2985,6 +2991,12 @@
                 "static": true,
                 "sig": "lp2lpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0): mixed",
                 "doc": "Scale an analog lowpass zpk prototype to a new cutoff (scipy.signal.lp2lp_zpk)."
+            },
+            {
+                "name": "lsim",
+                "static": true,
+                "sig": "lsim(mixed $A, mixed $B, mixed $C, mixed $D, mixed $U, mixed $T, mixed $interp = true): mixed",
+                "doc": "Simulate a continuous-time state-space system (scipy.signal.lsim)."
             },
             {
                 "name": "medfilt",
@@ -3117,6 +3129,12 @@
                 "static": true,
                 "sig": "ss2zpk(mixed $A, mixed $B, mixed $C, mixed $D, mixed $input = 0): mixed",
                 "doc": "Zeros, poles and gain from a single-output state-space system (scipy.signal.ss2zpk)."
+            },
+            {
+                "name": "step",
+                "static": true,
+                "sig": "step(mixed $A, mixed $B, mixed $C, mixed $D, mixed $T): mixed",
+                "doc": "Step response of a continuous-time state-space system (scipy.signal.step)."
             },
             {
                 "name": "tf2ss",
@@ -15861,6 +15879,24 @@
                 "name": "dbode",
                 "static": true,
                 "sig": "dbode($num, $den, $worN = 512, $whole = false)",
+                "doc": ""
+            },
+            {
+                "name": "lsim",
+                "static": true,
+                "sig": "lsim($A, $B, $C, $D, $U, $T, $interp = true)",
+                "doc": ""
+            },
+            {
+                "name": "impulse",
+                "static": true,
+                "sig": "impulse($A, $B, $C, $D, $T)",
+                "doc": ""
+            },
+            {
+                "name": "step",
+                "static": true,
+                "sig": "step($A, $B, $C, $D, $T)",
                 "doc": ""
             },
             {

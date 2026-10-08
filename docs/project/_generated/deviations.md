@@ -156,6 +156,12 @@
 | `signal.bode` | call | rtol 0 |
 | `signal.dbode` | every call | rtol 0 |
 | `signal.dbode` | call | rtol 0 |
+| `signal.lsim` | every call | rtol 0 |
+| `signal.lsim` | call | rtol 0 |
+| `signal.impulse` | every call | rtol 0 |
+| `signal.impulse` | call | rtol 0 |
+| `signal.step` | every call | rtol 0 |
+| `signal.step` | call | rtol 0 |
 | `signal.hilbert` | every call | rtol 0 |
 | `signal.hilbert` | call | rtol 0 |
 | `signal.hilbert2` | every call | rtol 0 |

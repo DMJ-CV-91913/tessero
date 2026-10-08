@@ -59,6 +59,7 @@ final class Signal
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
+    'impulse' => 'impulse',
     'invres' => 'invres',
     'invresz' => 'invresz',
     'kaiser_atten' => 'kaiserAtten',
@@ -74,6 +75,7 @@ final class Signal
     'lp2hp_zpk' => 'lp2hpZpk',
     'lp2lp' => 'lp2lp',
     'lp2lp_zpk' => 'lp2lpZpk',
+    'lsim' => 'lsim',
     'medfilt' => 'medfilt',
     'medfilt2d' => 'medfilt2d',
     'normalize' => 'normalize',
@@ -96,6 +98,7 @@ final class Signal
     'square' => 'square',
     'ss2tf' => 'ss2tf',
     'ss2zpk' => 'ss2zpk',
+    'step' => 'step',
     'tf2ss' => 'tf2ss',
     'tf2zpk' => 'tf2zpk',
     'unique_roots' => 'uniqueRoots',
@@ -581,6 +584,18 @@ final class Signal
     }
 
     /**
+     * Impulse response of a continuous-time state-space system (scipy.signal.impulse).
+     *
+     * scipy.signal.impulse
+     *
+     * @return mixed one array, or an array keyed by tout, yout when several results are requested
+     */
+    public static function impulse(mixed $A, mixed $B, mixed $C, mixed $D, mixed $T): mixed
+    {
+        return Registry::routine('signal.impulse', [$A, $B, $C, $D, $T]);
+    }
+
+    /**
      * Transfer function (b, a) from a partial-fraction expansion, positive powers (scipy.signal.invres).
      *
      * scipy.signal.invres
@@ -750,6 +765,18 @@ final class Signal
     public static function lp2lpZpk(mixed $z, mixed $p, mixed $k, mixed $wo = 1.0): mixed
     {
         return Registry::routine('signal.lp2lp_zpk', [$z, $p, $k, $wo]);
+    }
+
+    /**
+     * Simulate a continuous-time state-space system (scipy.signal.lsim).
+     *
+     * scipy.signal.lsim
+     *
+     * @return mixed one array, or an array keyed by tout, yout, xout when several results are requested
+     */
+    public static function lsim(mixed $A, mixed $B, mixed $C, mixed $D, mixed $U, mixed $T, mixed $interp = true): mixed
+    {
+        return Registry::routine('signal.lsim', [$A, $B, $C, $D, $U, $T, $interp]);
     }
 
     /**
@@ -990,6 +1017,18 @@ final class Signal
     public static function ss2zpk(mixed $A, mixed $B, mixed $C, mixed $D, mixed $input = 0): mixed
     {
         return Registry::routine('signal.ss2zpk', [$A, $B, $C, $D, $input]);
+    }
+
+    /**
+     * Step response of a continuous-time state-space system (scipy.signal.step).
+     *
+     * scipy.signal.step
+     *
+     * @return mixed one array, or an array keyed by tout, yout when several results are requested
+     */
+    public static function step(mixed $A, mixed $B, mixed $C, mixed $D, mixed $T): mixed
+    {
+        return Registry::routine('signal.step', [$A, $B, $C, $D, $T]);
     }
 
     /**

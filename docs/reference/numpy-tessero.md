@@ -970,6 +970,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
 | `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |
+| `scipy.signal.impulse` | `Tessero\Signal::impulse()` |
 | `scipy.signal.invres` | `Tessero\Signal::invres()` |
 | `scipy.signal.invresz` | `Tessero\Signal::invresz()` |
 | `scipy.signal.kaiser_atten` | `Tessero\Signal::kaiserAtten()` |
@@ -985,6 +986,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.lp2hp_zpk` | `Tessero\Signal::lp2hpZpk()` |
 | `scipy.signal.lp2lp` | `Tessero\Signal::lp2lp()` |
 | `scipy.signal.lp2lp_zpk` | `Tessero\Signal::lp2lpZpk()` |
+| `scipy.signal.lsim` | `Tessero\Signal::lsim()` |
 | `scipy.signal.medfilt` | `Tessero\Signal::medfilt()` |
 | `scipy.signal.medfilt2d` | `Tessero\Signal::medfilt2d()` |
 | `scipy.signal.normalize` | `Tessero\Signal::normalize()` |
@@ -1007,6 +1009,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.square` | `Tessero\Signal::square()` |
 | `scipy.signal.ss2tf` | `Tessero\Signal::ss2tf()` |
 | `scipy.signal.ss2zpk` | `Tessero\Signal::ss2zpk()` |
+| `scipy.signal.step` | `Tessero\Signal::step()` |
 | `scipy.signal.tf2ss` | `Tessero\Signal::tf2ss()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unique_roots` | `Tessero\Signal::uniqueRoots()` |

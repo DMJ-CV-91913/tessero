@@ -466,6 +466,7 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.impulse": "pass",
         "signal.invres": "pass",
         "signal.invresz": "pass",
         "signal.kaiser_atten": "pass",
@@ -481,6 +482,7 @@
         "signal.lp2hp_zpk": "pass",
         "signal.lp2lp": "pass",
         "signal.lp2lp_zpk": "pass",
+        "signal.lsim": "pass",
         "signal.medfilt": "pass",
         "signal.medfilt2d": "pass",
         "signal.normalize": "pass",
@@ -503,6 +505,7 @@
         "signal.square": "pass",
         "signal.ss2tf": "pass",
         "signal.ss2zpk": "pass",
+        "signal.step": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
@@ -2230,7 +2233,10 @@
             "signal.zpk2ss": 1.2195307883631899e-16,
             "signal.ss2zpk": 0,
             "signal.bode": 6.439300143945789e-9,
-            "signal.dbode": 1.3068991204809567e-5
+            "signal.dbode": 1.3068991204809567e-5,
+            "signal.lsim": 1.4983002347443584e-12,
+            "signal.impulse": 4.945586183303216e-12,
+            "signal.step": 3.507668188838256e-15
         },
         "ext": {
             "np.median": 0,
@@ -3346,7 +3352,10 @@
             "signal.zpk2ss": 1.2195307883631899e-16,
             "signal.ss2zpk": 0,
             "signal.bode": 6.439300143945789e-9,
-            "signal.dbode": 1.3068991204809567e-5
+            "signal.dbode": 1.3068991204809567e-5,
+            "signal.lsim": 1.4983002347443584e-12,
+            "signal.impulse": 4.945586183303216e-12,
+            "signal.step": 3.507668188838256e-15
         }
     },
     "ext": {
@@ -3816,6 +3825,7 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.impulse": "pass",
         "signal.invres": "pass",
         "signal.invresz": "pass",
         "signal.kaiser_atten": "pass",
@@ -3831,6 +3841,7 @@
         "signal.lp2hp_zpk": "pass",
         "signal.lp2lp": "pass",
         "signal.lp2lp_zpk": "pass",
+        "signal.lsim": "pass",
         "signal.medfilt": "pass",
         "signal.medfilt2d": "pass",
         "signal.normalize": "pass",
@@ -3853,6 +3864,7 @@
         "signal.square": "pass",
         "signal.ss2tf": "pass",
         "signal.ss2zpk": "pass",
+        "signal.step": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
