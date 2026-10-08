@@ -2669,6 +2669,12 @@
                 "doc": "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."
             },
             {
+                "name": "besselap",
+                "static": true,
+                "sig": "besselap(mixed $N, mixed $norm = 'phase'): mixed",
+                "doc": "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."
+            },
+            {
                 "name": "bilinear",
                 "static": true,
                 "sig": "bilinear(mixed $b, mixed $a, mixed $fs = 1.0): mixed",
@@ -16361,6 +16367,12 @@
                 "name": "getWindow",
                 "static": true,
                 "sig": "getWindow($window, $Nx, $fftbins = true)",
+                "doc": ""
+            },
+            {
+                "name": "besselap",
+                "static": true,
+                "sig": "besselap($N, $norm = 'phase')",
                 "doc": ""
             }
         ]
