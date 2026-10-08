@@ -3826,6 +3826,26 @@
         ]
     },
     {
+        "class": "Tessero\\Interpolate",
+        "methods": [
+            {
+                "name": "apply",
+                "static": true,
+                "sig": "apply(string $name, mixed ...$args): mixed",
+                "doc": "Call a function by its SciPy/NumPy name: Interpolate::apply('log_ndtr', $x)."
+            },
+            {
+                "name": "pchipInterpolate",
+                "static": true,
+                "sig": "pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
+                "doc": "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."
+            }
+        ],
+        "constants": [
+            "FUNCTIONS"
+        ]
+    },
+    {
         "class": "Tessero\\Random\\Generator",
         "methods": [
             {
@@ -16925,6 +16945,17 @@
                 "name": "floydWarshall",
                 "static": true,
                 "sig": "floydWarshall($csgraph, $directed = true, $returnPredecessors = false, $unweighted = false, $overwrite = false)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Ext\\Interpolate",
+        "methods": [
+            {
+                "name": "pchipInterpolate",
+                "static": true,
+                "sig": "pchipInterpolate($xi, $yi, $x)",
                 "doc": ""
             }
         ]
