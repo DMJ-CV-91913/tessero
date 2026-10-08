@@ -220,17 +220,16 @@ static int r_krogh(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
-/* BSpline(t, c, k, xnew): evaluate a spline in B-spline form via the de Boor recurrence (scipy.interpolate.
-   BSpline.__call__). t = knots, c = coefficients (len = len(t)-k-1), k = degree. */
-static int r_bspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+/* Evaluate a spline in B-spline form (knots t, coefficients c, degree k) at x via the de Boor recurrence --
+   shared by BSpline and splev. Args are (t, c, k, x). */
+static int ip_bspline_eval(const tsr_arg *args, tsr_result *res, const char *name)
 {
-    (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
-        args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("BSpline: t, c and x must be 1-D arrays"); return TSR_EARG; }
-    if (args[2].kind != 1) { fn_set_error("BSpline: k must be an integer degree"); return TSR_EARG; }
+        args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("%s: t, c and x must be 1-D arrays", name); return TSR_EARG; }
+    if (args[2].kind != 1) { fn_set_error("%s: k must be an integer degree", name); return TSR_EARG; }
     const int64_t nt = args[0].arr.shape[0], nc = args[1].arr.shape[0], q = args[3].arr.shape[0];
     const int k = (int)args[2].num;
-    if (k < 0 || nc < k + 1 || nt < nc + k + 1) { fn_set_error("BSpline: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    if (k < 0 || nc < k + 1 || nt < nc + k + 1) { fn_set_error("%s: inconsistent (t, c, k) sizes", name); return TSR_EARG; }
     int64_t lt, lc, lq;
     double *t = fn_arg_doubles(&args[0], &lt), *c = t ? fn_arg_doubles(&args[1], &lc) : NULL, *xq = c ? fn_arg_doubles(&args[3], &lq) : NULL;
     double *out = xq ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
@@ -255,6 +254,13 @@ static int r_bspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     free(d); fn_free_doubles(t, lt); fn_free_doubles(c, lc); fn_free_doubles(xq, lq);
     return rc;
 }
+
+/* BSpline(t, c, k, x) / splev(t, c, k, x): evaluate a B-spline via de Boor (scipy.interpolate.BSpline / splev). */
+static int r_bspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nargs; (void)nres; return ip_bspline_eval(args, res, "BSpline"); }
+
+static int r_splev(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nargs; (void)nres; return ip_bspline_eval(args, res, "splev"); }
 
 /* pade(an, m, n=None): Pade [m/n] rational approximant from Taylor coefficients an (scipy.interpolate.pade).
    Builds C = [eye(N+1, n+1) | Bkj], solves C @ pq = an, returns numerator p and denominator q coefficients in
@@ -341,6 +347,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.BSpline", 1, "t, c, k, x", "y", r_bspline, NULL, "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline)."),
     ROUTINE("interpolate.pade", 2, "an, m, n=None", "p, q", r_pade, NULL, "Pade rational approximant (numerator p, denominator q) from Taylor coefficients (scipy.interpolate.pade)."),
     ROUTINE("interpolate.make_interp_spline", 1, "x, y, k, xnew", "y", r_make_interp_spline, NULL, "Interpolating spline (k=1 linear or k=3 not-a-knot cubic) evaluated at xnew (scipy.interpolate.make_interp_spline)."),
+    ROUTINE("interpolate.splev", 1, "t, c, k, x", "y", r_splev, NULL, "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.splev)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

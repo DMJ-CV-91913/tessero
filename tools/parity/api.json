@@ -3893,6 +3893,12 @@
                 "static": true,
                 "sig": "pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
                 "doc": "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."
+            },
+            {
+                "name": "splev",
+                "static": true,
+                "sig": "splev(mixed $t, mixed $c, mixed $k, mixed $x): mixed",
+                "doc": "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.splev)."
             }
         ],
         "constants": [
@@ -17064,6 +17070,12 @@
                 "name": "makeInterpSpline",
                 "static": true,
                 "sig": "makeInterpSpline($x, $y, $k, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "splev",
+                "static": true,
+                "sig": "splev($t, $c, $k, $x)",
                 "doc": ""
             }
         ]
