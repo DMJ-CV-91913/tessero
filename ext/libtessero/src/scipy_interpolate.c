@@ -220,6 +220,42 @@ static int r_krogh(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
+/* BSpline(t, c, k, xnew): evaluate a spline in B-spline form via the de Boor recurrence (scipy.interpolate.
+   BSpline.__call__). t = knots, c = coefficients (len = len(t)-k-1), k = degree. */
+static int r_bspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
+        args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("BSpline: t, c and x must be 1-D arrays"); return TSR_EARG; }
+    if (args[2].kind != 1) { fn_set_error("BSpline: k must be an integer degree"); return TSR_EARG; }
+    const int64_t nt = args[0].arr.shape[0], nc = args[1].arr.shape[0], q = args[3].arr.shape[0];
+    const int k = (int)args[2].num;
+    if (k < 0 || nc < k + 1 || nt < nc + k + 1) { fn_set_error("BSpline: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    int64_t lt, lc, lq;
+    double *t = fn_arg_doubles(&args[0], &lt), *c = t ? fn_arg_doubles(&args[1], &lc) : NULL, *xq = c ? fn_arg_doubles(&args[3], &lq) : NULL;
+    double *out = xq ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
+    double *d = out ? (double *)malloc((size_t)(k + 1) * sizeof(double)) : NULL;
+    int rc = (!t || !c || !xq || !out || !d) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        const int64_t n = nc;                              /* number of coefficients; domain [t[k], t[n]] */
+        for (int64_t e = 0; e < q; e++) {
+            const double x = xq[e];
+            int64_t mu = k;                                /* knot interval: t[mu] <= x < t[mu+1], clamped to [k, n-1] */
+            while (mu < n - 1 && t[mu + 1] <= x) mu++;
+            for (int j = 0; j <= k; j++) d[j] = c[mu - k + j];
+            for (int r = 1; r <= k; r++)
+                for (int j = k; j >= r; j--) {
+                    const double denom = t[j + mu - r + 1] - t[j + mu - k];
+                    const double a = denom != 0.0 ? (x - t[j + mu - k]) / denom : 0.0;
+                    d[j] = (1.0 - a) * d[j - 1] + a * d[j];
+                }
+            out[e] = d[k];
+        }
+    }
+    free(d); fn_free_doubles(t, lt); fn_free_doubles(c, lc); fn_free_doubles(xq, lq);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -228,6 +264,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.CubicHermiteSpline", 1, "x, y, dydx, xnew", "y", r_cubic_hermite, NULL, "Cubic Hermite spline with given derivatives evaluated at xnew (scipy.interpolate.CubicHermiteSpline)."),
     ROUTINE("interpolate.barycentric_interpolate", 1, "xi, yi, x", "y", r_barycentric, NULL, "Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate)."),
     ROUTINE("interpolate.krogh_interpolate", 1, "xi, yi, x", "y", r_krogh, NULL, "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."),
+    ROUTINE("interpolate.BSpline", 1, "t, c, k, x", "y", r_bspline, NULL, "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

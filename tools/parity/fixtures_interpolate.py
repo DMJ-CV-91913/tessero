@@ -6,13 +6,14 @@ import json, os
 import numpy as np
 from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInterpolator,
                                CubicSpline, CubicHermiteSpline,
-                               barycentric_interpolate, krogh_interpolate)
+                               barycentric_interpolate, krogh_interpolate,
+                               make_interp_spline, BSpline)
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc = [], [], [], [], [], [], []
+pc, pci, akc, csc, chc, bcc, kgc, bsp = [], [], [], [], [], [], [], []
 
 
 def xyc(xi, yi, xnew, vals):
@@ -47,10 +48,22 @@ for n in (5, 6):
     bcc.append(xyc(xi, yi, xnew, barycentric_interpolate(xi, yi, xnew)))
     kgc.append(xyc(xi, yi, xnew, krogh_interpolate(xi, yi, xnew)))
 
+# BSpline evaluation (de Boor): build (t, c, k) with make_interp_spline, then evaluate
+for kk in (2, 3):
+    for n in (6, 9):
+        xi = np.concatenate([[0.0], np.cumsum(rng.uniform(0.6, 1.6, n - 1))])
+        yi = np.sin(xi) + 0.3 * xi
+        spl = make_interp_spline(xi, yi, k=kk)
+        t, c = np.asarray(spl.t, float), np.asarray(spl.c, float)
+        xnew = np.linspace(xi[0], xi[-1], 21)
+        bsp.append({'args': [F.enc(t), F.enc(c), F.enc(kk), F.enc(xnew)], 'kwargs': {},
+                    'expect': F.enc_result(BSpline(t, c, kk)(xnew), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
-         {'fn': 'barycentric_interpolate', 'cases': bcc}, {'fn': 'krogh_interpolate', 'cases': kgc}]
+         {'fn': 'barycentric_interpolate', 'cases': bcc}, {'fn': 'krogh_interpolate', 'cases': kgc},
+         {'fn': 'BSpline', 'cases': bsp}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

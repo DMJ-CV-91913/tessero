@@ -70,6 +70,7 @@
         "fft.rfftn": "pass",
         "integrate.quad": "pass",
         "interpolate.Akima1DInterpolator": "pass",
+        "interpolate.BSpline": "pass",
         "interpolate.CubicHermiteSpline": "pass",
         "interpolate.CubicSpline": "pass",
         "interpolate.PchipInterpolator": "pass",
@@ -2263,8 +2264,9 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 9.61876999206859e-16,
-            "interpolate.krogh_interpolate": 2.9751199482921395e-15
+            "interpolate.barycentric_interpolate": 1.2825026656091451e-15,
+            "interpolate.krogh_interpolate": 2.9751199482921395e-15,
+            "interpolate.BSpline": 4.42542524411263e-16
         },
         "ext": {
             "np.median": 0,
@@ -3396,8 +3398,9 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 9.61876999206859e-16,
-            "interpolate.krogh_interpolate": 2.9751199482921395e-15
+            "interpolate.barycentric_interpolate": 1.2825026656091451e-15,
+            "interpolate.krogh_interpolate": 2.9751199482921395e-15,
+            "interpolate.BSpline": 4.42542524411263e-16
         }
     },
     "ext": {
@@ -3471,6 +3474,7 @@
         "fft.rfftn": "pass",
         "integrate.quad": "pass",
         "interpolate.Akima1DInterpolator": "pass",
+        "interpolate.BSpline": "pass",
         "interpolate.CubicHermiteSpline": "pass",
         "interpolate.CubicSpline": "pass",
         "interpolate.PchipInterpolator": "pass",
