@@ -364,6 +364,8 @@ legacy:
     cumulative_trapezoid: {ffi: [NpC::cumulativeTrapezoid], ext: [XNpC::cumulativeTrapezoid], fixtures: [np.cumulative_trapezoid]}
     # simpson: composite Simpson's rule (with Cartwright's even-interval correction), an np.* routine
     simpson: {ffi: [NpC::simpson], ext: [XNpC::simpson], fixtures: [np.simpson]}
+    # cumulative_simpson: the running Simpson integral (forward/backward Cartwright subintervals), an np.* routine
+    cumulative_simpson: {ffi: [NpC::cumulativeSimpson], ext: [XNpC::cumulativeSimpson], fixtures: [np.cumulative_simpson]}
   scipy.spatial:
     # a pure-PHP k-d tree (exact nearest-neighbour query) -> one class, both backends; verified against scipy's
     # distances and indices by the spatial.json fixtures.

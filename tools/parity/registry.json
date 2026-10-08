@@ -925,6 +925,11 @@
             "nin": 0,
             "nout": 1
         },
+        "np.cumulativeSimpson": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "np.cumulativeTrapezoid": {
             "kind": "routine",
             "nin": 0,

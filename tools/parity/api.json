@@ -6602,6 +6602,12 @@
                 "doc": "Cross product of 3- (or 2-) element vectors (numpy.cross)."
             },
             {
+                "name": "cumulativeSimpson",
+                "static": true,
+                "sig": "cumulativeSimpson(mixed $y, mixed $x = null, mixed $dx = 1.0, mixed $axis = -1, mixed $initial = null): mixed",
+                "doc": "Running integral by the composite Simpson's rule (scipy.integrate.cumulative_simpson)."
+            },
+            {
                 "name": "cumulativeTrapezoid",
                 "static": true,
                 "sig": "cumulativeTrapezoid(mixed $y, mixed $x = null, mixed $dx = 1.0, mixed $axis = -1, mixed $initial = null): mixed",
@@ -11496,6 +11502,12 @@
                 "name": "simpson",
                 "static": true,
                 "sig": "simpson($y, $x = null, $dx = 1.0, $axis = -1)",
+                "doc": ""
+            },
+            {
+                "name": "cumulativeSimpson",
+                "static": true,
+                "sig": "cumulativeSimpson($y, $x = null, $dx = 1.0, $axis = -1, $initial = null)",
                 "doc": ""
             },
             {

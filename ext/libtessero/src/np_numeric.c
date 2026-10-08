@@ -1303,6 +1303,117 @@ static int r_simpson(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return own_emit(&res[0], &z);
 }
 
+/* cumulative composite Simpson over one lane of length N, filling out[0..N-2] with the running integral (before
+   any `initial` offset; scipy.integrate.cumulative_simpson). For N<=2 this is the running trapezoid (scipy's
+   fallback). For N>=3 each subinterval integral is the quadratic (Cartwright) form through three consecutive
+   points: forward (h1) for even subinterval indices, backward (h2) for odd ones, with the final subinterval
+   always from h2; the sub-integrals are then cumulatively summed. h1b/h2b are scratch buffers of length >= N-2. */
+static void cumsimpson_lane(const double *y, const double *x, int64_t N, double dx, double *out, double *h1b, double *h2b)
+{
+    if (N <= 1) return;
+    if (N == 2) { out[0] = (x ? (x[1] - x[0]) : dx) * (y[0] + y[1]) * 0.5; return; }
+    const int64_t nh = N - 2, nsub = N - 1;
+    for (int64_t i = 0; i < nh; i++) {
+        if (!x) {
+            h1b[i] = dx / 3.0 * (5.0 * y[i] / 4.0 + 2.0 * y[i + 1] - y[i + 2] / 4.0);
+            h2b[i] = dx / 3.0 * (5.0 * y[i + 2] / 4.0 + 2.0 * y[i + 1] - y[i] / 4.0);
+        } else {
+            const double x21 = x[i + 1] - x[i], x32 = x[i + 2] - x[i + 1], x31 = x21 + x32;
+            const double a = x21 / x31, b = x21 / x32, ab = a * b;
+            h1b[i] = x21 / 6.0 * ((3.0 - a) * y[i] + (3.0 + ab + a) * y[i + 1] + (-ab) * y[i + 2]);
+            const double a2 = x32 / x31, b2 = x32 / x21, ab2 = a2 * b2;
+            h2b[i] = x32 / 6.0 * ((3.0 - a2) * y[i + 2] + (3.0 + ab2 + a2) * y[i + 1] + (-ab2) * y[i]);
+        }
+    }
+    for (int64_t p = 0; p < nsub; p++) {
+        if (p == nsub - 1) out[p] = h2b[nh - 1];           /* last subinterval only from h2 */
+        else if (p % 2 == 0) out[p] = h1b[p];
+        else out[p] = h2b[p - 1];
+    }
+    for (int64_t p = 1; p < nsub; p++) out[p] += out[p - 1];   /* cumulative sum */
+}
+
+/* cumulative_simpson(y, x=None, dx=1.0, axis=-1, initial=None): running integral by the composite Simpson's rule
+   along the axis (scipy.integrate.cumulative_simpson). Without `initial` the axis shrinks by one; with it, the
+   value is prepended and added to the rest. */
+static int r_cumulative_simpson(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    harr hy;
+    int rc = get_arr(argk(args, nargs, 0), &hy, "y");
+    if (rc < 0) return rc;
+    if (hy.a.ndim == 0) { fn_set_error("tuple index out of range"); return TSR_EARG; }
+    own ysrc;
+    if ((rc = own_from(&ysrc, &hy.a, TSR_F64)) < 0) return rc;
+    const tsr_array *y = &ysrc.a;
+    const int nd = y->ndim;
+    int64_t a64 = -1;
+    if (!is_none(argk(args, nargs, 3)) && (rc = int_param(argk(args, nargs, 3), "axis", &a64)) < 0) { own_free(&ysrc); return rc; }
+    int ax;
+    if ((rc = norm_axis(a64, nd, &ax)) < 0) { own_free(&ysrc); return rc; }
+    const int64_t N = y->shape[ax];
+    double dx = 1.0;
+    own xsrc; int have_x = 0, x_is_1d = 0; const tsr_array *x = NULL;
+    const tsr_arg *xa = argk(args, nargs, 1);
+    if (!is_none(xa)) {
+        harr hx;
+        if ((rc = get_arr(xa, &hx, "x")) < 0) { own_free(&ysrc); return rc; }
+        if ((rc = own_from(&xsrc, &hx.a, TSR_F64)) < 0) { own_free(&ysrc); return rc; }
+        x = &xsrc.a; have_x = 1;
+        if (x->ndim == 1) { x_is_1d = 1; if (x->shape[0] != N) { own_free(&ysrc); own_free(&xsrc); fn_set_error("If given, length of x along axis must be the same as y."); return TSR_EARG; } }
+        else if (x->ndim != nd) { own_free(&ysrc); own_free(&xsrc); fn_set_error("If given, shape of x must be 1-D or the same as y."); return TSR_EARG; }
+        else if (x->shape[ax] != N) { own_free(&ysrc); own_free(&xsrc); fn_set_error("If given, length of x along axis must be the same as y."); return TSR_EARG; }
+    } else {
+        const tsr_arg *da = argk(args, nargs, 2);
+        if (!is_none(da) && (rc = num_param(da, "dx", &dx)) < 0) { own_free(&ysrc); return rc; }
+    }
+    const tsr_arg *ia = argk(args, nargs, 4);
+    const int has_init = !is_none(ia);
+    double init = 0.0;
+    if (has_init && (rc = num_param(ia, "initial", &init)) < 0) { own_free(&ysrc); if (have_x) own_free(&xsrc); return rc; }
+    const int64_t mcore = N > 0 ? N - 1 : 0, olen = has_init ? N : mcore;
+    int64_t osh[TSR_MAXDIM];
+    for (int d = 0; d < nd; d++) osh[d] = y->shape[d];
+    osh[ax] = olen;
+    own z;
+    if ((rc = own_new(&z, TSR_F64, nd, osh)) < 0) { own_free(&ysrc); if (have_x) own_free(&xsrc); return rc; }
+    double *out = (double *)z.a.data;
+    const int64_t zax = z.a.strides[ax] / (int64_t)sizeof(double);
+    const int64_t bufb = (N > 0 ? N : 1) * (int64_t)sizeof(double) + 64;
+    double *yl = (double *)tsr_alloc(bufb), *xl = have_x ? (double *)tsr_alloc(bufb) : NULL;
+    double *cl = (double *)tsr_alloc(bufb), *h1b = (double *)tsr_alloc(bufb), *h2b = (double *)tsr_alloc(bufb);
+    if (!yl || !cl || !h1b || !h2b || (have_x && !xl)) {
+        if (yl) tsr_free(yl, bufb);
+        if (xl) tsr_free(xl, bufb);
+        if (cl) tsr_free(cl, bufb);
+        if (h1b) tsr_free(h1b, bufb);
+        if (h2b) tsr_free(h2b, bufb);
+        own_free(&ysrc);
+        if (have_x) own_free(&xsrc);
+        own_free(&z);
+        return TSR_ENOMEM;
+    }
+    int64_t nlane = 1;
+    for (int d = 0; d < nd; d++) if (d != ax) nlane *= y->shape[d];
+    int64_t ix[TSR_MAXDIM] = {0};
+    for (int64_t o = 0; o < nlane; o++) {
+        int64_t ybase = 0, xbase = 0, zbase = 0;
+        for (int d = 0; d < nd; d++) if (d != ax) { ybase += ix[d] * y->strides[d]; zbase += ix[d] * (z.a.strides[d] / (int64_t)sizeof(double)); if (have_x && !x_is_1d) xbase += ix[d] * x->strides[d]; }
+        for (int64_t i = 0; i < N; i++) yl[i] = rd_f64(elem0(y) + ybase + i * y->strides[ax], TSR_F64);
+        if (have_x) {
+            if (x_is_1d) for (int64_t i = 0; i < N; i++) xl[i] = rd_f64(elem0(x) + i * x->strides[0], TSR_F64);
+            else for (int64_t i = 0; i < N; i++) xl[i] = rd_f64(elem0(x) + xbase + i * x->strides[ax], TSR_F64);
+        }
+        cumsimpson_lane(yl, have_x ? xl : NULL, N, dx, cl, h1b, h2b);
+        if (has_init) { out[zbase] = init; for (int64_t i = 0; i < mcore; i++) out[zbase + (i + 1) * zax] = cl[i] + init; }
+        else for (int64_t i = 0; i < mcore; i++) out[zbase + i * zax] = cl[i];
+        for (int d = nd - 1; d >= 0; d--) { if (d == ax) continue; if (++ix[d] < y->shape[d]) break; ix[d] = 0; }
+    }
+    tsr_free(yl, bufb); if (xl) tsr_free(xl, bufb); tsr_free(cl, bufb); tsr_free(h1b, bufb); tsr_free(h2b, bufb);
+    own_free(&ysrc); if (have_x) own_free(&xsrc);
+    return own_emit(&res[0], &z);
+}
+
 /* numpy's float remainder (npy_divmod's mod: the sign of the divisor) */
 static double py_fmod(double a, double b)
 {
@@ -4088,6 +4199,7 @@ static const fn_def DEFS[] = {
     ROUTINE("np.trapezoid", 1, "y, x=None, dx=1.0, axis=-1", "out", r_trapezoid, NULL, "Integral by the composite trapezoidal rule (numpy.trapezoid)."),
     ROUTINE("np.cumulativeTrapezoid", 1, "y, x=None, dx=1.0, axis=-1, initial=None", "out", r_cumulative_trapezoid, NULL, "Running integral by the trapezoidal rule (scipy.integrate.cumulative_trapezoid)."),
     ROUTINE("np.simpson", 1, "y, x=None, dx=1.0, axis=-1", "out", r_simpson, NULL, "Integral by the composite Simpson's rule (scipy.integrate.simpson)."),
+    ROUTINE("np.cumulativeSimpson", 1, "y, x=None, dx=1.0, axis=-1, initial=None", "out", r_cumulative_simpson, NULL, "Running integral by the composite Simpson's rule (scipy.integrate.cumulative_simpson)."),
     ROUTINE("np.unwrap", 1, "p, discont=None, axis=-1, period=6.283185307179586", "out", r_unwrap, NULL, "Unwrap by taking the complement of large jumps with respect to the period (numpy.unwrap)."),
     ROUTINE("np.interp", 1, "x, xp, fp, left=None, right=None, period=None", "out", r_interp, NULL, "One-dimensional piecewise linear interpolation (numpy.interp)."),
     ROUTINE("np.logspace", 1, "start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0", "out", r_logspace, NULL, "Numbers spaced evenly on a log scale (numpy.logspace)."),

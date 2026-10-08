@@ -224,6 +224,7 @@
         "np.cov": "pass",
         "np.cross": "pass",
         "np.cumulative_prod": "pass",
+        "np.cumulative_simpson": "pass",
         "np.cumulative_sum": "pass",
         "np.cumulative_trapezoid": "pass",
         "np.delete": "pass",
@@ -2290,7 +2291,8 @@
             "interpolate.RegularGridInterpolator": 2.526919795196609e-16,
             "interpolate.interpn": 2.526919795196609e-16,
             "interpolate.RBFInterpolator": 6.381216216081151e-14,
-            "interpolate.make_lsq_spline": 2.1942463788420772e-14
+            "interpolate.make_lsq_spline": 2.1942463788420772e-14,
+            "np.cumulative_simpson": 0
         },
         "ext": {
             "np.median": 0,
@@ -3436,7 +3438,8 @@
             "interpolate.RegularGridInterpolator": 2.526919795196609e-16,
             "interpolate.interpn": 2.526919795196609e-16,
             "interpolate.RBFInterpolator": 6.381216216081151e-14,
-            "interpolate.make_lsq_spline": 2.1942463788420772e-14
+            "interpolate.make_lsq_spline": 2.1942463788420772e-14,
+            "np.cumulative_simpson": 0
         }
     },
     "ext": {
@@ -3664,6 +3667,7 @@
         "np.cov": "pass",
         "np.cross": "pass",
         "np.cumulative_prod": "pass",
+        "np.cumulative_simpson": "pass",
         "np.cumulative_sum": "pass",
         "np.cumulative_trapezoid": "pass",
         "np.delete": "pass",

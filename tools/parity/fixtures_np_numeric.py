@@ -398,6 +398,20 @@ def main():
            call('simpson', [F(5)], {'x': np.sort(F(5))}, f=_simp),
            call('simpson', [F(6)], {'dx': 2.0}, f=_simp), call('simpson', [B(7)], f=_simp)]
     blocks['simpson'] = cs
+    # cumulative_simpson (scipy.integrate): running Simpson integral; both N parities, uniform/irregular spacing,
+    # and the `initial` (prepend + offset) path. 1-/2-point lanes fall back to the running trapezoid.
+    from scipy.integrate import cumulative_simpson as _csimp
+    cs = []
+    for y in (F(7), F(8), F(4, 5), F(3, 6), F(2, 3, 4), I(9)):
+        for ax in range(-y.ndim, y.ndim):
+            cs.append(call('cumulative_simpson', [y], {'axis': ax}, f=_csimp))
+            cs.append(call('cumulative_simpson', [y], {'axis': ax, 'dx': 0.3}, f=_csimp))
+            cs.append(call('cumulative_simpson', [y], {'axis': ax, 'initial': 0.0}, f=_csimp))
+            cs.append(call('cumulative_simpson', [y], {'axis': ax, 'x': np.sort(F(y.shape[ax]))}, f=_csimp))
+    cs += [call('cumulative_simpson', [F(5)], {'initial': 1.5}, f=_csimp),
+           call('cumulative_simpson', [F(6)], {'dx': 2.0}, f=_csimp),
+           call('cumulative_simpson', [F(2)], {'initial': 0.0}, f=_csimp), call('cumulative_simpson', [B(7)], f=_csimp)]
+    blocks['cumulative_simpson'] = cs
 
     # ---- completeness: spacing, modf, bitwise_and/or/xor, fromiter, can_cast (literal-only, host-independent:
     # these are integer/ulp/type-rule ops with no BLAS or transcendental loop, shared with the splice generator)

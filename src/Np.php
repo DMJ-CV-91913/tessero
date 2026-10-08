@@ -55,6 +55,7 @@ final class Np
     'count_nonzero' => 'countNonzero',
     'cov' => 'cov',
     'cross' => 'cross',
+    'cumulativeSimpson' => 'cumulativeSimpson',
     'cumulativeTrapezoid' => 'cumulativeTrapezoid',
     'cumulative_prod' => 'cumulativeProd',
     'cumulative_sum' => 'cumulativeSum',
@@ -602,6 +603,16 @@ final class Np
     public static function cross(mixed $a, mixed $b, mixed $axisa = -1, mixed $axisb = -1, mixed $axisc = -1, mixed $axis = null): mixed
     {
         return Registry::routine('np.cross', [$a, $b, $axisa, $axisb, $axisc, $axis]);
+    }
+
+    /**
+     * Running integral by the composite Simpson's rule (scipy.integrate.cumulative_simpson).
+     *
+     * numpy.cumulativeSimpson
+     */
+    public static function cumulativeSimpson(mixed $y, mixed $x = null, mixed $dx = 1.0, mixed $axis = -1, mixed $initial = null): mixed
+    {
+        return Registry::routine('np.cumulativeSimpson', [$y, $x, $dx, $axis, $initial]);
     }
 
     /**
