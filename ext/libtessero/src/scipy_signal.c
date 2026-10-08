@@ -4417,6 +4417,46 @@ static int r_hilbert2(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     return rc;
 }
 
+/* lombscargle(x, y, freqs): Lomb-Scargle periodogram at the given angular frequencies (scipy.signal.lombscargle,
+   default options: power normalization, no precentering, uniform weights, no floating mean). For each frequency w
+   the phase offset tau decorrelates the cos/sin sums; the power is (N/2)(YC^2/CC + YS^2/SS). Returns one value per
+   frequency. */
+static int r_lombscargle(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
+        args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("lombscargle: x, y and freqs must be 1-D arrays"); return TSR_EARG; }
+    const int64_t N = args[0].arr.shape[0], nf = args[2].arr.shape[0];
+    if (args[1].arr.shape[0] != N) { fn_set_error("lombscargle: x and y must have the same length"); return TSR_EARG; }
+    if (N < 1 || nf < 1) { fn_set_error("lombscargle: x, y and freqs must be non-empty"); return TSR_EARG; }
+    int64_t lx, ly, lf;
+    double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL, *f = y ? fn_arg_doubles(&args[2], &lf) : NULL;
+    double *out = f ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nf}) : NULL;
+    int rc = (!x || !y || !f || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        const double w = 1.0 / (double)N, epsneg = 0x1p-53;   /* numpy float64 epsneg = 2^-53 */
+        for (int64_t j = 0; j < nf; j++) {
+            const double fr = f[j];
+            double sum_cc = 0.0, sum_cs = 0.0;
+            for (int64_t i = 0; i < N; i++) { const double c = cos(fr * x[i]), s = sin(fr * x[i]); sum_cc += c * c; sum_cs += c * s; }
+            const double CC0 = w * sum_cc, SS0 = 1.0 - CC0, CS0 = w * sum_cs;
+            const double tau = 0.5 * atan2(2.0 * CS0, CC0 - SS0);
+            double YC = 0.0, YS = 0.0, CCt = 0.0;
+            for (int64_t i = 0; i < N; i++) {
+                const double a = fr * x[i] - tau, ct = cos(a), st = sin(a);
+                YC += y[i] * ct; YS += y[i] * st; CCt += ct * ct;
+            }
+            YC *= w; YS *= w;
+            double CC = w * CCt, SS = 1.0 - CC;
+            if (CC < epsneg) CC = epsneg;
+            if (SS < epsneg) SS = epsneg;
+            out[j] = (2.0 * (YC * YC / CC + YS * YS / SS)) * (double)N / 4.0;
+        }
+    }
+    fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(f, lf);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -4534,6 +4574,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.argrelmin", 1, "data, axis=0, order=1, mode='clip'", "out", r_argrel, &SIG_ARGREL_MIN, "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."),
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
+    ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
