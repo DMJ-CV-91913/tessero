@@ -600,6 +600,45 @@ static int r_sproot(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* lagrange(x, w): Lagrange interpolating polynomial through (x, w) returned as numpy.poly1d coefficients
+   (highest-degree first), via scipy's Newton-basis summation p = Σ_j w[j]·Π_{k≠j}(X-x[k])/(x[j]-x[k]). Each basis
+   product is accumulated by polynomial convolution. Numerically unstable for many points (as scipy warns); exact
+   for generic degree-(M-1) data. */
+static int r_lagrange(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("lagrange: x and w must be 1-D arrays"); return TSR_EARG; }
+    const int64_t M = args[0].arr.shape[0];
+    if (args[1].arr.shape[0] != M) { fn_set_error("lagrange: x and w must have the same length"); return TSR_EARG; }
+    if (M < 1) { fn_set_error("lagrange: need at least one point"); return TSR_EARG; }
+    int64_t lx, lw;
+    double *x = fn_arg_doubles(&args[0], &lx), *w = x ? fn_arg_doubles(&args[1], &lw) : NULL;
+    double *p = x ? (double *)calloc((size_t)M, sizeof(double)) : NULL;   /* lowest-first accumulator, degree <= M-1 */
+    double *pt = p ? (double *)malloc((size_t)M * sizeof(double)) : NULL; /* lowest-first running basis product */
+    int rc = (!x || !w || !p || !pt) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t j = 0; j < M; j++) {
+            pt[0] = w[j]; int64_t deg = 0;                               /* pt = [w[j]] */
+            for (int64_t k = 0; k < M; k++) {
+                if (k == j) continue;
+                const double fac = x[j] - x[k], c0 = -x[k] / fac, c1 = 1.0 / fac;   /* factor (X - x[k])/fac */
+                for (int64_t i = deg + 1; i >= 0; i--) {                 /* pt = convolve(pt, [c0, c1]) in place */
+                    double v = (i <= deg) ? pt[i] * c0 : 0.0;
+                    if (i >= 1) v += pt[i - 1] * c1;
+                    pt[i] = v;
+                }
+                deg++;
+            }
+            for (int64_t i = 0; i <= deg; i++) p[i] += pt[i];            /* p += pt */
+        }
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){M});
+        if (!out) rc = TSR_ENOMEM;
+        else for (int64_t i = 0; i < M; i++) out[i] = p[M - 1 - i];      /* reverse to highest-first (poly1d order) */
+    }
+    free(p); free(pt); fn_free_doubles(x, lx); fn_free_doubles(w, lw);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -616,6 +655,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.splantider", 3, "t, c, k, n=1", "t, c, k", r_splantider, NULL, "Antiderivative of a B-spline in (t, c, k) form (scipy.interpolate.splantider)."),
     ROUTINE("interpolate.splint", 1, "a, b, t, c, k", "integral", r_splint, NULL, "Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint)."),
     ROUTINE("interpolate.sproot", 1, "t, c, k, mest=10", "zeros", r_sproot, NULL, "Roots of a cubic (k=3) B-spline, sorted ascending, at most mest of them (scipy.interpolate.sproot)."),
+    ROUTINE("interpolate.lagrange", 1, "x, w", "c", r_lagrange, NULL, "Lagrange interpolating polynomial through (x, w) as poly1d coefficients, highest-degree first (scipy.interpolate.lagrange)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
