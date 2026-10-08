@@ -30,6 +30,7 @@ final class Interpolate
     'krogh_interpolate' => 'kroghInterpolate',
     'lagrange' => 'lagrange',
     'make_interp_spline' => 'makeInterpSpline',
+    'make_lsq_spline' => 'makeLsqSpline',
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
     'splantider' => 'splantider',
@@ -173,6 +174,16 @@ final class Interpolate
     public static function makeInterpSpline(mixed $x, mixed $y, mixed $k, mixed $xnew): mixed
     {
         return Registry::routine('interpolate.make_interp_spline', [$x, $y, $k, $xnew]);
+    }
+
+    /**
+     * Least-squares B-spline fit with given knots t and degree k, evaluated at xnew (scipy.interpolate.make_lsq_spline).
+     *
+     * scipy.interpolate.make_lsq_spline
+     */
+    public static function makeLsqSpline(mixed $x, mixed $y, mixed $t, mixed $k, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.make_lsq_spline', [$x, $y, $t, $k, $xnew]);
     }
 
     /**

@@ -703,6 +703,63 @@ static int r_rgi(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     return rc;
 }
 
+/* make_lsq_spline(x, y, t, k, xnew): least-squares B-spline fit with the given knot vector t and degree k,
+   evaluated at xnew (scipy.interpolate.make_lsq_spline). Builds the normal equations A^T A c = A^T y of the
+   collocation matrix (A[i,j] = B_j(x[i]), accumulated from the k+1 nonzero basis values at each x via the
+   standard basis-function recurrence), solves for the coefficients with the shared dense solver, then evaluates
+   the resulting B-spline at xnew. */
+static int r_make_lsq_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
+        args[2].kind != 3 || args[2].arr.ndim != 1 || args[4].kind != 3 || args[4].arr.ndim != 1) { fn_set_error("make_lsq_spline: x, y, t and xnew must be 1-D arrays"); return TSR_EARG; }
+    if (args[3].kind != 1) { fn_set_error("make_lsq_spline: k must be an integer degree"); return TSR_EARG; }
+    const int k = (int)args[3].num;
+    if (k < 1 || k > 7) { fn_set_error("make_lsq_spline: degree k must be between 1 and 7"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0], nt = args[2].arr.shape[0], q = args[4].arr.shape[0], n = nt - k - 1;
+    if (args[1].arr.shape[0] != m) { fn_set_error("make_lsq_spline: x and y must have the same length"); return TSR_EARG; }
+    if (n < 1 || m < n) { fn_set_error("make_lsq_spline: need at least len(t)-k-1 data points"); return TSR_EARG; }
+    int64_t lx, ly, lt, lq;
+    double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL,
+           *t = y ? fn_arg_doubles(&args[2], &lt) : NULL, *xq = t ? fn_arg_doubles(&args[4], &lq) : NULL;
+    double *AtA = (double *)calloc((size_t)(n * n), sizeof(double)), *Aty = (double *)calloc((size_t)n, sizeof(double));
+    double *N = (double *)malloc((size_t)(k + 1) * sizeof(double));
+    double *left = (double *)malloc((size_t)(k + 1) * sizeof(double)), *right = (double *)malloc((size_t)(k + 1) * sizeof(double));
+    int rc = (!x || !y || !t || !xq || !AtA || !Aty || !N || !left || !right) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < m; i++) {
+            const double xi = x[i];
+            int64_t mu = k; while (mu < n - 1 && t[mu + 1] <= xi) mu++;
+            N[0] = 1.0;                                        /* k+1 nonzero basis values B_{mu-k..mu}(xi) */
+            for (int rr = 1; rr <= k; rr++) {
+                left[rr] = xi - t[mu + 1 - rr]; right[rr] = t[mu + rr] - xi;
+                double saved = 0.0;
+                for (int ii = 0; ii < rr; ii++) {
+                    const double denom = right[ii + 1] + left[rr - ii], temp = denom != 0.0 ? N[ii] / denom : 0.0;
+                    N[ii] = saved + right[ii + 1] * temp;
+                    saved = left[rr - ii] * temp;
+                }
+                N[rr] = saved;
+            }
+            for (int rr = 0; rr <= k; rr++) {
+                const int64_t jr = mu - k + rr;
+                Aty[jr] += N[rr] * y[i];
+                for (int s = 0; s <= k; s++) AtA[jr * n + (mu - k + s)] += N[rr] * N[s];
+            }
+        }
+        rc = sl_dense_solve(AtA, Aty, n, 1);                   /* Aty <- least-squares coefficients c */
+        if (rc != TSR_OK) fn_set_error("make_lsq_spline: the least-squares normal equations are singular");
+    }
+    if (rc == TSR_OK) {
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q});
+        if (!out) rc = TSR_ENOMEM;
+        else for (int64_t e = 0; e < q; e++) out[e] = ip_deboor_scalar(t, Aty, n, k, xq[e]);
+    }
+    free(AtA); free(Aty); free(N); free(left); free(right);
+    fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(t, lt); fn_free_doubles(xq, lq);
+    return rc;
+}
+
 static double rbf_kernel(int tps, double r) { return tps ? (r == 0.0 ? 0.0 : r * r * log(r)) : -r; }
 
 /* RBFInterpolator(y, d, xi, kernel='thin_plate_spline'): radial basis function interpolation evaluated at xi
@@ -792,6 +849,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.RegularGridInterpolator", 1, "points[], values, xi", "y", r_rgi, NULL, "Multilinear interpolation on a regular n-D grid, evaluated at xi (scipy.interpolate.RegularGridInterpolator)."),
     ROUTINE("interpolate.interpn", 1, "points[], values, xi", "y", r_rgi, NULL, "Multilinear interpolation on a regular n-D grid at points xi (scipy.interpolate.interpn)."),
     ROUTINE("interpolate.RBFInterpolator", 1, "y, d, xi, kernel='thin_plate_spline'", "out", r_rbf, NULL, "Radial basis function interpolation (thin_plate_spline or linear kernel) evaluated at xi (scipy.interpolate.RBFInterpolator)."),
+    ROUTINE("interpolate.make_lsq_spline", 1, "x, y, t, k, xnew", "out", r_make_lsq_spline, NULL, "Least-squares B-spline fit with given knots t and degree k, evaluated at xnew (scipy.interpolate.make_lsq_spline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
