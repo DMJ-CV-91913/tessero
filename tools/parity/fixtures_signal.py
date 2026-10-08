@@ -697,6 +697,15 @@ for (m, n, km, kn) in [(6, 5, 3, 3), (8, 8, 2, 4), (5, 7, 4, 2), (4, 4, 1, 1), (
         cv2.append({'args': [F.enc(a2), F.enc(k2), F.enc(mode)], 'kwargs': {}, 'expect': F.enc_result(sg.convolve2d(a2, k2, mode=mode), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
         cr2.append({'args': [F.enc(a2), F.enc(k2), F.enc(mode)], 'kwargs': {}, 'expect': F.enc_result(sg.correlate2d(a2, k2, mode=mode), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
 
+# lombscargle: Lomb-Scargle periodogram of unevenly sampled data at given angular frequencies (default options).
+lsc = []
+for (nx, nf) in [(30, 40), (45, 25), (60, 50)]:
+    xs = np.sort(rng.uniform(0.0, 10.0, nx))
+    ys = np.sin(2.3 * xs) + 0.6 * np.cos(0.7 * xs) + 0.4 * rng.normal(size=nx)
+    frq = np.linspace(0.1, 6.0, nf)
+    lsc.append({'args': [F.enc(xs), F.enc(ys), F.enc(frq)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.lombscargle(xs, ys, frq)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
@@ -785,7 +794,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'gauss_spline', 'cases': gsp, 'tol': {'atol': 1e-12}},
                  {'fn': 'vectorstrength', 'cases': vst, 'tol': {'atol': 1e-12}},
                  {'fn': 'convolve2d', 'cases': cv2, 'tol': {'atol': 1e-11}},
-                 {'fn': 'correlate2d', 'cases': cr2, 'tol': {'atol': 1e-11}}]}
+                 {'fn': 'correlate2d', 'cases': cr2, 'tol': {'atol': 1e-11}},
+                 {'fn': 'lombscargle', 'cases': lsc, 'tol': {'atol': 1e-9}}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'signal: convolve {len(convs)}, lfilter {len(lfs)}, fftconvolve {len(fftc)}, oaconvolve {len(oac)}, '

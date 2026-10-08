@@ -502,6 +502,7 @@
         "signal.kaiserord": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
+        "signal.lombscargle": "pass",
         "signal.lp2bp": "pass",
         "signal.lp2bp_zpk": "pass",
         "signal.lp2bs": "pass",
@@ -2292,7 +2293,8 @@
             "interpolate.interpn": 2.526919795196609e-16,
             "interpolate.RBFInterpolator": 6.381216216081151e-14,
             "interpolate.make_lsq_spline": 2.1942463788420772e-14,
-            "np.cumulative_simpson": 0
+            "np.cumulative_simpson": 0,
+            "signal.lombscargle": 1.3860040914382488e-14
         },
         "ext": {
             "np.median": 0,
@@ -3439,7 +3441,8 @@
             "interpolate.interpn": 2.526919795196609e-16,
             "interpolate.RBFInterpolator": 6.381216216081151e-14,
             "interpolate.make_lsq_spline": 2.1942463788420772e-14,
-            "np.cumulative_simpson": 0
+            "np.cumulative_simpson": 0,
+            "signal.lombscargle": 1.3860040914382488e-14
         }
     },
     "ext": {
@@ -3945,6 +3948,7 @@
         "signal.kaiserord": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
+        "signal.lombscargle": "pass",
         "signal.lp2bp": "pass",
         "signal.lp2bp_zpk": "pass",
         "signal.lp2bs": "pass",
