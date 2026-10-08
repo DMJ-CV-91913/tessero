@@ -172,6 +172,8 @@
 | `signal.iirnotch` | call | rtol 0 |
 | `signal.iirpeak` | every call | rtol 0 |
 | `signal.iirpeak` | call | rtol 0 |
+| `signal.iircomb` | every call | rtol 0 |
+| `signal.iircomb` | call | rtol 0 |
 | `signal.hilbert` | every call | rtol 0 |
 | `signal.hilbert` | call | rtol 0 |
 | `signal.hilbert2` | every call | rtol 0 |

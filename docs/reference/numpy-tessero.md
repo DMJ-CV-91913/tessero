@@ -973,6 +973,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
 | `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |
+| `scipy.signal.iircomb` | `Tessero\Signal::iircomb()` |
 | `scipy.signal.iirnotch` | `Tessero\Signal::iirnotch()` |
 | `scipy.signal.iirpeak` | `Tessero\Signal::iirpeak()` |
 | `scipy.signal.impulse` | `Tessero\Signal::impulse()` |

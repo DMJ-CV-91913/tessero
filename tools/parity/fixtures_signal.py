@@ -408,6 +408,13 @@ for (w0, Q) in ((0.25, 30.0), (0.5, 10.0), (0.1, 5.0)):
     bp, ap = sg.iirpeak(w0, Q)
     peakc.append({'args': [F.enc(w0), F.enc(Q)], 'kwargs': {}, 'expect': F.enc_result((bp, ap), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# iircomb: notching/peaking comb filter (w0 chosen so fs/w0 is integral)
+combc = []
+for (w0, Q, ftype, pz) in ((0.25, 30.0, 'notch', False), (0.2, 25.0, 'peak', False), (0.25, 30.0, 'peak', True), (0.4, 20.0, 'notch', True)):
+    bb, aa = sg.iircomb(w0, Q, ftype=ftype, pass_zero=pz)
+    combc.append({'args': [F.enc(w0), F.enc(Q), F.enc(ftype), F.enc(2.0), F.enc(pz)], 'kwargs': {},
+                  'expect': F.enc_result((bb, aa), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 # dlsim / dimpulse / dstep: discrete state-space responses (no expm; Ad,Bd are the given discrete system)
 dlsc, dimc, dstc = [], [], []
 _dt = 0.1
@@ -751,6 +758,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'dstep', 'cases': dstc, 'tol': {'atol': 1e-9}},
                  {'fn': 'iirnotch', 'cases': notc, 'tol': {'atol': 1e-12}},
                  {'fn': 'iirpeak', 'cases': peakc, 'tol': {'atol': 1e-12}},
+                 {'fn': 'iircomb', 'cases': combc, 'tol': {'atol': 1e-12}},
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},

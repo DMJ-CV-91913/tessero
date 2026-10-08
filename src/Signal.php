@@ -62,6 +62,7 @@ final class Signal
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
+    'iircomb' => 'iircomb',
     'iirnotch' => 'iirnotch',
     'iirpeak' => 'iirpeak',
     'impulse' => 'impulse',
@@ -622,6 +623,18 @@ final class Signal
     public static function hilbert2(mixed $x, mixed $N = null): mixed
     {
         return Registry::routine('signal.hilbert2', [$x, $N]);
+    }
+
+    /**
+     * Notching or peaking digital comb filter (scipy.signal.iircomb).
+     *
+     * scipy.signal.iircomb
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function iircomb(mixed $w0, mixed $Q, mixed $ftype = 'notch', mixed $fs = 2.0, mixed $passZero = false): mixed
+    {
+        return Registry::routine('signal.iircomb', [$w0, $Q, $ftype, $fs, $passZero]);
     }
 
     /**
