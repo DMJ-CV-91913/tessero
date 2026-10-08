@@ -32,6 +32,7 @@ final class Interpolate
     'splder' => 'splder',
     'splev' => 'splev',
     'splint' => 'splint',
+    'sproot' => 'sproot',
     ];
 
     private function __construct()
@@ -194,5 +195,15 @@ final class Interpolate
     public static function splint(mixed $a, mixed $b, mixed $t, mixed $c, mixed $k): mixed
     {
         return Registry::routine('interpolate.splint', [$a, $b, $t, $c, $k]);
+    }
+
+    /**
+     * Roots of a cubic (k=3) B-spline, sorted ascending, at most mest of them (scipy.interpolate.sproot).
+     *
+     * scipy.interpolate.sproot
+     */
+    public static function sproot(mixed $t, mixed $c, mixed $k, mixed $mest = 10): mixed
+    {
+        return Registry::routine('interpolate.sproot', [$t, $c, $k, $mest]);
     }
 }

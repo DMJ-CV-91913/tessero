@@ -3917,6 +3917,12 @@
                 "static": true,
                 "sig": "splint(mixed $a, mixed $b, mixed $t, mixed $c, mixed $k): mixed",
                 "doc": "Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint)."
+            },
+            {
+                "name": "sproot",
+                "static": true,
+                "sig": "sproot(mixed $t, mixed $c, mixed $k, mixed $mest = 10): mixed",
+                "doc": "Roots of a cubic (k=3) B-spline, sorted ascending, at most mest of them (scipy.interpolate.sproot)."
             }
         ],
         "constants": [
@@ -17112,6 +17118,12 @@
                 "name": "splint",
                 "static": true,
                 "sig": "splint($a, $b, $t, $c, $k)",
+                "doc": ""
+            },
+            {
+                "name": "sproot",
+                "static": true,
+                "sig": "sproot($t, $c, $k, $mest = 10)",
                 "doc": ""
             }
         ]
