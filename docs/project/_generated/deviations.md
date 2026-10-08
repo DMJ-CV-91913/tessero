@@ -152,6 +152,10 @@
 | `signal.sosfreqz` | call | rtol 0 |
 | `signal.group_delay` | every call | rtol 0 |
 | `signal.group_delay` | call | rtol 0 |
+| `signal.bode` | every call | rtol 0 |
+| `signal.bode` | call | rtol 0 |
+| `signal.dbode` | every call | rtol 0 |
+| `signal.dbode` | call | rtol 0 |
 | `signal.hilbert` | every call | rtol 0 |
 | `signal.hilbert` | call | rtol 0 |
 | `signal.hilbert2` | every call | rtol 0 |

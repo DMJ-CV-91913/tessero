@@ -2681,6 +2681,12 @@
                 "doc": "Bilinear transform of an analog zpk to a digital zpk (scipy.signal.bilinear_zpk)."
             },
             {
+                "name": "bode",
+                "static": true,
+                "sig": "bode(mixed $num, mixed $den, mixed $w): mixed",
+                "doc": "Bode magnitude (dB) and phase (deg) of a continuous system (scipy.signal.bode)."
+            },
+            {
                 "name": "buttap",
                 "static": true,
                 "sig": "buttap(mixed $N): mixed",
@@ -2787,6 +2793,12 @@
                 "static": true,
                 "sig": "csd(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed",
                 "doc": "Cross power spectral density by Welch's method (scipy.signal.csd)."
+            },
+            {
+                "name": "dbode",
+                "static": true,
+                "sig": "dbode(mixed $num, mixed $den, mixed $worN = 512, mixed $whole = false): mixed",
+                "doc": "Bode magnitude (dB) and phase (deg) of a discrete system (scipy.signal.dbode)."
             },
             {
                 "name": "deconvolve",
@@ -15837,6 +15849,18 @@
                 "name": "groupDelay",
                 "static": true,
                 "sig": "groupDelay($b, $a, $w = 512, $whole = false)",
+                "doc": ""
+            },
+            {
+                "name": "bode",
+                "static": true,
+                "sig": "bode($num, $den, $w)",
+                "doc": ""
+            },
+            {
+                "name": "dbode",
+                "static": true,
+                "sig": "dbode($num, $den, $worN = 512, $whole = false)",
                 "doc": ""
             },
             {

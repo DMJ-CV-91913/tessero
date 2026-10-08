@@ -430,6 +430,7 @@
         "signal.argrelmin": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
+        "signal.bode": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
         "signal.buttord": "pass",
@@ -448,6 +449,7 @@
         "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.dbode": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
         "signal.ellipord": "pass",
@@ -2226,7 +2228,9 @@
             "signal.ellipord": 0,
             "signal.cont2discrete": 3.6465695357008e-16,
             "signal.zpk2ss": 1.2195307883631899e-16,
-            "signal.ss2zpk": 0
+            "signal.ss2zpk": 0,
+            "signal.bode": 6.439300143945789e-9,
+            "signal.dbode": 1.3068991204809567e-5
         },
         "ext": {
             "np.median": 0,
@@ -3340,7 +3344,9 @@
             "signal.ellipord": 0,
             "signal.cont2discrete": 3.6465695357008e-16,
             "signal.zpk2ss": 1.2195307883631899e-16,
-            "signal.ss2zpk": 0
+            "signal.ss2zpk": 0,
+            "signal.bode": 6.439300143945789e-9,
+            "signal.dbode": 1.3068991204809567e-5
         }
     },
     "ext": {
@@ -3774,6 +3780,7 @@
         "signal.argrelmin": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
+        "signal.bode": "pass",
         "signal.buttap": "pass",
         "signal.butter": "pass",
         "signal.buttord": "pass",
@@ -3792,6 +3799,7 @@
         "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.dbode": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
         "signal.ellipord": "pass",
