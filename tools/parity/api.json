@@ -2915,6 +2915,18 @@
                 "doc": "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."
             },
             {
+                "name": "iirnotch",
+                "static": true,
+                "sig": "iirnotch(mixed $w0, mixed $Q, mixed $fs = 2.0): mixed",
+                "doc": "Second-order notch digital filter (scipy.signal.iirnotch)."
+            },
+            {
+                "name": "iirpeak",
+                "static": true,
+                "sig": "iirpeak(mixed $w0, mixed $Q, mixed $fs = 2.0): mixed",
+                "doc": "Second-order peak digital filter (scipy.signal.iirpeak)."
+            },
+            {
                 "name": "impulse",
                 "static": true,
                 "sig": "impulse(mixed $A, mixed $B, mixed $C, mixed $D, mixed $T): mixed",
@@ -15933,6 +15945,18 @@
                 "name": "dstep",
                 "static": true,
                 "sig": "dstep($A, $B, $C, $D, $dt, $n = 100)",
+                "doc": ""
+            },
+            {
+                "name": "iirnotch",
+                "static": true,
+                "sig": "iirnotch($w0, $Q, $fs = 2.0)",
+                "doc": ""
+            },
+            {
+                "name": "iirpeak",
+                "static": true,
+                "sig": "iirpeak($w0, $Q, $fs = 2.0)",
                 "doc": ""
             },
             {

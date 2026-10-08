@@ -184,6 +184,40 @@ static int r_zpk2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return TSR_OK;
 }
 
+/* iirnotch / iirpeak: second-order notch/peak IIR design (scipy.signal, assuming a -3 dB bandwidth so the
+   gb terms simplify to beta = tan(bw/2)). Writes b[3], a[3]. */
+static void sig_notch_peak(double w0, double Q, double fs, int peak, double *b, double *a)
+{
+    double w = 2.0 * w0 / fs;
+    double bw = w / Q;
+    bw = bw * M_PI; w = w * M_PI;
+    const double beta = tan(bw / 2.0);
+    const double gain = 1.0 / (1.0 + beta);
+    if (!peak) { b[0] = gain * 1.0; b[1] = gain * (-2.0 * cos(w)); b[2] = gain * 1.0; }
+    else       { b[0] = (1.0 - gain) * 1.0; b[1] = 0.0; b[2] = (1.0 - gain) * (-1.0); }
+    a[0] = 1.0; a[1] = -2.0 * gain * cos(w); a[2] = 2.0 * gain - 1.0;
+}
+
+static int sig_notch_peak_routine(const tsr_arg *args, int nargs, tsr_result *res, int peak, const char *name)
+{
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("%s: w0 and Q must be numbers", name); return TSR_EARG; }
+    const double w0 = args[0].num, Q = args[1].num;
+    const double fs = (nargs > 2 && args[2].kind == 1) ? args[2].num : 2.0;
+    const double w0n = 2.0 * w0 / fs;
+    if (w0n < 0.0 || w0n > 1.0) { fn_set_error("%s: w0 should be such that 0 < w0 < 1", name); return TSR_EARG; }
+    double *b = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){3});
+    double *a = b ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){3}) : NULL;
+    if (!b || !a) return TSR_ENOMEM;
+    sig_notch_peak(w0, Q, fs, peak, b, a);
+    return TSR_OK;
+}
+
+static int r_iirnotch(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return sig_notch_peak_routine(args, nargs, res, 0, "iirnotch"); }
+
+static int r_iirpeak(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return sig_notch_peak_routine(args, nargs, res, 1, "iirpeak"); }
+
 /* butter(N, Wn, btype='low', output='ba'): digital Butterworth filter (scipy.signal.butter); lowpass/highpass,
    output 'ba'. Analog prototype -> frequency transform -> bilinear -> transfer function, matching scipy. */
 static int r_butter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -4410,6 +4444,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.dlsim", 3, "A, B, C, D, dt, U", "tout, yout, xout", r_dlsim, NULL, "Simulate a discrete-time state-space system (scipy.signal.dlsim)."),
     ROUTINE("signal.dimpulse", 2, "A, B, C, D, dt, n=100", "tout, yout", r_dimpulse, NULL, "Impulse response of a discrete-time state-space system (scipy.signal.dimpulse)."),
     ROUTINE("signal.dstep", 2, "A, B, C, D, dt, n=100", "tout, yout", r_dstep, NULL, "Step response of a discrete-time state-space system (scipy.signal.dstep)."),
+    ROUTINE("signal.iirnotch", 2, "w0, Q, fs=2.0", "b, a", r_iirnotch, NULL, "Second-order notch digital filter (scipy.signal.iirnotch)."),
+    ROUTINE("signal.iirpeak", 2, "w0, Q, fs=2.0", "b, a", r_iirpeak, NULL, "Second-order peak digital filter (scipy.signal.iirpeak)."),
     ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
     ROUTINE("signal.hilbert2", 1, "x, N=None", "out", r_hilbert2, NULL, "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."),
     ROUTINE("signal.periodogram", 2, "x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True, scaling='density'", "f, Pxx", r_periodogram, NULL, "Power spectral density estimate from a single segment (scipy.signal.periodogram)."),
