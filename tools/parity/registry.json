@@ -2105,6 +2105,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.get_window": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.group_delay": {
             "kind": "routine",
             "nin": 0,
