@@ -45,6 +45,9 @@ final class Signal
     'dbode' => 'dbode',
     'deconvolve' => 'deconvolve',
     'detrend' => 'detrend',
+    'dimpulse' => 'dimpulse',
+    'dlsim' => 'dlsim',
+    'dstep' => 'dstep',
     'ellipord' => 'ellipord',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
@@ -429,6 +432,42 @@ final class Signal
     public static function detrend(mixed $data, mixed $axis = -1, mixed $type = 'linear', mixed $bp = 0, mixed $overwriteData = false): mixed
     {
         return Registry::routine('signal.detrend', [$data, $axis, $type, $bp, $overwriteData]);
+    }
+
+    /**
+     * Impulse response of a discrete-time state-space system (scipy.signal.dimpulse).
+     *
+     * scipy.signal.dimpulse
+     *
+     * @return mixed one array, or an array keyed by tout, yout when several results are requested
+     */
+    public static function dimpulse(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $n = 100): mixed
+    {
+        return Registry::routine('signal.dimpulse', [$A, $B, $C, $D, $dt, $n]);
+    }
+
+    /**
+     * Simulate a discrete-time state-space system (scipy.signal.dlsim).
+     *
+     * scipy.signal.dlsim
+     *
+     * @return mixed one array, or an array keyed by tout, yout, xout when several results are requested
+     */
+    public static function dlsim(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $U): mixed
+    {
+        return Registry::routine('signal.dlsim', [$A, $B, $C, $D, $dt, $U]);
+    }
+
+    /**
+     * Step response of a discrete-time state-space system (scipy.signal.dstep).
+     *
+     * scipy.signal.dstep
+     *
+     * @return mixed one array, or an array keyed by tout, yout when several results are requested
+     */
+    public static function dstep(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $n = 100): mixed
+    {
+        return Registry::routine('signal.dstep', [$A, $B, $C, $D, $dt, $n]);
     }
 
     /**
