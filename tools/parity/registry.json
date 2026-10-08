@@ -2055,6 +2055,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.ellipap": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "signal.ellipord": {
             "kind": "routine",
             "nin": 0,

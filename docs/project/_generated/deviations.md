@@ -248,6 +248,8 @@
 | `signal.get_window` | call | rtol 0 |
 | `signal.besselap` | every call | rtol 0 |
 | `signal.besselap` | call | rtol 0 |
+| `signal.ellipap` | every call | rtol 0 |
+| `signal.ellipap` | call | rtol 0 |
 | `slinalg.solve` | every call | rtol 1e-09 |
 | `slinalg.inv` | every call | rtol 1e-09 |
 | `slinalg.det` | every call | rtol 1e-09 |
