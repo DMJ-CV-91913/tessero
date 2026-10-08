@@ -185,6 +185,11 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.RBFInterpolator": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.RegularGridInterpolator": {
             "kind": "routine",
             "nin": 0,

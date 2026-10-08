@@ -23,6 +23,7 @@ final class Interpolate
     'CubicHermiteSpline' => 'CubicHermiteSpline',
     'CubicSpline' => 'CubicSpline',
     'PchipInterpolator' => 'PchipInterpolator',
+    'RBFInterpolator' => 'RBFInterpolator',
     'RegularGridInterpolator' => 'RegularGridInterpolator',
     'barycentric_interpolate' => 'barycentricInterpolate',
     'interpn' => 'interpn',
@@ -102,6 +103,16 @@ final class Interpolate
     public static function PchipInterpolator(mixed $x, mixed $y, mixed $xnew): mixed
     {
         return Registry::routine('interpolate.PchipInterpolator', [$x, $y, $xnew]);
+    }
+
+    /**
+     * Radial basis function interpolation (thin_plate_spline or linear kernel) evaluated at xi (scipy.interpolate.RBFInterpolator).
+     *
+     * scipy.interpolate.RBFInterpolator
+     */
+    public static function RBFInterpolator(mixed $y, mixed $d, mixed $xi, mixed $kernel = 'thin_plate_spline'): mixed
+    {
+        return Registry::routine('interpolate.RBFInterpolator', [$y, $d, $xi, $kernel]);
     }
 
     /**
