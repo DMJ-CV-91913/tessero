@@ -3859,6 +3859,18 @@
                 "doc": "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."
             },
             {
+                "name": "barycentricInterpolate",
+                "static": true,
+                "sig": "barycentricInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
+                "doc": "Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate)."
+            },
+            {
+                "name": "kroghInterpolate",
+                "static": true,
+                "sig": "kroghInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
+                "doc": "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."
+            },
+            {
                 "name": "pchipInterpolate",
                 "static": true,
                 "sig": "pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
@@ -17004,6 +17016,18 @@
                 "name": "CubicHermiteSpline",
                 "static": true,
                 "sig": "CubicHermiteSpline($x, $y, $dydx, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "barycentricInterpolate",
+                "static": true,
+                "sig": "barycentricInterpolate($xi, $yi, $x)",
+                "doc": ""
+            },
+            {
+                "name": "kroghInterpolate",
+                "static": true,
+                "sig": "kroghInterpolate($xi, $yi, $x)",
                 "doc": ""
             }
         ]

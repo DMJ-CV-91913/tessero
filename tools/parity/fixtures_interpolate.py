@@ -5,13 +5,14 @@ over the sample arrays; generated in the pinned environment for consistency with
 import json, os
 import numpy as np
 from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInterpolator,
-                               CubicSpline, CubicHermiteSpline)
+                               CubicSpline, CubicHermiteSpline,
+                               barycentric_interpolate, krogh_interpolate)
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc = [], [], [], [], []
+pc, pci, akc, csc, chc, bcc, kgc = [], [], [], [], [], [], []
 
 
 def xyc(xi, yi, xnew, vals):
@@ -38,9 +39,18 @@ pc.append(xyc(xi, yi, xnew, pchip_interpolate(xi, yi, xnew)))
 xi = np.array([0.0, 1.3, 2.5]); yi = np.sin(xi) + 0.3 * xi; xnew = np.linspace(0.0, 2.5, 15)
 csc.append(xyc(xi, yi, xnew, CubicSpline(xi, yi)(xnew)))
 
+# global polynomial interpolation (barycentric / Krogh) -- small, well-conditioned node sets
+for n in (5, 6):
+    xi = np.concatenate([[0.0], np.cumsum(rng.uniform(0.6, 1.6, n - 1))])
+    yi = np.sin(xi) + 0.3 * xi
+    xnew = np.linspace(xi[0], xi[-1], 19)
+    bcc.append(xyc(xi, yi, xnew, barycentric_interpolate(xi, yi, xnew)))
+    kgc.append(xyc(xi, yi, xnew, krogh_interpolate(xi, yi, xnew)))
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
-         {'fn': 'CubicHermiteSpline', 'cases': chc}]
+         {'fn': 'CubicHermiteSpline', 'cases': chc},
+         {'fn': 'barycentric_interpolate', 'cases': bcc}, {'fn': 'krogh_interpolate', 'cases': kgc}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

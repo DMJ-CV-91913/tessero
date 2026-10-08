@@ -123,3 +123,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-08,scipy.interpolate: interp1d (new module),87.7,87.0,67.4,67.1,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,scipy.interpolate: pchip_interpolate (new module),87.7,87.0,67.4,67.2,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,"scipy.interpolate: CubicSpline, Akima1DInterpolator, PchipInterpolator, CubicHermiteSpline",87.7,87.0,67.7,67.4,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-08,"scipy.interpolate: barycentric_interpolate, krogh_interpolate",87.7,87.0,67.8,67.6,99.1,99.6,71.7,71.7,79.1,79.1

@@ -22,6 +22,8 @@ final class Interpolate
     'CubicHermiteSpline' => 'CubicHermiteSpline',
     'CubicSpline' => 'CubicSpline',
     'PchipInterpolator' => 'PchipInterpolator',
+    'barycentric_interpolate' => 'barycentricInterpolate',
+    'krogh_interpolate' => 'kroghInterpolate',
     'pchip_interpolate' => 'pchipInterpolate',
     ];
 
@@ -79,6 +81,26 @@ final class Interpolate
     public static function PchipInterpolator(mixed $x, mixed $y, mixed $xnew): mixed
     {
         return Registry::routine('interpolate.PchipInterpolator', [$x, $y, $xnew]);
+    }
+
+    /**
+     * Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate).
+     *
+     * scipy.interpolate.barycentric_interpolate
+     */
+    public static function barycentricInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
+    {
+        return Registry::routine('interpolate.barycentric_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate).
+     *
+     * scipy.interpolate.krogh_interpolate
+     */
+    public static function kroghInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
+    {
+        return Registry::routine('interpolate.krogh_interpolate', [$xi, $yi, $x]);
     }
 
     /**
