@@ -971,6 +971,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.freqz_zpk` | `Tessero\Signal::freqzZpk()` |
 | `scipy.signal.gauss_spline` | `Tessero\Signal::gaussSpline()` |
 | `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
+| `scipy.signal.get_window` | `Tessero\Signal::getWindow()` |
 | `scipy.signal.group_delay` | `Tessero\Signal::groupDelay()` |
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
 | `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |

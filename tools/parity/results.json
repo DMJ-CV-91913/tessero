@@ -488,6 +488,7 @@
         "signal.freqz_zpk": "pass",
         "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
+        "signal.get_window": "pass",
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
@@ -2294,7 +2295,8 @@
             "interpolate.RBFInterpolator": 6.381216216081151e-14,
             "interpolate.make_lsq_spline": 2.1942463788420772e-14,
             "np.cumulative_simpson": 0,
-            "signal.lombscargle": 1.3860040914382488e-14
+            "signal.lombscargle": 1.3860040914382488e-14,
+            "signal.get_window": 2.9008557796606e-15
         },
         "ext": {
             "np.median": 0,
@@ -3442,7 +3444,8 @@
             "interpolate.RBFInterpolator": 6.381216216081151e-14,
             "interpolate.make_lsq_spline": 2.1942463788420772e-14,
             "np.cumulative_simpson": 0,
-            "signal.lombscargle": 1.3860040914382488e-14
+            "signal.lombscargle": 1.3860040914382488e-14,
+            "signal.get_window": 2.9008557796606e-15
         }
     },
     "ext": {
@@ -3934,6 +3937,7 @@
         "signal.freqz_zpk": "pass",
         "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
+        "signal.get_window": "pass",
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
