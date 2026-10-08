@@ -8,14 +8,14 @@ from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInte
                                CubicSpline, CubicHermiteSpline,
                                barycentric_interpolate, krogh_interpolate,
                                make_interp_spline, BSpline, pade, splev,
-                               splrep, splder, splantider, splint, sproot)
+                               splrep, splder, splantider, splint, sproot, lagrange)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr = ([] for _ in range(15))
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr, lag = ([] for _ in range(16))
 
 
 def xyc(xi, yi, xnew, vals):
@@ -110,6 +110,16 @@ for (freq, npts, off) in [(0.9, 12, 0.15), (1.2, 14, 0.1), (0.7, 16, -0.2), (1.5
     spr.append({'args': [F.enc(t), F.enc(c), F.enc(int(k))], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(sproot((t, c, k))), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# lagrange: interpolating polynomial through (x, w) as poly1d coefficients (highest-degree first). Generic
+# well-separated nodes over a moderate range so the polynomial is genuinely degree M-1 (poly1d keeps all M
+# coefficients -- no exact-zero leading trim) and the coefficients stay modestly sized.
+for M in (3, 4, 5, 6):
+    xl = np.sort(rng.uniform(-2.0, 2.0, M))
+    xl = xl + np.linspace(0, 1e-3, M)          # nudge apart to keep nodes well separated
+    wl = np.sin(1.1 * xl) + 0.4 * rng.normal(size=M)
+    lag.append({'args': [F.enc(xl), F.enc(wl)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(lagrange(xl, wl).coef), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
@@ -117,7 +127,8 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'BSpline', 'cases': bsp}, {'fn': 'pade', 'cases': pdc},
          {'fn': 'make_interp_spline', 'cases': mis}, {'fn': 'splev', 'cases': spv},
          {'fn': 'splder', 'cases': sdr}, {'fn': 'splantider', 'cases': sai},
-         {'fn': 'splint', 'cases': spi}, {'fn': 'sproot', 'cases': spr}]
+         {'fn': 'splint', 'cases': spi}, {'fn': 'sproot', 'cases': spr},
+         {'fn': 'lagrange', 'cases': lag}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

@@ -131,3 +131,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-08,"scipy.interpolate: splder, splantider",87.7,87.0,68.2,68.0,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,scipy.interpolate: splint,87.7,87.0,68.3,68.0,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,scipy.interpolate: sproot,87.7,87.0,68.4,68.1,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-08,scipy.interpolate: lagrange,87.7,87.0,68.4,68.2,99.1,99.6,71.7,71.7,79.1,79.1

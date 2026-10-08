@@ -3877,6 +3877,12 @@
                 "doc": "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."
             },
             {
+                "name": "lagrange",
+                "static": true,
+                "sig": "lagrange(mixed $x, mixed $w): mixed",
+                "doc": "Lagrange interpolating polynomial through (x, w) as poly1d coefficients, highest-degree first (scipy.interpolate.lagrange)."
+            },
+            {
                 "name": "makeInterpSpline",
                 "static": true,
                 "sig": "makeInterpSpline(mixed $x, mixed $y, mixed $k, mixed $xnew): mixed",
@@ -17124,6 +17130,12 @@
                 "name": "sproot",
                 "static": true,
                 "sig": "sproot($t, $c, $k, $mest = 10)",
+                "doc": ""
+            },
+            {
+                "name": "lagrange",
+                "static": true,
+                "sig": "lagrange($x, $w)",
                 "doc": ""
             }
         ]

@@ -25,6 +25,7 @@ final class Interpolate
     'PchipInterpolator' => 'PchipInterpolator',
     'barycentric_interpolate' => 'barycentricInterpolate',
     'krogh_interpolate' => 'kroghInterpolate',
+    'lagrange' => 'lagrange',
     'make_interp_spline' => 'makeInterpSpline',
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
@@ -119,6 +120,16 @@ final class Interpolate
     public static function kroghInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.krogh_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Lagrange interpolating polynomial through (x, w) as poly1d coefficients, highest-degree first (scipy.interpolate.lagrange).
+     *
+     * scipy.interpolate.lagrange
+     */
+    public static function lagrange(mixed $x, mixed $w): mixed
+    {
+        return Registry::routine('interpolate.lagrange', [$x, $w]);
     }
 
     /**
