@@ -2813,6 +2813,24 @@
                 "doc": "Remove a constant or piecewise-linear least-squares trend along an axis (scipy.signal.detrend)."
             },
             {
+                "name": "dimpulse",
+                "static": true,
+                "sig": "dimpulse(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $n = 100): mixed",
+                "doc": "Impulse response of a discrete-time state-space system (scipy.signal.dimpulse)."
+            },
+            {
+                "name": "dlsim",
+                "static": true,
+                "sig": "dlsim(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $U): mixed",
+                "doc": "Simulate a discrete-time state-space system (scipy.signal.dlsim)."
+            },
+            {
+                "name": "dstep",
+                "static": true,
+                "sig": "dstep(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $n = 100): mixed",
+                "doc": "Step response of a discrete-time state-space system (scipy.signal.dstep)."
+            },
+            {
                 "name": "ellipord",
                 "static": true,
                 "sig": "ellipord(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $fs = null): mixed",
@@ -15897,6 +15915,24 @@
                 "name": "step",
                 "static": true,
                 "sig": "step($A, $B, $C, $D, $T)",
+                "doc": ""
+            },
+            {
+                "name": "dlsim",
+                "static": true,
+                "sig": "dlsim($A, $B, $C, $D, $dt, $U)",
+                "doc": ""
+            },
+            {
+                "name": "dimpulse",
+                "static": true,
+                "sig": "dimpulse($A, $B, $C, $D, $dt, $n = 100)",
+                "doc": ""
+            },
+            {
+                "name": "dstep",
+                "static": true,
+                "sig": "dstep($A, $B, $C, $D, $dt, $n = 100)",
                 "doc": ""
             },
             {
