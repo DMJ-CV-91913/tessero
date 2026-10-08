@@ -3911,6 +3911,12 @@
                 "static": true,
                 "sig": "splev(mixed $t, mixed $c, mixed $k, mixed $x): mixed",
                 "doc": "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.splev)."
+            },
+            {
+                "name": "splint",
+                "static": true,
+                "sig": "splint(mixed $a, mixed $b, mixed $t, mixed $c, mixed $k): mixed",
+                "doc": "Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint)."
             }
         ],
         "constants": [
@@ -17100,6 +17106,12 @@
                 "name": "splantider",
                 "static": true,
                 "sig": "splantider($t, $c, $k, $n = 1)",
+                "doc": ""
+            },
+            {
+                "name": "splint",
+                "static": true,
+                "sig": "splint($a, $b, $t, $c, $k)",
                 "doc": ""
             }
         ]
