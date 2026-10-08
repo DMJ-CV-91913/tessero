@@ -7,14 +7,15 @@ import numpy as np
 from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInterpolator,
                                CubicSpline, CubicHermiteSpline,
                                barycentric_interpolate, krogh_interpolate,
-                               make_interp_spline, BSpline, pade, splev)
+                               make_interp_spline, BSpline, pade, splev,
+                               splrep, splder, splantider)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv = [], [], [], [], [], [], [], [], [], [], []
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai = ([] for _ in range(13))
 
 
 def xyc(xi, yi, xnew, vals):
@@ -78,12 +79,27 @@ for k in (1, 3):
         mis.append({'args': [F.enc(xi), F.enc(yi), F.enc(k), F.enc(xnew)], 'kwargs': {},
                     'expect': F.enc_result(make_interp_spline(xi, yi, k=k)(xnew), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# splder / splantider: B-spline calculus on a FITPACK (t, c, k) built with splrep
+for n in (6, 9):
+    xi = np.sort(np.unique(np.concatenate([[0.0], np.cumsum(rng.uniform(0.6, 1.6, n - 1))])))
+    yi = np.sin(xi) + 0.3 * xi
+    t, c, k = splrep(xi, yi, k=3, s=0)
+    t, c = np.asarray(t, float), np.asarray(c, float)
+    for nu in (1, 2):
+        td, cd, kd = splder((t, c, k), nu)
+        sdr.append({'args': [F.enc(t), F.enc(c), F.enc(int(k)), F.enc(nu)], 'kwargs': {},
+                    'expect': F.enc_result((np.asarray(td), np.asarray(cd), kd), ['t', 'c', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    ta, ca, ka = splantider((t, c, k), 1)
+    sai.append({'args': [F.enc(t), F.enc(c), F.enc(int(k)), F.enc(1)], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(ta), np.asarray(ca), ka), ['t', 'c', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
          {'fn': 'barycentric_interpolate', 'cases': bcc}, {'fn': 'krogh_interpolate', 'cases': kgc},
          {'fn': 'BSpline', 'cases': bsp}, {'fn': 'pade', 'cases': pdc},
-         {'fn': 'make_interp_spline', 'cases': mis}, {'fn': 'splev', 'cases': spv}]
+         {'fn': 'make_interp_spline', 'cases': mis}, {'fn': 'splev', 'cases': spv},
+         {'fn': 'splder', 'cases': sdr}, {'fn': 'splantider', 'cases': sai}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
