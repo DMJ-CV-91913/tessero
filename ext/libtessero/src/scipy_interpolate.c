@@ -423,6 +423,67 @@ static int r_splantider(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return rc;
 }
 
+/* splint(a, b, t, c, k): definite integral of a B-spline over [a, b] (scipy.interpolate.splint). Matches FITPACK,
+   which silently takes the spline to be zero outside the base interval [t[k], t[n]] (n = len(t)-k-1) -- i.e. it is
+   BSpline.integrate with extrapolate=False. Clamp the limits to the base interval; if the clamped interval is empty
+   the integral is zero. Otherwise build the order-1 antiderivative (the splantider recurrence) and difference it at
+   the two ends via de Boor. Scalar output. */
+static int r_splint(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("splint: a and b must be numbers"); return TSR_EARG; }
+    if (args[2].kind != 3 || args[2].arr.ndim != 1 || args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("splint: t and c must be 1-D arrays"); return TSR_EARG; }
+    if (args[4].kind != 1) { fn_set_error("splint: k must be an integer degree"); return TSR_EARG; }
+    const int k = (int)args[4].num;
+    const int64_t nt = args[2].arr.shape[0], n = nt - k - 1;   /* n coefficients; base interval [t[k], t[n]] */
+    if (k < 0 || n < 1 || args[3].arr.shape[0] < n) { fn_set_error("splint: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    double a = (args[0].flags & 1) ? (double)args[0].ival : args[0].num;
+    double b = (args[1].flags & 1) ? (double)args[1].ival : args[1].num;
+    double sign = 1.0;
+    if (b < a) { const double tmp = a; a = b; b = tmp; sign = -1.0; }
+    int64_t lt, lc;
+    double *t = fn_arg_doubles(&args[2], &lt), *c = t ? fn_arg_doubles(&args[3], &lc) : NULL;
+    double *ta = NULL, *ca = NULL, *d = NULL;
+    int rc = (!t || !c) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        if (a < t[k]) a = t[k];
+        if (b > t[n]) b = t[n];
+        if (a >= b) { fn_result_num(&res[0], 0.0); }           /* clamped interval empty -> zero outside base interval */
+        else {
+            const int64_t nta = nt + 2; const int ka = k + 1;  /* antiderivative: knots ta, coeffs ca, degree k+1 */
+            ta = (double *)malloc((size_t)nta * sizeof(double));
+            ca = (double *)malloc((size_t)nta * sizeof(double));
+            d = (double *)malloc((size_t)(ka + 1) * sizeof(double));
+            if (!ta || !ca || !d) rc = TSR_ENOMEM;
+            else {
+                ta[0] = t[0];
+                for (int64_t i = 0; i < nt; i++) ta[1 + i] = t[i];
+                ta[nt + 1] = t[nt - 1];
+                ca[0] = 0.0; double acc = 0.0;
+                for (int64_t i = 0; i < n; i++) { const double dt = t[k + 1 + i] - t[i]; acc += c[i] * dt; ca[1 + i] = acc / (double)(k + 1); }
+                for (int64_t i = 0; i < k + 2; i++) ca[1 + n + i] = ca[n];   /* pad with k+2 copies of the last */
+                const int64_t na = nta - ka - 1;               /* antiderivative coefficient count = n + 1 */
+                const double xs[2] = {a, b}; double F[2];
+                for (int e = 0; e < 2; e++) {
+                    const double x = xs[e];
+                    int64_t mu = ka; while (mu < na - 1 && ta[mu + 1] <= x) mu++;
+                    for (int j = 0; j <= ka; j++) d[j] = ca[mu - ka + j];
+                    for (int r = 1; r <= ka; r++)
+                        for (int j = ka; j >= r; j--) {
+                            const double denom = ta[j + mu - r + 1] - ta[j + mu - ka];
+                            const double aa = denom != 0.0 ? (x - ta[j + mu - ka]) / denom : 0.0;
+                            d[j] = (1.0 - aa) * d[j - 1] + aa * d[j];
+                        }
+                    F[e] = d[ka];
+                }
+                fn_result_num(&res[0], sign * (F[1] - F[0]));
+            }
+        }
+    }
+    free(ta); free(ca); free(d); fn_free_doubles(t, lt); fn_free_doubles(c, lc);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -437,6 +498,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.splev", 1, "t, c, k, x", "y", r_splev, NULL, "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.splev)."),
     ROUTINE("interpolate.splder", 3, "t, c, k, n=1", "t, c, k", r_splder, NULL, "Derivative of a B-spline in (t, c, k) form (scipy.interpolate.splder)."),
     ROUTINE("interpolate.splantider", 3, "t, c, k, n=1", "t, c, k", r_splantider, NULL, "Antiderivative of a B-spline in (t, c, k) form (scipy.interpolate.splantider)."),
+    ROUTINE("interpolate.splint", 1, "a, b, t, c, k", "integral", r_splint, NULL, "Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
