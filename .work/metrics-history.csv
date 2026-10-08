@@ -118,3 +118,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-08,"scipy.signal: bode, dbode",87.7,87.0,66.8,66.5,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,"scipy.signal: lsim, impulse, step",87.7,87.0,67.0,66.7,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,"scipy.signal: dlsim, dimpulse, dstep",87.7,87.0,67.2,66.9,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-08,"scipy.signal: iirnotch, iirpeak",87.7,87.0,67.3,67.0,99.1,99.6,71.7,71.7,79.1,79.1

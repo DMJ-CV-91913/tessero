@@ -62,6 +62,8 @@ final class Signal
     'group_delay' => 'groupDelay',
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
+    'iirnotch' => 'iirnotch',
+    'iirpeak' => 'iirpeak',
     'impulse' => 'impulse',
     'invres' => 'invres',
     'invresz' => 'invresz',
@@ -620,6 +622,30 @@ final class Signal
     public static function hilbert2(mixed $x, mixed $N = null): mixed
     {
         return Registry::routine('signal.hilbert2', [$x, $N]);
+    }
+
+    /**
+     * Second-order notch digital filter (scipy.signal.iirnotch).
+     *
+     * scipy.signal.iirnotch
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function iirnotch(mixed $w0, mixed $Q, mixed $fs = 2.0): mixed
+    {
+        return Registry::routine('signal.iirnotch', [$w0, $Q, $fs]);
+    }
+
+    /**
+     * Second-order peak digital filter (scipy.signal.iirpeak).
+     *
+     * scipy.signal.iirpeak
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function iirpeak(mixed $w0, mixed $Q, mixed $fs = 2.0): mixed
+    {
+        return Registry::routine('signal.iirpeak', [$w0, $Q, $fs]);
     }
 
     /**

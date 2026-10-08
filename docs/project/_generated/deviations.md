@@ -168,6 +168,10 @@
 | `signal.dimpulse` | call | rtol 0 |
 | `signal.dstep` | every call | rtol 0 |
 | `signal.dstep` | call | rtol 0 |
+| `signal.iirnotch` | every call | rtol 0 |
+| `signal.iirnotch` | call | rtol 0 |
+| `signal.iirpeak` | every call | rtol 0 |
+| `signal.iirpeak` | call | rtol 0 |
 | `signal.hilbert` | every call | rtol 0 |
 | `signal.hilbert` | call | rtol 0 |
 | `signal.hilbert2` | every call | rtol 0 |
