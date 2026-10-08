@@ -703,6 +703,75 @@ static int r_rgi(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     return rc;
 }
 
+static double rbf_kernel(int tps, double r) { return tps ? (r == 0.0 ? 0.0 : r * r * log(r)) : -r; }
+
+/* RBFInterpolator(y, d, xi, kernel='thin_plate_spline'): radial basis function interpolation evaluated at xi
+   (scipy.interpolate.RBFInterpolator). Supports the scale-invariant polynomial kernels 'thin_plate_spline'
+   (default, degree-1 polynomial tail) and 'linear' (degree-0) with the default smoothing=0 and epsilon=1 -- the
+   ill-conditioned / epsilon-dependent kernels are rejected. Solves the augmented saddle system
+   [[K, P],[P^T, 0]] @ [w; v] = [d; 0] (K = kernel matrix on the observation points, P = polynomial tail on the
+   shifted/scaled points) via the shared dense solver, then evaluates at xi. Scalar-valued d only. */
+static int r_rbf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
+        args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("RBFInterpolator: y and xi must be 2-D arrays and d 1-D"); return TSR_EARG; }
+    const int64_t p = args[0].arr.shape[0], ndim = args[0].arr.shape[1], m = args[2].arr.shape[0];
+    if (args[1].arr.shape[0] != p || args[2].arr.shape[1] != ndim) { fn_set_error("RBFInterpolator: inconsistent y/d/xi shapes"); return TSR_EARG; }
+    const char *kname = (nargs > 3 && args[3].kind == 2 && args[3].str) ? args[3].str : "thin_plate_spline";
+    int tps;
+    if (strcmp(kname, "thin_plate_spline") == 0) tps = 1;
+    else if (strcmp(kname, "linear") == 0) tps = 0;
+    else { fn_set_error("RBFInterpolator: only the 'thin_plate_spline' and 'linear' kernels are supported here"); return TSR_EARG; }
+    const int deg = tps ? 1 : 0;
+    const int64_t r = 1 + (deg ? ndim : 0), N = p + r;
+    int64_t ly, ld, lx;
+    double *y = fn_arg_doubles(&args[0], &ly), *d = y ? fn_arg_doubles(&args[1], &ld) : NULL, *xi = d ? fn_arg_doubles(&args[2], &lx) : NULL;
+    double *shift = (double *)calloc((size_t)(ndim ? ndim : 1), sizeof(double));
+    double *scale = (double *)calloc((size_t)(ndim ? ndim : 1), sizeof(double));
+    double *lhs = (double *)calloc((size_t)(N * N), sizeof(double));
+    double *rhs = (double *)calloc((size_t)N, sizeof(double));
+    int rc = (!y || !d || !xi || !shift || !scale || !lhs || !rhs) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t c = 0; c < ndim; c++) {
+            double mn = y[c], mx = y[c];
+            for (int64_t i = 1; i < p; i++) { const double v = y[i * ndim + c]; if (v < mn) mn = v; if (v > mx) mx = v; }
+            shift[c] = (mx + mn) / 2.0; scale[c] = (mx - mn) / 2.0; if (scale[c] == 0.0) scale[c] = 1.0;
+        }
+        for (int64_t i = 0; i < p; i++) {                               /* lhs row-major N x N: [[K, P],[P^T, 0]] */
+            for (int64_t j = 0; j < p; j++) {
+                double ss = 0.0;
+                for (int64_t c = 0; c < ndim; c++) { const double dv = y[i * ndim + c] - y[j * ndim + c]; ss += dv * dv; }
+                lhs[i * N + j] = rbf_kernel(tps, sqrt(ss));
+            }
+            lhs[i * N + p] = 1.0;                                       /* constant polynomial term */
+            if (deg) for (int64_t c = 0; c < ndim; c++) lhs[i * N + p + 1 + c] = (y[i * ndim + c] - shift[c]) / scale[c];
+            for (int64_t jj = 0; jj < r; jj++) lhs[(p + jj) * N + i] = lhs[i * N + p + jj];   /* P^T block */
+            rhs[i] = d[i];
+        }
+        rc = sl_dense_solve(lhs, rhs, N, 1);                           /* rhs <- coefficients [w; v] */
+        if (rc != TSR_OK) fn_set_error("RBFInterpolator: the RBF interpolation system is singular");
+    }
+    if (rc == TSR_OK) {
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){m});
+        if (!out) rc = TSR_ENOMEM;
+        else for (int64_t q = 0; q < m; q++) {
+            double acc = 0.0;
+            for (int64_t j = 0; j < p; j++) {
+                double ss = 0.0;
+                for (int64_t c = 0; c < ndim; c++) { const double dv = xi[q * ndim + c] - y[j * ndim + c]; ss += dv * dv; }
+                acc += rbf_kernel(tps, sqrt(ss)) * rhs[j];
+            }
+            acc += rhs[p];
+            if (deg) for (int64_t c = 0; c < ndim; c++) acc += rhs[p + 1 + c] * ((xi[q * ndim + c] - shift[c]) / scale[c]);
+            out[q] = acc;
+        }
+    }
+    free(shift); free(scale); free(lhs); free(rhs);
+    fn_free_doubles(y, ly); fn_free_doubles(d, ld); fn_free_doubles(xi, lx);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -722,6 +791,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.lagrange", 1, "x, w", "c", r_lagrange, NULL, "Lagrange interpolating polynomial through (x, w) as poly1d coefficients, highest-degree first (scipy.interpolate.lagrange)."),
     ROUTINE("interpolate.RegularGridInterpolator", 1, "points[], values, xi", "y", r_rgi, NULL, "Multilinear interpolation on a regular n-D grid, evaluated at xi (scipy.interpolate.RegularGridInterpolator)."),
     ROUTINE("interpolate.interpn", 1, "points[], values, xi", "y", r_rgi, NULL, "Multilinear interpolation on a regular n-D grid at points xi (scipy.interpolate.interpn)."),
+    ROUTINE("interpolate.RBFInterpolator", 1, "y, d, xi, kernel='thin_plate_spline'", "out", r_rbf, NULL, "Radial basis function interpolation (thin_plate_spline or linear kernel) evaluated at xi (scipy.interpolate.RBFInterpolator)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
