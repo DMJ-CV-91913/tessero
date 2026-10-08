@@ -69,6 +69,8 @@
         "fft.rfftfreq": "pass",
         "fft.rfftn": "pass",
         "integrate.quad": "pass",
+        "interpolate.interp1d": "pass",
+        "interpolate.pchip_interpolate": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
         "linalg.cross": "pass",
@@ -2248,7 +2250,9 @@
             "signal.dstep": 4.440891041420716e-16,
             "signal.iirnotch": 0,
             "signal.iirpeak": 0,
-            "signal.iircomb": 0
+            "signal.iircomb": 0,
+            "interpolate.interp1d": 1.945249663638189e-16,
+            "interpolate.pchip_interpolate": 1.5861568414344656e-14
         },
         "ext": {
             "np.median": 0,
@@ -3373,7 +3377,9 @@
             "signal.dstep": 4.440891041420716e-16,
             "signal.iirnotch": 0,
             "signal.iirpeak": 0,
-            "signal.iircomb": 0
+            "signal.iircomb": 0,
+            "interpolate.interp1d": 1.945249663638189e-16,
+            "interpolate.pchip_interpolate": 1.5861568414344656e-14
         }
     },
     "ext": {
@@ -3446,6 +3452,8 @@
         "fft.rfftfreq": "pass",
         "fft.rfftn": "pass",
         "integrate.quad": "pass",
+        "interpolate.interp1d": "pass",
+        "interpolate.pchip_interpolate": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
         "linalg.cross": "pass",

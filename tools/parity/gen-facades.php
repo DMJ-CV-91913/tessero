@@ -29,6 +29,7 @@ const CLASSES = [
     'windows' => ['SignalWindows', 'scipy.signal.windows: closed-form window functions (hann, hamming, blackman, blackmanharris, nuttall, flattop, boxcar, triang, bartlett, cosine, lanczos, bohman, barthann, parzen, general_cosine, general_hamming), shared by both backends through the kernel.'],
     'ndimage' => ['Ndimage', 'scipy.ndimage: generate_binary_structure, 2-D connected-component label, and 2-D convolve with the standard boundary modes.'],
     'csgraph' => ['Csgraph', 'scipy.sparse.csgraph: connected_components (weak) over a dense adjacency matrix.'],
+    'interpolate' => ['Interpolate', 'scipy.interpolate: monotone piecewise-cubic interpolation (pchip_interpolate) evaluated at query points, shared by both backends through the kernel.'],
     'random' => ['Random/GeneratorMethods', 'The distribution methods of numpy.random.Generator, drawn with NumPy\'s own distribution code from this generator\'s PCG64 stream, so every call matches NumPy bit for bit.'],
 ];
 
