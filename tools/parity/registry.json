@@ -2000,6 +2000,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.impulse": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.invres": {
             "kind": "routine",
             "nin": 0,
@@ -2071,6 +2076,11 @@
             "nout": 2
         },
         "signal.lp2lp_zpk": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "signal.lsim": {
             "kind": "routine",
             "nin": 0,
             "nout": 3
@@ -2184,6 +2194,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 3
+        },
+        "signal.step": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "signal.tf2ss": {
             "kind": "routine",
