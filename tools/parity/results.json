@@ -82,6 +82,7 @@
         "interpolate.krogh_interpolate": "pass",
         "interpolate.lagrange": "pass",
         "interpolate.make_interp_spline": "pass",
+        "interpolate.make_lsq_spline": "pass",
         "interpolate.pade": "pass",
         "interpolate.pchip_interpolate": "pass",
         "interpolate.splantider": "pass",
@@ -2275,7 +2276,7 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 1.7634411652125737e-15,
+            "interpolate.barycentric_interpolate": 9.61876999206859e-16,
             "interpolate.krogh_interpolate": 2.9751199482921395e-15,
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
@@ -2288,7 +2289,8 @@
             "interpolate.lagrange": 0,
             "interpolate.RegularGridInterpolator": 2.526919795196609e-16,
             "interpolate.interpn": 2.526919795196609e-16,
-            "interpolate.RBFInterpolator": 6.381216216081151e-14
+            "interpolate.RBFInterpolator": 6.381216216081151e-14,
+            "interpolate.make_lsq_spline": 2.1942463788420772e-14
         },
         "ext": {
             "np.median": 0,
@@ -3420,7 +3422,7 @@
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
             "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
-            "interpolate.barycentric_interpolate": 1.7634411652125737e-15,
+            "interpolate.barycentric_interpolate": 9.61876999206859e-16,
             "interpolate.krogh_interpolate": 2.9751199482921395e-15,
             "interpolate.BSpline": 4.42542524411263e-16,
             "interpolate.pade": 0,
@@ -3433,7 +3435,8 @@
             "interpolate.lagrange": 0,
             "interpolate.RegularGridInterpolator": 2.526919795196609e-16,
             "interpolate.interpn": 2.526919795196609e-16,
-            "interpolate.RBFInterpolator": 6.381216216081151e-14
+            "interpolate.RBFInterpolator": 6.381216216081151e-14,
+            "interpolate.make_lsq_spline": 2.1942463788420772e-14
         }
     },
     "ext": {
@@ -3519,6 +3522,7 @@
         "interpolate.krogh_interpolate": "pass",
         "interpolate.lagrange": "pass",
         "interpolate.make_interp_spline": "pass",
+        "interpolate.make_lsq_spline": "pass",
         "interpolate.pade": "pass",
         "interpolate.pchip_interpolate": "pass",
         "interpolate.splantider": "pass",
