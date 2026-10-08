@@ -73,7 +73,9 @@
         "interpolate.CubicHermiteSpline": "pass",
         "interpolate.CubicSpline": "pass",
         "interpolate.PchipInterpolator": "pass",
+        "interpolate.barycentric_interpolate": "pass",
         "interpolate.interp1d": "pass",
+        "interpolate.krogh_interpolate": "pass",
         "interpolate.pchip_interpolate": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
@@ -2260,7 +2262,9 @@
             "interpolate.PchipInterpolator": 8.07474920731519e-15,
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
-            "interpolate.CubicHermiteSpline": 3.0987030168204357e-15
+            "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
+            "interpolate.barycentric_interpolate": 9.61876999206859e-16,
+            "interpolate.krogh_interpolate": 2.9751199482921395e-15
         },
         "ext": {
             "np.median": 0,
@@ -3391,7 +3395,9 @@
             "interpolate.PchipInterpolator": 8.07474920731519e-15,
             "interpolate.Akima1DInterpolator": 5.639774962064506e-15,
             "interpolate.CubicSpline": 3.3592281804775696e-15,
-            "interpolate.CubicHermiteSpline": 3.0987030168204357e-15
+            "interpolate.CubicHermiteSpline": 3.0987030168204357e-15,
+            "interpolate.barycentric_interpolate": 9.61876999206859e-16,
+            "interpolate.krogh_interpolate": 2.9751199482921395e-15
         }
     },
     "ext": {
@@ -3468,7 +3474,9 @@
         "interpolate.CubicHermiteSpline": "pass",
         "interpolate.CubicSpline": "pass",
         "interpolate.PchipInterpolator": "pass",
+        "interpolate.barycentric_interpolate": "pass",
         "interpolate.interp1d": "pass",
+        "interpolate.krogh_interpolate": "pass",
         "interpolate.pchip_interpolate": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
