@@ -84,6 +84,7 @@
         "interpolate.splder": "pass",
         "interpolate.splev": "pass",
         "interpolate.splint": "pass",
+        "interpolate.sproot": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
         "linalg.cross": "pass",
@@ -2278,7 +2279,8 @@
             "interpolate.splev": 4.42542524411263e-16,
             "interpolate.splder": 0,
             "interpolate.splantider": 0,
-            "interpolate.splint": 1.7081528815850905e-16
+            "interpolate.splint": 1.7081528815850905e-16,
+            "interpolate.sproot": 2.119937782374293e-16
         },
         "ext": {
             "np.median": 0,
@@ -3418,7 +3420,8 @@
             "interpolate.splev": 4.42542524411263e-16,
             "interpolate.splder": 0,
             "interpolate.splantider": 0,
-            "interpolate.splint": 1.7081528815850905e-16
+            "interpolate.splint": 1.7081528815850905e-16,
+            "interpolate.sproot": 2.119937782374293e-16
         }
     },
     "ext": {
@@ -3506,6 +3509,7 @@
         "interpolate.splder": "pass",
         "interpolate.splev": "pass",
         "interpolate.splint": "pass",
+        "interpolate.sproot": "pass",
         "linalg.cholesky": "pass",
         "linalg.cond": "pass",
         "linalg.cross": "pass",
