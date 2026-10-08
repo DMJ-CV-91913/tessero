@@ -4688,6 +4688,75 @@ static int r_ellipap(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return rc;
 }
 
+/* elliptic analog lowpass prototype, unsorted: fills z[0..*nz-1] (capacity >= N), p[0..N-1], *k (same math as
+   r_ellipap). Used by r_ellip to feed the shared digital pipeline. N in [1, 25]. */
+static int ea_ellipap_core(int N, double rp, double rs, double complex *z, int *nz, double complex *p, double *k)
+{
+    const double EPS = 2e-16;
+    if (N == 1) { *nz = 0; p[0] = -sqrt(1.0 / ea_pow10m1(0.1 * rp)); *k = -creal(p[0]); return TSR_OK; }
+    const double eps_sq = ea_pow10m1(0.1 * rp), eps = sqrt(eps_sq), ck1_sq = eps_sq / ea_pow10m1(0.1 * rs);
+    if (ck1_sq == 0.0) { fn_set_error("ellip: cannot design a filter with the given rp and rs"); return TSR_EARG; }
+    double val0; tsr_special_ellipk(NULL, &ck1_sq, &val0);
+    const double m = ea_ellipdeg(N, ck1_sq);
+    double capk; tsr_special_ellipk(NULL, &m, &capk);
+    const int jj = (N % 2) ? (N + 1) / 2 : N / 2, j0 = 1 - (N % 2);
+    double sjs[32], cjs[32], djs[32]; double complex ph[32];
+    int zn = 0, pn = 0; double psum = 0.0;
+    for (int i = 0; i < jj; i++) {
+        const double in[2] = {(double)(j0 + 2 * i) * capk / (double)N, m}; double out[4];
+        tsr_special_ellipj(NULL, in, out); sjs[i] = out[0]; cjs[i] = out[1]; djs[i] = out[2];
+        if (fabs(sjs[i]) > EPS) { const double complex zh = I * (1.0 / (sqrt(m) * sjs[i])); z[zn++] = zh; z[zn++] = conj(zh); }
+    }
+    const double r = ea_arc_jac_sc1(1.0 / eps, ck1_sq), v0 = capk * r / ((double)N * val0);
+    const double inv[2] = {v0, 1.0 - m}; double ov[4]; tsr_special_ellipj(NULL, inv, ov);
+    const double sv = ov[0], cv = ov[1], dv = ov[2];
+    for (int i = 0; i < jj; i++) {
+        const double denom = 1.0 - (djs[i] * sv) * (djs[i] * sv);
+        ph[i] = -(cjs[i] * djs[i] * sv * cv + I * sjs[i] * dv) / denom;
+        psum += creal(ph[i] * conj(ph[i]));
+    }
+    if (N % 2) {
+        const double thr = EPS * sqrt(psum);
+        for (int i = 0; i < jj; i++) p[pn++] = ph[i];
+        for (int i = 0; i < jj; i++) if (fabs(cimag(ph[i])) > thr) p[pn++] = conj(ph[i]);
+    } else {
+        for (int i = 0; i < jj; i++) p[pn++] = ph[i];
+        for (int i = 0; i < jj; i++) p[pn++] = conj(ph[i]);
+    }
+    double complex prodp = 1.0, prodz = 1.0;
+    for (int i = 0; i < pn; i++) prodp *= -p[i];
+    for (int i = 0; i < zn; i++) prodz *= -z[i];
+    double kk = creal(prodp / prodz);
+    if (N % 2 == 0) kk /= sqrt(1.0 + eps_sq);
+    *nz = zn; *k = kk;
+    return TSR_OK;
+}
+
+/* ellip(N, rp, rs, Wn, btype='low', analog=False, output='ba'): elliptic (Cauer) IIR filter design, digital
+   lowpass/highpass, output 'ba' (scipy.signal.ellip). Elliptic analog prototype then the shared digital pipeline
+   (frequency transform with pre-warping, bilinear, zpk2tf). */
+static int r_ellip(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const int N = (args[0].kind == 1) ? (int)args[0].num : 0;
+    if (N < 1 || N > 25) { fn_set_error("ellip: order N must be between 1 and 25"); return TSR_EARG; }
+    if (!(args[1].kind == 1) || !(args[2].kind == 1) || !(args[3].kind == 1)) { fn_set_error("ellip: rp, rs and a scalar Wn (lowpass/highpass) are required"); return TSR_EARG; }
+    const double rp = args[1].num, rs = args[2].num, Wn = args[3].num;
+    int hp = 0;
+    if (nargs > 4 && args[4].kind == 2 && args[4].str) {
+        if (strcmp(args[4].str, "high") == 0 || strcmp(args[4].str, "highpass") == 0) hp = 1;
+        else if (!(strcmp(args[4].str, "low") == 0 || strcmp(args[4].str, "lowpass") == 0)) { fn_set_error("ellip: only lowpass/highpass are supported"); return TSR_EARG; }
+    }
+    double complex *z = (double complex *)malloc((size_t)(N + 1) * sizeof(double complex));
+    double complex *p = (double complex *)malloc((size_t)N * sizeof(double complex));
+    int nz = 0; double k = 1.0;
+    int rc = (!z || !p) ? TSR_ENOMEM : ea_ellipap_core(N, rp, rs, z, &nz, p, &k);
+    if (rc == TSR_OK) rc = iir_lp_proto_to_ba_z(z, nz, p, N, k, hp, Wn, &res[0]);   /* consumes/frees p */
+    else free(p);
+    free(z);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -4809,6 +4878,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),
+    ROUTINE("signal.ellip", 2, "N, rp, rs, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_ellip, NULL, "Elliptic (Cauer) IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.ellip)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

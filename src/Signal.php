@@ -49,6 +49,7 @@ final class Signal
     'dimpulse' => 'dimpulse',
     'dlsim' => 'dlsim',
     'dstep' => 'dstep',
+    'ellip' => 'ellip',
     'ellipap' => 'ellipap',
     'ellipord' => 'ellipord',
     'fftconvolve' => 'fftconvolve',
@@ -487,6 +488,18 @@ final class Signal
     public static function dstep(mixed $A, mixed $B, mixed $C, mixed $D, mixed $dt, mixed $n = 100): mixed
     {
         return Registry::routine('signal.dstep', [$A, $B, $C, $D, $dt, $n]);
+    }
+
+    /**
+     * Elliptic (Cauer) IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.ellip).
+     *
+     * scipy.signal.ellip
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function ellip(mixed $N, mixed $rp, mixed $rs, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.ellip', [$N, $rp, $rs, $Wn, $btype, $analog, $output, $fs]);
     }
 
     /**
