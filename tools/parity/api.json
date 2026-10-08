@@ -3877,6 +3877,12 @@
                 "doc": "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."
             },
             {
+                "name": "pade",
+                "static": true,
+                "sig": "pade(mixed $an, mixed $m, mixed $n = null): mixed",
+                "doc": "Pade rational approximant (numerator p, denominator q) from Taylor coefficients (scipy.interpolate.pade)."
+            },
+            {
                 "name": "pchipInterpolate",
                 "static": true,
                 "sig": "pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
@@ -17040,6 +17046,12 @@
                 "name": "BSpline",
                 "static": true,
                 "sig": "BSpline($t, $c, $k, $x)",
+                "doc": ""
+            },
+            {
+                "name": "pade",
+                "static": true,
+                "sig": "pade($an, $m, $n = null)",
                 "doc": ""
             }
         ]

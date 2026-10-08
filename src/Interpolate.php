@@ -25,6 +25,7 @@ final class Interpolate
     'PchipInterpolator' => 'PchipInterpolator',
     'barycentric_interpolate' => 'barycentricInterpolate',
     'krogh_interpolate' => 'kroghInterpolate',
+    'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
     ];
 
@@ -112,6 +113,18 @@ final class Interpolate
     public static function kroghInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.krogh_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Pade rational approximant (numerator p, denominator q) from Taylor coefficients (scipy.interpolate.pade).
+     *
+     * scipy.interpolate.pade
+     *
+     * @return mixed one array, or an array keyed by p, q when several results are requested
+     */
+    public static function pade(mixed $an, mixed $m, mixed $n = null): mixed
+    {
+        return Registry::routine('interpolate.pade', [$an, $m, $n]);
     }
 
     /**
