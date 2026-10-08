@@ -2667,6 +2667,97 @@ static int r_freqz_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* numpy.unwrap (period 2*pi, discont pi), in place over an array of radians. Matches numpy exactly:
+   ddmod = mod(diff+pi, 2pi)-pi; the -pi boundary with a positive jump maps to +pi; corrections only where
+   |diff| >= pi; the cumulative correction is added to the tail. */
+static void sig_unwrap(double *p, int64_t n)
+{
+    if (n < 2) return;
+    double run = 0.0, prev = p[0];
+    for (int64_t i = 0; i + 1 < n; i++) {
+        const double dd = p[i + 1] - prev;                 /* prev holds the ORIGINAL p[i] */
+        double m = fmod(dd + M_PI, 2.0 * M_PI);
+        if (m < 0.0) m += 2.0 * M_PI;
+        double ddmod = m - M_PI;
+        if (ddmod == -M_PI && dd > 0.0) ddmod = M_PI;
+        double corr = (fabs(dd) < M_PI) ? 0.0 : (ddmod - dd);
+        run += corr;
+        prev = p[i + 1];                                   /* save original before mutating */
+        p[i + 1] += run;
+    }
+}
+
+/* bode((num, den), w): continuous-system Bode response (scipy.signal.bode, transfer-function form, explicit w).
+   H(jw) = polyval(num, jw)/polyval(den, jw); returns (w, 20*log10|H|, unwrap(angle H)*180/pi). */
+static int r_bode(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("bode: num and den must be 1-D arrays"); return TSR_EARG; }
+    if (args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("bode: w must be a 1-D array of frequencies"); return TSR_EARG; }
+    int64_t nb, na, nw; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    double *wv = fn_arg_doubles(&args[2], &nw); if (!wv) { fn_free_doubles(b, nb); fn_free_doubles(a, na); return TSR_ENOMEM; }
+    double *w   = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw});
+    double *mag = w ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nw}) : NULL;
+    double *ph  = mag ? (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){nw}) : NULL;
+    int rc = TSR_OK;
+    if (!w || !mag || !ph) rc = TSR_ENOMEM;
+    else {
+        for (int64_t j = 0; j < nw; j++) {
+            const double complex s = I * wv[j];
+            double complex num = b[0], den = a[0];
+            for (int64_t k = 1; k < nb; k++) num = num * s + b[k];
+            for (int64_t k = 1; k < na; k++) den = den * s + a[k];
+            const double complex hv = sig_cdiv(num, den);
+            w[j] = wv[j];
+            mag[j] = 20.0 * log10(cabs(hv));
+            ph[j] = atan2(cimag(hv), creal(hv));            /* raw radians; unwrapped then scaled below */
+        }
+        sig_unwrap(ph, nw);
+        for (int64_t j = 0; j < nw; j++) ph[j] *= 180.0 / M_PI;
+    }
+    fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_free_doubles(wv, nw);
+    return rc;
+}
+
+/* dbode((num, den, dt), worN=512): discrete-system Bode response (scipy.signal.dbode). dbode -> dfreqresp -> freqz,
+   so H is evaluated on the digital grid [0, pi) (rad/sample, dt-independent) exactly as freqz. Returns
+   (w, 20*log10|H|, unwrap(angle H)*180/pi). */
+static int r_dbode(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("dbode: num and den must be 1-D arrays"); return TSR_EARG; }
+    const int64_t N = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 512;
+    const int whole = (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) ? args[3].num != 0 : 0;
+    if (N <= 0) { fn_set_error("dbode: worN must be positive"); return TSR_EARG; }
+    const int64_t nb = args[0].arr.shape[0], na = args[1].arr.shape[0];
+    int64_t tb, ta; double *b = fn_arg_doubles(&args[0], &tb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &ta); if (!a) { fn_free_doubles(b, tb); return TSR_ENOMEM; }
+    double *w   = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N});
+    double *mag = w ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){N}) : NULL;
+    double *ph  = mag ? (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){N}) : NULL;
+    int rc = TSR_OK;
+    if (!w || !mag || !ph) rc = TSR_ENOMEM;
+    else {
+        const double step = (whole ? 2.0 * M_PI : M_PI) / (double)N;
+        for (int64_t j = 0; j < N; j++) {
+            const double wj = (double)j * step;
+            const double complex zm1 = cos(wj) - I * sin(wj);  /* e^{-jw}, matching r_freqz */
+            double complex num = b[nb - 1], den = a[na - 1];
+            for (int64_t k = nb - 2; k >= 0; k--) num = b[k] + num * zm1;
+            for (int64_t k = na - 2; k >= 0; k--) den = a[k] + den * zm1;
+            const double complex hv = sig_cdiv(num, den);
+            w[j] = wj;
+            mag[j] = 20.0 * log10(cabs(hv));
+            ph[j] = atan2(cimag(hv), creal(hv));
+        }
+        sig_unwrap(ph, N);
+        for (int64_t j = 0; j < N; j++) ph[j] *= 180.0 / M_PI;
+    }
+    fn_free_doubles(b, tb); fn_free_doubles(a, ta);
+    return rc;
+}
+
 /* sosfreqz(sos, worN=512, whole=False): frequency response of an SOS cascade = product of the per-section
    responses (scipy.signal.sosfreqz / freqz_sos). Returns (w, h). */
 static int r_sosfreqz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -4011,6 +4102,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.freqz_zpk", 2, "z, p, k, worN=512, whole=False", "w, h", r_freqz_zpk, NULL, "Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk)."),
     ROUTINE("signal.sosfreqz", 2, "sos, worN=512, whole=False", "w, h", r_sosfreqz, NULL, "Frequency response of a second-order-sections cascade (scipy.signal.sosfreqz)."),
     ROUTINE("signal.group_delay", 2, "b, a, w=512, whole=False", "w, gd", r_group_delay, NULL, "Group delay of a digital filter (scipy.signal.group_delay)."),
+    ROUTINE("signal.bode", 3, "num, den, w", "w, mag, phase", r_bode, NULL, "Bode magnitude (dB) and phase (deg) of a continuous system (scipy.signal.bode)."),
+    ROUTINE("signal.dbode", 3, "num, den, worN=512, whole=False", "w, mag, phase", r_dbode, NULL, "Bode magnitude (dB) and phase (deg) of a discrete system (scipy.signal.dbode)."),
     ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
     ROUTINE("signal.hilbert2", 1, "x, N=None", "out", r_hilbert2, NULL, "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."),
     ROUTINE("signal.periodogram", 2, "x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True, scaling='density'", "f, Pxx", r_periodogram, NULL, "Power spectral density estimate from a single segment (scipy.signal.periodogram)."),

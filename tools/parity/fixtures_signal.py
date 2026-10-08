@@ -366,6 +366,21 @@ for N in (1, 2, 3):
     for (wn, whole) in ((16, False), (24, True)):
         frzz.append(_wh_case([zd, pd, float(kd), wn, whole], sg.freqz_zpk(zd, pd, kd, worN=wn, whole=whole)))
 
+# bode / dbode: Bode magnitude (dB) and phase (deg) - continuous (explicit w) and discrete (n points on [0, pi))
+bodc, dbodc = [], []
+_wbd = np.linspace(0.1, 20.0, 60)
+for N in (1, 2, 3):
+    bb, ba = sg.butter(N, 1.0, analog=True, output='ba')
+    w_, mag_, ph_ = sg.bode((bb, ba), w=_wbd)
+    bodc.append({'args': [F.enc(bb), F.enc(ba), F.enc(_wbd)], 'kwargs': {},
+                 'expect': F.enc_result((w_, mag_, ph_), ['w', 'mag', 'phase']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+for (N, Wn) in ((2, 0.3), (3, 0.25), (4, 0.4)):
+    bd, ad = sg.butter(N, Wn, btype='low')
+    for n_ in (24, 48):
+        w_, mag_, ph_ = sg.dbode((bd, ad, True), n=n_)
+        dbodc.append({'args': [F.enc(bd), F.enc(ad), F.enc(n_)], 'kwargs': {},
+                      'expect': F.enc_result((w_, mag_, ph_), ['w', 'mag', 'phase']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 # sosfreqz (SOS cascade response) and group_delay
 sfz2, gdl = [], []
 for (N, Wn, bt) in [(2, 0.3, 'low'), (3, 0.25, 'low'), (2, 0.5, 'high'), (4, 0.4, 'low')]:
@@ -680,6 +695,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'freqz_zpk', 'cases': frzz, 'tol': {'atol': 1e-12}},
                  {'fn': 'sosfreqz', 'cases': sfz2, 'tol': {'atol': 1e-12}},
                  {'fn': 'group_delay', 'cases': gdl, 'tol': {'atol': 1e-9}},
+                 {'fn': 'bode', 'cases': bodc, 'tol': {'atol': 1e-9}},
+                 {'fn': 'dbode', 'cases': dbodc, 'tol': {'atol': 1e-9}},
                  {'fn': 'hilbert', 'cases': hlb, 'tol': {'atol': 1e-10}},
                  {'fn': 'hilbert2', 'cases': hlb2, 'tol': {'atol': 1e-10}},
                  {'fn': 'periodogram', 'cases': pgm, 'tol': {'atol': 1e-12}},
