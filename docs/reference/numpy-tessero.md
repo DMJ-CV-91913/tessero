@@ -48,6 +48,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.count_nonzero` | `Tessero\Np::countNonzero()` |
 | `numpy.cov` | `Tessero\Np::cov()` |
 | `numpy.cross` | `Tessero\Np::cross()` |
+| `numpy.cumulativeSimpson` | `Tessero\Np::cumulativeSimpson()` |
 | `numpy.cumulativeTrapezoid` | `Tessero\Np::cumulativeTrapezoid()` |
 | `numpy.cumulative_prod` | `Tessero\Np::cumulativeProd()` |
 | `numpy.cumulative_sum` | `Tessero\Np::cumulativeSum()` |
