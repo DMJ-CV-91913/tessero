@@ -484,6 +484,122 @@ static int r_splint(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* de Boor evaluation of a B-spline (knots t, nc coefficients, degree k) at a scalar x; x is clamped to the active
+   interval exactly as ip_bspline_eval. k <= 3 here (sproot is cubic). */
+static double ip_deboor_scalar(const double *t, const double *c, int64_t nc, int k, double x)
+{
+    double d[8];
+    int64_t mu = k; while (mu < nc - 1 && t[mu + 1] <= x) mu++;
+    for (int j = 0; j <= k; j++) d[j] = c[mu - k + j];
+    for (int r = 1; r <= k; r++)
+        for (int j = k; j >= r; j--) {
+            const double denom = t[j + mu - r + 1] - t[j + mu - k];
+            const double a = denom != 0.0 ? (x - t[j + mu - k]) / denom : 0.0;
+            d[j] = (1.0 - a) * d[j - 1] + a * d[j];
+        }
+    return d[k];
+}
+
+static double ip_cub_eval(const double *a, double u) { return ((a[3] * u + a[2]) * u + a[1]) * u + a[0]; }
+static double ip_cub_der(const double *a, double u) { return (3.0 * a[3] * u + 2.0 * a[2]) * u + a[1]; }
+
+/* find a root of the cubic a[] (power basis a0..a3) in [lo, hi] when it brackets a sign change: bisect to a tight
+   bracket, then a few Newton steps. Returns 1 and sets *out, else 0. The right endpoint is left to the next
+   interval (so a root at a shared knot is reported once). */
+static int ip_bracket_root(const double *a, double lo, double hi, double *out)
+{
+    const double flo = ip_cub_eval(a, lo), fhi = ip_cub_eval(a, hi);
+    if (flo == 0.0) { *out = lo; return 1; }
+    if (fhi == 0.0) return 0;
+    if (flo * fhi > 0.0) return 0;
+    double aa = lo, bb = hi, fa = flo, m = lo;
+    for (int it = 0; it < 80; it++) {
+        m = 0.5 * (aa + bb); const double fm = ip_cub_eval(a, m);
+        if (fa * fm <= 0.0) bb = m; else { aa = m; fa = fm; }
+        if (bb - aa < 1e-15 * (fabs(m) + 1.0)) break;
+    }
+    double x = 0.5 * (aa + bb);
+    for (int it = 0; it < 4; it++) {
+        const double f = ip_cub_eval(a, x), df = ip_cub_der(a, x);
+        if (df != 0.0) { const double nx = x - f / df; if (nx >= lo && nx <= hi) x = nx; }
+    }
+    *out = x; return 1;
+}
+
+static int ip_cmp_double(const void *A, const void *B)
+{ const double x = *(const double *)A, y = *(const double *)B; return x < y ? -1 : (x > y ? 1 : 0); }
+
+/* sproot(t, c, k, mest=10): roots of a cubic (k=3) B-spline (scipy.interpolate.sproot). On each knot interval
+   [t[i], t[i+1]] the spline is one cubic; recover its power-basis coefficients by evaluating at 4 interior points
+   (exact, since it is cubic there) and solving a 4x4 Vandermonde via the shared dense solver, then isolate roots
+   by the cubic's critical points and bracket each sign change. Roots are returned sorted ascending, at most mest
+   of them (FITPACK's cap). Matches scipy to ~1e-14 for simple transversal roots not coincident with a knot. */
+static int r_sproot(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("sproot: t and c must be 1-D arrays"); return TSR_EARG; }
+    if (args[2].kind != 1) { fn_set_error("sproot: k must be an integer degree"); return TSR_EARG; }
+    const int k = (int)args[2].num;
+    if (k != 3) { fn_set_error("sproot works only for cubic (k=3) splines"); return TSR_EARG; }
+    const int64_t nt = args[0].arr.shape[0];
+    if (nt < 8) { fn_set_error("sproot: the number of knots must be >= 8"); return TSR_EARG; }
+    const int64_t nc = nt - k - 1;
+    if (args[1].arr.shape[0] < nc) { fn_set_error("sproot: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    const int64_t mest = (nargs > 3 && args[3].kind == 1) ? (args[3].flags & 1 ? args[3].ival : (int64_t)args[3].num) : 10;
+    int64_t lt, lc;
+    double *t = fn_arg_doubles(&args[0], &lt), *c = t ? fn_arg_doubles(&args[1], &lc) : NULL;
+    const int64_t n4 = nt - 4, cap = 3 * (n4 - 3) + 8;      /* at most 3 roots per interval */
+    double *zeros = (t && c) ? (double *)malloc((size_t)(cap > 0 ? cap : 1) * sizeof(double)) : NULL;
+    int rc = (!t || !c || !zeros) ? TSR_ENOMEM : TSR_OK;
+    int64_t m = 0;
+    for (int64_t i = 3; i < n4 && rc == TSR_OK; i++) {
+        const double lo_x = t[i], hi_x = t[i + 1];
+        if (hi_x <= lo_x) continue;
+        const double xm = 0.5 * (lo_x + hi_x), h = hi_x - lo_x;
+        double M[16], b[4];
+        for (int r = 0; r < 4; r++) {
+            const double u = (lo_x + h * (r + 0.5) / 4.0) - xm, y = ip_deboor_scalar(t, c, nc, k, xm + u);
+            double p = 1.0;
+            for (int col = 0; col < 4; col++) { M[r * 4 + col] = p; p *= u; }
+            b[r] = y;
+        }
+        rc = sl_dense_solve(M, b, 4, 1);
+        if (rc != TSR_OK) { fn_set_error("sproot: failed to form the local cubic"); break; }
+        const double a[4] = {b[0], b[1], b[2], b[3]}, lo = lo_x - xm, hi = hi_x - xm;
+        double pts[4]; int npts = 0; pts[npts++] = lo;        /* break [lo, hi] at the cubic's critical points */
+        const double A = 3.0 * a[3], B = 2.0 * a[2], C = a[1];
+        if (fabs(A) < 1e-14 * (fabs(B) + fabs(C) + 1.0)) {
+            if (fabs(B) > 0.0) { const double r0 = -C / B; if (r0 > lo && r0 < hi) pts[npts++] = r0; }
+        } else {
+            const double disc = B * B - 4.0 * A * C;
+            if (disc > 0.0) {
+                const double s = sqrt(disc), r1 = (-B + s) / (2.0 * A), r2 = (-B - s) / (2.0 * A);
+                if (r1 > lo && r1 < hi) pts[npts++] = r1;
+                if (r2 > lo && r2 < hi) pts[npts++] = r2;
+            }
+        }
+        pts[npts++] = hi;
+        qsort(pts, (size_t)npts, sizeof(double), ip_cmp_double);
+        for (int s = 0; s + 1 < npts; s++) {
+            double u;
+            if (ip_bracket_root(a, pts[s], pts[s + 1], &u)) {
+                const double x = xm + u;
+                if (x >= lo_x - 1e-12 && x < hi_x - 1e-12 && m < cap) zeros[m++] = x;
+            }
+        }
+    }
+    if (rc == TSR_OK) {
+        qsort(zeros, (size_t)m, sizeof(double), ip_cmp_double);
+        int64_t w = 0;                                        /* dedup a root reported from both sides of a knot */
+        for (int64_t j = 0; j < m; j++) if (w == 0 || zeros[j] - zeros[w - 1] > 1e-9) zeros[w++] = zeros[j];
+        m = (w > mest) ? mest : w;
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){m});
+        if (!out) rc = TSR_ENOMEM; else for (int64_t j = 0; j < m; j++) out[j] = zeros[j];
+    }
+    free(zeros); fn_free_doubles(t, lt); fn_free_doubles(c, lc);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -499,6 +615,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.splder", 3, "t, c, k, n=1", "t, c, k", r_splder, NULL, "Derivative of a B-spline in (t, c, k) form (scipy.interpolate.splder)."),
     ROUTINE("interpolate.splantider", 3, "t, c, k, n=1", "t, c, k", r_splantider, NULL, "Antiderivative of a B-spline in (t, c, k) form (scipy.interpolate.splantider)."),
     ROUTINE("interpolate.splint", 1, "a, b, t, c, k", "integral", r_splint, NULL, "Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint)."),
+    ROUTINE("interpolate.sproot", 1, "t, c, k, mest=10", "zeros", r_sproot, NULL, "Roots of a cubic (k=3) B-spline, sorted ascending, at most mest of them (scipy.interpolate.sproot)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
