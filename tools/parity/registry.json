@@ -180,6 +180,16 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.barycentric_interpolate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.krogh_interpolate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.pchip_interpolate": {
             "kind": "routine",
             "nin": 0,

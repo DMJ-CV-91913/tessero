@@ -169,12 +169,65 @@ static int r_cubicspline(const void *ctx, const tsr_arg *args, int nargs, tsr_re
 static int r_cubic_hermite(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nargs; (void)nres; return ip_spline_eval(args, res, NULL, 1, "CubicHermiteSpline"); }
 
+/* barycentric_interpolate(xi, yi, x): barycentric Lagrange interpolation (scipy.interpolate, der=0). The global
+   scale of the weights cancels in the barycentric quotient, so the evaluated values match SciPy's scaled form. */
+static int r_barycentric(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    for (int i = 0; i < 3; i++) if (args[i].kind != 3 || args[i].arr.ndim != 1) { fn_set_error("barycentric_interpolate: xi, yi and x must be 1-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], q = args[2].arr.shape[0];
+    if (args[1].arr.shape[0] != n) { fn_set_error("barycentric_interpolate: xi and yi must have the same length"); return TSR_EARG; }
+    if (n < 1) { fn_set_error("barycentric_interpolate: need at least one sample point"); return TSR_EARG; }
+    int64_t lx, ly, lq;
+    double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL, *xq = y ? fn_arg_doubles(&args[2], &lq) : NULL;
+    double *w = xq ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
+    double *out = w ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
+    int rc = (!x || !y || !xq || !w || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t j = 0; j < n; j++) { double p = 1.0; for (int64_t k = 0; k < n; k++) if (k != j) p *= (x[j] - x[k]); w[j] = 1.0 / p; }
+        for (int64_t t = 0; t < q; t++) {
+            const double v = xq[t];
+            int64_t hit = -1;
+            for (int64_t j = 0; j < n; j++) if (v == x[j]) { hit = j; break; }
+            if (hit >= 0) out[t] = y[hit];
+            else { double num = 0.0, den = 0.0; for (int64_t j = 0; j < n; j++) { const double c = w[j] / (v - x[j]); num += c * y[j]; den += c; } out[t] = num / den; }
+        }
+    }
+    free(w); fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(xq, lq);
+    return rc;
+}
+
+/* krogh_interpolate(xi, yi, x): polynomial interpolation via Newton divided differences (scipy.interpolate,
+   der=0). The interpolating polynomial is unique, so the values match SciPy's KroghInterpolator. */
+static int r_krogh(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    for (int i = 0; i < 3; i++) if (args[i].kind != 3 || args[i].arr.ndim != 1) { fn_set_error("krogh_interpolate: xi, yi and x must be 1-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], q = args[2].arr.shape[0];
+    if (args[1].arr.shape[0] != n) { fn_set_error("krogh_interpolate: xi and yi must have the same length"); return TSR_EARG; }
+    if (n < 1) { fn_set_error("krogh_interpolate: need at least one sample point"); return TSR_EARG; }
+    int64_t lx, ly, lq;
+    double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL, *xq = y ? fn_arg_doubles(&args[2], &lq) : NULL;
+    double *c = xq ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
+    double *out = c ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
+    int rc = (!x || !y || !xq || !c || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < n; i++) c[i] = y[i];                          /* Newton divided differences */
+        for (int64_t j = 1; j < n; j++) for (int64_t i = n - 1; i >= j; i--) c[i] = (c[i] - c[i - 1]) / (x[i] - x[i - j]);
+        for (int64_t t = 0; t < q; t++) { const double v = xq[t]; double p = c[n - 1]; for (int64_t k = n - 2; k >= 0; k--) p = p * (v - x[k]) + c[k]; out[t] = p; }
+    }
+    free(c); fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(xq, lq);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
     ROUTINE("interpolate.Akima1DInterpolator", 1, "x, y, xnew", "y", r_akima, NULL, "Akima piecewise-cubic interpolation evaluated at xnew (scipy.interpolate.Akima1DInterpolator)."),
     ROUTINE("interpolate.CubicSpline", 1, "x, y, xnew", "y", r_cubicspline, NULL, "Not-a-knot cubic spline evaluated at xnew (scipy.interpolate.CubicSpline)."),
     ROUTINE("interpolate.CubicHermiteSpline", 1, "x, y, dydx, xnew", "y", r_cubic_hermite, NULL, "Cubic Hermite spline with given derivatives evaluated at xnew (scipy.interpolate.CubicHermiteSpline)."),
+    ROUTINE("interpolate.barycentric_interpolate", 1, "xi, yi, x", "y", r_barycentric, NULL, "Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate)."),
+    ROUTINE("interpolate.krogh_interpolate", 1, "xi, yi, x", "y", r_krogh, NULL, "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
