@@ -218,6 +218,35 @@ static int r_iirnotch(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
 static int r_iirpeak(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return sig_notch_peak_routine(args, nargs, res, 1, "iirpeak"); }
 
+/* iircomb(w0, Q, ftype='notch', fs=2.0, pass_zero=False): notching/peaking comb filter (scipy.signal.iircomb),
+   order N=round(fs/w0); b = [bx, 0..., sgn*cx], a = [1, 0..., sgn*ax] with the -3 dB closed form. */
+static int r_iircomb(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("iircomb: w0 and Q must be numbers"); return TSR_EARG; }
+    const double w0in = args[0].num, Q = args[1].num;
+    const char *ftype = (nargs > 2 && args[2].kind == 2 && args[2].str) ? args[2].str : "notch";
+    const double fs = (nargs > 3 && args[3].kind == 1) ? args[3].num : 2.0;
+    const int pass_zero = (nargs > 4 && (args[4].kind == 4 || args[4].kind == 1)) ? (args[4].num != 0) : 0;
+    int peak;
+    if (!strcmp(ftype, "notch")) peak = 0; else if (!strcmp(ftype, "peak")) peak = 1; else { fn_set_error("iircomb: ftype must be either notch or peak"); return TSR_EARG; }
+    if (!(w0in > 0.0 && w0in < fs / 2.0)) { fn_set_error("iircomb: w0 must be between 0 and fs/2 (Nyquist)"); return TSR_EARG; }
+    const int64_t N = (int64_t)rint(fs / w0in);
+    if (N < 1) { fn_set_error("iircomb: invalid order"); return TSR_EARG; }
+    if (fabs(w0in - fs / (double)N) / fs > 1e-14) { fn_set_error("iircomb: fs must be divisible by w0"); return TSR_EARG; }
+    const double w0 = (2.0 * M_PI * w0in) / fs, w_delta = w0 / Q;
+    const double G0 = peak ? 0.0 : 1.0, G = peak ? 1.0 : 0.0;
+    const double beta = tan((double)N * w_delta / 4.0);
+    const double ax = (1.0 - beta) / (1.0 + beta), bx = (G0 + G * beta) / (1.0 + beta), cx = (G0 - G * beta) / (1.0 + beta);
+    const double sgn = ((peak && pass_zero) || (!peak && !pass_zero)) ? -1.0 : 1.0;
+    double *b = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N + 1});
+    double *a = b ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){N + 1}) : NULL;
+    if (!b || !a) return TSR_ENOMEM;
+    for (int64_t i = 0; i <= N; i++) { b[i] = 0.0; a[i] = 0.0; }
+    b[0] = bx; b[N] = sgn * cx; a[0] = 1.0; a[N] = sgn * ax;
+    return TSR_OK;
+}
+
 /* butter(N, Wn, btype='low', output='ba'): digital Butterworth filter (scipy.signal.butter); lowpass/highpass,
    output 'ba'. Analog prototype -> frequency transform -> bilinear -> transfer function, matching scipy. */
 static int r_butter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -4446,6 +4475,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.dstep", 2, "A, B, C, D, dt, n=100", "tout, yout", r_dstep, NULL, "Step response of a discrete-time state-space system (scipy.signal.dstep)."),
     ROUTINE("signal.iirnotch", 2, "w0, Q, fs=2.0", "b, a", r_iirnotch, NULL, "Second-order notch digital filter (scipy.signal.iirnotch)."),
     ROUTINE("signal.iirpeak", 2, "w0, Q, fs=2.0", "b, a", r_iirpeak, NULL, "Second-order peak digital filter (scipy.signal.iirpeak)."),
+    ROUTINE("signal.iircomb", 2, "w0, Q, ftype='notch', fs=2.0, pass_zero=False", "b, a", r_iircomb, NULL, "Notching or peaking digital comb filter (scipy.signal.iircomb)."),
     ROUTINE("signal.hilbert", 1, "x, N=None", "out", r_hilbert, NULL, "Analytic signal of a real sequence via the FFT (scipy.signal.hilbert)."),
     ROUTINE("signal.hilbert2", 1, "x, N=None", "out", r_hilbert2, NULL, "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."),
     ROUTINE("signal.periodogram", 2, "x, fs=1.0, window='boxcar', nfft=None, detrend='constant', return_onesided=True, scaling='density'", "f, Pxx", r_periodogram, NULL, "Power spectral density estimate from a single segment (scipy.signal.periodogram)."),
