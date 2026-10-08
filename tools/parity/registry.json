@@ -210,6 +210,11 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.splev": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "linalg.cholesky": {
             "kind": "routine",
             "nin": 0,

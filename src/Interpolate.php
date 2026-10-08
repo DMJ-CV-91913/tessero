@@ -28,6 +28,7 @@ final class Interpolate
     'make_interp_spline' => 'makeInterpSpline',
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
+    'splev' => 'splev',
     ];
 
     private function __construct()
@@ -146,5 +147,15 @@ final class Interpolate
     public static function pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.pchip_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.splev).
+     *
+     * scipy.interpolate.splev
+     */
+    public static function splev(mixed $t, mixed $c, mixed $k, mixed $x): mixed
+    {
+        return Registry::routine('interpolate.splev', [$t, $c, $k, $x]);
     }
 }
