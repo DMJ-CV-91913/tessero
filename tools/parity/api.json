@@ -3865,10 +3865,22 @@
                 "doc": "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."
             },
             {
+                "name": "RegularGridInterpolator",
+                "static": true,
+                "sig": "RegularGridInterpolator(mixed $points, mixed $values, mixed $xi): mixed",
+                "doc": "Multilinear interpolation on a regular n-D grid, evaluated at xi (scipy.interpolate.RegularGridInterpolator)."
+            },
+            {
                 "name": "barycentricInterpolate",
                 "static": true,
                 "sig": "barycentricInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
                 "doc": "Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate)."
+            },
+            {
+                "name": "interpn",
+                "static": true,
+                "sig": "interpn(mixed $points, mixed $values, mixed $xi): mixed",
+                "doc": "Multilinear interpolation on a regular n-D grid at points xi (scipy.interpolate.interpn)."
             },
             {
                 "name": "kroghInterpolate",
@@ -17136,6 +17148,18 @@
                 "name": "lagrange",
                 "static": true,
                 "sig": "lagrange($x, $w)",
+                "doc": ""
+            },
+            {
+                "name": "RegularGridInterpolator",
+                "static": true,
+                "sig": "RegularGridInterpolator($points, $values, $xi)",
+                "doc": ""
+            },
+            {
+                "name": "interpn",
+                "static": true,
+                "sig": "interpn($points, $values, $xi)",
                 "doc": ""
             }
         ]

@@ -23,7 +23,9 @@ final class Interpolate
     'CubicHermiteSpline' => 'CubicHermiteSpline',
     'CubicSpline' => 'CubicSpline',
     'PchipInterpolator' => 'PchipInterpolator',
+    'RegularGridInterpolator' => 'RegularGridInterpolator',
     'barycentric_interpolate' => 'barycentricInterpolate',
+    'interpn' => 'interpn',
     'krogh_interpolate' => 'kroghInterpolate',
     'lagrange' => 'lagrange',
     'make_interp_spline' => 'makeInterpSpline',
@@ -103,6 +105,16 @@ final class Interpolate
     }
 
     /**
+     * Multilinear interpolation on a regular n-D grid, evaluated at xi (scipy.interpolate.RegularGridInterpolator).
+     *
+     * scipy.interpolate.RegularGridInterpolator
+     */
+    public static function RegularGridInterpolator(mixed $points, mixed $values, mixed $xi): mixed
+    {
+        return Registry::routine('interpolate.RegularGridInterpolator', [$points, $values, $xi]);
+    }
+
+    /**
      * Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate).
      *
      * scipy.interpolate.barycentric_interpolate
@@ -110,6 +122,16 @@ final class Interpolate
     public static function barycentricInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.barycentric_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Multilinear interpolation on a regular n-D grid at points xi (scipy.interpolate.interpn).
+     *
+     * scipy.interpolate.interpn
+     */
+    public static function interpn(mixed $points, mixed $values, mixed $xi): mixed
+    {
+        return Registry::routine('interpolate.interpn', [$points, $values, $xi]);
     }
 
     /**
