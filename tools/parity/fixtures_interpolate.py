@@ -14,7 +14,7 @@ import fixtures_np as F  # enc / enc_result / fixture_env
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc = [], [], [], [], [], [], [], [], []
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis = [], [], [], [], [], [], [], [], [], []
 
 
 def xyc(xi, yi, xnew, vals):
@@ -67,11 +67,21 @@ for (m, nn) in ((2, 2), (3, 2), (2, 3), (3, 3)):
     pdc.append({'args': [F.enc(an), F.enc(m), F.enc(nn)], 'kwargs': {},
                 'expect': F.enc_result((p.coeffs, q.coeffs), ['p', 'q']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# make_interp_spline: k=1 (linear) and k=3 (not-a-knot cubic) evaluated form
+for k in (1, 3):
+    for n in (5, 8):
+        xi = np.concatenate([[0.0], np.cumsum(rng.uniform(0.6, 1.6, n - 1))])
+        yi = np.sin(xi) + 0.3 * xi
+        xnew = np.linspace(xi[0], xi[-1], 21)
+        mis.append({'args': [F.enc(xi), F.enc(yi), F.enc(k), F.enc(xnew)], 'kwargs': {},
+                    'expect': F.enc_result(make_interp_spline(xi, yi, k=k)(xnew), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
          {'fn': 'barycentric_interpolate', 'cases': bcc}, {'fn': 'krogh_interpolate', 'cases': kgc},
-         {'fn': 'BSpline', 'cases': bsp}, {'fn': 'pade', 'cases': pdc}]
+         {'fn': 'BSpline', 'cases': bsp}, {'fn': 'pade', 'cases': pdc},
+         {'fn': 'make_interp_spline', 'cases': mis}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

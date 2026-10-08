@@ -3877,6 +3877,12 @@
                 "doc": "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.krogh_interpolate)."
             },
             {
+                "name": "makeInterpSpline",
+                "static": true,
+                "sig": "makeInterpSpline(mixed $x, mixed $y, mixed $k, mixed $xnew): mixed",
+                "doc": "Interpolating spline (k=1 linear or k=3 not-a-knot cubic) evaluated at xnew (scipy.interpolate.make_interp_spline)."
+            },
+            {
                 "name": "pade",
                 "static": true,
                 "sig": "pade(mixed $an, mixed $m, mixed $n = null): mixed",
@@ -17052,6 +17058,12 @@
                 "name": "pade",
                 "static": true,
                 "sig": "pade($an, $m, $n = null)",
+                "doc": ""
+            },
+            {
+                "name": "makeInterpSpline",
+                "static": true,
+                "sig": "makeInterpSpline($x, $y, $k, $xnew)",
                 "doc": ""
             }
         ]
