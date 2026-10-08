@@ -478,6 +478,7 @@
         "signal.dimpulse": "pass",
         "signal.dlsim": "pass",
         "signal.dstep": "pass",
+        "signal.ellip": "pass",
         "signal.ellipap": "pass",
         "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
@@ -2300,7 +2301,8 @@
             "signal.lombscargle": 1.3860040914382488e-14,
             "signal.get_window": 2.9008557796606e-15,
             "signal.besselap": 4.62344679108294e-12,
-            "signal.ellipap": 4.114257970988331e-15
+            "signal.ellipap": 4.114257970988331e-15,
+            "signal.ellip": 2.350394405119346e-15
         },
         "ext": {
             "np.median": 0,
@@ -3451,7 +3453,8 @@
             "signal.lombscargle": 1.3860040914382488e-14,
             "signal.get_window": 2.9008557796606e-15,
             "signal.besselap": 4.62344679108294e-12,
-            "signal.ellipap": 4.114257970988331e-15
+            "signal.ellipap": 4.114257970988331e-15,
+            "signal.ellip": 2.350394405119346e-15
         }
     },
     "ext": {
@@ -3933,6 +3936,7 @@
         "signal.dimpulse": "pass",
         "signal.dlsim": "pass",
         "signal.dstep": "pass",
+        "signal.ellip": "pass",
         "signal.ellipap": "pass",
         "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
