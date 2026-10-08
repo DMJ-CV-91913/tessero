@@ -25,6 +25,7 @@ final class Interpolate
     'PchipInterpolator' => 'PchipInterpolator',
     'barycentric_interpolate' => 'barycentricInterpolate',
     'krogh_interpolate' => 'kroghInterpolate',
+    'make_interp_spline' => 'makeInterpSpline',
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
     ];
@@ -113,6 +114,16 @@ final class Interpolate
     public static function kroghInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.krogh_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Interpolating spline (k=1 linear or k=3 not-a-knot cubic) evaluated at xnew (scipy.interpolate.make_interp_spline).
+     *
+     * scipy.interpolate.make_interp_spline
+     */
+    public static function makeInterpSpline(mixed $x, mixed $y, mixed $k, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.make_interp_spline', [$x, $y, $k, $xnew]);
     }
 
     /**

@@ -195,6 +195,11 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.make_interp_spline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.pade": {
             "kind": "routine",
             "nin": 0,
