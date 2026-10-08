@@ -2915,6 +2915,12 @@
                 "doc": "2-D analytic signal of a real matrix via the 2-D FFT (scipy.signal.hilbert2)."
             },
             {
+                "name": "iircomb",
+                "static": true,
+                "sig": "iircomb(mixed $w0, mixed $Q, mixed $ftype = 'notch', mixed $fs = 2.0, mixed $passZero = false): mixed",
+                "doc": "Notching or peaking digital comb filter (scipy.signal.iircomb)."
+            },
+            {
                 "name": "iirnotch",
                 "static": true,
                 "sig": "iirnotch(mixed $w0, mixed $Q, mixed $fs = 2.0): mixed",
@@ -15957,6 +15963,12 @@
                 "name": "iirpeak",
                 "static": true,
                 "sig": "iirpeak($w0, $Q, $fs = 2.0)",
+                "doc": ""
+            },
+            {
+                "name": "iircomb",
+                "static": true,
+                "sig": "iircomb($w0, $Q, $ftype = 'notch', $fs = 2.0, $passZero = false)",
                 "doc": ""
             },
             {

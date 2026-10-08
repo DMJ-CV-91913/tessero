@@ -469,6 +469,7 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.iircomb": "pass",
         "signal.iirnotch": "pass",
         "signal.iirpeak": "pass",
         "signal.impulse": "pass",
@@ -2246,7 +2247,8 @@
             "signal.dimpulse": 9.787648236404475e-15,
             "signal.dstep": 4.440891041420716e-16,
             "signal.iirnotch": 0,
-            "signal.iirpeak": 0
+            "signal.iirpeak": 0,
+            "signal.iircomb": 0
         },
         "ext": {
             "np.median": 0,
@@ -3370,7 +3372,8 @@
             "signal.dimpulse": 9.787648236404475e-15,
             "signal.dstep": 4.440891041420716e-16,
             "signal.iirnotch": 0,
-            "signal.iirpeak": 0
+            "signal.iirpeak": 0,
+            "signal.iircomb": 0
         }
     },
     "ext": {
@@ -3843,6 +3846,7 @@
         "signal.group_delay": "pass",
         "signal.hilbert": "pass",
         "signal.hilbert2": "pass",
+        "signal.iircomb": "pass",
         "signal.iirnotch": "pass",
         "signal.iirpeak": "pass",
         "signal.impulse": "pass",
