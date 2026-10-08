@@ -67,6 +67,8 @@
 | `interpolate.splint` | call | rtol 0 |
 | `interpolate.sproot` | call | rtol 0 |
 | `interpolate.lagrange` | call | rtol 0 |
+| `interpolate.RegularGridInterpolator` | call | rtol 0 |
+| `interpolate.interpn` | call | rtol 0 |
 | `linalg.solve` | every call | rtol 1e-09 |
 | `linalg.inv` | every call | rtol 1e-09 |
 | `linalg.det` | every call | rtol 1e-09 |

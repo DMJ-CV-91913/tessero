@@ -8,14 +8,15 @@ from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInte
                                CubicSpline, CubicHermiteSpline,
                                barycentric_interpolate, krogh_interpolate,
                                make_interp_spline, BSpline, pade, splev,
-                               splrep, splder, splantider, splint, sproot, lagrange)
+                               splrep, splder, splantider, splint, sproot, lagrange,
+                               RegularGridInterpolator, interpn)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'interpolate.json')
 rng = np.random.default_rng(20261008)
 
-pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr, lag = ([] for _ in range(16))
+pc, pci, akc, csc, chc, bcc, kgc, bsp, pdc, mis, spv, sdr, sai, spi, spr, lag, rgi, ipn = ([] for _ in range(18))
 
 
 def xyc(xi, yi, xnew, vals):
@@ -120,6 +121,23 @@ for M in (3, 4, 5, 6):
     lag.append({'args': [F.enc(xl), F.enc(wl)], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(lagrange(xl, wl).coef), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+# RegularGridInterpolator / interpn: multilinear interpolation on a regular n-D grid (n = 1, 2, 3), queried at
+# in-bounds points. points is a list of per-axis coordinate arrays (strictly increasing, non-uniform); values is
+# the n-D sample array; xi is (m, n). Both functions share the same multilinear core, so the expected values are
+# identical.
+for n in (1, 2, 3):
+    grids = [np.sort(rng.uniform(0.0, 10.0, 5 + n - d)) for d in range(n)]
+    grids = [g + np.linspace(0, 1e-3, len(g)) for g in grids]       # ensure strictly increasing
+    shp = tuple(len(g) for g in grids)
+    vals = np.sin(rng.uniform(size=shp)) + 0.3 * rng.normal(size=shp)
+    mq = 7
+    xq = np.stack([rng.uniform(grids[d][0] + 1e-2, grids[d][-1] - 1e-2, mq) for d in range(n)], axis=1)
+    pts = [np.asarray(g, float) for g in grids]
+    rgi.append({'args': [F.enc(pts), F.enc(vals), F.enc(xq)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(RegularGridInterpolator(tuple(pts), vals)(xq)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    ipn.append({'args': [F.enc(pts), F.enc(vals), F.enc(xq)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(interpn(tuple(pts), vals, xq)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
@@ -128,7 +146,8 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'make_interp_spline', 'cases': mis}, {'fn': 'splev', 'cases': spv},
          {'fn': 'splder', 'cases': sdr}, {'fn': 'splantider', 'cases': sai},
          {'fn': 'splint', 'cases': spi}, {'fn': 'sproot', 'cases': spr},
-         {'fn': 'lagrange', 'cases': lag}]
+         {'fn': 'lagrange', 'cases': lag},
+         {'fn': 'RegularGridInterpolator', 'cases': rgi}, {'fn': 'interpn', 'cases': ipn}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
