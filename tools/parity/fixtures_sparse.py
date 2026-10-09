@@ -96,6 +96,19 @@ for A in MATS[:4] + [dense(5, 5)]:
     fc.append({'args': [F.enc(A)], 'kwargs': {},
                'expect': {'dict': {'row': F.enc(I[order].astype(np.int32)), 'col': F.enc(J[order].astype(np.int32)), 'data': F.enc(V[order])}}, 'compare': 'tol'})
 calls.append({'fn': 'find', 'cases': fc})
+# spdiags: set diagonals of an m-by-n matrix from rows of data
+sd = []
+for (m, n, offs) in [(5, 6, [-1, 0, 2]), (4, 4, [0, 1, -2]), (6, 4, [-3, 0, 1]), (3, 5, [0])]:
+    data = rng.uniform(-5, 5, (len(offs), max(m, n)))
+    sd.append({'args': [F.enc(data), F.enc(np.array(offs)), F.enc(m), F.enc(n)], 'kwargs': {},
+               'expect': {'dict': csr_dict(sp.spdiags(data, offs, m, n))}, 'compare': 'tol'})
+calls.append({'fn': 'spdiags', 'cases': sd})
+# block_diag: block-diagonal assembly (blocks passed as positional args)
+bd = []
+for mats in [[dense(2, 3), dense(3, 2), dense(1, 4)], [dense(2, 2), dense(3, 3)], [dense(4, 1), dense(1, 4)]]:
+    bd.append({'args': [F.enc(M) for M in mats], 'kwargs': {},
+               'expect': {'dict': csr_dict(sp.block_diag(mats))}, 'compare': 'tol'})
+calls.append({'fn': 'block_diag', 'cases': bd})
 
 out = {'module': 'sparse', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
