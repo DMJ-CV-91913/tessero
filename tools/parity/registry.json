@@ -220,6 +220,16 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.NdBSpline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.NdPPoly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.PPoly": {
             "kind": "routine",
             "nin": 0,

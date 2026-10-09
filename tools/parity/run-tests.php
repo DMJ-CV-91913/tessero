@@ -99,6 +99,8 @@ const CALL_RTOL = [
     'chebfit' => 1e-6, 'legfit' => 1e-6, 'lagfit' => 1e-6, 'hermfit' => 1e-6, 'hermefit' => 1e-6,
     // Gauss quadrature: eigenvalues of the companion + one Newton step may differ in the last couple of digits
     'leggauss' => 1e-9, 'laggauss' => 1e-9, 'hermgauss' => 1e-9, 'hermegauss' => 1e-9,
+    // tensor B-spline: per-dimension de Boor composition sums in a different order than SciPy's direct tensor eval
+    'NdBSpline' => 1e-9,
 ];
 // absolute tolerances: polyfit/roots/*fit coefficients can be legitimately ~0, where a relative tolerance is meaningless
 const CALL_ATOL = ['polyfit' => 1e-8, 'roots' => 1e-8,

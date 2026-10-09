@@ -4021,6 +4021,18 @@
                 "doc": "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.KroghInterpolator)."
             },
             {
+                "name": "NdBSpline",
+                "static": true,
+                "sig": "NdBSpline(mixed $tx, mixed $ty, mixed $c, mixed $kx, mixed $ky, mixed $xi): mixed",
+                "doc": "2-D tensor B-spline evaluated at points xi (scipy.interpolate.NdBSpline)."
+            },
+            {
+                "name": "NdPPoly",
+                "static": true,
+                "sig": "NdPPoly(mixed $c, mixed $xb, mixed $yb, mixed $xi): mixed",
+                "doc": "2-D tensor piecewise polynomial evaluated at points xi (scipy.interpolate.NdPPoly)."
+            },
+            {
                 "name": "PPoly",
                 "static": true,
                 "sig": "PPoly(mixed $c, mixed $x, mixed $xnew): mixed",
@@ -18718,6 +18730,18 @@
                 "name": "spalde",
                 "static": true,
                 "sig": "spalde($t, $c, $k, $x)",
+                "doc": ""
+            },
+            {
+                "name": "NdPPoly",
+                "static": true,
+                "sig": "NdPPoly($c, $xb, $yb, $xi)",
+                "doc": ""
+            },
+            {
+                "name": "NdBSpline",
+                "static": true,
+                "sig": "NdBSpline($tx, $ty, $c, $kx, $ky, $xi)",
                 "doc": ""
             }
         ]

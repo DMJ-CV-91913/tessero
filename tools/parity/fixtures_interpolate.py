@@ -4,7 +4,7 @@ PchipInterpolator, Akima1DInterpolator, CubicSpline (not-a-knot) and CubicHermit
 over the sample arrays; generated in the pinned environment for consistency with the other scipy groups."""
 import json, os
 import numpy as np
-from scipy.interpolate import insert, spalde, FloaterHormannInterpolator  # noqa: E402 (grouped below)
+from scipy.interpolate import insert, spalde, FloaterHormannInterpolator, NdPPoly, NdBSpline  # noqa: E402
 from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInterpolator,
                                CubicSpline, CubicHermiteSpline,
                                barycentric_interpolate, krogh_interpolate,
@@ -184,6 +184,25 @@ for _ in range(6):
     spa.append({'args': [F.enc(t), F.enc(c), F.enc(int(k)), F.enc(xe)], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(spalde(xe, (t, c, k))), []), 'compare': 'tol', 'tol': {'atol': 1e-7}})
 
+# tensor-product interpolators: NdPPoly (piecewise) and NdBSpline (B-spline), both in 2-D
+ndp, ndb = [], []
+for _ in range(6):
+    xb = np.sort(np.unique(rng.uniform(0, 3, 4))); yb = np.sort(np.unique(rng.uniform(0, 3, 4)))
+    if len(xb) < 4 or len(yb) < 4:
+        continue
+    mx, my = len(xb) - 1, len(yb) - 1
+    cp = rng.normal(size=(3, 3, mx, my))
+    xi = np.c_[rng.uniform(xb[0], xb[-1], 6), rng.uniform(yb[0], yb[-1], 6)]
+    ndp.append({'args': [F.enc(cp), F.enc(xb), F.enc(yb), F.enc(xi)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(NdPPoly(cp, (xb, yb))(xi)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    xs = np.linspace(0, 1, 8); tx, _, kx = splrep(xs, np.sin(5 * xs), s=0)
+    ys = np.linspace(0, 1, 8); ty, _, ky = splrep(ys, np.cos(4 * ys), s=0)
+    ncx, ncy = len(tx) - kx - 1, len(ty) - ky - 1
+    cc = rng.normal(size=(ncx, ncy))
+    xi2 = np.c_[rng.uniform(0.1, 0.9, 6), rng.uniform(0.1, 0.9, 6)]
+    ndb.append({'args': [F.enc(tx), F.enc(ty), F.enc(cc), F.enc(int(kx)), F.enc(int(ky)), F.enc(xi2)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(NdBSpline((tx, ty), cc, (kx, ky))(xi2)), []), 'compare': 'tol', 'tol': {'atol': 1e-8}})
+
 # construct-and-evaluate interpolator classes: Barycentric/Krogh (global poly), PPoly/BPoly (piecewise)
 bci, kgi, ppc, bpc = [], [], [], []
 for _ in range(8):
@@ -211,7 +230,7 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'BarycentricInterpolator', 'cases': bci}, {'fn': 'KroghInterpolator', 'cases': kgi},
          {'fn': 'PPoly', 'cases': ppc}, {'fn': 'BPoly', 'cases': bpc},
          {'fn': 'FloaterHormannInterpolator', 'cases': fhc}, {'fn': 'insert', 'cases': insc},
-         {'fn': 'spalde', 'cases': spa}]
+         {'fn': 'spalde', 'cases': spa}, {'fn': 'NdPPoly', 'cases': ndp}, {'fn': 'NdBSpline', 'cases': ndb}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
