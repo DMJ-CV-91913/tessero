@@ -325,6 +325,48 @@ static int r_sp_find(const void *ctx, const tsr_arg *a, int nargs, tsr_result *r
     return rc;
 }
 
+/* spdiags(data, diags, m, n): set diagonal diags[p] of an m-by-n matrix from data[p], as CSR. */
+static int r_sp_spdiags(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (a[0].kind != 3 || a[0].arr.ndim != 2 || a[1].kind != 3 || a[1].arr.ndim != 1) { fn_set_error("sparse.spdiags: data 2-D, diags 1-D"); return TSR_EARG; }
+    const int64_t nd = a[0].arr.shape[0], L = a[0].arr.shape[1], m = sp_int(a, nargs, 2, 0), n = sp_int(a, nargs, 3, 0);
+    int64_t ld, lo; double *data = fn_arg_doubles(&a[0], &ld), *offs = data ? fn_arg_doubles(&a[1], &lo) : NULL;
+    int rc = offs ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
+        if (!D) rc = TSR_ENOMEM;
+        else { for (int64_t p = 0; p < nd; p++) { int64_t k = (int64_t)offs[p];
+                for (int64_t i = 0; i < m; i++) { int64_t j = i + k; if (j >= 0 && j < n && j < L) D[i * n + j] = data[p * L + j]; } }
+            rc = emit_csr(res, D, m, n); free(D); }
+    }
+    fn_free_doubles(data, ld); fn_free_doubles(offs, lo);
+    return rc;
+}
+/* block_diag(mats): block-diagonal assembly of a sequence of dense blocks, as CSR. */
+static int r_sp_block_diag(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const tsr_arg *items = args; int64_t k = nargs;
+    if (nargs == 1 && args[0].kind == 5) { items = args[0].items; k = args[0].count; }
+    if (k < 1) { fn_set_error("sparse.block_diag: at least one block is required"); return TSR_EARG; }
+    int64_t R = 0, C = 0;
+    for (int64_t i = 0; i < k; i++) { if (items[i].kind != 3 || items[i].arr.ndim != 2) { fn_set_error("sparse.block_diag: every block must be a 2-D array"); return TSR_EARG; } R += items[i].arr.shape[0]; C += items[i].arr.shape[1]; }
+    double *D = (double *)calloc((size_t)(R * C > 0 ? R * C : 1), sizeof(double));
+    if (!D) return TSR_ENOMEM;
+    int64_t roff = 0, coff = 0; int rc = TSR_OK;
+    for (int64_t i = 0; i < k && rc == TSR_OK; i++) {
+        int64_t nb; double *b = fn_arg_doubles(&items[i], &nb);
+        if (!b) { rc = TSR_ENOMEM; break; }
+        const int64_t br = items[i].arr.shape[0], bc = items[i].arr.shape[1];
+        for (int64_t r = 0; r < br; r++) for (int64_t c = 0; c < bc; c++) D[(roff + r) * C + coff + c] = b[r * bc + c];
+        fn_free_doubles(b, nb); roff += br; coff += bc;
+    }
+    if (rc == TSR_OK) rc = emit_csr(res, D, R, C);
+    free(D);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("sparse.hstack", 4, "*blocks", "data, indices, indptr, shape", r_hstack, NULL, "Stack sparse blocks horizontally, as CSR storage (scipy.sparse.hstack)."),
     ROUTINE("sparse.vstack", 4, "*blocks", "data, indices, indptr, shape", r_vstack, NULL, "Stack sparse blocks vertically, as CSR storage (scipy.sparse.vstack)."),
@@ -344,6 +386,8 @@ static const fn_def DEFS[] = {
     ROUTINE("sparse.tril", 4, "A, k=0", "data, indices, indptr, shape", r_sp_tril, NULL, "Lower-triangular part of a matrix, as CSR (scipy.sparse.tril)."),
     ROUTINE("sparse.triu", 4, "A, k=0", "data, indices, indptr, shape", r_sp_triu, NULL, "Upper-triangular part of a matrix, as CSR (scipy.sparse.triu)."),
     ROUTINE("sparse.find", 3, "A", "row, col, data", r_sp_find, NULL, "Row, column and value of each nonzero, row-major (scipy.sparse.find)."),
+    ROUTINE("sparse.spdiags", 4, "data, diags, m, n", "data, indices, indptr, shape", r_sp_spdiags, NULL, "Sparse matrix from diagonals, as CSR (scipy.sparse.spdiags)."),
+    ROUTINE("sparse.block_diag", 4, "*blocks", "data, indices, indptr, shape", r_sp_block_diag, NULL, "Block-diagonal assembly of blocks, as CSR (scipy.sparse.block_diag)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

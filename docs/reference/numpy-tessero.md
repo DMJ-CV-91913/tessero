@@ -906,6 +906,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 
 | NumPy / SciPy | Tessero |
 |---|---|
+| `scipy.sparse.block_diag` | `Tessero\Sparse::blockDiag()` |
 | `scipy.sparse.coo_array` | `Tessero\Sparse::cooArray()` |
 | `scipy.sparse.coo_matrix` | `Tessero\Sparse::cooMatrix()` |
 | `scipy.sparse.csc_array` | `Tessero\Sparse::cscArray()` |
@@ -921,6 +922,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.identity` | `Tessero\Sparse::identity()` |
 | `scipy.sparse.kron` | `Tessero\Sparse::kron()` |
 | `scipy.sparse.kronsum` | `Tessero\Sparse::kronsum()` |
+| `scipy.sparse.spdiags` | `Tessero\Sparse::spdiags()` |
 | `scipy.sparse.tril` | `Tessero\Sparse::tril()` |
 | `scipy.sparse.triu` | `Tessero\Sparse::triu()` |
 | `scipy.sparse.vstack` | `Tessero\Sparse::vstack()` |
