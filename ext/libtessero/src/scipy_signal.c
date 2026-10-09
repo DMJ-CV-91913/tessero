@@ -4800,6 +4800,97 @@ static int r_bessel(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* lfiltic(b, a, y, x=None): initial filter-state vector zi for lfilter from output ICs y (and input ICs x)
+   (scipy.signal.lfiltic). K = max(len(b), len(a)) - 1; zi[m] = sum(b[m+1:]*x) - sum(a[m+1:]*y), then /a[0]. */
+static int r_lfiltic(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("lfiltic: b, a and y must be 1-D arrays"); return TSR_EARG; }
+    int64_t lb, la, ly, lx = 0;
+    double *b = fn_arg_doubles(&args[0], &lb), *a = b ? fn_arg_doubles(&args[1], &la) : NULL, *y = a ? fn_arg_doubles(&args[2], &ly) : NULL;
+    const int64_t M = args[0].arr.shape[0] - 1, N = args[1].arr.shape[0] - 1, ny = args[2].arr.shape[0];
+    const int haveX = (nargs > 3 && args[3].kind == 3 && args[3].arr.ndim == 1);
+    double *x = (haveX && y) ? fn_arg_doubles(&args[3], &lx) : NULL;
+    const int64_t nx = haveX ? args[3].arr.shape[0] : 0;
+    int rc = (!b || !a || !y || (haveX && !x)) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK && N < 0) { fn_set_error("lfiltic: there must be at least one `a` coefficient"); rc = TSR_EARG; }
+    if (rc == TSR_OK) {
+        const int64_t K = (M > N ? M : N);
+        double *zi = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){K > 0 ? K : 0});
+        if (!zi) rc = TSR_ENOMEM;
+        else {
+            for (int64_t m = 0; m < K; m++) zi[m] = 0.0;
+            for (int64_t m = 0; m < M; m++) { double s = 0.0; for (int64_t j = 0; j < M - m; j++) s += b[m + 1 + j] * (j < nx ? x[j] : 0.0); zi[m] += s; }
+            for (int64_t m = 0; m < N; m++) { double s = 0.0; for (int64_t j = 0; j < N - m; j++) s += a[m + 1 + j] * (j < ny ? y[j] : 0.0); zi[m] -= s; }
+            if (a[0] != 1.0) for (int64_t m = 0; m < K; m++) zi[m] /= a[0];
+        }
+    }
+    fn_free_doubles(b, lb); fn_free_doubles(a, la); fn_free_doubles(y, ly); if (x) fn_free_doubles(x, lx);
+    return rc;
+}
+
+/* findfreqs(num, den, N, kind='ba'): logarithmically spaced frequencies spanning the interesting part of an
+   analog response (scipy.signal.findfreqs). kind 'ba' takes polynomial coeffs (roots found via the companion
+   solver); kind 'zp' takes the zeros/poles directly. */
+static int r_findfreqs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 1) { fn_set_error("findfreqs: num, den must be arrays and N an integer"); return TSR_EARG; }
+    const int64_t Nout = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    const char *kind = (nargs > 3 && args[3].kind == 2 && args[3].str) ? args[3].str : "ba";
+    int64_t nep = 0, ntz = 0; double complex *ep = NULL, *tz = NULL; int rc = TSR_OK;
+    if (strcmp(kind, "zp") == 0) {
+        ep = read_carr(&args[1], &nep); tz = read_carr(&args[0], &ntz);
+        if (!ep || !tz) rc = TSR_ENOMEM;
+    } else {
+        int64_t ld, ln; double *den = fn_arg_doubles(&args[1], &ld), *num = fn_arg_doubles(&args[0], &ln);
+        if (!den || !num) rc = TSR_ENOMEM;
+        else {
+            double *rep = sig_polyroots(den, args[1].arr.shape[0], &nep);
+            double *rtz = sig_polyroots(num, args[0].arr.shape[0], &ntz);
+            if (nep < 0 || ntz < 0) rc = TSR_ECONVERGE;
+            else {
+                ep = (double complex *)malloc((size_t)((nep > 0 ? nep : 1)) * sizeof(double complex));
+                tz = (double complex *)malloc((size_t)((ntz > 0 ? ntz : 1)) * sizeof(double complex));
+                if (!ep || !tz) rc = TSR_ENOMEM;
+                else { for (int64_t i = 0; i < nep; i++) ep[i] = rep[2 * i] + I * rep[2 * i + 1];
+                       for (int64_t i = 0; i < ntz; i++) tz[i] = rtz[2 * i] + I * rtz[2 * i + 1]; }
+            }
+            free(rep); free(rtz);
+        }
+        fn_free_doubles(den, ld); fn_free_doubles(num, ln);
+    }
+    if (rc == TSR_OK) {
+        double complex lone = -1000.0;
+        if (nep == 0) { ep = &lone; nep = 1; }                    /* empty poles -> [-1000] */
+        double hmax = -INFINITY, lmin = INFINITY;
+        for (int64_t i = 0; i < nep; i++) if (cimag(ep[i]) >= 0.0) {
+            const double ig = (cabs(ep[i]) < 1e-10) ? 1.0 : 0.0;
+            const double hh = 3.0 * fabs(creal(ep[i]) + ig) + 1.5 * cimag(ep[i]);
+            const double ll = fabs(creal(ep[i]) + ig) + 2.0 * cimag(ep[i]);
+            if (hh > hmax) hmax = hh;
+            if (ll < lmin) lmin = ll;
+        }
+        for (int64_t i = 0; i < ntz; i++) if (cabs(tz[i]) < 1e5 && cimag(tz[i]) >= 0.0) {
+            const double ig = (cabs(tz[i]) < 1e-10) ? 1.0 : 0.0;
+            const double hh = 3.0 * fabs(creal(tz[i]) + ig) + 1.5 * cimag(tz[i]);
+            const double ll = fabs(creal(tz[i]) + ig) + 2.0 * cimag(tz[i]);
+            if (hh > hmax) hmax = hh;
+            if (ll < lmin) lmin = ll;
+        }
+        const double hfreq = round(log10(hmax) + 0.5), lfreq = round(log10(0.1 * lmin) - 0.5);
+        double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){Nout});
+        if (!w) rc = TSR_ENOMEM;
+        else for (int64_t i = 0; i < Nout; i++) {
+            const double e = (Nout == 1) ? lfreq : lfreq + (hfreq - lfreq) * (double)i / (double)(Nout - 1);
+            w[i] = pow(10.0, e);
+        }
+        if (nep == 1 && ep == &lone) { nep = 0; ep = NULL; }      /* don't free the stack sentinel */
+    }
+    free(ep); free(tz);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -4918,6 +5009,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),
+    ROUTINE("signal.lfiltic", 1, "b, a, y, x=None", "zi", r_lfiltic, NULL, "Initial lfilter state from output/input initial conditions (scipy.signal.lfiltic)."),
+    ROUTINE("signal.findfreqs", 1, "num, den, N, kind='ba'", "w", r_findfreqs, NULL, "Logarithmically spaced frequency array for an analog response (scipy.signal.findfreqs)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),

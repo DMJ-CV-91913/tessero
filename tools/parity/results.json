@@ -488,6 +488,7 @@
         "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
+        "signal.findfreqs": "pass",
         "signal.firwin": "pass",
         "signal.firwin2": "pass",
         "signal.freqs": "pass",
@@ -511,6 +512,7 @@
         "signal.kaiserord": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
+        "signal.lfiltic": "pass",
         "signal.lombscargle": "pass",
         "signal.lp2bp": "pass",
         "signal.lp2bp_zpk": "pass",
@@ -2312,7 +2314,9 @@
             "cluster.whiten": 0,
             "cluster.vq": 0,
             "cluster.kmeans2": 0,
-            "cluster.kmeans": 2.8775085723123715e-16
+            "cluster.kmeans": 2.8775085723123715e-16,
+            "signal.lfiltic": 0,
+            "signal.findfreqs": 1.0306397587839872e-15
         },
         "ext": {
             "np.median": 0,
@@ -3469,7 +3473,9 @@
             "cluster.whiten": 0,
             "cluster.vq": 0,
             "cluster.kmeans2": 0,
-            "cluster.kmeans": 2.8775085723123715e-16
+            "cluster.kmeans": 2.8775085723123715e-16,
+            "signal.lfiltic": 0,
+            "signal.findfreqs": 1.0306397587839872e-15
         }
     },
     "ext": {
@@ -3961,6 +3967,7 @@
         "signal.ellipord": "pass",
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
+        "signal.findfreqs": "pass",
         "signal.firwin": "pass",
         "signal.firwin2": "pass",
         "signal.freqs": "pass",
@@ -3984,6 +3991,7 @@
         "signal.kaiserord": "pass",
         "signal.lfilter": "pass",
         "signal.lfilter_zi": "pass",
+        "signal.lfiltic": "pass",
         "signal.lombscargle": "pass",
         "signal.lp2bp": "pass",
         "signal.lp2bp_zpk": "pass",

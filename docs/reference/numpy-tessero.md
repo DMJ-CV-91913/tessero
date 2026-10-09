@@ -967,6 +967,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.ellipord` | `Tessero\Signal::ellipord()` |
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |
+| `scipy.signal.findfreqs` | `Tessero\Signal::findfreqs()` |
 | `scipy.signal.firwin` | `Tessero\Signal::firwin()` |
 | `scipy.signal.firwin2` | `Tessero\Signal::firwin2()` |
 | `scipy.signal.freqs` | `Tessero\Signal::freqs()` |
@@ -990,6 +991,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.kaiserord` | `Tessero\Signal::kaiserord()` |
 | `scipy.signal.lfilter` | `Tessero\Signal::lfilter()` |
 | `scipy.signal.lfilter_zi` | `Tessero\Signal::lfilterZi()` |
+| `scipy.signal.lfiltic` | `Tessero\Signal::lfiltic()` |
 | `scipy.signal.lombscargle` | `Tessero\Signal::lombscargle()` |
 | `scipy.signal.lp2bp` | `Tessero\Signal::lp2bp()` |
 | `scipy.signal.lp2bp_zpk` | `Tessero\Signal::lp2bpZpk()` |

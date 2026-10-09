@@ -2873,6 +2873,12 @@
                 "doc": "Zero-phase forward-backward IIR filtering with odd padding (scipy.signal.filtfilt; 1-D)."
             },
             {
+                "name": "findfreqs",
+                "static": true,
+                "sig": "findfreqs(mixed $num, mixed $den, mixed $N, mixed $kind = 'ba'): mixed",
+                "doc": "Logarithmically spaced frequency array for an analog response (scipy.signal.findfreqs)."
+            },
+            {
                 "name": "firwin",
                 "static": true,
                 "sig": "firwin(mixed $numtaps, mixed $cutoff, mixed $window = 'hamming', mixed $passZero = true, mixed $scale = true, mixed $fs = null): mixed",
@@ -3009,6 +3015,12 @@
                 "static": true,
                 "sig": "lfilterZi(mixed $b, mixed $a): mixed",
                 "doc": "Steady-state step-response initial conditions for lfilter (scipy.signal.lfilter_zi)."
+            },
+            {
+                "name": "lfiltic",
+                "static": true,
+                "sig": "lfiltic(mixed $b, mixed $a, mixed $y, mixed $x = null): mixed",
+                "doc": "Initial lfilter state from output/input initial conditions (scipy.signal.lfiltic)."
             },
             {
                 "name": "lombscargle",
@@ -16417,6 +16429,18 @@
                 "name": "lombscargle",
                 "static": true,
                 "sig": "lombscargle($x, $y, $freqs)",
+                "doc": ""
+            },
+            {
+                "name": "lfiltic",
+                "static": true,
+                "sig": "lfiltic($b, $a, $y, $x = null)",
+                "doc": ""
+            },
+            {
+                "name": "findfreqs",
+                "static": true,
+                "sig": "findfreqs($num, $den, $N, $kind = 'ba')",
                 "doc": ""
             },
             {

@@ -174,6 +174,26 @@ for (N, Wn, bt) in [(2, 0.2, 'low'), (3, 0.3, 'low'), (4, 0.25, 'low'), (2, 0.5,
     b, a = sg.bessel(N, Wn, btype=bt)
     bslc.append({'args': [F.enc(N), F.enc(Wn), F.enc(bt)], 'kwargs': {}, 'expect': F.enc_result((b, a), ['b', 'a']), 'compare': 'tol'})
 
+# lfiltic: initial lfilter state from output/input ICs
+lfic = []
+for (b, a, y, x) in [([1.0, -0.5], [1.0, 0.3], [0.7], [0.2]), ([0.5, 0.2, 0.1], [1.0, -0.4, 0.05], [1.0, 0.5], [0.3, 0.1]),
+                     ([1.0], [1.0, 0.6, 0.2], [0.4, 0.1], None), ([0.2, 0.3], [2.0, 0.5], [0.9], None)]:
+    args = [F.enc(np.asarray(b, float)), F.enc(np.asarray(a, float)), F.enc(np.asarray(y, float))]
+    zi = sg.lfiltic(b, a, y) if x is None else sg.lfiltic(b, a, y, x)
+    if x is not None:
+        args.append(F.enc(np.asarray(x, float)))
+    lfic.append({'args': args, 'kwargs': {}, 'expect': F.enc_result(np.asarray(zi, float), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
+# findfreqs: log-spaced analog frequency grid (kind 'ba' coeffs and 'zp' roots)
+ffq = []
+for (num, den, N) in [([1.0, 0.0], [1.0, 8.0, 25.0], 9), ([1.0], [1.0, 0.5, 2.0], 12), ([2.0, 1.0], [1.0, 3.0, 2.0], 7)]:
+    ffq.append({'args': [F.enc(np.asarray(num, float)), F.enc(np.asarray(den, float)), F.enc(N)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.findfreqs(num, den, N), float), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+zp_cases = [(np.array([-1.0]), np.array([-0.5+1j, -0.5-1j]), 10), (np.array([]), np.array([-2.0, -5.0]), 8)]
+for (zz, pp, N) in zp_cases:
+    ffq.append({'args': [F.enc(np.asarray(zz, complex)), F.enc(np.asarray(pp, complex)), F.enc(N), F.enc('zp')], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.findfreqs(zz, pp, N, kind='zp'), float), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -763,6 +783,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'cheby2', 'cases': cb2c, 'tol': {'atol': 1e-12}},
                  {'fn': 'ellip', 'cases': elc, 'tol': {'atol': 1e-12}},
                  {'fn': 'bessel', 'cases': bslc, 'tol': {'atol': 1e-12}},
+                 {'fn': 'lfiltic', 'cases': lfic, 'tol': {'atol': 1e-12}},
+                 {'fn': 'findfreqs', 'cases': ffq, 'tol': {'atol': 1e-12}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},
