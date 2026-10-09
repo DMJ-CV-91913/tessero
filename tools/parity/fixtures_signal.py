@@ -243,6 +243,16 @@ for (freq, order, numtaps, fs) in [(440, 4, 64, 16000), (1000, 4, 48, 8000), (25
     gmt.append({'args': [F.enc(freq), F.enc('fir'), F.enc(order), F.enc(numtaps), F.enc(fs)], 'kwargs': {},
                 'expect': F.enc_result((np.asarray(b, float), np.asarray(a, float)), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# check_COLA / check_NOLA: window-overlap constraints (window passed as an explicit array)
+cola, nola = [], []
+for (wname, nperseg, noverlap) in [('hann', 16, 8), ('hann', 16, 4), ('hamming', 20, 10), ('boxcar', 12, 6),
+                                   ('hann', 16, 3), ('bartlett', 18, 9), ('blackman', 24, 18)]:
+    win = sg.get_window(wname, nperseg, fftbins=True)
+    cola.append({'args': [F.enc(np.asarray(win, float)), F.enc(nperseg), F.enc(noverlap)], 'kwargs': {},
+                 'expect': F.enc_result(bool(sg.check_COLA(win, nperseg, noverlap)), []), 'compare': 'tol'})
+    nola.append({'args': [F.enc(np.asarray(win, float)), F.enc(nperseg), F.enc(noverlap)], 'kwargs': {},
+                 'expect': F.enc_result(bool(sg.check_NOLA(win, nperseg, noverlap)), []), 'compare': 'tol'})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -840,6 +850,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'max_len_seq', 'cases': mls},
                  {'fn': 'upfirdn', 'cases': ufd, 'tol': {'atol': 1e-11}},
                  {'fn': 'gammatone', 'cases': gmt, 'tol': {'atol': 1e-12}},
+                 {'fn': 'check_COLA', 'cases': cola}, {'fn': 'check_NOLA', 'cases': nola},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},
