@@ -5330,6 +5330,67 @@ static int r_peak_widths(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     return rc;
 }
 
+static int64_t rp_olen(int64_t lh, int64_t n_in, int64_t up, int64_t down) { return ((n_in - 1) * up + lh - 1) / down + 1; }
+
+/* resample_poly(x, up, down): polyphase resampling of a 1-D signal (scipy.signal.resample_poly) with the default
+   ('kaiser', 5.0) anti-alias FIR and constant (zero) padding. Designs h = firwin(2*half_len+1, 1/max(up,down),
+   kaiser) * up (half_len = 10*max(up,down)), zero-pads it to center the output, applies upfirdn and trims. */
+static int r_resample_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("resample_poly: x must be a 1-D array"); return TSR_EARG; }
+    if (args[1].kind != 1 || args[2].kind != 1) { fn_set_error("resample_poly: up and down must be integers"); return TSR_EARG; }
+    int64_t up = (int64_t)args[1].num, down = (int64_t)args[2].num;
+    if (up < 1 || down < 1) { fn_set_error("resample_poly: up and down must be >= 1"); return TSR_EARG; }
+    int64_t ga = up, gb = down; while (gb) { const int64_t t = ga % gb; ga = gb; gb = t; }
+    up /= ga; down /= ga;
+    int64_t lx; double *x = fn_arg_doubles(&args[0], &lx);
+    if (!x) return TSR_ENOMEM;
+    const int64_t n_in = args[0].arr.shape[0];
+    int rc = TSR_OK;
+    if (up == 1 && down == 1) {
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_in});
+        if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n_in; i++) out[i] = x[i];
+        fn_free_doubles(x, lx); return rc;
+    }
+    const int64_t n_out = (n_in * up) / down + ((n_in * up) % down ? 1 : 0);
+    const int64_t mr = up > down ? up : down, half_len = 10 * mr, N = 2 * half_len + 1;
+    const double alpha = (double)(N - 1) / 2.0, beta = 5.0, f_c = 1.0 / (double)mr;
+    double i0b; tsr_special_i0(NULL, &beta, &i0b);
+    double *h = (double *)malloc((size_t)N * sizeof(double));
+    rc = h ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        double hsum = 0.0;
+        for (int64_t n = 0; n < N; n++) {
+            const double m = (double)n - alpha;
+            const double s = (m == 0.0) ? 1.0 : sin(M_PI * f_c * m) / (M_PI * f_c * m);
+            const double r = m / alpha, arg = beta * sqrt(1.0 - r * r);
+            double i0a; tsr_special_i0(NULL, &arg, &i0a);
+            h[n] = f_c * s * (i0a / i0b);
+            hsum += h[n];
+        }
+        for (int64_t n = 0; n < N; n++) h[n] = h[n] / hsum * (double)up;
+        const int64_t npre = down - half_len % down;
+        int64_t npost = 0;
+        const int64_t nrem = (half_len + npre) / down;
+        while (rp_olen(N + npre + npost, n_in, up, down) < n_out + nrem) npost++;
+        const int64_t L = (n_in - 1) * up + 1;
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_out});
+        if (!out) rc = TSR_ENOMEM;
+        else for (int64_t oi = 0; oi < n_out; oi++) {
+            const int64_t mm = (oi + nrem) * down;           /* full-convolution index */
+            double acc = 0.0;
+            for (int64_t jj = 0; jj < N; jj++) {             /* h is nonzero only over the N taps at offset npre */
+                const int64_t p = mm - (npre + jj);
+                if (p >= 0 && p < L && p % up == 0) acc += h[jj] * x[p / up];
+            }
+            out[oi] = acc;
+        }
+    }
+    free(h); fn_free_doubles(x, lx);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5464,6 +5525,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.czt_points", 1, "m, w=None, a=1", "out", r_czt_points, NULL, "Points at which the chirp z-transform is sampled, default equally spaced on the unit circle (scipy.signal.czt_points)."),
     ROUTINE("signal.peak_prominences", 3, "x, peaks, wlen=-1", "prominences, left_bases, right_bases", r_peak_prominences, NULL, "Prominence and base indices of each peak in a signal (scipy.signal.peak_prominences)."),
     ROUTINE("signal.peak_widths", 4, "x, peaks, rel_height=0.5, prominence_data=None, wlen=None", "widths, width_heights, left_ips, right_ips", r_peak_widths, NULL, "Width of each peak at a relative height of its prominence (scipy.signal.peak_widths)."),
+    ROUTINE("signal.resample_poly", 1, "x, up, down, axis=0, window='kaiser', padtype='constant', cval=None", "out", r_resample_poly, NULL, "Polyphase (up/down) resampling of a 1-D signal with the default kaiser FIR (scipy.signal.resample_poly)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),

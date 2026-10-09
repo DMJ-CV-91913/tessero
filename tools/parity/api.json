@@ -3191,6 +3191,12 @@
                 "doc": "Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None)."
             },
             {
+                "name": "resamplePoly",
+                "static": true,
+                "sig": "resamplePoly(mixed $x, mixed $up, mixed $down, mixed $axis = 0, mixed $window = 'kaiser', mixed $padtype = 'constant', mixed $cval = null): mixed",
+                "doc": "Polyphase (up/down) resampling of a 1-D signal with the default kaiser FIR (scipy.signal.resample_poly)."
+            },
+            {
                 "name": "residue",
                 "static": true,
                 "sig": "residue(mixed $b, mixed $a, mixed $tol = 0.001, mixed $rtype = 'avg'): mixed",
@@ -16609,6 +16615,12 @@
                 "name": "peakWidths",
                 "static": true,
                 "sig": "peakWidths($x, $peaks, $relHeight = 0.5, $prominenceData = null, $wlen = null)",
+                "doc": ""
+            },
+            {
+                "name": "resamplePoly",
+                "static": true,
+                "sig": "resamplePoly($x, $up, $down, $axis = 0, $window = 'kaiser', $padtype = 'constant', $cval = null)",
                 "doc": ""
             },
             {
