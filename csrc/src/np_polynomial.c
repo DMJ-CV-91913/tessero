@@ -907,7 +907,7 @@ static int rb_roots(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int
     int rc = c ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {
         if (nc <= 1) { int64_t sh[1] = {0}; if (!fn_result_array(r, TSR_F64, 1, sh)) rc = TSR_ENOMEM; }
-        else if (nc == 2) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = -c[0] / c[1]; }
+        else if (nc == 2) { double M1; B->companion(c, 2, &M1); double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = M1; }
         else { int64_t m = nc - 1; double *M = malloc(m * m * sizeof(double)), *wr = malloc(m * sizeof(double)), *wi = malloc(m * sizeof(double));
             if (!M || !wr || !wi) rc = TSR_ENOMEM;
             else { B->companion(c, nc, M);
@@ -1222,6 +1222,180 @@ static int r_legone(const void *x, const tsr_arg *a, int n, tsr_result *r, int n
 static int r_legx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {0, 1}; return npoly_iconst(r, v, 2); }
 static int r_legdomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = -1.0; o[1] = 1.0; return TSR_OK; }
 
+/* ---- laguerre primitives (domain [0, 1], weight exp(-x)) ------------------------------------------------- */
+static int64_t lag_mulx(const double *c, int64_t n, double *out)
+{
+    if (n == 1 && c[0] == 0.0) { out[0] = 0.0; return 1; }
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[0] = c[0]; out[1] = -c[0];
+    for (int64_t i = 1; i < n; i++) { out[i + 1] = -c[i] * (i + 1.0); out[i] += c[i] * (2.0 * i + 1.0); out[i - 1] -= c[i] * (double)i; }
+    return n + 1;
+}
+/* NumPy lagmul: Clenshaw product; the c1 update and the final combine both carry a bare-c1 term. */
+static int64_t lag_mul(const double *A, int64_t nA, const double *Bv, int64_t nB, double *out)
+{
+    const double *c, *xs; int64_t nc, nxs;
+    if (nA > nB) { c = Bv; nc = nB; xs = A; nxs = nA; } else { c = A; nc = nA; xs = Bv; nxs = nB; }
+    int64_t cap = nA + nB + 2;
+    double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double)), *nc1 = calloc(cap, sizeof(double));
+    int64_t ret = -1;
+    if (c0 && c1 && tmp && mx && nc1) {
+        int64_t l0, l1;
+        if (nc == 1) { for (int64_t k = 0; k < nxs; k++) c0[k] = c[0] * xs[k]; l0 = nxs; c1[0] = 0.0; l1 = 1; }
+        else {
+            for (int64_t k = 0; k < nxs; k++) { c0[k] = c[nc - 2] * xs[k]; c1[k] = c[nc - 1] * xs[k]; } l0 = nxs; l1 = nxs;
+            double nd = (double)nc;
+            for (int64_t i = 3; i <= nc; i++) {
+                int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                nd -= 1.0;
+                double f = (nd - 1.0) / nd, sc = c[nc - i]; int64_t nl0 = nxs > l1 ? nxs : l1;
+                for (int64_t k = 0; k < nl0; k++) c0[k] = (k < nxs ? sc * xs[k] : 0.0) - (k < l1 ? f * c1[k] : 0.0);
+                l0 = nl0;
+                int64_t lm = lag_mulx(c1, l1, mx); double g = 2.0 * nd - 1.0;      /* c1 = tmp + ((2nd-1)*c1 - mulx(c1))/nd */
+                int64_t nl1 = lt > l1 ? lt : l1; if (lm > nl1) nl1 = lm;
+                for (int64_t k = 0; k < nl1; k++) nc1[k] = (k < lt ? tmp[k] : 0.0) + ((k < l1 ? g * c1[k] : 0.0) - (k < lm ? mx[k] : 0.0)) / nd;
+                for (int64_t k = 0; k < nl1; k++) c1[k] = nc1[k];
+                l1 = nl1;
+            }
+        }
+        int64_t lm = lag_mulx(c1, l1, mx);                                          /* out = c0 + (c1 - mulx(c1)) */
+        int64_t nr = l0 > l1 ? l0 : l1; if (lm > nr) nr = lm;
+        for (int64_t k = 0; k < nr; k++) out[k] = (k < l0 ? c0[k] : 0.0) + (k < l1 ? c1[k] : 0.0) - (k < lm ? mx[k] : 0.0);
+        ret = nr;
+    }
+    free(c0); free(c1); free(tmp); free(mx); free(nc1);
+    return ret;
+}
+static int64_t lag_der(const double *c, int64_t n, double scl, double *out)
+{
+    if (n == 1) { out[0] = 0.0; return 1; }
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i] * scl;
+    int64_t nn = n - 1;
+    for (int64_t i = 0; i < nn; i++) out[i] = 0.0;
+    for (int64_t j = nn; j >= 2; j--) { out[j - 1] = -cc[j]; cc[j - 1] += cc[j]; }
+    out[0] = -cc[1];
+    free(cc);
+    return nn;
+}
+static int64_t lag_integ(const double *c, int64_t n, double scl, double *out)
+{
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i] * scl;
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[0] = cc[0]; out[1] = -cc[0];
+    for (int64_t j = 1; j < n; j++) { out[j] += cc[j]; out[j + 1] = -cc[j]; }
+    out[0] += -npoly_eval(NB_LAG, out, n + 1, 0.0);
+    free(cc);
+    return n + 1;
+}
+static int64_t lag_line(double off, double scl, double *out) { if (scl != 0.0) { out[0] = off + scl; out[1] = -scl; return 2; } out[0] = off; return 1; }
+static void lag_vander(const double *x, int64_t nx, int64_t deg, double *V)
+{
+    int64_t w = deg + 1;
+    for (int64_t i = 0; i < nx; i++) { double *rr = V + i * w; rr[0] = 1.0;
+        if (deg > 0) { rr[1] = 1.0 - x[i]; for (int64_t j = 2; j <= deg; j++) rr[j] = (rr[j - 1] * (2.0 * j - 1.0 - x[i]) - rr[j - 2] * (j - 1.0)) / (double)j; } }
+}
+static void lag_companion(const double *c, int64_t n, double *M)
+{
+    int64_t m = n - 1;
+    if (m == 1) { M[0] = 1.0 + c[0] / c[1]; return; }
+    for (int64_t i = 0; i < m * m; i++) M[i] = 0.0;
+    for (int64_t i = 0; i < m; i++) M[i * m + i] = 2.0 * i + 1.0;
+    for (int64_t i = 0; i < m - 1; i++) { double v = -(i + 1.0); M[i * m + (i + 1)] = v; M[(i + 1) * m + i] = v; }
+    for (int64_t i = 0; i < m; i++) M[i * m + (m - 1)] += (c[i] / c[n - 1]) * (double)m;
+}
+static const pbasis LAG = {NB_LAG, "lag", lag_mulx, lag_mul, lag_der, lag_integ, lag_line, lag_vander, lag_companion};
+
+static int r_lag2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (nc == 1) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = c[0]; }
+        else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+            if (!c0 || !c1 || !tmp || !mx) rc = TSR_ENOMEM;
+            else { int64_t l0 = 1, l1 = 1; c0[0] = c[nc - 2]; c1[0] = c[nc - 1];
+                for (int64_t i = nc - 1; i >= 2; i--) {
+                    int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                    double f = (i - 1.0) / (double)i; int64_t ns = l1;                                 /* c0 = polysub([c[i-2]], c1*f) */
+                    for (int64_t k = 0; k < ns; k++) c0[k] = (k == 0 ? c[i - 2] : 0.0) - c1[k] * f;
+                    l0 = ns > 1 ? ns : 1;
+                    /* c1 = polyadd(tmp, polysub((2i-1)*c1, polymulx(c1))/i) */
+                    int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;
+                    if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k]; }
+                    double g = 2.0 * i - 1.0; int64_t ld = l1 > lmx ? l1 : lmx;                         /* (2i-1)*c1 - mulx(c1) */
+                    int64_t ln = lt > ld ? lt : ld;
+                    for (int64_t k = 0; k < ln; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + ((k < l1 ? g * c1[k] : 0.0) - (k < lmx ? mx[k] : 0.0)) / (double)i;
+                    l1 = ln;
+                }
+                int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;                                   /* out = polyadd(c0, polysub(c1, polymulx(c1))) */
+                if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k]; }
+                int64_t ld = l1 > lmx ? l1 : lmx; int64_t lr = l0 > ld ? l0 : ld; double *o = npoly_out1(r, lr);
+                if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = (k < l0 ? c0[k] : 0.0) + (k < l1 ? c1[k] : 0.0) - (k < lmx ? mx[k] : 0.0);
+            }
+            free(c0); free(c1); free(tmp); free(mx); }
+    }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int r_poly2lag(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
+    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
+        if (!res || !mx) rc = TSR_ENOMEM;
+        else { int64_t lr = 1; res[0] = 0.0;
+            for (int64_t i = nc - 1; i >= 0; i--) { int64_t lm = lag_mulx(res, lr, mx); for (int64_t k = 0; k < lm; k++) res[k] = mx[k]; res[0] += pol[i]; lr = lm; }
+            double *o = npoly_out1(r, lr); if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = res[k]; }
+        free(res); free(mx); }
+    fn_free_doubles(pol, nc);
+    return rc;
+}
+/* laggauss: eigenvalues of the symmetric companion, one Newton step, weights normalized to sum 1. */
+static int r_laggauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
+    if (m < 1) { fn_set_error("npoly.laggauss: deg must be >= 1"); return TSR_EARG; }
+    double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
+    if (!xo || !wo) return TSR_ENOMEM;
+    double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
+    double *cder = calloc(m > 0 ? m : 1, sizeof(double)); if (c && cder) lag_der(c, m + 1, 1.0, cder);
+    double *comp = calloc(m * m, sizeof(double)), *ev = malloc(m * sizeof(double)), *df = malloc(m * sizeof(double)), *fm = malloc(m * sizeof(double));
+    int rc = (c && cder && comp && ev && df && fm) ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { lag_companion(c, m + 1, comp);
+        if (m == 1) ev[0] = comp[0];
+        else if (LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'N', 'L', (lapack_int)m, comp, (lapack_int)m, ev) != 0) { fn_set_error("npoly.laggauss: eigenvalue solve failed"); rc = TSR_ECONVERGE; } }
+    if (rc == TSR_OK) {
+        double fmax = 0.0, dmax = 0.0, wsum = 0.0;
+        for (int64_t k = 0; k < m; k++) { double dy = npoly_eval(NB_LAG, c, m + 1, ev[k]); df[k] = npoly_eval(NB_LAG, cder, m, ev[k]); ev[k] -= dy / df[k]; }
+        for (int64_t k = 0; k < m; k++) { fm[k] = npoly_eval(NB_LAG, c + 1, m, ev[k]); if (fabs(fm[k]) > fmax) fmax = fabs(fm[k]); if (fabs(df[k]) > dmax) dmax = fabs(df[k]); }
+        for (int64_t k = 0; k < m; k++) { wo[k] = 1.0 / ((fm[k] / fmax) * (df[k] / dmax)); wsum += wo[k]; xo[k] = ev[k]; }
+        for (int64_t k = 0; k < m; k++) wo[k] /= wsum;
+    }
+    free(c); free(cder); free(comp); free(ev); free(df); free(fm);
+    return rc;
+}
+static int r_lagweight(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly.lagweight: x must be an array"); return TSR_EARG; }
+    int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
+    const tsr_array *xa = &a[0].arr; double *out = xs ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t i = 0; i < lx; i++) out[i] = exp(-xs[i]);
+    fn_free_doubles(xs, lx);
+    return rc;
+}
+static int r_lagzero(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {0}; return npoly_iconst(r, v, 1); }
+static int r_lagone(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)  { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {1}; return npoly_iconst(r, v, 1); }
+static int r_lagx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {1, -1}; return npoly_iconst(r, v, 2); }
+static int r_lagdomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = 0.0; o[1] = 1.0; return TSR_OK; }
+
 static const fn_def DEFS[] = {
     ROUTINE("npoly.polyval", 1, "x, c", "out", r_polyval, NULL, "Evaluate a power-series polynomial at x (numpy.polynomial.polynomial.polyval)."),
     ROUTINE("npoly.chebval", 1, "x, c", "out", r_chebval, NULL, "Evaluate a Chebyshev series at x (numpy.polynomial.chebyshev.chebval)."),
@@ -1325,6 +1499,37 @@ static const fn_def DEFS[] = {
     ROUTINE("npoly.legone", 1, "", "out", r_legone, NULL, "The one Legendre series (numpy.polynomial.legendre.legone)."),
     ROUTINE("npoly.legx", 1, "", "out", r_legx, NULL, "The identity Legendre series x (numpy.polynomial.legendre.legx)."),
     ROUTINE("npoly.legdomain", 1, "", "out", r_legdomain, NULL, "The default Legendre domain [-1, 1] (numpy.polynomial.legendre.legdomain)."),
+
+    /* numpy.polynomial.laguerre */
+    ROUTINE("npoly.lagadd", 1, "c1, c2", "out", rb_add, NULL, "Sum of two Laguerre series (numpy.polynomial.laguerre.lagadd)."),
+    ROUTINE("npoly.lagsub", 1, "c1, c2", "out", rb_sub, NULL, "Difference of two Laguerre series (numpy.polynomial.laguerre.lagsub)."),
+    ROUTINE("npoly.lagmul", 1, "c1, c2", "out", rb_mul, &LAG, "Product of two Laguerre series (numpy.polynomial.laguerre.lagmul)."),
+    ROUTINE("npoly.lagmulx", 1, "c", "out", rb_mulx, &LAG, "Multiply a Laguerre series by x (numpy.polynomial.laguerre.lagmulx)."),
+    ROUTINE("npoly.lagpow", 1, "c, pow, maxpower=16", "out", rb_pow, &LAG, "Laguerre series raised to a power (numpy.polynomial.laguerre.lagpow)."),
+    ROUTINE("npoly.lagdiv", 2, "c1, c2", "quo, rem", rb_div, &LAG, "Quotient and remainder of Laguerre-series division (numpy.polynomial.laguerre.lagdiv)."),
+    ROUTINE("npoly.lagder", 1, "c, m=1, scl=1", "out", rb_der, &LAG, "Derivative of a Laguerre series (numpy.polynomial.laguerre.lagder)."),
+    ROUTINE("npoly.lagint", 1, "c, m=1, k=0, lbnd=0, scl=1", "out", rb_int, &LAG, "Antiderivative of a Laguerre series (numpy.polynomial.laguerre.lagint)."),
+    ROUTINE("npoly.lagfromroots", 1, "roots", "out", rb_fromroots, &LAG, "Laguerre series with the given roots (numpy.polynomial.laguerre.lagfromroots)."),
+    ROUTINE("npoly.lagline", 1, "off, scl", "out", rb_line, &LAG, "Laguerre series for off + scl*x (numpy.polynomial.laguerre.lagline)."),
+    ROUTINE("npoly.lagtrim", 1, "c, tol=0", "out", rb_trim, NULL, "Trim trailing small coefficients (numpy.polynomial.laguerre.lagtrim)."),
+    ROUTINE("npoly.lagvander", 1, "x, deg", "out", rb_vander, &LAG, "Pseudo-Vandermonde matrix of the Laguerre basis (numpy.polynomial.laguerre.lagvander)."),
+    ROUTINE("npoly.lagval2d", 1, "x, y, c", "out", rb_val2d, &LAG, "Evaluate a 2-D Laguerre series (numpy.polynomial.laguerre.lagval2d)."),
+    ROUTINE("npoly.lagval3d", 1, "x, y, z, c", "out", rb_val3d, &LAG, "Evaluate a 3-D Laguerre series (numpy.polynomial.laguerre.lagval3d)."),
+    ROUTINE("npoly.laggrid2d", 1, "x, y, c", "out", rb_grid2d, &LAG, "Evaluate a Laguerre series on a 2-D grid (numpy.polynomial.laguerre.laggrid2d)."),
+    ROUTINE("npoly.laggrid3d", 1, "x, y, z, c", "out", rb_grid3d, &LAG, "Evaluate a Laguerre series on a 3-D grid (numpy.polynomial.laguerre.laggrid3d)."),
+    ROUTINE("npoly.lagvander2d", 1, "x, y, deg", "out", rb_vander2d, &LAG, "Pseudo-Vandermonde matrix of a 2-D Laguerre basis (numpy.polynomial.laguerre.lagvander2d)."),
+    ROUTINE("npoly.lagvander3d", 1, "x, y, z, deg", "out", rb_vander3d, &LAG, "Pseudo-Vandermonde matrix of a 3-D Laguerre basis (numpy.polynomial.laguerre.lagvander3d)."),
+    ROUTINE("npoly.lagcompanion", 1, "c", "out", rb_companion, &LAG, "Companion matrix of a Laguerre series (numpy.polynomial.laguerre.lagcompanion)."),
+    ROUTINE("npoly.lagroots", 1, "c", "out", rb_roots, &LAG, "Roots of a Laguerre series (numpy.polynomial.laguerre.lagroots)."),
+    ROUTINE("npoly.lagfit", 1, "x, y, deg", "out", rb_fit, &LAG, "Least-squares Laguerre-series fit (numpy.polynomial.laguerre.lagfit)."),
+    ROUTINE("npoly.lag2poly", 1, "c", "out", r_lag2poly, NULL, "Convert a Laguerre series to a power series (numpy.polynomial.laguerre.lag2poly)."),
+    ROUTINE("npoly.poly2lag", 1, "pol", "out", r_poly2lag, NULL, "Convert a power series to a Laguerre series (numpy.polynomial.laguerre.poly2lag)."),
+    ROUTINE("npoly.laggauss", 2, "deg", "x, w", r_laggauss, NULL, "Gauss-Laguerre quadrature nodes and weights (numpy.polynomial.laguerre.laggauss)."),
+    ROUTINE("npoly.lagweight", 1, "x", "out", r_lagweight, NULL, "Laguerre weight exp(-x) (numpy.polynomial.laguerre.lagweight)."),
+    ROUTINE("npoly.lagzero", 1, "", "out", r_lagzero, NULL, "The zero Laguerre series (numpy.polynomial.laguerre.lagzero)."),
+    ROUTINE("npoly.lagone", 1, "", "out", r_lagone, NULL, "The one Laguerre series (numpy.polynomial.laguerre.lagone)."),
+    ROUTINE("npoly.lagx", 1, "", "out", r_lagx, NULL, "The identity Laguerre series x (numpy.polynomial.laguerre.lagx)."),
+    ROUTINE("npoly.lagdomain", 1, "", "out", r_lagdomain, NULL, "The default Laguerre domain [0, 1] (numpy.polynomial.laguerre.lagdomain)."),
 };
 
 const fn_table TSR_NP_POLYNOMIAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
