@@ -133,6 +133,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.nansum` | `Tessero\Np::nansum()` |
 | `numpy.nanvar` | `Tessero\Np::nanvar()` |
 | `numpy.ndim` | `Tessero\Np::ndim()` |
+| `numpy.newton_cotes` | `Tessero\Np::newtonCotes()` |
 | `numpy.nonzero` | `Tessero\Np::nonzero()` |
 | `numpy.ones_like` | `Tessero\Np::onesLike()` |
 | `numpy.outer` | `Tessero\Np::outer()` |
@@ -163,6 +164,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.right_shift` | `Tessero\Np::rightShift()` |
 | `numpy.roll` | `Tessero\Np::roll()` |
 | `numpy.rollaxis` | `Tessero\Np::rollaxis()` |
+| `numpy.romb` | `Tessero\Np::romb()` |
 | `numpy.roots` | `Tessero\Np::roots()` |
 | `numpy.rot90` | `Tessero\Np::rot90()` |
 | `numpy.round` | `Tessero\Np::round()` |
