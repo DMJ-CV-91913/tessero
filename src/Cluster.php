@@ -18,6 +18,7 @@ final class Cluster
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'kmeans2' => 'kmeans2',
     'vq' => 'vq',
     'whiten' => 'whiten',
     ];
@@ -36,6 +37,18 @@ final class Cluster
         }
 
         return self::{self::FUNCTIONS[$name]}(...$args);
+    }
+
+    /**
+     * k-means clustering from explicit initial centroids (minit='matrix'); returns centroids and labels (scipy.cluster.vq.kmeans2).
+     *
+     * scipy.cluster.kmeans2
+     *
+     * @return mixed one array, or an array keyed by centroid, label when several results are requested
+     */
+    public static function kmeans2(mixed $data, mixed $k, mixed $iter = 10, mixed $thresh = 1e-5, mixed $minit = 'matrix', mixed $missing = 'warn'): mixed
+    {
+        return Registry::routine('cluster.kmeans2', [$data, $k, $iter, $thresh, $minit, $missing]);
     }
 
     /**

@@ -65,8 +65,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1081,
-  "ffi": 1081
+  "ext": 1082,
+  "ffi": 1082
  },
  "groups": {
   "NumPy core": {
@@ -86,20 +86,20 @@
    "verified_ffi": 458
   },
   "SciPy": {
-   "both": 1037,
+   "both": 1038,
    "excluded": 60,
-   "impl_ext": 1037,
-   "impl_ffi": 1041,
+   "impl_ext": 1038,
+   "impl_ffi": 1042,
    "in_scope": 1502,
-   "m2_ext": 69.0,
-   "m2_ffi": 69.3,
+   "m2_ext": 69.1,
+   "m2_ffi": 69.4,
    "m3": 3.8,
-   "m4_ext": 69.0,
-   "m4_ffi": 69.3,
+   "m4_ext": 69.1,
+   "m4_ffi": 69.4,
    "m5": 99.6,
    "symbols": 1562,
-   "verified_ext": 1037,
-   "verified_ffi": 1041
+   "verified_ext": 1038,
+   "verified_ffi": 1042
   }
  },
  "modules": {
@@ -232,20 +232,20 @@
    "verified_ffi": 0
   },
   "scipy.cluster.vq": {
-   "both": 2,
+   "both": 3,
    "excluded": 0,
-   "impl_ext": 2,
-   "impl_ffi": 2,
+   "impl_ext": 3,
+   "impl_ffi": 3,
    "in_scope": 4,
-   "m2_ext": 50.0,
-   "m2_ffi": 50.0,
+   "m2_ext": 75.0,
+   "m2_ffi": 75.0,
    "m3": 0.0,
-   "m4_ext": 50.0,
-   "m4_ffi": 50.0,
+   "m4_ext": 75.0,
+   "m4_ffi": 75.0,
    "m5": 100.0,
    "symbols": 4,
-   "verified_ext": 2,
-   "verified_ffi": 2
+   "verified_ext": 3,
+   "verified_ffi": 3
   },
   "scipy.constants": {
    "both": 158,
@@ -505,7 +505,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1084,
+ "registry_functions": 1085,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -515,9 +515,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 39889,
-   "covered_ext": 39889,
-   "covered_ffi": 39899,
+   "covered_both": 39890,
+   "covered_ext": 39890,
+   "covered_ffi": 39900,
    "excluded_calls": 2327,
    "excluded_share": 5.5,
    "in_scope_calls": 40221,
@@ -594,9 +594,9 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2152,
-    "covered_ext": 2152,
-    "covered_ffi": 2160,
+    "covered_both": 2153,
+    "covered_ext": 2153,
+    "covered_ffi": 2161,
     "excluded_calls": 374,
     "excluded_share": 13.6,
     "in_scope_calls": 2374,
@@ -614,9 +614,9 @@
       "n": 25
      },
      "250": {
-      "both": 191,
-      "ext": 191,
-      "ffi": 193,
+      "both": 192,
+      "ext": 192,
+      "ffi": 194,
       "n": 250
      },
      "50": {
@@ -626,8 +626,8 @@
       "n": 50
      }
     },
-    "u_both": 90.6,
-    "u_ext": 90.6,
+    "u_both": 90.7,
+    "u_ext": 90.7,
     "u_ffi": 91.0
    }
   },

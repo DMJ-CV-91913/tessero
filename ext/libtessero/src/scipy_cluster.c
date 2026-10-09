@@ -9,6 +9,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* whiten(obs): divide each column of the (nobs, nfeat) matrix by its population standard deviation (ddof=0);
    columns whose std is zero are left unchanged (std treated as 1), matching scipy.cluster.vq.whiten. */
@@ -67,9 +68,55 @@ static int r_vq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res
     return rc;
 }
 
+/* kmeans2(data, k, iter=10, thresh=1e-5, minit='matrix', missing='warn'): k-means with explicit initial centroids
+   (minit='matrix' only; k is the (nc, nfeat) initial code book) (scipy.cluster.vq.kmeans2). Runs `iter` Lloyd
+   iterations -- assign each observation to the nearest centroid, then recompute each centroid as the mean of its
+   members (empty clusters keep their previous centroid, missing='warn') -- returning the final centroids and the
+   labels from the last assignment (one step behind the centroids, exactly as scipy). */
+static int r_kmeans2(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("kmeans2: data and k (the initial centroids, minit='matrix') must be 2-D arrays"); return TSR_EARG; }
+    if (nargs > 4 && args[4].kind == 2 && args[4].str && strcmp(args[4].str, "matrix") != 0) { fn_set_error("kmeans2: only minit='matrix' (explicit initial centroids) is supported here"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], f = args[0].arr.shape[1], nc = args[1].arr.shape[0];
+    if (args[1].arr.shape[1] != f) { fn_set_error("kmeans2: data and k must have the same number of features"); return TSR_EARG; }
+    const int iter = (nargs > 2 && args[2].kind == 1) ? (int)args[2].num : 10;
+    int64_t ld, lk;
+    double *data = fn_arg_doubles(&args[0], &ld), *init = data ? fn_arg_doubles(&args[1], &lk) : NULL;
+    double *cb = init ? (double *)malloc((size_t)(nc * f) * sizeof(double)) : NULL;
+    double *sums = cb ? (double *)malloc((size_t)(nc * f) * sizeof(double)) : NULL;
+    int64_t *counts = sums ? (int64_t *)malloc((size_t)nc * sizeof(int64_t)) : NULL;
+    int64_t *label = counts ? (int64_t *)fn_result_array(&res[1], TSR_I64, 1, (int64_t[]){n}) : NULL;
+    int rc = (!data || !init || !cb || !sums || !counts || !label) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < nc * f; i++) cb[i] = init[i];
+        for (int t = 0; t < iter; t++) {
+            for (int64_t i = 0; i < n; i++) {                       /* assign to nearest centroid */
+                int64_t best = 0; double bestd = -1.0;
+                for (int64_t c = 0; c < nc; c++) {
+                    double s = 0.0;
+                    for (int64_t j = 0; j < f; j++) { const double d = data[i * f + j] - cb[c * f + j]; s += d * d; }
+                    if (bestd < 0.0 || s < bestd) { bestd = s; best = c; }
+                }
+                label[i] = best;
+            }
+            for (int64_t c = 0; c < nc; c++) { counts[c] = 0; for (int64_t j = 0; j < f; j++) sums[c * f + j] = 0.0; }
+            for (int64_t i = 0; i < n; i++) { const int64_t c = label[i]; counts[c]++; for (int64_t j = 0; j < f; j++) sums[c * f + j] += data[i * f + j]; }
+            for (int64_t c = 0; c < nc; c++) if (counts[c] > 0) for (int64_t j = 0; j < f; j++) cb[c * f + j] = sums[c * f + j] / (double)counts[c];
+        }
+        double *cout = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){nc, f});
+        if (!cout) rc = TSR_ENOMEM;
+        else for (int64_t i = 0; i < nc * f; i++) cout[i] = cb[i];
+    }
+    free(cb); free(sums); free(counts);
+    fn_free_doubles(data, ld); fn_free_doubles(init, lk);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("cluster.whiten", 1, "obs", "out", r_whiten, NULL, "Normalize observations per feature by their population standard deviation (scipy.cluster.vq.whiten)."),
     ROUTINE("cluster.vq", 2, "obs, code_book", "code, dist", r_vq, NULL, "Assign each observation to the nearest code-book vector by Euclidean distance (scipy.cluster.vq.vq)."),
+    ROUTINE("cluster.kmeans2", 2, "data, k, iter=10, thresh=1e-5, minit='matrix', missing='warn'", "centroid, label", r_kmeans2, NULL, "k-means clustering from explicit initial centroids (minit='matrix'); returns centroids and labels (scipy.cluster.vq.kmeans2)."),
 };
 
 const fn_table TSR_SCIPY_CLUSTER_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

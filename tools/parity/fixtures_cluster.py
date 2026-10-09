@@ -4,13 +4,13 @@ Deterministic arithmetic over the observation matrix; generated in the pinned en
 the other scipy groups."""
 import json, os
 import numpy as np
-from scipy.cluster.vq import whiten, vq
+from scipy.cluster.vq import whiten, vq, kmeans2
 import fixtures_np as F  # enc / enc_result / fixture_env
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'cluster.json')
 rng = np.random.default_rng(20261008)
 
-wht, vqc = [], []
+wht, vqc, km2 = [], [], []
 
 # whiten: several shapes, including a column with zero variance (left unchanged)
 for (n, f) in ((6, 3), (10, 2), (8, 4)):
@@ -27,8 +27,18 @@ for (n, f, k) in ((12, 2, 3), (15, 3, 4), (9, 4, 2)):
     vqc.append({'args': [F.enc(obs), F.enc(cb)], 'kwargs': {},
                 'expect': F.enc_result((np.asarray(code, dtype=np.int64), np.asarray(dist, float)), ['code', 'dist']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# kmeans2 (minit='matrix', deterministic): Lloyd iterations from explicit initial centroids on well-separated
+# blobs (all clusters stay non-empty, assignments stable). Returns centroids and labels.
+for (nper, f, k) in ((20, 2, 3), (25, 3, 4), (15, 4, 2)):
+    centers = rng.uniform(-10.0, 10.0, (k, f))
+    data = np.vstack([centers[i] + 0.4 * rng.normal(size=(nper, f)) for i in range(k)])
+    init = centers + 0.5 * rng.normal(size=(k, f))
+    cent, lbl = kmeans2(data, init, minit='matrix')
+    km2.append({'args': [F.enc(data), F.enc(init), F.enc(10), F.enc(1e-5), F.enc('matrix')], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(cent, float), np.asarray(lbl, dtype=np.int64)), ['centroid', 'label']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 out = {'module': 'cluster', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
-       'calls': [{'fn': 'whiten', 'cases': wht}, {'fn': 'vq', 'cases': vqc}]}
+       'calls': [{'fn': 'whiten', 'cases': wht}, {'fn': 'vq', 'cases': vqc}, {'fn': 'kmeans2', 'cases': km2}]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
-print(f'cluster: whiten {len(wht)}, vq {len(vqc)} cases')
+print(f'cluster: whiten {len(wht)}, vq {len(vqc)}, kmeans2 {len(km2)} cases')
