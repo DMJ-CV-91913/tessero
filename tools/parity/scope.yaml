@@ -60,6 +60,8 @@ phases:
   numpy.polynomial.chebyshev: 6
   numpy.polynomial.legendre: 6
   numpy.polynomial.laguerre: 6
+  numpy.polynomial.hermite: 6
+  numpy.polynomial.hermite_e: 6
   numpy.random: 3
   numpy.random.Generator: 3
   numpy.ndarray: 4
