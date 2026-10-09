@@ -28,13 +28,13 @@ ALIAS = {
     "XR": "Tessero\\Ext\\Random\\Generator", "NP": "Tessero\\Np", "SP": "Tessero\\Special", "ST": "Tessero\\Stats",
     "XNP": "Tessero\\Ext\\Np", "XSP": "Tessero\\Ext\\Special", "XST": "Tessero\\Ext\\Stats",
     "SL": "Tessero\\ScipyLinalg", "DST": "Tessero\\Distance", "SIG": "Tessero\\Signal",
-    "NDI": "Tessero\\Ndimage", "CSG": "Tessero\\Csgraph", "IP": "Tessero\\Interpolate", "Q": "Tessero\\Integrate\\Quad",
+    "NDI": "Tessero\\Ndimage", "CSG": "Tessero\\Csgraph", "IP": "Tessero\\Interpolate", "CL": "Tessero\\Cluster", "Q": "Tessero\\Integrate\\Quad",
     "KD": "Tessero\\Spatial\\KDTree", "DT": "Tessero\\Datetime\\Datetime",
     "SW": "Tessero\\SignalWindows", "Const": "Tessero\\Constants",
     # native-extension registry facades (kernel-backed, so they mirror the FFI classes on the extension)
     "XL": "Tessero\\Ext\\Linalg", "XSL": "Tessero\\Ext\\ScipyLinalg", "XF": "Tessero\\Ext\\Fft\\Fft",
     "XSIG": "Tessero\\Ext\\Signal", "XSW": "Tessero\\Ext\\SignalWindows", "XDST": "Tessero\\Ext\\Distance",
-    "XNDI": "Tessero\\Ext\\Ndimage", "XCSG": "Tessero\\Ext\\Csgraph", "XIP": "Tessero\\Ext\\Interpolate",
+    "XNDI": "Tessero\\Ext\\Ndimage", "XCSG": "Tessero\\Ext\\Csgraph", "XIP": "Tessero\\Ext\\Interpolate", "XCL": "Tessero\\Ext\\Cluster",
 }
 
 # (area, [(name, ffi refs, ext refs, note)])
