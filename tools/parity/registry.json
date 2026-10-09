@@ -1,5 +1,15 @@
 {
     "functions": {
+        "cluster.vq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "cluster.whiten": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "csgraph.bellman_ford": {
             "kind": "routine",
             "nin": 0,

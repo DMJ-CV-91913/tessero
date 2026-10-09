@@ -3996,6 +3996,32 @@
         ]
     },
     {
+        "class": "Tessero\\Cluster",
+        "methods": [
+            {
+                "name": "apply",
+                "static": true,
+                "sig": "apply(string $name, mixed ...$args): mixed",
+                "doc": "Call a function by its SciPy/NumPy name: Cluster::apply('log_ndtr', $x)."
+            },
+            {
+                "name": "vq",
+                "static": true,
+                "sig": "vq(mixed $obs, mixed $codeBook): mixed",
+                "doc": "Assign each observation to the nearest code-book vector by Euclidean distance (scipy.cluster.vq.vq)."
+            },
+            {
+                "name": "whiten",
+                "static": true,
+                "sig": "whiten(mixed $obs): mixed",
+                "doc": "Normalize observations per feature by their population standard deviation (scipy.cluster.vq.whiten)."
+            }
+        ],
+        "constants": [
+            "FUNCTIONS"
+        ]
+    },
+    {
         "class": "Tessero\\Random\\Generator",
         "methods": [
             {
@@ -17268,6 +17294,23 @@
                 "name": "makeLsqSpline",
                 "static": true,
                 "sig": "makeLsqSpline($x, $y, $t, $k, $xnew)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Ext\\Cluster",
+        "methods": [
+            {
+                "name": "whiten",
+                "static": true,
+                "sig": "whiten($obs)",
+                "doc": ""
+            },
+            {
+                "name": "vq",
+                "static": true,
+                "sig": "vq($obs, $codeBook)",
                 "doc": ""
             }
         ]
