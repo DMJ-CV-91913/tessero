@@ -4005,6 +4005,12 @@
                 "doc": "Call a function by its SciPy/NumPy name: Cluster::apply('log_ndtr', $x)."
             },
             {
+                "name": "kmeans2",
+                "static": true,
+                "sig": "kmeans2(mixed $data, mixed $k, mixed $iter = 10, mixed $thresh = 1.0E-5, mixed $minit = 'matrix', mixed $missing = 'warn'): mixed",
+                "doc": "k-means clustering from explicit initial centroids (minit='matrix'); returns centroids and labels (scipy.cluster.vq.kmeans2)."
+            },
+            {
                 "name": "vq",
                 "static": true,
                 "sig": "vq(mixed $obs, mixed $codeBook): mixed",
@@ -17311,6 +17317,12 @@
                 "name": "vq",
                 "static": true,
                 "sig": "vq($obs, $codeBook)",
+                "doc": ""
+            },
+            {
+                "name": "kmeans2",
+                "static": true,
+                "sig": "kmeans2($data, $k, $iter = 10, $thresh = 1.0E-5, $minit = 'matrix', $missing = 'warn')",
                 "doc": ""
             }
         ]
