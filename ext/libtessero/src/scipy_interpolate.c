@@ -876,6 +876,105 @@ static int r_bpoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
+/* FloaterHormannInterpolator(xi, yi, d)(x): barycentric rational interpolation, Floater-Hormann weights. */
+static int r_floater_hormann(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    for (int i = 0; i < 3; i++) if (args[i].kind != 3 || args[i].arr.ndim != 1) { fn_set_error("FloaterHormannInterpolator: xi, yi, x must be 1-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], q = args[2].arr.shape[0];
+    int d = (nargs > 3 && args[3].kind == 1) ? (int)args[3].num : 3;
+    if (d > n - 1) d = (int)(n - 1);
+    if (d < 0) d = 0;
+    int64_t lx, ly, lq; double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL, *xq = y ? fn_arg_doubles(&args[2], &lq) : NULL;
+    double *w = xq ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
+    double *out = w ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
+    int rc = (!x || !y || !xq || !w || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t kk = 0; kk < n; kk++) {
+            double wk = 0.0;
+            for (int64_t i = (kk - d > 0 ? kk - d : 0); i < (kk + 1 < n - d ? kk + 1 : n - d); i++) {
+                double p = 1.0; for (int64_t j = i; j <= i + d; j++) if (j != kk) p *= fabs(x[kk] - x[j]);
+                wk += 1.0 / p;
+            }
+            w[kk] = wk * (((kk - d) & 1) ? -1.0 : 1.0);
+        }
+        for (int64_t t = 0; t < q; t++) {
+            const double v = xq[t]; int64_t hit = -1;
+            for (int64_t j = 0; j < n; j++) if (v == x[j]) { hit = j; break; }
+            if (hit >= 0) out[t] = y[hit];
+            else { double num = 0.0, den = 0.0; for (int64_t j = 0; j < n; j++) { const double c = w[j] / (v - x[j]); num += c * y[j]; den += c; } out[t] = num / den; }
+        }
+    }
+    free(w); fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(xq, lq);
+    return rc;
+}
+/* insert(x, (t, c, k), m): Boehm knot insertion, inserting x into the B-spline m times. Outputs (t, c, k). */
+static int r_insert(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 1) { fn_set_error("insert: x scalar, t and c 1-D arrays, k int"); return TSR_EARG; }
+    const double xv = args[0].num; const int k = (int)args[3].num;
+    const int m = (nargs > 4 && args[4].kind == 1) ? (int)args[4].num : 1;
+    int64_t lt, lc; double *t0 = fn_arg_doubles(&args[1], &lt), *c0 = t0 ? fn_arg_doubles(&args[2], &lc) : NULL;
+    int64_t tn = lt, cn = lc;
+    double *tcur = t0 ? (double *)malloc((size_t)(lt + m) * sizeof(double)) : NULL;
+    double *ccur = tcur ? (double *)malloc((size_t)(lc + m) * sizeof(double)) : NULL;
+    int rc = (!t0 || !c0 || !tcur || !ccur) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        memcpy(tcur, t0, (size_t)lt * sizeof(double)); memcpy(ccur, c0, (size_t)lc * sizeof(double));
+        for (int it = 0; it < m && rc == TSR_OK; it++) {
+            int64_t l = 0; for (int64_t i = 0; i + 1 < tn; i++) if (tcur[i] <= xv && xv < tcur[i + 1]) { l = i; break; }
+            double *nc = (double *)malloc((size_t)(cn + 1) * sizeof(double));
+            if (!nc) { rc = TSR_ENOMEM; break; }
+            for (int64_t i = 0; i < l - k + 1; i++) nc[i] = ccur[i];
+            for (int64_t i = l - k + 1; i <= l; i++) { double a = (xv - tcur[i]) / (tcur[i + k] - tcur[i]); nc[i] = (1.0 - a) * ccur[i - 1] + a * ccur[i]; }
+            for (int64_t i = l + 1; i < cn + 1; i++) nc[i] = ccur[i - 1];
+            for (int64_t i = tn; i > l + 1; i--) tcur[i] = tcur[i - 1];
+            tcur[l + 1] = xv; tn += 1; cn += 1;
+            free(ccur); ccur = nc;
+        }
+    }
+    if (rc == TSR_OK) {
+        const int64_t cm = tn - k - 1;                        /* meaningful coefficients; SciPy leaves the trailing k+1 as FITPACK scratch */
+        double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){tn});
+        double *rcc = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){cm});
+        if (!rt || !rcc) rc = TSR_ENOMEM;
+        else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)cm * sizeof(double)); fn_result_int(&res[2], (int64_t)k); }
+    }
+    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc);
+    return rc;
+}
+/* spalde(t, c, k, x): all derivatives 0..k of the B-spline at each x; result row t is [f, f', ..., f^(k)]. */
+static int r_spalde(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 1 || args[3].kind != 3) { fn_set_error("spalde: t, c 1-D arrays, k int, x 1-D array"); return TSR_EARG; }
+    const int64_t nt = args[0].arr.shape[0], q = args[3].arr.shape[0]; const int k = (int)args[2].num;
+    int64_t lt, lc, lq; double *t0 = fn_arg_doubles(&args[0], &lt), *c0 = t0 ? fn_arg_doubles(&args[1], &lc) : NULL, *xq = c0 ? fn_arg_doubles(&args[3], &lq) : NULL;
+    double *tcur = xq ? (double *)malloc((size_t)nt * sizeof(double)) : NULL;
+    double *ccur = tcur ? (double *)malloc((size_t)(lc > nt ? lc : nt) * sizeof(double)) : NULL;
+    double *out = ccur ? (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){q, k + 1}) : NULL;
+    int rc = (!t0 || !c0 || !xq || !tcur || !ccur || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        memcpy(tcur, t0, (size_t)nt * sizeof(double)); memcpy(ccur, c0, (size_t)lc * sizeof(double));
+        int64_t tn = nt; int kk = k;
+        for (int nu = 0; nu <= k; nu++) {
+            const int64_t ncf = tn - kk - 1;                  /* coefficients of the current derivative spline */
+            for (int64_t e = 0; e < q; e++) out[e * (k + 1) + nu] = ip_deboor_scalar(tcur, ccur, ncf, kk, xq[e]);
+            if (nu < k) {                                     /* differentiate once more (as in splder) */
+                const int64_t ld = tn - kk - 2;
+                double *cnew = (double *)malloc((size_t)ld * sizeof(double));
+                if (!cnew) { rc = TSR_ENOMEM; break; }
+                for (int64_t i = 0; i < ld; i++) { const double dt = tcur[kk + 1 + i] - tcur[1 + i]; cnew[i] = (ccur[1 + i] - ccur[i]) * (double)kk / dt; }
+                for (int64_t i = 0; i < tn - 2; i++) tcur[i] = tcur[i + 1];
+                tn -= 2; kk -= 1; memcpy(ccur, cnew, (size_t)ld * sizeof(double)); free(cnew);
+            }
+        }
+    }
+    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc); fn_free_doubles(xq, lq);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -901,6 +1000,9 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.KroghInterpolator", 1, "xi, yi, x", "y", r_krogh, NULL, "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.KroghInterpolator)."),
     ROUTINE("interpolate.PPoly", 1, "c, x, xnew", "y", r_ppoly, NULL, "Piecewise polynomial (local power basis) evaluated at xnew (scipy.interpolate.PPoly)."),
     ROUTINE("interpolate.BPoly", 1, "c, x, xnew", "y", r_bpoly, NULL, "Piecewise Bernstein polynomial evaluated at xnew (scipy.interpolate.BPoly)."),
+    ROUTINE("interpolate.FloaterHormannInterpolator", 1, "xi, yi, x, d=3", "y", r_floater_hormann, NULL, "Floater-Hormann barycentric rational interpolation evaluated at x (scipy.interpolate.FloaterHormannInterpolator)."),
+    ROUTINE("interpolate.insert", 3, "x, t, c, k, m=1", "t, c, k", r_insert, NULL, "Insert a knot into a B-spline m times by Boehm's algorithm (scipy.interpolate.insert)."),
+    ROUTINE("interpolate.spalde", 1, "t, c, k, x", "d", r_spalde, NULL, "All derivatives 0..k of a B-spline at each x (scipy.interpolate.spalde)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

@@ -4009,6 +4009,12 @@
                 "doc": "Not-a-knot cubic spline evaluated at xnew (scipy.interpolate.CubicSpline)."
             },
             {
+                "name": "FloaterHormannInterpolator",
+                "static": true,
+                "sig": "FloaterHormannInterpolator(mixed $xi, mixed $yi, mixed $x, mixed $d = 3): mixed",
+                "doc": "Floater-Hormann barycentric rational interpolation evaluated at x (scipy.interpolate.FloaterHormannInterpolator)."
+            },
+            {
                 "name": "KroghInterpolator",
                 "static": true,
                 "sig": "KroghInterpolator(mixed $xi, mixed $yi, mixed $x): mixed",
@@ -4043,6 +4049,12 @@
                 "static": true,
                 "sig": "barycentricInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
                 "doc": "Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate)."
+            },
+            {
+                "name": "insert",
+                "static": true,
+                "sig": "insert(mixed $x, mixed $t, mixed $c, mixed $k, mixed $m = 1): mixed",
+                "doc": "Insert a knot into a B-spline m times by Boehm's algorithm (scipy.interpolate.insert)."
             },
             {
                 "name": "interpn",
@@ -4085,6 +4097,12 @@
                 "static": true,
                 "sig": "pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed",
                 "doc": "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."
+            },
+            {
+                "name": "spalde",
+                "static": true,
+                "sig": "spalde(mixed $t, mixed $c, mixed $k, mixed $x): mixed",
+                "doc": "All derivatives 0..k of a B-spline at each x (scipy.interpolate.spalde)."
             },
             {
                 "name": "splantider",
@@ -18682,6 +18700,24 @@
                 "name": "BPoly",
                 "static": true,
                 "sig": "BPoly($c, $x, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "FloaterHormannInterpolator",
+                "static": true,
+                "sig": "FloaterHormannInterpolator($xi, $yi, $x, $d = 3)",
+                "doc": ""
+            },
+            {
+                "name": "insert",
+                "static": true,
+                "sig": "insert($x, $t, $c, $k, $m = 1)",
+                "doc": ""
+            },
+            {
+                "name": "spalde",
+                "static": true,
+                "sig": "spalde($t, $c, $k, $x)",
                 "doc": ""
             }
         ]
