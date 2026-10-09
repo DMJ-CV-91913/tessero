@@ -567,6 +567,20 @@ def main():
         hc.append({'args': [F.enc(m.astype(float)), F.enc(n), F.enc(Xi.astype(float))], 'kwargs': {},
                    'expect': F.enc(np.asarray(pmf)), 'compare': 'tol'})
     B['multivariate_hypergeom'] = hc
+    tc = []
+    for d in (2, 3, 4):
+        A = rr.normal(size=(d, d)); S = A @ A.T + d * np.eye(d); loc = rr.normal(size=d); df = float(rr.uniform(2.0, 12.0)); X = rr.normal(size=(5, d))
+        mt = st.multivariate_t(loc, S, df=df)
+        tc.append({'args': [F.enc(loc), F.enc(S), F.enc(df), F.enc(X)], 'kwargs': {},
+                   'expect': {'dict': {'pdf': F.enc(np.asarray(mt.pdf(X))), 'logpdf': F.enc(np.asarray(mt.logpdf(X)))}}, 'compare': 'tol'})
+    B['multivariate_t'] = tc
+    vc = []
+    for d in (2, 3, 5):
+        mu = rr.normal(size=d); mu /= np.linalg.norm(mu); kappa = float(rr.uniform(1.0, 8.0))
+        X = rr.normal(size=(5, d)); X /= np.linalg.norm(X, axis=1, keepdims=True)
+        vc.append({'args': [F.enc(mu), F.enc(kappa), F.enc(X)], 'kwargs': {},
+                   'expect': F.enc(np.asarray(st.vonmises_fisher(mu, kappa).pdf(X))), 'compare': 'tol'})
+    B['vonmises_fisher'] = vc
     write('desc', B)
 
 

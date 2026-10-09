@@ -169,6 +169,7 @@ final class Stats
     'multinomial' => 'multinomial',
     'multivariate_hypergeom' => 'multivariateHypergeom',
     'multivariate_normal' => 'multivariateNormal',
+    'multivariate_t' => 'multivariateT',
     'nakagami' => 'nakagami',
     'nbinom' => 'nbinom',
     'ncf' => 'ncf',
@@ -249,6 +250,7 @@ final class Stats
     'uniform' => 'uniform',
     'variation' => 'variation',
     'vonmises' => 'vonmises',
+    'vonmises_fisher' => 'vonmisesFisher',
     'vonmises_line' => 'vonmisesLine',
     'wald' => 'wald',
     'wasserstein_distance' => 'wassersteinDistance',
@@ -1853,6 +1855,18 @@ final class Stats
     }
 
     /**
+     * Multivariate Student-t pdf and log-pdf at each row of x (scipy.stats.multivariate_t).
+     *
+     * scipy.stats.multivariate_t
+     *
+     * @return mixed one array, or an array keyed by pdf, logpdf when several results are requested
+     */
+    public static function multivariateT(mixed $loc, mixed $shape, mixed $df, mixed $x): mixed
+    {
+        return Registry::routine('stats.multivariate_t', [$loc, $shape, $df, $x]);
+    }
+
+    /**
      * A Nakagami continuous random variable.
      *
      * scipy.stats.nakagami (frozen)
@@ -2688,6 +2702,16 @@ final class Stats
     public static function vonmises(mixed $kappa, mixed $loc = 0, mixed $scale = 1): Distribution
     {
         return new Distribution('stats.vonmises', [$kappa, $loc, $scale]);
+    }
+
+    /**
+     * Von Mises-Fisher pdf at each row of x (scipy.stats.vonmises_fisher).
+     *
+     * scipy.stats.vonmises_fisher
+     */
+    public static function vonmisesFisher(mixed $mu, mixed $kappa, mixed $x): mixed
+    {
+        return Registry::routine('stats.vonmises_fisher', [$mu, $kappa, $x]);
     }
 
     /**

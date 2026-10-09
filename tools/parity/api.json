@@ -11326,6 +11326,12 @@
                 "doc": "Multivariate normal pdf and log-pdf at each row of x (scipy.stats.multivariate_normal)."
             },
             {
+                "name": "multivariateT",
+                "static": true,
+                "sig": "multivariateT(mixed $loc, mixed $shape, mixed $df, mixed $x): mixed",
+                "doc": "Multivariate Student-t pdf and log-pdf at each row of x (scipy.stats.multivariate_t)."
+            },
+            {
                 "name": "nakagami",
                 "static": true,
                 "sig": "nakagami(mixed $nu, mixed $loc = 0, mixed $scale = 1): Tessero\\Stats\\Distribution",
@@ -11804,6 +11810,12 @@
                 "static": true,
                 "sig": "vonmises(mixed $kappa, mixed $loc = 0, mixed $scale = 1): Tessero\\Stats\\Distribution",
                 "doc": "A Von Mises continuous random variable."
+            },
+            {
+                "name": "vonmisesFisher",
+                "static": true,
+                "sig": "vonmisesFisher(mixed $mu, mixed $kappa, mixed $x): mixed",
+                "doc": "Von Mises-Fisher pdf at each row of x (scipy.stats.vonmises_fisher)."
             },
             {
                 "name": "vonmisesLine",
@@ -15074,6 +15086,18 @@
                 "name": "multivariateHypergeom",
                 "static": true,
                 "sig": "multivariateHypergeom($m, $n, $x)",
+                "doc": ""
+            },
+            {
+                "name": "multivariateT",
+                "static": true,
+                "sig": "multivariateT($loc, $shape, $df, $x)",
+                "doc": ""
+            },
+            {
+                "name": "vonmisesFisher",
+                "static": true,
+                "sig": "vonmisesFisher($mu, $kappa, $x)",
                 "doc": ""
             },
             {

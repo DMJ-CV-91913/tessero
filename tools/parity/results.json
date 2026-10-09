@@ -1270,6 +1270,7 @@
         "stats.multinomial": "pass",
         "stats.multivariate_hypergeom": "pass",
         "stats.multivariate_normal": "pass",
+        "stats.multivariate_t": "pass",
         "stats.nakagami": "pass",
         "stats.nbinom": "pass",
         "stats.ncf": "pass",
@@ -1351,6 +1352,7 @@
         "stats.uniform": "pass",
         "stats.variation": "pass",
         "stats.vonmises": "pass",
+        "stats.vonmises_fisher": "pass",
         "stats.vonmises_line": "pass",
         "stats.wald": "pass",
         "stats.wasserstein_distance": "pass",
@@ -2778,7 +2780,9 @@
             "stats.multivariate_normal": 1.7035450417273882e-15,
             "stats.dirichlet": 1.885807804529687e-15,
             "stats.multinomial": 7.143405097657713e-15,
-            "stats.multivariate_hypergeom": 3.572005470722011e-15
+            "stats.multivariate_hypergeom": 3.572005470722011e-15,
+            "stats.multivariate_t": 1.0389372517295568e-15,
+            "stats.vonmises_fisher": 1.1129148643299467e-14
         },
         "ext": {
             "np.median": 0,
@@ -4168,7 +4172,9 @@
             "stats.multivariate_normal": 1.7035450417273882e-15,
             "stats.dirichlet": 1.885807804529687e-15,
             "stats.multinomial": 7.143405097657713e-15,
-            "stats.multivariate_hypergeom": 3.572005470722011e-15
+            "stats.multivariate_hypergeom": 3.572005470722011e-15,
+            "stats.multivariate_t": 1.0389372517295568e-15,
+            "stats.vonmises_fisher": 1.1129148643299467e-14
         }
     },
     "ext": {
@@ -5442,6 +5448,7 @@
         "stats.multinomial": "pass",
         "stats.multivariate_hypergeom": "pass",
         "stats.multivariate_normal": "pass",
+        "stats.multivariate_t": "pass",
         "stats.nakagami": "pass",
         "stats.nbinom": "pass",
         "stats.ncf": "pass",
@@ -5523,6 +5530,7 @@
         "stats.uniform": "pass",
         "stats.variation": "pass",
         "stats.vonmises": "pass",
+        "stats.vonmises_fisher": "pass",
         "stats.vonmises_line": "pass",
         "stats.wald": "pass",
         "stats.wasserstein_distance": "pass",

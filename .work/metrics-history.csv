@@ -172,3 +172,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-09,scipy.stats: gaussian_kde + ecdf (both backends),91.7,91.1,72.0,71.8,99.4,99.7,71.7,71.7,79.8,79.8
 2026-10-09,"scipy.stats: directional_stats, probplot, boxcox/yeojohnson_normplot (both backends)",91.7,91.1,72.3,72.1,99.4,99.7,71.7,71.7,81.1,81.1
 2026-10-09,scipy.stats: multivariate_normal/dirichlet/multinomial/multivariate_hypergeom densities (both backends),91.7,91.1,72.6,72.4,99.4,99.7,71.7,71.7,82.5,82.5
+2026-10-09,scipy.stats: multivariate_t + vonmises_fisher densities (both backends),91.7,91.1,72.7,72.5,99.4,99.7,71.7,71.7,83.2,83.2

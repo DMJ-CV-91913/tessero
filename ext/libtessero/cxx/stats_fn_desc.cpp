@@ -16,6 +16,8 @@
 #include "stats_dist.hpp"
 #include "../src/fn.h"
 
+extern "C" void tsr_special_iv(const void *, const double *, double *);   /* modified Bessel I_v (for vonmises_fisher) */
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -2255,6 +2257,58 @@ static int r_multivariate_hypergeom(const void *ctx, const tsr_arg *args, int na
     fn_free_doubles(mc, lmc); fn_free_doubles(X, lx);
     return rc;
 }
+/* lower-Cholesky of a d-by-d SPD matrix C (row-major) into L; returns false if not positive definite. */
+static bool stat_chol(const double *C, int64_t d, double *L)
+{
+    for (int64_t a = 0; a < d; a++) for (int64_t b = 0; b <= a; b++) {
+        double s = C[a * d + b]; for (int64_t c = 0; c < b; c++) s -= L[a * d + c] * L[b * d + c];
+        if (a == b) { if (s <= 0.0) return false; L[a * d + a] = std::sqrt(s); } else L[a * d + b] = s / L[b * d + b];
+    }
+    return true;
+}
+/* multivariate_t(loc, shape, df, x): pdf and log-pdf of the multivariate Student-t at each row of x. */
+static int r_multivariate_t(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 1 || args[3].kind != 3 || args[3].arr.ndim != 2) { fn_set_error("multivariate_t: loc 1-D, shape 2-D, df scalar, x (m,d)"); return TSR_EARG; }
+    const int64_t d = args[0].arr.shape[0], m = args[3].arr.shape[0]; const double df = args[2].num;
+    int64_t ll, ls, lx; double *loc = fn_arg_doubles(&args[0], &ll), *S = loc ? fn_arg_doubles(&args[1], &ls) : nullptr, *X = S ? fn_arg_doubles(&args[3], &lx) : nullptr;
+    if (!X) { fn_free_doubles(loc, ll); fn_free_doubles(S, ls); return TSR_ENOMEM; }
+    std::vector<double> L(d * d, 0.0), z(d);
+    int rc = stat_chol(S, d, L.data()) ? TSR_OK : TSR_EARG;
+    if (rc != TSR_OK) fn_set_error("multivariate_t: shape not positive definite");
+    double logdet = 0.0; for (int64_t a = 0; a < d; a++) logdet += 2.0 * std::log(L[a * d + a]);
+    const double c = std::lgamma((df + d) / 2.0) - std::lgamma(df / 2.0) - 0.5 * d * std::log(df * M_PI) - 0.5 * logdet;
+    int64_t sh[1] = {m};
+    double *pdf = (rc == TSR_OK) ? (double *)fn_result_array(&res[0], TSR_F64, 1, sh) : nullptr;
+    double *lpdf = pdf ? (double *)fn_result_array(&res[1], TSR_F64, 1, sh) : nullptr;
+    if (rc == TSR_OK && !lpdf) rc = TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) {
+        for (int64_t a = 0; a < d; a++) { double s = X[j * d + a] - loc[a]; for (int64_t cc = 0; cc < a; cc++) s -= L[a * d + cc] * z[cc]; z[a] = s / L[a * d + a]; }
+        double maha = 0.0; for (int64_t a = 0; a < d; a++) maha += z[a] * z[a];
+        double lp = c - 0.5 * (df + d) * std::log1p(maha / df); lpdf[j] = lp; pdf[j] = std::exp(lp);
+    }
+    fn_free_doubles(loc, ll); fn_free_doubles(S, ls); fn_free_doubles(X, lx);
+    return rc;
+}
+/* vonmises_fisher(mu, kappa, x): pdf of the von Mises-Fisher distribution at each row of x (unit vectors). */
+static int r_vonmises_fisher(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("vonmises_fisher: mu 1-D, kappa scalar, x (m,d)"); return TSR_EARG; }
+    const int64_t d = args[0].arr.shape[0], m = args[2].arr.shape[0]; const double kappa = args[1].num;
+    int64_t lm, lx; double *mu = fn_arg_doubles(&args[0], &lm), *X = mu ? fn_arg_doubles(&args[2], &lx) : nullptr;
+    if (!X) { fn_free_doubles(mu, lm); return TSR_ENOMEM; }
+    const double halfd = (double)d / 2.0;
+    double in2[2] = {halfd - 1.0, kappa}, iv = 0.0;
+    tsr_special_iv(nullptr, in2, &iv);
+    const double logC = (halfd - 1.0) * std::log(kappa) - halfd * std::log(2.0 * M_PI) - std::log(iv);
+    int64_t sh[1] = {m}; double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) { double dot = 0.0; for (int64_t a = 0; a < d; a++) dot += mu[a] * X[j * d + a]; out[j] = std::exp(logC + kappa * dot); }
+    fn_free_doubles(mu, lm); fn_free_doubles(X, lx);
+    return rc;
+}
 
 }  // namespace
 
@@ -2376,6 +2430,10 @@ static const fn_def DEFS[] = {
             "Multinomial pmf at each row of x (scipy.stats.multinomial)."),
     ROUTINE("stats.multivariate_hypergeom", 1, "m, n, x", "pmf", r_multivariate_hypergeom, NULL,
             "Multivariate hypergeometric pmf at each row of x (scipy.stats.multivariate_hypergeom)."),
+    ROUTINE("stats.multivariate_t", 2, "loc, shape, df, x", "pdf, logpdf", r_multivariate_t, NULL,
+            "Multivariate Student-t pdf and log-pdf at each row of x (scipy.stats.multivariate_t)."),
+    ROUTINE("stats.vonmises_fisher", 1, "mu, kappa, x", "pdf", r_vonmises_fisher, NULL,
+            "Von Mises-Fisher pdf at each row of x (scipy.stats.vonmises_fisher)."),
     ROUTINE("stats.boxcox_llf", 1, "lmb, data, axis=0, keepdims=False, nan_policy='propagate'", "llf", r_llf, NULL,
             "Box-Cox log-likelihood (scipy.stats.boxcox_llf)."),
     ROUTINE("stats.yeojohnson_llf", 1, "lmb, data, axis=0, nan_policy='propagate', keepdims=False", "llf", r_llf, &ONE,
