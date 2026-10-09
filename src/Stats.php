@@ -67,6 +67,7 @@ final class Stats
     'dgamma' => 'dgamma',
     'differential_entropy' => 'differentialEntropy',
     'directional_stats' => 'directionalStats',
+    'dirichlet' => 'dirichlet',
     'dlaplace' => 'dlaplace',
     'dpareto_lognorm' => 'dparetoLognorm',
     'dweibull' => 'dweibull',
@@ -165,6 +166,9 @@ final class Stats
     'moment' => 'moment',
     'mood' => 'mood',
     'moyal' => 'moyal',
+    'multinomial' => 'multinomial',
+    'multivariate_hypergeom' => 'multivariateHypergeom',
+    'multivariate_normal' => 'multivariateNormal',
     'nakagami' => 'nakagami',
     'nbinom' => 'nbinom',
     'ncf' => 'ncf',
@@ -788,6 +792,16 @@ final class Stats
     public static function directionalStats(mixed $samples): mixed
     {
         return Registry::routine('stats.directional_stats', [$samples]);
+    }
+
+    /**
+     * Dirichlet pdf at each row of x (scipy.stats.dirichlet).
+     *
+     * scipy.stats.dirichlet
+     */
+    public static function dirichlet(mixed $alpha, mixed $x): mixed
+    {
+        return Registry::routine('stats.dirichlet', [$alpha, $x]);
     }
 
     /**
@@ -1804,6 +1818,38 @@ final class Stats
     public static function moyal(mixed $loc = 0, mixed $scale = 1): Distribution
     {
         return new Distribution('stats.moyal', [$loc, $scale]);
+    }
+
+    /**
+     * Multinomial pmf at each row of x (scipy.stats.multinomial).
+     *
+     * scipy.stats.multinomial
+     */
+    public static function multinomial(mixed $n, mixed $p, mixed $x): mixed
+    {
+        return Registry::routine('stats.multinomial', [$n, $p, $x]);
+    }
+
+    /**
+     * Multivariate hypergeometric pmf at each row of x (scipy.stats.multivariate_hypergeom).
+     *
+     * scipy.stats.multivariate_hypergeom
+     */
+    public static function multivariateHypergeom(mixed $m, mixed $n, mixed $x): mixed
+    {
+        return Registry::routine('stats.multivariate_hypergeom', [$m, $n, $x]);
+    }
+
+    /**
+     * Multivariate normal pdf and log-pdf at each row of x (scipy.stats.multivariate_normal).
+     *
+     * scipy.stats.multivariate_normal
+     *
+     * @return mixed one array, or an array keyed by pdf, logpdf when several results are requested
+     */
+    public static function multivariateNormal(mixed $mean, mixed $cov, mixed $x): mixed
+    {
+        return Registry::routine('stats.multivariate_normal', [$mean, $cov, $x]);
     }
 
     /**

@@ -10714,6 +10714,12 @@
                 "doc": "Mean direction and resultant length of unit vectors (scipy.stats.directional_stats)."
             },
             {
+                "name": "dirichlet",
+                "static": true,
+                "sig": "dirichlet(mixed $alpha, mixed $x): mixed",
+                "doc": "Dirichlet pdf at each row of x (scipy.stats.dirichlet)."
+            },
+            {
                 "name": "dlaplace",
                 "static": true,
                 "sig": "dlaplace(mixed $a, mixed $loc = 0): Tessero\\Stats\\Distribution",
@@ -11300,6 +11306,24 @@
                 "static": true,
                 "sig": "moyal(mixed $loc = 0, mixed $scale = 1): Tessero\\Stats\\Distribution",
                 "doc": "A Moyal continuous random variable."
+            },
+            {
+                "name": "multinomial",
+                "static": true,
+                "sig": "multinomial(mixed $n, mixed $p, mixed $x): mixed",
+                "doc": "Multinomial pmf at each row of x (scipy.stats.multinomial)."
+            },
+            {
+                "name": "multivariateHypergeom",
+                "static": true,
+                "sig": "multivariateHypergeom(mixed $m, mixed $n, mixed $x): mixed",
+                "doc": "Multivariate hypergeometric pmf at each row of x (scipy.stats.multivariate_hypergeom)."
+            },
+            {
+                "name": "multivariateNormal",
+                "static": true,
+                "sig": "multivariateNormal(mixed $mean, mixed $cov, mixed $x): mixed",
+                "doc": "Multivariate normal pdf and log-pdf at each row of x (scipy.stats.multivariate_normal)."
             },
             {
                 "name": "nakagami",
@@ -15026,6 +15050,30 @@
                 "name": "yeojohnsonNormplot",
                 "static": true,
                 "sig": "yeojohnsonNormplot($x, $la, $lb, $N = 80)",
+                "doc": ""
+            },
+            {
+                "name": "multivariateNormal",
+                "static": true,
+                "sig": "multivariateNormal($mean, $cov, $x)",
+                "doc": ""
+            },
+            {
+                "name": "dirichlet",
+                "static": true,
+                "sig": "dirichlet($alpha, $x)",
+                "doc": ""
+            },
+            {
+                "name": "multinomial",
+                "static": true,
+                "sig": "multinomial($n, $p, $x)",
+                "doc": ""
+            },
+            {
+                "name": "multivariateHypergeom",
+                "static": true,
+                "sig": "multivariateHypergeom($m, $n, $x)",
                 "doc": ""
             },
             {

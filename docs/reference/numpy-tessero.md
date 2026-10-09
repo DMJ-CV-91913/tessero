@@ -644,6 +644,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.dgamma` | `Tessero\Stats::dgamma()` |
 | `scipy.stats.differential_entropy` | `Tessero\Stats::differentialEntropy()` |
 | `scipy.stats.directional_stats` | `Tessero\Stats::directionalStats()` |
+| `scipy.stats.dirichlet` | `Tessero\Stats::dirichlet()` |
 | `scipy.stats.dlaplace` | `Tessero\Stats::dlaplace()` |
 | `scipy.stats.dpareto_lognorm` | `Tessero\Stats::dparetoLognorm()` |
 | `scipy.stats.dweibull` | `Tessero\Stats::dweibull()` |
@@ -742,6 +743,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.moment` | `Tessero\Stats::moment()` |
 | `scipy.stats.mood` | `Tessero\Stats::mood()` |
 | `scipy.stats.moyal` | `Tessero\Stats::moyal()` |
+| `scipy.stats.multinomial` | `Tessero\Stats::multinomial()` |
+| `scipy.stats.multivariate_hypergeom` | `Tessero\Stats::multivariateHypergeom()` |
+| `scipy.stats.multivariate_normal` | `Tessero\Stats::multivariateNormal()` |
 | `scipy.stats.nakagami` | `Tessero\Stats::nakagami()` |
 | `scipy.stats.nbinom` | `Tessero\Stats::nbinom()` |
 | `scipy.stats.ncf` | `Tessero\Stats::ncf()` |

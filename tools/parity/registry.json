@@ -5500,6 +5500,11 @@
             "nin": 0,
             "nout": 2
         },
+        "stats.dirichlet": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "stats.dlaplace": {
             "kind": "dist",
             "nin": null,
@@ -5989,6 +5994,21 @@
             "kind": "dist",
             "nin": null,
             "nout": null
+        },
+        "stats.multinomial": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.multivariate_hypergeom": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "stats.multivariate_normal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "stats.nakagami": {
             "kind": "dist",

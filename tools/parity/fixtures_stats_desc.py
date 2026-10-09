@@ -539,6 +539,34 @@ def main():
             cc.append({'args': [F.enc(xp), F.enc(-2.0), F.enc(2.0), F.enc(40)], 'kwargs': {},
                        'expect': {'dict': {'lmbdas': F.enc(np.asarray(lm)), 'ppcc': F.enc(np.asarray(pp))}}, 'compare': 'tol'})
         B[fn] = cc
+    # multivariate densities (construct-and-evaluate)
+    rr = np.random.default_rng(90210)
+    mc = []
+    for d in (2, 3, 4):
+        A = rr.normal(size=(d, d)); cov = A @ A.T + d * np.eye(d); mean = rr.normal(size=d); X = rr.normal(size=(5, d))
+        md = st.multivariate_normal(mean, cov)
+        mc.append({'args': [F.enc(mean), F.enc(cov), F.enc(X)], 'kwargs': {},
+                   'expect': {'dict': {'pdf': F.enc(np.asarray(md.pdf(X))), 'logpdf': F.enc(np.asarray(md.logpdf(X)))}}, 'compare': 'tol'})
+    B['multivariate_normal'] = mc
+    dc = []
+    for k in (3, 4, 5):
+        alpha = rr.uniform(0.5, 4.0, k); X = rr.dirichlet(alpha, size=5)
+        dc.append({'args': [F.enc(alpha), F.enc(X)], 'kwargs': {},
+                   'expect': F.enc(np.asarray([st.dirichlet(alpha).pdf(x) for x in X])), 'compare': 'tol'})
+    B['dirichlet'] = dc
+    mnc = []
+    for k in (3, 4, 5):
+        p = rr.dirichlet(np.ones(k)); n = int(rr.integers(8, 20)); X = rr.multinomial(n, p, size=5).astype(float)
+        mnc.append({'args': [F.enc(n), F.enc(p), F.enc(X)], 'kwargs': {},
+                    'expect': F.enc(np.asarray(st.multinomial(n, p).pmf(X))), 'compare': 'tol'})
+    B['multinomial'] = mnc
+    hc = []
+    for colors in ([6, 7, 8, 5], [10, 4, 6], [3, 3, 3, 3, 3]):
+        m = np.array(colors); n = int(m.sum() // 3); Xi = st.multivariate_hypergeom(m, n).rvs(size=5, random_state=rr)
+        pmf = st.multivariate_hypergeom(m, n).pmf(Xi)
+        hc.append({'args': [F.enc(m.astype(float)), F.enc(n), F.enc(Xi.astype(float))], 'kwargs': {},
+                   'expect': F.enc(np.asarray(pmf)), 'compare': 'tol'})
+    B['multivariate_hypergeom'] = hc
     write('desc', B)
 
 

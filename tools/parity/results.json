@@ -1168,6 +1168,7 @@
         "stats.dgamma": "pass",
         "stats.differential_entropy": "pass",
         "stats.directional_stats": "pass",
+        "stats.dirichlet": "pass",
         "stats.dlaplace": "pass",
         "stats.dpareto_lognorm": "pass",
         "stats.dweibull": "pass",
@@ -1266,6 +1267,9 @@
         "stats.moment": "pass",
         "stats.mood": "pass",
         "stats.moyal": "pass",
+        "stats.multinomial": "pass",
+        "stats.multivariate_hypergeom": "pass",
+        "stats.multivariate_normal": "pass",
         "stats.nakagami": "pass",
         "stats.nbinom": "pass",
         "stats.ncf": "pass",
@@ -2770,7 +2774,11 @@
             "stats.directional_stats": 0,
             "stats.probplot": 5.87324433753173e-14,
             "stats.boxcox_normplot": 1.4432899320127023e-15,
-            "stats.yeojohnson_normplot": 1.4432899320127023e-15
+            "stats.yeojohnson_normplot": 1.4432899320127023e-15,
+            "stats.multivariate_normal": 1.7035450417273882e-15,
+            "stats.dirichlet": 1.885807804529687e-15,
+            "stats.multinomial": 7.143405097657713e-15,
+            "stats.multivariate_hypergeom": 3.572005470722011e-15
         },
         "ext": {
             "np.median": 0,
@@ -4156,7 +4164,11 @@
             "stats.directional_stats": 0,
             "stats.probplot": 5.87324433753173e-14,
             "stats.boxcox_normplot": 1.4432899320127023e-15,
-            "stats.yeojohnson_normplot": 1.4432899320127023e-15
+            "stats.yeojohnson_normplot": 1.4432899320127023e-15,
+            "stats.multivariate_normal": 1.7035450417273882e-15,
+            "stats.dirichlet": 1.885807804529687e-15,
+            "stats.multinomial": 7.143405097657713e-15,
+            "stats.multivariate_hypergeom": 3.572005470722011e-15
         }
     },
     "ext": {
@@ -5328,6 +5340,7 @@
         "stats.dgamma": "pass",
         "stats.differential_entropy": "pass",
         "stats.directional_stats": "pass",
+        "stats.dirichlet": "pass",
         "stats.dlaplace": "pass",
         "stats.dpareto_lognorm": "pass",
         "stats.dweibull": "pass",
@@ -5426,6 +5439,9 @@
         "stats.moment": "pass",
         "stats.mood": "pass",
         "stats.moyal": "pass",
+        "stats.multinomial": "pass",
+        "stats.multivariate_hypergeom": "pass",
+        "stats.multivariate_normal": "pass",
         "stats.nakagami": "pass",
         "stats.nbinom": "pass",
         "stats.ncf": "pass",
