@@ -3192,6 +3192,161 @@
 },
 {
 "kind": "class",
+"module": "numpy.polynomial.laguerre",
+"name": "Laguerre"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lag2poly"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagadd"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagcompanion"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagder"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagdiv"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.laguerre",
+"name": "lagdomain"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagfit"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagfromroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "laggauss"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "laggrid2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "laggrid3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagint"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagline"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagmul"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagmulx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.laguerre",
+"name": "lagone"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagpow"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagsub"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagtrim"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagval"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagval2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagval3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagvander"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagvander2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagvander3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "lagweight"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.laguerre",
+"name": "lagx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.laguerre",
+"name": "lagzero"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.laguerre",
+"name": "poly2lag"
+},
+{
+"kind": "class",
 "module": "numpy.random",
 "name": "BitGenerator"
 },

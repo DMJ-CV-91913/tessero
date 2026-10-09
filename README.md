@@ -92,7 +92,7 @@ The documentation lives in `docs/` and builds with MkDocs Material
 **Measured against real code.** In the library code of 18 widely used scientific Python packages (scikit-learn,
 pandas, statsmodels, scikit-image, astropy, MNE, ...), 99.2 % of the in-scope calls to NumPy and SciPy go to
 functions that Tessero has verified against NumPy and SciPy on both backends, and 99.2 % on the FFI backend.
-For NumPy alone the figures are 99.7 % and 99.7 %. Counting every public symbol equally instead, 90.4 % of
+For NumPy alone the figures are 99.7 % and 99.7 %. Counting every public symbol equally instead, 90.9 % of
 the in-scope NumPy core and 70.6 % of SciPy are verified on FFI. Both figures are generated from the code and
 the recorded test runs: see [coverage of real-world usage](docs/project/usage-weighted-coverage.md) and the
 [coverage page](docs/project/numpy-scipy-coverage.md).

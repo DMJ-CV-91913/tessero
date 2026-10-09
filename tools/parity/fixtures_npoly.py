@@ -185,7 +185,53 @@ leg['legweight'].append(case([wx], _L.legweight(wx)))
 leg['legzero'].append(case([], _L.legzero)); leg['legone'].append(case([], _L.legone))
 leg['legx'].append(case([], _L.legx)); leg['legdomain'].append(case([], _L.legdomain))
 
-calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2, **cheb, **leg}.items()]
+# numpy.polynomial.laguerre
+lag = {n: [] for n in ('lagadd', 'lagsub', 'lagmul', 'lagmulx', 'lagpow', 'lagdiv', 'lagder', 'lagint',
+            'lagfromroots', 'lagline', 'lagtrim', 'lagvander', 'lagval2d', 'lagval3d', 'laggrid2d', 'laggrid3d',
+            'lagvander2d', 'lagvander3d', 'lagcompanion', 'lagroots', 'lagfit', 'lag2poly', 'poly2lag',
+            'laggauss', 'lagweight', 'lagzero', 'lagone', 'lagx', 'lagdomain')}
+for _ in range(6):
+    c1 = rng.normal(size=int(rng.integers(2, 6))); c2 = rng.normal(size=int(rng.integers(2, 5)))
+    x = rng.uniform(-1, 1, 5); y = rng.uniform(-1, 1, 5); z = rng.uniform(-1, 1, 5)
+    cc2 = rng.normal(size=(3, 4)); cc3 = rng.normal(size=(2, 3, 2))
+    roots = rng.uniform(-1, 2, int(rng.integers(1, 4)))
+    off, scl = float(rng.normal()), float(rng.normal())
+    lag['lagadd'].append(case([c1, c2], _LA.lagadd(c1, c2)))
+    lag['lagsub'].append(case([c1, c2], _LA.lagsub(c1, c2)))
+    lag['lagmul'].append(case([c1, c2], _LA.lagmul(c1, c2)))
+    lag['lagmulx'].append(case([c1], _LA.lagmulx(c1)))
+    pw = int(rng.integers(0, 5)); lag['lagpow'].append(case([c1, pw], _LA.lagpow(c1, pw)))
+    cbig = rng.normal(size=6); lag['lagdiv'].append(case([cbig, c2], _LA.lagdiv(cbig, c2), names=['quo', 'rem']))
+    m = int(rng.integers(1, 3))
+    lag['lagder'].append(case([c1, m], _LA.lagder(c1, m)))
+    lag['lagint'].append(case([c1, m], _LA.lagint(c1, m)))
+    lag['lagfromroots'].append(case([roots], _LA.lagfromroots(roots), atol=1e-8))
+    lag['lagline'].append(case([off, scl], _LA.lagline(off, scl)))
+    ct = np.append(c1, [1e-14, 0.0]); lag['lagtrim'].append(case([ct, 1e-9], _LA.lagtrim(ct, 1e-9)))
+    deg = int(rng.integers(1, 5)); lag['lagvander'].append(case([x, deg], _LA.lagvander(x, deg)))
+    lag['lagval2d'].append(case([x, y, cc2], _LA.lagval2d(x, y, cc2)))
+    lag['lagval3d'].append(case([x, y, z, cc3], _LA.lagval3d(x, y, z, cc3)))
+    lag['laggrid2d'].append(case([x, y, cc2], _LA.laggrid2d(x, y, cc2)))
+    lag['laggrid3d'].append(case([x, y, z, cc3], _LA.laggrid3d(x, y, z, cc3)))
+    lag['lagvander2d'].append(case([x, y, np.array([2, 3])], _LA.lagvander2d(x, y, [2, 3])))
+    lag['lagvander3d'].append(case([x, y, z, np.array([1, 2, 1])], _LA.lagvander3d(x, y, z, [1, 2, 1])))
+    rts = np.sort(rng.uniform(-1, 2, int(rng.integers(2, 4)))); cc = _LA.lagfromroots(rts)
+    lag['lagcompanion'].append(case([cc], _LA.lagcompanion(cc), atol=1e-9))
+    lag['lagroots'].append(case([cc], np.sort(_LA.lagroots(cc).real), atol=1e-6))
+    xf = np.sort(rng.uniform(-1, 1, 14)); yf = np.cos(1.5 * xf) + 0.3 * xf
+    lag['lagfit'].append(case([xf, yf, 5], _LA.lagfit(xf, yf, 5), atol=1e-6))
+    pol = rng.normal(size=int(rng.integers(2, 6)))
+    lag['lag2poly'].append(case([c1], _LA.lag2poly(c1)))
+    lag['poly2lag'].append(case([pol], _LA.poly2lag(pol)))
+for deg in (2, 5, 8):
+    gx, gw = _LA.laggauss(deg)
+    lag['laggauss'].append(case([deg], (gx, gw), names=['x', 'w']))
+wx = rng.uniform(0, 2, 7)
+lag['lagweight'].append(case([wx], _LA.lagweight(wx)))
+lag['lagzero'].append(case([], _LA.lagzero)); lag['lagone'].append(case([], _LA.lagone))
+lag['lagx'].append(case([], _LA.lagx)); lag['lagdomain'].append(case([], _LA.lagdomain))
+
+calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2, **cheb, **leg, **lag}.items()]
 out = {'module': 'npoly', 'numpy': np.__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

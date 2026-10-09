@@ -57,7 +57,35 @@ final class Polynomial
     'chebzero' => 'chebzero',
     'hermeval' => 'hermeval',
     'hermval' => 'hermval',
+    'lag2poly' => 'lag2poly',
+    'lagadd' => 'lagadd',
+    'lagcompanion' => 'lagcompanion',
+    'lagder' => 'lagder',
+    'lagdiv' => 'lagdiv',
+    'lagdomain' => 'lagdomain',
+    'lagfit' => 'lagfit',
+    'lagfromroots' => 'lagfromroots',
+    'laggauss' => 'laggauss',
+    'laggrid2d' => 'laggrid2d',
+    'laggrid3d' => 'laggrid3d',
+    'lagint' => 'lagint',
+    'lagline' => 'lagline',
+    'lagmul' => 'lagmul',
+    'lagmulx' => 'lagmulx',
+    'lagone' => 'lagone',
+    'lagpow' => 'lagpow',
+    'lagroots' => 'lagroots',
+    'lagsub' => 'lagsub',
+    'lagtrim' => 'lagtrim',
     'lagval' => 'lagval',
+    'lagval2d' => 'lagval2d',
+    'lagval3d' => 'lagval3d',
+    'lagvander' => 'lagvander',
+    'lagvander2d' => 'lagvander2d',
+    'lagvander3d' => 'lagvander3d',
+    'lagweight' => 'lagweight',
+    'lagx' => 'lagx',
+    'lagzero' => 'lagzero',
     'leg2poly' => 'leg2poly',
     'legadd' => 'legadd',
     'legcompanion' => 'legcompanion',
@@ -88,6 +116,7 @@ final class Polynomial
     'legx' => 'legx',
     'legzero' => 'legzero',
     'poly2cheb' => 'poly2cheb',
+    'poly2lag' => 'poly2lag',
     'poly2leg' => 'poly2leg',
     'polyadd' => 'polyadd',
     'polycompanion' => 'polycompanion',
@@ -529,6 +558,210 @@ final class Polynomial
     }
 
     /**
+     * Convert a Laguerre series to a power series (numpy.polynomial.laguerre.lag2poly).
+     *
+     * scipy.npoly.lag2poly
+     */
+    public static function lag2poly(mixed $c): mixed
+    {
+        return Registry::routine('npoly.lag2poly', [$c]);
+    }
+
+    /**
+     * Sum of two Laguerre series (numpy.polynomial.laguerre.lagadd).
+     *
+     * scipy.npoly.lagadd
+     */
+    public static function lagadd(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.lagadd', [$c1, $c2]);
+    }
+
+    /**
+     * Companion matrix of a Laguerre series (numpy.polynomial.laguerre.lagcompanion).
+     *
+     * scipy.npoly.lagcompanion
+     */
+    public static function lagcompanion(mixed $c): mixed
+    {
+        return Registry::routine('npoly.lagcompanion', [$c]);
+    }
+
+    /**
+     * Derivative of a Laguerre series (numpy.polynomial.laguerre.lagder).
+     *
+     * scipy.npoly.lagder
+     */
+    public static function lagder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.lagder', [$c, $m, $scl]);
+    }
+
+    /**
+     * Quotient and remainder of Laguerre-series division (numpy.polynomial.laguerre.lagdiv).
+     *
+     * scipy.npoly.lagdiv
+     *
+     * @return mixed one array, or an array keyed by quo, rem when several results are requested
+     */
+    public static function lagdiv(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.lagdiv', [$c1, $c2]);
+    }
+
+    /**
+     * The default Laguerre domain [0, 1] (numpy.polynomial.laguerre.lagdomain).
+     *
+     * scipy.npoly.lagdomain
+     */
+    public static function lagdomain(): mixed
+    {
+        return Registry::routine('npoly.lagdomain', []);
+    }
+
+    /**
+     * Least-squares Laguerre-series fit (numpy.polynomial.laguerre.lagfit).
+     *
+     * scipy.npoly.lagfit
+     */
+    public static function lagfit(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.lagfit', [$x, $y, $deg]);
+    }
+
+    /**
+     * Laguerre series with the given roots (numpy.polynomial.laguerre.lagfromroots).
+     *
+     * scipy.npoly.lagfromroots
+     */
+    public static function lagfromroots(mixed $roots): mixed
+    {
+        return Registry::routine('npoly.lagfromroots', [$roots]);
+    }
+
+    /**
+     * Gauss-Laguerre quadrature nodes and weights (numpy.polynomial.laguerre.laggauss).
+     *
+     * scipy.npoly.laggauss
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function laggauss(mixed $deg): mixed
+    {
+        return Registry::routine('npoly.laggauss', [$deg]);
+    }
+
+    /**
+     * Evaluate a Laguerre series on a 2-D grid (numpy.polynomial.laguerre.laggrid2d).
+     *
+     * scipy.npoly.laggrid2d
+     */
+    public static function laggrid2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.laggrid2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a Laguerre series on a 3-D grid (numpy.polynomial.laguerre.laggrid3d).
+     *
+     * scipy.npoly.laggrid3d
+     */
+    public static function laggrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.laggrid3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Antiderivative of a Laguerre series (numpy.polynomial.laguerre.lagint).
+     *
+     * scipy.npoly.lagint
+     */
+    public static function lagint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.lagint', [$c, $m, $k, $lbnd, $scl]);
+    }
+
+    /**
+     * Laguerre series for off + scl*x (numpy.polynomial.laguerre.lagline).
+     *
+     * scipy.npoly.lagline
+     */
+    public static function lagline(mixed $off, mixed $scl): mixed
+    {
+        return Registry::routine('npoly.lagline', [$off, $scl]);
+    }
+
+    /**
+     * Product of two Laguerre series (numpy.polynomial.laguerre.lagmul).
+     *
+     * scipy.npoly.lagmul
+     */
+    public static function lagmul(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.lagmul', [$c1, $c2]);
+    }
+
+    /**
+     * Multiply a Laguerre series by x (numpy.polynomial.laguerre.lagmulx).
+     *
+     * scipy.npoly.lagmulx
+     */
+    public static function lagmulx(mixed $c): mixed
+    {
+        return Registry::routine('npoly.lagmulx', [$c]);
+    }
+
+    /**
+     * The one Laguerre series (numpy.polynomial.laguerre.lagone).
+     *
+     * scipy.npoly.lagone
+     */
+    public static function lagone(): mixed
+    {
+        return Registry::routine('npoly.lagone', []);
+    }
+
+    /**
+     * Laguerre series raised to a power (numpy.polynomial.laguerre.lagpow).
+     *
+     * scipy.npoly.lagpow
+     */
+    public static function lagpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed
+    {
+        return Registry::routine('npoly.lagpow', [$c, $pow, $maxpower]);
+    }
+
+    /**
+     * Roots of a Laguerre series (numpy.polynomial.laguerre.lagroots).
+     *
+     * scipy.npoly.lagroots
+     */
+    public static function lagroots(mixed $c): mixed
+    {
+        return Registry::routine('npoly.lagroots', [$c]);
+    }
+
+    /**
+     * Difference of two Laguerre series (numpy.polynomial.laguerre.lagsub).
+     *
+     * scipy.npoly.lagsub
+     */
+    public static function lagsub(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.lagsub', [$c1, $c2]);
+    }
+
+    /**
+     * Trim trailing small coefficients (numpy.polynomial.laguerre.lagtrim).
+     *
+     * scipy.npoly.lagtrim
+     */
+    public static function lagtrim(mixed $c, mixed $tol = 0): mixed
+    {
+        return Registry::routine('npoly.lagtrim', [$c, $tol]);
+    }
+
+    /**
      * Evaluate a Laguerre series at x (numpy.polynomial.laguerre.lagval).
      *
      * scipy.npoly.lagval
@@ -536,6 +769,86 @@ final class Polynomial
     public static function lagval(mixed $x, mixed $c): mixed
     {
         return Registry::routine('npoly.lagval', [$x, $c]);
+    }
+
+    /**
+     * Evaluate a 2-D Laguerre series (numpy.polynomial.laguerre.lagval2d).
+     *
+     * scipy.npoly.lagval2d
+     */
+    public static function lagval2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.lagval2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a 3-D Laguerre series (numpy.polynomial.laguerre.lagval3d).
+     *
+     * scipy.npoly.lagval3d
+     */
+    public static function lagval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.lagval3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of the Laguerre basis (numpy.polynomial.laguerre.lagvander).
+     *
+     * scipy.npoly.lagvander
+     */
+    public static function lagvander(mixed $x, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.lagvander', [$x, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 2-D Laguerre basis (numpy.polynomial.laguerre.lagvander2d).
+     *
+     * scipy.npoly.lagvander2d
+     */
+    public static function lagvander2d(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.lagvander2d', [$x, $y, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 3-D Laguerre basis (numpy.polynomial.laguerre.lagvander3d).
+     *
+     * scipy.npoly.lagvander3d
+     */
+    public static function lagvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.lagvander3d', [$x, $y, $z, $deg]);
+    }
+
+    /**
+     * Laguerre weight exp(-x) (numpy.polynomial.laguerre.lagweight).
+     *
+     * scipy.npoly.lagweight
+     */
+    public static function lagweight(mixed $x): mixed
+    {
+        return Registry::routine('npoly.lagweight', [$x]);
+    }
+
+    /**
+     * The identity Laguerre series x (numpy.polynomial.laguerre.lagx).
+     *
+     * scipy.npoly.lagx
+     */
+    public static function lagx(): mixed
+    {
+        return Registry::routine('npoly.lagx', []);
+    }
+
+    /**
+     * The zero Laguerre series (numpy.polynomial.laguerre.lagzero).
+     *
+     * scipy.npoly.lagzero
+     */
+    public static function lagzero(): mixed
+    {
+        return Registry::routine('npoly.lagzero', []);
     }
 
     /**
@@ -840,6 +1153,16 @@ final class Polynomial
     public static function poly2cheb(mixed $pol): mixed
     {
         return Registry::routine('npoly.poly2cheb', [$pol]);
+    }
+
+    /**
+     * Convert a power series to a Laguerre series (numpy.polynomial.laguerre.poly2lag).
+     *
+     * scipy.npoly.poly2lag
+     */
+    public static function poly2lag(mixed $pol): mixed
+    {
+        return Registry::routine('npoly.poly2lag', [$pol]);
     }
 
     /**
