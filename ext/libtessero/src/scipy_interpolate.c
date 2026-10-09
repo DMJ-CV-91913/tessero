@@ -829,6 +829,53 @@ static int r_rbf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     return rc;
 }
 
+/* locate the interval of a piecewise polynomial: the i with x[i] <= v < x[i+1], clamped to [0, m-1] so the
+   edge pieces extrapolate (SciPy's PPoly/BPoly default extrapolate=True). x has m+1 breakpoints. */
+static int64_t pp_interval(const double *x, int64_t m, double v)
+{
+    int64_t lo = 0, hi = m;                                   /* search among m+1 breakpoints -> interval in [0, m-1] */
+    while (lo < hi) { int64_t mid = (lo + hi) / 2; if (x[mid + 1] <= v) lo = mid + 1; else hi = mid; }
+    return lo < 0 ? 0 : (lo > m - 1 ? m - 1 : lo);
+}
+/* PPoly(c, x)(xnew): piecewise polynomial, c shape (k+1, m) local power basis (descending), breakpoints x. */
+static int r_ppoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("PPoly: c must be 2-D, x and xnew 1-D arrays"); return TSR_EARG; }
+    const int64_t k1 = args[0].arr.shape[0], m = args[0].arr.shape[1];
+    int64_t lc, lx, lq; double *c = fn_arg_doubles(&args[0], &lc), *x = c ? fn_arg_doubles(&args[1], &lx) : NULL, *xq = x ? fn_arg_doubles(&args[2], &lq) : NULL;
+    double *out = xq ? (double *)fn_result_array(&res[0], TSR_F64, args[2].arr.ndim, args[2].arr.shape) : NULL;
+    int rc = (!c || !x || !xq || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) for (int64_t t = 0; t < lq; t++) {
+        int64_t i = pp_interval(x, m, xq[t]); double s = xq[t] - x[i], v = 0.0;
+        for (int64_t j = 0; j < k1; j++) v = v * s + c[j * m + i];
+        out[t] = v;
+    }
+    fn_free_doubles(c, lc); fn_free_doubles(x, lx); fn_free_doubles(xq, lq);
+    return rc;
+}
+/* BPoly(c, x)(xnew): piecewise Bernstein polynomial, c shape (k+1, m), breakpoints x. */
+static int r_bpoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("BPoly: c must be 2-D, x and xnew 1-D arrays"); return TSR_EARG; }
+    const int64_t k1 = args[0].arr.shape[0], m = args[0].arr.shape[1], k = k1 - 1;
+    int64_t lc, lx, lq; double *c = fn_arg_doubles(&args[0], &lc), *x = c ? fn_arg_doubles(&args[1], &lx) : NULL, *xq = x ? fn_arg_doubles(&args[2], &lq) : NULL;
+    double *binom = xq ? (double *)malloc((size_t)k1 * sizeof(double)) : NULL;
+    double *out = binom ? (double *)fn_result_array(&res[0], TSR_F64, args[2].arr.ndim, args[2].arr.shape) : NULL;
+    int rc = (!c || !x || !xq || !binom || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        binom[0] = 1.0; for (int64_t a = 1; a <= k; a++) binom[a] = binom[a - 1] * (double)(k - a + 1) / (double)a;
+        for (int64_t t = 0; t < lq; t++) {
+            int64_t i = pp_interval(x, m, xq[t]); double s = (xq[t] - x[i]) / (x[i + 1] - x[i]), v = 0.0;
+            for (int64_t a = 0; a <= k; a++) v += c[a * m + i] * binom[a] * pow(s, (double)a) * pow(1.0 - s, (double)(k - a));
+            out[t] = v;
+        }
+    }
+    free(binom); fn_free_doubles(c, lc); fn_free_doubles(x, lx); fn_free_doubles(xq, lq);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -850,6 +897,10 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.interpn", 1, "points[], values, xi", "y", r_rgi, NULL, "Multilinear interpolation on a regular n-D grid at points xi (scipy.interpolate.interpn)."),
     ROUTINE("interpolate.RBFInterpolator", 1, "y, d, xi, kernel='thin_plate_spline'", "out", r_rbf, NULL, "Radial basis function interpolation (thin_plate_spline or linear kernel) evaluated at xi (scipy.interpolate.RBFInterpolator)."),
     ROUTINE("interpolate.make_lsq_spline", 1, "x, y, t, k, xnew", "out", r_make_lsq_spline, NULL, "Least-squares B-spline fit with given knots t and degree k, evaluated at xnew (scipy.interpolate.make_lsq_spline)."),
+    ROUTINE("interpolate.BarycentricInterpolator", 1, "xi, yi, x", "y", r_barycentric, NULL, "Barycentric Lagrange interpolation evaluated at x (scipy.interpolate.BarycentricInterpolator)."),
+    ROUTINE("interpolate.KroghInterpolator", 1, "xi, yi, x", "y", r_krogh, NULL, "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.KroghInterpolator)."),
+    ROUTINE("interpolate.PPoly", 1, "c, x, xnew", "y", r_ppoly, NULL, "Piecewise polynomial (local power basis) evaluated at xnew (scipy.interpolate.PPoly)."),
+    ROUTINE("interpolate.BPoly", 1, "c, x, xnew", "y", r_bpoly, NULL, "Piecewise Bernstein polynomial evaluated at xnew (scipy.interpolate.BPoly)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

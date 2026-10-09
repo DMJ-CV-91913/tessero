@@ -185,7 +185,17 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.BPoly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.BSpline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.BarycentricInterpolator": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -196,6 +206,16 @@
             "nout": 1
         },
         "interpolate.CubicSpline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.KroghInterpolator": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "interpolate.PPoly": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
