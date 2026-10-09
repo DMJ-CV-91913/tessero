@@ -103,6 +103,8 @@ const CALL_RTOL = [
     'NdBSpline' => 1e-9,
     // Newton-Cotes weights: solving the moment Vandermonde in float64 vs SciPy's exact-rational weights
     'newton_cotes' => 1e-6,
+    // gaussian_kde: Cholesky-whitening sum accumulates slightly differently than SciPy's vectorized form
+    'gaussian_kde' => 1e-9,
 ];
 // absolute tolerances: polyfit/roots/*fit coefficients can be legitimately ~0, where a relative tolerance is meaningless
 const CALL_ATOL = ['polyfit' => 1e-8, 'roots' => 1e-8,

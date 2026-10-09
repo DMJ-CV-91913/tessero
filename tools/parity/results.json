@@ -1169,6 +1169,7 @@
         "stats.dlaplace": "pass",
         "stats.dpareto_lognorm": "pass",
         "stats.dweibull": "pass",
+        "stats.ecdf": "pass",
         "stats.energy_distance": "pass",
         "stats.entropy": "pass",
         "stats.epps_singleton_2samp": "pass",
@@ -1190,6 +1191,7 @@
         "stats.friedmanchisquare": "pass",
         "stats.gamma": "pass",
         "stats.gausshyper": "pass",
+        "stats.gaussian_kde": "pass",
         "stats.genexpon": "pass",
         "stats.genextreme": "pass",
         "stats.gengamma": "pass",
@@ -1864,7 +1866,7 @@
             "stats.obrientransform": 0,
             "stats.kstat": 0,
             "stats.kstatvar": 0,
-            "stats.lmoment": 2.44149216897934e-14,
+            "stats.lmoment": 8.688695539253807e-14,
             "stats.expectile": 0,
             "stats.circmean": 0,
             "stats.circvar": 0,
@@ -2758,7 +2760,9 @@
             "sparse.triu": 0,
             "sparse.find": 0,
             "sparse.spdiags": 0,
-            "sparse.block_diag": 0
+            "sparse.block_diag": 0,
+            "stats.gaussian_kde": 8.00547901307772e-16,
+            "stats.ecdf": 0
         },
         "ext": {
             "np.median": 0,
@@ -3244,7 +3248,7 @@
             "stats.obrientransform": 0,
             "stats.kstat": 0,
             "stats.kstatvar": 0,
-            "stats.lmoment": 2.44149216897934e-14,
+            "stats.lmoment": 8.688695539253807e-14,
             "stats.expectile": 0,
             "stats.circmean": 0,
             "stats.circvar": 0,
@@ -4138,7 +4142,9 @@
             "sparse.triu": 0,
             "sparse.find": 0,
             "sparse.spdiags": 0,
-            "sparse.block_diag": 0
+            "sparse.block_diag": 0,
+            "stats.gaussian_kde": 8.00547901307772e-16,
+            "stats.ecdf": 0
         }
     },
     "ext": {
@@ -5311,6 +5317,7 @@
         "stats.dlaplace": "pass",
         "stats.dpareto_lognorm": "pass",
         "stats.dweibull": "pass",
+        "stats.ecdf": "pass",
         "stats.energy_distance": "pass",
         "stats.entropy": "pass",
         "stats.epps_singleton_2samp": "pass",
@@ -5332,6 +5339,7 @@
         "stats.friedmanchisquare": "pass",
         "stats.gamma": "pass",
         "stats.gausshyper": "pass",
+        "stats.gaussian_kde": "pass",
         "stats.genexpon": "pass",
         "stats.genextreme": "pass",
         "stats.gengamma": "pass",

@@ -10720,6 +10720,12 @@
                 "doc": "A double Weibull continuous random variable."
             },
             {
+                "name": "ecdf",
+                "static": true,
+                "sig": "ecdf(mixed $sample): mixed",
+                "doc": "Empirical CDF: sorted unique values and cumulative proportions (scipy.stats.ecdf)."
+            },
+            {
                 "name": "energyDistance",
                 "static": true,
                 "sig": "energyDistance(mixed $uValues, mixed $vValues, mixed $uWeights = null, mixed $vWeights = null): mixed",
@@ -10844,6 +10850,12 @@
                 "static": true,
                 "sig": "gausshyper(mixed $a, mixed $b, mixed $c, mixed $z, mixed $loc = 0, mixed $scale = 1): Tessero\\Stats\\Distribution",
                 "doc": "A Gauss hypergeometric continuous random variable."
+            },
+            {
+                "name": "gaussianKde",
+                "static": true,
+                "sig": "gaussianKde(mixed $dataset, mixed $points): mixed",
+                "doc": "Gaussian kernel density estimate (Scott's factor) evaluated at points (scipy.stats.gaussian_kde)."
             },
             {
                 "name": "genexpon",
@@ -14954,6 +14966,18 @@
                 "name": "medianAbsDeviation",
                 "static": true,
                 "sig": "medianAbsDeviation($x, $axis = 0, $center = null, $scale = 1.0, $nanPolicy = 'propagate', $keepdims = false)",
+                "doc": ""
+            },
+            {
+                "name": "gaussianKde",
+                "static": true,
+                "sig": "gaussianKde($dataset, $points)",
+                "doc": ""
+            },
+            {
+                "name": "ecdf",
+                "static": true,
+                "sig": "ecdf($sample)",
                 "doc": ""
             },
             {

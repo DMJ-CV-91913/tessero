@@ -5505,6 +5505,11 @@
             "nin": null,
             "nout": null
         },
+        "stats.ecdf": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "stats.energy_distance": {
             "kind": "routine",
             "nin": 0,
@@ -5609,6 +5614,11 @@
             "kind": "dist",
             "nin": null,
             "nout": null
+        },
+        "stats.gaussian_kde": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
         },
         "stats.genexpon": {
             "kind": "dist",

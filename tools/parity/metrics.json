@@ -65,8 +65,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1306,
-  "ffi": 1306
+  "ext": 1308,
+  "ffi": 1308
  },
  "groups": {
   "NumPy core": {
@@ -86,20 +86,20 @@
    "verified_ffi": 649
   },
   "SciPy": {
-   "both": 1077,
+   "both": 1079,
    "excluded": 60,
-   "impl_ext": 1077,
-   "impl_ffi": 1080,
+   "impl_ext": 1079,
+   "impl_ffi": 1082,
    "in_scope": 1502,
-   "m2_ext": 71.7,
-   "m2_ffi": 71.9,
+   "m2_ext": 71.8,
+   "m2_ffi": 72.0,
    "m3": 3.8,
-   "m4_ext": 71.7,
-   "m4_ffi": 71.9,
+   "m4_ext": 71.8,
+   "m4_ffi": 72.0,
    "m5": 99.7,
    "symbols": 1562,
-   "verified_ext": 1077,
-   "verified_ffi": 1080
+   "verified_ext": 1079,
+   "verified_ffi": 1082
   }
  },
  "modules": {
@@ -584,24 +584,24 @@
    "verified_ffi": 241
   },
   "scipy.stats": {
-   "both": 235,
+   "both": 237,
    "excluded": 6,
-   "impl_ext": 235,
-   "impl_ffi": 235,
+   "impl_ext": 237,
+   "impl_ffi": 237,
    "in_scope": 297,
-   "m2_ext": 79.1,
-   "m2_ffi": 79.1,
+   "m2_ext": 79.8,
+   "m2_ffi": 79.8,
    "m3": 2.0,
-   "m4_ext": 79.1,
-   "m4_ffi": 79.1,
+   "m4_ext": 79.8,
+   "m4_ffi": 79.8,
    "m5": 100.0,
    "symbols": 303,
-   "verified_ext": 235,
-   "verified_ffi": 235
+   "verified_ext": 237,
+   "verified_ffi": 237
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1309,
+ "registry_functions": 1311,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -611,9 +611,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 39943,
-   "covered_ext": 39943,
-   "covered_ffi": 39953,
+   "covered_both": 39953,
+   "covered_ext": 39953,
+   "covered_ffi": 39963,
    "excluded_calls": 2327,
    "excluded_share": 5.5,
    "in_scope_calls": 40221,
@@ -645,7 +645,7 @@
    },
    "u_both": 99.3,
    "u_ext": 99.3,
-   "u_ffi": 99.3
+   "u_ffi": 99.4
   },
   "corpus_files": 3374,
   "corpus_packages": 18,
@@ -690,17 +690,17 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2191,
-    "covered_ext": 2191,
-    "covered_ffi": 2199,
+    "covered_both": 2201,
+    "covered_ext": 2201,
+    "covered_ffi": 2209,
     "excluded_calls": 374,
     "excluded_share": 13.6,
     "in_scope_calls": 2374,
     "top": {
      "100": {
-      "both": 92,
-      "ext": 92,
-      "ffi": 93,
+      "both": 93,
+      "ext": 93,
+      "ffi": 94,
       "n": 100
      },
      "25": {
@@ -710,9 +710,9 @@
       "n": 25
      },
      "250": {
-      "both": 202,
-      "ext": 202,
-      "ffi": 204,
+      "both": 203,
+      "ext": 203,
+      "ffi": 205,
       "n": 250
      },
      "50": {
@@ -722,9 +722,9 @@
       "n": 50
      }
     },
-    "u_both": 92.3,
-    "u_ext": 92.3,
-    "u_ffi": 92.6
+    "u_both": 92.7,
+    "u_ext": 92.7,
+    "u_ffi": 93.0
    }
   },
   "total_calls": 42551,
