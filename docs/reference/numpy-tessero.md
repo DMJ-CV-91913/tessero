@@ -645,6 +645,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.dlaplace` | `Tessero\Stats::dlaplace()` |
 | `scipy.stats.dpareto_lognorm` | `Tessero\Stats::dparetoLognorm()` |
 | `scipy.stats.dweibull` | `Tessero\Stats::dweibull()` |
+| `scipy.stats.ecdf` | `Tessero\Stats::ecdf()` |
 | `scipy.stats.energy_distance` | `Tessero\Stats::energyDistance()` |
 | `scipy.stats.entropy` | `Tessero\Stats::entropy()` |
 | `scipy.stats.epps_singleton_2samp` | `Tessero\Stats::eppsSingleton2samp()` |
@@ -666,6 +667,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.friedmanchisquare` | `Tessero\Stats::friedmanchisquare()` |
 | `scipy.stats.gamma` | `Tessero\Stats::gamma()` |
 | `scipy.stats.gausshyper` | `Tessero\Stats::gausshyper()` |
+| `scipy.stats.gaussian_kde` | `Tessero\Stats::gaussianKde()` |
 | `scipy.stats.genexpon` | `Tessero\Stats::genexpon()` |
 | `scipy.stats.genextreme` | `Tessero\Stats::genextreme()` |
 | `scipy.stats.gengamma` | `Tessero\Stats::gengamma()` |

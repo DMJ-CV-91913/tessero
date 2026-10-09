@@ -503,6 +503,20 @@ def main():
     B['kstat'] += [call('kstat', [data(6), float('nan')]), call('kstat', [data(6), 2.5]), call('kstat', [data(6), 4.9])]
     B['kstatvar'] += [call('kstatvar', [data(6), float('nan')]), call('kstatvar', [data(6), 2.5])]
     B['lmoment'] += [call('lmoment', [data(6)], {'order': 3e9})]
+
+    # gaussian_kde (construct-and-evaluate) and ecdf (empirical CDF), both data-based
+    kc = []
+    for ds, pts in [(data(12), data(5)), (data(20), np.linspace(-3.0, 3.0, 7)),
+                    (data((2, 15)), data((2, 6))), (data((3, 20)), data((3, 4)))]:
+        dens = st.gaussian_kde(ds)(pts)
+        kc.append({'args': [F.enc(ds), F.enc(pts)], 'kwargs': {}, 'expect': F.enc_result_one(np.asarray(dens)), 'compare': 'tol'})
+    B['gaussian_kde'] = kc
+    ec = []
+    for s in [data(10), data(15), np.array([1., 2., 2., 3., 3., 3.])]:
+        r = st.ecdf(s)
+        ec.append({'args': [F.enc(s)], 'kwargs': {},
+                   'expect': {'dict': {'quantiles': F.enc(np.asarray(r.cdf.quantiles)), 'probabilities': F.enc(np.asarray(r.cdf.probabilities))}}, 'compare': 'tol'})
+    B['ecdf'] = ec
     write('desc', B)
 
 
