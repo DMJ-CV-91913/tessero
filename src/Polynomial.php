@@ -55,8 +55,64 @@ final class Polynomial
     'chebweight' => 'chebweight',
     'chebx' => 'chebx',
     'chebzero' => 'chebzero',
+    'herm2poly' => 'herm2poly',
+    'hermadd' => 'hermadd',
+    'hermcompanion' => 'hermcompanion',
+    'hermder' => 'hermder',
+    'hermdiv' => 'hermdiv',
+    'hermdomain' => 'hermdomain',
+    'herme2poly' => 'herme2poly',
+    'hermeadd' => 'hermeadd',
+    'hermecompanion' => 'hermecompanion',
+    'hermeder' => 'hermeder',
+    'hermediv' => 'hermediv',
+    'hermedomain' => 'hermedomain',
+    'hermefit' => 'hermefit',
+    'hermefromroots' => 'hermefromroots',
+    'hermegauss' => 'hermegauss',
+    'hermegrid2d' => 'hermegrid2d',
+    'hermegrid3d' => 'hermegrid3d',
+    'hermeint' => 'hermeint',
+    'hermeline' => 'hermeline',
+    'hermemul' => 'hermemul',
+    'hermemulx' => 'hermemulx',
+    'hermeone' => 'hermeone',
+    'hermepow' => 'hermepow',
+    'hermeroots' => 'hermeroots',
+    'hermesub' => 'hermesub',
+    'hermetrim' => 'hermetrim',
     'hermeval' => 'hermeval',
+    'hermeval2d' => 'hermeval2d',
+    'hermeval3d' => 'hermeval3d',
+    'hermevander' => 'hermevander',
+    'hermevander2d' => 'hermevander2d',
+    'hermevander3d' => 'hermevander3d',
+    'hermeweight' => 'hermeweight',
+    'hermex' => 'hermex',
+    'hermezero' => 'hermezero',
+    'hermfit' => 'hermfit',
+    'hermfromroots' => 'hermfromroots',
+    'hermgauss' => 'hermgauss',
+    'hermgrid2d' => 'hermgrid2d',
+    'hermgrid3d' => 'hermgrid3d',
+    'hermint' => 'hermint',
+    'hermline' => 'hermline',
+    'hermmul' => 'hermmul',
+    'hermmulx' => 'hermmulx',
+    'hermone' => 'hermone',
+    'hermpow' => 'hermpow',
+    'hermroots' => 'hermroots',
+    'hermsub' => 'hermsub',
+    'hermtrim' => 'hermtrim',
     'hermval' => 'hermval',
+    'hermval2d' => 'hermval2d',
+    'hermval3d' => 'hermval3d',
+    'hermvander' => 'hermvander',
+    'hermvander2d' => 'hermvander2d',
+    'hermvander3d' => 'hermvander3d',
+    'hermweight' => 'hermweight',
+    'hermx' => 'hermx',
+    'hermzero' => 'hermzero',
     'lag2poly' => 'lag2poly',
     'lagadd' => 'lagadd',
     'lagcompanion' => 'lagcompanion',
@@ -116,6 +172,8 @@ final class Polynomial
     'legx' => 'legx',
     'legzero' => 'legzero',
     'poly2cheb' => 'poly2cheb',
+    'poly2herm' => 'poly2herm',
+    'poly2herme' => 'poly2herme',
     'poly2lag' => 'poly2lag',
     'poly2leg' => 'poly2leg',
     'polyadd' => 'polyadd',
@@ -538,6 +596,272 @@ final class Polynomial
     }
 
     /**
+     * Convert a Hermite series to a power series (numpy.polynomial.hermite.herm2poly).
+     *
+     * scipy.npoly.herm2poly
+     */
+    public static function herm2poly(mixed $c): mixed
+    {
+        return Registry::routine('npoly.herm2poly', [$c]);
+    }
+
+    /**
+     * Sum of two Hermite series (numpy.polynomial.hermite.hermadd).
+     *
+     * scipy.npoly.hermadd
+     */
+    public static function hermadd(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermadd', [$c1, $c2]);
+    }
+
+    /**
+     * Companion matrix of a Hermite series (numpy.polynomial.hermite.hermcompanion).
+     *
+     * scipy.npoly.hermcompanion
+     */
+    public static function hermcompanion(mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermcompanion', [$c]);
+    }
+
+    /**
+     * Derivative of a Hermite series (numpy.polynomial.hermite.hermder).
+     *
+     * scipy.npoly.hermder
+     */
+    public static function hermder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.hermder', [$c, $m, $scl]);
+    }
+
+    /**
+     * Quotient and remainder of Hermite-series division (numpy.polynomial.hermite.hermdiv).
+     *
+     * scipy.npoly.hermdiv
+     *
+     * @return mixed one array, or an array keyed by quo, rem when several results are requested
+     */
+    public static function hermdiv(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermdiv', [$c1, $c2]);
+    }
+
+    /**
+     * The default Hermite domain [-1, 1] (numpy.polynomial.hermite.hermdomain).
+     *
+     * scipy.npoly.hermdomain
+     */
+    public static function hermdomain(): mixed
+    {
+        return Registry::routine('npoly.hermdomain', []);
+    }
+
+    /**
+     * Convert a HermiteE series to a power series (numpy.polynomial.hermite_e.herme2poly).
+     *
+     * scipy.npoly.herme2poly
+     */
+    public static function herme2poly(mixed $c): mixed
+    {
+        return Registry::routine('npoly.herme2poly', [$c]);
+    }
+
+    /**
+     * Sum of two HermiteE series (numpy.polynomial.hermite_e.hermeadd).
+     *
+     * scipy.npoly.hermeadd
+     */
+    public static function hermeadd(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermeadd', [$c1, $c2]);
+    }
+
+    /**
+     * Companion matrix of a HermiteE series (numpy.polynomial.hermite_e.hermecompanion).
+     *
+     * scipy.npoly.hermecompanion
+     */
+    public static function hermecompanion(mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermecompanion', [$c]);
+    }
+
+    /**
+     * Derivative of a HermiteE series (numpy.polynomial.hermite_e.hermeder).
+     *
+     * scipy.npoly.hermeder
+     */
+    public static function hermeder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.hermeder', [$c, $m, $scl]);
+    }
+
+    /**
+     * Quotient and remainder of HermiteE-series division (numpy.polynomial.hermite_e.hermediv).
+     *
+     * scipy.npoly.hermediv
+     *
+     * @return mixed one array, or an array keyed by quo, rem when several results are requested
+     */
+    public static function hermediv(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermediv', [$c1, $c2]);
+    }
+
+    /**
+     * The default HermiteE domain [-1, 1] (numpy.polynomial.hermite_e.hermedomain).
+     *
+     * scipy.npoly.hermedomain
+     */
+    public static function hermedomain(): mixed
+    {
+        return Registry::routine('npoly.hermedomain', []);
+    }
+
+    /**
+     * Least-squares HermiteE-series fit (numpy.polynomial.hermite_e.hermefit).
+     *
+     * scipy.npoly.hermefit
+     */
+    public static function hermefit(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermefit', [$x, $y, $deg]);
+    }
+
+    /**
+     * HermiteE series with the given roots (numpy.polynomial.hermite_e.hermefromroots).
+     *
+     * scipy.npoly.hermefromroots
+     */
+    public static function hermefromroots(mixed $roots): mixed
+    {
+        return Registry::routine('npoly.hermefromroots', [$roots]);
+    }
+
+    /**
+     * Gauss-HermiteE quadrature nodes and weights (numpy.polynomial.hermite_e.hermegauss).
+     *
+     * scipy.npoly.hermegauss
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function hermegauss(mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermegauss', [$deg]);
+    }
+
+    /**
+     * Evaluate a HermiteE series on a 2-D grid (numpy.polynomial.hermite_e.hermegrid2d).
+     *
+     * scipy.npoly.hermegrid2d
+     */
+    public static function hermegrid2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermegrid2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a HermiteE series on a 3-D grid (numpy.polynomial.hermite_e.hermegrid3d).
+     *
+     * scipy.npoly.hermegrid3d
+     */
+    public static function hermegrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermegrid3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Antiderivative of a HermiteE series (numpy.polynomial.hermite_e.hermeint).
+     *
+     * scipy.npoly.hermeint
+     */
+    public static function hermeint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.hermeint', [$c, $m, $k, $lbnd, $scl]);
+    }
+
+    /**
+     * HermiteE series for off + scl*x (numpy.polynomial.hermite_e.hermeline).
+     *
+     * scipy.npoly.hermeline
+     */
+    public static function hermeline(mixed $off, mixed $scl): mixed
+    {
+        return Registry::routine('npoly.hermeline', [$off, $scl]);
+    }
+
+    /**
+     * Product of two HermiteE series (numpy.polynomial.hermite_e.hermemul).
+     *
+     * scipy.npoly.hermemul
+     */
+    public static function hermemul(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermemul', [$c1, $c2]);
+    }
+
+    /**
+     * Multiply a HermiteE series by x (numpy.polynomial.hermite_e.hermemulx).
+     *
+     * scipy.npoly.hermemulx
+     */
+    public static function hermemulx(mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermemulx', [$c]);
+    }
+
+    /**
+     * The one HermiteE series (numpy.polynomial.hermite_e.hermeone).
+     *
+     * scipy.npoly.hermeone
+     */
+    public static function hermeone(): mixed
+    {
+        return Registry::routine('npoly.hermeone', []);
+    }
+
+    /**
+     * HermiteE series raised to a power (numpy.polynomial.hermite_e.hermepow).
+     *
+     * scipy.npoly.hermepow
+     */
+    public static function hermepow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed
+    {
+        return Registry::routine('npoly.hermepow', [$c, $pow, $maxpower]);
+    }
+
+    /**
+     * Roots of a HermiteE series (numpy.polynomial.hermite_e.hermeroots).
+     *
+     * scipy.npoly.hermeroots
+     */
+    public static function hermeroots(mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermeroots', [$c]);
+    }
+
+    /**
+     * Difference of two HermiteE series (numpy.polynomial.hermite_e.hermesub).
+     *
+     * scipy.npoly.hermesub
+     */
+    public static function hermesub(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermesub', [$c1, $c2]);
+    }
+
+    /**
+     * Trim trailing small coefficients (numpy.polynomial.hermite_e.hermetrim).
+     *
+     * scipy.npoly.hermetrim
+     */
+    public static function hermetrim(mixed $c, mixed $tol = 0): mixed
+    {
+        return Registry::routine('npoly.hermetrim', [$c, $tol]);
+    }
+
+    /**
      * Evaluate a HermiteE series at x (numpy.polynomial.hermite_e.hermeval).
      *
      * scipy.npoly.hermeval
@@ -548,6 +872,228 @@ final class Polynomial
     }
 
     /**
+     * Evaluate a 2-D HermiteE series (numpy.polynomial.hermite_e.hermeval2d).
+     *
+     * scipy.npoly.hermeval2d
+     */
+    public static function hermeval2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermeval2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a 3-D HermiteE series (numpy.polynomial.hermite_e.hermeval3d).
+     *
+     * scipy.npoly.hermeval3d
+     */
+    public static function hermeval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermeval3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of the HermiteE basis (numpy.polynomial.hermite_e.hermevander).
+     *
+     * scipy.npoly.hermevander
+     */
+    public static function hermevander(mixed $x, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermevander', [$x, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 2-D HermiteE basis (numpy.polynomial.hermite_e.hermevander2d).
+     *
+     * scipy.npoly.hermevander2d
+     */
+    public static function hermevander2d(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermevander2d', [$x, $y, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 3-D HermiteE basis (numpy.polynomial.hermite_e.hermevander3d).
+     *
+     * scipy.npoly.hermevander3d
+     */
+    public static function hermevander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermevander3d', [$x, $y, $z, $deg]);
+    }
+
+    /**
+     * HermiteE weight exp(-x^2/2) (numpy.polynomial.hermite_e.hermeweight).
+     *
+     * scipy.npoly.hermeweight
+     */
+    public static function hermeweight(mixed $x): mixed
+    {
+        return Registry::routine('npoly.hermeweight', [$x]);
+    }
+
+    /**
+     * The identity HermiteE series x (numpy.polynomial.hermite_e.hermex).
+     *
+     * scipy.npoly.hermex
+     */
+    public static function hermex(): mixed
+    {
+        return Registry::routine('npoly.hermex', []);
+    }
+
+    /**
+     * The zero HermiteE series (numpy.polynomial.hermite_e.hermezero).
+     *
+     * scipy.npoly.hermezero
+     */
+    public static function hermezero(): mixed
+    {
+        return Registry::routine('npoly.hermezero', []);
+    }
+
+    /**
+     * Least-squares Hermite-series fit (numpy.polynomial.hermite.hermfit).
+     *
+     * scipy.npoly.hermfit
+     */
+    public static function hermfit(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermfit', [$x, $y, $deg]);
+    }
+
+    /**
+     * Hermite series with the given roots (numpy.polynomial.hermite.hermfromroots).
+     *
+     * scipy.npoly.hermfromroots
+     */
+    public static function hermfromroots(mixed $roots): mixed
+    {
+        return Registry::routine('npoly.hermfromroots', [$roots]);
+    }
+
+    /**
+     * Gauss-Hermite quadrature nodes and weights (numpy.polynomial.hermite.hermgauss).
+     *
+     * scipy.npoly.hermgauss
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function hermgauss(mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermgauss', [$deg]);
+    }
+
+    /**
+     * Evaluate a Hermite series on a 2-D grid (numpy.polynomial.hermite.hermgrid2d).
+     *
+     * scipy.npoly.hermgrid2d
+     */
+    public static function hermgrid2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermgrid2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a Hermite series on a 3-D grid (numpy.polynomial.hermite.hermgrid3d).
+     *
+     * scipy.npoly.hermgrid3d
+     */
+    public static function hermgrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermgrid3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Antiderivative of a Hermite series (numpy.polynomial.hermite.hermint).
+     *
+     * scipy.npoly.hermint
+     */
+    public static function hermint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.hermint', [$c, $m, $k, $lbnd, $scl]);
+    }
+
+    /**
+     * Hermite series for off + scl*x (numpy.polynomial.hermite.hermline).
+     *
+     * scipy.npoly.hermline
+     */
+    public static function hermline(mixed $off, mixed $scl): mixed
+    {
+        return Registry::routine('npoly.hermline', [$off, $scl]);
+    }
+
+    /**
+     * Product of two Hermite series (numpy.polynomial.hermite.hermmul).
+     *
+     * scipy.npoly.hermmul
+     */
+    public static function hermmul(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermmul', [$c1, $c2]);
+    }
+
+    /**
+     * Multiply a Hermite series by x (numpy.polynomial.hermite.hermmulx).
+     *
+     * scipy.npoly.hermmulx
+     */
+    public static function hermmulx(mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermmulx', [$c]);
+    }
+
+    /**
+     * The one Hermite series (numpy.polynomial.hermite.hermone).
+     *
+     * scipy.npoly.hermone
+     */
+    public static function hermone(): mixed
+    {
+        return Registry::routine('npoly.hermone', []);
+    }
+
+    /**
+     * Hermite series raised to a power (numpy.polynomial.hermite.hermpow).
+     *
+     * scipy.npoly.hermpow
+     */
+    public static function hermpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed
+    {
+        return Registry::routine('npoly.hermpow', [$c, $pow, $maxpower]);
+    }
+
+    /**
+     * Roots of a Hermite series (numpy.polynomial.hermite.hermroots).
+     *
+     * scipy.npoly.hermroots
+     */
+    public static function hermroots(mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermroots', [$c]);
+    }
+
+    /**
+     * Difference of two Hermite series (numpy.polynomial.hermite.hermsub).
+     *
+     * scipy.npoly.hermsub
+     */
+    public static function hermsub(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.hermsub', [$c1, $c2]);
+    }
+
+    /**
+     * Trim trailing small coefficients (numpy.polynomial.hermite.hermtrim).
+     *
+     * scipy.npoly.hermtrim
+     */
+    public static function hermtrim(mixed $c, mixed $tol = 0): mixed
+    {
+        return Registry::routine('npoly.hermtrim', [$c, $tol]);
+    }
+
+    /**
      * Evaluate a Hermite series at x (numpy.polynomial.hermite.hermval).
      *
      * scipy.npoly.hermval
@@ -555,6 +1101,86 @@ final class Polynomial
     public static function hermval(mixed $x, mixed $c): mixed
     {
         return Registry::routine('npoly.hermval', [$x, $c]);
+    }
+
+    /**
+     * Evaluate a 2-D Hermite series (numpy.polynomial.hermite.hermval2d).
+     *
+     * scipy.npoly.hermval2d
+     */
+    public static function hermval2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermval2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a 3-D Hermite series (numpy.polynomial.hermite.hermval3d).
+     *
+     * scipy.npoly.hermval3d
+     */
+    public static function hermval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.hermval3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of the Hermite basis (numpy.polynomial.hermite.hermvander).
+     *
+     * scipy.npoly.hermvander
+     */
+    public static function hermvander(mixed $x, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermvander', [$x, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 2-D Hermite basis (numpy.polynomial.hermite.hermvander2d).
+     *
+     * scipy.npoly.hermvander2d
+     */
+    public static function hermvander2d(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermvander2d', [$x, $y, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 3-D Hermite basis (numpy.polynomial.hermite.hermvander3d).
+     *
+     * scipy.npoly.hermvander3d
+     */
+    public static function hermvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.hermvander3d', [$x, $y, $z, $deg]);
+    }
+
+    /**
+     * Hermite weight exp(-x^2) (numpy.polynomial.hermite.hermweight).
+     *
+     * scipy.npoly.hermweight
+     */
+    public static function hermweight(mixed $x): mixed
+    {
+        return Registry::routine('npoly.hermweight', [$x]);
+    }
+
+    /**
+     * The identity Hermite series x (numpy.polynomial.hermite.hermx).
+     *
+     * scipy.npoly.hermx
+     */
+    public static function hermx(): mixed
+    {
+        return Registry::routine('npoly.hermx', []);
+    }
+
+    /**
+     * The zero Hermite series (numpy.polynomial.hermite.hermzero).
+     *
+     * scipy.npoly.hermzero
+     */
+    public static function hermzero(): mixed
+    {
+        return Registry::routine('npoly.hermzero', []);
     }
 
     /**
@@ -1153,6 +1779,26 @@ final class Polynomial
     public static function poly2cheb(mixed $pol): mixed
     {
         return Registry::routine('npoly.poly2cheb', [$pol]);
+    }
+
+    /**
+     * Convert a power series to a Hermite series (numpy.polynomial.hermite.poly2herm).
+     *
+     * scipy.npoly.poly2herm
+     */
+    public static function poly2herm(mixed $pol): mixed
+    {
+        return Registry::routine('npoly.poly2herm', [$pol]);
+    }
+
+    /**
+     * Convert a power series to a HermiteE series (numpy.polynomial.hermite_e.poly2herme).
+     *
+     * scipy.npoly.poly2herme
+     */
+    public static function poly2herme(mixed $pol): mixed
+    {
+        return Registry::routine('npoly.poly2herme', [$pol]);
     }
 
     /**

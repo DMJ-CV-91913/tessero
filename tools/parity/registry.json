@@ -1940,12 +1940,292 @@
             "nin": 0,
             "nout": 1
         },
+        "npoly.herm2poly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermadd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermcompanion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermder": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermdiv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.hermdomain": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.herme2poly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeadd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermecompanion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeder": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermediv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.hermedomain": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermefit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermefromroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermegauss": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.hermegrid2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermegrid3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeint": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermemul": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermemulx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeone": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermepow": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermesub": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermetrim": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "npoly.hermeval": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
+        "npoly.hermeval2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeval3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermevander": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermevander2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermevander3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeweight": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermex": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermezero": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermfit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermfromroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermgauss": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.hermgrid2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermgrid3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermint": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermmul": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermmulx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermone": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermpow": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermsub": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermtrim": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "npoly.hermval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermval2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermval3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermvander": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermvander2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermvander3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermweight": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermzero": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -2241,6 +2521,16 @@
             "nout": 1
         },
         "npoly.poly2cheb": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.poly2herm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.poly2herme": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

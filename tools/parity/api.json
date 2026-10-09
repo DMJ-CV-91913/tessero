@@ -4367,16 +4367,352 @@
                 "doc": "The zero Chebyshev series (numpy.polynomial.chebyshev.chebzero)."
             },
             {
+                "name": "herm2poly",
+                "static": true,
+                "sig": "herm2poly(mixed $c): mixed",
+                "doc": "Convert a Hermite series to a power series (numpy.polynomial.hermite.herm2poly)."
+            },
+            {
+                "name": "hermadd",
+                "static": true,
+                "sig": "hermadd(mixed $c1, mixed $c2): mixed",
+                "doc": "Sum of two Hermite series (numpy.polynomial.hermite.hermadd)."
+            },
+            {
+                "name": "hermcompanion",
+                "static": true,
+                "sig": "hermcompanion(mixed $c): mixed",
+                "doc": "Companion matrix of a Hermite series (numpy.polynomial.hermite.hermcompanion)."
+            },
+            {
+                "name": "hermder",
+                "static": true,
+                "sig": "hermder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed",
+                "doc": "Derivative of a Hermite series (numpy.polynomial.hermite.hermder)."
+            },
+            {
+                "name": "hermdiv",
+                "static": true,
+                "sig": "hermdiv(mixed $c1, mixed $c2): mixed",
+                "doc": "Quotient and remainder of Hermite-series division (numpy.polynomial.hermite.hermdiv)."
+            },
+            {
+                "name": "hermdomain",
+                "static": true,
+                "sig": "hermdomain(): mixed",
+                "doc": "The default Hermite domain [-1, 1] (numpy.polynomial.hermite.hermdomain)."
+            },
+            {
+                "name": "herme2poly",
+                "static": true,
+                "sig": "herme2poly(mixed $c): mixed",
+                "doc": "Convert a HermiteE series to a power series (numpy.polynomial.hermite_e.herme2poly)."
+            },
+            {
+                "name": "hermeadd",
+                "static": true,
+                "sig": "hermeadd(mixed $c1, mixed $c2): mixed",
+                "doc": "Sum of two HermiteE series (numpy.polynomial.hermite_e.hermeadd)."
+            },
+            {
+                "name": "hermecompanion",
+                "static": true,
+                "sig": "hermecompanion(mixed $c): mixed",
+                "doc": "Companion matrix of a HermiteE series (numpy.polynomial.hermite_e.hermecompanion)."
+            },
+            {
+                "name": "hermeder",
+                "static": true,
+                "sig": "hermeder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed",
+                "doc": "Derivative of a HermiteE series (numpy.polynomial.hermite_e.hermeder)."
+            },
+            {
+                "name": "hermediv",
+                "static": true,
+                "sig": "hermediv(mixed $c1, mixed $c2): mixed",
+                "doc": "Quotient and remainder of HermiteE-series division (numpy.polynomial.hermite_e.hermediv)."
+            },
+            {
+                "name": "hermedomain",
+                "static": true,
+                "sig": "hermedomain(): mixed",
+                "doc": "The default HermiteE domain [-1, 1] (numpy.polynomial.hermite_e.hermedomain)."
+            },
+            {
+                "name": "hermefit",
+                "static": true,
+                "sig": "hermefit(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Least-squares HermiteE-series fit (numpy.polynomial.hermite_e.hermefit)."
+            },
+            {
+                "name": "hermefromroots",
+                "static": true,
+                "sig": "hermefromroots(mixed $roots): mixed",
+                "doc": "HermiteE series with the given roots (numpy.polynomial.hermite_e.hermefromroots)."
+            },
+            {
+                "name": "hermegauss",
+                "static": true,
+                "sig": "hermegauss(mixed $deg): mixed",
+                "doc": "Gauss-HermiteE quadrature nodes and weights (numpy.polynomial.hermite_e.hermegauss)."
+            },
+            {
+                "name": "hermegrid2d",
+                "static": true,
+                "sig": "hermegrid2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a HermiteE series on a 2-D grid (numpy.polynomial.hermite_e.hermegrid2d)."
+            },
+            {
+                "name": "hermegrid3d",
+                "static": true,
+                "sig": "hermegrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a HermiteE series on a 3-D grid (numpy.polynomial.hermite_e.hermegrid3d)."
+            },
+            {
+                "name": "hermeint",
+                "static": true,
+                "sig": "hermeint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed",
+                "doc": "Antiderivative of a HermiteE series (numpy.polynomial.hermite_e.hermeint)."
+            },
+            {
+                "name": "hermeline",
+                "static": true,
+                "sig": "hermeline(mixed $off, mixed $scl): mixed",
+                "doc": "HermiteE series for off + scl*x (numpy.polynomial.hermite_e.hermeline)."
+            },
+            {
+                "name": "hermemul",
+                "static": true,
+                "sig": "hermemul(mixed $c1, mixed $c2): mixed",
+                "doc": "Product of two HermiteE series (numpy.polynomial.hermite_e.hermemul)."
+            },
+            {
+                "name": "hermemulx",
+                "static": true,
+                "sig": "hermemulx(mixed $c): mixed",
+                "doc": "Multiply a HermiteE series by x (numpy.polynomial.hermite_e.hermemulx)."
+            },
+            {
+                "name": "hermeone",
+                "static": true,
+                "sig": "hermeone(): mixed",
+                "doc": "The one HermiteE series (numpy.polynomial.hermite_e.hermeone)."
+            },
+            {
+                "name": "hermepow",
+                "static": true,
+                "sig": "hermepow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed",
+                "doc": "HermiteE series raised to a power (numpy.polynomial.hermite_e.hermepow)."
+            },
+            {
+                "name": "hermeroots",
+                "static": true,
+                "sig": "hermeroots(mixed $c): mixed",
+                "doc": "Roots of a HermiteE series (numpy.polynomial.hermite_e.hermeroots)."
+            },
+            {
+                "name": "hermesub",
+                "static": true,
+                "sig": "hermesub(mixed $c1, mixed $c2): mixed",
+                "doc": "Difference of two HermiteE series (numpy.polynomial.hermite_e.hermesub)."
+            },
+            {
+                "name": "hermetrim",
+                "static": true,
+                "sig": "hermetrim(mixed $c, mixed $tol = 0): mixed",
+                "doc": "Trim trailing small coefficients (numpy.polynomial.hermite_e.hermetrim)."
+            },
+            {
                 "name": "hermeval",
                 "static": true,
                 "sig": "hermeval(mixed $x, mixed $c): mixed",
                 "doc": "Evaluate a HermiteE series at x (numpy.polynomial.hermite_e.hermeval)."
             },
             {
+                "name": "hermeval2d",
+                "static": true,
+                "sig": "hermeval2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a 2-D HermiteE series (numpy.polynomial.hermite_e.hermeval2d)."
+            },
+            {
+                "name": "hermeval3d",
+                "static": true,
+                "sig": "hermeval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a 3-D HermiteE series (numpy.polynomial.hermite_e.hermeval3d)."
+            },
+            {
+                "name": "hermevander",
+                "static": true,
+                "sig": "hermevander(mixed $x, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of the HermiteE basis (numpy.polynomial.hermite_e.hermevander)."
+            },
+            {
+                "name": "hermevander2d",
+                "static": true,
+                "sig": "hermevander2d(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 2-D HermiteE basis (numpy.polynomial.hermite_e.hermevander2d)."
+            },
+            {
+                "name": "hermevander3d",
+                "static": true,
+                "sig": "hermevander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 3-D HermiteE basis (numpy.polynomial.hermite_e.hermevander3d)."
+            },
+            {
+                "name": "hermeweight",
+                "static": true,
+                "sig": "hermeweight(mixed $x): mixed",
+                "doc": "HermiteE weight exp(-x^2/2) (numpy.polynomial.hermite_e.hermeweight)."
+            },
+            {
+                "name": "hermex",
+                "static": true,
+                "sig": "hermex(): mixed",
+                "doc": "The identity HermiteE series x (numpy.polynomial.hermite_e.hermex)."
+            },
+            {
+                "name": "hermezero",
+                "static": true,
+                "sig": "hermezero(): mixed",
+                "doc": "The zero HermiteE series (numpy.polynomial.hermite_e.hermezero)."
+            },
+            {
+                "name": "hermfit",
+                "static": true,
+                "sig": "hermfit(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Least-squares Hermite-series fit (numpy.polynomial.hermite.hermfit)."
+            },
+            {
+                "name": "hermfromroots",
+                "static": true,
+                "sig": "hermfromroots(mixed $roots): mixed",
+                "doc": "Hermite series with the given roots (numpy.polynomial.hermite.hermfromroots)."
+            },
+            {
+                "name": "hermgauss",
+                "static": true,
+                "sig": "hermgauss(mixed $deg): mixed",
+                "doc": "Gauss-Hermite quadrature nodes and weights (numpy.polynomial.hermite.hermgauss)."
+            },
+            {
+                "name": "hermgrid2d",
+                "static": true,
+                "sig": "hermgrid2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a Hermite series on a 2-D grid (numpy.polynomial.hermite.hermgrid2d)."
+            },
+            {
+                "name": "hermgrid3d",
+                "static": true,
+                "sig": "hermgrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a Hermite series on a 3-D grid (numpy.polynomial.hermite.hermgrid3d)."
+            },
+            {
+                "name": "hermint",
+                "static": true,
+                "sig": "hermint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed",
+                "doc": "Antiderivative of a Hermite series (numpy.polynomial.hermite.hermint)."
+            },
+            {
+                "name": "hermline",
+                "static": true,
+                "sig": "hermline(mixed $off, mixed $scl): mixed",
+                "doc": "Hermite series for off + scl*x (numpy.polynomial.hermite.hermline)."
+            },
+            {
+                "name": "hermmul",
+                "static": true,
+                "sig": "hermmul(mixed $c1, mixed $c2): mixed",
+                "doc": "Product of two Hermite series (numpy.polynomial.hermite.hermmul)."
+            },
+            {
+                "name": "hermmulx",
+                "static": true,
+                "sig": "hermmulx(mixed $c): mixed",
+                "doc": "Multiply a Hermite series by x (numpy.polynomial.hermite.hermmulx)."
+            },
+            {
+                "name": "hermone",
+                "static": true,
+                "sig": "hermone(): mixed",
+                "doc": "The one Hermite series (numpy.polynomial.hermite.hermone)."
+            },
+            {
+                "name": "hermpow",
+                "static": true,
+                "sig": "hermpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed",
+                "doc": "Hermite series raised to a power (numpy.polynomial.hermite.hermpow)."
+            },
+            {
+                "name": "hermroots",
+                "static": true,
+                "sig": "hermroots(mixed $c): mixed",
+                "doc": "Roots of a Hermite series (numpy.polynomial.hermite.hermroots)."
+            },
+            {
+                "name": "hermsub",
+                "static": true,
+                "sig": "hermsub(mixed $c1, mixed $c2): mixed",
+                "doc": "Difference of two Hermite series (numpy.polynomial.hermite.hermsub)."
+            },
+            {
+                "name": "hermtrim",
+                "static": true,
+                "sig": "hermtrim(mixed $c, mixed $tol = 0): mixed",
+                "doc": "Trim trailing small coefficients (numpy.polynomial.hermite.hermtrim)."
+            },
+            {
                 "name": "hermval",
                 "static": true,
                 "sig": "hermval(mixed $x, mixed $c): mixed",
                 "doc": "Evaluate a Hermite series at x (numpy.polynomial.hermite.hermval)."
+            },
+            {
+                "name": "hermval2d",
+                "static": true,
+                "sig": "hermval2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a 2-D Hermite series (numpy.polynomial.hermite.hermval2d)."
+            },
+            {
+                "name": "hermval3d",
+                "static": true,
+                "sig": "hermval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a 3-D Hermite series (numpy.polynomial.hermite.hermval3d)."
+            },
+            {
+                "name": "hermvander",
+                "static": true,
+                "sig": "hermvander(mixed $x, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of the Hermite basis (numpy.polynomial.hermite.hermvander)."
+            },
+            {
+                "name": "hermvander2d",
+                "static": true,
+                "sig": "hermvander2d(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 2-D Hermite basis (numpy.polynomial.hermite.hermvander2d)."
+            },
+            {
+                "name": "hermvander3d",
+                "static": true,
+                "sig": "hermvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 3-D Hermite basis (numpy.polynomial.hermite.hermvander3d)."
+            },
+            {
+                "name": "hermweight",
+                "static": true,
+                "sig": "hermweight(mixed $x): mixed",
+                "doc": "Hermite weight exp(-x^2) (numpy.polynomial.hermite.hermweight)."
+            },
+            {
+                "name": "hermx",
+                "static": true,
+                "sig": "hermx(): mixed",
+                "doc": "The identity Hermite series x (numpy.polynomial.hermite.hermx)."
+            },
+            {
+                "name": "hermzero",
+                "static": true,
+                "sig": "hermzero(): mixed",
+                "doc": "The zero Hermite series (numpy.polynomial.hermite.hermzero)."
             },
             {
                 "name": "lag2poly",
@@ -4731,6 +5067,18 @@
                 "static": true,
                 "sig": "poly2cheb(mixed $pol): mixed",
                 "doc": "Convert a power series to a Chebyshev series (numpy.polynomial.chebyshev.poly2cheb)."
+            },
+            {
+                "name": "poly2herm",
+                "static": true,
+                "sig": "poly2herm(mixed $pol): mixed",
+                "doc": "Convert a power series to a Hermite series (numpy.polynomial.hermite.poly2herm)."
+            },
+            {
+                "name": "poly2herme",
+                "static": true,
+                "sig": "poly2herme(mixed $pol): mixed",
+                "doc": "Convert a power series to a HermiteE series (numpy.polynomial.hermite_e.poly2herme)."
             },
             {
                 "name": "poly2lag",
@@ -19082,6 +19430,354 @@
                 "name": "lagdomain",
                 "static": true,
                 "sig": "lagdomain()",
+                "doc": ""
+            },
+            {
+                "name": "hermadd",
+                "static": true,
+                "sig": "hermadd($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermsub",
+                "static": true,
+                "sig": "hermsub($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermmul",
+                "static": true,
+                "sig": "hermmul($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermmulx",
+                "static": true,
+                "sig": "hermmulx($c)",
+                "doc": ""
+            },
+            {
+                "name": "hermpow",
+                "static": true,
+                "sig": "hermpow($c, $pow, $maxpower = 16)",
+                "doc": ""
+            },
+            {
+                "name": "hermdiv",
+                "static": true,
+                "sig": "hermdiv($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermder",
+                "static": true,
+                "sig": "hermder($c, $m = 1, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "hermint",
+                "static": true,
+                "sig": "hermint($c, $m = 1, $k = 0, $lbnd = 0, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "hermfromroots",
+                "static": true,
+                "sig": "hermfromroots($roots)",
+                "doc": ""
+            },
+            {
+                "name": "hermline",
+                "static": true,
+                "sig": "hermline($off, $scl)",
+                "doc": ""
+            },
+            {
+                "name": "hermtrim",
+                "static": true,
+                "sig": "hermtrim($c, $tol = 0)",
+                "doc": ""
+            },
+            {
+                "name": "hermvander",
+                "static": true,
+                "sig": "hermvander($x, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermval2d",
+                "static": true,
+                "sig": "hermval2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermval3d",
+                "static": true,
+                "sig": "hermval3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermgrid2d",
+                "static": true,
+                "sig": "hermgrid2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermgrid3d",
+                "static": true,
+                "sig": "hermgrid3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermvander2d",
+                "static": true,
+                "sig": "hermvander2d($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermvander3d",
+                "static": true,
+                "sig": "hermvander3d($x, $y, $z, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermcompanion",
+                "static": true,
+                "sig": "hermcompanion($c)",
+                "doc": ""
+            },
+            {
+                "name": "hermroots",
+                "static": true,
+                "sig": "hermroots($c)",
+                "doc": ""
+            },
+            {
+                "name": "hermfit",
+                "static": true,
+                "sig": "hermfit($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "herm2poly",
+                "static": true,
+                "sig": "herm2poly($c)",
+                "doc": ""
+            },
+            {
+                "name": "poly2herm",
+                "static": true,
+                "sig": "poly2herm($pol)",
+                "doc": ""
+            },
+            {
+                "name": "hermgauss",
+                "static": true,
+                "sig": "hermgauss($deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermweight",
+                "static": true,
+                "sig": "hermweight($x)",
+                "doc": ""
+            },
+            {
+                "name": "hermzero",
+                "static": true,
+                "sig": "hermzero()",
+                "doc": ""
+            },
+            {
+                "name": "hermone",
+                "static": true,
+                "sig": "hermone()",
+                "doc": ""
+            },
+            {
+                "name": "hermx",
+                "static": true,
+                "sig": "hermx()",
+                "doc": ""
+            },
+            {
+                "name": "hermdomain",
+                "static": true,
+                "sig": "hermdomain()",
+                "doc": ""
+            },
+            {
+                "name": "hermeadd",
+                "static": true,
+                "sig": "hermeadd($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermesub",
+                "static": true,
+                "sig": "hermesub($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermemul",
+                "static": true,
+                "sig": "hermemul($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermemulx",
+                "static": true,
+                "sig": "hermemulx($c)",
+                "doc": ""
+            },
+            {
+                "name": "hermepow",
+                "static": true,
+                "sig": "hermepow($c, $pow, $maxpower = 16)",
+                "doc": ""
+            },
+            {
+                "name": "hermediv",
+                "static": true,
+                "sig": "hermediv($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "hermeder",
+                "static": true,
+                "sig": "hermeder($c, $m = 1, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "hermeint",
+                "static": true,
+                "sig": "hermeint($c, $m = 1, $k = 0, $lbnd = 0, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "hermefromroots",
+                "static": true,
+                "sig": "hermefromroots($roots)",
+                "doc": ""
+            },
+            {
+                "name": "hermeline",
+                "static": true,
+                "sig": "hermeline($off, $scl)",
+                "doc": ""
+            },
+            {
+                "name": "hermetrim",
+                "static": true,
+                "sig": "hermetrim($c, $tol = 0)",
+                "doc": ""
+            },
+            {
+                "name": "hermevander",
+                "static": true,
+                "sig": "hermevander($x, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermeval2d",
+                "static": true,
+                "sig": "hermeval2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermeval3d",
+                "static": true,
+                "sig": "hermeval3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermegrid2d",
+                "static": true,
+                "sig": "hermegrid2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermegrid3d",
+                "static": true,
+                "sig": "hermegrid3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermevander2d",
+                "static": true,
+                "sig": "hermevander2d($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermevander3d",
+                "static": true,
+                "sig": "hermevander3d($x, $y, $z, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermecompanion",
+                "static": true,
+                "sig": "hermecompanion($c)",
+                "doc": ""
+            },
+            {
+                "name": "hermeroots",
+                "static": true,
+                "sig": "hermeroots($c)",
+                "doc": ""
+            },
+            {
+                "name": "hermefit",
+                "static": true,
+                "sig": "hermefit($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "herme2poly",
+                "static": true,
+                "sig": "herme2poly($c)",
+                "doc": ""
+            },
+            {
+                "name": "poly2herme",
+                "static": true,
+                "sig": "poly2herme($pol)",
+                "doc": ""
+            },
+            {
+                "name": "hermegauss",
+                "static": true,
+                "sig": "hermegauss($deg)",
+                "doc": ""
+            },
+            {
+                "name": "hermeweight",
+                "static": true,
+                "sig": "hermeweight($x)",
+                "doc": ""
+            },
+            {
+                "name": "hermezero",
+                "static": true,
+                "sig": "hermezero()",
+                "doc": ""
+            },
+            {
+                "name": "hermeone",
+                "static": true,
+                "sig": "hermeone()",
+                "doc": ""
+            },
+            {
+                "name": "hermex",
+                "static": true,
+                "sig": "hermex()",
+                "doc": ""
+            },
+            {
+                "name": "hermedomain",
+                "static": true,
+                "sig": "hermedomain()",
                 "doc": ""
             }
         ]

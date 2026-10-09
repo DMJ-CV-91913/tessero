@@ -1396,6 +1396,357 @@ static int r_lagone(const void *x, const tsr_arg *a, int n, tsr_result *r, int n
 static int r_lagx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {1, -1}; return npoly_iconst(r, v, 2); }
 static int r_lagdomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = 0.0; o[1] = 1.0; return TSR_OK; }
 
+/* ---- hermite primitives (physicists', domain [-1, 1], weight exp(-x^2)) ---------------------------------- */
+static int64_t herm_mulx(const double *c, int64_t n, double *out)
+{
+    if (n == 1 && c[0] == 0.0) { out[0] = 0.0; return 1; }
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = c[0] / 2.0;
+    for (int64_t i = 1; i < n; i++) { out[i + 1] = c[i] / 2.0; out[i - 1] += c[i] * (double)i; }
+    return n + 1;
+}
+static int64_t herm_mul(const double *A, int64_t nA, const double *Bv, int64_t nB, double *out)
+{
+    const double *c, *xs; int64_t nc, nxs;
+    if (nA > nB) { c = Bv; nc = nB; xs = A; nxs = nA; } else { c = A; nc = nA; xs = Bv; nxs = nB; }
+    int64_t cap = nA + nB + 2;
+    double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+    int64_t ret = -1;
+    if (c0 && c1 && tmp && mx) {
+        int64_t l0, l1;
+        if (nc == 1) { for (int64_t k = 0; k < nxs; k++) c0[k] = c[0] * xs[k]; l0 = nxs; c1[0] = 0.0; l1 = 1; }
+        else {
+            for (int64_t k = 0; k < nxs; k++) { c0[k] = c[nc - 2] * xs[k]; c1[k] = c[nc - 1] * xs[k]; } l0 = nxs; l1 = nxs;
+            double nd = (double)nc;
+            for (int64_t i = 3; i <= nc; i++) {
+                int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                nd -= 1.0;
+                double f = 2.0 * (nd - 1.0), sc = c[nc - i]; int64_t nl0 = nxs > l1 ? nxs : l1;
+                for (int64_t k = 0; k < nl0; k++) c0[k] = (k < nxs ? sc * xs[k] : 0.0) - (k < l1 ? f * c1[k] : 0.0);
+                l0 = nl0;
+                int64_t lm = herm_mulx(c1, l1, mx); int64_t nl1 = lt > lm ? lt : lm;
+                for (int64_t k = 0; k < nl1; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + (k < lm ? 2.0 * mx[k] : 0.0);
+                l1 = nl1;
+            }
+        }
+        int64_t lm = herm_mulx(c1, l1, mx); int64_t nr = l0 > lm ? l0 : lm;
+        for (int64_t k = 0; k < nr; k++) out[k] = (k < l0 ? c0[k] : 0.0) + (k < lm ? 2.0 * mx[k] : 0.0);
+        ret = nr;
+    }
+    free(c0); free(c1); free(tmp); free(mx);
+    return ret;
+}
+static int64_t herm_der(const double *c, int64_t n, double scl, double *out)
+{
+    if (n == 1) { out[0] = 0.0; return 1; }
+    int64_t nn = n - 1;
+    for (int64_t j = nn; j >= 1; j--) out[j - 1] = (2.0 * j) * c[j] * scl;
+    return nn;
+}
+static int64_t herm_integ(const double *c, int64_t n, double scl, double *out)
+{
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i] * scl;
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = cc[0] / 2.0;
+    for (int64_t j = 1; j < n; j++) out[j + 1] = cc[j] / (2.0 * (j + 1.0));
+    out[0] += -npoly_eval(NB_HERM, out, n + 1, 0.0);
+    free(cc);
+    return n + 1;
+}
+static int64_t herm_line(double off, double scl, double *out) { out[0] = off; if (scl != 0.0) { out[1] = scl / 2.0; return 2; } return 1; }
+static void herm_vander(const double *x, int64_t nx, int64_t deg, double *V)
+{
+    int64_t w = deg + 1;
+    for (int64_t i = 0; i < nx; i++) { double *rr = V + i * w; rr[0] = 1.0;
+        if (deg > 0) { rr[1] = 2.0 * x[i]; for (int64_t j = 2; j <= deg; j++) rr[j] = rr[j - 1] * (2.0 * x[i]) - rr[j - 2] * (2.0 * (j - 1.0)); } }
+}
+static void herm_companion(const double *c, int64_t n, double *M)
+{
+    int64_t m = n - 1;
+    if (m == 1) { M[0] = -0.5 * c[0] / c[1]; return; }
+    for (int64_t i = 0; i < m * m; i++) M[i] = 0.0;
+    for (int64_t i = 0; i < m - 1; i++) { double v = sqrt(0.5 * (i + 1.0)); M[i * m + (i + 1)] = v; M[(i + 1) * m + i] = v; }
+    double *arr = malloc(m * sizeof(double)), *acc = malloc(m * sizeof(double));
+    if (!arr || !acc) { free(arr); free(acc); return; }
+    arr[0] = 1.0; for (int64_t t = 0; t < m - 1; t++) arr[1 + t] = 1.0 / sqrt(2.0 * (double)(m - 1 - t));
+    acc[0] = arr[0]; for (int64_t i = 1; i < m; i++) acc[i] = acc[i - 1] * arr[i];
+    for (int64_t i = 0; i < m; i++) M[i * m + (m - 1)] -= acc[m - 1 - i] * c[i] / (2.0 * c[n - 1]);
+    free(arr); free(acc);
+}
+static const pbasis HERM = {NB_HERM, "herm", herm_mulx, herm_mul, herm_der, herm_integ, herm_line, herm_vander, herm_companion};
+
+/* normalized physicists' Hermite of degree n at scalar x (NumPy _normed_hermite_n): stable for hermgauss. */
+static double herm_normed(double x, int64_t n)
+{
+    double q = 1.0 / sqrt(sqrt(M_PI));
+    if (n == 0) return q;
+    double c0 = 0.0, c1 = q, nd = (double)n;
+    for (int64_t i = 0; i < n - 1; i++) { double tmp = c0; c0 = -c1 * sqrt((nd - 1.0) / nd); c1 = tmp + c1 * x * sqrt(2.0 / nd); nd -= 1.0; }
+    return c0 + c1 * x * sqrt(2.0);
+}
+static int r_herm2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (nc == 1) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = c[0]; }
+        else if (nc == 2) { double *o = npoly_out1(r, 2); if (!o) rc = TSR_ENOMEM; else { o[0] = c[0]; o[1] = c[1] * 2.0; } }
+        else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+            if (!c0 || !c1 || !tmp || !mx) rc = TSR_ENOMEM;
+            else { int64_t l0 = 1, l1 = 1; c0[0] = c[nc - 2]; c1[0] = c[nc - 1];
+                for (int64_t i = nc - 1; i >= 2; i--) {
+                    int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                    double f = 2.0 * (i - 1.0); int64_t ns = l1;                                        /* c0 = polysub([c[i-2]], c1*2(i-1)) */
+                    for (int64_t k = 0; k < ns; k++) c0[k] = (k == 0 ? c[i - 2] : 0.0) - c1[k] * f;
+                    l0 = ns > 1 ? ns : 1;
+                    int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;                                /* c1 = polyadd(tmp, polymulx(c1)*2) */
+                    if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k] * 2.0; }
+                    int64_t ln = lt > lmx ? lt : lmx;
+                    for (int64_t k = 0; k < ln; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+                    l1 = ln;
+                }
+                int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;
+                if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k] * 2.0; }
+                int64_t lr = l0 > lmx ? l0 : lmx; double *o = npoly_out1(r, lr);
+                if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = (k < l0 ? c0[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+            }
+            free(c0); free(c1); free(tmp); free(mx); }
+    }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int r_poly2herm(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
+    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
+        if (!res || !mx) rc = TSR_ENOMEM;
+        else { int64_t lr = 1; res[0] = 0.0;
+            for (int64_t i = nc - 1; i >= 0; i--) { int64_t lm = herm_mulx(res, lr, mx); for (int64_t k = 0; k < lm; k++) res[k] = mx[k]; res[0] += pol[i]; lr = lm; }
+            double *o = npoly_out1(r, lr); if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = res[k]; }
+        free(res); free(mx); }
+    fn_free_doubles(pol, nc);
+    return rc;
+}
+/* hermgauss: eigenvalues of the companion, one Newton step using the normalized Hermite, symmetrized weights. */
+static int r_hermgauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
+    if (m < 1) { fn_set_error("npoly.hermgauss: deg must be >= 1"); return TSR_EARG; }
+    double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
+    if (!xo || !wo) return TSR_ENOMEM;
+    double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
+    double *comp = calloc(m * m, sizeof(double)), *ev = malloc(m * sizeof(double)), *fm = malloc(m * sizeof(double)), *w = malloc(m * sizeof(double));
+    int rc = (c && comp && ev && fm && w) ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { herm_companion(c, m + 1, comp);
+        if (m == 1) ev[0] = comp[0];
+        else if (LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'N', 'L', (lapack_int)m, comp, (lapack_int)m, ev) != 0) { fn_set_error("npoly.hermgauss: eigenvalue solve failed"); rc = TSR_ECONVERGE; } }
+    if (rc == TSR_OK) {
+        double fmax = 0.0, wsum = 0.0;
+        for (int64_t k = 0; k < m; k++) { double dy = herm_normed(ev[k], m), df = herm_normed(ev[k], m - 1) * sqrt(2.0 * m); ev[k] -= dy / df; }
+        for (int64_t k = 0; k < m; k++) { fm[k] = herm_normed(ev[k], m - 1); if (fabs(fm[k]) > fmax) fmax = fabs(fm[k]); }
+        for (int64_t k = 0; k < m; k++) { fm[k] /= fmax; w[k] = 1.0 / (fm[k] * fm[k]); }
+        for (int64_t k = 0; k < m; k++) { double ws = (w[k] + w[m - 1 - k]) / 2.0; wo[k] = ws; wsum += ws; xo[k] = (ev[k] - ev[m - 1 - k]) / 2.0; }
+        for (int64_t k = 0; k < m; k++) wo[k] *= sqrt(M_PI) / wsum;
+    }
+    free(c); free(comp); free(ev); free(fm); free(w);
+    return rc;
+}
+static int r_hermweight(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly.hermweight: x must be an array"); return TSR_EARG; }
+    int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
+    const tsr_array *xa = &a[0].arr; double *out = xs ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t i = 0; i < lx; i++) out[i] = exp(-xs[i] * xs[i]);
+    fn_free_doubles(xs, lx);
+    return rc;
+}
+static int r_hermzero(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {0}; return npoly_iconst(r, v, 1); }
+static int r_hermone(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)  { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {1}; return npoly_iconst(r, v, 1); }
+static int r_hermx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = 0.0; o[1] = 0.5; return TSR_OK; }
+static int r_hermdomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = -1.0; o[1] = 1.0; return TSR_OK; }
+
+/* ---- hermite_e primitives (probabilists', domain [-1, 1], weight exp(-x^2/2)) ---------------------------- */
+static int64_t herme_mulx(const double *c, int64_t n, double *out)
+{
+    if (n == 1 && c[0] == 0.0) { out[0] = 0.0; return 1; }
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = c[0];
+    for (int64_t i = 1; i < n; i++) { out[i + 1] = c[i]; out[i - 1] += c[i] * (double)i; }
+    return n + 1;
+}
+static int64_t herme_mul(const double *A, int64_t nA, const double *Bv, int64_t nB, double *out)
+{
+    const double *c, *xs; int64_t nc, nxs;
+    if (nA > nB) { c = Bv; nc = nB; xs = A; nxs = nA; } else { c = A; nc = nA; xs = Bv; nxs = nB; }
+    int64_t cap = nA + nB + 2;
+    double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+    int64_t ret = -1;
+    if (c0 && c1 && tmp && mx) {
+        int64_t l0, l1;
+        if (nc == 1) { for (int64_t k = 0; k < nxs; k++) c0[k] = c[0] * xs[k]; l0 = nxs; c1[0] = 0.0; l1 = 1; }
+        else {
+            for (int64_t k = 0; k < nxs; k++) { c0[k] = c[nc - 2] * xs[k]; c1[k] = c[nc - 1] * xs[k]; } l0 = nxs; l1 = nxs;
+            double nd = (double)nc;
+            for (int64_t i = 3; i <= nc; i++) {
+                int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                nd -= 1.0;
+                double f = nd - 1.0, sc = c[nc - i]; int64_t nl0 = nxs > l1 ? nxs : l1;
+                for (int64_t k = 0; k < nl0; k++) c0[k] = (k < nxs ? sc * xs[k] : 0.0) - (k < l1 ? f * c1[k] : 0.0);
+                l0 = nl0;
+                int64_t lm = herme_mulx(c1, l1, mx); int64_t nl1 = lt > lm ? lt : lm;
+                for (int64_t k = 0; k < nl1; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + (k < lm ? mx[k] : 0.0);
+                l1 = nl1;
+            }
+        }
+        int64_t lm = herme_mulx(c1, l1, mx); int64_t nr = l0 > lm ? l0 : lm;
+        for (int64_t k = 0; k < nr; k++) out[k] = (k < l0 ? c0[k] : 0.0) + (k < lm ? mx[k] : 0.0);
+        ret = nr;
+    }
+    free(c0); free(c1); free(tmp); free(mx);
+    return ret;
+}
+static int64_t herme_der(const double *c, int64_t n, double scl, double *out)
+{
+    if (n == 1) { out[0] = 0.0; return 1; }
+    int64_t nn = n - 1;
+    for (int64_t j = nn; j >= 1; j--) out[j - 1] = (double)j * c[j] * scl;
+    return nn;
+}
+static int64_t herme_integ(const double *c, int64_t n, double scl, double *out)
+{
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i] * scl;
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = cc[0];
+    for (int64_t j = 1; j < n; j++) out[j + 1] = cc[j] / (j + 1.0);
+    out[0] += -npoly_eval(NB_HERME, out, n + 1, 0.0);
+    free(cc);
+    return n + 1;
+}
+static int64_t herme_line(double off, double scl, double *out) { out[0] = off; if (scl != 0.0) { out[1] = scl; return 2; } return 1; }
+static void herme_vander(const double *x, int64_t nx, int64_t deg, double *V)
+{
+    int64_t w = deg + 1;
+    for (int64_t i = 0; i < nx; i++) { double *rr = V + i * w; rr[0] = 1.0;
+        if (deg > 0) { rr[1] = x[i]; for (int64_t j = 2; j <= deg; j++) rr[j] = rr[j - 1] * x[i] - rr[j - 2] * (j - 1.0); } }
+}
+static void herme_companion(const double *c, int64_t n, double *M)
+{
+    int64_t m = n - 1;
+    if (m == 1) { M[0] = -c[0] / c[1]; return; }
+    for (int64_t i = 0; i < m * m; i++) M[i] = 0.0;
+    for (int64_t i = 0; i < m - 1; i++) { double v = sqrt(i + 1.0); M[i * m + (i + 1)] = v; M[(i + 1) * m + i] = v; }
+    double *arr = malloc(m * sizeof(double)), *acc = malloc(m * sizeof(double));
+    if (!arr || !acc) { free(arr); free(acc); return; }
+    arr[0] = 1.0; for (int64_t t = 0; t < m - 1; t++) arr[1 + t] = 1.0 / sqrt((double)(m - 1 - t));
+    acc[0] = arr[0]; for (int64_t i = 1; i < m; i++) acc[i] = acc[i - 1] * arr[i];
+    for (int64_t i = 0; i < m; i++) M[i * m + (m - 1)] -= acc[m - 1 - i] * c[i] / c[n - 1];
+    free(arr); free(acc);
+}
+static const pbasis HERME = {NB_HERME, "herme", herme_mulx, herme_mul, herme_der, herme_integ, herme_line, herme_vander, herme_companion};
+
+static double herme_normed(double x, int64_t n)
+{
+    double q = 1.0 / sqrt(sqrt(2.0 * M_PI));
+    if (n == 0) return q;
+    double c0 = 0.0, c1 = q, nd = (double)n;
+    for (int64_t i = 0; i < n - 1; i++) { double tmp = c0; c0 = -c1 * sqrt((nd - 1.0) / nd); c1 = tmp + c1 * x * sqrt(1.0 / nd); nd -= 1.0; }
+    return c0 + c1 * x;
+}
+static int r_herme2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (nc < 3) { double *o = npoly_out1(r, nc); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < nc; i++) o[i] = c[i]; }
+        else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+            if (!c0 || !c1 || !tmp || !mx) rc = TSR_ENOMEM;
+            else { int64_t l0 = 1, l1 = 1; c0[0] = c[nc - 2]; c1[0] = c[nc - 1];
+                for (int64_t i = nc - 1; i >= 2; i--) {
+                    int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                    double f = (i - 1.0); int64_t ns = l1;                                             /* c0 = polysub([c[i-2]], c1*(i-1)) */
+                    for (int64_t k = 0; k < ns; k++) c0[k] = (k == 0 ? c[i - 2] : 0.0) - c1[k] * f;
+                    l0 = ns > 1 ? ns : 1;
+                    int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;                               /* c1 = polyadd(tmp, polymulx(c1)) */
+                    if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k]; }
+                    int64_t ln = lt > lmx ? lt : lmx;
+                    for (int64_t k = 0; k < ln; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+                    l1 = ln;
+                }
+                int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;
+                if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k]; }
+                int64_t lr = l0 > lmx ? l0 : lmx; double *o = npoly_out1(r, lr);
+                if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = (k < l0 ? c0[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+            }
+            free(c0); free(c1); free(tmp); free(mx); }
+    }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int r_poly2herme(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
+    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
+        if (!res || !mx) rc = TSR_ENOMEM;
+        else { int64_t lr = 1; res[0] = 0.0;
+            for (int64_t i = nc - 1; i >= 0; i--) { int64_t lm = herme_mulx(res, lr, mx); for (int64_t k = 0; k < lm; k++) res[k] = mx[k]; res[0] += pol[i]; lr = lm; }
+            double *o = npoly_out1(r, lr); if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = res[k]; }
+        free(res); free(mx); }
+    fn_free_doubles(pol, nc);
+    return rc;
+}
+static int r_hermegauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
+    if (m < 1) { fn_set_error("npoly.hermegauss: deg must be >= 1"); return TSR_EARG; }
+    double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
+    if (!xo || !wo) return TSR_ENOMEM;
+    double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
+    double *comp = calloc(m * m, sizeof(double)), *ev = malloc(m * sizeof(double)), *fm = malloc(m * sizeof(double)), *w = malloc(m * sizeof(double));
+    int rc = (c && comp && ev && fm && w) ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { herme_companion(c, m + 1, comp);
+        if (m == 1) ev[0] = comp[0];
+        else if (LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'N', 'L', (lapack_int)m, comp, (lapack_int)m, ev) != 0) { fn_set_error("npoly.hermegauss: eigenvalue solve failed"); rc = TSR_ECONVERGE; } }
+    if (rc == TSR_OK) {
+        double fmax = 0.0, wsum = 0.0;
+        for (int64_t k = 0; k < m; k++) { double dy = herme_normed(ev[k], m), df = herme_normed(ev[k], m - 1) * sqrt((double)m); ev[k] -= dy / df; }
+        for (int64_t k = 0; k < m; k++) { fm[k] = herme_normed(ev[k], m - 1); if (fabs(fm[k]) > fmax) fmax = fabs(fm[k]); }
+        for (int64_t k = 0; k < m; k++) { fm[k] /= fmax; w[k] = 1.0 / (fm[k] * fm[k]); }
+        for (int64_t k = 0; k < m; k++) { double ws = (w[k] + w[m - 1 - k]) / 2.0; wo[k] = ws; wsum += ws; xo[k] = (ev[k] - ev[m - 1 - k]) / 2.0; }
+        for (int64_t k = 0; k < m; k++) wo[k] *= sqrt(2.0 * M_PI) / wsum;
+    }
+    free(c); free(comp); free(ev); free(fm); free(w);
+    return rc;
+}
+static int r_hermeweight(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly.hermeweight: x must be an array"); return TSR_EARG; }
+    int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
+    const tsr_array *xa = &a[0].arr; double *out = xs ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t i = 0; i < lx; i++) out[i] = exp(-0.5 * xs[i] * xs[i]);
+    fn_free_doubles(xs, lx);
+    return rc;
+}
+static int r_hermezero(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {0}; return npoly_iconst(r, v, 1); }
+static int r_hermeone(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)  { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {1}; return npoly_iconst(r, v, 1); }
+static int r_hermex(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {0, 1}; return npoly_iconst(r, v, 2); }
+static int r_hermedomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = -1.0; o[1] = 1.0; return TSR_OK; }
+
 static const fn_def DEFS[] = {
     ROUTINE("npoly.polyval", 1, "x, c", "out", r_polyval, NULL, "Evaluate a power-series polynomial at x (numpy.polynomial.polynomial.polyval)."),
     ROUTINE("npoly.chebval", 1, "x, c", "out", r_chebval, NULL, "Evaluate a Chebyshev series at x (numpy.polynomial.chebyshev.chebval)."),
@@ -1530,6 +1881,68 @@ static const fn_def DEFS[] = {
     ROUTINE("npoly.lagone", 1, "", "out", r_lagone, NULL, "The one Laguerre series (numpy.polynomial.laguerre.lagone)."),
     ROUTINE("npoly.lagx", 1, "", "out", r_lagx, NULL, "The identity Laguerre series x (numpy.polynomial.laguerre.lagx)."),
     ROUTINE("npoly.lagdomain", 1, "", "out", r_lagdomain, NULL, "The default Laguerre domain [0, 1] (numpy.polynomial.laguerre.lagdomain)."),
+
+    /* numpy.polynomial.hermite (physicists') */
+    ROUTINE("npoly.hermadd", 1, "c1, c2", "out", rb_add, NULL, "Sum of two Hermite series (numpy.polynomial.hermite.hermadd)."),
+    ROUTINE("npoly.hermsub", 1, "c1, c2", "out", rb_sub, NULL, "Difference of two Hermite series (numpy.polynomial.hermite.hermsub)."),
+    ROUTINE("npoly.hermmul", 1, "c1, c2", "out", rb_mul, &HERM, "Product of two Hermite series (numpy.polynomial.hermite.hermmul)."),
+    ROUTINE("npoly.hermmulx", 1, "c", "out", rb_mulx, &HERM, "Multiply a Hermite series by x (numpy.polynomial.hermite.hermmulx)."),
+    ROUTINE("npoly.hermpow", 1, "c, pow, maxpower=16", "out", rb_pow, &HERM, "Hermite series raised to a power (numpy.polynomial.hermite.hermpow)."),
+    ROUTINE("npoly.hermdiv", 2, "c1, c2", "quo, rem", rb_div, &HERM, "Quotient and remainder of Hermite-series division (numpy.polynomial.hermite.hermdiv)."),
+    ROUTINE("npoly.hermder", 1, "c, m=1, scl=1", "out", rb_der, &HERM, "Derivative of a Hermite series (numpy.polynomial.hermite.hermder)."),
+    ROUTINE("npoly.hermint", 1, "c, m=1, k=0, lbnd=0, scl=1", "out", rb_int, &HERM, "Antiderivative of a Hermite series (numpy.polynomial.hermite.hermint)."),
+    ROUTINE("npoly.hermfromroots", 1, "roots", "out", rb_fromroots, &HERM, "Hermite series with the given roots (numpy.polynomial.hermite.hermfromroots)."),
+    ROUTINE("npoly.hermline", 1, "off, scl", "out", rb_line, &HERM, "Hermite series for off + scl*x (numpy.polynomial.hermite.hermline)."),
+    ROUTINE("npoly.hermtrim", 1, "c, tol=0", "out", rb_trim, NULL, "Trim trailing small coefficients (numpy.polynomial.hermite.hermtrim)."),
+    ROUTINE("npoly.hermvander", 1, "x, deg", "out", rb_vander, &HERM, "Pseudo-Vandermonde matrix of the Hermite basis (numpy.polynomial.hermite.hermvander)."),
+    ROUTINE("npoly.hermval2d", 1, "x, y, c", "out", rb_val2d, &HERM, "Evaluate a 2-D Hermite series (numpy.polynomial.hermite.hermval2d)."),
+    ROUTINE("npoly.hermval3d", 1, "x, y, z, c", "out", rb_val3d, &HERM, "Evaluate a 3-D Hermite series (numpy.polynomial.hermite.hermval3d)."),
+    ROUTINE("npoly.hermgrid2d", 1, "x, y, c", "out", rb_grid2d, &HERM, "Evaluate a Hermite series on a 2-D grid (numpy.polynomial.hermite.hermgrid2d)."),
+    ROUTINE("npoly.hermgrid3d", 1, "x, y, z, c", "out", rb_grid3d, &HERM, "Evaluate a Hermite series on a 3-D grid (numpy.polynomial.hermite.hermgrid3d)."),
+    ROUTINE("npoly.hermvander2d", 1, "x, y, deg", "out", rb_vander2d, &HERM, "Pseudo-Vandermonde matrix of a 2-D Hermite basis (numpy.polynomial.hermite.hermvander2d)."),
+    ROUTINE("npoly.hermvander3d", 1, "x, y, z, deg", "out", rb_vander3d, &HERM, "Pseudo-Vandermonde matrix of a 3-D Hermite basis (numpy.polynomial.hermite.hermvander3d)."),
+    ROUTINE("npoly.hermcompanion", 1, "c", "out", rb_companion, &HERM, "Companion matrix of a Hermite series (numpy.polynomial.hermite.hermcompanion)."),
+    ROUTINE("npoly.hermroots", 1, "c", "out", rb_roots, &HERM, "Roots of a Hermite series (numpy.polynomial.hermite.hermroots)."),
+    ROUTINE("npoly.hermfit", 1, "x, y, deg", "out", rb_fit, &HERM, "Least-squares Hermite-series fit (numpy.polynomial.hermite.hermfit)."),
+    ROUTINE("npoly.herm2poly", 1, "c", "out", r_herm2poly, NULL, "Convert a Hermite series to a power series (numpy.polynomial.hermite.herm2poly)."),
+    ROUTINE("npoly.poly2herm", 1, "pol", "out", r_poly2herm, NULL, "Convert a power series to a Hermite series (numpy.polynomial.hermite.poly2herm)."),
+    ROUTINE("npoly.hermgauss", 2, "deg", "x, w", r_hermgauss, NULL, "Gauss-Hermite quadrature nodes and weights (numpy.polynomial.hermite.hermgauss)."),
+    ROUTINE("npoly.hermweight", 1, "x", "out", r_hermweight, NULL, "Hermite weight exp(-x^2) (numpy.polynomial.hermite.hermweight)."),
+    ROUTINE("npoly.hermzero", 1, "", "out", r_hermzero, NULL, "The zero Hermite series (numpy.polynomial.hermite.hermzero)."),
+    ROUTINE("npoly.hermone", 1, "", "out", r_hermone, NULL, "The one Hermite series (numpy.polynomial.hermite.hermone)."),
+    ROUTINE("npoly.hermx", 1, "", "out", r_hermx, NULL, "The identity Hermite series x (numpy.polynomial.hermite.hermx)."),
+    ROUTINE("npoly.hermdomain", 1, "", "out", r_hermdomain, NULL, "The default Hermite domain [-1, 1] (numpy.polynomial.hermite.hermdomain)."),
+
+    /* numpy.polynomial.hermite_e (probabilists') */
+    ROUTINE("npoly.hermeadd", 1, "c1, c2", "out", rb_add, NULL, "Sum of two HermiteE series (numpy.polynomial.hermite_e.hermeadd)."),
+    ROUTINE("npoly.hermesub", 1, "c1, c2", "out", rb_sub, NULL, "Difference of two HermiteE series (numpy.polynomial.hermite_e.hermesub)."),
+    ROUTINE("npoly.hermemul", 1, "c1, c2", "out", rb_mul, &HERME, "Product of two HermiteE series (numpy.polynomial.hermite_e.hermemul)."),
+    ROUTINE("npoly.hermemulx", 1, "c", "out", rb_mulx, &HERME, "Multiply a HermiteE series by x (numpy.polynomial.hermite_e.hermemulx)."),
+    ROUTINE("npoly.hermepow", 1, "c, pow, maxpower=16", "out", rb_pow, &HERME, "HermiteE series raised to a power (numpy.polynomial.hermite_e.hermepow)."),
+    ROUTINE("npoly.hermediv", 2, "c1, c2", "quo, rem", rb_div, &HERME, "Quotient and remainder of HermiteE-series division (numpy.polynomial.hermite_e.hermediv)."),
+    ROUTINE("npoly.hermeder", 1, "c, m=1, scl=1", "out", rb_der, &HERME, "Derivative of a HermiteE series (numpy.polynomial.hermite_e.hermeder)."),
+    ROUTINE("npoly.hermeint", 1, "c, m=1, k=0, lbnd=0, scl=1", "out", rb_int, &HERME, "Antiderivative of a HermiteE series (numpy.polynomial.hermite_e.hermeint)."),
+    ROUTINE("npoly.hermefromroots", 1, "roots", "out", rb_fromroots, &HERME, "HermiteE series with the given roots (numpy.polynomial.hermite_e.hermefromroots)."),
+    ROUTINE("npoly.hermeline", 1, "off, scl", "out", rb_line, &HERME, "HermiteE series for off + scl*x (numpy.polynomial.hermite_e.hermeline)."),
+    ROUTINE("npoly.hermetrim", 1, "c, tol=0", "out", rb_trim, NULL, "Trim trailing small coefficients (numpy.polynomial.hermite_e.hermetrim)."),
+    ROUTINE("npoly.hermevander", 1, "x, deg", "out", rb_vander, &HERME, "Pseudo-Vandermonde matrix of the HermiteE basis (numpy.polynomial.hermite_e.hermevander)."),
+    ROUTINE("npoly.hermeval2d", 1, "x, y, c", "out", rb_val2d, &HERME, "Evaluate a 2-D HermiteE series (numpy.polynomial.hermite_e.hermeval2d)."),
+    ROUTINE("npoly.hermeval3d", 1, "x, y, z, c", "out", rb_val3d, &HERME, "Evaluate a 3-D HermiteE series (numpy.polynomial.hermite_e.hermeval3d)."),
+    ROUTINE("npoly.hermegrid2d", 1, "x, y, c", "out", rb_grid2d, &HERME, "Evaluate a HermiteE series on a 2-D grid (numpy.polynomial.hermite_e.hermegrid2d)."),
+    ROUTINE("npoly.hermegrid3d", 1, "x, y, z, c", "out", rb_grid3d, &HERME, "Evaluate a HermiteE series on a 3-D grid (numpy.polynomial.hermite_e.hermegrid3d)."),
+    ROUTINE("npoly.hermevander2d", 1, "x, y, deg", "out", rb_vander2d, &HERME, "Pseudo-Vandermonde matrix of a 2-D HermiteE basis (numpy.polynomial.hermite_e.hermevander2d)."),
+    ROUTINE("npoly.hermevander3d", 1, "x, y, z, deg", "out", rb_vander3d, &HERME, "Pseudo-Vandermonde matrix of a 3-D HermiteE basis (numpy.polynomial.hermite_e.hermevander3d)."),
+    ROUTINE("npoly.hermecompanion", 1, "c", "out", rb_companion, &HERME, "Companion matrix of a HermiteE series (numpy.polynomial.hermite_e.hermecompanion)."),
+    ROUTINE("npoly.hermeroots", 1, "c", "out", rb_roots, &HERME, "Roots of a HermiteE series (numpy.polynomial.hermite_e.hermeroots)."),
+    ROUTINE("npoly.hermefit", 1, "x, y, deg", "out", rb_fit, &HERME, "Least-squares HermiteE-series fit (numpy.polynomial.hermite_e.hermefit)."),
+    ROUTINE("npoly.herme2poly", 1, "c", "out", r_herme2poly, NULL, "Convert a HermiteE series to a power series (numpy.polynomial.hermite_e.herme2poly)."),
+    ROUTINE("npoly.poly2herme", 1, "pol", "out", r_poly2herme, NULL, "Convert a power series to a HermiteE series (numpy.polynomial.hermite_e.poly2herme)."),
+    ROUTINE("npoly.hermegauss", 2, "deg", "x, w", r_hermegauss, NULL, "Gauss-HermiteE quadrature nodes and weights (numpy.polynomial.hermite_e.hermegauss)."),
+    ROUTINE("npoly.hermeweight", 1, "x", "out", r_hermeweight, NULL, "HermiteE weight exp(-x^2/2) (numpy.polynomial.hermite_e.hermeweight)."),
+    ROUTINE("npoly.hermezero", 1, "", "out", r_hermezero, NULL, "The zero HermiteE series (numpy.polynomial.hermite_e.hermezero)."),
+    ROUTINE("npoly.hermeone", 1, "", "out", r_hermeone, NULL, "The one HermiteE series (numpy.polynomial.hermite_e.hermeone)."),
+    ROUTINE("npoly.hermex", 1, "", "out", r_hermex, NULL, "The identity HermiteE series x (numpy.polynomial.hermite_e.hermex)."),
+    ROUTINE("npoly.hermedomain", 1, "", "out", r_hermedomain, NULL, "The default HermiteE domain [-1, 1] (numpy.polynomial.hermite_e.hermedomain)."),
 };
 
 const fn_table TSR_NP_POLYNOMIAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
