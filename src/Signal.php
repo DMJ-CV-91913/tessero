@@ -113,12 +113,14 @@ final class Signal
     'ss2tf' => 'ss2tf',
     'ss2zpk' => 'ss2zpk',
     'step' => 'step',
+    'sweep_poly' => 'sweepPoly',
     'tf2ss' => 'tf2ss',
     'tf2zpk' => 'tf2zpk',
     'unique_roots' => 'uniqueRoots',
     'unit_impulse' => 'unitImpulse',
     'vectorstrength' => 'vectorstrength',
     'welch' => 'welch',
+    'wiener' => 'wiener',
     'zpk2ss' => 'zpk2ss',
     'zpk2tf' => 'zpk2tf',
     ];
@@ -1206,6 +1208,16 @@ final class Signal
     }
 
     /**
+     * Frequency-swept cosine with a polynomial instantaneous frequency (scipy.signal.sweep_poly).
+     *
+     * scipy.signal.sweep_poly
+     */
+    public static function sweepPoly(mixed $t, mixed $poly, mixed $phi = 0): mixed
+    {
+        return Registry::routine('signal.sweep_poly', [$t, $poly, $phi]);
+    }
+
+    /**
      * Controller-canonical state-space from transfer-function coefficients (scipy.signal.tf2ss).
      *
      * scipy.signal.tf2ss
@@ -1273,6 +1285,16 @@ final class Signal
     public static function welch(mixed $x, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed
     {
         return Registry::routine('signal.welch', [$x, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $average]);
+    }
+
+    /**
+     * 1-D Wiener filter using local mean and variance (scipy.signal.wiener).
+     *
+     * scipy.signal.wiener
+     */
+    public static function wiener(mixed $im, mixed $mysize = 3, mixed $noise = null): mixed
+    {
+        return Registry::routine('signal.wiener', [$im, $mysize, $noise]);
     }
 
     /**

@@ -2395,6 +2395,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.sweep_poly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.tf2ss": {
             "kind": "routine",
             "nin": 0,
@@ -2424,6 +2429,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 2
+        },
+        "signal.wiener": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
         },
         "signal.zpk2ss": {
             "kind": "routine",
