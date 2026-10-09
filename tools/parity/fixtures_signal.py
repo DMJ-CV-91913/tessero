@@ -194,6 +194,21 @@ for (zz, pp, N) in zp_cases:
     ffq.append({'args': [F.enc(np.asarray(zz, complex)), F.enc(np.asarray(pp, complex)), F.enc(N), F.enc('zp')], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(sg.findfreqs(zz, pp, N, kind='zp'), float), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# wiener: 1-D Wiener filter (default and explicit noise)
+wnr = []
+for n in (12, 20, 31):
+    im = np.sin(np.linspace(0, 6, n)) + 0.3 * np.cos(np.linspace(0, 11, n))
+    for m in (3, 5):
+        wnr.append({'args': [F.enc(im), F.enc(m)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sg.wiener(im, m), float), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+    wnr.append({'args': [F.enc(im), F.enc(5), F.enc(0.4)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sg.wiener(im, 5, 0.4), float), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
+# sweep_poly: frequency-swept cosine with a polynomial instantaneous frequency
+swp = []
+for (poly, phi) in [([0.05, 1.0], 0.0), ([0.025, -0.36, 1.25, 10.0], 20.0), ([0.1, 0.0, 2.0], 90.0)]:
+    t = np.linspace(0, 3, 40)
+    swp.append({'args': [F.enc(t), F.enc(np.asarray(poly, float)), F.enc(float(phi))], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.sweep_poly(t, poly, phi), float), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -785,6 +800,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'bessel', 'cases': bslc, 'tol': {'atol': 1e-12}},
                  {'fn': 'lfiltic', 'cases': lfic, 'tol': {'atol': 1e-12}},
                  {'fn': 'findfreqs', 'cases': ffq, 'tol': {'atol': 1e-12}},
+                 {'fn': 'wiener', 'cases': wnr, 'tol': {'atol': 1e-11}},
+                 {'fn': 'sweep_poly', 'cases': swp, 'tol': {'atol': 1e-11}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},

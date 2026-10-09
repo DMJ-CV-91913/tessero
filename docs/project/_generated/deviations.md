@@ -119,6 +119,10 @@
 | `signal.lfiltic` | call | rtol 0 |
 | `signal.findfreqs` | every call | rtol 0 |
 | `signal.findfreqs` | call | rtol 0 |
+| `signal.wiener` | every call | rtol 0 |
+| `signal.wiener` | call | rtol 0 |
+| `signal.sweep_poly` | every call | rtol 0 |
+| `signal.sweep_poly` | call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
 | `signal.normalize` | every call | rtol 0 |

@@ -546,12 +546,14 @@
         "signal.ss2tf": "pass",
         "signal.ss2zpk": "pass",
         "signal.step": "pass",
+        "signal.sweep_poly": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
+        "signal.wiener": "pass",
         "signal.zpk2ss": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
@@ -2316,7 +2318,9 @@
             "cluster.kmeans2": 0,
             "cluster.kmeans": 2.8775085723123715e-16,
             "signal.lfiltic": 0,
-            "signal.findfreqs": 1.0306397587839872e-15
+            "signal.findfreqs": 1.0306397587839872e-15,
+            "signal.wiener": 1.2664319982852026e-16,
+            "signal.sweep_poly": 0
         },
         "ext": {
             "np.median": 0,
@@ -3475,7 +3479,9 @@
             "cluster.kmeans2": 0,
             "cluster.kmeans": 2.8775085723123715e-16,
             "signal.lfiltic": 0,
-            "signal.findfreqs": 1.0306397587839872e-15
+            "signal.findfreqs": 1.0306397587839872e-15,
+            "signal.wiener": 1.2664319982852026e-16,
+            "signal.sweep_poly": 0
         }
     },
     "ext": {
@@ -4025,12 +4031,14 @@
         "signal.ss2tf": "pass",
         "signal.ss2zpk": "pass",
         "signal.step": "pass",
+        "signal.sweep_poly": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
+        "signal.wiener": "pass",
         "signal.zpk2ss": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",

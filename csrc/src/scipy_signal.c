@@ -4891,6 +4891,71 @@ static int r_findfreqs(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* wiener(im, mysize=3, noise=None): 1-D Wiener filter (scipy.signal.wiener). Local mean and variance over a
+   centered box of width mysize (zero-padded, matching correlate '-same'); result = lMean + (1 - noise/lVar)*
+   (im - lMean), clamped to lMean where lVar < noise. noise defaults to the mean local variance. */
+static int r_wiener(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("wiener: im must be a 1-D array"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    int64_t m = (nargs > 1 && args[1].kind == 1) ? ((args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num) : 3;
+    if (m < 1) m = 1;
+    const int have_noise = (nargs > 2 && args[2].kind == 1);
+    double noise = have_noise ? args[2].num : 0.0;
+    int64_t li; double *im = fn_arg_doubles(&args[0], &li);
+    double *lm = im ? (double *)malloc((size_t)(n ? n : 1) * sizeof(double)) : NULL;
+    double *lv = lm ? (double *)malloc((size_t)(n ? n : 1) * sizeof(double)) : NULL;
+    double *out = lv ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n}) : NULL;
+    int rc = (!im || !lm || !lv || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        const int64_t lhalf = m / 2, rhalf = (m - 1) / 2;
+        double vsum = 0.0;
+        for (int64_t j = 0; j < n; j++) {
+            double s = 0.0, s2 = 0.0;
+            for (int64_t i = (j - lhalf > 0 ? j - lhalf : 0); i <= j + rhalf && i < n; i++) { s += im[i]; s2 += im[i] * im[i]; }
+            lm[j] = s / (double)m;
+            lv[j] = s2 / (double)m - lm[j] * lm[j];
+            vsum += lv[j];
+        }
+        if (!have_noise) noise = (n > 0) ? vsum / (double)n : 0.0;
+        for (int64_t j = 0; j < n; j++) {
+            if (lv[j] < noise) out[j] = lm[j];
+            else out[j] = lm[j] + (1.0 - noise / lv[j]) * (im[j] - lm[j]);
+        }
+    }
+    free(lm); free(lv); fn_free_doubles(im, li);
+    return rc;
+}
+
+/* sweep_poly(t, poly, phi=0): frequency-swept cosine whose instantaneous frequency is poly(t)
+   (scipy.signal.sweep_poly). phase(t) = 2*pi * integral(poly)(t); output cos(phase + phi*pi/180). poly is given
+   highest-degree first. */
+static int r_sweep_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("sweep_poly: t and poly must be 1-D arrays"); return TSR_EARG; }
+    const int64_t nt = args[0].arr.shape[0], npoly = args[1].arr.shape[0];
+    const double phi = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.0;
+    int64_t lt, lp; double *t = fn_arg_doubles(&args[0], &lt), *poly = t ? fn_arg_doubles(&args[1], &lp) : NULL;
+    double *ip = poly ? (double *)malloc((size_t)(npoly + 1) * sizeof(double)) : NULL;   /* integral, highest-first */
+    double *out = ip ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nt}) : NULL;
+    int rc = (!t || !poly || !ip || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        const int64_t d = npoly - 1;                         /* polyint: ip[i] = poly[i]/(d+1-i), constant 0 */
+        for (int64_t i = 0; i < npoly; i++) ip[i] = poly[i] / (double)(d + 1 - i);
+        ip[npoly] = 0.0;
+        const double phi_rad = phi * M_PI / 180.0;
+        for (int64_t q = 0; q < nt; q++) {
+            double v = 0.0;                                  /* Horner on ip (highest-first), length npoly+1 */
+            for (int64_t i = 0; i <= npoly; i++) v = v * t[q] + ip[i];
+            out[q] = cos(2.0 * M_PI * v + phi_rad);
+        }
+    }
+    free(ip); fn_free_doubles(t, lt); fn_free_doubles(poly, lp);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5011,6 +5076,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),
     ROUTINE("signal.lfiltic", 1, "b, a, y, x=None", "zi", r_lfiltic, NULL, "Initial lfilter state from output/input initial conditions (scipy.signal.lfiltic)."),
     ROUTINE("signal.findfreqs", 1, "num, den, N, kind='ba'", "w", r_findfreqs, NULL, "Logarithmically spaced frequency array for an analog response (scipy.signal.findfreqs)."),
+    ROUTINE("signal.wiener", 1, "im, mysize=3, noise=None", "out", r_wiener, NULL, "1-D Wiener filter using local mean and variance (scipy.signal.wiener)."),
+    ROUTINE("signal.sweep_poly", 1, "t, poly, phi=0", "out", r_sweep_poly, NULL, "Frequency-swept cosine with a polynomial instantaneous frequency (scipy.signal.sweep_poly)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),
