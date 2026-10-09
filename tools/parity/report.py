@@ -41,8 +41,8 @@ FIXDIR = os.path.join(ROOT, 'tests', 'fixtures', 'parity')
 HISTORY = os.path.join(ROOT, '.work', 'metrics-history.csv')
 
 GROUPS = [
-    ('NumPy core', ['numpy', 'numpy.ndarray', 'numpy.linalg', 'numpy.fft', 'numpy.polynomial', 'numpy.random',
-                    'numpy.random.Generator']),
+    ('NumPy core', ['numpy', 'numpy.ndarray', 'numpy.linalg', 'numpy.fft', 'numpy.polynomial',
+                    'numpy.polynomial.polynomial', 'numpy.random', 'numpy.random.Generator']),
     ('SciPy', ['scipy.special', 'scipy.stats', 'scipy.linalg', 'scipy.fft', 'scipy.optimize', 'scipy.integrate',
                'scipy.interpolate', 'scipy.signal', 'scipy.signal.windows', 'scipy.sparse', 'scipy.sparse.linalg',
                'scipy.sparse.csgraph', 'scipy.spatial', 'scipy.spatial.distance', 'scipy.cluster.vq',
