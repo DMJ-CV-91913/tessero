@@ -24,12 +24,14 @@ final class Interpolate
     'BarycentricInterpolator' => 'BarycentricInterpolator',
     'CubicHermiteSpline' => 'CubicHermiteSpline',
     'CubicSpline' => 'CubicSpline',
+    'FloaterHormannInterpolator' => 'FloaterHormannInterpolator',
     'KroghInterpolator' => 'KroghInterpolator',
     'PPoly' => 'PPoly',
     'PchipInterpolator' => 'PchipInterpolator',
     'RBFInterpolator' => 'RBFInterpolator',
     'RegularGridInterpolator' => 'RegularGridInterpolator',
     'barycentric_interpolate' => 'barycentricInterpolate',
+    'insert' => 'insert',
     'interpn' => 'interpn',
     'krogh_interpolate' => 'kroghInterpolate',
     'lagrange' => 'lagrange',
@@ -37,6 +39,7 @@ final class Interpolate
     'make_lsq_spline' => 'makeLsqSpline',
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
+    'spalde' => 'spalde',
     'splantider' => 'splantider',
     'splder' => 'splder',
     'splev' => 'splev',
@@ -121,6 +124,16 @@ final class Interpolate
     }
 
     /**
+     * Floater-Hormann barycentric rational interpolation evaluated at x (scipy.interpolate.FloaterHormannInterpolator).
+     *
+     * scipy.interpolate.FloaterHormannInterpolator
+     */
+    public static function FloaterHormannInterpolator(mixed $xi, mixed $yi, mixed $x, mixed $d = 3): mixed
+    {
+        return Registry::routine('interpolate.FloaterHormannInterpolator', [$xi, $yi, $x, $d]);
+    }
+
+    /**
      * Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.KroghInterpolator).
      *
      * scipy.interpolate.KroghInterpolator
@@ -178,6 +191,18 @@ final class Interpolate
     public static function barycentricInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.barycentric_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Insert a knot into a B-spline m times by Boehm's algorithm (scipy.interpolate.insert).
+     *
+     * scipy.interpolate.insert
+     *
+     * @return mixed one array, or an array keyed by t, c, k when several results are requested
+     */
+    public static function insert(mixed $x, mixed $t, mixed $c, mixed $k, mixed $m = 1): mixed
+    {
+        return Registry::routine('interpolate.insert', [$x, $t, $c, $k, $m]);
     }
 
     /**
@@ -250,6 +275,16 @@ final class Interpolate
     public static function pchipInterpolate(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.pchip_interpolate', [$xi, $yi, $x]);
+    }
+
+    /**
+     * All derivatives 0..k of a B-spline at each x (scipy.interpolate.spalde).
+     *
+     * scipy.interpolate.spalde
+     */
+    public static function spalde(mixed $t, mixed $c, mixed $k, mixed $x): mixed
+    {
+        return Registry::routine('interpolate.spalde', [$t, $c, $k, $x]);
     }
 
     /**
