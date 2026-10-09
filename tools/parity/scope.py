@@ -73,11 +73,18 @@ NPOLY_CLASS_SUB = {'Polynomial': 'polynomial', 'Chebyshev': 'chebyshev', 'Legend
                    'Laguerre': 'laguerre', 'Hermite': 'hermite', 'HermiteE': 'hermite_e'}
 
 
+# the poly2<basis> conversions live in the *target* basis's submodule, not in .polynomial
+NPOLY_CONV = {'poly2cheb': 'chebyshev', 'poly2leg': 'legendre', 'poly2lag': 'laguerre',
+              'poly2herme': 'hermite_e', 'poly2herm': 'hermite'}
+
+
 def default_refs(mod, fn):
     """The census symbol(s) a registry function <mod>.<fn> references when its spec gives no explicit ref."""
     if mod == 'npoly':
         if fn in NPOLY_CLASS_SUB:                           # a basis class: the same object at the top level and in its submodule
             return [f'numpy.polynomial.{fn}', f'numpy.polynomial.{NPOLY_CLASS_SUB[fn]}.{fn}']
+        if fn in NPOLY_CONV:                                 # poly2cheb etc. belong to the target basis's submodule
+            return [f'numpy.polynomial.{NPOLY_CONV[fn]}.{fn}']
         for pre, sub in NPOLY_SUB:
             if fn.startswith(pre):
                 return [f'numpy.polynomial.{sub}.{fn}']      # e.g. polyadd -> numpy.polynomial.polynomial.polyadd

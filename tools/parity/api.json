@@ -4181,10 +4181,190 @@
                 "doc": "Power-series polynomial evaluated at x (numpy.polynomial.Polynomial)."
             },
             {
+                "name": "cheb2poly",
+                "static": true,
+                "sig": "cheb2poly(mixed $c): mixed",
+                "doc": "Convert a Chebyshev series to a power series (numpy.polynomial.chebyshev.cheb2poly)."
+            },
+            {
+                "name": "chebadd",
+                "static": true,
+                "sig": "chebadd(mixed $c1, mixed $c2): mixed",
+                "doc": "Sum of two Chebyshev series (numpy.polynomial.chebyshev.chebadd)."
+            },
+            {
+                "name": "chebcompanion",
+                "static": true,
+                "sig": "chebcompanion(mixed $c): mixed",
+                "doc": "Companion matrix of a Chebyshev series (numpy.polynomial.chebyshev.chebcompanion)."
+            },
+            {
+                "name": "chebder",
+                "static": true,
+                "sig": "chebder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed",
+                "doc": "Derivative of a Chebyshev series (numpy.polynomial.chebyshev.chebder)."
+            },
+            {
+                "name": "chebdiv",
+                "static": true,
+                "sig": "chebdiv(mixed $c1, mixed $c2): mixed",
+                "doc": "Quotient and remainder of Chebyshev-series division (numpy.polynomial.chebyshev.chebdiv)."
+            },
+            {
+                "name": "chebdomain",
+                "static": true,
+                "sig": "chebdomain(): mixed",
+                "doc": "The default Chebyshev domain [-1, 1] (numpy.polynomial.chebyshev.chebdomain)."
+            },
+            {
+                "name": "chebfit",
+                "static": true,
+                "sig": "chebfit(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Least-squares Chebyshev-series fit (numpy.polynomial.chebyshev.chebfit)."
+            },
+            {
+                "name": "chebfromroots",
+                "static": true,
+                "sig": "chebfromroots(mixed $roots): mixed",
+                "doc": "Chebyshev series with the given roots (numpy.polynomial.chebyshev.chebfromroots)."
+            },
+            {
+                "name": "chebgauss",
+                "static": true,
+                "sig": "chebgauss(mixed $deg): mixed",
+                "doc": "Gauss-Chebyshev quadrature nodes and weights (numpy.polynomial.chebyshev.chebgauss)."
+            },
+            {
+                "name": "chebgrid2d",
+                "static": true,
+                "sig": "chebgrid2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a Chebyshev series on a 2-D grid (numpy.polynomial.chebyshev.chebgrid2d)."
+            },
+            {
+                "name": "chebgrid3d",
+                "static": true,
+                "sig": "chebgrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a Chebyshev series on a 3-D grid (numpy.polynomial.chebyshev.chebgrid3d)."
+            },
+            {
+                "name": "chebint",
+                "static": true,
+                "sig": "chebint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed",
+                "doc": "Antiderivative of a Chebyshev series (numpy.polynomial.chebyshev.chebint)."
+            },
+            {
+                "name": "chebline",
+                "static": true,
+                "sig": "chebline(mixed $off, mixed $scl): mixed",
+                "doc": "Chebyshev series for off + scl*x (numpy.polynomial.chebyshev.chebline)."
+            },
+            {
+                "name": "chebmul",
+                "static": true,
+                "sig": "chebmul(mixed $c1, mixed $c2): mixed",
+                "doc": "Product of two Chebyshev series (numpy.polynomial.chebyshev.chebmul)."
+            },
+            {
+                "name": "chebmulx",
+                "static": true,
+                "sig": "chebmulx(mixed $c): mixed",
+                "doc": "Multiply a Chebyshev series by x (numpy.polynomial.chebyshev.chebmulx)."
+            },
+            {
+                "name": "chebone",
+                "static": true,
+                "sig": "chebone(): mixed",
+                "doc": "The one Chebyshev series (numpy.polynomial.chebyshev.chebone)."
+            },
+            {
+                "name": "chebpow",
+                "static": true,
+                "sig": "chebpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed",
+                "doc": "Chebyshev series raised to a power (numpy.polynomial.chebyshev.chebpow)."
+            },
+            {
+                "name": "chebpts1",
+                "static": true,
+                "sig": "chebpts1(mixed $npts): mixed",
+                "doc": "Chebyshev points of the first kind (numpy.polynomial.chebyshev.chebpts1)."
+            },
+            {
+                "name": "chebpts2",
+                "static": true,
+                "sig": "chebpts2(mixed $npts): mixed",
+                "doc": "Chebyshev points of the second kind (numpy.polynomial.chebyshev.chebpts2)."
+            },
+            {
+                "name": "chebroots",
+                "static": true,
+                "sig": "chebroots(mixed $c): mixed",
+                "doc": "Roots of a Chebyshev series (numpy.polynomial.chebyshev.chebroots)."
+            },
+            {
+                "name": "chebsub",
+                "static": true,
+                "sig": "chebsub(mixed $c1, mixed $c2): mixed",
+                "doc": "Difference of two Chebyshev series (numpy.polynomial.chebyshev.chebsub)."
+            },
+            {
+                "name": "chebtrim",
+                "static": true,
+                "sig": "chebtrim(mixed $c, mixed $tol = 0): mixed",
+                "doc": "Trim trailing small coefficients (numpy.polynomial.chebyshev.chebtrim)."
+            },
+            {
                 "name": "chebval",
                 "static": true,
                 "sig": "chebval(mixed $x, mixed $c): mixed",
                 "doc": "Evaluate a Chebyshev series at x (numpy.polynomial.chebyshev.chebval)."
+            },
+            {
+                "name": "chebval2d",
+                "static": true,
+                "sig": "chebval2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a 2-D Chebyshev series (numpy.polynomial.chebyshev.chebval2d)."
+            },
+            {
+                "name": "chebval3d",
+                "static": true,
+                "sig": "chebval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a 3-D Chebyshev series (numpy.polynomial.chebyshev.chebval3d)."
+            },
+            {
+                "name": "chebvander",
+                "static": true,
+                "sig": "chebvander(mixed $x, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of the Chebyshev basis (numpy.polynomial.chebyshev.chebvander)."
+            },
+            {
+                "name": "chebvander2d",
+                "static": true,
+                "sig": "chebvander2d(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 2-D Chebyshev basis (numpy.polynomial.chebyshev.chebvander2d)."
+            },
+            {
+                "name": "chebvander3d",
+                "static": true,
+                "sig": "chebvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 3-D Chebyshev basis (numpy.polynomial.chebyshev.chebvander3d)."
+            },
+            {
+                "name": "chebweight",
+                "static": true,
+                "sig": "chebweight(mixed $x): mixed",
+                "doc": "Chebyshev weight 1/sqrt(1-x^2) (numpy.polynomial.chebyshev.chebweight)."
+            },
+            {
+                "name": "chebx",
+                "static": true,
+                "sig": "chebx(): mixed",
+                "doc": "The identity Chebyshev series x (numpy.polynomial.chebyshev.chebx)."
+            },
+            {
+                "name": "chebzero",
+                "static": true,
+                "sig": "chebzero(): mixed",
+                "doc": "The zero Chebyshev series (numpy.polynomial.chebyshev.chebzero)."
             },
             {
                 "name": "hermeval",
@@ -4209,6 +4389,12 @@
                 "static": true,
                 "sig": "legval(mixed $x, mixed $c): mixed",
                 "doc": "Evaluate a Legendre series at x (numpy.polynomial.legendre.legval)."
+            },
+            {
+                "name": "poly2cheb",
+                "static": true,
+                "sig": "poly2cheb(mixed $pol): mixed",
+                "doc": "Convert a power series to a Chebyshev series (numpy.polynomial.chebyshev.poly2cheb)."
             },
             {
                 "name": "polyadd",
@@ -18014,6 +18200,192 @@
                 "name": "polydomain",
                 "static": true,
                 "sig": "polydomain()",
+                "doc": ""
+            },
+            {
+                "name": "chebadd",
+                "static": true,
+                "sig": "chebadd($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "chebsub",
+                "static": true,
+                "sig": "chebsub($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "chebmul",
+                "static": true,
+                "sig": "chebmul($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "chebmulx",
+                "static": true,
+                "sig": "chebmulx($c)",
+                "doc": ""
+            },
+            {
+                "name": "chebpow",
+                "static": true,
+                "sig": "chebpow($c, $pow, $maxpower = 16)",
+                "doc": ""
+            },
+            {
+                "name": "chebdiv",
+                "static": true,
+                "sig": "chebdiv($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "chebder",
+                "static": true,
+                "sig": "chebder($c, $m = 1, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "chebint",
+                "static": true,
+                "sig": "chebint($c, $m = 1, $k = 0, $lbnd = 0, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "chebfromroots",
+                "static": true,
+                "sig": "chebfromroots($roots)",
+                "doc": ""
+            },
+            {
+                "name": "chebline",
+                "static": true,
+                "sig": "chebline($off, $scl)",
+                "doc": ""
+            },
+            {
+                "name": "chebtrim",
+                "static": true,
+                "sig": "chebtrim($c, $tol = 0)",
+                "doc": ""
+            },
+            {
+                "name": "chebvander",
+                "static": true,
+                "sig": "chebvander($x, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "chebval2d",
+                "static": true,
+                "sig": "chebval2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "chebval3d",
+                "static": true,
+                "sig": "chebval3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "chebgrid2d",
+                "static": true,
+                "sig": "chebgrid2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "chebgrid3d",
+                "static": true,
+                "sig": "chebgrid3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "chebvander2d",
+                "static": true,
+                "sig": "chebvander2d($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "chebvander3d",
+                "static": true,
+                "sig": "chebvander3d($x, $y, $z, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "chebcompanion",
+                "static": true,
+                "sig": "chebcompanion($c)",
+                "doc": ""
+            },
+            {
+                "name": "chebroots",
+                "static": true,
+                "sig": "chebroots($c)",
+                "doc": ""
+            },
+            {
+                "name": "chebfit",
+                "static": true,
+                "sig": "chebfit($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "cheb2poly",
+                "static": true,
+                "sig": "cheb2poly($c)",
+                "doc": ""
+            },
+            {
+                "name": "poly2cheb",
+                "static": true,
+                "sig": "poly2cheb($pol)",
+                "doc": ""
+            },
+            {
+                "name": "chebpts1",
+                "static": true,
+                "sig": "chebpts1($npts)",
+                "doc": ""
+            },
+            {
+                "name": "chebpts2",
+                "static": true,
+                "sig": "chebpts2($npts)",
+                "doc": ""
+            },
+            {
+                "name": "chebgauss",
+                "static": true,
+                "sig": "chebgauss($deg)",
+                "doc": ""
+            },
+            {
+                "name": "chebweight",
+                "static": true,
+                "sig": "chebweight($x)",
+                "doc": ""
+            },
+            {
+                "name": "chebzero",
+                "static": true,
+                "sig": "chebzero()",
+                "doc": ""
+            },
+            {
+                "name": "chebone",
+                "static": true,
+                "sig": "chebone()",
+                "doc": ""
+            },
+            {
+                "name": "chebx",
+                "static": true,
+                "sig": "chebx()",
+                "doc": ""
+            },
+            {
+                "name": "chebdomain",
+                "static": true,
+                "sig": "chebdomain()",
                 "doc": ""
             }
         ]

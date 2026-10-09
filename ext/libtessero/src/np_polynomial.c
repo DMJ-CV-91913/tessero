@@ -40,6 +40,87 @@ static double npoly_eval(int basis, const double *c, int64_t n, double x)
     }
 }
 
+/* ---- basis-parameterized layer (shared by chebyshev, legendre, laguerre, hermite, hermite_e) -------------
+   Each basis provides its coefficient-space primitives; generic routines below take a `const pbasis *` as the
+   ROUTINE ctx, so one implementation serves every basis. The power basis keeps its own direct routines above. */
+typedef struct pbasis {
+    int id;                                                   /* NB_* for npoly_eval */
+    const char *sub;                                          /* submodule tag, e.g. "cheb" (for diagnostics) */
+    int64_t (*mulx)(const double *c, int64_t n, double *out); /* x * series -> out (cap n+1); returns length */
+    int64_t (*mul)(const double *a, int64_t na, const double *b, int64_t nb, double *out); /* out cap na+nb-1 */
+    int64_t (*der)(const double *c, int64_t n, double scl, double *out);   /* one derivative step; out cap n */
+    int64_t (*integ)(const double *c, int64_t n, double scl, double *out); /* one integral step (k=0,lbnd=0); out cap n+1 */
+    int64_t (*line)(double off, double scl, double *out);     /* off + scl*x in this basis; out cap 2 */
+    void (*vander)(const double *x, int64_t nx, int64_t deg, double *V);   /* row-major (nx, deg+1) */
+    void (*companion)(const double *c, int64_t n, double *M);              /* (n-1)x(n-1), row-major */
+} pbasis;
+
+/* ---- chebyshev primitives --------------------------------------------------------------------------------- */
+static int64_t cheb_mulx(const double *c, int64_t n, double *out)
+{
+    if (n == 1 && c[0] == 0.0) { out[0] = 0.0; return 1; }
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = c[0];
+    for (int64_t i = 1; i < n; i++) { out[i + 1] += c[i] / 2.0; out[i - 1] += c[i] / 2.0; }
+    return n + 1;
+}
+/* c-series <-> z-series (numpy _cseries_to_zseries / _zseries_to_cseries) for Chebyshev multiplication. */
+static int64_t cheb_mul(const double *a, int64_t na, const double *b, int64_t nb, double *out)
+{
+    int64_t za = 2 * na - 1, zb = 2 * nb - 1, zc = za + zb - 1;
+    double *A = calloc(za, sizeof(double)), *B = calloc(zb, sizeof(double)), *Z = calloc(zc, sizeof(double));
+    if (!A || !B || !Z) { free(A); free(B); free(Z); return -1; }
+    for (int64_t i = 0; i < na; i++) { A[na - 1 + i] += a[i] / 2.0; A[na - 1 - i] += a[i] / 2.0; }
+    for (int64_t i = 0; i < nb; i++) { B[nb - 1 + i] += b[i] / 2.0; B[nb - 1 - i] += b[i] / 2.0; }
+    for (int64_t i = 0; i < za; i++) if (A[i] != 0.0) for (int64_t j = 0; j < zb; j++) Z[i + j] += A[i] * B[j];
+    int64_t m = na + nb - 1;                                  /* zc = 2m-1 */
+    out[0] = Z[m - 1]; for (int64_t i = 1; i < m; i++) out[i] = Z[m - 1 + i] * 2.0;
+    free(A); free(B); free(Z);
+    return m;
+}
+static int64_t cheb_der(const double *c, int64_t n, double scl, double *out)
+{
+    if (n == 1) { out[0] = 0.0; return 1; }
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i];
+    for (int64_t i = 0; i < n - 1; i++) out[i] = 0.0;
+    for (int64_t j = n - 1; j >= 3; j--) { out[j - 1] = (2.0 * j) * cc[j]; cc[j - 2] += (double)j * cc[j] / (double)(j - 2); }
+    if (n > 2) out[1] = 4.0 * cc[2];
+    out[0] = cc[1];
+    for (int64_t i = 0; i < n - 1; i++) out[i] *= scl;
+    free(cc);
+    return n - 1;
+}
+static int64_t cheb_integ(const double *c, int64_t n, double scl, double *out)
+{
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i] * scl;
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = cc[0];
+    if (n > 1) out[2] = cc[1] / 4.0;
+    for (int64_t j = 2; j < n; j++) { out[j + 1] = cc[j] / (2.0 * (j + 1)); out[j - 1] -= cc[j] / (2.0 * (j - 1)); }
+    out[0] += -npoly_eval(NB_CHEB, out, n + 1, 0.0);          /* k=0, lbnd=0 */
+    free(cc);
+    return n + 1;
+}
+static int64_t cheb_line(double off, double scl, double *out) { out[0] = off; if (scl != 0.0) { out[1] = scl; return 2; } return 1; }
+static void cheb_vander(const double *x, int64_t nx, int64_t deg, double *V)
+{
+    int64_t w = deg + 1;
+    for (int64_t i = 0; i < nx; i++) { double *r = V + i * w; r[0] = 1.0;
+        if (deg > 0) { r[1] = x[i]; for (int64_t j = 2; j <= deg; j++) r[j] = 2.0 * x[i] * r[j - 1] - r[j - 2]; } }
+}
+static void cheb_companion(const double *c, int64_t n, double *M)
+{
+    int64_t m = n - 1;
+    if (m == 1) { M[0] = -c[0] / c[1]; return; }
+    for (int64_t i = 0; i < m * m; i++) M[i] = 0.0;
+    for (int64_t i = 0; i < m - 1; i++) { double v = (i == 0) ? sqrt(0.5) : 0.5; M[i * m + (i + 1)] = v; M[(i + 1) * m + i] = v; }
+    double scl_last = (m - 1 >= 1) ? sqrt(0.5) : 1.0;
+    for (int64_t i = 0; i < m; i++) { double scl_i = (i == 0) ? 1.0 : sqrt(0.5); M[i * m + (m - 1)] -= (c[i] / c[n - 1]) * (scl_i / scl_last) * 0.5; }
+}
+static const pbasis CHEB = {NB_CHEB, "cheb", cheb_mulx, cheb_mul, cheb_der, cheb_integ, cheb_line, cheb_vander, cheb_companion};
+
 /* evaluate coefficients `c` (argument cidx) at the points `x` (argument xidx) in `basis`, writing a same-shaped
    result. Shared by the *val functions (x, c) and the basis classes (c, x). */
 static int npoly_eval_routine(const tsr_arg *args, tsr_result *res, int basis, int xidx, int cidx)
@@ -541,6 +622,427 @@ static int r_polyone(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
 static int r_polyx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {0, 1}; return npoly_iconst(r, v, 2); }
 static int r_polydomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = -1.0; o[1] = 1.0; return TSR_OK; }
 
+/* ---- generic basis routines (ctx = const pbasis *) -------------------------------------------------------- */
+
+static int b_addsub(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int sign)
+{ (void)ctx; return npoly_addsub(a, n, r, sign); }
+static int rb_add(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)nr; return b_addsub(c, a, n, r, +1); }
+static int rb_sub(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)nr; return b_addsub(c, a, n, r, -1); }
+static int rb_trim(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; return r_polytrim(NULL, a, n, r, nr); }
+
+static int rb_mulx(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *sc = malloc((nc + 1) * sizeof(double)); if (!sc) rc = TSR_ENOMEM;
+        else { int64_t m = B->mulx(c, nc, sc); double *o = npoly_out1(r, m); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < m; i++) o[i] = sc[i]; free(sc); } }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int rb_mul(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly: coefficients must be arrays"); return TSR_EARG; }
+    int64_t n1, n2; double *c1 = fn_arg_doubles(&a[0], &n1), *c2 = c1 ? fn_arg_doubles(&a[1], &n2) : NULL;
+    int rc = c2 ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { int64_t cap = n1 + n2 - 1; double *buf = malloc(cap * sizeof(double)); if (!buf) rc = TSR_ENOMEM;
+        else { int64_t m = B->mul(c1, n1, c2, n2, buf); if (m < 0) rc = TSR_ENOMEM; else { double *o = npoly_out1(r, m); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < m; i++) o[i] = buf[i]; } free(buf); } }
+    fn_free_doubles(c1, n1); fn_free_doubles(c2, n2);
+    return rc;
+}
+static int rb_pow(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t pw = npoly_opt_int(a, n, 1, 0), maxp = npoly_opt_int(a, n, 2, 16);
+    if (pw < 0) { fn_set_error("npoly.pow: Power must be non-negative"); return TSR_EARG; }
+    if (pw > maxp) { fn_set_error("npoly.pow: Power is too large"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (pw == 0) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = 1.0; }
+        else {
+            int64_t cap = (nc - 1) * pw + 1; double *acc = malloc(cap * sizeof(double)), *tmp = malloc(cap * sizeof(double));
+            if (!acc || !tmp) rc = TSR_ENOMEM;
+            else { int64_t la = nc; for (int64_t i = 0; i < nc; i++) acc[i] = c[i];
+                for (int64_t p = 1; p < pw && rc == TSR_OK; p++) { int64_t lt = B->mul(acc, la, c, nc, tmp); if (lt < 0) rc = TSR_ENOMEM; else { for (int64_t i = 0; i < lt; i++) acc[i] = tmp[i]; la = lt; } }
+                if (rc == TSR_OK) { double *o = npoly_out1(r, la); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < la; i++) o[i] = acc[i]; } }
+            free(acc); free(tmp);
+        }
+    }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int rb_div(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly: coefficients must be arrays"); return TSR_EARG; }
+    int64_t n1, n2; double *c1 = fn_arg_doubles(&a[0], &n1), *c2 = c1 ? fn_arg_doubles(&a[1], &n2) : NULL;
+    int rc = c2 ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && c2[n2 - 1] == 0.0) { fn_set_error("npoly.div: division by zero"); rc = TSR_EARG; }
+    if (rc == TSR_OK && n2 == 1) { double *q = npoly_out1(&r[0], n1), *rem = q ? npoly_out1(&r[1], 1) : NULL;
+        if (!q || !rem) rc = TSR_ENOMEM; else { for (int64_t i = 0; i < n1; i++) q[i] = c1[i] / c2[0]; rem[0] = 0.0; } }
+    else if (rc == TSR_OK && n1 < n2) { double *q = npoly_out1(&r[0], 1), *rem = q ? npoly_out1(&r[1], n1) : NULL;
+        if (!q || !rem) rc = TSR_ENOMEM; else { q[0] = 0.0; for (int64_t i = 0; i < n1; i++) rem[i] = c1[i]; } }
+    else if (rc == TSR_OK) {
+        int64_t ql = n1 - n2 + 1; double *quo = calloc(ql, sizeof(double)), *rem = malloc(n1 * sizeof(double)),
+               *unit = malloc((n1 - n2 + 1) * sizeof(double)), *p = malloc(n1 * sizeof(double));
+        if (!quo || !rem || !unit || !p) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < n1; i++) rem[i] = c1[i];
+            for (int64_t i = n1 - n2; i >= 0 && rc == TSR_OK; i--) {
+                for (int64_t k = 0; k <= i; k++) unit[k] = 0.0;
+                unit[i] = 1.0;
+                int64_t pl = B->mul(unit, i + 1, c2, n2, p);   /* pl = i + n2 */
+                if (pl < 0) { rc = TSR_ENOMEM; break; }
+                double q = rem[i + n2 - 1] / p[i + n2 - 1];
+                for (int64_t k = 0; k < pl; k++) rem[k] -= q * p[k];
+                quo[i] = q;
+            }
+            if (rc == TSR_OK) { int64_t rl = npoly_trimlen(rem, n2 - 1, 0.0);
+                double *qo = npoly_out1(&r[0], ql), *ro = qo ? npoly_out1(&r[1], rl) : NULL;
+                if (!qo || !ro) rc = TSR_ENOMEM; else { for (int64_t k = 0; k < ql; k++) qo[k] = quo[k]; for (int64_t k = 0; k < rl; k++) ro[k] = rem[k]; } }
+        }
+        free(quo); free(rem); free(unit); free(p);
+    }
+    fn_free_doubles(c1, n1); fn_free_doubles(c2, n2);
+    return rc;
+}
+static int rb_der(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t m = npoly_opt_int(a, n, 1, 1); double scl = npoly_opt_num(a, n, 2, 1.0);
+    if (m < 0) { fn_set_error("npoly.der: order must be non-negative"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *cur = malloc(nc * sizeof(double)), *nxt = malloc(nc * sizeof(double));
+        if (!cur || !nxt) rc = TSR_ENOMEM;
+        else { int64_t len = nc; for (int64_t i = 0; i < nc; i++) cur[i] = c[i];
+            for (int64_t it = 0; it < m; it++) { int64_t nl = B->der(cur, len, scl, nxt); double *t = cur; cur = nxt; nxt = t; len = nl; }
+            double *o = npoly_out1(r, len); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < len; i++) o[i] = cur[i]; }
+        free(cur); free(nxt); }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int rb_int(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t m = npoly_opt_int(a, n, 1, 1); double scl = npoly_opt_num(a, n, 4, 1.0);
+    if (m < 0) { fn_set_error("npoly.int: order must be non-negative"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *cur = malloc((nc + m) * sizeof(double)), *nxt = malloc((nc + m) * sizeof(double));
+        if (!cur || !nxt) rc = TSR_ENOMEM;
+        else { int64_t len = nc; for (int64_t i = 0; i < nc; i++) cur[i] = c[i];
+            for (int64_t it = 0; it < m; it++) { int64_t nl = B->integ(cur, len, scl, nxt); double *t = cur; cur = nxt; nxt = t; len = nl; }
+            double *o = npoly_out1(r, len); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < len; i++) o[i] = cur[i]; }
+        free(cur); free(nxt); }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int rb_line(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)nr; const pbasis *B = ctx;
+    double off = npoly_opt_num(a, n, 0, 0.0), scl = npoly_opt_num(a, n, 1, 0.0);
+    double buf[2]; int64_t m = B->line(off, scl, buf); double *o = npoly_out1(r, m);
+    if (!o) return TSR_ENOMEM;
+    for (int64_t i = 0; i < m; i++) o[i] = buf[i];
+    return TSR_OK;
+}
+static int rb_fromroots(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: roots must be an array"); return TSR_EARG; }
+    int64_t nrt; double *rt = fn_arg_doubles(&a[0], &nrt);
+    int rc = rt ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (nrt == 0) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = 1.0; }
+        else { int64_t cap = nrt + 1; double *acc = malloc(cap * sizeof(double)), *tmp = malloc(cap * sizeof(double)); double ln[2];
+            if (!acc || !tmp) rc = TSR_ENOMEM;
+            else { acc[0] = 1.0; int64_t la = 1;
+                for (int64_t k = 0; k < nrt && rc == TSR_OK; k++) { int64_t ll = B->line(-rt[k], 1.0, ln); int64_t m = B->mul(acc, la, ln, ll, tmp); if (m < 0) rc = TSR_ENOMEM; else { for (int64_t i = 0; i < m; i++) acc[i] = tmp[i]; la = m; } }
+                if (rc == TSR_OK) { double *o = npoly_out1(r, la); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < la; i++) o[i] = acc[i]; } }
+            free(acc); free(tmp); }
+    }
+    fn_free_doubles(rt, nrt);
+    return rc;
+}
+static int rb_vander(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: x must be an array"); return TSR_EARG; }
+    int64_t deg = npoly_opt_int(a, n, 1, 0);
+    if (deg < 0) { fn_set_error("npoly.vander: deg must be non-negative"); return TSR_EARG; }
+    int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
+    int rc = xs ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { int64_t sh[2] = {lx, deg + 1}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh); if (!V) rc = TSR_ENOMEM; else B->vander(xs, lx, deg, V); }
+    fn_free_doubles(xs, lx);
+    return rc;
+}
+/* NumPy's *val2d/val3d/grid2d/grid3d reduce the coefficient tensor one axis at a time, axis 0 (x) first; we
+   gather each axis into a contiguous buffer and evaluate in that same order, so the arithmetic matches NumPy. */
+static int rb_val2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[2].arr.ndim != 2) { fn_set_error("npoly.val2d: x, y arrays and c 2-D"); return TSR_EARG; }
+    int64_t lx, ly, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *c = ys ? fn_arg_doubles(&a[2], &lc) : NULL;
+    const int64_t nx = a[2].arr.shape[0], ny = a[2].arr.shape[1];
+    const tsr_array *xa = &a[0].arr; double *out = c ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
+    double *ca = out ? malloc(nx * sizeof(double)) : NULL, *g = ca ? malloc(ny * sizeof(double)) : NULL;
+    int rc = g ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t i = 0; i < lx; i++) {
+        for (int64_t bb = 0; bb < ny; bb++) { for (int64_t aa = 0; aa < nx; aa++) ca[aa] = c[aa * ny + bb]; g[bb] = npoly_eval(B->id, ca, nx, xs[i]); }
+        out[i] = npoly_eval(B->id, g, ny, ys[i]);
+    }
+    free(ca); free(g); fn_free_doubles(xs, lx); fn_free_doubles(ys, ly); fn_free_doubles(c, lc);
+    return rc;
+}
+static int rb_val3d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3 || a[3].arr.ndim != 3) { fn_set_error("npoly.val3d: x, y, z arrays and c 3-D"); return TSR_EARG; }
+    int64_t lx, ly, lz, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *c = zs ? fn_arg_doubles(&a[3], &lc) : NULL;
+    const int64_t nx = a[3].arr.shape[0], ny = a[3].arr.shape[1], nz = a[3].arr.shape[2];
+    const tsr_array *xa = &a[0].arr; double *out = c ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
+    double *ca = out ? malloc(nx * sizeof(double)) : NULL, *g = ca ? malloc(ny * nz * sizeof(double)) : NULL, *cb = g ? malloc(ny * sizeof(double)) : NULL, *h = cb ? malloc(nz * sizeof(double)) : NULL;
+    int rc = h ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t i = 0; i < lx; i++) {
+        for (int64_t bb = 0; bb < ny; bb++) for (int64_t dd = 0; dd < nz; dd++) { for (int64_t aa = 0; aa < nx; aa++) ca[aa] = c[(aa * ny + bb) * nz + dd]; g[bb * nz + dd] = npoly_eval(B->id, ca, nx, xs[i]); }
+        for (int64_t dd = 0; dd < nz; dd++) { for (int64_t bb = 0; bb < ny; bb++) cb[bb] = g[bb * nz + dd]; h[dd] = npoly_eval(B->id, cb, ny, ys[i]); }
+        out[i] = npoly_eval(B->id, h, nz, zs[i]);
+    }
+    free(ca); free(g); free(cb); free(h); fn_free_doubles(xs, lx); fn_free_doubles(ys, ly); fn_free_doubles(zs, lz); fn_free_doubles(c, lc);
+    return rc;
+}
+static int rb_grid2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[2].arr.ndim != 2) { fn_set_error("npoly.grid2d: x, y arrays and c 2-D"); return TSR_EARG; }
+    int64_t lx, ly, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *c = ys ? fn_arg_doubles(&a[2], &lc) : NULL;
+    const int64_t nx = a[2].arr.shape[0], ny = a[2].arr.shape[1];
+    int64_t sh[2] = {lx, ly}; double *out = c ? (double *)fn_result_array(r, TSR_F64, 2, sh) : NULL;
+    double *ca = out ? malloc(nx * sizeof(double)) : NULL, *g = ca ? malloc(ny * sizeof(double)) : NULL;
+    int rc = g ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t p = 0; p < lx; p++) {
+        for (int64_t bb = 0; bb < ny; bb++) { for (int64_t aa = 0; aa < nx; aa++) ca[aa] = c[aa * ny + bb]; g[bb] = npoly_eval(B->id, ca, nx, xs[p]); }
+        for (int64_t q = 0; q < ly; q++) out[p * ly + q] = npoly_eval(B->id, g, ny, ys[q]);
+    }
+    free(ca); free(g); fn_free_doubles(xs, lx); fn_free_doubles(ys, ly); fn_free_doubles(c, lc);
+    return rc;
+}
+static int rb_grid3d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3 || a[3].arr.ndim != 3) { fn_set_error("npoly.grid3d: x, y, z arrays and c 3-D"); return TSR_EARG; }
+    int64_t lx, ly, lz, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *c = zs ? fn_arg_doubles(&a[3], &lc) : NULL;
+    const int64_t nx = a[3].arr.shape[0], ny = a[3].arr.shape[1], nz = a[3].arr.shape[2];
+    int64_t sh[3] = {lx, ly, lz}; double *out = c ? (double *)fn_result_array(r, TSR_F64, 3, sh) : NULL;
+    double *ca = out ? malloc(nx * sizeof(double)) : NULL, *g = ca ? malloc(ny * nz * sizeof(double)) : NULL, *cb = g ? malloc(ny * sizeof(double)) : NULL, *h = cb ? malloc(nz * sizeof(double)) : NULL;
+    int rc = h ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t p = 0; p < lx; p++) {
+        for (int64_t bb = 0; bb < ny; bb++) for (int64_t dd = 0; dd < nz; dd++) { for (int64_t aa = 0; aa < nx; aa++) ca[aa] = c[(aa * ny + bb) * nz + dd]; g[bb * nz + dd] = npoly_eval(B->id, ca, nx, xs[p]); }
+        for (int64_t q = 0; q < ly; q++) {
+            for (int64_t dd = 0; dd < nz; dd++) { for (int64_t bb = 0; bb < ny; bb++) cb[bb] = g[bb * nz + dd]; h[dd] = npoly_eval(B->id, cb, ny, ys[q]); }
+            for (int64_t w = 0; w < lz; w++) out[(p * ly + q) * lz + w] = npoly_eval(B->id, h, nz, zs[w]);
+        }
+    }
+    free(ca); free(g); free(cb); free(h); fn_free_doubles(xs, lx); fn_free_doubles(ys, ly); fn_free_doubles(zs, lz); fn_free_doubles(c, lc);
+    return rc;
+}
+static int rb_vander2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3) { fn_set_error("npoly.vander2d: x, y and 2-element deg"); return TSR_EARG; }
+    int64_t lx, ly, ld; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *dg = ys ? fn_arg_doubles(&a[2], &ld) : NULL;
+    int rc = dg ? TSR_OK : TSR_ENOMEM;
+    double *VX = NULL, *VY = NULL;
+    if (rc == TSR_OK) {
+        int64_t dx = (int64_t)dg[0], dy = (int64_t)dg[1], ncol = (dx + 1) * (dy + 1);
+        VX = malloc(lx * (dx + 1) * sizeof(double)); VY = malloc(lx * (dy + 1) * sizeof(double));
+        if (!VX || !VY) rc = TSR_ENOMEM;
+        else { B->vander(xs, lx, dx, VX); B->vander(ys, lx, dy, VY);
+            int64_t sh[2] = {lx, ncol}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh);
+            if (!V) rc = TSR_ENOMEM; else for (int64_t i = 0; i < lx; i++) for (int64_t ii = 0; ii <= dx; ii++) for (int64_t jj = 0; jj <= dy; jj++) V[i * ncol + ii * (dy + 1) + jj] = VX[i * (dx + 1) + ii] * VY[i * (dy + 1) + jj]; }
+    }
+    free(VX); free(VY); fn_free_doubles(xs, lx); fn_free_doubles(ys, ly); fn_free_doubles(dg, ld);
+    return rc;
+}
+static int rb_vander3d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3) { fn_set_error("npoly.vander3d: x, y, z and 3-element deg"); return TSR_EARG; }
+    int64_t lx, ly, lz, ld; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *dg = zs ? fn_arg_doubles(&a[3], &ld) : NULL;
+    int rc = dg ? TSR_OK : TSR_ENOMEM;
+    double *VX = NULL, *VY = NULL, *VZ = NULL;
+    if (rc == TSR_OK) {
+        int64_t dx = (int64_t)dg[0], dy = (int64_t)dg[1], dz = (int64_t)dg[2], ncol = (dx + 1) * (dy + 1) * (dz + 1);
+        VX = malloc(lx * (dx + 1) * sizeof(double)); VY = malloc(lx * (dy + 1) * sizeof(double)); VZ = malloc(lx * (dz + 1) * sizeof(double));
+        if (!VX || !VY || !VZ) rc = TSR_ENOMEM;
+        else { B->vander(xs, lx, dx, VX); B->vander(ys, lx, dy, VY); B->vander(zs, lx, dz, VZ);
+            int64_t sh[2] = {lx, ncol}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh);
+            if (!V) rc = TSR_ENOMEM; else for (int64_t i = 0; i < lx; i++) for (int64_t ii = 0; ii <= dx; ii++) for (int64_t jj = 0; jj <= dy; jj++) for (int64_t kk = 0; kk <= dz; kk++) V[i * ncol + (ii * (dy + 1) + jj) * (dz + 1) + kk] = VX[i * (dx + 1) + ii] * VY[i * (dy + 1) + jj] * VZ[i * (dz + 1) + kk]; }
+    }
+    free(VX); free(VY); free(VZ); fn_free_doubles(xs, lx); fn_free_doubles(ys, ly); fn_free_doubles(zs, lz); fn_free_doubles(dg, ld);
+    return rc;
+}
+static int rb_companion(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && nc < 2) { fn_set_error("npoly.companion: series must have degree >= 1"); rc = TSR_EARG; }
+    if (rc == TSR_OK) { int64_t m = nc - 1; int64_t sh[2] = {m, m}; double *M = (double *)fn_result_array(r, TSR_F64, 2, sh); if (!M) rc = TSR_ENOMEM; else B->companion(c, nc, M); }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int rb_roots(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)n; (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (nc <= 1) { int64_t sh[1] = {0}; if (!fn_result_array(r, TSR_F64, 1, sh)) rc = TSR_ENOMEM; }
+        else if (nc == 2) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = -c[0] / c[1]; }
+        else { int64_t m = nc - 1; double *M = malloc(m * m * sizeof(double)), *wr = malloc(m * sizeof(double)), *wi = malloc(m * sizeof(double));
+            if (!M || !wr || !wi) rc = TSR_ENOMEM;
+            else { B->companion(c, nc, M);
+                lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)m, M, (lapack_int)m, wr, wi, NULL, 1, NULL, 1);
+                if (info != 0) { fn_set_error("npoly.roots: eigenvalue iteration did not converge"); rc = TSR_ECONVERGE; }
+                else { qsort(wr, m, sizeof(double), npoly_cmp); double *o = npoly_out1(r, m); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < m; i++) o[i] = wr[i]; } }
+            free(M); free(wr); free(wi); }
+    }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int rb_fit(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)nr; const pbasis *B = ctx;
+    if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly.fit: x and y must be arrays"); return TSR_EARG; }
+    int64_t deg = npoly_opt_int(a, n, 2, 0);
+    if (deg < 0) { fn_set_error("npoly.fit: expected deg >= 0"); return TSR_EARG; }
+    int64_t lx, ly; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL;
+    int rc = ys ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && lx != ly) { fn_set_error("npoly.fit: x and y must have the same length"); rc = TSR_EARG; }
+    if (rc == TSR_OK) {
+        int p = (int)deg + 1; int64_t mb = lx > p ? lx : p;
+        double *V = malloc((size_t)lx * p * sizeof(double)), *b = malloc((size_t)mb * sizeof(double)), *s = malloc((size_t)p * sizeof(double)), *scale = malloc((size_t)p * sizeof(double));
+        if (!V || !b || !s || !scale) rc = TSR_ENOMEM;
+        else { B->vander(xs, lx, deg, V);                      /* row-major (lx, p) */
+            for (int k = 0; k < p; k++) { double sq = 0.0; for (int64_t i = 0; i < lx; i++) { double e = V[i * p + k]; sq += e * e; } scale[k] = sq > 0.0 ? sqrt(sq) : 1.0; }
+            for (int64_t i = 0; i < lx; i++) { for (int k = 0; k < p; k++) V[i * p + k] /= scale[k]; b[i] = ys[i]; }
+            lapack_int rank = 0;
+            lapack_int info = LAPACKE_dgelsd(LAPACK_ROW_MAJOR, (lapack_int)lx, p, 1, V, p, b, 1, s, (double)lx * DBL_EPSILON, &rank);
+            if (info != 0) { fn_set_error("npoly.fit: least-squares solve failed"); rc = TSR_EARG; }
+            else { double *o = npoly_out1(r, p); if (!o) rc = TSR_ENOMEM; else for (int k = 0; k < p; k++) o[k] = b[k] / scale[k]; } }
+        free(V); free(b); free(s); free(scale);
+    }
+    fn_free_doubles(xs, lx); fn_free_doubles(ys, ly);
+    return rc;
+}
+
+/* ---- chebyshev-specific: basis conversions, points, Gauss quadrature, weight, constants ------------------- */
+/* cheb2poly: NumPy's Horner on the power basis using polyadd/polymulx/polysub. */
+static int r_cheb2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (nc < 3) { double *o = npoly_out1(r, nc); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < nc; i++) o[i] = c[i]; }
+        else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+            if (!c0 || !c1 || !tmp || !mx) rc = TSR_ENOMEM;
+            else { int64_t l0 = 1, l1 = 1; c0[0] = c[nc - 2]; c1[0] = c[nc - 1];
+                for (int64_t i = nc - 1; i >= 2; i--) {
+                    int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];                 /* tmp = c0 */
+                    int64_t ns = l1;                                                                   /* polysub([c[i-2]], c1) -> length l1 */
+                    for (int64_t k = 0; k < ns; k++) c0[k] = (k == 0 ? c[i - 2] : 0.0) - c1[k];
+                    l0 = ns;
+                    int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;                               /* 2*polymulx(c1) */
+                    if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = 2.0 * c1[k]; }
+                    int64_t ln = lt > lmx ? lt : lmx;                                                   /* c1 = polyadd(tmp, 2*mulx(c1)) */
+                    for (int64_t k = 0; k < ln; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+                    l1 = ln;
+                }
+                int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;                                   /* polyadd(c0, polymulx(c1)) */
+                if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k]; }
+                int64_t lr = l0 > lmx ? l0 : lmx; double *o = npoly_out1(r, lr);
+                if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = (k < l0 ? c0[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+            }
+            free(c0); free(c1); free(tmp); free(mx); }
+    }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+/* poly2cheb: res = chebadd(chebmulx(res), [pol[i]]) folded from the top. */
+static int r_poly2cheb(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
+    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
+        if (!res || !mx) rc = TSR_ENOMEM;
+        else { int64_t lr = 1; res[0] = 0.0;
+            for (int64_t i = nc - 1; i >= 0; i--) {
+                int64_t lm = cheb_mulx(res, lr, mx);                                                    /* chebmulx(res) */
+                for (int64_t k = 0; k < lm; k++) res[k] = mx[k];
+                res[0] += pol[i]; lr = lm;                                                              /* + [pol[i]] */
+            }
+            double *o = npoly_out1(r, lr); if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = res[k]; }
+        free(res); free(mx); }
+    fn_free_doubles(pol, nc);
+    return rc;
+}
+static int r_chebpts1(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
+    if (m < 1) { fn_set_error("npoly.chebpts1: npts must be >= 1"); return TSR_EARG; }
+    double *o = npoly_out1(r, m); if (!o) return TSR_ENOMEM;
+    /* numpy: 0.5*pi/m * arange(-m+1, m+1, 2), then sin (so the midpoint is sin(0) = 0 exactly) */
+    for (int64_t i = 0; i < m; i++) o[i] = sin(0.5 * M_PI / (double)m * (double)(-m + 1 + 2 * i));
+    return TSR_OK;
+}
+static int r_chebpts2(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
+    if (m < 2) { fn_set_error("npoly.chebpts2: npts must be >= 2"); return TSR_EARG; }
+    double *o = npoly_out1(r, m); if (!o) return TSR_ENOMEM;
+    for (int64_t i = 0; i < m; i++) o[i] = cos(M_PI * (double)(m - 1 - i) / (double)(m - 1));
+    return TSR_OK;
+}
+/* chebgauss: nodes cos(pi*(2k+1)/(2n)), equal weights pi/n. */
+static int r_chebgauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
+    if (m < 1) { fn_set_error("npoly.chebgauss: deg must be >= 1"); return TSR_EARG; }
+    double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
+    if (!xo || !wo) return TSR_ENOMEM;
+    for (int64_t k = 0; k < m; k++) { xo[k] = cos(M_PI * (double)(2 * k + 1) / (2.0 * (double)m)); wo[k] = M_PI / (double)m; }
+    return TSR_OK;
+}
+/* chebweight: 1/sqrt(1-x^2). */
+static int r_chebweight(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly.chebweight: x must be an array"); return TSR_EARG; }
+    int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
+    const tsr_array *xa = &a[0].arr; double *out = xs ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t i = 0; i < lx; i++) out[i] = 1.0 / (sqrt(1.0 + xs[i]) * sqrt(1.0 - xs[i]));
+    fn_free_doubles(xs, lx);
+    return rc;
+}
+static int r_chebzero(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {0}; return npoly_iconst(r, v, 1); }
+static int r_chebone(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)  { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {1}; return npoly_iconst(r, v, 1); }
+static int r_chebx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {0, 1}; return npoly_iconst(r, v, 2); }
+static int r_chebdomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = -1.0; o[1] = 1.0; return TSR_OK; }
+
 static const fn_def DEFS[] = {
     ROUTINE("npoly.polyval", 1, "x, c", "out", r_polyval, NULL, "Evaluate a power-series polynomial at x (numpy.polynomial.polynomial.polyval)."),
     ROUTINE("npoly.chebval", 1, "x, c", "out", r_chebval, NULL, "Evaluate a Chebyshev series at x (numpy.polynomial.chebyshev.chebval)."),
@@ -580,6 +1082,39 @@ static const fn_def DEFS[] = {
     ROUTINE("npoly.polyone", 1, "", "out", r_polyone, NULL, "The one power series (numpy.polynomial.polynomial.polyone)."),
     ROUTINE("npoly.polyx", 1, "", "out", r_polyx, NULL, "The identity power series x (numpy.polynomial.polynomial.polyx)."),
     ROUTINE("npoly.polydomain", 1, "", "out", r_polydomain, NULL, "The default power-basis domain [-1, 1] (numpy.polynomial.polynomial.polydomain)."),
+
+    /* numpy.polynomial.chebyshev (Chebyshev T basis) */
+    ROUTINE("npoly.chebadd", 1, "c1, c2", "out", rb_add, NULL, "Sum of two Chebyshev series (numpy.polynomial.chebyshev.chebadd)."),
+    ROUTINE("npoly.chebsub", 1, "c1, c2", "out", rb_sub, NULL, "Difference of two Chebyshev series (numpy.polynomial.chebyshev.chebsub)."),
+    ROUTINE("npoly.chebmul", 1, "c1, c2", "out", rb_mul, &CHEB, "Product of two Chebyshev series (numpy.polynomial.chebyshev.chebmul)."),
+    ROUTINE("npoly.chebmulx", 1, "c", "out", rb_mulx, &CHEB, "Multiply a Chebyshev series by x (numpy.polynomial.chebyshev.chebmulx)."),
+    ROUTINE("npoly.chebpow", 1, "c, pow, maxpower=16", "out", rb_pow, &CHEB, "Chebyshev series raised to a power (numpy.polynomial.chebyshev.chebpow)."),
+    ROUTINE("npoly.chebdiv", 2, "c1, c2", "quo, rem", rb_div, &CHEB, "Quotient and remainder of Chebyshev-series division (numpy.polynomial.chebyshev.chebdiv)."),
+    ROUTINE("npoly.chebder", 1, "c, m=1, scl=1", "out", rb_der, &CHEB, "Derivative of a Chebyshev series (numpy.polynomial.chebyshev.chebder)."),
+    ROUTINE("npoly.chebint", 1, "c, m=1, k=0, lbnd=0, scl=1", "out", rb_int, &CHEB, "Antiderivative of a Chebyshev series (numpy.polynomial.chebyshev.chebint)."),
+    ROUTINE("npoly.chebfromroots", 1, "roots", "out", rb_fromroots, &CHEB, "Chebyshev series with the given roots (numpy.polynomial.chebyshev.chebfromroots)."),
+    ROUTINE("npoly.chebline", 1, "off, scl", "out", rb_line, &CHEB, "Chebyshev series for off + scl*x (numpy.polynomial.chebyshev.chebline)."),
+    ROUTINE("npoly.chebtrim", 1, "c, tol=0", "out", rb_trim, NULL, "Trim trailing small coefficients (numpy.polynomial.chebyshev.chebtrim)."),
+    ROUTINE("npoly.chebvander", 1, "x, deg", "out", rb_vander, &CHEB, "Pseudo-Vandermonde matrix of the Chebyshev basis (numpy.polynomial.chebyshev.chebvander)."),
+    ROUTINE("npoly.chebval2d", 1, "x, y, c", "out", rb_val2d, &CHEB, "Evaluate a 2-D Chebyshev series (numpy.polynomial.chebyshev.chebval2d)."),
+    ROUTINE("npoly.chebval3d", 1, "x, y, z, c", "out", rb_val3d, &CHEB, "Evaluate a 3-D Chebyshev series (numpy.polynomial.chebyshev.chebval3d)."),
+    ROUTINE("npoly.chebgrid2d", 1, "x, y, c", "out", rb_grid2d, &CHEB, "Evaluate a Chebyshev series on a 2-D grid (numpy.polynomial.chebyshev.chebgrid2d)."),
+    ROUTINE("npoly.chebgrid3d", 1, "x, y, z, c", "out", rb_grid3d, &CHEB, "Evaluate a Chebyshev series on a 3-D grid (numpy.polynomial.chebyshev.chebgrid3d)."),
+    ROUTINE("npoly.chebvander2d", 1, "x, y, deg", "out", rb_vander2d, &CHEB, "Pseudo-Vandermonde matrix of a 2-D Chebyshev basis (numpy.polynomial.chebyshev.chebvander2d)."),
+    ROUTINE("npoly.chebvander3d", 1, "x, y, z, deg", "out", rb_vander3d, &CHEB, "Pseudo-Vandermonde matrix of a 3-D Chebyshev basis (numpy.polynomial.chebyshev.chebvander3d)."),
+    ROUTINE("npoly.chebcompanion", 1, "c", "out", rb_companion, &CHEB, "Companion matrix of a Chebyshev series (numpy.polynomial.chebyshev.chebcompanion)."),
+    ROUTINE("npoly.chebroots", 1, "c", "out", rb_roots, &CHEB, "Roots of a Chebyshev series (numpy.polynomial.chebyshev.chebroots)."),
+    ROUTINE("npoly.chebfit", 1, "x, y, deg", "out", rb_fit, &CHEB, "Least-squares Chebyshev-series fit (numpy.polynomial.chebyshev.chebfit)."),
+    ROUTINE("npoly.cheb2poly", 1, "c", "out", r_cheb2poly, NULL, "Convert a Chebyshev series to a power series (numpy.polynomial.chebyshev.cheb2poly)."),
+    ROUTINE("npoly.poly2cheb", 1, "pol", "out", r_poly2cheb, NULL, "Convert a power series to a Chebyshev series (numpy.polynomial.chebyshev.poly2cheb)."),
+    ROUTINE("npoly.chebpts1", 1, "npts", "out", r_chebpts1, NULL, "Chebyshev points of the first kind (numpy.polynomial.chebyshev.chebpts1)."),
+    ROUTINE("npoly.chebpts2", 1, "npts", "out", r_chebpts2, NULL, "Chebyshev points of the second kind (numpy.polynomial.chebyshev.chebpts2)."),
+    ROUTINE("npoly.chebgauss", 2, "deg", "x, w", r_chebgauss, NULL, "Gauss-Chebyshev quadrature nodes and weights (numpy.polynomial.chebyshev.chebgauss)."),
+    ROUTINE("npoly.chebweight", 1, "x", "out", r_chebweight, NULL, "Chebyshev weight 1/sqrt(1-x^2) (numpy.polynomial.chebyshev.chebweight)."),
+    ROUTINE("npoly.chebzero", 1, "", "out", r_chebzero, NULL, "The zero Chebyshev series (numpy.polynomial.chebyshev.chebzero)."),
+    ROUTINE("npoly.chebone", 1, "", "out", r_chebone, NULL, "The one Chebyshev series (numpy.polynomial.chebyshev.chebone)."),
+    ROUTINE("npoly.chebx", 1, "", "out", r_chebx, NULL, "The identity Chebyshev series x (numpy.polynomial.chebyshev.chebx)."),
+    ROUTINE("npoly.chebdomain", 1, "", "out", r_chebdomain, NULL, "The default Chebyshev domain [-1, 1] (numpy.polynomial.chebyshev.chebdomain)."),
 };
 
 const fn_table TSR_NP_POLYNOMIAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

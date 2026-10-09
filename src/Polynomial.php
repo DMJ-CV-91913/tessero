@@ -24,11 +24,42 @@ final class Polynomial
     'Laguerre' => 'Laguerre',
     'Legendre' => 'Legendre',
     'Polynomial' => 'Polynomial',
+    'cheb2poly' => 'cheb2poly',
+    'chebadd' => 'chebadd',
+    'chebcompanion' => 'chebcompanion',
+    'chebder' => 'chebder',
+    'chebdiv' => 'chebdiv',
+    'chebdomain' => 'chebdomain',
+    'chebfit' => 'chebfit',
+    'chebfromroots' => 'chebfromroots',
+    'chebgauss' => 'chebgauss',
+    'chebgrid2d' => 'chebgrid2d',
+    'chebgrid3d' => 'chebgrid3d',
+    'chebint' => 'chebint',
+    'chebline' => 'chebline',
+    'chebmul' => 'chebmul',
+    'chebmulx' => 'chebmulx',
+    'chebone' => 'chebone',
+    'chebpow' => 'chebpow',
+    'chebpts1' => 'chebpts1',
+    'chebpts2' => 'chebpts2',
+    'chebroots' => 'chebroots',
+    'chebsub' => 'chebsub',
+    'chebtrim' => 'chebtrim',
     'chebval' => 'chebval',
+    'chebval2d' => 'chebval2d',
+    'chebval3d' => 'chebval3d',
+    'chebvander' => 'chebvander',
+    'chebvander2d' => 'chebvander2d',
+    'chebvander3d' => 'chebvander3d',
+    'chebweight' => 'chebweight',
+    'chebx' => 'chebx',
+    'chebzero' => 'chebzero',
     'hermeval' => 'hermeval',
     'hermval' => 'hermval',
     'lagval' => 'lagval',
     'legval' => 'legval',
+    'poly2cheb' => 'poly2cheb',
     'polyadd' => 'polyadd',
     'polycompanion' => 'polycompanion',
     'polyder' => 'polyder',
@@ -135,6 +166,230 @@ final class Polynomial
     }
 
     /**
+     * Convert a Chebyshev series to a power series (numpy.polynomial.chebyshev.cheb2poly).
+     *
+     * scipy.npoly.cheb2poly
+     */
+    public static function cheb2poly(mixed $c): mixed
+    {
+        return Registry::routine('npoly.cheb2poly', [$c]);
+    }
+
+    /**
+     * Sum of two Chebyshev series (numpy.polynomial.chebyshev.chebadd).
+     *
+     * scipy.npoly.chebadd
+     */
+    public static function chebadd(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.chebadd', [$c1, $c2]);
+    }
+
+    /**
+     * Companion matrix of a Chebyshev series (numpy.polynomial.chebyshev.chebcompanion).
+     *
+     * scipy.npoly.chebcompanion
+     */
+    public static function chebcompanion(mixed $c): mixed
+    {
+        return Registry::routine('npoly.chebcompanion', [$c]);
+    }
+
+    /**
+     * Derivative of a Chebyshev series (numpy.polynomial.chebyshev.chebder).
+     *
+     * scipy.npoly.chebder
+     */
+    public static function chebder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.chebder', [$c, $m, $scl]);
+    }
+
+    /**
+     * Quotient and remainder of Chebyshev-series division (numpy.polynomial.chebyshev.chebdiv).
+     *
+     * scipy.npoly.chebdiv
+     *
+     * @return mixed one array, or an array keyed by quo, rem when several results are requested
+     */
+    public static function chebdiv(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.chebdiv', [$c1, $c2]);
+    }
+
+    /**
+     * The default Chebyshev domain [-1, 1] (numpy.polynomial.chebyshev.chebdomain).
+     *
+     * scipy.npoly.chebdomain
+     */
+    public static function chebdomain(): mixed
+    {
+        return Registry::routine('npoly.chebdomain', []);
+    }
+
+    /**
+     * Least-squares Chebyshev-series fit (numpy.polynomial.chebyshev.chebfit).
+     *
+     * scipy.npoly.chebfit
+     */
+    public static function chebfit(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.chebfit', [$x, $y, $deg]);
+    }
+
+    /**
+     * Chebyshev series with the given roots (numpy.polynomial.chebyshev.chebfromroots).
+     *
+     * scipy.npoly.chebfromroots
+     */
+    public static function chebfromroots(mixed $roots): mixed
+    {
+        return Registry::routine('npoly.chebfromroots', [$roots]);
+    }
+
+    /**
+     * Gauss-Chebyshev quadrature nodes and weights (numpy.polynomial.chebyshev.chebgauss).
+     *
+     * scipy.npoly.chebgauss
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function chebgauss(mixed $deg): mixed
+    {
+        return Registry::routine('npoly.chebgauss', [$deg]);
+    }
+
+    /**
+     * Evaluate a Chebyshev series on a 2-D grid (numpy.polynomial.chebyshev.chebgrid2d).
+     *
+     * scipy.npoly.chebgrid2d
+     */
+    public static function chebgrid2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.chebgrid2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a Chebyshev series on a 3-D grid (numpy.polynomial.chebyshev.chebgrid3d).
+     *
+     * scipy.npoly.chebgrid3d
+     */
+    public static function chebgrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.chebgrid3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Antiderivative of a Chebyshev series (numpy.polynomial.chebyshev.chebint).
+     *
+     * scipy.npoly.chebint
+     */
+    public static function chebint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.chebint', [$c, $m, $k, $lbnd, $scl]);
+    }
+
+    /**
+     * Chebyshev series for off + scl*x (numpy.polynomial.chebyshev.chebline).
+     *
+     * scipy.npoly.chebline
+     */
+    public static function chebline(mixed $off, mixed $scl): mixed
+    {
+        return Registry::routine('npoly.chebline', [$off, $scl]);
+    }
+
+    /**
+     * Product of two Chebyshev series (numpy.polynomial.chebyshev.chebmul).
+     *
+     * scipy.npoly.chebmul
+     */
+    public static function chebmul(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.chebmul', [$c1, $c2]);
+    }
+
+    /**
+     * Multiply a Chebyshev series by x (numpy.polynomial.chebyshev.chebmulx).
+     *
+     * scipy.npoly.chebmulx
+     */
+    public static function chebmulx(mixed $c): mixed
+    {
+        return Registry::routine('npoly.chebmulx', [$c]);
+    }
+
+    /**
+     * The one Chebyshev series (numpy.polynomial.chebyshev.chebone).
+     *
+     * scipy.npoly.chebone
+     */
+    public static function chebone(): mixed
+    {
+        return Registry::routine('npoly.chebone', []);
+    }
+
+    /**
+     * Chebyshev series raised to a power (numpy.polynomial.chebyshev.chebpow).
+     *
+     * scipy.npoly.chebpow
+     */
+    public static function chebpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed
+    {
+        return Registry::routine('npoly.chebpow', [$c, $pow, $maxpower]);
+    }
+
+    /**
+     * Chebyshev points of the first kind (numpy.polynomial.chebyshev.chebpts1).
+     *
+     * scipy.npoly.chebpts1
+     */
+    public static function chebpts1(mixed $npts): mixed
+    {
+        return Registry::routine('npoly.chebpts1', [$npts]);
+    }
+
+    /**
+     * Chebyshev points of the second kind (numpy.polynomial.chebyshev.chebpts2).
+     *
+     * scipy.npoly.chebpts2
+     */
+    public static function chebpts2(mixed $npts): mixed
+    {
+        return Registry::routine('npoly.chebpts2', [$npts]);
+    }
+
+    /**
+     * Roots of a Chebyshev series (numpy.polynomial.chebyshev.chebroots).
+     *
+     * scipy.npoly.chebroots
+     */
+    public static function chebroots(mixed $c): mixed
+    {
+        return Registry::routine('npoly.chebroots', [$c]);
+    }
+
+    /**
+     * Difference of two Chebyshev series (numpy.polynomial.chebyshev.chebsub).
+     *
+     * scipy.npoly.chebsub
+     */
+    public static function chebsub(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.chebsub', [$c1, $c2]);
+    }
+
+    /**
+     * Trim trailing small coefficients (numpy.polynomial.chebyshev.chebtrim).
+     *
+     * scipy.npoly.chebtrim
+     */
+    public static function chebtrim(mixed $c, mixed $tol = 0): mixed
+    {
+        return Registry::routine('npoly.chebtrim', [$c, $tol]);
+    }
+
+    /**
      * Evaluate a Chebyshev series at x (numpy.polynomial.chebyshev.chebval).
      *
      * scipy.npoly.chebval
@@ -142,6 +397,86 @@ final class Polynomial
     public static function chebval(mixed $x, mixed $c): mixed
     {
         return Registry::routine('npoly.chebval', [$x, $c]);
+    }
+
+    /**
+     * Evaluate a 2-D Chebyshev series (numpy.polynomial.chebyshev.chebval2d).
+     *
+     * scipy.npoly.chebval2d
+     */
+    public static function chebval2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.chebval2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a 3-D Chebyshev series (numpy.polynomial.chebyshev.chebval3d).
+     *
+     * scipy.npoly.chebval3d
+     */
+    public static function chebval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.chebval3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of the Chebyshev basis (numpy.polynomial.chebyshev.chebvander).
+     *
+     * scipy.npoly.chebvander
+     */
+    public static function chebvander(mixed $x, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.chebvander', [$x, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 2-D Chebyshev basis (numpy.polynomial.chebyshev.chebvander2d).
+     *
+     * scipy.npoly.chebvander2d
+     */
+    public static function chebvander2d(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.chebvander2d', [$x, $y, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 3-D Chebyshev basis (numpy.polynomial.chebyshev.chebvander3d).
+     *
+     * scipy.npoly.chebvander3d
+     */
+    public static function chebvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.chebvander3d', [$x, $y, $z, $deg]);
+    }
+
+    /**
+     * Chebyshev weight 1/sqrt(1-x^2) (numpy.polynomial.chebyshev.chebweight).
+     *
+     * scipy.npoly.chebweight
+     */
+    public static function chebweight(mixed $x): mixed
+    {
+        return Registry::routine('npoly.chebweight', [$x]);
+    }
+
+    /**
+     * The identity Chebyshev series x (numpy.polynomial.chebyshev.chebx).
+     *
+     * scipy.npoly.chebx
+     */
+    public static function chebx(): mixed
+    {
+        return Registry::routine('npoly.chebx', []);
+    }
+
+    /**
+     * The zero Chebyshev series (numpy.polynomial.chebyshev.chebzero).
+     *
+     * scipy.npoly.chebzero
+     */
+    public static function chebzero(): mixed
+    {
+        return Registry::routine('npoly.chebzero', []);
     }
 
     /**
@@ -182,6 +517,16 @@ final class Polynomial
     public static function legval(mixed $x, mixed $c): mixed
     {
         return Registry::routine('npoly.legval', [$x, $c]);
+    }
+
+    /**
+     * Convert a power series to a Chebyshev series (numpy.polynomial.chebyshev.poly2cheb).
+     *
+     * scipy.npoly.poly2cheb
+     */
+    public static function poly2cheb(mixed $pol): mixed
+    {
+        return Registry::routine('npoly.poly2cheb', [$pol]);
     }
 
     /**

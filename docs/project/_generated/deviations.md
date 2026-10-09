@@ -146,6 +146,37 @@
 | `npoly.polyone` | call | rtol 0 |
 | `npoly.polyx` | call | rtol 0 |
 | `npoly.polydomain` | call | rtol 0 |
+| `npoly.chebadd` | call | rtol 0 |
+| `npoly.chebsub` | call | rtol 0 |
+| `npoly.chebmul` | call | rtol 0 |
+| `npoly.chebmulx` | call | rtol 0 |
+| `npoly.chebpow` | call | rtol 0 |
+| `npoly.chebdiv` | call | rtol 0 |
+| `npoly.chebder` | call | rtol 0 |
+| `npoly.chebint` | call | rtol 0 |
+| `npoly.chebfromroots` | call | rtol 0 |
+| `npoly.chebline` | call | rtol 0 |
+| `npoly.chebtrim` | call | rtol 0 |
+| `npoly.chebvander` | call | rtol 0 |
+| `npoly.chebval2d` | call | rtol 0 |
+| `npoly.chebval3d` | call | rtol 0 |
+| `npoly.chebgrid2d` | call | rtol 0 |
+| `npoly.chebgrid3d` | call | rtol 0 |
+| `npoly.chebvander2d` | call | rtol 0 |
+| `npoly.chebvander3d` | call | rtol 0 |
+| `npoly.chebcompanion` | call | rtol 0 |
+| `npoly.chebroots` | call | rtol 0 |
+| `npoly.chebfit` | call | rtol 0 |
+| `npoly.cheb2poly` | call | rtol 0 |
+| `npoly.poly2cheb` | call | rtol 0 |
+| `npoly.chebpts1` | call | rtol 0 |
+| `npoly.chebpts2` | call | rtol 0 |
+| `npoly.chebgauss` | call | rtol 0 |
+| `npoly.chebweight` | call | rtol 0 |
+| `npoly.chebzero` | call | rtol 0 |
+| `npoly.chebone` | call | rtol 0 |
+| `npoly.chebx` | call | rtol 0 |
+| `npoly.chebdomain` | call | rtol 0 |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |

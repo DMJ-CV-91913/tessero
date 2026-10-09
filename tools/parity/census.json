@@ -2867,6 +2867,176 @@
 },
 {
 "kind": "class",
+"module": "numpy.polynomial.chebyshev",
+"name": "Chebyshev"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "cheb2poly"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebadd"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebcompanion"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebder"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebdiv"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebdomain"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebfit"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebfromroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebgauss"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebgrid2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebgrid3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebint"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebinterpolate"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebline"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebmul"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebmulx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebone"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebpow"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebpts1"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebpts2"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebsub"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebtrim"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebval"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebval2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebval3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebvander"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebvander2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebvander3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebweight"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.chebyshev",
+"name": "chebzero"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.chebyshev",
+"name": "poly2cheb"
+},
+{
+"kind": "class",
 "module": "numpy.random",
 "name": "BitGenerator"
 },
