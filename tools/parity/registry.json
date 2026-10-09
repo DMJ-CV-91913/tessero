@@ -1785,7 +1785,157 @@
             "nin": 0,
             "nout": 1
         },
+        "npoly.cheb2poly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebadd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebcompanion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebder": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebdiv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.chebdomain": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebfit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebfromroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebgauss": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.chebgrid2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebgrid3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebint": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebmul": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebmulx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebone": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebpow": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebpts1": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebpts2": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebsub": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebtrim": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "npoly.chebval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebval2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebval3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebvander": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebvander2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebvander3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebweight": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebzero": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -1806,6 +1956,11 @@
             "nout": 1
         },
         "npoly.legval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.poly2cheb": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

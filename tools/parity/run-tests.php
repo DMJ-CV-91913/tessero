@@ -96,9 +96,11 @@ const CALL_RTOL = [
     // LAPACK-backed polynomial helpers: a different LAPACK may differ in the last few digits (ADR 0012)
     'polyfit' => 1e-6,
     'roots' => 1e-6,
+    'chebfit' => 1e-6, 'legfit' => 1e-6, 'lagfit' => 1e-6, 'hermfit' => 1e-6, 'hermefit' => 1e-6,
 ];
-// absolute tolerances: polyfit/roots coefficients can be legitimately ~0, where a relative tolerance is meaningless
-const CALL_ATOL = ['polyfit' => 1e-8, 'roots' => 1e-8];
+// absolute tolerances: polyfit/roots/*fit coefficients can be legitimately ~0, where a relative tolerance is meaningless
+const CALL_ATOL = ['polyfit' => 1e-8, 'roots' => 1e-8,
+    'chebfit' => 1e-8, 'legfit' => 1e-8, 'lagfit' => 1e-8, 'hermfit' => 1e-8, 'hermefit' => 1e-8];
 
 function decodeValue(mixed $v, string $arrayClass): mixed
 {
