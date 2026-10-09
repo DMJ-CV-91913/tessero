@@ -35,6 +35,8 @@ final class Signal
     'cheb2ord' => 'cheb2ord',
     'cheby1' => 'cheby1',
     'cheby2' => 'cheby2',
+    'check_COLA' => 'checkCOLA',
+    'check_NOLA' => 'checkNOLA',
     'chirp' => 'chirp',
     'coherence' => 'coherence',
     'cont2discrete' => 'cont2discrete',
@@ -343,6 +345,26 @@ final class Signal
     public static function cheby2(mixed $N, mixed $rs, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $fs = null): mixed
     {
         return Registry::routine('signal.cheby2', [$N, $rs, $Wn, $btype, $analog, $output, $fs]);
+    }
+
+    /**
+     * Whether a window array meets the Constant OverLap Add (COLA) constraint (scipy.signal.check_COLA).
+     *
+     * scipy.signal.check_COLA
+     */
+    public static function checkCOLA(mixed $window, mixed $nperseg, mixed $noverlap, mixed $tol = 1e-10): mixed
+    {
+        return Registry::routine('signal.check_COLA', [$window, $nperseg, $noverlap, $tol]);
+    }
+
+    /**
+     * Whether a window array meets the Nonzero OverLap Add (NOLA) constraint (scipy.signal.check_NOLA).
+     *
+     * scipy.signal.check_NOLA
+     */
+    public static function checkNOLA(mixed $window, mixed $nperseg, mixed $noverlap, mixed $tol = 1e-10): mixed
+    {
+        return Registry::routine('signal.check_NOLA', [$window, $nperseg, $noverlap, $tol]);
     }
 
     /**

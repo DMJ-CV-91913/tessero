@@ -2753,6 +2753,18 @@
                 "doc": "Chebyshev type II IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.cheby2)."
             },
             {
+                "name": "checkCOLA",
+                "static": true,
+                "sig": "checkCOLA(mixed $window, mixed $nperseg, mixed $noverlap, mixed $tol = 1.0E-10): mixed",
+                "doc": "Whether a window array meets the Constant OverLap Add (COLA) constraint (scipy.signal.check_COLA)."
+            },
+            {
+                "name": "checkNOLA",
+                "static": true,
+                "sig": "checkNOLA(mixed $window, mixed $nperseg, mixed $noverlap, mixed $tol = 1.0E-10): mixed",
+                "doc": "Whether a window array meets the Nonzero OverLap Add (NOLA) constraint (scipy.signal.check_NOLA)."
+            },
+            {
                 "name": "chirp",
                 "static": true,
                 "sig": "chirp(mixed $t, mixed $f0, mixed $t1, mixed $f1, mixed $method = 'linear', mixed $phi = 0, mixed $vertexZero = true): mixed",
@@ -16513,6 +16525,18 @@
                 "name": "gammatone",
                 "static": true,
                 "sig": "gammatone($freq, $ftype, $order = null, $numtaps = null, $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "checkCOLA",
+                "static": true,
+                "sig": "checkCOLA($window, $nperseg, $noverlap, $tol = 1.0E-10)",
+                "doc": ""
+            },
+            {
+                "name": "checkNOLA",
+                "static": true,
+                "sig": "checkNOLA($window, $nperseg, $noverlap, $tol = 1.0E-10)",
                 "doc": ""
             },
             {
