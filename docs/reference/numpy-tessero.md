@@ -619,6 +619,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.boltzmann` | `Tessero\Stats::boltzmann()` |
 | `scipy.stats.boxcox` | `Tessero\Stats::boxcox()` |
 | `scipy.stats.boxcox_llf` | `Tessero\Stats::boxcoxLlf()` |
+| `scipy.stats.boxcox_normplot` | `Tessero\Stats::boxcoxNormplot()` |
 | `scipy.stats.bradford` | `Tessero\Stats::bradford()` |
 | `scipy.stats.brunnermunzel` | `Tessero\Stats::brunnermunzel()` |
 | `scipy.stats.burr` | `Tessero\Stats::burr()` |
@@ -642,6 +643,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.describe` | `Tessero\Stats::describe()` |
 | `scipy.stats.dgamma` | `Tessero\Stats::dgamma()` |
 | `scipy.stats.differential_entropy` | `Tessero\Stats::differentialEntropy()` |
+| `scipy.stats.directional_stats` | `Tessero\Stats::directionalStats()` |
 | `scipy.stats.dlaplace` | `Tessero\Stats::dlaplace()` |
 | `scipy.stats.dpareto_lognorm` | `Tessero\Stats::dparetoLognorm()` |
 | `scipy.stats.dweibull` | `Tessero\Stats::dweibull()` |
@@ -766,6 +768,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.powerlaw` | `Tessero\Stats::powerlaw()` |
 | `scipy.stats.powerlognorm` | `Tessero\Stats::powerlognorm()` |
 | `scipy.stats.powernorm` | `Tessero\Stats::powernorm()` |
+| `scipy.stats.probplot` | `Tessero\Stats::probplot()` |
 | `scipy.stats.quantile` | `Tessero\Stats::quantile()` |
 | `scipy.stats.quantile_test` | `Tessero\Stats::quantileTest()` |
 | `scipy.stats.randint` | `Tessero\Stats::randint()` |
@@ -829,6 +832,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.wrapcauchy` | `Tessero\Stats::wrapcauchy()` |
 | `scipy.stats.yeojohnson` | `Tessero\Stats::yeojohnson()` |
 | `scipy.stats.yeojohnson_llf` | `Tessero\Stats::yeojohnsonLlf()` |
+| `scipy.stats.yeojohnson_normplot` | `Tessero\Stats::yeojohnsonNormplot()` |
 | `scipy.stats.yulesimon` | `Tessero\Stats::yulesimon()` |
 | `scipy.stats.zipf` | `Tessero\Stats::zipf()` |
 | `scipy.stats.zipfian` | `Tessero\Stats::zipfian()` |

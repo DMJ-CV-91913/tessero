@@ -2080,6 +2080,103 @@ static int r_ecdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     return rc;
 }
 
+/* Filliben's order-statistic medians mapped through the normal quantile (for probplot / normplot). */
+static void stat_osm(double *a, int64_t n)
+{
+    if (n == 1) { a[0] = sc::ndtri(0.5); return; }
+    double last = std::pow(0.5, 1.0 / (double)n);
+    a[n - 1] = sc::ndtri(last);
+    a[0] = sc::ndtri(1.0 - last);
+    for (int64_t p = 1; p < n - 1; p++) a[p] = sc::ndtri(((double)(p + 1) - 0.3175) / ((double)n + 0.365));
+}
+/* Pearson correlation of a[] and b[] (length n); also returns slope/intercept of b on a via out params. */
+static double stat_linr(const double *a, const double *b, int64_t n, double *slope, double *intercept)
+{
+    double abar = 0.0, bbar = 0.0;
+    for (int64_t i = 0; i < n; i++) { abar += a[i]; bbar += b[i]; }
+    abar /= (double)n; bbar /= (double)n;
+    double num = 0.0, da = 0.0, db = 0.0;
+    for (int64_t i = 0; i < n; i++) { double u = a[i] - abar, v = b[i] - bbar; num += u * v; da += u * u; db += v * v; }
+    if (slope) *slope = num / da;
+    if (intercept) *intercept = bbar - (num / da) * abar;
+    return num / std::sqrt(da * db);
+}
+/* directional_stats(samples): normalize each row to unit length; mean direction and mean resultant length. */
+static int r_directional_stats(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("directional_stats: samples must be a 2-D array"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], d = args[0].arr.shape[1];
+    int64_t ls; double *S = fn_arg_doubles(&args[0], &ls);
+    if (!S) return TSR_ENOMEM;
+    std::vector<double> mv(d, 0.0);
+    for (int64_t i = 0; i < n; i++) { double nr = 0.0; for (int64_t a = 0; a < d; a++) nr += S[i * d + a] * S[i * d + a]; nr = std::sqrt(nr);
+        for (int64_t a = 0; a < d; a++) mv[a] += S[i * d + a] / nr; }
+    for (int64_t a = 0; a < d; a++) mv[a] /= (double)n;
+    double R = 0.0; for (int64_t a = 0; a < d; a++) R += mv[a] * mv[a]; R = std::sqrt(R);
+    int64_t dsh[1] = {d};
+    double *md = (double *)fn_result_array(&res[0], TSR_F64, 1, dsh);
+    int rc = md ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { for (int64_t a = 0; a < d; a++) md[a] = mv[a] / R; fn_result_num(&res[1], R); }
+    fn_free_doubles(S, ls);
+    return rc;
+}
+/* probplot(x): order-statistic medians osm, ordered data osr, and the least-squares slope/intercept/r. */
+static int r_probplot(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("probplot: x must be an array"); return TSR_EARG; }
+    int64_t lx; double *x = fn_arg_doubles(&args[0], &lx);
+    if (!x) return TSR_ENOMEM;
+    const int64_t n = lx;
+    std::vector<double> osr(x, x + n), osm(n);
+    std::sort(osr.begin(), osr.end());
+    stat_osm(osm.data(), n);
+    int64_t sh[1] = {n};
+    double *om = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    double *orr = om ? (double *)fn_result_array(&res[1], TSR_F64, 1, sh) : nullptr;
+    int rc = orr ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        double slope, intercept, r = stat_linr(osm.data(), osr.data(), n, &slope, &intercept);
+        for (int64_t i = 0; i < n; i++) { om[i] = osm[i]; orr[i] = osr[i]; }
+        fn_result_num(&res[2], slope); fn_result_num(&res[3], intercept); fn_result_num(&res[4], r);
+    }
+    fn_free_doubles(x, lx);
+    return rc;
+}
+/* probability-plot correlation of transformed data over a range of lambdas (boxcox / yeo-johnson normplot). */
+static int stat_normplot(const tsr_arg *args, int nargs, tsr_result *res, int yeo)
+{
+    if (args[0].kind != 3) { fn_set_error("normplot: x must be an array"); return TSR_EARG; }
+    const double la = args[1].num, lb = args[2].num;
+    const int64_t N = (nargs > 3 && args[3].kind == 1) ? ((args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num) : 80;
+    int64_t lx; double *x = fn_arg_doubles(&args[0], &lx);
+    if (!x) return TSR_ENOMEM;
+    const int64_t n = lx;
+    std::vector<double> osm(n), y(n);
+    stat_osm(osm.data(), n);
+    int64_t sh[1] = {N};
+    double *lm = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    double *pp = lm ? (double *)fn_result_array(&res[1], TSR_F64, 1, sh) : nullptr;
+    int rc = pp ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t k = 0; k < N; k++) {
+        double lmb = (N == 1) ? la : la + (lb - la) * (double)k / (double)(N - 1);
+        for (int64_t i = 0; i < n; i++) {
+            double xi = x[i], t;
+            if (!yeo) t = (lmb == 0.0) ? std::log(xi) : (std::pow(xi, lmb) - 1.0) / lmb;
+            else if (xi >= 0.0) t = (lmb == 0.0) ? std::log1p(xi) : (std::pow(xi + 1.0, lmb) - 1.0) / lmb;
+            else t = (lmb == 2.0) ? -std::log1p(-xi) : -(std::pow(-xi + 1.0, 2.0 - lmb) - 1.0) / (2.0 - lmb);
+            y[i] = t;
+        }
+        std::sort(y.begin(), y.end());
+        lm[k] = lmb; pp[k] = stat_linr(osm.data(), y.data(), n, nullptr, nullptr);
+    }
+    fn_free_doubles(x, lx);
+    return rc;
+}
+static int r_boxcox_normplot(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)nres; return stat_normplot(a, n, res, 0); }
+static int r_yeojohnson_normplot(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)nres; return stat_normplot(a, n, res, 1); }
+
 }  // namespace
 
 /* ================================================================ registry */
@@ -2184,6 +2281,14 @@ static const fn_def DEFS[] = {
             "Gaussian kernel density estimate (Scott's factor) evaluated at points (scipy.stats.gaussian_kde)."),
     ROUTINE("stats.ecdf", 2, "sample", "quantiles, probabilities", r_ecdf, NULL,
             "Empirical CDF: sorted unique values and cumulative proportions (scipy.stats.ecdf)."),
+    ROUTINE("stats.directional_stats", 2, "samples", "mean_direction, mean_resultant_length", r_directional_stats, NULL,
+            "Mean direction and resultant length of unit vectors (scipy.stats.directional_stats)."),
+    ROUTINE("stats.probplot", 5, "x", "osm, osr, slope, intercept, r", r_probplot, NULL,
+            "Probability plot data: order-statistic medians, ordered values, and the fit (scipy.stats.probplot)."),
+    ROUTINE("stats.boxcox_normplot", 2, "x, la, lb, N=80", "lmbdas, ppcc", r_boxcox_normplot, NULL,
+            "Box-Cox normality plot: lambdas and probability-plot correlations (scipy.stats.boxcox_normplot)."),
+    ROUTINE("stats.yeojohnson_normplot", 2, "x, la, lb, N=80", "lmbdas, ppcc", r_yeojohnson_normplot, NULL,
+            "Yeo-Johnson normality plot: lambdas and probability-plot correlations (scipy.stats.yeojohnson_normplot)."),
     ROUTINE("stats.boxcox_llf", 1, "lmb, data, axis=0, keepdims=False, nan_policy='propagate'", "llf", r_llf, NULL,
             "Box-Cox log-likelihood (scipy.stats.boxcox_llf)."),
     ROUTINE("stats.yeojohnson_llf", 1, "lmb, data, axis=0, nan_policy='propagate', keepdims=False", "llf", r_llf, &ONE,

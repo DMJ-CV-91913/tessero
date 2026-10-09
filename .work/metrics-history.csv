@@ -170,3 +170,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-09,scipy.sparse: eye/identity/kron/kronsum/tril/triu/find constructors (both backends),91.7,91.1,71.8,71.6,99.4,99.7,71.7,71.7,79.1,79.1
 2026-10-09,scipy.sparse: spdiags + block_diag (both backends),91.7,91.1,71.9,71.7,99.4,99.7,71.7,71.7,79.1,79.1
 2026-10-09,scipy.stats: gaussian_kde + ecdf (both backends),91.7,91.1,72.0,71.8,99.4,99.7,71.7,71.7,79.8,79.8
+2026-10-09,"scipy.stats: directional_stats, probplot, boxcox/yeojohnson_normplot (both backends)",91.7,91.1,72.3,72.1,99.4,99.7,71.7,71.7,81.1,81.1
