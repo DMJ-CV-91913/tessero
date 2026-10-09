@@ -1043,6 +1043,185 @@ static int r_chebone(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
 static int r_chebx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {0, 1}; return npoly_iconst(r, v, 2); }
 static int r_chebdomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = -1.0; o[1] = 1.0; return TSR_OK; }
 
+/* ---- legendre primitives --------------------------------------------------------------------------------- */
+static int64_t leg_mulx(const double *c, int64_t n, double *out)
+{
+    if (n == 1 && c[0] == 0.0) { out[0] = 0.0; return 1; }
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = c[0];
+    for (int64_t i = 1; i < n; i++) { int64_t j = i + 1, k = i - 1; double s = i + j; out[j] = c[i] * (double)j / s; out[k] += c[i] * (double)i / s; }
+    return n + 1;
+}
+/* NumPy legmul: Clenshaw product using legmulx and the Legendre recurrence (c1 has no bare-c1 term). */
+static int64_t leg_mul(const double *A, int64_t nA, const double *Bv, int64_t nB, double *out)
+{
+    const double *c, *xs; int64_t nc, nxs;
+    if (nA > nB) { c = Bv; nc = nB; xs = A; nxs = nA; } else { c = A; nc = nA; xs = Bv; nxs = nB; }
+    int64_t cap = nA + nB + 2;
+    double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+    int64_t ret = -1;
+    if (c0 && c1 && tmp && mx) {
+        int64_t l0, l1;
+        if (nc == 1) { for (int64_t k = 0; k < nxs; k++) c0[k] = c[0] * xs[k]; l0 = nxs; c1[0] = 0.0; l1 = 1; }
+        else {
+            for (int64_t k = 0; k < nxs; k++) { c0[k] = c[nc - 2] * xs[k]; c1[k] = c[nc - 1] * xs[k]; } l0 = nxs; l1 = nxs;
+            double nd = (double)nc;
+            for (int64_t i = 3; i <= nc; i++) {
+                int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                nd -= 1.0;
+                double f = (nd - 1.0) / nd, sc = c[nc - i]; int64_t nl0 = nxs > l1 ? nxs : l1;
+                for (int64_t k = 0; k < nl0; k++) c0[k] = (k < nxs ? sc * xs[k] : 0.0) - (k < l1 ? f * c1[k] : 0.0);
+                l0 = nl0;
+                int64_t lm = leg_mulx(c1, l1, mx); double g = (2.0 * nd - 1.0) / nd; int64_t nl1 = lt > lm ? lt : lm;
+                for (int64_t k = 0; k < nl1; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + (k < lm ? g * mx[k] : 0.0);
+                l1 = nl1;
+            }
+        }
+        int64_t lm = leg_mulx(c1, l1, mx); int64_t nr = l0 > lm ? l0 : lm;
+        for (int64_t k = 0; k < nr; k++) out[k] = (k < l0 ? c0[k] : 0.0) + (k < lm ? mx[k] : 0.0);
+        ret = nr;
+    }
+    free(c0); free(c1); free(tmp); free(mx);
+    return ret;
+}
+static int64_t leg_der(const double *c, int64_t n, double scl, double *out)
+{
+    if (n == 1) { out[0] = 0.0; return 1; }
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i];
+    for (int64_t i = 0; i < n - 1; i++) out[i] = 0.0;
+    for (int64_t j = n - 1; j >= 3; j--) { out[j - 1] = (2.0 * j - 1.0) * cc[j]; cc[j - 2] += cc[j]; }
+    if (n > 2) out[1] = 3.0 * cc[2];
+    out[0] = cc[1];
+    for (int64_t i = 0; i < n - 1; i++) out[i] *= scl;
+    free(cc);
+    return n - 1;
+}
+static int64_t leg_integ(const double *c, int64_t n, double scl, double *out)
+{
+    double *cc = calloc(n, sizeof(double)); if (!cc) return -1;
+    for (int64_t i = 0; i < n; i++) cc[i] = c[i] * scl;
+    for (int64_t i = 0; i <= n; i++) out[i] = 0.0;
+    out[1] = cc[0];
+    if (n > 1) out[2] = cc[1] / 3.0;
+    for (int64_t j = 2; j < n; j++) { double t = cc[j] / (2.0 * j + 1.0); out[j + 1] = t; out[j - 1] -= t; }
+    out[0] += -npoly_eval(NB_LEG, out, n + 1, 0.0);
+    free(cc);
+    return n + 1;
+}
+static int64_t leg_line(double off, double scl, double *out) { out[0] = off; if (scl != 0.0) { out[1] = scl; return 2; } return 1; }
+static void leg_vander(const double *x, int64_t nx, int64_t deg, double *V)
+{
+    int64_t w = deg + 1;
+    for (int64_t i = 0; i < nx; i++) { double *rr = V + i * w; rr[0] = 1.0;
+        if (deg > 0) { rr[1] = x[i]; for (int64_t j = 2; j <= deg; j++) rr[j] = (rr[j - 1] * x[i] * (2.0 * j - 1.0) - rr[j - 2] * (j - 1.0)) / (double)j; } }
+}
+static void leg_companion(const double *c, int64_t n, double *M)
+{
+    int64_t m = n - 1;
+    if (m == 1) { M[0] = -c[0] / c[1]; return; }
+    for (int64_t i = 0; i < m * m; i++) M[i] = 0.0;
+    double *scl = malloc(m * sizeof(double)); if (!scl) return;
+    for (int64_t i = 0; i < m; i++) scl[i] = 1.0 / sqrt(2.0 * i + 1.0);
+    for (int64_t i = 0; i < m - 1; i++) { double v = (i + 1.0) * scl[i] * scl[i + 1]; M[i * m + (i + 1)] = v; M[(i + 1) * m + i] = v; }
+    for (int64_t i = 0; i < m; i++) M[i * m + (m - 1)] -= (c[i] / c[n - 1]) * (scl[i] / scl[m - 1]) * ((double)m / (2.0 * m - 1.0));
+    free(scl);
+}
+static const pbasis LEG = {NB_LEG, "leg", leg_mulx, leg_mul, leg_der, leg_integ, leg_line, leg_vander, leg_companion};
+
+/* leg2poly / poly2leg (power-basis Horner with the Legendre recurrence). */
+static int r_leg2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
+    int rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (nc < 3) { double *o = npoly_out1(r, nc); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < nc; i++) o[i] = c[i]; }
+        else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
+            if (!c0 || !c1 || !tmp || !mx) rc = TSR_ENOMEM;
+            else { int64_t l0 = 1, l1 = 1; c0[0] = c[nc - 2]; c1[0] = c[nc - 1];
+                for (int64_t i = nc - 1; i >= 2; i--) {
+                    int64_t lt = l0; for (int64_t k = 0; k < l0; k++) tmp[k] = c0[k];
+                    double f = (i - 1.0) / (double)i; int64_t ns = l1;
+                    for (int64_t k = 0; k < ns; k++) c0[k] = (k == 0 ? c[i - 2] : 0.0) - c1[k] * f;
+                    l0 = ns > 1 ? ns : 1;
+                    double g = (2.0 * i - 1.0) / (double)i;
+                    int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;
+                    if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k] * g; }
+                    int64_t ln = lt > lmx ? lt : lmx;
+                    for (int64_t k = 0; k < ln; k++) c1[k] = (k < lt ? tmp[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+                    l1 = ln;
+                }
+                int64_t lmx = (l1 == 1 && c1[0] == 0.0) ? 1 : l1 + 1;
+                if (lmx == 1) mx[0] = 0.0; else { mx[0] = 0.0; for (int64_t k = 0; k < l1; k++) mx[k + 1] = c1[k]; }
+                int64_t lr = l0 > lmx ? l0 : lmx; double *o = npoly_out1(r, lr);
+                if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = (k < l0 ? c0[k] : 0.0) + (k < lmx ? mx[k] : 0.0);
+            }
+            free(c0); free(c1); free(tmp); free(mx); }
+    }
+    fn_free_doubles(c, nc);
+    return rc;
+}
+static int r_poly2leg(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
+    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
+    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
+        if (!res || !mx) rc = TSR_ENOMEM;
+        else { int64_t lr = 1; res[0] = 0.0;
+            for (int64_t i = nc - 1; i >= 0; i--) { int64_t lm = leg_mulx(res, lr, mx); for (int64_t k = 0; k < lm; k++) res[k] = mx[k]; res[0] += pol[i]; lr = lm; }
+            double *o = npoly_out1(r, lr); if (!o) rc = TSR_ENOMEM; else for (int64_t k = 0; k < lr; k++) o[k] = res[k]; }
+        free(res); free(mx); }
+    fn_free_doubles(pol, nc);
+    return rc;
+}
+/* leggauss: nodes = eigenvalues of the symmetric companion of P_deg, one Newton step, symmetrized weights. */
+static int r_leggauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
+    if (m < 1) { fn_set_error("npoly.leggauss: deg must be >= 1"); return TSR_EARG; }
+    double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
+    if (!xo || !wo) return TSR_ENOMEM;
+    double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
+    double *cder = calloc(m > 0 ? m : 1, sizeof(double)); if (c && cder) leg_der(c, m + 1, 1.0, cder);
+    double *comp = calloc(m * m, sizeof(double)), *ev = malloc(m * sizeof(double)), *df = malloc(m * sizeof(double)), *fm = malloc(m * sizeof(double)), *w = malloc(m * sizeof(double));
+    int rc = (c && cder && comp && ev && df && fm && w) ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        if (m == 1) ev[0] = 0.0;
+        else { leg_companion(c, m + 1, comp);
+            if (LAPACKE_dsyev(LAPACK_ROW_MAJOR, 'N', 'L', (lapack_int)m, comp, (lapack_int)m, ev) != 0) { fn_set_error("npoly.leggauss: eigenvalue solve failed"); rc = TSR_ECONVERGE; } }
+    }
+    if (rc == TSR_OK) {
+        double fmax = 0.0, dmax = 0.0;
+        for (int64_t k = 0; k < m; k++) { double dy = npoly_eval(NB_LEG, c, m + 1, ev[k]); df[k] = npoly_eval(NB_LEG, cder, m, ev[k]); ev[k] -= dy / df[k]; }
+        for (int64_t k = 0; k < m; k++) { fm[k] = npoly_eval(NB_LEG, c + 1, m, ev[k]); if (fabs(fm[k]) > fmax) fmax = fabs(fm[k]); if (fabs(df[k]) > dmax) dmax = fabs(df[k]); }
+        double wsum = 0.0;
+        for (int64_t k = 0; k < m; k++) w[k] = 1.0 / ((fm[k] / fmax) * (df[k] / dmax));
+        for (int64_t k = 0; k < m; k++) { double ws = (w[k] + w[m - 1 - k]) / 2.0; wo[k] = ws; wsum += ws; xo[k] = (ev[k] - ev[m - 1 - k]) / 2.0; }
+        for (int64_t k = 0; k < m; k++) wo[k] *= 2.0 / wsum;
+    }
+    free(c); free(cder); free(comp); free(ev); free(df); free(fm); free(w);
+    return rc;
+}
+static int r_legweight(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)n; (void)nr;
+    if (a[0].kind != 3) { fn_set_error("npoly.legweight: x must be an array"); return TSR_EARG; }
+    int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
+    const tsr_array *xa = &a[0].arr; double *out = xs ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t i = 0; i < lx; i++) out[i] = 1.0;
+    fn_free_doubles(xs, lx);
+    return rc;
+}
+static int r_legzero(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {0}; return npoly_iconst(r, v, 1); }
+static int r_legone(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)  { (void)x; (void)a; (void)n; (void)nr; int64_t v[1] = {1}; return npoly_iconst(r, v, 1); }
+static int r_legx(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)    { (void)x; (void)a; (void)n; (void)nr; int64_t v[2] = {0, 1}; return npoly_iconst(r, v, 2); }
+static int r_legdomain(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)x; (void)a; (void)n; (void)nr; double *o = npoly_out1(r, 2); if (!o) return TSR_ENOMEM; o[0] = -1.0; o[1] = 1.0; return TSR_OK; }
+
 static const fn_def DEFS[] = {
     ROUTINE("npoly.polyval", 1, "x, c", "out", r_polyval, NULL, "Evaluate a power-series polynomial at x (numpy.polynomial.polynomial.polyval)."),
     ROUTINE("npoly.chebval", 1, "x, c", "out", r_chebval, NULL, "Evaluate a Chebyshev series at x (numpy.polynomial.chebyshev.chebval)."),
@@ -1115,6 +1294,37 @@ static const fn_def DEFS[] = {
     ROUTINE("npoly.chebone", 1, "", "out", r_chebone, NULL, "The one Chebyshev series (numpy.polynomial.chebyshev.chebone)."),
     ROUTINE("npoly.chebx", 1, "", "out", r_chebx, NULL, "The identity Chebyshev series x (numpy.polynomial.chebyshev.chebx)."),
     ROUTINE("npoly.chebdomain", 1, "", "out", r_chebdomain, NULL, "The default Chebyshev domain [-1, 1] (numpy.polynomial.chebyshev.chebdomain)."),
+
+    /* numpy.polynomial.legendre */
+    ROUTINE("npoly.legadd", 1, "c1, c2", "out", rb_add, NULL, "Sum of two Legendre series (numpy.polynomial.legendre.legadd)."),
+    ROUTINE("npoly.legsub", 1, "c1, c2", "out", rb_sub, NULL, "Difference of two Legendre series (numpy.polynomial.legendre.legsub)."),
+    ROUTINE("npoly.legmul", 1, "c1, c2", "out", rb_mul, &LEG, "Product of two Legendre series (numpy.polynomial.legendre.legmul)."),
+    ROUTINE("npoly.legmulx", 1, "c", "out", rb_mulx, &LEG, "Multiply a Legendre series by x (numpy.polynomial.legendre.legmulx)."),
+    ROUTINE("npoly.legpow", 1, "c, pow, maxpower=16", "out", rb_pow, &LEG, "Legendre series raised to a power (numpy.polynomial.legendre.legpow)."),
+    ROUTINE("npoly.legdiv", 2, "c1, c2", "quo, rem", rb_div, &LEG, "Quotient and remainder of Legendre-series division (numpy.polynomial.legendre.legdiv)."),
+    ROUTINE("npoly.legder", 1, "c, m=1, scl=1", "out", rb_der, &LEG, "Derivative of a Legendre series (numpy.polynomial.legendre.legder)."),
+    ROUTINE("npoly.legint", 1, "c, m=1, k=0, lbnd=0, scl=1", "out", rb_int, &LEG, "Antiderivative of a Legendre series (numpy.polynomial.legendre.legint)."),
+    ROUTINE("npoly.legfromroots", 1, "roots", "out", rb_fromroots, &LEG, "Legendre series with the given roots (numpy.polynomial.legendre.legfromroots)."),
+    ROUTINE("npoly.legline", 1, "off, scl", "out", rb_line, &LEG, "Legendre series for off + scl*x (numpy.polynomial.legendre.legline)."),
+    ROUTINE("npoly.legtrim", 1, "c, tol=0", "out", rb_trim, NULL, "Trim trailing small coefficients (numpy.polynomial.legendre.legtrim)."),
+    ROUTINE("npoly.legvander", 1, "x, deg", "out", rb_vander, &LEG, "Pseudo-Vandermonde matrix of the Legendre basis (numpy.polynomial.legendre.legvander)."),
+    ROUTINE("npoly.legval2d", 1, "x, y, c", "out", rb_val2d, &LEG, "Evaluate a 2-D Legendre series (numpy.polynomial.legendre.legval2d)."),
+    ROUTINE("npoly.legval3d", 1, "x, y, z, c", "out", rb_val3d, &LEG, "Evaluate a 3-D Legendre series (numpy.polynomial.legendre.legval3d)."),
+    ROUTINE("npoly.leggrid2d", 1, "x, y, c", "out", rb_grid2d, &LEG, "Evaluate a Legendre series on a 2-D grid (numpy.polynomial.legendre.leggrid2d)."),
+    ROUTINE("npoly.leggrid3d", 1, "x, y, z, c", "out", rb_grid3d, &LEG, "Evaluate a Legendre series on a 3-D grid (numpy.polynomial.legendre.leggrid3d)."),
+    ROUTINE("npoly.legvander2d", 1, "x, y, deg", "out", rb_vander2d, &LEG, "Pseudo-Vandermonde matrix of a 2-D Legendre basis (numpy.polynomial.legendre.legvander2d)."),
+    ROUTINE("npoly.legvander3d", 1, "x, y, z, deg", "out", rb_vander3d, &LEG, "Pseudo-Vandermonde matrix of a 3-D Legendre basis (numpy.polynomial.legendre.legvander3d)."),
+    ROUTINE("npoly.legcompanion", 1, "c", "out", rb_companion, &LEG, "Companion matrix of a Legendre series (numpy.polynomial.legendre.legcompanion)."),
+    ROUTINE("npoly.legroots", 1, "c", "out", rb_roots, &LEG, "Roots of a Legendre series (numpy.polynomial.legendre.legroots)."),
+    ROUTINE("npoly.legfit", 1, "x, y, deg", "out", rb_fit, &LEG, "Least-squares Legendre-series fit (numpy.polynomial.legendre.legfit)."),
+    ROUTINE("npoly.leg2poly", 1, "c", "out", r_leg2poly, NULL, "Convert a Legendre series to a power series (numpy.polynomial.legendre.leg2poly)."),
+    ROUTINE("npoly.poly2leg", 1, "pol", "out", r_poly2leg, NULL, "Convert a power series to a Legendre series (numpy.polynomial.legendre.poly2leg)."),
+    ROUTINE("npoly.leggauss", 2, "deg", "x, w", r_leggauss, NULL, "Gauss-Legendre quadrature nodes and weights (numpy.polynomial.legendre.leggauss)."),
+    ROUTINE("npoly.legweight", 1, "x", "out", r_legweight, NULL, "Legendre weight, identically 1 (numpy.polynomial.legendre.legweight)."),
+    ROUTINE("npoly.legzero", 1, "", "out", r_legzero, NULL, "The zero Legendre series (numpy.polynomial.legendre.legzero)."),
+    ROUTINE("npoly.legone", 1, "", "out", r_legone, NULL, "The one Legendre series (numpy.polynomial.legendre.legone)."),
+    ROUTINE("npoly.legx", 1, "", "out", r_legx, NULL, "The identity Legendre series x (numpy.polynomial.legendre.legx)."),
+    ROUTINE("npoly.legdomain", 1, "", "out", r_legdomain, NULL, "The default Legendre domain [-1, 1] (numpy.polynomial.legendre.legdomain)."),
 };
 
 const fn_table TSR_NP_POLYNOMIAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
