@@ -149,3 +149,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-09,scipy.signal: lfiltic + findfreqs,87.7,87.0,69.6,69.3,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-09,scipy.signal: wiener + sweep_poly,87.7,87.0,69.7,69.4,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-09,scipy.signal: freqz_sos + max_len_seq,87.7,87.0,69.8,69.6,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-09,scipy.signal: upfirdn + gammatone,87.7,87.0,70.0,69.7,99.1,99.6,71.7,71.7,79.1,79.1

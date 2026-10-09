@@ -228,6 +228,21 @@ seq, st = sg.max_len_seq(5, length=12)
 mls.append({'args': [F.enc(5), F.enc(None), F.enc(12)], 'kwargs': {},
             'expect': F.enc_result((np.asarray(seq, dtype=np.int64), np.asarray(st, dtype=np.int64)), ['seq', 'state']), 'compare': 'tol'})
 
+# upfirdn: upsample / FIR / downsample
+ufd = []
+_r = np.random.default_rng(7)
+for (nh, nx, up, down) in [(4, 10, 1, 1), (3, 12, 2, 1), (5, 15, 1, 3), (6, 20, 3, 2), (4, 9, 2, 2)]:
+    h = _r.normal(size=nh); x = _r.normal(size=nx)
+    ufd.append({'args': [F.enc(h), F.enc(x), F.enc(up), F.enc(down)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.upfirdn(h, x, up, down), float), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
+# gammatone (FIR)
+gmt = []
+for (freq, order, numtaps, fs) in [(440, 4, 64, 16000), (1000, 4, 48, 8000), (250, 3, 32, 8000), (2000, 5, 100, 44100)]:
+    b, a = sg.gammatone(freq, 'fir', order=order, numtaps=numtaps, fs=fs)
+    gmt.append({'args': [F.enc(freq), F.enc('fir'), F.enc(order), F.enc(numtaps), F.enc(fs)], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(b, float), np.asarray(a, float)), ['b', 'a']), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -823,6 +838,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'sweep_poly', 'cases': swp, 'tol': {'atol': 1e-11}},
                  {'fn': 'freqz_sos', 'cases': fzs, 'tol': {'atol': 1e-11}},
                  {'fn': 'max_len_seq', 'cases': mls},
+                 {'fn': 'upfirdn', 'cases': ufd, 'tol': {'atol': 1e-11}},
+                 {'fn': 'gammatone', 'cases': gmt, 'tol': {'atol': 1e-12}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},
