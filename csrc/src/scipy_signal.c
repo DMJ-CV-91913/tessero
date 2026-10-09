@@ -5035,6 +5035,65 @@ static int r_max_len_seq(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     return rc;
 }
 
+/* upfirdn(h, x, up=1, down=1): upsample x by `up` (zero-stuffing), FIR-filter by h (full convolution), then
+   downsample by `down` (scipy.signal.upfirdn). 1-D. */
+static int r_upfirdn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("upfirdn: h and x must be 1-D arrays"); return TSR_EARG; }
+    const int64_t nh = args[0].arr.shape[0], nx = args[1].arr.shape[0];
+    const int64_t up = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 1;
+    const int64_t down = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 1;
+    if (up < 1 || down < 1) { fn_set_error("upfirdn: up and down must be positive"); return TSR_EARG; }
+    int64_t lh, lx;
+    double *h = fn_arg_doubles(&args[0], &lh), *x = h ? fn_arg_doubles(&args[1], &lx) : NULL;
+    int rc = (!h || !x) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        const int64_t L = (nx - 1) * up + 1;                 /* upsampled length */
+        const int64_t flen = L + nh - 1, outlen = (flen - 1) / down + 1;   /* full-conv then [::down] */
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){outlen > 0 ? outlen : 0});
+        if (!out) rc = TSR_ENOMEM;
+        else for (int64_t i = 0; i < outlen; i++) {
+            const int64_t m = i * down;
+            double s = 0.0;
+            for (int64_t j = 0; j < nh; j++) {               /* p = m - j must be a stuffed sample (p % up == 0) */
+                const int64_t p = m - j;
+                if (p >= 0 && p < L && p % up == 0) s += h[j] * x[p / up];
+            }
+            out[i] = s;
+        }
+    }
+    fn_free_doubles(h, lh); fn_free_doubles(x, lx);
+    return rc;
+}
+
+/* gammatone(freq, ftype, order=None, numtaps=None, fs=None): gammatone filter design (scipy.signal.gammatone).
+   Only ftype='fir' is supported here: b[i] = t^(order-1)*exp(-2*pi*bw*t)*cos(2*pi*freq*t)*scale (t=i/fs,
+   bw=1.019*(freq/9.26449+24.7)), a=[1]. order defaults to 4, numtaps to max(int(fs*0.015), 15). */
+static int r_gammatone(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("gammatone: freq must be a number"); return TSR_EARG; }
+    if (!(nargs > 1 && args[1].kind == 2 && args[1].str && strcmp(args[1].str, "fir") == 0)) { fn_set_error("gammatone: only ftype='fir' is supported here"); return TSR_EARG; }
+    if (!(nargs > 4 && args[4].kind == 1)) { fn_set_error("gammatone: fs is required"); return TSR_EARG; }
+    const double freq = args[0].num, fs = args[4].num;
+    const int order = (nargs > 2 && args[2].kind == 1) ? (int)args[2].num : 4;
+    if (order < 1 || order > 24) { fn_set_error("gammatone: order must be between 1 and 24"); return TSR_EARG; }
+    int64_t numtaps = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (int64_t)(fs * 0.015);
+    if (!(nargs > 3 && args[3].kind == 1) && numtaps < 15) numtaps = 15;
+    double *b = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){numtaps});
+    double *a = b ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){1}) : NULL;
+    if (!b || !a) return TSR_ENOMEM;
+    const double bw = 1.019 * (freq / 9.26449 + 24.7);
+    const double sf = 2.0 * pow(2.0 * M_PI * bw, (double)order) / tgamma((double)order) / fs;
+    for (int64_t i = 0; i < numtaps; i++) {
+        const double t = (double)i / fs;
+        b[i] = pow(t, (double)(order - 1)) * exp(-2.0 * M_PI * bw * t) * cos(2.0 * M_PI * freq * t) * sf;
+    }
+    a[0] = 1.0;
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5159,6 +5218,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.sweep_poly", 1, "t, poly, phi=0", "out", r_sweep_poly, NULL, "Frequency-swept cosine with a polynomial instantaneous frequency (scipy.signal.sweep_poly)."),
     ROUTINE("signal.freqz_sos", 2, "sos, worN, whole=False, fs=2*pi", "w, h", r_freqz_sos, NULL, "Digital frequency response of a second-order-section cascade (scipy.signal.freqz_sos)."),
     ROUTINE("signal.max_len_seq", 2, "nbits, state=None, length=None, taps=None", "seq, state", r_max_len_seq, NULL, "Maximum-length (LFSR) sequence of 0/1 and the final register state (scipy.signal.max_len_seq)."),
+    ROUTINE("signal.upfirdn", 1, "h, x, up=1, down=1", "out", r_upfirdn, NULL, "Upsample, FIR filter, then downsample a 1-D signal (scipy.signal.upfirdn)."),
+    ROUTINE("signal.gammatone", 2, "freq, ftype, order=None, numtaps=None, fs=None", "b, a", r_gammatone, NULL, "FIR gammatone auditory filter design (scipy.signal.gammatone, ftype='fir')."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),

@@ -496,6 +496,7 @@
         "signal.freqz": "pass",
         "signal.freqz_sos": "pass",
         "signal.freqz_zpk": "pass",
+        "signal.gammatone": "pass",
         "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
         "signal.get_window": "pass",
@@ -553,6 +554,7 @@
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
+        "signal.upfirdn": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
         "signal.wiener": "pass",
@@ -2324,7 +2326,9 @@
             "signal.wiener": 1.2664319982852026e-16,
             "signal.sweep_poly": 0,
             "signal.freqz_sos": 7.873022005786067e-14,
-            "signal.max_len_seq": 0
+            "signal.max_len_seq": 0,
+            "signal.upfirdn": 2.1144942018635012e-16,
+            "signal.gammatone": 0
         },
         "ext": {
             "np.median": 0,
@@ -3487,7 +3491,9 @@
             "signal.wiener": 1.2664319982852026e-16,
             "signal.sweep_poly": 0,
             "signal.freqz_sos": 7.873022005786067e-14,
-            "signal.max_len_seq": 0
+            "signal.max_len_seq": 0,
+            "signal.upfirdn": 2.1144942018635012e-16,
+            "signal.gammatone": 0
         }
     },
     "ext": {
@@ -3987,6 +3993,7 @@
         "signal.freqz": "pass",
         "signal.freqz_sos": "pass",
         "signal.freqz_zpk": "pass",
+        "signal.gammatone": "pass",
         "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
         "signal.get_window": "pass",
@@ -4044,6 +4051,7 @@
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
         "signal.unit_impulse": "pass",
+        "signal.upfirdn": "pass",
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
         "signal.wiener": "pass",

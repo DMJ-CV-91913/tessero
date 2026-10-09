@@ -125,6 +125,10 @@
 | `signal.sweep_poly` | call | rtol 0 |
 | `signal.freqz_sos` | every call | rtol 0 |
 | `signal.freqz_sos` | call | rtol 0 |
+| `signal.upfirdn` | every call | rtol 0 |
+| `signal.upfirdn` | call | rtol 0 |
+| `signal.gammatone` | every call | rtol 0 |
+| `signal.gammatone` | call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
 | `signal.normalize` | every call | rtol 0 |

@@ -63,6 +63,7 @@ final class Signal
     'freqz' => 'freqz',
     'freqz_sos' => 'freqzSos',
     'freqz_zpk' => 'freqzZpk',
+    'gammatone' => 'gammatone',
     'gauss_spline' => 'gaussSpline',
     'gausspulse' => 'gausspulse',
     'get_window' => 'getWindow',
@@ -120,6 +121,7 @@ final class Signal
     'tf2zpk' => 'tf2zpk',
     'unique_roots' => 'uniqueRoots',
     'unit_impulse' => 'unitImpulse',
+    'upfirdn' => 'upfirdn',
     'vectorstrength' => 'vectorstrength',
     'welch' => 'welch',
     'wiener' => 'wiener',
@@ -653,6 +655,18 @@ final class Signal
     public static function freqzZpk(mixed $z, mixed $p, mixed $k, mixed $worN = 512, mixed $whole = false): mixed
     {
         return Registry::routine('signal.freqz_zpk', [$z, $p, $k, $worN, $whole]);
+    }
+
+    /**
+     * FIR gammatone auditory filter design (scipy.signal.gammatone, ftype='fir').
+     *
+     * scipy.signal.gammatone
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function gammatone(mixed $freq, mixed $ftype, mixed $order = null, mixed $numtaps = null, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.gammatone', [$freq, $ftype, $order, $numtaps, $fs]);
     }
 
     /**
@@ -1287,6 +1301,16 @@ final class Signal
     public static function unitImpulse(mixed $shape, mixed $idx = null): mixed
     {
         return Registry::routine('signal.unit_impulse', [$shape, $idx]);
+    }
+
+    /**
+     * Upsample, FIR filter, then downsample a 1-D signal (scipy.signal.upfirdn).
+     *
+     * scipy.signal.upfirdn
+     */
+    public static function upfirdn(mixed $h, mixed $x, mixed $up = 1, mixed $down = 1): mixed
+    {
+        return Registry::routine('signal.upfirdn', [$h, $x, $up, $down]);
     }
 
     /**
