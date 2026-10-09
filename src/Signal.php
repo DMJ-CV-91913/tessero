@@ -61,6 +61,7 @@ final class Signal
     'freqs' => 'freqs',
     'freqs_zpk' => 'freqsZpk',
     'freqz' => 'freqz',
+    'freqz_sos' => 'freqzSos',
     'freqz_zpk' => 'freqzZpk',
     'gauss_spline' => 'gaussSpline',
     'gausspulse' => 'gausspulse',
@@ -90,6 +91,7 @@ final class Signal
     'lp2lp' => 'lp2lp',
     'lp2lp_zpk' => 'lp2lpZpk',
     'lsim' => 'lsim',
+    'max_len_seq' => 'maxLenSeq',
     'medfilt' => 'medfilt',
     'medfilt2d' => 'medfilt2d',
     'normalize' => 'normalize',
@@ -630,6 +632,18 @@ final class Signal
     }
 
     /**
+     * Digital frequency response of a second-order-section cascade (scipy.signal.freqz_sos).
+     *
+     * scipy.signal.freqz_sos
+     *
+     * @return mixed one array, or an array keyed by w, h when several results are requested
+     */
+    public static function freqzSos(mixed $sos, mixed $worN, mixed $whole = false, mixed $fs = '2*pi'): mixed
+    {
+        return Registry::routine('signal.freqz_sos', [$sos, $worN, $whole, $fs]);
+    }
+
+    /**
      * Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk).
      *
      * scipy.signal.freqz_zpk
@@ -953,6 +967,18 @@ final class Signal
     public static function lsim(mixed $A, mixed $B, mixed $C, mixed $D, mixed $U, mixed $T, mixed $interp = true): mixed
     {
         return Registry::routine('signal.lsim', [$A, $B, $C, $D, $U, $T, $interp]);
+    }
+
+    /**
+     * Maximum-length (LFSR) sequence of 0/1 and the final register state (scipy.signal.max_len_seq).
+     *
+     * scipy.signal.max_len_seq
+     *
+     * @return mixed one array, or an array keyed by seq, state when several results are requested
+     */
+    public static function maxLenSeq(mixed $nbits, mixed $state = null, mixed $length = null, mixed $taps = null): mixed
+    {
+        return Registry::routine('signal.max_len_seq', [$nbits, $state, $length, $taps]);
     }
 
     /**

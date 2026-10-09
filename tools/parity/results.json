@@ -494,6 +494,7 @@
         "signal.freqs": "pass",
         "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",
+        "signal.freqz_sos": "pass",
         "signal.freqz_zpk": "pass",
         "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
@@ -523,6 +524,7 @@
         "signal.lp2lp": "pass",
         "signal.lp2lp_zpk": "pass",
         "signal.lsim": "pass",
+        "signal.max_len_seq": "pass",
         "signal.medfilt": "pass",
         "signal.medfilt2d": "pass",
         "signal.normalize": "pass",
@@ -2320,7 +2322,9 @@
             "signal.lfiltic": 0,
             "signal.findfreqs": 1.0306397587839872e-15,
             "signal.wiener": 1.2664319982852026e-16,
-            "signal.sweep_poly": 0
+            "signal.sweep_poly": 0,
+            "signal.freqz_sos": 7.873022005786067e-14,
+            "signal.max_len_seq": 0
         },
         "ext": {
             "np.median": 0,
@@ -3481,7 +3485,9 @@
             "signal.lfiltic": 0,
             "signal.findfreqs": 1.0306397587839872e-15,
             "signal.wiener": 1.2664319982852026e-16,
-            "signal.sweep_poly": 0
+            "signal.sweep_poly": 0,
+            "signal.freqz_sos": 7.873022005786067e-14,
+            "signal.max_len_seq": 0
         }
     },
     "ext": {
@@ -3979,6 +3985,7 @@
         "signal.freqs": "pass",
         "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",
+        "signal.freqz_sos": "pass",
         "signal.freqz_zpk": "pass",
         "signal.gauss_spline": "pass",
         "signal.gausspulse": "pass",
@@ -4008,6 +4015,7 @@
         "signal.lp2lp": "pass",
         "signal.lp2lp_zpk": "pass",
         "signal.lsim": "pass",
+        "signal.max_len_seq": "pass",
         "signal.medfilt": "pass",
         "signal.medfilt2d": "pass",
         "signal.normalize": "pass",

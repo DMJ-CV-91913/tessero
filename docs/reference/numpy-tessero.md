@@ -973,6 +973,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.freqs` | `Tessero\Signal::freqs()` |
 | `scipy.signal.freqs_zpk` | `Tessero\Signal::freqsZpk()` |
 | `scipy.signal.freqz` | `Tessero\Signal::freqz()` |
+| `scipy.signal.freqz_sos` | `Tessero\Signal::freqzSos()` |
 | `scipy.signal.freqz_zpk` | `Tessero\Signal::freqzZpk()` |
 | `scipy.signal.gauss_spline` | `Tessero\Signal::gaussSpline()` |
 | `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
@@ -1002,6 +1003,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.lp2lp` | `Tessero\Signal::lp2lp()` |
 | `scipy.signal.lp2lp_zpk` | `Tessero\Signal::lp2lpZpk()` |
 | `scipy.signal.lsim` | `Tessero\Signal::lsim()` |
+| `scipy.signal.max_len_seq` | `Tessero\Signal::maxLenSeq()` |
 | `scipy.signal.medfilt` | `Tessero\Signal::medfilt()` |
 | `scipy.signal.medfilt2d` | `Tessero\Signal::medfilt2d()` |
 | `scipy.signal.normalize` | `Tessero\Signal::normalize()` |

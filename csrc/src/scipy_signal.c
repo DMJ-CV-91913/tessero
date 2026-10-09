@@ -4956,6 +4956,85 @@ static int r_sweep_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return rc;
 }
 
+/* freqz_sos(sos, worN): digital frequency response of a second-order-section cascade at the given frequencies
+   (scipy.signal.freqz_sos / sosfreqz). H = product over sections of (b0+b1 z^-1+b2 z^-2)/(a0+a1 z^-1+a2 z^-2) at
+   z=e^jw. worN must be an explicit 1-D array. Returns (w, h). */
+static int r_freqz_sos(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[1] != 6) { fn_set_error("freqz_sos: sos must be an (n_sections, 6) array"); return TSR_EARG; }
+    if (nargs < 2 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("freqz_sos: worN must be a 1-D array of frequencies"); return TSR_EARG; }
+    const int64_t ns = args[0].arr.shape[0], nw = args[1].arr.shape[0];
+    int64_t ls, lw;
+    double *sos = fn_arg_doubles(&args[0], &ls), *w = sos ? fn_arg_doubles(&args[1], &lw) : NULL;
+    double *wout = w ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw}) : NULL;
+    double *h = wout ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){nw}) : NULL;
+    int rc = (!sos || !w || !wout || !h) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < nw; i++) {
+            const double complex z1 = cexp(-I * w[i]), z2 = cexp(-2.0 * I * w[i]);
+            double complex H = 1.0;
+            for (int64_t j = 0; j < ns; j++) {
+                const double *r = sos + j * 6;
+                H *= (r[0] + r[1] * z1 + r[2] * z2) / (r[3] + r[4] * z1 + r[5] * z2);
+            }
+            wout[i] = w[i]; h[2 * i] = creal(H); h[2 * i + 1] = cimag(H);
+        }
+    }
+    fn_free_doubles(sos, ls); fn_free_doubles(w, lw);
+    return rc;
+}
+
+/* default feedback-tap positions for a maximum-length sequence of register length nbits (scipy _mls_taps):
+   index = nbits (2..32); [0] = tap count, [1..] = taps. */
+static const int mls_taps[33][4] = {
+    {0},{0},{1,1},{1,2},{1,3},{1,3},{1,5},{1,6},{3,7,6,1},{1,5},{1,7},{1,9},{3,11,10,4},{3,12,11,8},
+    {3,13,12,2},{1,14},{3,15,13,4},{1,14},{1,11},{3,18,17,14},{1,17},{1,19},{1,21},{1,18},{3,23,22,17},
+    {1,22},{3,25,24,20},{3,26,25,22},{1,25},{1,27},{3,29,28,7},{1,28},{3,31,30,10}};
+
+/* max_len_seq(nbits, state=None, length=None, taps=None): a maximum-length (LFSR / m-) sequence of 0/1
+   (scipy.signal.max_len_seq). Fibonacci LFSR with a rotating index; returns the sequence and the final register
+   state (rolled). Default state is all ones, default length is 2^nbits-1, default taps from the table. */
+static int r_max_len_seq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("max_len_seq: nbits must be an integer"); return TSR_EARG; }
+    const int n = (args[0].flags & 1) ? (int)args[0].ival : (int)args[0].num;
+    if (n < 2 || n > 32) { fn_set_error("max_len_seq: nbits must be between 2 and 32"); return TSR_EARG; }
+    int taps[32], ntaps;
+    int64_t ltp = 0; double *tp = NULL;
+    if (nargs > 3 && args[3].kind == 3 && args[3].arr.ndim == 1) {
+        tp = fn_arg_doubles(&args[3], &ltp); ntaps = (int)args[3].arr.shape[0];
+        if (!tp) return TSR_ENOMEM;
+        for (int i = 0; i < ntaps && i < 32; i++) taps[i] = (int)tp[i];
+    } else { ntaps = mls_taps[n][0]; for (int i = 0; i < ntaps; i++) taps[i] = mls_taps[n][1 + i]; }
+    const int64_t length = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : (((int64_t)1 << n) - 1);
+    int *state = (int *)malloc((size_t)n * sizeof(int));
+    int64_t lst = 0; double *sarg = NULL;
+    int rc = state ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && nargs > 1 && args[1].kind == 3 && args[1].arr.ndim == 1) {
+        sarg = fn_arg_doubles(&args[1], &lst);
+        if (!sarg) rc = TSR_ENOMEM;
+        else for (int i = 0; i < n; i++) state[i] = (i < args[1].arr.shape[0]) ? (int)(sarg[i] != 0.0) : 0;
+    } else if (rc == TSR_OK) for (int i = 0; i < n; i++) state[i] = 1;
+    if (rc == TSR_OK) {
+        int64_t *seq = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, (int64_t[]){length > 0 ? length : 0});
+        int64_t *ost = seq ? (int64_t *)fn_result_array(&res[1], TSR_I64, 1, (int64_t[]){n}) : NULL;
+        if (!seq || !ost) rc = TSR_ENOMEM;
+        else {
+            int idx = 0;
+            for (int64_t i = 0; i < length; i++) {
+                int fb = state[idx]; seq[i] = fb;
+                for (int tt = 0; tt < ntaps; tt++) fb ^= state[(taps[tt] + idx) % n];
+                state[idx] = fb; idx = (idx + 1) % n;
+            }
+            for (int j = 0; j < n; j++) ost[j] = state[(j + idx) % n];
+        }
+    }
+    free(state); if (tp) fn_free_doubles(tp, ltp); if (sarg) fn_free_doubles(sarg, lst);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5078,6 +5157,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.findfreqs", 1, "num, den, N, kind='ba'", "w", r_findfreqs, NULL, "Logarithmically spaced frequency array for an analog response (scipy.signal.findfreqs)."),
     ROUTINE("signal.wiener", 1, "im, mysize=3, noise=None", "out", r_wiener, NULL, "1-D Wiener filter using local mean and variance (scipy.signal.wiener)."),
     ROUTINE("signal.sweep_poly", 1, "t, poly, phi=0", "out", r_sweep_poly, NULL, "Frequency-swept cosine with a polynomial instantaneous frequency (scipy.signal.sweep_poly)."),
+    ROUTINE("signal.freqz_sos", 2, "sos, worN, whole=False, fs=2*pi", "w, h", r_freqz_sos, NULL, "Digital frequency response of a second-order-section cascade (scipy.signal.freqz_sos)."),
+    ROUTINE("signal.max_len_seq", 2, "nbits, state=None, length=None, taps=None", "seq, state", r_max_len_seq, NULL, "Maximum-length (LFSR) sequence of 0/1 and the final register state (scipy.signal.max_len_seq)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),
