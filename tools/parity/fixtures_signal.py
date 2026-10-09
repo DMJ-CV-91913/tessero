@@ -253,6 +253,22 @@ for (wname, nperseg, noverlap) in [('hann', 16, 8), ('hann', 16, 4), ('hamming',
     nola.append({'args': [F.enc(np.asarray(win, float)), F.enc(nperseg), F.enc(noverlap)], 'kwargs': {},
                  'expect': F.enc_result(bool(sg.check_NOLA(win, nperseg, noverlap)), []), 'compare': 'tol'})
 
+# band_stop_obj: analog band-stop order objective (butter type; finite, well-defined)
+bso = []
+for (wp, ind, pb, sb) in [(2.0, 1, [1, 3], [0.5, 4]), (1.5, 0, [1, 3], [0.4, 5]), (2.2, 1, [1.2, 3.1], [0.6, 4.5]), (2.0, 0, [1.5, 3.5], [0.5, 5.0])]:
+    pb = np.asarray(pb, float); sb = np.asarray(sb, float)
+    bso.append({'args': [F.enc(float(wp)), F.enc(ind), F.enc(pb), F.enc(sb), F.enc(3.0), F.enc(30.0), F.enc('butter')], 'kwargs': {},
+                'expect': F.enc_result(float(sg.band_stop_obj(wp, ind, pb, sb, 3.0, 30.0, 'butter')), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
+# freqresp: analog LTI response of a (b, a) system at explicit frequencies
+frp = []
+for N in (2, 3, 4):
+    b, a = sg.butter(N, 1.0, analog=True)
+    w = np.linspace(0.1, 10.0, 24)
+    w2, h2 = sg.freqresp((b, a), w=w)
+    frp.append({'args': [F.enc([np.asarray(b, float), np.asarray(a, float)]), F.enc(w)], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(w2, float), np.asarray(h2, complex)), ['w', 'H']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -851,6 +867,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'upfirdn', 'cases': ufd, 'tol': {'atol': 1e-11}},
                  {'fn': 'gammatone', 'cases': gmt, 'tol': {'atol': 1e-12}},
                  {'fn': 'check_COLA', 'cases': cola}, {'fn': 'check_NOLA', 'cases': nola},
+                 {'fn': 'band_stop_obj', 'cases': bso, 'tol': {'atol': 1e-11}},
+                 {'fn': 'freqresp', 'cases': frp, 'tol': {'atol': 1e-11}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},

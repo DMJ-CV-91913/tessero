@@ -21,6 +21,7 @@ final class Signal
     'abcd_normalize' => 'abcdNormalize',
     'argrelmax' => 'argrelmax',
     'argrelmin' => 'argrelmin',
+    'band_stop_obj' => 'bandStopObj',
     'bessel' => 'bessel',
     'besselap' => 'besselap',
     'bilinear' => 'bilinear',
@@ -60,6 +61,7 @@ final class Signal
     'findfreqs' => 'findfreqs',
     'firwin' => 'firwin',
     'firwin2' => 'firwin2',
+    'freqresp' => 'freqresp',
     'freqs' => 'freqs',
     'freqs_zpk' => 'freqsZpk',
     'freqz' => 'freqz',
@@ -177,6 +179,16 @@ final class Signal
     public static function argrelmin(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed
     {
         return Registry::routine('signal.argrelmin', [$data, $axis, $order, $mode]);
+    }
+
+    /**
+     * Non-integer analog band-stop filter order objective (scipy.signal.band_stop_obj).
+     *
+     * scipy.signal.band_stop_obj
+     */
+    public static function bandStopObj(mixed $wp, mixed $ind, mixed $passb, mixed $stopb, mixed $gpass, mixed $gstop, mixed $type): mixed
+    {
+        return Registry::routine('signal.band_stop_obj', [$wp, $ind, $passb, $stopb, $gpass, $gstop, $type]);
     }
 
     /**
@@ -617,6 +629,18 @@ final class Signal
     public static function firwin2(mixed $numtaps, mixed $freq, mixed $gain, mixed $nfreqs = null, mixed $window = 'hamming', mixed $antisymmetric = false, mixed $fs = null): mixed
     {
         return Registry::routine('signal.firwin2', [$numtaps, $freq, $gain, $nfreqs, $window, $antisymmetric, $fs]);
+    }
+
+    /**
+     * Analog LTI frequency response of a (b, a) system at the given frequencies (scipy.signal.freqresp).
+     *
+     * scipy.signal.freqresp
+     *
+     * @return mixed one array, or an array keyed by w, H when several results are requested
+     */
+    public static function freqresp(mixed $system, mixed $w, mixed $n = 10000): mixed
+    {
+        return Registry::routine('signal.freqresp', [$system, $w, $n]);
     }
 
     /**

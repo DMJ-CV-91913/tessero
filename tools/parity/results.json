@@ -454,6 +454,7 @@
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
+        "signal.band_stop_obj": "pass",
         "signal.bessel": "pass",
         "signal.besselap": "pass",
         "signal.bilinear": "pass",
@@ -493,6 +494,7 @@
         "signal.findfreqs": "pass",
         "signal.firwin": "pass",
         "signal.firwin2": "pass",
+        "signal.freqresp": "pass",
         "signal.freqs": "pass",
         "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",
@@ -2332,7 +2334,9 @@
             "signal.upfirdn": 2.1144942018635012e-16,
             "signal.gammatone": 0,
             "signal.check_COLA": 0,
-            "signal.check_NOLA": 0
+            "signal.check_NOLA": 0,
+            "signal.band_stop_obj": 0,
+            "signal.freqresp": 7.252842609230709e-14
         },
         "ext": {
             "np.median": 0,
@@ -3499,7 +3503,9 @@
             "signal.upfirdn": 2.1144942018635012e-16,
             "signal.gammatone": 0,
             "signal.check_COLA": 0,
-            "signal.check_NOLA": 0
+            "signal.check_NOLA": 0,
+            "signal.band_stop_obj": 0,
+            "signal.freqresp": 7.252842609230709e-14
         }
     },
     "ext": {
@@ -3957,6 +3963,7 @@
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
+        "signal.band_stop_obj": "pass",
         "signal.bessel": "pass",
         "signal.besselap": "pass",
         "signal.bilinear": "pass",
@@ -3996,6 +4003,7 @@
         "signal.findfreqs": "pass",
         "signal.firwin": "pass",
         "signal.firwin2": "pass",
+        "signal.freqresp": "pass",
         "signal.freqs": "pass",
         "signal.freqs_zpk": "pass",
         "signal.freqz": "pass",

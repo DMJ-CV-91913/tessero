@@ -2669,6 +2669,12 @@
                 "doc": "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."
             },
             {
+                "name": "bandStopObj",
+                "static": true,
+                "sig": "bandStopObj(mixed $wp, mixed $ind, mixed $passb, mixed $stopb, mixed $gpass, mixed $gstop, mixed $type): mixed",
+                "doc": "Non-integer analog band-stop filter order objective (scipy.signal.band_stop_obj)."
+            },
+            {
                 "name": "bessel",
                 "static": true,
                 "sig": "bessel(mixed $N, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $norm = 'phase', mixed $fs = null): mixed",
@@ -2901,6 +2907,12 @@
                 "static": true,
                 "sig": "firwin2(mixed $numtaps, mixed $freq, mixed $gain, mixed $nfreqs = null, mixed $window = 'hamming', mixed $antisymmetric = false, mixed $fs = null): mixed",
                 "doc": "FIR filter design by frequency sampling (scipy.signal.firwin2)."
+            },
+            {
+                "name": "freqresp",
+                "static": true,
+                "sig": "freqresp(mixed $system, mixed $w, mixed $n = 10000): mixed",
+                "doc": "Analog LTI frequency response of a (b, a) system at the given frequencies (scipy.signal.freqresp)."
             },
             {
                 "name": "freqs",
@@ -16537,6 +16549,18 @@
                 "name": "checkNOLA",
                 "static": true,
                 "sig": "checkNOLA($window, $nperseg, $noverlap, $tol = 1.0E-10)",
+                "doc": ""
+            },
+            {
+                "name": "bandStopObj",
+                "static": true,
+                "sig": "bandStopObj($wp, $ind, $passb, $stopb, $gpass, $gstop, $type)",
+                "doc": ""
+            },
+            {
+                "name": "freqresp",
+                "static": true,
+                "sig": "freqresp($system, $w, $n = 10000)",
                 "doc": ""
             },
             {

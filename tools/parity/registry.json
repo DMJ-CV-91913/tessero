@@ -1935,6 +1935,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.band_stop_obj": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.bessel": {
             "kind": "routine",
             "nin": 0,
@@ -2129,6 +2134,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "signal.freqresp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "signal.freqs": {
             "kind": "routine",
