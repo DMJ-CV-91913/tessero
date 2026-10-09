@@ -975,6 +975,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.freqz` | `Tessero\Signal::freqz()` |
 | `scipy.signal.freqz_sos` | `Tessero\Signal::freqzSos()` |
 | `scipy.signal.freqz_zpk` | `Tessero\Signal::freqzZpk()` |
+| `scipy.signal.gammatone` | `Tessero\Signal::gammatone()` |
 | `scipy.signal.gauss_spline` | `Tessero\Signal::gaussSpline()` |
 | `scipy.signal.gausspulse` | `Tessero\Signal::gausspulse()` |
 | `scipy.signal.get_window` | `Tessero\Signal::getWindow()` |
@@ -1032,6 +1033,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unique_roots` | `Tessero\Signal::uniqueRoots()` |
 | `scipy.signal.unit_impulse` | `Tessero\Signal::unitImpulse()` |
+| `scipy.signal.upfirdn` | `Tessero\Signal::upfirdn()` |
 | `scipy.signal.vectorstrength` | `Tessero\Signal::vectorstrength()` |
 | `scipy.signal.welch` | `Tessero\Signal::welch()` |
 | `scipy.signal.wiener` | `Tessero\Signal::wiener()` |

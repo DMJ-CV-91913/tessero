@@ -2921,6 +2921,12 @@
                 "doc": "Digital zpk frequency response on a linear grid (scipy.signal.freqz_zpk)."
             },
             {
+                "name": "gammatone",
+                "static": true,
+                "sig": "gammatone(mixed $freq, mixed $ftype, mixed $order = null, mixed $numtaps = null, mixed $fs = null): mixed",
+                "doc": "FIR gammatone auditory filter design (scipy.signal.gammatone, ftype='fir')."
+            },
+            {
                 "name": "gaussSpline",
                 "static": true,
                 "sig": "gaussSpline(mixed $x, mixed $n): mixed",
@@ -3261,6 +3267,12 @@
                 "static": true,
                 "sig": "unitImpulse(mixed $shape, mixed $idx = null): mixed",
                 "doc": "Unit impulse: zeros with a single 1 at idx (scipy.signal.unit_impulse)."
+            },
+            {
+                "name": "upfirdn",
+                "static": true,
+                "sig": "upfirdn(mixed $h, mixed $x, mixed $up = 1, mixed $down = 1): mixed",
+                "doc": "Upsample, FIR filter, then downsample a 1-D signal (scipy.signal.upfirdn)."
             },
             {
                 "name": "vectorstrength",
@@ -16489,6 +16501,18 @@
                 "name": "maxLenSeq",
                 "static": true,
                 "sig": "maxLenSeq($nbits, $state = null, $length = null, $taps = null)",
+                "doc": ""
+            },
+            {
+                "name": "upfirdn",
+                "static": true,
+                "sig": "upfirdn($h, $x, $up = 1, $down = 1)",
+                "doc": ""
+            },
+            {
+                "name": "gammatone",
+                "static": true,
+                "sig": "gammatone($freq, $ftype, $order = null, $numtaps = null, $fs = null)",
                 "doc": ""
             },
             {
