@@ -30,6 +30,7 @@
 | `cluster.whiten` | call | rtol 0 |
 | `cluster.vq` | call | rtol 0 |
 | `cluster.kmeans2` | call | rtol 0 |
+| `cluster.kmeans` | call | rtol 0 |
 | `fft.fft` | every call | rtol 1e-09 |
 | `fft.ifft` | every call | rtol 1e-09 |
 | `fft.rfft` | every call | rtol 1e-09 |
