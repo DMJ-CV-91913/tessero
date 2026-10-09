@@ -1,5 +1,6 @@
 {
     "ffi": {
+        "cluster.kmeans": "pass",
         "cluster.kmeans2": "pass",
         "cluster.vq": "pass",
         "cluster.whiten": "pass",
@@ -2310,7 +2311,8 @@
             "signal.bessel": 6.500000000000002,
             "cluster.whiten": 0,
             "cluster.vq": 0,
-            "cluster.kmeans2": 0
+            "cluster.kmeans2": 0,
+            "cluster.kmeans": 2.8775085723123715e-16
         },
         "ext": {
             "np.median": 0,
@@ -3466,10 +3468,12 @@
             "signal.bessel": 6.500000000000002,
             "cluster.whiten": 0,
             "cluster.vq": 0,
-            "cluster.kmeans2": 0
+            "cluster.kmeans2": 0,
+            "cluster.kmeans": 2.8775085723123715e-16
         }
     },
     "ext": {
+        "cluster.kmeans": "pass",
         "cluster.kmeans2": "pass",
         "cluster.vq": "pass",
         "cluster.whiten": "pass",
