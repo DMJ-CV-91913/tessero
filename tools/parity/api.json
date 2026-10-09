@@ -3979,10 +3979,22 @@
                 "doc": "Akima piecewise-cubic interpolation evaluated at xnew (scipy.interpolate.Akima1DInterpolator)."
             },
             {
+                "name": "BPoly",
+                "static": true,
+                "sig": "BPoly(mixed $c, mixed $x, mixed $xnew): mixed",
+                "doc": "Piecewise Bernstein polynomial evaluated at xnew (scipy.interpolate.BPoly)."
+            },
+            {
                 "name": "BSpline",
                 "static": true,
                 "sig": "BSpline(mixed $t, mixed $c, mixed $k, mixed $x): mixed",
                 "doc": "Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline)."
+            },
+            {
+                "name": "BarycentricInterpolator",
+                "static": true,
+                "sig": "BarycentricInterpolator(mixed $xi, mixed $yi, mixed $x): mixed",
+                "doc": "Barycentric Lagrange interpolation evaluated at x (scipy.interpolate.BarycentricInterpolator)."
             },
             {
                 "name": "CubicHermiteSpline",
@@ -3995,6 +4007,18 @@
                 "static": true,
                 "sig": "CubicSpline(mixed $x, mixed $y, mixed $xnew): mixed",
                 "doc": "Not-a-knot cubic spline evaluated at xnew (scipy.interpolate.CubicSpline)."
+            },
+            {
+                "name": "KroghInterpolator",
+                "static": true,
+                "sig": "KroghInterpolator(mixed $xi, mixed $yi, mixed $x): mixed",
+                "doc": "Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.KroghInterpolator)."
+            },
+            {
+                "name": "PPoly",
+                "static": true,
+                "sig": "PPoly(mixed $c, mixed $x, mixed $xnew): mixed",
+                "doc": "Piecewise polynomial (local power basis) evaluated at xnew (scipy.interpolate.PPoly)."
             },
             {
                 "name": "PchipInterpolator",
@@ -18634,6 +18658,30 @@
                 "name": "makeLsqSpline",
                 "static": true,
                 "sig": "makeLsqSpline($x, $y, $t, $k, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "BarycentricInterpolator",
+                "static": true,
+                "sig": "BarycentricInterpolator($xi, $yi, $x)",
+                "doc": ""
+            },
+            {
+                "name": "KroghInterpolator",
+                "static": true,
+                "sig": "KroghInterpolator($xi, $yi, $x)",
+                "doc": ""
+            },
+            {
+                "name": "PPoly",
+                "static": true,
+                "sig": "PPoly($c, $x, $xnew)",
+                "doc": ""
+            },
+            {
+                "name": "BPoly",
+                "static": true,
+                "sig": "BPoly($c, $x, $xnew)",
                 "doc": ""
             }
         ]
