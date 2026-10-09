@@ -137,6 +137,10 @@
 | `signal.dfreqresp` | call | rtol 0 |
 | `signal.czt_points` | every call | rtol 0 |
 | `signal.czt_points` | call | rtol 0 |
+| `signal.peak_prominences` | every call | rtol 0 |
+| `signal.peak_prominences` | call | rtol 0 |
+| `signal.peak_widths` | every call | rtol 0 |
+| `signal.peak_widths` | call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
 | `signal.normalize` | every call | rtol 0 |
