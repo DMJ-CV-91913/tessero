@@ -209,6 +209,25 @@ for (poly, phi) in [([0.05, 1.0], 0.0), ([0.025, -0.36, 1.25, 10.0], 20.0), ([0.
     swp.append({'args': [F.enc(t), F.enc(np.asarray(poly, float)), F.enc(float(phi))], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(sg.sweep_poly(t, poly, phi), float), []), 'compare': 'tol', 'tol': {'atol': 1e-11}})
 
+# freqz_sos: SOS cascade digital response at explicit frequencies
+fzs = []
+for N in (2, 3, 4):
+    sos = sg.butter(N, 0.3, output='sos')
+    w = np.linspace(0.0, np.pi, 24, endpoint=False)
+    w2, h2 = sg.freqz_sos(sos, worN=w)
+    fzs.append({'args': [F.enc(np.asarray(sos, float)), F.enc(w)], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(w2, float), np.asarray(h2, complex)), ['w', 'h']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
+# max_len_seq: LFSR m-sequence and final state (default full period, and an explicit short length)
+mls = []
+for nb in (3, 4, 5, 6, 8):
+    seq, st = sg.max_len_seq(nb)
+    mls.append({'args': [F.enc(nb)], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(seq, dtype=np.int64), np.asarray(st, dtype=np.int64)), ['seq', 'state']), 'compare': 'tol'})
+seq, st = sg.max_len_seq(5, length=12)
+mls.append({'args': [F.enc(5), F.enc(None), F.enc(12)], 'kwargs': {},
+            'expect': F.enc_result((np.asarray(seq, dtype=np.int64), np.asarray(st, dtype=np.int64)), ['seq', 'state']), 'compare': 'tol'})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -802,6 +821,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'findfreqs', 'cases': ffq, 'tol': {'atol': 1e-12}},
                  {'fn': 'wiener', 'cases': wnr, 'tol': {'atol': 1e-11}},
                  {'fn': 'sweep_poly', 'cases': swp, 'tol': {'atol': 1e-11}},
+                 {'fn': 'freqz_sos', 'cases': fzs, 'tol': {'atol': 1e-11}},
+                 {'fn': 'max_len_seq', 'cases': mls},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},
