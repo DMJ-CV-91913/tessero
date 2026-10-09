@@ -2105,6 +2105,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.findfreqs": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.firwin": {
             "kind": "routine",
             "nin": 0,
@@ -2216,6 +2221,11 @@
             "nout": 1
         },
         "signal.lfilter_zi": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.lfiltic": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

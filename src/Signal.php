@@ -55,6 +55,7 @@ final class Signal
     'ellipord' => 'ellipord',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
+    'findfreqs' => 'findfreqs',
     'firwin' => 'firwin',
     'firwin2' => 'firwin2',
     'freqs' => 'freqs',
@@ -78,6 +79,7 @@ final class Signal
     'kaiserord' => 'kaiserord',
     'lfilter' => 'lfilter',
     'lfilter_zi' => 'lfilterZi',
+    'lfiltic' => 'lfiltic',
     'lombscargle' => 'lombscargle',
     'lp2bp' => 'lp2bp',
     'lp2bp_zpk' => 'lp2bpZpk',
@@ -560,6 +562,16 @@ final class Signal
     }
 
     /**
+     * Logarithmically spaced frequency array for an analog response (scipy.signal.findfreqs).
+     *
+     * scipy.signal.findfreqs
+     */
+    public static function findfreqs(mixed $num, mixed $den, mixed $N, mixed $kind = 'ba'): mixed
+    {
+        return Registry::routine('signal.findfreqs', [$num, $den, $N, $kind]);
+    }
+
+    /**
      * FIR filter design by the window method (scipy.signal.firwin).
      *
      * scipy.signal.firwin
@@ -811,6 +823,16 @@ final class Signal
     public static function lfilterZi(mixed $b, mixed $a): mixed
     {
         return Registry::routine('signal.lfilter_zi', [$b, $a]);
+    }
+
+    /**
+     * Initial lfilter state from output/input initial conditions (scipy.signal.lfiltic).
+     *
+     * scipy.signal.lfiltic
+     */
+    public static function lfiltic(mixed $b, mixed $a, mixed $y, mixed $x = null): mixed
+    {
+        return Registry::routine('signal.lfiltic', [$b, $a, $y, $x]);
     }
 
     /**
