@@ -4,6 +4,7 @@ PchipInterpolator, Akima1DInterpolator, CubicSpline (not-a-knot) and CubicHermit
 over the sample arrays; generated in the pinned environment for consistency with the other scipy groups."""
 import json, os
 import numpy as np
+from scipy.interpolate import insert, spalde, FloaterHormannInterpolator  # noqa: E402 (grouped below)
 from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInterpolator,
                                CubicSpline, CubicHermiteSpline,
                                barycentric_interpolate, krogh_interpolate,
@@ -165,10 +166,28 @@ for npts in (24, 32):
     lsq.append({'args': [F.enc(xs), F.enc(ys), F.enc(np.asarray(tk, float)), F.enc(kk), F.enc(xn)], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(make_lsq_spline(xs, ys, tk, kk)(xn)), []), 'compare': 'tol', 'tol': {'atol': 1e-8}})
 
+# FloaterHormann rational interpolation, B-spline knot insert (Boehm), spalde (all derivatives)
+fhc, insc, spa = [], [], []
+for _ in range(6):
+    # well-separated nodes keep the barycentric form well-conditioned
+    xi = np.linspace(-1.2, 1.2, 6) + rng.uniform(-0.08, 0.08, 6); xi = np.sort(xi)
+    yi = rng.normal(size=len(xi)); xnew = rng.uniform(-1, 1, 6)
+    fhc.append({'args': [F.enc(xi), F.enc(yi), F.enc(xnew), F.enc(3)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(FloaterHormannInterpolator(xi, yi, d=3)(xnew)), []), 'compare': 'tol', 'tol': {'atol': 1e-8}})
+    xs = np.linspace(0, 1, 10); ys = np.sin(5 * xs); t, c, k = splrep(xs, ys, s=0)
+    xv = float(rng.uniform(0.12, 0.88))
+    T, C, K = insert(xv, (t, c, k))
+    Cm = np.asarray(C)[:len(T) - int(k) - 1]                 # meaningful coefficients only (SciPy pads with FITPACK scratch)
+    insc.append({'args': [F.enc(float(xv)), F.enc(t), F.enc(c), F.enc(int(k))], 'kwargs': {},
+                 'expect': F.enc_result((np.asarray(T), Cm, int(K)), ['t', 'c', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    xe = rng.uniform(0.05, 0.95, 5)
+    spa.append({'args': [F.enc(t), F.enc(c), F.enc(int(k)), F.enc(xe)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(spalde(xe, (t, c, k))), []), 'compare': 'tol', 'tol': {'atol': 1e-7}})
+
 # construct-and-evaluate interpolator classes: Barycentric/Krogh (global poly), PPoly/BPoly (piecewise)
 bci, kgi, ppc, bpc = [], [], [], []
 for _ in range(8):
-    xi = np.sort(np.unique(rng.uniform(-2, 2, 5))); yi = rng.normal(size=len(xi)); xnew = rng.uniform(-2, 2, 7)
+    xi = np.sort(np.linspace(-2, 2, 5) + rng.uniform(-0.2, 0.2, 5)); yi = rng.normal(size=len(xi)); xnew = rng.uniform(-2, 2, 7)
     bci.append(xyc(xi, yi, xnew, BarycentricInterpolator(xi, yi)(xnew)))
     kgi.append(xyc(xi, yi, xnew, KroghInterpolator(xi, yi)(xnew)))
     xb = np.sort(np.unique(rng.uniform(-2, 2, 4))); mm = len(xb) - 1
@@ -190,7 +209,9 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'RegularGridInterpolator', 'cases': rgi}, {'fn': 'interpn', 'cases': ipn},
          {'fn': 'RBFInterpolator', 'cases': rbf}, {'fn': 'make_lsq_spline', 'cases': lsq},
          {'fn': 'BarycentricInterpolator', 'cases': bci}, {'fn': 'KroghInterpolator', 'cases': kgi},
-         {'fn': 'PPoly', 'cases': ppc}, {'fn': 'BPoly', 'cases': bpc}]
+         {'fn': 'PPoly', 'cases': ppc}, {'fn': 'BPoly', 'cases': bpc},
+         {'fn': 'FloaterHormannInterpolator', 'cases': fhc}, {'fn': 'insert', 'cases': insc},
+         {'fn': 'spalde', 'cases': spa}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
