@@ -91,7 +91,55 @@ ops2['polyone'].append(case([], _P.polyone))
 ops2['polyx'].append(case([], _P.polyx))
 ops2['polydomain'].append(case([], _P.polydomain))
 
-calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2}.items()]
+# numpy.polynomial.chebyshev
+cheb = {n: [] for n in ('chebadd', 'chebsub', 'chebmul', 'chebmulx', 'chebpow', 'chebdiv', 'chebder', 'chebint',
+            'chebfromroots', 'chebline', 'chebtrim', 'chebvander', 'chebval2d', 'chebval3d', 'chebgrid2d',
+            'chebgrid3d', 'chebvander2d', 'chebvander3d', 'chebcompanion', 'chebroots', 'chebfit', 'cheb2poly',
+            'poly2cheb', 'chebpts1', 'chebpts2', 'chebgauss', 'chebweight', 'chebzero', 'chebone', 'chebx', 'chebdomain')}
+for _ in range(6):
+    c1 = rng.normal(size=int(rng.integers(2, 6))); c2 = rng.normal(size=int(rng.integers(2, 5)))
+    x = rng.uniform(-1, 1, 5); y = rng.uniform(-1, 1, 5); z = rng.uniform(-1, 1, 5)
+    cc2 = rng.normal(size=(3, 4)); cc3 = rng.normal(size=(2, 3, 2))
+    roots = rng.uniform(-1, 1, int(rng.integers(1, 5)))
+    off, scl = float(rng.normal()), float(rng.normal())
+    cheb['chebadd'].append(case([c1, c2], _C.chebadd(c1, c2)))
+    cheb['chebsub'].append(case([c1, c2], _C.chebsub(c1, c2)))
+    cheb['chebmul'].append(case([c1, c2], _C.chebmul(c1, c2)))
+    cheb['chebmulx'].append(case([c1], _C.chebmulx(c1)))
+    pw = int(rng.integers(0, 5)); cheb['chebpow'].append(case([c1, pw], _C.chebpow(c1, pw)))
+    cbig = rng.normal(size=6); cheb['chebdiv'].append(case([cbig, c2], _C.chebdiv(cbig, c2), names=['quo', 'rem']))
+    m = int(rng.integers(1, 3))
+    cheb['chebder'].append(case([c1, m], _C.chebder(c1, m)))
+    cheb['chebint'].append(case([c1, m], _C.chebint(c1, m)))
+    cheb['chebfromroots'].append(case([roots], _C.chebfromroots(roots), atol=1e-8))
+    cheb['chebline'].append(case([off, scl], _C.chebline(off, scl)))
+    ct = np.append(c1, [1e-14, 0.0]); cheb['chebtrim'].append(case([ct, 1e-9], _C.chebtrim(ct, 1e-9)))
+    deg = int(rng.integers(1, 5)); cheb['chebvander'].append(case([x, deg], _C.chebvander(x, deg)))
+    cheb['chebval2d'].append(case([x, y, cc2], _C.chebval2d(x, y, cc2)))
+    cheb['chebval3d'].append(case([x, y, z, cc3], _C.chebval3d(x, y, z, cc3)))
+    cheb['chebgrid2d'].append(case([x, y, cc2], _C.chebgrid2d(x, y, cc2)))
+    cheb['chebgrid3d'].append(case([x, y, z, cc3], _C.chebgrid3d(x, y, z, cc3)))
+    cheb['chebvander2d'].append(case([x, y, np.array([2, 3])], _C.chebvander2d(x, y, [2, 3])))
+    cheb['chebvander3d'].append(case([x, y, z, np.array([1, 2, 1])], _C.chebvander3d(x, y, z, [1, 2, 1])))
+    rts = np.sort(rng.uniform(-1, 1, int(rng.integers(2, 5)))); cc = _C.chebfromroots(rts)
+    cheb['chebcompanion'].append(case([cc], _C.chebcompanion(cc), atol=1e-10))
+    cheb['chebroots'].append(case([cc], np.sort(_C.chebroots(cc).real), atol=1e-6))
+    xf = np.sort(rng.uniform(-1, 1, 14)); yf = np.cos(1.5 * xf) + 0.3 * xf
+    cheb['chebfit'].append(case([xf, yf, 5], _C.chebfit(xf, yf, 5), atol=1e-6))
+    pol = rng.normal(size=int(rng.integers(2, 6)))
+    cheb['cheb2poly'].append(case([c1], _C.cheb2poly(c1)))
+    cheb['poly2cheb'].append(case([pol], _C.poly2cheb(pol)))
+for npts in (2, 5, 8):
+    cheb['chebpts1'].append(case([npts], _C.chebpts1(npts)))
+    cheb['chebpts2'].append(case([npts], _C.chebpts2(npts)))
+    gx, gw = _C.chebgauss(npts)
+    cheb['chebgauss'].append(case([npts], (gx, gw), names=['x', 'w']))
+wx = rng.uniform(-0.9, 0.9, 7)
+cheb['chebweight'].append(case([wx], _C.chebweight(wx)))
+cheb['chebzero'].append(case([], _C.chebzero)); cheb['chebone'].append(case([], _C.chebone))
+cheb['chebx'].append(case([], _C.chebx)); cheb['chebdomain'].append(case([], _C.chebdomain))
+
+calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2, **cheb}.items()]
 out = {'module': 'npoly', 'numpy': np.__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
