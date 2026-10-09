@@ -5147,6 +5147,70 @@ static int r_check_cola(const void *ctx, const tsr_arg *args, int nargs, tsr_res
 static int r_check_nola(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return check_cola_nola(args, nargs, res, 1); }
 
+/* band_stop_obj(wp, ind, passb, stopb, gpass, gstop, type): the (possibly non-integer) analog band-stop filter
+   order objective (scipy.signal.band_stop_obj). passb/stopb are 2-element edge arrays; type butter/cheby/ellip. */
+static int r_band_stop_obj(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[2].kind != 3 || args[3].kind != 3 || args[6].kind != 2 || !args[6].str) { fn_set_error("band_stop_obj: passb/stopb must be arrays and type a string"); return TSR_EARG; }
+    const double wp = args[0].num; const int64_t ind = (int64_t)args[1].num;
+    const double gpass = args[4].num, gstop = args[5].num; const char *typ = args[6].str;
+    int64_t lp, ls; double *passb = fn_arg_doubles(&args[2], &lp), *stopb = passb ? fn_arg_doubles(&args[3], &ls) : NULL;
+    int rc = (!passb || !stopb) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        double pc0 = passb[0], pc1 = passb[1];
+        if (ind == 0) pc0 = wp; else pc1 = wp;
+        double nat = INFINITY;
+        for (int i = 0; i < 2; i++) { const double v = fabs(stopb[i] * (pc0 - pc1) / (stopb[i] * stopb[i] - pc0 * pc1)); if (v < nat) nat = v; }
+        double n;
+        if (strcmp(typ, "butter") == 0) {
+            const double GS = pow(10.0, 0.1 * fabs(gstop)), GP = pow(10.0, 0.1 * fabs(gpass));
+            n = log10((GS - 1.0) / (GP - 1.0)) / (2.0 * log10(nat));
+        } else if (strcmp(typ, "cheby") == 0) {
+            const double GS = pow(10.0, 0.1 * fabs(gstop)), GP = pow(10.0, 0.1 * fabs(gpass));
+            n = acosh(sqrt((GS - 1.0) / (GP - 1.0))) / acosh(nat);
+        } else if (strcmp(typ, "ellip") == 0) {
+            const double GS = pow(10.0, 0.1 * gstop), GP = pow(10.0, 0.1 * gpass);
+            const double a1 = sqrt((GP - 1.0) / (GS - 1.0)), a0 = 1.0 / nat;
+            double m, d00, d01, d10, d11;
+            m = a0 * a0; tsr_special_ellipk(NULL, &m, &d00); m = 1.0 - a0 * a0; tsr_special_ellipk(NULL, &m, &d01);
+            m = a1 * a1; tsr_special_ellipk(NULL, &m, &d10); m = 1.0 - a1 * a1; tsr_special_ellipk(NULL, &m, &d11);
+            n = d00 * d11 / (d01 * d10);
+        } else { fn_set_error("band_stop_obj: type must be 'butter', 'cheby' or 'ellip'"); rc = TSR_EARG; }
+        if (rc == TSR_OK) fn_result_num(&res[0], n);
+    }
+    fn_free_doubles(passb, lp); fn_free_doubles(stopb, ls);
+    return rc;
+}
+
+/* freqresp(system, w): analog LTI frequency response at the given frequencies (scipy.signal.freqresp). system is
+   a (b, a) transfer-function tuple (a kind-5 sequence); H(jw) = polyval(b, jw)/polyval(a, jw). Returns (w, H). */
+static int r_freqresp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 5 || args[0].count < 2) { fn_set_error("freqresp: system must be a (b, a) tuple"); return TSR_EARG; }
+    if (nargs < 2 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("freqresp: w must be a 1-D array of frequencies"); return TSR_EARG; }
+    int64_t lb, la, lw;
+    double *b = fn_arg_doubles(&args[0].items[0], &lb), *a = b ? fn_arg_doubles(&args[0].items[1], &la) : NULL;
+    double *w = a ? fn_arg_doubles(&args[1], &lw) : NULL;
+    const int64_t nb = args[0].items[0].arr.shape[0], na = args[0].items[1].arr.shape[0], nw = args[1].arr.shape[0];
+    double *wout = w ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw}) : NULL;
+    double *h = wout ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){nw}) : NULL;
+    int rc = (!b || !a || !w || !wout || !h) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < nw; i++) {
+            const double complex s = I * w[i];
+            double complex num = 0.0, den = 0.0;
+            for (int64_t j = 0; j < nb; j++) num = num * s + b[j];
+            for (int64_t j = 0; j < na; j++) den = den * s + a[j];
+            const double complex H = num / den;
+            wout[i] = w[i]; h[2 * i] = creal(H); h[2 * i + 1] = cimag(H);
+        }
+    }
+    fn_free_doubles(b, lb); fn_free_doubles(a, la); fn_free_doubles(w, lw);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5275,6 +5339,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.gammatone", 2, "freq, ftype, order=None, numtaps=None, fs=None", "b, a", r_gammatone, NULL, "FIR gammatone auditory filter design (scipy.signal.gammatone, ftype='fir')."),
     ROUTINE("signal.check_COLA", 1, "window, nperseg, noverlap, tol=1e-10", "verdict", r_check_cola, NULL, "Whether a window array meets the Constant OverLap Add (COLA) constraint (scipy.signal.check_COLA)."),
     ROUTINE("signal.check_NOLA", 1, "window, nperseg, noverlap, tol=1e-10", "verdict", r_check_nola, NULL, "Whether a window array meets the Nonzero OverLap Add (NOLA) constraint (scipy.signal.check_NOLA)."),
+    ROUTINE("signal.band_stop_obj", 1, "wp, ind, passb, stopb, gpass, gstop, type", "n", r_band_stop_obj, NULL, "Non-integer analog band-stop filter order objective (scipy.signal.band_stop_obj)."),
+    ROUTINE("signal.freqresp", 2, "system[], w, n=10000", "w, H", r_freqresp, NULL, "Analog LTI frequency response of a (b, a) system at the given frequencies (scipy.signal.freqresp)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),

@@ -933,6 +933,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.abcd_normalize` | `Tessero\Signal::abcdNormalize()` |
 | `scipy.signal.argrelmax` | `Tessero\Signal::argrelmax()` |
 | `scipy.signal.argrelmin` | `Tessero\Signal::argrelmin()` |
+| `scipy.signal.band_stop_obj` | `Tessero\Signal::bandStopObj()` |
 | `scipy.signal.bessel` | `Tessero\Signal::bessel()` |
 | `scipy.signal.besselap` | `Tessero\Signal::besselap()` |
 | `scipy.signal.bilinear` | `Tessero\Signal::bilinear()` |
@@ -972,6 +973,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.findfreqs` | `Tessero\Signal::findfreqs()` |
 | `scipy.signal.firwin` | `Tessero\Signal::firwin()` |
 | `scipy.signal.firwin2` | `Tessero\Signal::firwin2()` |
+| `scipy.signal.freqresp` | `Tessero\Signal::freqresp()` |
 | `scipy.signal.freqs` | `Tessero\Signal::freqs()` |
 | `scipy.signal.freqs_zpk` | `Tessero\Signal::freqsZpk()` |
 | `scipy.signal.freqz` | `Tessero\Signal::freqz()` |
