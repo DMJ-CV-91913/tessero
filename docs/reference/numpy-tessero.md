@@ -746,6 +746,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.multinomial` | `Tessero\Stats::multinomial()` |
 | `scipy.stats.multivariate_hypergeom` | `Tessero\Stats::multivariateHypergeom()` |
 | `scipy.stats.multivariate_normal` | `Tessero\Stats::multivariateNormal()` |
+| `scipy.stats.multivariate_t` | `Tessero\Stats::multivariateT()` |
 | `scipy.stats.nakagami` | `Tessero\Stats::nakagami()` |
 | `scipy.stats.nbinom` | `Tessero\Stats::nbinom()` |
 | `scipy.stats.ncf` | `Tessero\Stats::ncf()` |
@@ -826,6 +827,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.uniform` | `Tessero\Stats::uniform()` |
 | `scipy.stats.variation` | `Tessero\Stats::variation()` |
 | `scipy.stats.vonmises` | `Tessero\Stats::vonmises()` |
+| `scipy.stats.vonmises_fisher` | `Tessero\Stats::vonmisesFisher()` |
 | `scipy.stats.vonmises_line` | `Tessero\Stats::vonmisesLine()` |
 | `scipy.stats.wald` | `Tessero\Stats::wald()` |
 | `scipy.stats.wasserstein_distance` | `Tessero\Stats::wassersteinDistance()` |

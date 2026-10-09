@@ -65,8 +65,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1316,
-  "ffi": 1316
+  "ext": 1318,
+  "ffi": 1318
  },
  "groups": {
   "NumPy core": {
@@ -86,20 +86,20 @@
    "verified_ffi": 649
   },
   "SciPy": {
-   "both": 1087,
+   "both": 1089,
    "excluded": 60,
-   "impl_ext": 1087,
-   "impl_ffi": 1090,
+   "impl_ext": 1089,
+   "impl_ffi": 1092,
    "in_scope": 1502,
-   "m2_ext": 72.4,
-   "m2_ffi": 72.6,
+   "m2_ext": 72.5,
+   "m2_ffi": 72.7,
    "m3": 3.8,
-   "m4_ext": 72.4,
-   "m4_ffi": 72.6,
+   "m4_ext": 72.5,
+   "m4_ffi": 72.7,
    "m5": 99.7,
    "symbols": 1562,
-   "verified_ext": 1087,
-   "verified_ffi": 1090
+   "verified_ext": 1089,
+   "verified_ffi": 1092
   }
  },
  "modules": {
@@ -584,24 +584,24 @@
    "verified_ffi": 241
   },
   "scipy.stats": {
-   "both": 245,
+   "both": 247,
    "excluded": 6,
-   "impl_ext": 245,
-   "impl_ffi": 245,
+   "impl_ext": 247,
+   "impl_ffi": 247,
    "in_scope": 297,
-   "m2_ext": 82.5,
-   "m2_ffi": 82.5,
+   "m2_ext": 83.2,
+   "m2_ffi": 83.2,
    "m3": 2.0,
-   "m4_ext": 82.5,
-   "m4_ffi": 82.5,
+   "m4_ext": 83.2,
+   "m4_ffi": 83.2,
    "m5": 100.0,
    "symbols": 303,
-   "verified_ext": 245,
-   "verified_ffi": 245
+   "verified_ext": 247,
+   "verified_ffi": 247
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1319,
+ "registry_functions": 1321,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -611,9 +611,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 39958,
-   "covered_ext": 39958,
-   "covered_ffi": 39968,
+   "covered_both": 39959,
+   "covered_ext": 39959,
+   "covered_ffi": 39969,
    "excluded_calls": 2327,
    "excluded_share": 5.5,
    "in_scope_calls": 40221,
@@ -690,9 +690,9 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2206,
-    "covered_ext": 2206,
-    "covered_ffi": 2214,
+    "covered_both": 2207,
+    "covered_ext": 2207,
+    "covered_ffi": 2215,
     "excluded_calls": 374,
     "excluded_share": 13.6,
     "in_scope_calls": 2374,
@@ -722,8 +722,8 @@
       "n": 50
      }
     },
-    "u_both": 92.9,
-    "u_ext": 92.9,
+    "u_both": 93.0,
+    "u_ext": 93.0,
     "u_ffi": 93.3
    }
   },

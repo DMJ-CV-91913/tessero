@@ -105,6 +105,8 @@ const CALL_RTOL = [
     'newton_cotes' => 1e-6,
     // gaussian_kde: Cholesky-whitening sum accumulates slightly differently than SciPy's vectorized form
     'gaussian_kde' => 1e-9,
+    // vonmises_fisher: normalization uses the modified Bessel I_v, which differs from SciPy in the last digits
+    'vonmises_fisher' => 1e-9,
 ];
 // absolute tolerances: polyfit/roots/*fit coefficients can be legitimately ~0, where a relative tolerance is meaningless
 const CALL_ATOL = ['polyfit' => 1e-8, 'roots' => 1e-8,
