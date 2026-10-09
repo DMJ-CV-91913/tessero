@@ -301,6 +301,14 @@ for _ in range(5):
         pkw.append({'args': [F.enc(xsig), F.enc(pk), F.enc(rh)], 'kwargs': {},
                     'expect': F.enc_result(tuple(np.asarray(v, float) for v in wd), ['widths', 'width_heights', 'left_ips', 'right_ips']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
 
+# resample_poly: polyphase resampling (default kaiser FIR, constant pad)
+rsp = []
+_rs = np.random.default_rng(5)
+for (n, up, down) in [(40, 3, 2), (50, 2, 3), (32, 1, 2), (30, 4, 1), (45, 5, 3), (24, 2, 2)]:
+    xs = np.sin(np.linspace(0, 8, n)) + 0.2 * _rs.normal(size=n)
+    rsp.append({'args': [F.enc(xs), F.enc(up), F.enc(down)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.resample_poly(xs, up, down), float), []), 'compare': 'tol', 'tol': {'atol': 1e-10}})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -905,6 +913,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'czt_points', 'cases': czp, 'tol': {'atol': 1e-12}},
                  {'fn': 'peak_prominences', 'cases': pkp, 'tol': {'atol': 1e-11}},
                  {'fn': 'peak_widths', 'cases': pkw, 'tol': {'atol': 1e-11}},
+                 {'fn': 'resample_poly', 'cases': rsp, 'tol': {'atol': 1e-10}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},

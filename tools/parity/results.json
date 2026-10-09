@@ -541,6 +541,7 @@
         "signal.peak_widths": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
+        "signal.resample_poly": "pass",
         "signal.residue": "pass",
         "signal.residuez": "pass",
         "signal.savgol_coeffs": "pass",
@@ -2344,7 +2345,8 @@
             "signal.dfreqresp": 2.63847466774757e-12,
             "signal.czt_points": 1.5762793438885855e-15,
             "signal.peak_prominences": 0,
-            "signal.peak_widths": 0
+            "signal.peak_widths": 0,
+            "signal.resample_poly": 1.0907961122016777e-15
         },
         "ext": {
             "np.median": 0,
@@ -3517,7 +3519,8 @@
             "signal.dfreqresp": 2.63847466774757e-12,
             "signal.czt_points": 1.5762793438885855e-15,
             "signal.peak_prominences": 0,
-            "signal.peak_widths": 0
+            "signal.peak_widths": 0,
+            "signal.resample_poly": 1.0907961122016777e-15
         }
     },
     "ext": {
@@ -4062,6 +4065,7 @@
         "signal.peak_widths": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
+        "signal.resample_poly": "pass",
         "signal.residue": "pass",
         "signal.residuez": "pass",
         "signal.savgol_coeffs": "pass",
