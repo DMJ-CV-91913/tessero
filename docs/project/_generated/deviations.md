@@ -206,6 +206,35 @@
 | `npoly.legone` | call | rtol 0 |
 | `npoly.legx` | call | rtol 0 |
 | `npoly.legdomain` | call | rtol 0 |
+| `npoly.lagadd` | call | rtol 0 |
+| `npoly.lagsub` | call | rtol 0 |
+| `npoly.lagmul` | call | rtol 0 |
+| `npoly.lagmulx` | call | rtol 0 |
+| `npoly.lagpow` | call | rtol 0 |
+| `npoly.lagdiv` | call | rtol 0 |
+| `npoly.lagder` | call | rtol 0 |
+| `npoly.lagint` | call | rtol 0 |
+| `npoly.lagfromroots` | call | rtol 0 |
+| `npoly.lagline` | call | rtol 0 |
+| `npoly.lagtrim` | call | rtol 0 |
+| `npoly.lagvander` | call | rtol 0 |
+| `npoly.lagval2d` | call | rtol 0 |
+| `npoly.lagval3d` | call | rtol 0 |
+| `npoly.laggrid2d` | call | rtol 0 |
+| `npoly.laggrid3d` | call | rtol 0 |
+| `npoly.lagvander2d` | call | rtol 0 |
+| `npoly.lagvander3d` | call | rtol 0 |
+| `npoly.lagcompanion` | call | rtol 0 |
+| `npoly.lagroots` | call | rtol 0 |
+| `npoly.lagfit` | call | rtol 0 |
+| `npoly.lag2poly` | call | rtol 0 |
+| `npoly.poly2lag` | call | rtol 0 |
+| `npoly.laggauss` | call | rtol 0 |
+| `npoly.lagweight` | call | rtol 0 |
+| `npoly.lagzero` | call | rtol 0 |
+| `npoly.lagone` | call | rtol 0 |
+| `npoly.lagx` | call | rtol 0 |
+| `npoly.lagdomain` | call | rtol 0 |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |

@@ -4379,10 +4379,178 @@
                 "doc": "Evaluate a Hermite series at x (numpy.polynomial.hermite.hermval)."
             },
             {
+                "name": "lag2poly",
+                "static": true,
+                "sig": "lag2poly(mixed $c): mixed",
+                "doc": "Convert a Laguerre series to a power series (numpy.polynomial.laguerre.lag2poly)."
+            },
+            {
+                "name": "lagadd",
+                "static": true,
+                "sig": "lagadd(mixed $c1, mixed $c2): mixed",
+                "doc": "Sum of two Laguerre series (numpy.polynomial.laguerre.lagadd)."
+            },
+            {
+                "name": "lagcompanion",
+                "static": true,
+                "sig": "lagcompanion(mixed $c): mixed",
+                "doc": "Companion matrix of a Laguerre series (numpy.polynomial.laguerre.lagcompanion)."
+            },
+            {
+                "name": "lagder",
+                "static": true,
+                "sig": "lagder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed",
+                "doc": "Derivative of a Laguerre series (numpy.polynomial.laguerre.lagder)."
+            },
+            {
+                "name": "lagdiv",
+                "static": true,
+                "sig": "lagdiv(mixed $c1, mixed $c2): mixed",
+                "doc": "Quotient and remainder of Laguerre-series division (numpy.polynomial.laguerre.lagdiv)."
+            },
+            {
+                "name": "lagdomain",
+                "static": true,
+                "sig": "lagdomain(): mixed",
+                "doc": "The default Laguerre domain [0, 1] (numpy.polynomial.laguerre.lagdomain)."
+            },
+            {
+                "name": "lagfit",
+                "static": true,
+                "sig": "lagfit(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Least-squares Laguerre-series fit (numpy.polynomial.laguerre.lagfit)."
+            },
+            {
+                "name": "lagfromroots",
+                "static": true,
+                "sig": "lagfromroots(mixed $roots): mixed",
+                "doc": "Laguerre series with the given roots (numpy.polynomial.laguerre.lagfromroots)."
+            },
+            {
+                "name": "laggauss",
+                "static": true,
+                "sig": "laggauss(mixed $deg): mixed",
+                "doc": "Gauss-Laguerre quadrature nodes and weights (numpy.polynomial.laguerre.laggauss)."
+            },
+            {
+                "name": "laggrid2d",
+                "static": true,
+                "sig": "laggrid2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a Laguerre series on a 2-D grid (numpy.polynomial.laguerre.laggrid2d)."
+            },
+            {
+                "name": "laggrid3d",
+                "static": true,
+                "sig": "laggrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a Laguerre series on a 3-D grid (numpy.polynomial.laguerre.laggrid3d)."
+            },
+            {
+                "name": "lagint",
+                "static": true,
+                "sig": "lagint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed",
+                "doc": "Antiderivative of a Laguerre series (numpy.polynomial.laguerre.lagint)."
+            },
+            {
+                "name": "lagline",
+                "static": true,
+                "sig": "lagline(mixed $off, mixed $scl): mixed",
+                "doc": "Laguerre series for off + scl*x (numpy.polynomial.laguerre.lagline)."
+            },
+            {
+                "name": "lagmul",
+                "static": true,
+                "sig": "lagmul(mixed $c1, mixed $c2): mixed",
+                "doc": "Product of two Laguerre series (numpy.polynomial.laguerre.lagmul)."
+            },
+            {
+                "name": "lagmulx",
+                "static": true,
+                "sig": "lagmulx(mixed $c): mixed",
+                "doc": "Multiply a Laguerre series by x (numpy.polynomial.laguerre.lagmulx)."
+            },
+            {
+                "name": "lagone",
+                "static": true,
+                "sig": "lagone(): mixed",
+                "doc": "The one Laguerre series (numpy.polynomial.laguerre.lagone)."
+            },
+            {
+                "name": "lagpow",
+                "static": true,
+                "sig": "lagpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed",
+                "doc": "Laguerre series raised to a power (numpy.polynomial.laguerre.lagpow)."
+            },
+            {
+                "name": "lagroots",
+                "static": true,
+                "sig": "lagroots(mixed $c): mixed",
+                "doc": "Roots of a Laguerre series (numpy.polynomial.laguerre.lagroots)."
+            },
+            {
+                "name": "lagsub",
+                "static": true,
+                "sig": "lagsub(mixed $c1, mixed $c2): mixed",
+                "doc": "Difference of two Laguerre series (numpy.polynomial.laguerre.lagsub)."
+            },
+            {
+                "name": "lagtrim",
+                "static": true,
+                "sig": "lagtrim(mixed $c, mixed $tol = 0): mixed",
+                "doc": "Trim trailing small coefficients (numpy.polynomial.laguerre.lagtrim)."
+            },
+            {
                 "name": "lagval",
                 "static": true,
                 "sig": "lagval(mixed $x, mixed $c): mixed",
                 "doc": "Evaluate a Laguerre series at x (numpy.polynomial.laguerre.lagval)."
+            },
+            {
+                "name": "lagval2d",
+                "static": true,
+                "sig": "lagval2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a 2-D Laguerre series (numpy.polynomial.laguerre.lagval2d)."
+            },
+            {
+                "name": "lagval3d",
+                "static": true,
+                "sig": "lagval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a 3-D Laguerre series (numpy.polynomial.laguerre.lagval3d)."
+            },
+            {
+                "name": "lagvander",
+                "static": true,
+                "sig": "lagvander(mixed $x, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of the Laguerre basis (numpy.polynomial.laguerre.lagvander)."
+            },
+            {
+                "name": "lagvander2d",
+                "static": true,
+                "sig": "lagvander2d(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 2-D Laguerre basis (numpy.polynomial.laguerre.lagvander2d)."
+            },
+            {
+                "name": "lagvander3d",
+                "static": true,
+                "sig": "lagvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 3-D Laguerre basis (numpy.polynomial.laguerre.lagvander3d)."
+            },
+            {
+                "name": "lagweight",
+                "static": true,
+                "sig": "lagweight(mixed $x): mixed",
+                "doc": "Laguerre weight exp(-x) (numpy.polynomial.laguerre.lagweight)."
+            },
+            {
+                "name": "lagx",
+                "static": true,
+                "sig": "lagx(): mixed",
+                "doc": "The identity Laguerre series x (numpy.polynomial.laguerre.lagx)."
+            },
+            {
+                "name": "lagzero",
+                "static": true,
+                "sig": "lagzero(): mixed",
+                "doc": "The zero Laguerre series (numpy.polynomial.laguerre.lagzero)."
             },
             {
                 "name": "leg2poly",
@@ -4563,6 +4731,12 @@
                 "static": true,
                 "sig": "poly2cheb(mixed $pol): mixed",
                 "doc": "Convert a power series to a Chebyshev series (numpy.polynomial.chebyshev.poly2cheb)."
+            },
+            {
+                "name": "poly2lag",
+                "static": true,
+                "sig": "poly2lag(mixed $pol): mixed",
+                "doc": "Convert a power series to a Laguerre series (numpy.polynomial.laguerre.poly2lag)."
             },
             {
                 "name": "poly2leg",
@@ -18734,6 +18908,180 @@
                 "name": "legdomain",
                 "static": true,
                 "sig": "legdomain()",
+                "doc": ""
+            },
+            {
+                "name": "lagadd",
+                "static": true,
+                "sig": "lagadd($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "lagsub",
+                "static": true,
+                "sig": "lagsub($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "lagmul",
+                "static": true,
+                "sig": "lagmul($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "lagmulx",
+                "static": true,
+                "sig": "lagmulx($c)",
+                "doc": ""
+            },
+            {
+                "name": "lagpow",
+                "static": true,
+                "sig": "lagpow($c, $pow, $maxpower = 16)",
+                "doc": ""
+            },
+            {
+                "name": "lagdiv",
+                "static": true,
+                "sig": "lagdiv($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "lagder",
+                "static": true,
+                "sig": "lagder($c, $m = 1, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "lagint",
+                "static": true,
+                "sig": "lagint($c, $m = 1, $k = 0, $lbnd = 0, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "lagfromroots",
+                "static": true,
+                "sig": "lagfromroots($roots)",
+                "doc": ""
+            },
+            {
+                "name": "lagline",
+                "static": true,
+                "sig": "lagline($off, $scl)",
+                "doc": ""
+            },
+            {
+                "name": "lagtrim",
+                "static": true,
+                "sig": "lagtrim($c, $tol = 0)",
+                "doc": ""
+            },
+            {
+                "name": "lagvander",
+                "static": true,
+                "sig": "lagvander($x, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "lagval2d",
+                "static": true,
+                "sig": "lagval2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "lagval3d",
+                "static": true,
+                "sig": "lagval3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "laggrid2d",
+                "static": true,
+                "sig": "laggrid2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "laggrid3d",
+                "static": true,
+                "sig": "laggrid3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "lagvander2d",
+                "static": true,
+                "sig": "lagvander2d($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "lagvander3d",
+                "static": true,
+                "sig": "lagvander3d($x, $y, $z, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "lagcompanion",
+                "static": true,
+                "sig": "lagcompanion($c)",
+                "doc": ""
+            },
+            {
+                "name": "lagroots",
+                "static": true,
+                "sig": "lagroots($c)",
+                "doc": ""
+            },
+            {
+                "name": "lagfit",
+                "static": true,
+                "sig": "lagfit($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "lag2poly",
+                "static": true,
+                "sig": "lag2poly($c)",
+                "doc": ""
+            },
+            {
+                "name": "poly2lag",
+                "static": true,
+                "sig": "poly2lag($pol)",
+                "doc": ""
+            },
+            {
+                "name": "laggauss",
+                "static": true,
+                "sig": "laggauss($deg)",
+                "doc": ""
+            },
+            {
+                "name": "lagweight",
+                "static": true,
+                "sig": "lagweight($x)",
+                "doc": ""
+            },
+            {
+                "name": "lagzero",
+                "static": true,
+                "sig": "lagzero()",
+                "doc": ""
+            },
+            {
+                "name": "lagone",
+                "static": true,
+                "sig": "lagone()",
+                "doc": ""
+            },
+            {
+                "name": "lagx",
+                "static": true,
+                "sig": "lagx()",
+                "doc": ""
+            },
+            {
+                "name": "lagdomain",
+                "static": true,
+                "sig": "lagdomain()",
                 "doc": ""
             }
         ]

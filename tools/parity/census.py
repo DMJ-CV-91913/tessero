@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 MODULES = [
     'numpy', 'numpy.linalg', 'numpy.fft', 'numpy.polynomial', 'numpy.polynomial.polynomial',
-    'numpy.polynomial.chebyshev', 'numpy.polynomial.legendre', 'numpy.random',
+    'numpy.polynomial.chebyshev', 'numpy.polynomial.legendre', 'numpy.polynomial.laguerre', 'numpy.random',
     'scipy.special', 'scipy.stats', 'scipy.linalg', 'scipy.optimize', 'scipy.sparse', 'scipy.sparse.linalg',
     'scipy.sparse.csgraph', 'scipy.interpolate', 'scipy.signal', 'scipy.signal.windows', 'scipy.integrate',
     'scipy.spatial', 'scipy.spatial.distance', 'scipy.cluster.vq', 'scipy.cluster.hierarchy', 'scipy.ndimage',

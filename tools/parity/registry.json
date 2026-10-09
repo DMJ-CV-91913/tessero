@@ -1950,7 +1950,147 @@
             "nin": 0,
             "nout": 1
         },
+        "npoly.lag2poly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagadd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagcompanion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagder": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagdiv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.lagdomain": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagfit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagfromroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.laggauss": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.laggrid2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.laggrid3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagint": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagmul": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagmulx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagone": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagpow": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagsub": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagtrim": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "npoly.lagval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagval2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagval3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagvander": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagvander2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagvander3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagweight": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagzero": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -2101,6 +2241,11 @@
             "nout": 1
         },
         "npoly.poly2cheb": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.poly2lag": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
