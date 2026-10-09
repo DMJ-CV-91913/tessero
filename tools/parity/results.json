@@ -1,5 +1,7 @@
 {
     "ffi": {
+        "cluster.vq": "pass",
+        "cluster.whiten": "pass",
         "constants.convert_temperature": "pass",
         "constants.lambda2nu": "pass",
         "constants.nu2lambda": "pass",
@@ -2304,7 +2306,9 @@
             "signal.besselap": 4.62344679108294e-12,
             "signal.ellipap": 4.114257970988331e-15,
             "signal.ellip": 2.350394405119346e-15,
-            "signal.bessel": 6.500000000000002
+            "signal.bessel": 6.500000000000002,
+            "cluster.whiten": 0,
+            "cluster.vq": 0
         },
         "ext": {
             "np.median": 0,
@@ -3457,10 +3461,14 @@
             "signal.besselap": 4.62344679108294e-12,
             "signal.ellipap": 4.114257970988331e-15,
             "signal.ellip": 2.350394405119346e-15,
-            "signal.bessel": 6.500000000000002
+            "signal.bessel": 6.500000000000002,
+            "cluster.whiten": 0,
+            "cluster.vq": 0
         }
     },
     "ext": {
+        "cluster.vq": "pass",
+        "cluster.whiten": "pass",
         "constants.convert_temperature": "pass",
         "constants.lambda2nu": "pass",
         "constants.nu2lambda": "pass",
