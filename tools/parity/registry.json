@@ -1755,6 +1755,66 @@
             "nin": 0,
             "nout": 1
         },
+        "npoly.Chebyshev": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.Hermite": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.HermiteE": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.Laguerre": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.Legendre": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.Polynomial": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.chebval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermeval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.hermval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.lagval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.legval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "random.beta": {
             "kind": "random",
             "nin": 2,

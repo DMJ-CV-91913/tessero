@@ -65,25 +65,25 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1100,
-  "ffi": 1100
+  "ext": 1112,
+  "ffi": 1112
  },
  "groups": {
   "NumPy core": {
-   "both": 454,
+   "both": 460,
    "excluded": 152,
-   "impl_ext": 454,
-   "impl_ffi": 458,
+   "impl_ext": 460,
+   "impl_ffi": 464,
    "in_scope": 522,
-   "m2_ext": 87.0,
-   "m2_ffi": 87.7,
+   "m2_ext": 88.1,
+   "m2_ffi": 88.9,
    "m3": 22.6,
-   "m4_ext": 87.0,
-   "m4_ffi": 87.7,
+   "m4_ext": 88.1,
+   "m4_ffi": 88.9,
    "m5": 99.1,
    "symbols": 674,
-   "verified_ext": 454,
-   "verified_ffi": 458
+   "verified_ext": 460,
+   "verified_ffi": 464
   },
   "SciPy": {
    "both": 1056,
@@ -168,20 +168,20 @@
    "verified_ffi": 43
   },
   "numpy.polynomial": {
-   "both": 0,
+   "both": 6,
    "excluded": 1,
-   "impl_ext": 0,
-   "impl_ffi": 0,
+   "impl_ext": 6,
+   "impl_ffi": 6,
    "in_scope": 6,
-   "m2_ext": 0.0,
-   "m2_ffi": 0.0,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 14.3,
-   "m4_ext": 0.0,
-   "m4_ffi": 0.0,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 7,
-   "verified_ext": 0,
-   "verified_ffi": 0
+   "verified_ext": 6,
+   "verified_ffi": 6
   },
   "numpy.random": {
    "both": 4,
@@ -505,7 +505,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1103,
+ "registry_functions": 1115,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -515,9 +515,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 39897,
-   "covered_ext": 39897,
-   "covered_ffi": 39907,
+   "covered_both": 39912,
+   "covered_ext": 39912,
+   "covered_ffi": 39922,
    "excluded_calls": 2327,
    "excluded_share": 5.5,
    "in_scope_calls": 40221,
@@ -535,9 +535,9 @@
      "n": 25
     },
     "250": {
-     "both": 248,
-     "ext": 248,
-     "ffi": 248,
+     "both": 249,
+     "ext": 249,
+     "ffi": 249,
      "n": 250
     },
     "50": {
@@ -549,16 +549,16 @@
    },
    "u_both": 99.2,
    "u_ext": 99.2,
-   "u_ffi": 99.2
+   "u_ffi": 99.3
   },
   "corpus_files": 3374,
   "corpus_packages": 18,
   "groups": {
    "NumPy core": {
     "calls": 39800,
-    "covered_both": 37737,
-    "covered_ext": 37737,
-    "covered_ffi": 37739,
+    "covered_both": 37752,
+    "covered_ext": 37752,
+    "covered_ffi": 37754,
     "excluded_calls": 1953,
     "excluded_share": 4.9,
     "in_scope_calls": 37847,
@@ -576,9 +576,9 @@
       "n": 25
      },
      "250": {
-      "both": 245,
-      "ext": 245,
-      "ffi": 245,
+      "both": 246,
+      "ext": 246,
+      "ffi": 246,
       "n": 250
      },
      "50": {
@@ -590,7 +590,7 @@
     },
     "u_both": 99.7,
     "u_ext": 99.7,
-    "u_ffi": 99.7
+    "u_ffi": 99.8
    },
    "SciPy": {
     "calls": 2748,

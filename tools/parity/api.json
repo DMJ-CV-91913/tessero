@@ -4136,6 +4136,92 @@
         ]
     },
     {
+        "class": "Tessero\\Polynomial",
+        "methods": [
+            {
+                "name": "apply",
+                "static": true,
+                "sig": "apply(string $name, mixed ...$args): mixed",
+                "doc": "Call a function by its SciPy/NumPy name: Polynomial::apply('log_ndtr', $x)."
+            },
+            {
+                "name": "Chebyshev",
+                "static": true,
+                "sig": "Chebyshev(mixed $coef, mixed $x): mixed",
+                "doc": "Chebyshev series evaluated at x (numpy.polynomial.Chebyshev)."
+            },
+            {
+                "name": "Hermite",
+                "static": true,
+                "sig": "Hermite(mixed $coef, mixed $x): mixed",
+                "doc": "Hermite series evaluated at x (numpy.polynomial.Hermite)."
+            },
+            {
+                "name": "HermiteE",
+                "static": true,
+                "sig": "HermiteE(mixed $coef, mixed $x): mixed",
+                "doc": "HermiteE series evaluated at x (numpy.polynomial.HermiteE)."
+            },
+            {
+                "name": "Laguerre",
+                "static": true,
+                "sig": "Laguerre(mixed $coef, mixed $x): mixed",
+                "doc": "Laguerre series evaluated at x (numpy.polynomial.Laguerre)."
+            },
+            {
+                "name": "Legendre",
+                "static": true,
+                "sig": "Legendre(mixed $coef, mixed $x): mixed",
+                "doc": "Legendre series evaluated at x (numpy.polynomial.Legendre)."
+            },
+            {
+                "name": "Polynomial",
+                "static": true,
+                "sig": "Polynomial(mixed $coef, mixed $x): mixed",
+                "doc": "Power-series polynomial evaluated at x (numpy.polynomial.Polynomial)."
+            },
+            {
+                "name": "chebval",
+                "static": true,
+                "sig": "chebval(mixed $x, mixed $c): mixed",
+                "doc": "Evaluate a Chebyshev series at x (numpy.polynomial.chebyshev.chebval)."
+            },
+            {
+                "name": "hermeval",
+                "static": true,
+                "sig": "hermeval(mixed $x, mixed $c): mixed",
+                "doc": "Evaluate a HermiteE series at x (numpy.polynomial.hermite_e.hermeval)."
+            },
+            {
+                "name": "hermval",
+                "static": true,
+                "sig": "hermval(mixed $x, mixed $c): mixed",
+                "doc": "Evaluate a Hermite series at x (numpy.polynomial.hermite.hermval)."
+            },
+            {
+                "name": "lagval",
+                "static": true,
+                "sig": "lagval(mixed $x, mixed $c): mixed",
+                "doc": "Evaluate a Laguerre series at x (numpy.polynomial.laguerre.lagval)."
+            },
+            {
+                "name": "legval",
+                "static": true,
+                "sig": "legval(mixed $x, mixed $c): mixed",
+                "doc": "Evaluate a Legendre series at x (numpy.polynomial.legendre.legval)."
+            },
+            {
+                "name": "polyval",
+                "static": true,
+                "sig": "polyval(mixed $x, mixed $c): mixed",
+                "doc": "Evaluate a power-series polynomial at x (numpy.polynomial.polynomial.polyval)."
+            }
+        ],
+        "constants": [
+            "FUNCTIONS"
+        ]
+    },
+    {
         "class": "Tessero\\Random\\Generator",
         "methods": [
             {
@@ -17539,6 +17625,83 @@
                 "name": "kmeans",
                 "static": true,
                 "sig": "kmeans($obs, $kOrGuess, $iter = 20, $thresh = 1.0E-5)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Ext\\Polynomial",
+        "methods": [
+            {
+                "name": "polyval",
+                "static": true,
+                "sig": "polyval($x, $c)",
+                "doc": ""
+            },
+            {
+                "name": "chebval",
+                "static": true,
+                "sig": "chebval($x, $c)",
+                "doc": ""
+            },
+            {
+                "name": "legval",
+                "static": true,
+                "sig": "legval($x, $c)",
+                "doc": ""
+            },
+            {
+                "name": "lagval",
+                "static": true,
+                "sig": "lagval($x, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermval",
+                "static": true,
+                "sig": "hermval($x, $c)",
+                "doc": ""
+            },
+            {
+                "name": "hermeval",
+                "static": true,
+                "sig": "hermeval($x, $c)",
+                "doc": ""
+            },
+            {
+                "name": "Polynomial",
+                "static": true,
+                "sig": "Polynomial($coef, $x)",
+                "doc": ""
+            },
+            {
+                "name": "Chebyshev",
+                "static": true,
+                "sig": "Chebyshev($coef, $x)",
+                "doc": ""
+            },
+            {
+                "name": "Legendre",
+                "static": true,
+                "sig": "Legendre($coef, $x)",
+                "doc": ""
+            },
+            {
+                "name": "Laguerre",
+                "static": true,
+                "sig": "Laguerre($coef, $x)",
+                "doc": ""
+            },
+            {
+                "name": "Hermite",
+                "static": true,
+                "sig": "Hermite($coef, $x)",
+                "doc": ""
+            },
+            {
+                "name": "HermiteE",
+                "static": true,
+                "sig": "HermiteE($coef, $x)",
                 "doc": ""
             }
         ]
