@@ -18,6 +18,7 @@ final class Sparse
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'block_diag' => 'blockDiag',
     'coo_array' => 'cooArray',
     'coo_matrix' => 'cooMatrix',
     'csc_array' => 'cscArray',
@@ -33,6 +34,7 @@ final class Sparse
     'identity' => 'identity',
     'kron' => 'kron',
     'kronsum' => 'kronsum',
+    'spdiags' => 'spdiags',
     'tril' => 'tril',
     'triu' => 'triu',
     'vstack' => 'vstack',
@@ -52,6 +54,16 @@ final class Sparse
         }
 
         return self::{self::FUNCTIONS[$name]}(...$args);
+    }
+
+    /**
+     * Block-diagonal assembly of blocks, as CSR (scipy.sparse.block_diag).
+     *
+     * scipy.sparse.block_diag: the positional arguments are numpy's *blocks.
+     */
+    public static function blockDiag(mixed ...$blocks): mixed
+    {
+        return Registry::routineVariadic('sparse.block_diag', $blocks);
     }
 
     /**
@@ -230,6 +242,18 @@ final class Sparse
     public static function kronsum(mixed $A, mixed $B): mixed
     {
         return Registry::routine('sparse.kronsum', [$A, $B]);
+    }
+
+    /**
+     * Sparse matrix from diagonals, as CSR (scipy.sparse.spdiags).
+     *
+     * scipy.sparse.spdiags
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function spdiags(mixed $data, mixed $diags, mixed $m, mixed $n): mixed
+    {
+        return Registry::routine('sparse.spdiags', [$data, $diags, $m, $n]);
     }
 
     /**

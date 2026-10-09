@@ -3945,6 +3945,11 @@
             "nin": 0,
             "nout": 1
         },
+        "sparse.block_diag": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "sparse.coo_array": {
             "kind": "routine",
             "nin": 0,
@@ -4016,6 +4021,11 @@
             "nout": 4
         },
         "sparse.kronsum": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.spdiags": {
             "kind": "routine",
             "nin": 0,
             "nout": 4

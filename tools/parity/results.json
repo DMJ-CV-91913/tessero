@@ -856,6 +856,7 @@
         "slinalg.tanhm": "pass",
         "slinalg.tanm": "pass",
         "slinalg.toeplitz": "pass",
+        "sparse.block_diag": "pass",
         "sparse.coo_array": "pass",
         "sparse.coo_matrix": "pass",
         "sparse.csc_array": "pass",
@@ -871,6 +872,7 @@
         "sparse.identity": "pass",
         "sparse.kron": "pass",
         "sparse.kronsum": "pass",
+        "sparse.spdiags": "pass",
         "sparse.tril": "pass",
         "sparse.triu": "pass",
         "sparse.vstack": "pass",
@@ -2754,7 +2756,9 @@
             "sparse.kronsum": 0,
             "sparse.tril": 0,
             "sparse.triu": 0,
-            "sparse.find": 0
+            "sparse.find": 0,
+            "sparse.spdiags": 0,
+            "sparse.block_diag": 0
         },
         "ext": {
             "np.median": 0,
@@ -4132,7 +4136,9 @@
             "sparse.kronsum": 0,
             "sparse.tril": 0,
             "sparse.triu": 0,
-            "sparse.find": 0
+            "sparse.find": 0,
+            "sparse.spdiags": 0,
+            "sparse.block_diag": 0
         }
     },
     "ext": {
@@ -4992,6 +4998,7 @@
         "slinalg.tanhm": "pass",
         "slinalg.tanm": "pass",
         "slinalg.toeplitz": "pass",
+        "sparse.block_diag": "pass",
         "sparse.coo_array": "pass",
         "sparse.coo_matrix": "pass",
         "sparse.csc_array": "pass",
@@ -5007,6 +5014,7 @@
         "sparse.identity": "pass",
         "sparse.kron": "pass",
         "sparse.kronsum": "pass",
+        "sparse.spdiags": "pass",
         "sparse.tril": "pass",
         "sparse.triu": "pass",
         "sparse.vstack": "pass",
