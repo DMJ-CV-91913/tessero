@@ -975,6 +975,47 @@ static int r_spalde(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* NdPPoly(c, (xb, yb))(xi): 2-D tensor piecewise polynomial, c shape (kx+1, ky+1, mx, my), nested Horner. */
+static int r_ndppoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 4 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 3 || args[3].arr.ndim != 2) { fn_set_error("NdPPoly: c 4-D, xb/yb 1-D, xi (n,2)"); return TSR_EARG; }
+    const int64_t kx1 = args[0].arr.shape[0], ky1 = args[0].arr.shape[1], mx = args[0].arr.shape[2], my = args[0].arr.shape[3], n = args[3].arr.shape[0];
+    int64_t lc, lxb, lyb, lxi;
+    double *c = fn_arg_doubles(&args[0], &lc), *xb = c ? fn_arg_doubles(&args[1], &lxb) : NULL, *yb = xb ? fn_arg_doubles(&args[2], &lyb) : NULL, *xi = yb ? fn_arg_doubles(&args[3], &lxi) : NULL;
+    double *out = xi ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n}) : NULL;
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t t = 0; t < n; t++) {
+        const double px = xi[t * 2], py = xi[t * 2 + 1];
+        int64_t ix = pp_interval(xb, mx, px), iy = pp_interval(yb, my, py);
+        double sx = px - xb[ix], sy = py - yb[iy], v = 0.0;
+        for (int64_t a = 0; a < kx1; a++) { double w = 0.0; for (int64_t b = 0; b < ky1; b++) w = w * sy + c[((a * ky1 + b) * mx + ix) * my + iy]; v = v * sx + w; }
+        out[t] = v;
+    }
+    fn_free_doubles(c, lc); fn_free_doubles(xb, lxb); fn_free_doubles(yb, lyb); fn_free_doubles(xi, lxi);
+    return rc;
+}
+/* NdBSpline((tx, ty), c, (kx, ky))(xi): 2-D tensor B-spline, c shape (ncx, ncy); de Boor along x then y. */
+static int r_ndbspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3 || args[2].arr.ndim != 2 || args[3].kind != 1 || args[4].kind != 1 || args[5].kind != 3 || args[5].arr.ndim != 2) { fn_set_error("NdBSpline: tx, ty 1-D, c (ncx,ncy), kx, ky ints, xi (n,2)"); return TSR_EARG; }
+    const int kx = (int)args[3].num, ky = (int)args[4].num;
+    const int64_t ncx = args[2].arr.shape[0], ncy = args[2].arr.shape[1], n = args[5].arr.shape[0];
+    int64_t ltx, lty, lc, lxi;
+    double *tx = fn_arg_doubles(&args[0], &ltx), *ty = tx ? fn_arg_doubles(&args[1], &lty) : NULL, *c = ty ? fn_arg_doubles(&args[2], &lc) : NULL, *xi = c ? fn_arg_doubles(&args[5], &lxi) : NULL;
+    double *colx = xi ? (double *)malloc((size_t)ncx * sizeof(double)) : NULL, *g = colx ? (double *)malloc((size_t)ncy * sizeof(double)) : NULL;
+    double *out = g ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n}) : NULL;
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t t = 0; t < n; t++) {
+        const double px = xi[t * 2], py = xi[t * 2 + 1];
+        for (int64_t j = 0; j < ncy; j++) { for (int64_t i = 0; i < ncx; i++) colx[i] = c[i * ncy + j]; g[j] = ip_deboor_scalar(tx, colx, ncx, kx, px); }
+        out[t] = ip_deboor_scalar(ty, g, ncy, ky, py);
+    }
+    free(colx); free(g); fn_free_doubles(tx, ltx); fn_free_doubles(ty, lty); fn_free_doubles(c, lc); fn_free_doubles(xi, lxi);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -1003,6 +1044,8 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.FloaterHormannInterpolator", 1, "xi, yi, x, d=3", "y", r_floater_hormann, NULL, "Floater-Hormann barycentric rational interpolation evaluated at x (scipy.interpolate.FloaterHormannInterpolator)."),
     ROUTINE("interpolate.insert", 3, "x, t, c, k, m=1", "t, c, k", r_insert, NULL, "Insert a knot into a B-spline m times by Boehm's algorithm (scipy.interpolate.insert)."),
     ROUTINE("interpolate.spalde", 1, "t, c, k, x", "d", r_spalde, NULL, "All derivatives 0..k of a B-spline at each x (scipy.interpolate.spalde)."),
+    ROUTINE("interpolate.NdPPoly", 1, "c, xb, yb, xi", "y", r_ndppoly, NULL, "2-D tensor piecewise polynomial evaluated at points xi (scipy.interpolate.NdPPoly)."),
+    ROUTINE("interpolate.NdBSpline", 1, "tx, ty, c, kx, ky, xi", "y", r_ndbspline, NULL, "2-D tensor B-spline evaluated at points xi (scipy.interpolate.NdBSpline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
