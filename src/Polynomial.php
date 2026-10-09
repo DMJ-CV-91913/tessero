@@ -29,7 +29,33 @@ final class Polynomial
     'hermval' => 'hermval',
     'lagval' => 'lagval',
     'legval' => 'legval',
+    'polyadd' => 'polyadd',
+    'polycompanion' => 'polycompanion',
+    'polyder' => 'polyder',
+    'polydiv' => 'polydiv',
+    'polydomain' => 'polydomain',
+    'polyfit' => 'polyfit',
+    'polyfromroots' => 'polyfromroots',
+    'polygrid2d' => 'polygrid2d',
+    'polygrid3d' => 'polygrid3d',
+    'polyint' => 'polyint',
+    'polyline' => 'polyline',
+    'polymul' => 'polymul',
+    'polymulx' => 'polymulx',
+    'polyone' => 'polyone',
+    'polypow' => 'polypow',
+    'polyroots' => 'polyroots',
+    'polysub' => 'polysub',
+    'polytrim' => 'polytrim',
     'polyval' => 'polyval',
+    'polyval2d' => 'polyval2d',
+    'polyval3d' => 'polyval3d',
+    'polyvalfromroots' => 'polyvalfromroots',
+    'polyvander' => 'polyvander',
+    'polyvander2d' => 'polyvander2d',
+    'polyvander3d' => 'polyvander3d',
+    'polyx' => 'polyx',
+    'polyzero' => 'polyzero',
     ];
 
     private function __construct()
@@ -159,6 +185,188 @@ final class Polynomial
     }
 
     /**
+     * Sum of two power series (numpy.polynomial.polynomial.polyadd).
+     *
+     * scipy.npoly.polyadd
+     */
+    public static function polyadd(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.polyadd', [$c1, $c2]);
+    }
+
+    /**
+     * Companion matrix of a power series (numpy.polynomial.polynomial.polycompanion).
+     *
+     * scipy.npoly.polycompanion
+     */
+    public static function polycompanion(mixed $c): mixed
+    {
+        return Registry::routine('npoly.polycompanion', [$c]);
+    }
+
+    /**
+     * Derivative of a power series (numpy.polynomial.polynomial.polyder).
+     *
+     * scipy.npoly.polyder
+     */
+    public static function polyder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.polyder', [$c, $m, $scl]);
+    }
+
+    /**
+     * Quotient and remainder of power-series division (numpy.polynomial.polynomial.polydiv).
+     *
+     * scipy.npoly.polydiv
+     *
+     * @return mixed one array, or an array keyed by quo, rem when several results are requested
+     */
+    public static function polydiv(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.polydiv', [$c1, $c2]);
+    }
+
+    /**
+     * The default power-basis domain [-1, 1] (numpy.polynomial.polynomial.polydomain).
+     *
+     * scipy.npoly.polydomain
+     */
+    public static function polydomain(): mixed
+    {
+        return Registry::routine('npoly.polydomain', []);
+    }
+
+    /**
+     * Least-squares power-series fit (numpy.polynomial.polynomial.polyfit).
+     *
+     * scipy.npoly.polyfit
+     */
+    public static function polyfit(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.polyfit', [$x, $y, $deg]);
+    }
+
+    /**
+     * Power series with the given roots (numpy.polynomial.polynomial.polyfromroots).
+     *
+     * scipy.npoly.polyfromroots
+     */
+    public static function polyfromroots(mixed $roots): mixed
+    {
+        return Registry::routine('npoly.polyfromroots', [$roots]);
+    }
+
+    /**
+     * Evaluate a 2-D power series on the grid x by y (numpy.polynomial.polynomial.polygrid2d).
+     *
+     * scipy.npoly.polygrid2d
+     */
+    public static function polygrid2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.polygrid2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a 3-D power series on the grid x by y by z (numpy.polynomial.polynomial.polygrid3d).
+     *
+     * scipy.npoly.polygrid3d
+     */
+    public static function polygrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.polygrid3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Antiderivative of a power series (numpy.polynomial.polynomial.polyint).
+     *
+     * scipy.npoly.polyint
+     */
+    public static function polyint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.polyint', [$c, $m, $k, $lbnd, $scl]);
+    }
+
+    /**
+     * Power series for off + scl*x (numpy.polynomial.polynomial.polyline).
+     *
+     * scipy.npoly.polyline
+     */
+    public static function polyline(mixed $off, mixed $scl): mixed
+    {
+        return Registry::routine('npoly.polyline', [$off, $scl]);
+    }
+
+    /**
+     * Product of two power series (numpy.polynomial.polynomial.polymul).
+     *
+     * scipy.npoly.polymul
+     */
+    public static function polymul(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.polymul', [$c1, $c2]);
+    }
+
+    /**
+     * Multiply a power series by x (numpy.polynomial.polynomial.polymulx).
+     *
+     * scipy.npoly.polymulx
+     */
+    public static function polymulx(mixed $c): mixed
+    {
+        return Registry::routine('npoly.polymulx', [$c]);
+    }
+
+    /**
+     * The one power series (numpy.polynomial.polynomial.polyone).
+     *
+     * scipy.npoly.polyone
+     */
+    public static function polyone(): mixed
+    {
+        return Registry::routine('npoly.polyone', []);
+    }
+
+    /**
+     * Power series raised to an integer power (numpy.polynomial.polynomial.polypow).
+     *
+     * scipy.npoly.polypow
+     */
+    public static function polypow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed
+    {
+        return Registry::routine('npoly.polypow', [$c, $pow, $maxpower]);
+    }
+
+    /**
+     * Roots of a power series (numpy.polynomial.polynomial.polyroots).
+     *
+     * scipy.npoly.polyroots
+     */
+    public static function polyroots(mixed $c): mixed
+    {
+        return Registry::routine('npoly.polyroots', [$c]);
+    }
+
+    /**
+     * Difference of two power series (numpy.polynomial.polynomial.polysub).
+     *
+     * scipy.npoly.polysub
+     */
+    public static function polysub(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.polysub', [$c1, $c2]);
+    }
+
+    /**
+     * Trim trailing small coefficients (numpy.polynomial.polynomial.polytrim).
+     *
+     * scipy.npoly.polytrim
+     */
+    public static function polytrim(mixed $c, mixed $tol = 0): mixed
+    {
+        return Registry::routine('npoly.polytrim', [$c, $tol]);
+    }
+
+    /**
      * Evaluate a power-series polynomial at x (numpy.polynomial.polynomial.polyval).
      *
      * scipy.npoly.polyval
@@ -166,5 +374,85 @@ final class Polynomial
     public static function polyval(mixed $x, mixed $c): mixed
     {
         return Registry::routine('npoly.polyval', [$x, $c]);
+    }
+
+    /**
+     * Evaluate a 2-D power series at points (x, y) (numpy.polynomial.polynomial.polyval2d).
+     *
+     * scipy.npoly.polyval2d
+     */
+    public static function polyval2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.polyval2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a 3-D power series at points (x, y, z) (numpy.polynomial.polynomial.polyval3d).
+     *
+     * scipy.npoly.polyval3d
+     */
+    public static function polyval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.polyval3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Evaluate a polynomial from its roots (numpy.polynomial.polynomial.polyvalfromroots).
+     *
+     * scipy.npoly.polyvalfromroots
+     */
+    public static function polyvalfromroots(mixed $x, mixed $r): mixed
+    {
+        return Registry::routine('npoly.polyvalfromroots', [$x, $r]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of the power basis (numpy.polynomial.polynomial.polyvander).
+     *
+     * scipy.npoly.polyvander
+     */
+    public static function polyvander(mixed $x, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.polyvander', [$x, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 2-D power basis (numpy.polynomial.polynomial.polyvander2d).
+     *
+     * scipy.npoly.polyvander2d
+     */
+    public static function polyvander2d(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.polyvander2d', [$x, $y, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 3-D power basis (numpy.polynomial.polynomial.polyvander3d).
+     *
+     * scipy.npoly.polyvander3d
+     */
+    public static function polyvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.polyvander3d', [$x, $y, $z, $deg]);
+    }
+
+    /**
+     * The identity power series x (numpy.polynomial.polynomial.polyx).
+     *
+     * scipy.npoly.polyx
+     */
+    public static function polyx(): mixed
+    {
+        return Registry::routine('npoly.polyx', []);
+    }
+
+    /**
+     * The zero power series (numpy.polynomial.polynomial.polyzero).
+     *
+     * scipy.npoly.polyzero
+     */
+    public static function polyzero(): mixed
+    {
+        return Registry::routine('npoly.polyzero', []);
     }
 }

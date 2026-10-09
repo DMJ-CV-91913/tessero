@@ -120,6 +120,32 @@
 | `npoly.lagval` | call | rtol 0 |
 | `npoly.hermval` | call | rtol 0 |
 | `npoly.hermeval` | call | rtol 0 |
+| `npoly.polyadd` | call | rtol 0 |
+| `npoly.polysub` | call | rtol 0 |
+| `npoly.polymul` | call | rtol 0 |
+| `npoly.polymulx` | call | rtol 0 |
+| `npoly.polypow` | call | rtol 0 |
+| `npoly.polydiv` | call | rtol 0 |
+| `npoly.polyder` | call | rtol 0 |
+| `npoly.polyint` | call | rtol 0 |
+| `npoly.polyfromroots` | call | rtol 0 |
+| `npoly.polyline` | call | rtol 0 |
+| `npoly.polytrim` | call | rtol 0 |
+| `npoly.polyvander` | call | rtol 0 |
+| `npoly.polyvalfromroots` | call | rtol 0 |
+| `npoly.polyval2d` | call | rtol 0 |
+| `npoly.polyval3d` | call | rtol 0 |
+| `npoly.polygrid2d` | call | rtol 0 |
+| `npoly.polygrid3d` | call | rtol 0 |
+| `npoly.polyvander2d` | call | rtol 0 |
+| `npoly.polyvander3d` | call | rtol 0 |
+| `npoly.polycompanion` | call | rtol 0 |
+| `npoly.polyroots` | call | rtol 0 |
+| `npoly.polyfit` | call | rtol 0 |
+| `npoly.polyzero` | call | rtol 0 |
+| `npoly.polyone` | call | rtol 0 |
+| `npoly.polyx` | call | rtol 0 |
+| `npoly.polydomain` | call | rtol 0 |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |

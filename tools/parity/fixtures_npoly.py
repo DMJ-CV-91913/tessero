@@ -32,7 +32,66 @@ for _ in range(4):
         val[name].append({'args': [F.enc(x), F.enc(c)], 'kwargs': {},
                           'expect': F.enc_result(np.asarray(fn(x, c), float), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
-calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val}.items()]
+def tol(atol=1e-9):
+    return {'atol': atol}
+
+def case(args, expect, names=None, atol=1e-9):
+    return {'args': [F.enc(a) for a in args], 'kwargs': {},
+            'expect': F.enc_result(expect, names or []), 'compare': 'tol', 'tol': tol(atol)}
+
+# numpy.polynomial.polynomial power-basis arithmetic and calculus
+ops = {n: [] for n in ('polyadd', 'polysub', 'polymul', 'polymulx', 'polypow', 'polydiv', 'polyder',
+                        'polyint', 'polyfromroots', 'polyline', 'polytrim', 'polyvander', 'polyvalfromroots')}
+for _ in range(6):
+    c1 = rng.normal(size=int(rng.integers(2, 6)))
+    c2 = rng.normal(size=int(rng.integers(2, 5)))
+    x = rng.uniform(-1.5, 1.5, 7)
+    roots = rng.uniform(-1.2, 1.2, int(rng.integers(1, 5)))
+    off, scl = float(rng.normal()), float(rng.normal())
+    ops['polyadd'].append(case([c1, c2], _P.polyadd(c1, c2)))
+    ops['polysub'].append(case([c1, c2], _P.polysub(c1, c2)))
+    ops['polymul'].append(case([c1, c2], _P.polymul(c1, c2)))
+    ops['polymulx'].append(case([c1], _P.polymulx(c1)))
+    pw = int(rng.integers(0, 5))
+    ops['polypow'].append(case([c1, pw], _P.polypow(c1, pw)))
+    cbig = rng.normal(size=6)
+    ops['polydiv'].append(case([cbig, c2], _P.polydiv(cbig, c2), names=['quo', 'rem']))
+    m = int(rng.integers(1, 3))
+    ops['polyder'].append(case([c1, m], _P.polyder(c1, m)))
+    ops['polyint'].append(case([c1, m], _P.polyint(c1, m)))
+    ops['polyfromroots'].append(case([roots], _P.polyfromroots(roots)))
+    ops['polyline'].append(case([off, scl], _P.polyline(off, scl)))
+    ct = np.append(c1, [1e-14, 0.0])
+    ops['polytrim'].append(case([ct, 1e-9], _P.polytrim(ct, 1e-9)))
+    deg = int(rng.integers(1, 5))
+    ops['polyvander'].append(case([x, deg], _P.polyvander(x, deg)))
+    ops['polyvalfromroots'].append(case([x, roots], _P.polyvalfromroots(x, roots)))
+
+# multi-dimensional evaluation, Vandermonde matrices, roots, companion, fit, and the module constants
+ops2 = {n: [] for n in ('polyval2d', 'polyval3d', 'polygrid2d', 'polygrid3d', 'polyvander2d', 'polyvander3d',
+                         'polycompanion', 'polyroots', 'polyfit', 'polyzero', 'polyone', 'polyx', 'polydomain')}
+for _ in range(5):
+    c2 = rng.normal(size=(3, 4))
+    c3 = rng.normal(size=(2, 3, 2))
+    x = rng.uniform(-1, 1, 5); y = rng.uniform(-1, 1, 5); z = rng.uniform(-1, 1, 5)
+    ops2['polyval2d'].append(case([x, y, c2], _P.polyval2d(x, y, c2)))
+    ops2['polyval3d'].append(case([x, y, z, c3], _P.polyval3d(x, y, z, c3)))
+    ops2['polygrid2d'].append(case([x, y, c2], _P.polygrid2d(x, y, c2)))
+    ops2['polygrid3d'].append(case([x, y, z, c3], _P.polygrid3d(x, y, z, c3)))
+    ops2['polyvander2d'].append(case([x, y, np.array([2, 3])], _P.polyvander2d(x, y, [2, 3])))
+    ops2['polyvander3d'].append(case([x, y, z, np.array([1, 2, 1])], _P.polyvander3d(x, y, z, [1, 2, 1])))
+    rts = np.sort(rng.uniform(-2, 2, int(rng.integers(2, 6))))
+    c = _P.polyfromroots(rts)
+    ops2['polycompanion'].append(case([c], _P.polycompanion(c), atol=1e-10))
+    ops2['polyroots'].append(case([c], np.sort(_P.polyroots(c).real), atol=1e-6))
+    xf = np.sort(rng.uniform(-1, 1, 14)); yf = np.cos(1.5 * xf) + 0.3 * xf
+    ops2['polyfit'].append(case([xf, yf, 5], _P.polyfit(xf, yf, 5), atol=1e-6))
+ops2['polyzero'].append(case([], _P.polyzero))
+ops2['polyone'].append(case([], _P.polyone))
+ops2['polyx'].append(case([], _P.polyx))
+ops2['polydomain'].append(case([], _P.polydomain))
+
+calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2}.items()]
 out = {'module': 'npoly', 'numpy': np.__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

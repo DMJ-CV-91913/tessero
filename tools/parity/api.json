@@ -4211,10 +4211,166 @@
                 "doc": "Evaluate a Legendre series at x (numpy.polynomial.legendre.legval)."
             },
             {
+                "name": "polyadd",
+                "static": true,
+                "sig": "polyadd(mixed $c1, mixed $c2): mixed",
+                "doc": "Sum of two power series (numpy.polynomial.polynomial.polyadd)."
+            },
+            {
+                "name": "polycompanion",
+                "static": true,
+                "sig": "polycompanion(mixed $c): mixed",
+                "doc": "Companion matrix of a power series (numpy.polynomial.polynomial.polycompanion)."
+            },
+            {
+                "name": "polyder",
+                "static": true,
+                "sig": "polyder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed",
+                "doc": "Derivative of a power series (numpy.polynomial.polynomial.polyder)."
+            },
+            {
+                "name": "polydiv",
+                "static": true,
+                "sig": "polydiv(mixed $c1, mixed $c2): mixed",
+                "doc": "Quotient and remainder of power-series division (numpy.polynomial.polynomial.polydiv)."
+            },
+            {
+                "name": "polydomain",
+                "static": true,
+                "sig": "polydomain(): mixed",
+                "doc": "The default power-basis domain [-1, 1] (numpy.polynomial.polynomial.polydomain)."
+            },
+            {
+                "name": "polyfit",
+                "static": true,
+                "sig": "polyfit(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Least-squares power-series fit (numpy.polynomial.polynomial.polyfit)."
+            },
+            {
+                "name": "polyfromroots",
+                "static": true,
+                "sig": "polyfromroots(mixed $roots): mixed",
+                "doc": "Power series with the given roots (numpy.polynomial.polynomial.polyfromroots)."
+            },
+            {
+                "name": "polygrid2d",
+                "static": true,
+                "sig": "polygrid2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a 2-D power series on the grid x by y (numpy.polynomial.polynomial.polygrid2d)."
+            },
+            {
+                "name": "polygrid3d",
+                "static": true,
+                "sig": "polygrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a 3-D power series on the grid x by y by z (numpy.polynomial.polynomial.polygrid3d)."
+            },
+            {
+                "name": "polyint",
+                "static": true,
+                "sig": "polyint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed",
+                "doc": "Antiderivative of a power series (numpy.polynomial.polynomial.polyint)."
+            },
+            {
+                "name": "polyline",
+                "static": true,
+                "sig": "polyline(mixed $off, mixed $scl): mixed",
+                "doc": "Power series for off + scl*x (numpy.polynomial.polynomial.polyline)."
+            },
+            {
+                "name": "polymul",
+                "static": true,
+                "sig": "polymul(mixed $c1, mixed $c2): mixed",
+                "doc": "Product of two power series (numpy.polynomial.polynomial.polymul)."
+            },
+            {
+                "name": "polymulx",
+                "static": true,
+                "sig": "polymulx(mixed $c): mixed",
+                "doc": "Multiply a power series by x (numpy.polynomial.polynomial.polymulx)."
+            },
+            {
+                "name": "polyone",
+                "static": true,
+                "sig": "polyone(): mixed",
+                "doc": "The one power series (numpy.polynomial.polynomial.polyone)."
+            },
+            {
+                "name": "polypow",
+                "static": true,
+                "sig": "polypow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed",
+                "doc": "Power series raised to an integer power (numpy.polynomial.polynomial.polypow)."
+            },
+            {
+                "name": "polyroots",
+                "static": true,
+                "sig": "polyroots(mixed $c): mixed",
+                "doc": "Roots of a power series (numpy.polynomial.polynomial.polyroots)."
+            },
+            {
+                "name": "polysub",
+                "static": true,
+                "sig": "polysub(mixed $c1, mixed $c2): mixed",
+                "doc": "Difference of two power series (numpy.polynomial.polynomial.polysub)."
+            },
+            {
+                "name": "polytrim",
+                "static": true,
+                "sig": "polytrim(mixed $c, mixed $tol = 0): mixed",
+                "doc": "Trim trailing small coefficients (numpy.polynomial.polynomial.polytrim)."
+            },
+            {
                 "name": "polyval",
                 "static": true,
                 "sig": "polyval(mixed $x, mixed $c): mixed",
                 "doc": "Evaluate a power-series polynomial at x (numpy.polynomial.polynomial.polyval)."
+            },
+            {
+                "name": "polyval2d",
+                "static": true,
+                "sig": "polyval2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a 2-D power series at points (x, y) (numpy.polynomial.polynomial.polyval2d)."
+            },
+            {
+                "name": "polyval3d",
+                "static": true,
+                "sig": "polyval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a 3-D power series at points (x, y, z) (numpy.polynomial.polynomial.polyval3d)."
+            },
+            {
+                "name": "polyvalfromroots",
+                "static": true,
+                "sig": "polyvalfromroots(mixed $x, mixed $r): mixed",
+                "doc": "Evaluate a polynomial from its roots (numpy.polynomial.polynomial.polyvalfromroots)."
+            },
+            {
+                "name": "polyvander",
+                "static": true,
+                "sig": "polyvander(mixed $x, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of the power basis (numpy.polynomial.polynomial.polyvander)."
+            },
+            {
+                "name": "polyvander2d",
+                "static": true,
+                "sig": "polyvander2d(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 2-D power basis (numpy.polynomial.polynomial.polyvander2d)."
+            },
+            {
+                "name": "polyvander3d",
+                "static": true,
+                "sig": "polyvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 3-D power basis (numpy.polynomial.polynomial.polyvander3d)."
+            },
+            {
+                "name": "polyx",
+                "static": true,
+                "sig": "polyx(): mixed",
+                "doc": "The identity power series x (numpy.polynomial.polynomial.polyx)."
+            },
+            {
+                "name": "polyzero",
+                "static": true,
+                "sig": "polyzero(): mixed",
+                "doc": "The zero power series (numpy.polynomial.polynomial.polyzero)."
             }
         ],
         "constants": [
@@ -17702,6 +17858,162 @@
                 "name": "HermiteE",
                 "static": true,
                 "sig": "HermiteE($coef, $x)",
+                "doc": ""
+            },
+            {
+                "name": "polyadd",
+                "static": true,
+                "sig": "polyadd($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "polysub",
+                "static": true,
+                "sig": "polysub($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "polymul",
+                "static": true,
+                "sig": "polymul($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "polymulx",
+                "static": true,
+                "sig": "polymulx($c)",
+                "doc": ""
+            },
+            {
+                "name": "polypow",
+                "static": true,
+                "sig": "polypow($c, $pow, $maxpower = 16)",
+                "doc": ""
+            },
+            {
+                "name": "polydiv",
+                "static": true,
+                "sig": "polydiv($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "polyder",
+                "static": true,
+                "sig": "polyder($c, $m = 1, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "polyint",
+                "static": true,
+                "sig": "polyint($c, $m = 1, $k = 0, $lbnd = 0, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "polyfromroots",
+                "static": true,
+                "sig": "polyfromroots($roots)",
+                "doc": ""
+            },
+            {
+                "name": "polyline",
+                "static": true,
+                "sig": "polyline($off, $scl)",
+                "doc": ""
+            },
+            {
+                "name": "polytrim",
+                "static": true,
+                "sig": "polytrim($c, $tol = 0)",
+                "doc": ""
+            },
+            {
+                "name": "polyvander",
+                "static": true,
+                "sig": "polyvander($x, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "polyvalfromroots",
+                "static": true,
+                "sig": "polyvalfromroots($x, $r)",
+                "doc": ""
+            },
+            {
+                "name": "polyval2d",
+                "static": true,
+                "sig": "polyval2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "polyval3d",
+                "static": true,
+                "sig": "polyval3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "polygrid2d",
+                "static": true,
+                "sig": "polygrid2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "polygrid3d",
+                "static": true,
+                "sig": "polygrid3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "polyvander2d",
+                "static": true,
+                "sig": "polyvander2d($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "polyvander3d",
+                "static": true,
+                "sig": "polyvander3d($x, $y, $z, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "polycompanion",
+                "static": true,
+                "sig": "polycompanion($c)",
+                "doc": ""
+            },
+            {
+                "name": "polyroots",
+                "static": true,
+                "sig": "polyroots($c)",
+                "doc": ""
+            },
+            {
+                "name": "polyfit",
+                "static": true,
+                "sig": "polyfit($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "polyzero",
+                "static": true,
+                "sig": "polyzero()",
+                "doc": ""
+            },
+            {
+                "name": "polyone",
+                "static": true,
+                "sig": "polyone()",
+                "doc": ""
+            },
+            {
+                "name": "polyx",
+                "static": true,
+                "sig": "polyx()",
+                "doc": ""
+            },
+            {
+                "name": "polydomain",
+                "static": true,
+                "sig": "polydomain()",
                 "doc": ""
             }
         ]

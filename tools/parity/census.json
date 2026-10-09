@@ -2727,6 +2727,146 @@
 },
 {
 "kind": "class",
+"module": "numpy.polynomial.polynomial",
+"name": "Polynomial"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyadd"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polycompanion"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyder"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polydiv"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.polynomial",
+"name": "polydomain"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyfit"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyfromroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polygrid2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polygrid3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyint"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyline"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polymul"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polymulx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.polynomial",
+"name": "polyone"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polypow"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polysub"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polytrim"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyval"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyval2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyval3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyvalfromroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyvander"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyvander2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.polynomial",
+"name": "polyvander3d"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.polynomial",
+"name": "polyx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.polynomial",
+"name": "polyzero"
+},
+{
+"kind": "class",
 "module": "numpy.random",
 "name": "BitGenerator"
 },

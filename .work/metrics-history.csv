@@ -156,3 +156,5 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-09,scipy.signal: peak_prominences + peak_widths,87.7,87.0,70.5,70.2,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-09,scipy.signal: resample_poly,87.7,87.0,70.6,70.3,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-09,numpy.polynomial: module + 6 basis classes + 6 *val,88.9,88.1,70.6,70.3,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-09,numpy.polynomial.polynomial: power-basis submodule complete (both backends),88.9,88.1,70.6,70.3,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-09,numpy.polynomial.polynomial: power-basis submodule complete (both backends),89.5,88.7,70.6,70.3,99.2,99.6,71.7,71.7,79.1,79.1
