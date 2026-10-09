@@ -3167,6 +3167,18 @@
                 "doc": "Rank-order filter over a footprint (scipy.signal.order_filter)."
             },
             {
+                "name": "peakProminences",
+                "static": true,
+                "sig": "peakProminences(mixed $x, mixed $peaks, mixed $wlen = -1): mixed",
+                "doc": "Prominence and base indices of each peak in a signal (scipy.signal.peak_prominences)."
+            },
+            {
+                "name": "peakWidths",
+                "static": true,
+                "sig": "peakWidths(mixed $x, mixed $peaks, mixed $relHeight = 0.5, mixed $prominenceData = null, mixed $wlen = null): mixed",
+                "doc": "Width of each peak at a relative height of its prominence (scipy.signal.peak_widths)."
+            },
+            {
                 "name": "periodogram",
                 "static": true,
                 "sig": "periodogram(mixed $x, mixed $fs = 1.0, mixed $window = 'boxcar', mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density'): mixed",
@@ -16585,6 +16597,18 @@
                 "name": "cztPoints",
                 "static": true,
                 "sig": "cztPoints($m, $w = null, $a = 1)",
+                "doc": ""
+            },
+            {
+                "name": "peakProminences",
+                "static": true,
+                "sig": "peakProminences($x, $peaks, $wlen = -1)",
+                "doc": ""
+            },
+            {
+                "name": "peakWidths",
+                "static": true,
+                "sig": "peakWidths($x, $peaks, $relHeight = 0.5, $prominenceData = null, $wlen = null)",
                 "doc": ""
             },
             {

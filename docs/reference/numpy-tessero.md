@@ -1016,6 +1016,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.normalize` | `Tessero\Signal::normalize()` |
 | `scipy.signal.oaconvolve` | `Tessero\Signal::oaconvolve()` |
 | `scipy.signal.order_filter` | `Tessero\Signal::orderFilter()` |
+| `scipy.signal.peak_prominences` | `Tessero\Signal::peakProminences()` |
+| `scipy.signal.peak_widths` | `Tessero\Signal::peakWidths()` |
 | `scipy.signal.periodogram` | `Tessero\Signal::periodogram()` |
 | `scipy.signal.resample` | `Tessero\Signal::resample()` |
 | `scipy.signal.residue` | `Tessero\Signal::residue()` |

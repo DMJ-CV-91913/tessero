@@ -537,6 +537,8 @@
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.order_filter": "pass",
+        "signal.peak_prominences": "pass",
+        "signal.peak_widths": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
         "signal.residue": "pass",
@@ -2340,7 +2342,9 @@
             "signal.band_stop_obj": 0,
             "signal.freqresp": 7.252842609230709e-14,
             "signal.dfreqresp": 2.63847466774757e-12,
-            "signal.czt_points": 1.5762793438885855e-15
+            "signal.czt_points": 1.5762793438885855e-15,
+            "signal.peak_prominences": 0,
+            "signal.peak_widths": 0
         },
         "ext": {
             "np.median": 0,
@@ -3511,7 +3515,9 @@
             "signal.band_stop_obj": 0,
             "signal.freqresp": 7.252842609230709e-14,
             "signal.dfreqresp": 2.63847466774757e-12,
-            "signal.czt_points": 1.5762793438885855e-15
+            "signal.czt_points": 1.5762793438885855e-15,
+            "signal.peak_prominences": 0,
+            "signal.peak_widths": 0
         }
     },
     "ext": {
@@ -4052,6 +4058,8 @@
         "signal.normalize": "pass",
         "signal.oaconvolve": "pass",
         "signal.order_filter": "pass",
+        "signal.peak_prominences": "pass",
+        "signal.peak_widths": "pass",
         "signal.periodogram": "pass",
         "signal.resample": "pass",
         "signal.residue": "pass",

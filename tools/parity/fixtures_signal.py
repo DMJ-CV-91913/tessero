@@ -283,6 +283,24 @@ czp = []
 for m in (8, 16, 11):
     czp.append({'args': [F.enc(m)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sg.czt_points(m), complex), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
 
+# peak_prominences / peak_widths: computed on signals with scipy-found peaks (peaks passed as an index array)
+pkp, pkw = [], []
+_pr = np.random.default_rng(3)
+for _ in range(5):
+    nn = int(_pr.integers(40, 90))
+    xsig = np.cumsum(_pr.normal(size=nn)) + 3.0 * np.sin(np.linspace(0, 10, nn))
+    peaks, _ = sg.find_peaks(xsig)
+    if len(peaks) < 2:
+        continue
+    pk = np.asarray(peaks, dtype=np.int64)
+    pr, lb, rb = sg.peak_prominences(xsig, peaks)
+    pkp.append({'args': [F.enc(xsig), F.enc(pk)], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(pr, float), np.asarray(lb, np.int64), np.asarray(rb, np.int64)), ['prominences', 'left_bases', 'right_bases']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+    for rh in (0.5, 0.75):
+        wd = sg.peak_widths(xsig, peaks, rel_height=rh)
+        pkw.append({'args': [F.enc(xsig), F.enc(pk), F.enc(rh)], 'kwargs': {},
+                    'expect': F.enc_result(tuple(np.asarray(v, float) for v in wd), ['widths', 'width_heights', 'left_ips', 'right_ips']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -885,6 +903,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'freqresp', 'cases': frp, 'tol': {'atol': 1e-11}},
                  {'fn': 'dfreqresp', 'cases': dfr, 'tol': {'atol': 1e-11}},
                  {'fn': 'czt_points', 'cases': czp, 'tol': {'atol': 1e-12}},
+                 {'fn': 'peak_prominences', 'cases': pkp, 'tol': {'atol': 1e-11}},
+                 {'fn': 'peak_widths', 'cases': pkw, 'tol': {'atol': 1e-11}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},

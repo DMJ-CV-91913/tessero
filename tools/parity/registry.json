@@ -2350,6 +2350,16 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.peak_prominences": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "signal.peak_widths": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "signal.periodogram": {
             "kind": "routine",
             "nin": 0,

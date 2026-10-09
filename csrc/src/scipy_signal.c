@@ -5260,6 +5260,76 @@ static int r_czt_points(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return TSR_OK;
 }
 
+/* compute prominences, left and right bases for each peak into caller buffers (scipy _peak_prominences, wlen=-1):
+   scan outward from each peak until a sample >= x[peak]; the base is the lowest sample in that interval; the
+   prominence is x[peak] minus the higher of the two base minima. */
+static void peak_prom_core(const double *x, int64_t n, const double *pk, int64_t P, double *prom, int64_t *lb, int64_t *rb)
+{
+    for (int64_t pn = 0; pn < P; pn++) {
+        const int64_t peak = (int64_t)pk[pn];
+        int64_t i = peak; double lmin = x[peak]; lb[pn] = peak;
+        while (i >= 0 && x[i] <= x[peak]) { if (x[i] < lmin) { lmin = x[i]; lb[pn] = i; } i--; }
+        i = peak; double rmin = x[peak]; rb[pn] = peak;
+        while (i < n && x[i] <= x[peak]) { if (x[i] < rmin) { rmin = x[i]; rb[pn] = i; } i++; }
+        prom[pn] = x[peak] - (lmin > rmin ? lmin : rmin);
+    }
+}
+
+/* peak_prominences(x, peaks, wlen=-1): prominences and left/right base indices (scipy.signal.peak_prominences;
+   wlen is not applied -- full window). */
+static int r_peak_prominences(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("peak_prominences: x and peaks must be 1-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], P = args[1].arr.shape[0];
+    int64_t lx, lp; double *x = fn_arg_doubles(&args[0], &lx), *pk = x ? fn_arg_doubles(&args[1], &lp) : NULL;
+    double *prom = pk ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){P}) : NULL;
+    int64_t *lb = prom ? (int64_t *)fn_result_array(&res[1], TSR_I64, 1, (int64_t[]){P}) : NULL;
+    int64_t *rb = lb ? (int64_t *)fn_result_array(&res[2], TSR_I64, 1, (int64_t[]){P}) : NULL;
+    int rc = (!x || !pk || !prom || !lb || !rb) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) peak_prom_core(x, n, pk, P, prom, lb, rb);
+    fn_free_doubles(x, lx); fn_free_doubles(pk, lp);
+    return rc;
+}
+
+/* peak_widths(x, peaks, rel_height=0.5): width of each peak at rel_height of its prominence, with the width
+   heights and the (interpolated) left/right intersection positions (scipy.signal.peak_widths). */
+static int r_peak_widths(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("peak_widths: x and peaks must be 1-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], P = args[1].arr.shape[0];
+    const double rel = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.5;
+    int64_t lx, lp; double *x = fn_arg_doubles(&args[0], &lx), *pk = x ? fn_arg_doubles(&args[1], &lp) : NULL;
+    double *prom = pk ? (double *)malloc((size_t)(P ? P : 1) * sizeof(double)) : NULL;
+    int64_t *lb = prom ? (int64_t *)malloc((size_t)(P ? P : 1) * sizeof(int64_t)) : NULL;
+    int64_t *rb = lb ? (int64_t *)malloc((size_t)(P ? P : 1) * sizeof(int64_t)) : NULL;
+    double *w = rb ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){P}) : NULL;
+    double *wh = w ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){P}) : NULL;
+    double *lip = wh ? (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){P}) : NULL;
+    double *rip = lip ? (double *)fn_result_array(&res[3], TSR_F64, 1, (int64_t[]){P}) : NULL;
+    int rc = (!x || !pk || !prom || !lb || !rb || !w || !wh || !lip || !rip) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        peak_prom_core(x, n, pk, P, prom, lb, rb);
+        for (int64_t pn = 0; pn < P; pn++) {
+            const int64_t peak = (int64_t)pk[pn], imin = lb[pn], imax = rb[pn];
+            const double height = x[peak] - prom[pn] * rel;
+            wh[pn] = height;
+            int64_t i = peak;
+            while (imin < i && height < x[i]) i--;
+            double li = (double)i;
+            if (x[i] < height) li += (height - x[i]) / (x[i + 1] - x[i]);
+            i = peak;
+            while (i < imax && height < x[i]) i++;
+            double ri = (double)i;
+            if (x[i] < height) ri -= (height - x[i]) / (x[i - 1] - x[i]);
+            lip[pn] = li; rip[pn] = ri; w[pn] = ri - li;
+        }
+    }
+    free(prom); free(lb); free(rb); fn_free_doubles(x, lx); fn_free_doubles(pk, lp);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5392,6 +5462,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.freqresp", 2, "system[], w, n=10000", "w, H", r_freqresp, NULL, "Analog LTI frequency response of a (b, a) system at the given frequencies (scipy.signal.freqresp)."),
     ROUTINE("signal.dfreqresp", 2, "system[], w, n=10000, whole=False", "w, H", r_dfreqresp, NULL, "Discrete-time LTI frequency response of a (num, den, dt) system at the given frequencies (scipy.signal.dfreqresp)."),
     ROUTINE("signal.czt_points", 1, "m, w=None, a=1", "out", r_czt_points, NULL, "Points at which the chirp z-transform is sampled, default equally spaced on the unit circle (scipy.signal.czt_points)."),
+    ROUTINE("signal.peak_prominences", 3, "x, peaks, wlen=-1", "prominences, left_bases, right_bases", r_peak_prominences, NULL, "Prominence and base indices of each peak in a signal (scipy.signal.peak_prominences)."),
+    ROUTINE("signal.peak_widths", 4, "x, peaks, rel_height=0.5, prominence_data=None, wlen=None", "widths, width_heights, left_ips, right_ips", r_peak_widths, NULL, "Width of each peak at a relative height of its prominence (scipy.signal.peak_widths)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),

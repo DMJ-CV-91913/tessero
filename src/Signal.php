@@ -104,6 +104,8 @@ final class Signal
     'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
     'order_filter' => 'orderFilter',
+    'peak_prominences' => 'peakProminences',
+    'peak_widths' => 'peakWidths',
     'periodogram' => 'periodogram',
     'resample' => 'resample',
     'residue' => 'residue',
@@ -1115,6 +1117,30 @@ final class Signal
     public static function orderFilter(mixed $a, mixed $domain, mixed $rank): mixed
     {
         return Registry::routine('signal.order_filter', [$a, $domain, $rank]);
+    }
+
+    /**
+     * Prominence and base indices of each peak in a signal (scipy.signal.peak_prominences).
+     *
+     * scipy.signal.peak_prominences
+     *
+     * @return mixed one array, or an array keyed by prominences, left_bases, right_bases when several results are requested
+     */
+    public static function peakProminences(mixed $x, mixed $peaks, mixed $wlen = -1): mixed
+    {
+        return Registry::routine('signal.peak_prominences', [$x, $peaks, $wlen]);
+    }
+
+    /**
+     * Width of each peak at a relative height of its prominence (scipy.signal.peak_widths).
+     *
+     * scipy.signal.peak_widths
+     *
+     * @return mixed one array, or an array keyed by widths, width_heights, left_ips, right_ips when several results are requested
+     */
+    public static function peakWidths(mixed $x, mixed $peaks, mixed $relHeight = 0.5, mixed $prominenceData = null, mixed $wlen = null): mixed
+    {
+        return Registry::routine('signal.peak_widths', [$x, $peaks, $relHeight, $prominenceData, $wlen]);
     }
 
     /**
