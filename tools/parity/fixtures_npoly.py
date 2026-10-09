@@ -231,7 +231,56 @@ lag['lagweight'].append(case([wx], _LA.lagweight(wx)))
 lag['lagzero'].append(case([], _LA.lagzero)); lag['lagone'].append(case([], _LA.lagone))
 lag['lagx'].append(case([], _LA.lagx)); lag['lagdomain'].append(case([], _LA.lagdomain))
 
-calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2, **cheb, **leg, **lag}.items()]
+# numpy.polynomial.hermite (physicists') and hermite_e (probabilists'), same shape, different module object
+def herm_block(pre, M):
+    d = {pre + s: [] for s in ('add', 'sub', 'mul', 'mulx', 'pow', 'div', 'der', 'int', 'fromroots', 'line',
+         'trim', 'vander', 'val2d', 'val3d', 'grid2d', 'grid3d', 'vander2d', 'vander3d', 'companion', 'roots',
+         'fit', 'gauss', 'weight', 'zero', 'one', 'x', 'domain')}
+    conv = {'herm': ('herm2poly', 'poly2herm'), 'herme': ('herme2poly', 'poly2herme')}[pre]
+    d[conv[0]] = []; d[conv[1]] = []
+    for _ in range(6):
+        c1 = rng.normal(size=int(rng.integers(2, 6))); c2 = rng.normal(size=int(rng.integers(2, 5)))
+        x = rng.uniform(-1, 1, 5); y = rng.uniform(-1, 1, 5); z = rng.uniform(-1, 1, 5)
+        cc2 = rng.normal(size=(3, 4)); cc3 = rng.normal(size=(2, 3, 2))
+        roots = rng.uniform(-1, 1, int(rng.integers(1, 4))); off, scl = float(rng.normal()), float(rng.normal())
+        d[pre + 'add'].append(case([c1, c2], getattr(M, pre + 'add')(c1, c2)))
+        d[pre + 'sub'].append(case([c1, c2], getattr(M, pre + 'sub')(c1, c2)))
+        d[pre + 'mul'].append(case([c1, c2], getattr(M, pre + 'mul')(c1, c2)))
+        d[pre + 'mulx'].append(case([c1], getattr(M, pre + 'mulx')(c1)))
+        pw = int(rng.integers(0, 5)); d[pre + 'pow'].append(case([c1, pw], getattr(M, pre + 'pow')(c1, pw)))
+        cbig = rng.normal(size=6); d[pre + 'div'].append(case([cbig, c2], getattr(M, pre + 'div')(cbig, c2), names=['quo', 'rem']))
+        m = int(rng.integers(1, 3))
+        d[pre + 'der'].append(case([c1, m], getattr(M, pre + 'der')(c1, m)))
+        d[pre + 'int'].append(case([c1, m], getattr(M, pre + 'int')(c1, m)))
+        d[pre + 'fromroots'].append(case([roots], getattr(M, pre + 'fromroots')(roots), atol=1e-8))
+        d[pre + 'line'].append(case([off, scl], getattr(M, pre + 'line')(off, scl)))
+        ct = np.append(c1, [1e-14, 0.0]); d[pre + 'trim'].append(case([ct, 1e-9], getattr(M, pre + 'trim')(ct, 1e-9)))
+        deg = int(rng.integers(1, 5)); d[pre + 'vander'].append(case([x, deg], getattr(M, pre + 'vander')(x, deg)))
+        d[pre + 'val2d'].append(case([x, y, cc2], getattr(M, pre + 'val2d')(x, y, cc2)))
+        d[pre + 'val3d'].append(case([x, y, z, cc3], getattr(M, pre + 'val3d')(x, y, z, cc3)))
+        d[pre + 'grid2d'].append(case([x, y, cc2], getattr(M, pre + 'grid2d')(x, y, cc2)))
+        d[pre + 'grid3d'].append(case([x, y, z, cc3], getattr(M, pre + 'grid3d')(x, y, z, cc3)))
+        d[pre + 'vander2d'].append(case([x, y, np.array([2, 3])], getattr(M, pre + 'vander2d')(x, y, [2, 3])))
+        d[pre + 'vander3d'].append(case([x, y, z, np.array([1, 2, 1])], getattr(M, pre + 'vander3d')(x, y, z, [1, 2, 1])))
+        rts = np.sort(rng.uniform(-1, 1, int(rng.integers(2, 4)))); cc = getattr(M, pre + 'fromroots')(rts)
+        d[pre + 'companion'].append(case([cc], getattr(M, pre + 'companion')(cc), atol=1e-9))
+        d[pre + 'roots'].append(case([cc], np.sort(getattr(M, pre + 'roots')(cc).real), atol=1e-6))
+        xf = np.sort(rng.uniform(-1, 1, 14)); yf = np.cos(1.5 * xf) + 0.3 * xf
+        d[pre + 'fit'].append(case([xf, yf, 5], getattr(M, pre + 'fit')(xf, yf, 5), atol=1e-6))
+        pol = rng.normal(size=int(rng.integers(2, 6)))
+        d[conv[0]].append(case([c1], getattr(M, conv[0])(c1)))
+        d[conv[1]].append(case([pol], getattr(M, conv[1])(pol)))
+    for deg in (2, 5, 8):
+        gx, gw = getattr(M, pre + 'gauss')(deg); d[pre + 'gauss'].append(case([deg], (gx, gw), names=['x', 'w']))
+    wx = rng.uniform(-1.5, 1.5, 7); d[pre + 'weight'].append(case([wx], getattr(M, pre + 'weight')(wx)))
+    d[pre + 'zero'].append(case([], getattr(M, pre + 'zero'))); d[pre + 'one'].append(case([], getattr(M, pre + 'one')))
+    d[pre + 'x'].append(case([], getattr(M, pre + 'x'))); d[pre + 'domain'].append(case([], getattr(M, pre + 'domain')))
+    return d
+
+herm = herm_block('herm', _H)
+herme = herm_block('herme', _HE)
+
+calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2, **cheb, **leg, **lag, **herm, **herme}.items()]
 out = {'module': 'npoly', 'numpy': np.__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

@@ -3347,6 +3347,316 @@
 },
 {
 "kind": "class",
+"module": "numpy.polynomial.hermite",
+"name": "Hermite"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "herm2poly"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermadd"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermcompanion"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermder"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermdiv"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite",
+"name": "hermdomain"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermfit"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermfromroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermgauss"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermgrid2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermgrid3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermint"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermline"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermmul"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermmulx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite",
+"name": "hermone"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermpow"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermsub"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermtrim"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermval"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermval2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermval3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermvander"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermvander2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermvander3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "hermweight"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite",
+"name": "hermx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite",
+"name": "hermzero"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite",
+"name": "poly2herm"
+},
+{
+"kind": "class",
+"module": "numpy.polynomial.hermite_e",
+"name": "HermiteE"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "herme2poly"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeadd"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermecompanion"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeder"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermediv"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermedomain"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermefit"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermefromroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermegauss"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermegrid2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermegrid3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeint"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeline"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermemul"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermemulx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeone"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermepow"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermesub"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermetrim"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeval"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeval2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeval3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermevander"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermevander2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermevander3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermeweight"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermex"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.hermite_e",
+"name": "hermezero"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.hermite_e",
+"name": "poly2herme"
+},
+{
+"kind": "class",
 "module": "numpy.random",
 "name": "BitGenerator"
 },
