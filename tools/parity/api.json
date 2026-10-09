@@ -10564,6 +10564,12 @@
                 "doc": "Box-Cox log-likelihood (scipy.stats.boxcox_llf)."
             },
             {
+                "name": "boxcoxNormplot",
+                "static": true,
+                "sig": "boxcoxNormplot(mixed $x, mixed $la, mixed $lb, mixed $N = 80): mixed",
+                "doc": "Box-Cox normality plot: lambdas and probability-plot correlations (scipy.stats.boxcox_normplot)."
+            },
+            {
                 "name": "bradford",
                 "static": true,
                 "sig": "bradford(mixed $c, mixed $loc = 0, mixed $scale = 1): Tessero\\Stats\\Distribution",
@@ -10700,6 +10706,12 @@
                 "static": true,
                 "sig": "differentialEntropy(mixed $values, array|int|null $axis = 0, int|float|bool|null $windowLength = null, int|float|bool|null $base = null, string $method = 'auto', string $nanPolicy = 'propagate', bool $keepdims = false): Tessero\\NDArray|int|float",
                 "doc": "Differential entropy estimated from a sample (scipy.stats.differential_entropy)."
+            },
+            {
+                "name": "directionalStats",
+                "static": true,
+                "sig": "directionalStats(mixed $samples): mixed",
+                "doc": "Mean direction and resultant length of unit vectors (scipy.stats.directional_stats)."
             },
             {
                 "name": "dlaplace",
@@ -11446,6 +11458,12 @@
                 "doc": "A power normal continuous random variable."
             },
             {
+                "name": "probplot",
+                "static": true,
+                "sig": "probplot(mixed $x): mixed",
+                "doc": "Probability plot data: order-statistic medians, ordered values, and the fit (scipy.stats.probplot)."
+            },
+            {
                 "name": "quantile",
                 "static": true,
                 "sig": "quantile(mixed $x, mixed $p, mixed $method = 'linear', mixed $axis = 0, mixed $nanPolicy = 'propagate', mixed $keepdims = null, mixed $weights = null): mixed",
@@ -11822,6 +11840,12 @@
                 "static": true,
                 "sig": "yeojohnsonLlf(mixed $lmb, mixed $data, mixed $axis = 0, mixed $nanPolicy = 'propagate', mixed $keepdims = false): mixed",
                 "doc": "Yeo-Johnson log-likelihood (scipy.stats.yeojohnson_llf)."
+            },
+            {
+                "name": "yeojohnsonNormplot",
+                "static": true,
+                "sig": "yeojohnsonNormplot(mixed $x, mixed $la, mixed $lb, mixed $N = 80): mixed",
+                "doc": "Yeo-Johnson normality plot: lambdas and probability-plot correlations (scipy.stats.yeojohnson_normplot)."
             },
             {
                 "name": "yulesimon",
@@ -14978,6 +15002,30 @@
                 "name": "ecdf",
                 "static": true,
                 "sig": "ecdf($sample)",
+                "doc": ""
+            },
+            {
+                "name": "directionalStats",
+                "static": true,
+                "sig": "directionalStats($samples)",
+                "doc": ""
+            },
+            {
+                "name": "probplot",
+                "static": true,
+                "sig": "probplot($x)",
+                "doc": ""
+            },
+            {
+                "name": "boxcoxNormplot",
+                "static": true,
+                "sig": "boxcoxNormplot($x, $la, $lb, $N = 80)",
+                "doc": ""
+            },
+            {
+                "name": "yeojohnsonNormplot",
+                "static": true,
+                "sig": "yeojohnsonNormplot($x, $la, $lb, $N = 80)",
                 "doc": ""
             },
             {
