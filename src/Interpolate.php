@@ -19,9 +19,13 @@ final class Interpolate
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'Akima1DInterpolator' => 'Akima1DInterpolator',
+    'BPoly' => 'BPoly',
     'BSpline' => 'BSpline',
+    'BarycentricInterpolator' => 'BarycentricInterpolator',
     'CubicHermiteSpline' => 'CubicHermiteSpline',
     'CubicSpline' => 'CubicSpline',
+    'KroghInterpolator' => 'KroghInterpolator',
+    'PPoly' => 'PPoly',
     'PchipInterpolator' => 'PchipInterpolator',
     'RBFInterpolator' => 'RBFInterpolator',
     'RegularGridInterpolator' => 'RegularGridInterpolator',
@@ -67,6 +71,16 @@ final class Interpolate
     }
 
     /**
+     * Piecewise Bernstein polynomial evaluated at xnew (scipy.interpolate.BPoly).
+     *
+     * scipy.interpolate.BPoly
+     */
+    public static function BPoly(mixed $c, mixed $x, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.BPoly', [$c, $x, $xnew]);
+    }
+
+    /**
      * Evaluate a B-spline (knots t, coefficients c, degree k) at x via de Boor's algorithm (scipy.interpolate.BSpline).
      *
      * scipy.interpolate.BSpline
@@ -74,6 +88,16 @@ final class Interpolate
     public static function BSpline(mixed $t, mixed $c, mixed $k, mixed $x): mixed
     {
         return Registry::routine('interpolate.BSpline', [$t, $c, $k, $x]);
+    }
+
+    /**
+     * Barycentric Lagrange interpolation evaluated at x (scipy.interpolate.BarycentricInterpolator).
+     *
+     * scipy.interpolate.BarycentricInterpolator
+     */
+    public static function BarycentricInterpolator(mixed $xi, mixed $yi, mixed $x): mixed
+    {
+        return Registry::routine('interpolate.BarycentricInterpolator', [$xi, $yi, $x]);
     }
 
     /**
@@ -94,6 +118,26 @@ final class Interpolate
     public static function CubicSpline(mixed $x, mixed $y, mixed $xnew): mixed
     {
         return Registry::routine('interpolate.CubicSpline', [$x, $y, $xnew]);
+    }
+
+    /**
+     * Polynomial interpolation (Newton divided differences) evaluated at x (scipy.interpolate.KroghInterpolator).
+     *
+     * scipy.interpolate.KroghInterpolator
+     */
+    public static function KroghInterpolator(mixed $xi, mixed $yi, mixed $x): mixed
+    {
+        return Registry::routine('interpolate.KroghInterpolator', [$xi, $yi, $x]);
+    }
+
+    /**
+     * Piecewise polynomial (local power basis) evaluated at xnew (scipy.interpolate.PPoly).
+     *
+     * scipy.interpolate.PPoly
+     */
+    public static function PPoly(mixed $c, mixed $x, mixed $xnew): mixed
+    {
+        return Registry::routine('interpolate.PPoly', [$c, $x, $xnew]);
     }
 
     /**

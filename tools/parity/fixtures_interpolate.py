@@ -9,7 +9,8 @@ from scipy.interpolate import (pchip_interpolate, PchipInterpolator, Akima1DInte
                                barycentric_interpolate, krogh_interpolate,
                                make_interp_spline, BSpline, pade, splev,
                                splrep, splder, splantider, splint, sproot, lagrange,
-                               RegularGridInterpolator, interpn, RBFInterpolator, make_lsq_spline)
+                               RegularGridInterpolator, interpn, RBFInterpolator, make_lsq_spline,
+                               BarycentricInterpolator, KroghInterpolator, PPoly, BPoly)
 import math
 import fixtures_np as F  # enc / enc_result / fixture_env
 
@@ -164,6 +165,19 @@ for npts in (24, 32):
     lsq.append({'args': [F.enc(xs), F.enc(ys), F.enc(np.asarray(tk, float)), F.enc(kk), F.enc(xn)], 'kwargs': {},
                 'expect': F.enc_result(np.asarray(make_lsq_spline(xs, ys, tk, kk)(xn)), []), 'compare': 'tol', 'tol': {'atol': 1e-8}})
 
+# construct-and-evaluate interpolator classes: Barycentric/Krogh (global poly), PPoly/BPoly (piecewise)
+bci, kgi, ppc, bpc = [], [], [], []
+for _ in range(8):
+    xi = np.sort(np.unique(rng.uniform(-2, 2, 5))); yi = rng.normal(size=len(xi)); xnew = rng.uniform(-2, 2, 7)
+    bci.append(xyc(xi, yi, xnew, BarycentricInterpolator(xi, yi)(xnew)))
+    kgi.append(xyc(xi, yi, xnew, KroghInterpolator(xi, yi)(xnew)))
+    xb = np.sort(np.unique(rng.uniform(-2, 2, 4))); mm = len(xb) - 1
+    cp = rng.normal(size=(3, mm)); cb = rng.normal(size=(3, mm)); xe = rng.uniform(xb[0], xb[-1], 6)
+    ppc.append({'args': [F.enc(cp), F.enc(xb), F.enc(xe)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(PPoly(cp, xb)(xe)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+    bpc.append({'args': [F.enc(cb), F.enc(xb), F.enc(xe)], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(BPoly(cb, xb)(xe)), []), 'compare': 'tol', 'tol': {'atol': 1e-9}})
+
 calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', 'cases': pci},
          {'fn': 'Akima1DInterpolator', 'cases': akc}, {'fn': 'CubicSpline', 'cases': csc},
          {'fn': 'CubicHermiteSpline', 'cases': chc},
@@ -174,7 +188,9 @@ calls = [{'fn': 'pchip_interpolate', 'cases': pc}, {'fn': 'PchipInterpolator', '
          {'fn': 'splint', 'cases': spi}, {'fn': 'sproot', 'cases': spr},
          {'fn': 'lagrange', 'cases': lag},
          {'fn': 'RegularGridInterpolator', 'cases': rgi}, {'fn': 'interpn', 'cases': ipn},
-         {'fn': 'RBFInterpolator', 'cases': rbf}, {'fn': 'make_lsq_spline', 'cases': lsq}]
+         {'fn': 'RBFInterpolator', 'cases': rbf}, {'fn': 'make_lsq_spline', 'cases': lsq},
+         {'fn': 'BarycentricInterpolator', 'cases': bci}, {'fn': 'KroghInterpolator', 'cases': kgi},
+         {'fn': 'PPoly', 'cases': ppc}, {'fn': 'BPoly', 'cases': bpc}]
 out = {'module': 'interpolate', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
