@@ -8466,6 +8466,12 @@
                 "doc": "Number of dimensions (numpy.ndim)."
             },
             {
+                "name": "newtonCotes",
+                "static": true,
+                "sig": "newtonCotes(mixed $rn, mixed $equal = 0): mixed",
+                "doc": "Equally-spaced Newton-Cotes quadrature weights for rn intervals (scipy.integrate.newton_cotes)."
+            },
+            {
                 "name": "nonzero",
                 "static": true,
                 "sig": "nonzero(mixed $a): mixed",
@@ -8644,6 +8650,12 @@
                 "static": true,
                 "sig": "rollaxis(mixed $a, mixed $axis, mixed $start = 0): mixed",
                 "doc": "Roll an axis backwards to a position (numpy.rollaxis)."
+            },
+            {
+                "name": "romb",
+                "static": true,
+                "sig": "romb(mixed $y, mixed $dx = 1.0): mixed",
+                "doc": "Romberg integration of 2**k+1 equally-spaced samples (scipy.integrate.romb)."
             },
             {
                 "name": "roots",
@@ -12724,6 +12736,18 @@
                 "name": "choose",
                 "static": true,
                 "sig": "choose($a, $choices, $mode = 'raise')",
+                "doc": ""
+            },
+            {
+                "name": "romb",
+                "static": true,
+                "sig": "romb($y, $dx = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "newtonCotes",
+                "static": true,
+                "sig": "newtonCotes($rn, $equal = 0)",
                 "doc": ""
             },
             {
