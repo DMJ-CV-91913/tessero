@@ -214,6 +214,117 @@ static int r_vstack(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* emit a dense m-by-n matrix (row-major) as canonical CSR: data, column indices, row pointers, shape. */
+static int sp_emit_csr(tsr_result *res, const double *D, int64_t m, int64_t n)
+{
+    int64_t nnz = 0; for (int64_t i = 0; i < m * n; i++) if (D[i] != 0.0) nnz++;
+    int64_t dsh[1] = {nnz}, psh[1] = {m + 1};
+    double *data = (double *)fn_result_array(&res[0], TSR_F64, 1, dsh);
+    int32_t *ind = (int32_t *)fn_result_array(&res[1], TSR_I32, 1, dsh);
+    int32_t *iptr = (int32_t *)fn_result_array(&res[2], TSR_I32, 1, psh);
+    if (!data || !ind || !iptr) return TSR_ENOMEM;
+    int64_t k = 0; iptr[0] = 0;
+    for (int64_t i = 0; i < m; i++) { for (int64_t j = 0; j < n; j++) { const double v = D[i * n + j]; if (v != 0.0) { data[k] = v; ind[k] = (int32_t)j; k++; } } iptr[i + 1] = (int32_t)k; }
+    sp_shape(&res[3], m, n);
+    return TSR_OK;
+}
+static int64_t sp_int(const tsr_arg *a, int n, int idx, int64_t dflt)
+{ if (idx >= n || a[idx].kind != 1) return dflt; return (a[idx].flags & 1) ? a[idx].ival : (int64_t)a[idx].num; }
+
+/* eye(m, n=None, k=0): sparse identity-like matrix with ones on diagonal k, as CSR. */
+static int r_sp_eye(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t m = sp_int(a, nargs, 0, 0), n = sp_int(a, nargs, 1, -1), k = sp_int(a, nargs, 2, 0);
+    if (m < 0) { fn_set_error("sparse.eye: m must be >= 0"); return TSR_EARG; }
+    if (n < 0) n = m;
+    double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
+    if (!D) return TSR_ENOMEM;
+    for (int64_t i = 0; i < m; i++) { int64_t j = i + k; if (j >= 0 && j < n) D[i * n + j] = 1.0; }
+    int rc = sp_emit_csr(res, D, m, n); free(D); return rc;
+}
+static int r_sp_identity(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; int64_t n = sp_int(a, nargs, 0, 0);
+    if (n < 0) { fn_set_error("sparse.identity: n must be >= 0"); return TSR_EARG; }
+    double *D = (double *)calloc((size_t)(n * n > 0 ? n * n : 1), sizeof(double));
+    if (!D) return TSR_ENOMEM;
+    for (int64_t i = 0; i < n; i++) D[i * n + i] = 1.0;
+    int rc = sp_emit_csr(res, D, n, n); free(D); return rc;
+}
+/* kron(A, B): Kronecker product of two dense matrices, as CSR. */
+static int r_sp_kron(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (a[0].kind != 3 || a[0].arr.ndim != 2 || a[1].kind != 3 || a[1].arr.ndim != 2) { fn_set_error("sparse.kron: A, B must be 2-D arrays"); return TSR_EARG; }
+    const int64_t ma = a[0].arr.shape[0], na = a[0].arr.shape[1], mb = a[1].arr.shape[0], nb = a[1].arr.shape[1];
+    int64_t la, lb; double *A = fn_arg_doubles(&a[0], &la), *B = A ? fn_arg_doubles(&a[1], &lb) : NULL;
+    int rc = B ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        const int64_t M = ma * mb, N = na * nb; double *D = (double *)calloc((size_t)(M * N > 0 ? M * N : 1), sizeof(double));
+        if (!D) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < ma; i++) for (int64_t j = 0; j < na; j++) { double av = A[i * na + j]; if (av != 0.0) for (int64_t p = 0; p < mb; p++) for (int64_t q = 0; q < nb; q++) D[(i * mb + p) * N + (j * nb + q)] = av * B[p * nb + q]; }
+            rc = sp_emit_csr(res, D, M, N); free(D); }
+    }
+    fn_free_doubles(A, la); fn_free_doubles(B, lb);
+    return rc;
+}
+/* kronsum(A, B): Kronecker sum kron(I_b, A) + kron(B, I_a) of square A (a x a), B (b x b), as CSR. */
+static int r_sp_kronsum(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (a[0].kind != 3 || a[0].arr.ndim != 2 || a[1].kind != 3 || a[1].arr.ndim != 2) { fn_set_error("sparse.kronsum: A, B must be 2-D arrays"); return TSR_EARG; }
+    const int64_t aa = a[0].arr.shape[0], bb = a[1].arr.shape[0];
+    if (a[0].arr.shape[1] != aa || a[1].arr.shape[1] != bb) { fn_set_error("sparse.kronsum: A and B must be square"); return TSR_EARG; }
+    int64_t la, lb; double *A = fn_arg_doubles(&a[0], &la), *B = A ? fn_arg_doubles(&a[1], &lb) : NULL;
+    int rc = B ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        const int64_t N = aa * bb; double *D = (double *)calloc((size_t)(N * N > 0 ? N * N : 1), sizeof(double));
+        if (!D) rc = TSR_ENOMEM;
+        else { for (int64_t blk = 0; blk < bb; blk++) for (int64_t u = 0; u < aa; u++) for (int64_t v = 0; v < aa; v++) D[(blk * aa + u) * N + (blk * aa + v)] += A[u * aa + v];
+            for (int64_t p = 0; p < bb; p++) for (int64_t qq = 0; qq < bb; qq++) { double bv = B[p * bb + qq]; if (bv != 0.0) for (int64_t u = 0; u < aa; u++) D[(p * aa + u) * N + (qq * aa + u)] += bv; }
+            rc = sp_emit_csr(res, D, N, N); free(D); }
+    }
+    fn_free_doubles(A, la); fn_free_doubles(B, lb);
+    return rc;
+}
+/* tril(A, k) / triu(A, k): lower / upper triangle of a dense matrix, as CSR (lower=1 selects tril). */
+static int sp_tri(const tsr_arg *a, int nargs, tsr_result *res, int lower)
+{
+    if (a[0].kind != 3 || a[0].arr.ndim != 2) { fn_set_error("sparse.tri: A must be a 2-D array"); return TSR_EARG; }
+    const int64_t m = a[0].arr.shape[0], n = a[0].arr.shape[1], k = sp_int(a, nargs, 1, 0);
+    int64_t la; double *A = fn_arg_doubles(&a[0], &la);
+    int rc = A ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
+        if (!D) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) { int keep = lower ? (j <= i + k) : (j >= i + k); if (keep) D[i * n + j] = A[i * n + j]; }
+            rc = sp_emit_csr(res, D, m, n); free(D); } }
+    fn_free_doubles(A, la);
+    return rc;
+}
+static int r_sp_tril(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)nres; return sp_tri(a, n, res, 1); }
+static int r_sp_triu(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)nres; return sp_tri(a, n, res, 0); }
+/* find(A): row indices, column indices and values of the nonzeros, in row-major order. */
+static int r_sp_find(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (a[0].kind != 3 || a[0].arr.ndim != 2) { fn_set_error("sparse.find: A must be a 2-D array"); return TSR_EARG; }
+    const int64_t m = a[0].arr.shape[0], n = a[0].arr.shape[1];
+    int64_t la; double *A = fn_arg_doubles(&a[0], &la);
+    int rc = A ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        int64_t nnz = 0; for (int64_t i = 0; i < m * n; i++) if (A[i] != 0.0) nnz++;
+        int64_t dsh[1] = {nnz};
+        int32_t *row = (int32_t *)fn_result_array(&res[0], TSR_I32, 1, dsh);
+        int32_t *col = (int32_t *)fn_result_array(&res[1], TSR_I32, 1, dsh);
+        double *data = (double *)fn_result_array(&res[2], TSR_F64, 1, dsh);
+        if (!row || !col || !data) rc = TSR_ENOMEM;
+        else { int64_t k = 0; for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) { const double v = A[i * n + j]; if (v != 0.0) { row[k] = (int32_t)i; col[k] = (int32_t)j; data[k] = v; k++; } } }
+    }
+    fn_free_doubles(A, la);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("sparse.hstack", 4, "*blocks", "data, indices, indptr, shape", r_hstack, NULL, "Stack sparse blocks horizontally, as CSR storage (scipy.sparse.hstack)."),
     ROUTINE("sparse.vstack", 4, "*blocks", "data, indices, indptr, shape", r_vstack, NULL, "Stack sparse blocks vertically, as CSR storage (scipy.sparse.vstack)."),
@@ -225,6 +336,14 @@ static const fn_def DEFS[] = {
     ROUTINE("sparse.coo_matrix", 4, "A", "data, row, col, shape", r_coo_array, NULL, "Coordinate (triplet) storage of a dense matrix (scipy.sparse.coo_matrix)."),
     ROUTINE("sparse.dia_array", 3, "A", "data, offsets, shape", r_dia_array, NULL, "Diagonal storage of a dense matrix (scipy.sparse.dia_array)."),
     ROUTINE("sparse.dia_matrix", 3, "A", "data, offsets, shape", r_dia_array, NULL, "Diagonal storage of a dense matrix (scipy.sparse.dia_matrix)."),
+    ROUTINE("sparse.eye", 4, "m, n=None, k=0", "data, indices, indptr, shape", r_sp_eye, NULL, "Sparse matrix with ones on a diagonal, as CSR (scipy.sparse.eye)."),
+    ROUTINE("sparse.eye_array", 4, "m, n=None, k=0", "data, indices, indptr, shape", r_sp_eye, NULL, "Sparse matrix with ones on a diagonal, as CSR (scipy.sparse.eye_array)."),
+    ROUTINE("sparse.identity", 4, "n", "data, indices, indptr, shape", r_sp_identity, NULL, "Sparse identity matrix, as CSR (scipy.sparse.identity)."),
+    ROUTINE("sparse.kron", 4, "A, B", "data, indices, indptr, shape", r_sp_kron, NULL, "Kronecker product of two matrices, as CSR (scipy.sparse.kron)."),
+    ROUTINE("sparse.kronsum", 4, "A, B", "data, indices, indptr, shape", r_sp_kronsum, NULL, "Kronecker sum of two square matrices, as CSR (scipy.sparse.kronsum)."),
+    ROUTINE("sparse.tril", 4, "A, k=0", "data, indices, indptr, shape", r_sp_tril, NULL, "Lower-triangular part of a matrix, as CSR (scipy.sparse.tril)."),
+    ROUTINE("sparse.triu", 4, "A, k=0", "data, indices, indptr, shape", r_sp_triu, NULL, "Upper-triangular part of a matrix, as CSR (scipy.sparse.triu)."),
+    ROUTINE("sparse.find", 3, "A", "row, col, data", r_sp_find, NULL, "Row, column and value of each nonzero, row-major (scipy.sparse.find)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
