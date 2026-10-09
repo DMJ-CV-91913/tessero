@@ -129,6 +129,10 @@
 | `signal.upfirdn` | call | rtol 0 |
 | `signal.gammatone` | every call | rtol 0 |
 | `signal.gammatone` | call | rtol 0 |
+| `signal.band_stop_obj` | every call | rtol 0 |
+| `signal.band_stop_obj` | call | rtol 0 |
+| `signal.freqresp` | every call | rtol 0 |
+| `signal.freqresp` | call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
 | `signal.normalize` | every call | rtol 0 |
