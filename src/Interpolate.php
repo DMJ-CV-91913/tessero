@@ -26,6 +26,8 @@ final class Interpolate
     'CubicSpline' => 'CubicSpline',
     'FloaterHormannInterpolator' => 'FloaterHormannInterpolator',
     'KroghInterpolator' => 'KroghInterpolator',
+    'NdBSpline' => 'NdBSpline',
+    'NdPPoly' => 'NdPPoly',
     'PPoly' => 'PPoly',
     'PchipInterpolator' => 'PchipInterpolator',
     'RBFInterpolator' => 'RBFInterpolator',
@@ -141,6 +143,26 @@ final class Interpolate
     public static function KroghInterpolator(mixed $xi, mixed $yi, mixed $x): mixed
     {
         return Registry::routine('interpolate.KroghInterpolator', [$xi, $yi, $x]);
+    }
+
+    /**
+     * 2-D tensor B-spline evaluated at points xi (scipy.interpolate.NdBSpline).
+     *
+     * scipy.interpolate.NdBSpline
+     */
+    public static function NdBSpline(mixed $tx, mixed $ty, mixed $c, mixed $kx, mixed $ky, mixed $xi): mixed
+    {
+        return Registry::routine('interpolate.NdBSpline', [$tx, $ty, $c, $kx, $ky, $xi]);
+    }
+
+    /**
+     * 2-D tensor piecewise polynomial evaluated at points xi (scipy.interpolate.NdPPoly).
+     *
+     * scipy.interpolate.NdPPoly
+     */
+    public static function NdPPoly(mixed $c, mixed $xb, mixed $yb, mixed $xi): mixed
+    {
+        return Registry::routine('interpolate.NdPPoly', [$c, $xb, $yb, $xi]);
     }
 
     /**
