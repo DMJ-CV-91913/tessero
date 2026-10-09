@@ -47,9 +47,11 @@ final class Signal
     'correlate2d' => 'correlate2d',
     'correlation_lags' => 'correlationLags',
     'csd' => 'csd',
+    'czt_points' => 'cztPoints',
     'dbode' => 'dbode',
     'deconvolve' => 'deconvolve',
     'detrend' => 'detrend',
+    'dfreqresp' => 'dfreqresp',
     'dimpulse' => 'dimpulse',
     'dlsim' => 'dlsim',
     'dstep' => 'dstep',
@@ -476,6 +478,16 @@ final class Signal
     }
 
     /**
+     * Points at which the chirp z-transform is sampled, default equally spaced on the unit circle (scipy.signal.czt_points).
+     *
+     * scipy.signal.czt_points
+     */
+    public static function cztPoints(mixed $m, mixed $w = null, mixed $a = 1): mixed
+    {
+        return Registry::routine('signal.czt_points', [$m, $w, $a]);
+    }
+
+    /**
      * Bode magnitude (dB) and phase (deg) of a discrete system (scipy.signal.dbode).
      *
      * scipy.signal.dbode
@@ -507,6 +519,18 @@ final class Signal
     public static function detrend(mixed $data, mixed $axis = -1, mixed $type = 'linear', mixed $bp = 0, mixed $overwriteData = false): mixed
     {
         return Registry::routine('signal.detrend', [$data, $axis, $type, $bp, $overwriteData]);
+    }
+
+    /**
+     * Discrete-time LTI frequency response of a (num, den, dt) system at the given frequencies (scipy.signal.dfreqresp).
+     *
+     * scipy.signal.dfreqresp
+     *
+     * @return mixed one array, or an array keyed by w, H when several results are requested
+     */
+    public static function dfreqresp(mixed $system, mixed $w, mixed $n = 10000, mixed $whole = false): mixed
+    {
+        return Registry::routine('signal.dfreqresp', [$system, $w, $n, $whole]);
     }
 
     /**

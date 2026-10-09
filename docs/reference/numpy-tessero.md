@@ -959,9 +959,11 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.correlate2d` | `Tessero\Signal::correlate2d()` |
 | `scipy.signal.correlation_lags` | `Tessero\Signal::correlationLags()` |
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
+| `scipy.signal.czt_points` | `Tessero\Signal::cztPoints()` |
 | `scipy.signal.dbode` | `Tessero\Signal::dbode()` |
 | `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
 | `scipy.signal.detrend` | `Tessero\Signal::detrend()` |
+| `scipy.signal.dfreqresp` | `Tessero\Signal::dfreqresp()` |
 | `scipy.signal.dimpulse` | `Tessero\Signal::dimpulse()` |
 | `scipy.signal.dlsim` | `Tessero\Signal::dlsim()` |
 | `scipy.signal.dstep` | `Tessero\Signal::dstep()` |
