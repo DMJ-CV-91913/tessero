@@ -947,6 +947,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.cheb2ord` | `Tessero\Signal::cheb2ord()` |
 | `scipy.signal.cheby1` | `Tessero\Signal::cheby1()` |
 | `scipy.signal.cheby2` | `Tessero\Signal::cheby2()` |
+| `scipy.signal.check_COLA` | `Tessero\Signal::checkCOLA()` |
+| `scipy.signal.check_NOLA` | `Tessero\Signal::checkNOLA()` |
 | `scipy.signal.chirp` | `Tessero\Signal::chirp()` |
 | `scipy.signal.coherence` | `Tessero\Signal::coherence()` |
 | `scipy.signal.cont2discrete` | `Tessero\Signal::cont2discrete()` |

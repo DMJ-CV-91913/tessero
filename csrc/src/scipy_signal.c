@@ -5094,6 +5094,59 @@ static int r_gammatone(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return TSR_OK;
 }
 
+static int sig_dcmp(const void *A, const void *B)
+{ const double x = *(const double *)A, y = *(const double *)B; return x < y ? -1 : (x > y ? 1 : 0); }
+
+/* check_COLA / check_NOLA shared core: given a length-nperseg window array and overlap, sum the window (or its
+   square for NOLA) over the step-phase bins; COLA (nola=0) is True when every bin sum is within tol of their
+   median, NOLA (nola=1) is True when the minimum bin sum of squares exceeds tol (scipy.signal.check_COLA /
+   check_NOLA). The window must be supplied as a 1-D array of length nperseg. */
+static int check_cola_nola(const tsr_arg *args, int nargs, tsr_result *res, int nola)
+{
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("check_COLA/NOLA: window must be a 1-D array"); return TSR_EARG; }
+    if (args[1].kind != 1 || args[2].kind != 1) { fn_set_error("check_COLA/NOLA: nperseg and noverlap must be integers"); return TSR_EARG; }
+    const int64_t nperseg = (int64_t)args[1].num, noverlap = (int64_t)args[2].num;
+    const double tol = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1e-10;
+    if (nperseg < 1) { fn_set_error("check_COLA/NOLA: nperseg must be positive"); return TSR_EARG; }
+    if (noverlap >= nperseg || noverlap < 0) { fn_set_error("check_COLA/NOLA: noverlap must be in [0, nperseg)"); return TSR_EARG; }
+    if (args[0].arr.shape[0] != nperseg) { fn_set_error("check_COLA/NOLA: window must have length nperseg"); return TSR_EARG; }
+    int64_t lw; double *win = fn_arg_doubles(&args[0], &lw);
+    if (!win) return TSR_ENOMEM;
+    const int64_t step = nperseg - noverlap;
+    double *bs = (double *)calloc((size_t)step, sizeof(double));
+    int rc = bs ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        for (int64_t ii = 0; ii < nperseg / step; ii++)
+            for (int64_t k = 0; k < step; k++) { const double v = win[ii * step + k]; bs[k] += nola ? v * v : v; }
+        const int64_t rem = nperseg % step;
+        for (int64_t k = 0; k < rem; k++) { const double v = win[nperseg - rem + k]; bs[k] += nola ? v * v : v; }
+        int verdict;
+        if (nola) { double mn = bs[0]; for (int64_t k = 1; k < step; k++) if (bs[k] < mn) mn = bs[k]; verdict = (mn > tol); }
+        else {
+            double *tmp = (double *)malloc((size_t)step * sizeof(double));
+            if (!tmp) rc = TSR_ENOMEM;
+            else {
+                for (int64_t k = 0; k < step; k++) tmp[k] = bs[k];
+                qsort(tmp, (size_t)step, sizeof(double), sig_dcmp);
+                const double med = (step % 2) ? tmp[step / 2] : 0.5 * (tmp[step / 2 - 1] + tmp[step / 2]);
+                double mx = 0.0;
+                for (int64_t k = 0; k < step; k++) { const double d = fabs(bs[k] - med); if (d > mx) mx = d; }
+                verdict = (mx < tol);
+                free(tmp);
+            }
+        }
+        if (rc == TSR_OK) { memset(&res[0], 0, sizeof res[0]); res[0].kind = 4; res[0].num = verdict ? 1.0 : 0.0; }
+    }
+    free(bs); fn_free_doubles(win, lw);
+    return rc;
+}
+
+static int r_check_cola(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return check_cola_nola(args, nargs, res, 0); }
+
+static int r_check_nola(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return check_cola_nola(args, nargs, res, 1); }
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5220,6 +5273,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.max_len_seq", 2, "nbits, state=None, length=None, taps=None", "seq, state", r_max_len_seq, NULL, "Maximum-length (LFSR) sequence of 0/1 and the final register state (scipy.signal.max_len_seq)."),
     ROUTINE("signal.upfirdn", 1, "h, x, up=1, down=1", "out", r_upfirdn, NULL, "Upsample, FIR filter, then downsample a 1-D signal (scipy.signal.upfirdn)."),
     ROUTINE("signal.gammatone", 2, "freq, ftype, order=None, numtaps=None, fs=None", "b, a", r_gammatone, NULL, "FIR gammatone auditory filter design (scipy.signal.gammatone, ftype='fir')."),
+    ROUTINE("signal.check_COLA", 1, "window, nperseg, noverlap, tol=1e-10", "verdict", r_check_cola, NULL, "Whether a window array meets the Constant OverLap Add (COLA) constraint (scipy.signal.check_COLA)."),
+    ROUTINE("signal.check_NOLA", 1, "window, nperseg, noverlap, tol=1e-10", "verdict", r_check_nola, NULL, "Whether a window array meets the Nonzero OverLap Add (NOLA) constraint (scipy.signal.check_NOLA)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),

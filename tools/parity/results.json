@@ -468,6 +468,8 @@
         "signal.cheb2ord": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
+        "signal.check_COLA": "pass",
+        "signal.check_NOLA": "pass",
         "signal.chirp": "pass",
         "signal.coherence": "pass",
         "signal.cont2discrete": "pass",
@@ -2328,7 +2330,9 @@
             "signal.freqz_sos": 7.873022005786067e-14,
             "signal.max_len_seq": 0,
             "signal.upfirdn": 2.1144942018635012e-16,
-            "signal.gammatone": 0
+            "signal.gammatone": 0,
+            "signal.check_COLA": 0,
+            "signal.check_NOLA": 0
         },
         "ext": {
             "np.median": 0,
@@ -3493,7 +3497,9 @@
             "signal.freqz_sos": 7.873022005786067e-14,
             "signal.max_len_seq": 0,
             "signal.upfirdn": 2.1144942018635012e-16,
-            "signal.gammatone": 0
+            "signal.gammatone": 0,
+            "signal.check_COLA": 0,
+            "signal.check_NOLA": 0
         }
     },
     "ext": {
@@ -3965,6 +3971,8 @@
         "signal.cheb2ord": "pass",
         "signal.cheby1": "pass",
         "signal.cheby2": "pass",
+        "signal.check_COLA": "pass",
+        "signal.check_NOLA": "pass",
         "signal.chirp": "pass",
         "signal.coherence": "pass",
         "signal.cont2discrete": "pass",
