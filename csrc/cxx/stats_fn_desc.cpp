@@ -2018,6 +2018,68 @@ int r_cdf_distance(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 
 const int P1 = 1, P2 = 2;
 
+/* gaussian_kde(dataset, points): Gaussian kernel density estimate (Scott's factor), evaluated at points.
+   dataset is (d, n) or (n,) for d=1; points is (d, m) or (m,); returns the density at the m points. */
+static int r_gaussian_kde(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("gaussian_kde: dataset and points must be arrays"); return TSR_EARG; }
+    const tsr_array &da = args[0].arr, &pa = args[1].arr;
+    int64_t d, n, m;
+    if (da.ndim == 1) { d = 1; n = da.shape[0]; } else if (da.ndim == 2) { d = da.shape[0]; n = da.shape[1]; } else { fn_set_error("gaussian_kde: dataset must be 1-D or 2-D"); return TSR_EARG; }
+    if (pa.ndim == 1) { if (d != 1) { fn_set_error("gaussian_kde: points dimensionality must match dataset"); return TSR_EARG; } m = pa.shape[0]; }
+    else if (pa.ndim == 2) { if (pa.shape[0] != d) { fn_set_error("gaussian_kde: points dimensionality must match dataset"); return TSR_EARG; } m = pa.shape[1]; }
+    else { fn_set_error("gaussian_kde: points must be 1-D or 2-D"); return TSR_EARG; }
+    if (n < 2) { fn_set_error("gaussian_kde: need at least two data points"); return TSR_EARG; }
+    int64_t ld, lp; double *data = fn_arg_doubles(&args[0], &ld), *pts = data ? fn_arg_doubles(&args[1], &lp) : nullptr;
+    if (!data || !pts) { fn_free_doubles(data, ld); return TSR_ENOMEM; }
+    std::vector<double> mean(d, 0.0), C(d * d, 0.0), L(d * d, 0.0), diff(d), z(d);
+    for (int64_t a = 0; a < d; a++) { double s = 0.0; for (int64_t i = 0; i < n; i++) s += data[a * n + i]; mean[a] = s / (double)n; }
+    const double factor2 = std::pow((double)n, -2.0 / (double)(d + 4));   /* Scott's factor, squared */
+    for (int64_t a = 0; a < d; a++) for (int64_t b = 0; b < d; b++) { double s = 0.0; for (int64_t i = 0; i < n; i++) s += (data[a * n + i] - mean[a]) * (data[b * n + i] - mean[b]); C[a * d + b] = (s / (double)(n - 1)) * factor2; }
+    for (int64_t a = 0; a < d; a++) for (int64_t b = 0; b <= a; b++) {   /* Cholesky C = L L^T */
+        double s = C[a * d + b]; for (int64_t c = 0; c < b; c++) s -= L[a * d + c] * L[b * d + c];
+        if (a == b) { if (s <= 0.0) { fn_free_doubles(data, ld); fn_free_doubles(pts, lp); fn_set_error("gaussian_kde: singular covariance"); return TSR_EARG; } L[a * d + a] = std::sqrt(s); }
+        else L[a * d + b] = s / L[b * d + b];
+    }
+    double diagprod = 1.0; for (int64_t a = 0; a < d; a++) diagprod *= L[a * d + a];
+    const double norm = (double)n * std::pow(2.0 * M_PI, (double)d / 2.0) * diagprod;
+    int64_t osh[1] = {m};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, osh);
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) {
+        double acc = 0.0;
+        for (int64_t i = 0; i < n; i++) {
+            for (int64_t a = 0; a < d; a++) diff[a] = pts[a * m + j] - data[a * n + i];
+            for (int64_t a = 0; a < d; a++) { double s = diff[a]; for (int64_t c = 0; c < a; c++) s -= L[a * d + c] * z[c]; z[a] = s / L[a * d + a]; }
+            double maha = 0.0; for (int64_t a = 0; a < d; a++) maha += z[a] * z[a];
+            acc += std::exp(-0.5 * maha);
+        }
+        out[j] = acc / norm;
+    }
+    fn_free_doubles(data, ld); fn_free_doubles(pts, lp);
+    return rc;
+}
+/* ecdf(sample): empirical CDF -> the sorted unique sample values and the cumulative proportion <= each. */
+static int r_ecdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("ecdf: sample must be an array"); return TSR_EARG; }
+    int64_t ls; double *s = fn_arg_doubles(&args[0], &ls);
+    if (!s) return TSR_ENOMEM;
+    std::vector<double> v(s, s + ls); std::sort(v.begin(), v.end());
+    std::vector<double> q, p;
+    for (int64_t i = 0; i < ls;) { double val = v[i]; int64_t j = i; while (j < ls && v[j] == val) j++; q.push_back(val); p.push_back((double)j / (double)ls); i = j; }
+    const int64_t nq = (int64_t)q.size();
+    int64_t qsh[1] = {nq};
+    double *qo = (double *)fn_result_array(&res[0], TSR_F64, 1, qsh);
+    double *po = qo ? (double *)fn_result_array(&res[1], TSR_F64, 1, qsh) : nullptr;
+    int rc = po ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t k = 0; k < nq; k++) { qo[k] = q[k]; po[k] = p[k]; }
+    fn_free_doubles(s, ls);
+    return rc;
+}
+
 }  // namespace
 
 /* ================================================================ registry */
@@ -2118,6 +2180,10 @@ static const fn_def DEFS[] = {
             "iqr", r_iqr, NULL, "Interquartile range; rng=None means (25, 75) (scipy.stats.iqr)."),
     ROUTINE("stats.median_abs_deviation", 1, "x, axis=0, center=None, scale=1.0, nan_policy='propagate', keepdims=False", "mad",
             r_mad, NULL, "Median absolute deviation; center must be None (the median) (scipy.stats.median_abs_deviation)."),
+    ROUTINE("stats.gaussian_kde", 1, "dataset, points", "density", r_gaussian_kde, NULL,
+            "Gaussian kernel density estimate (Scott's factor) evaluated at points (scipy.stats.gaussian_kde)."),
+    ROUTINE("stats.ecdf", 2, "sample", "quantiles, probabilities", r_ecdf, NULL,
+            "Empirical CDF: sorted unique values and cumulative proportions (scipy.stats.ecdf)."),
     ROUTINE("stats.boxcox_llf", 1, "lmb, data, axis=0, keepdims=False, nan_policy='propagate'", "llf", r_llf, NULL,
             "Box-Cox log-likelihood (scipy.stats.boxcox_llf)."),
     ROUTINE("stats.yeojohnson_llf", 1, "lmb, data, axis=0, nan_policy='propagate', keepdims=False", "llf", r_llf, &ONE,

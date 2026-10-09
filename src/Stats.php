@@ -68,6 +68,7 @@ final class Stats
     'dlaplace' => 'dlaplace',
     'dpareto_lognorm' => 'dparetoLognorm',
     'dweibull' => 'dweibull',
+    'ecdf' => 'ecdf',
     'energy_distance' => 'energyDistance',
     'entropy' => 'entropy',
     'epps_singleton_2samp' => 'eppsSingleton2samp',
@@ -89,6 +90,7 @@ final class Stats
     'friedmanchisquare' => 'friedmanchisquare',
     'gamma' => 'gamma',
     'gausshyper' => 'gausshyper',
+    'gaussian_kde' => 'gaussianKde',
     'genexpon' => 'genexpon',
     'genextreme' => 'genextreme',
     'gengamma' => 'gengamma',
@@ -791,6 +793,18 @@ final class Stats
     }
 
     /**
+     * Empirical CDF: sorted unique values and cumulative proportions (scipy.stats.ecdf).
+     *
+     * scipy.stats.ecdf
+     *
+     * @return mixed one array, or an array keyed by quantiles, probabilities when several results are requested
+     */
+    public static function ecdf(mixed $sample): mixed
+    {
+        return Registry::routine('stats.ecdf', [$sample]);
+    }
+
+    /**
      * Energy distance between two 1-D distributions (scipy.stats.energy_distance).
      *
      * scipy.stats.energy_distance
@@ -1008,6 +1022,16 @@ final class Stats
     public static function gausshyper(mixed $a, mixed $b, mixed $c, mixed $z, mixed $loc = 0, mixed $scale = 1): Distribution
     {
         return new Distribution('stats.gausshyper', [$a, $b, $c, $z, $loc, $scale]);
+    }
+
+    /**
+     * Gaussian kernel density estimate (Scott's factor) evaluated at points (scipy.stats.gaussian_kde).
+     *
+     * scipy.stats.gaussian_kde
+     */
+    public static function gaussianKde(mixed $dataset, mixed $points): mixed
+    {
+        return Registry::routine('stats.gaussian_kde', [$dataset, $points]);
     }
 
     /**
