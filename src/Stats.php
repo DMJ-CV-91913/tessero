@@ -42,6 +42,7 @@ final class Stats
     'boltzmann' => 'boltzmann',
     'boxcox' => 'boxcox',
     'boxcox_llf' => 'boxcoxLlf',
+    'boxcox_normplot' => 'boxcoxNormplot',
     'bradford' => 'bradford',
     'brunnermunzel' => 'brunnermunzel',
     'burr' => 'burr',
@@ -65,6 +66,7 @@ final class Stats
     'describe' => 'describe',
     'dgamma' => 'dgamma',
     'differential_entropy' => 'differentialEntropy',
+    'directional_stats' => 'directionalStats',
     'dlaplace' => 'dlaplace',
     'dpareto_lognorm' => 'dparetoLognorm',
     'dweibull' => 'dweibull',
@@ -189,6 +191,7 @@ final class Stats
     'powerlaw' => 'powerlaw',
     'powerlognorm' => 'powerlognorm',
     'powernorm' => 'powernorm',
+    'probplot' => 'probplot',
     'quantile' => 'quantile',
     'quantile_test' => 'quantileTest',
     'randint' => 'randint',
@@ -252,6 +255,7 @@ final class Stats
     'wrapcauchy' => 'wrapcauchy',
     'yeojohnson' => 'yeojohnson',
     'yeojohnson_llf' => 'yeojohnsonLlf',
+    'yeojohnson_normplot' => 'yeojohnsonNormplot',
     'yulesimon' => 'yulesimon',
     'zipf' => 'zipf',
     'zipfian' => 'zipfian',
@@ -515,6 +519,18 @@ final class Stats
     }
 
     /**
+     * Box-Cox normality plot: lambdas and probability-plot correlations (scipy.stats.boxcox_normplot).
+     *
+     * scipy.stats.boxcox_normplot
+     *
+     * @return mixed one array, or an array keyed by lmbdas, ppcc when several results are requested
+     */
+    public static function boxcoxNormplot(mixed $x, mixed $la, mixed $lb, mixed $N = 80): mixed
+    {
+        return Registry::routine('stats.boxcox_normplot', [$x, $la, $lb, $N]);
+    }
+
+    /**
      * A Bradford continuous random variable.
      *
      * scipy.stats.bradford (frozen)
@@ -760,6 +776,18 @@ final class Stats
     public static function differentialEntropy(mixed $values, int|array|null $axis = 0, int|float|bool|null $windowLength = null, int|float|bool|null $base = null, string $method = 'auto', string $nanPolicy = 'propagate', bool $keepdims = false): NDArray|float|int
     {
         return Registry::gufunc('stats.differential_entropy', [$values], $axis, $keepdims, ['window_length' => $windowLength, 'base' => $base, 'method' => $method, 'nan_policy' => $nanPolicy]);
+    }
+
+    /**
+     * Mean direction and resultant length of unit vectors (scipy.stats.directional_stats).
+     *
+     * scipy.stats.directional_stats
+     *
+     * @return mixed one array, or an array keyed by mean_direction, mean_resultant_length when several results are requested
+     */
+    public static function directionalStats(mixed $samples): mixed
+    {
+        return Registry::routine('stats.directional_stats', [$samples]);
     }
 
     /**
@@ -2047,6 +2075,18 @@ final class Stats
     }
 
     /**
+     * Probability plot data: order-statistic medians, ordered values, and the fit (scipy.stats.probplot).
+     *
+     * scipy.stats.probplot
+     *
+     * @return mixed one array, or an array keyed by osm, osr, slope, intercept, r when several results are requested
+     */
+    public static function probplot(mixed $x): mixed
+    {
+        return Registry::routine('stats.probplot', [$x]);
+    }
+
+    /**
      * Quantiles of the data along an axis (scipy.stats.quantile).
      *
      * scipy.stats.quantile
@@ -2706,6 +2746,18 @@ final class Stats
     public static function yeojohnsonLlf(mixed $lmb, mixed $data, mixed $axis = 0, mixed $nanPolicy = 'propagate', mixed $keepdims = false): mixed
     {
         return Registry::routine('stats.yeojohnson_llf', [$lmb, $data, $axis, $nanPolicy, $keepdims]);
+    }
+
+    /**
+     * Yeo-Johnson normality plot: lambdas and probability-plot correlations (scipy.stats.yeojohnson_normplot).
+     *
+     * scipy.stats.yeojohnson_normplot
+     *
+     * @return mixed one array, or an array keyed by lmbdas, ppcc when several results are requested
+     */
+    public static function yeojohnsonNormplot(mixed $x, mixed $la, mixed $lb, mixed $N = 80): mixed
+    {
+        return Registry::routine('stats.yeojohnson_normplot', [$x, $la, $lb, $N]);
     }
 
     /**

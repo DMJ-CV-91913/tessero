@@ -517,6 +517,28 @@ def main():
         ec.append({'args': [F.enc(s)], 'kwargs': {},
                    'expect': {'dict': {'quantiles': F.enc(np.asarray(r.cdf.quantiles)), 'probabilities': F.enc(np.asarray(r.cdf.probabilities))}}, 'compare': 'tol'})
     B['ecdf'] = ec
+    # directional_stats, probplot, boxcox_normplot, yeojohnson_normplot (data-based)
+    dc = []
+    for S in [data((20, 3)), data((15, 2)), data((30, 4))]:
+        r = st.directional_stats(S)
+        dc.append({'args': [F.enc(S)], 'kwargs': {},
+                   'expect': {'dict': {'mean_direction': F.enc(np.asarray(r.mean_direction)), 'mean_resultant_length': F.enc_result_one(np.asarray(r.mean_resultant_length))}}, 'compare': 'tol'})
+    B['directional_stats'] = dc
+    pc = []
+    for x in [data(15), data(25), data(8)]:
+        (osm, osr), (sl, ic, rr) = st.probplot(x)
+        pc.append({'args': [F.enc(x)], 'kwargs': {},
+                   'expect': {'dict': {'osm': F.enc(np.asarray(osm)), 'osr': F.enc(np.asarray(osr)),
+                                       'slope': F.enc_result_one(sl), 'intercept': F.enc_result_one(ic), 'r': F.enc_result_one(rr)}}, 'compare': 'tol'})
+    B['probplot'] = pc
+    for fn, fx in (('boxcox_normplot', st.boxcox_normplot), ('yeojohnson_normplot', st.yeojohnson_normplot)):
+        cc = []
+        for seed in range(3):
+            xp = np.abs(data(30)) + 0.5 if fn == 'boxcox_normplot' else data(30)
+            lm, pp = fx(xp, -2.0, 2.0, N=40)
+            cc.append({'args': [F.enc(xp), F.enc(-2.0), F.enc(2.0), F.enc(40)], 'kwargs': {},
+                       'expect': {'dict': {'lmbdas': F.enc(np.asarray(lm)), 'ppcc': F.enc(np.asarray(pp))}}, 'compare': 'tol'})
+        B[fn] = cc
     write('desc', B)
 
 
