@@ -2669,6 +2669,12 @@
                 "doc": "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."
             },
             {
+                "name": "bessel",
+                "static": true,
+                "sig": "bessel(mixed $N, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $norm = 'phase', mixed $fs = null): mixed",
+                "doc": "Bessel/Thomson IIR filter design (phase norm), digital lowpass/highpass, output 'ba' (scipy.signal.bessel)."
+            },
+            {
                 "name": "besselap",
                 "static": true,
                 "sig": "besselap(mixed $N, mixed $norm = 'phase'): mixed",
@@ -16397,6 +16403,12 @@
                 "name": "ellip",
                 "static": true,
                 "sig": "ellip($N, $rp, $rs, $Wn, $btype = 'low', $analog = false, $output = 'ba', $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "bessel",
+                "static": true,
+                "sig": "bessel($N, $Wn, $btype = 'low', $analog = false, $output = 'ba', $norm = 'phase', $fs = null)",
                 "doc": ""
             }
         ]

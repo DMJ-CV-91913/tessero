@@ -450,6 +450,7 @@
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
+        "signal.bessel": "pass",
         "signal.besselap": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
@@ -2302,7 +2303,8 @@
             "signal.get_window": 2.9008557796606e-15,
             "signal.besselap": 4.62344679108294e-12,
             "signal.ellipap": 4.114257970988331e-15,
-            "signal.ellip": 2.350394405119346e-15
+            "signal.ellip": 2.350394405119346e-15,
+            "signal.bessel": 6.500000000000002
         },
         "ext": {
             "np.median": 0,
@@ -3454,7 +3456,8 @@
             "signal.get_window": 2.9008557796606e-15,
             "signal.besselap": 4.62344679108294e-12,
             "signal.ellipap": 4.114257970988331e-15,
-            "signal.ellip": 2.350394405119346e-15
+            "signal.ellip": 2.350394405119346e-15,
+            "signal.bessel": 6.500000000000002
         }
     },
     "ext": {
@@ -3908,6 +3911,7 @@
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
+        "signal.bessel": "pass",
         "signal.besselap": "pass",
         "signal.bilinear": "pass",
         "signal.bilinear_zpk": "pass",
