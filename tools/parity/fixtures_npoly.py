@@ -139,7 +139,53 @@ cheb['chebweight'].append(case([wx], _C.chebweight(wx)))
 cheb['chebzero'].append(case([], _C.chebzero)); cheb['chebone'].append(case([], _C.chebone))
 cheb['chebx'].append(case([], _C.chebx)); cheb['chebdomain'].append(case([], _C.chebdomain))
 
-calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2, **cheb}.items()]
+# numpy.polynomial.legendre
+leg = {n: [] for n in ('legadd', 'legsub', 'legmul', 'legmulx', 'legpow', 'legdiv', 'legder', 'legint',
+            'legfromroots', 'legline', 'legtrim', 'legvander', 'legval2d', 'legval3d', 'leggrid2d', 'leggrid3d',
+            'legvander2d', 'legvander3d', 'legcompanion', 'legroots', 'legfit', 'leg2poly', 'poly2leg',
+            'leggauss', 'legweight', 'legzero', 'legone', 'legx', 'legdomain')}
+for _ in range(6):
+    c1 = rng.normal(size=int(rng.integers(2, 6))); c2 = rng.normal(size=int(rng.integers(2, 5)))
+    x = rng.uniform(-1, 1, 5); y = rng.uniform(-1, 1, 5); z = rng.uniform(-1, 1, 5)
+    cc2 = rng.normal(size=(3, 4)); cc3 = rng.normal(size=(2, 3, 2))
+    roots = rng.uniform(-1, 1, int(rng.integers(1, 5)))
+    off, scl = float(rng.normal()), float(rng.normal())
+    leg['legadd'].append(case([c1, c2], _L.legadd(c1, c2)))
+    leg['legsub'].append(case([c1, c2], _L.legsub(c1, c2)))
+    leg['legmul'].append(case([c1, c2], _L.legmul(c1, c2)))
+    leg['legmulx'].append(case([c1], _L.legmulx(c1)))
+    pw = int(rng.integers(0, 5)); leg['legpow'].append(case([c1, pw], _L.legpow(c1, pw)))
+    cbig = rng.normal(size=6); leg['legdiv'].append(case([cbig, c2], _L.legdiv(cbig, c2), names=['quo', 'rem']))
+    m = int(rng.integers(1, 3))
+    leg['legder'].append(case([c1, m], _L.legder(c1, m)))
+    leg['legint'].append(case([c1, m], _L.legint(c1, m)))
+    leg['legfromroots'].append(case([roots], _L.legfromroots(roots), atol=1e-8))
+    leg['legline'].append(case([off, scl], _L.legline(off, scl)))
+    ct = np.append(c1, [1e-14, 0.0]); leg['legtrim'].append(case([ct, 1e-9], _L.legtrim(ct, 1e-9)))
+    deg = int(rng.integers(1, 5)); leg['legvander'].append(case([x, deg], _L.legvander(x, deg)))
+    leg['legval2d'].append(case([x, y, cc2], _L.legval2d(x, y, cc2)))
+    leg['legval3d'].append(case([x, y, z, cc3], _L.legval3d(x, y, z, cc3)))
+    leg['leggrid2d'].append(case([x, y, cc2], _L.leggrid2d(x, y, cc2)))
+    leg['leggrid3d'].append(case([x, y, z, cc3], _L.leggrid3d(x, y, z, cc3)))
+    leg['legvander2d'].append(case([x, y, np.array([2, 3])], _L.legvander2d(x, y, [2, 3])))
+    leg['legvander3d'].append(case([x, y, z, np.array([1, 2, 1])], _L.legvander3d(x, y, z, [1, 2, 1])))
+    rts = np.sort(rng.uniform(-1, 1, int(rng.integers(2, 5)))); cc = _L.legfromroots(rts)
+    leg['legcompanion'].append(case([cc], _L.legcompanion(cc), atol=1e-10))
+    leg['legroots'].append(case([cc], np.sort(_L.legroots(cc).real), atol=1e-6))
+    xf = np.sort(rng.uniform(-1, 1, 14)); yf = np.cos(1.5 * xf) + 0.3 * xf
+    leg['legfit'].append(case([xf, yf, 5], _L.legfit(xf, yf, 5), atol=1e-6))
+    pol = rng.normal(size=int(rng.integers(2, 6)))
+    leg['leg2poly'].append(case([c1], _L.leg2poly(c1)))
+    leg['poly2leg'].append(case([pol], _L.poly2leg(pol)))
+for deg in (2, 5, 8):
+    gx, gw = _L.leggauss(deg)
+    leg['leggauss'].append(case([deg], (gx, gw), names=['x', 'w']))
+wx = rng.uniform(-0.9, 0.9, 7)
+leg['legweight'].append(case([wx], _L.legweight(wx)))
+leg['legzero'].append(case([], _L.legzero)); leg['legone'].append(case([], _L.legone))
+leg['legx'].append(case([], _L.legx)); leg['legdomain'].append(case([], _L.legdomain))
+
+calls = [{'fn': k, 'cases': v} for k, v in {**cls, **val, **ops, **ops2, **cheb, **leg}.items()]
 out = {'module': 'npoly', 'numpy': np.__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

@@ -177,6 +177,35 @@
 | `npoly.chebone` | call | rtol 0 |
 | `npoly.chebx` | call | rtol 0 |
 | `npoly.chebdomain` | call | rtol 0 |
+| `npoly.legadd` | call | rtol 0 |
+| `npoly.legsub` | call | rtol 0 |
+| `npoly.legmul` | call | rtol 0 |
+| `npoly.legmulx` | call | rtol 0 |
+| `npoly.legpow` | call | rtol 0 |
+| `npoly.legdiv` | call | rtol 0 |
+| `npoly.legder` | call | rtol 0 |
+| `npoly.legint` | call | rtol 0 |
+| `npoly.legfromroots` | call | rtol 0 |
+| `npoly.legline` | call | rtol 0 |
+| `npoly.legtrim` | call | rtol 0 |
+| `npoly.legvander` | call | rtol 0 |
+| `npoly.legval2d` | call | rtol 0 |
+| `npoly.legval3d` | call | rtol 0 |
+| `npoly.leggrid2d` | call | rtol 0 |
+| `npoly.leggrid3d` | call | rtol 0 |
+| `npoly.legvander2d` | call | rtol 0 |
+| `npoly.legvander3d` | call | rtol 0 |
+| `npoly.legcompanion` | call | rtol 0 |
+| `npoly.legroots` | call | rtol 0 |
+| `npoly.legfit` | call | rtol 0 |
+| `npoly.leg2poly` | call | rtol 0 |
+| `npoly.poly2leg` | call | rtol 0 |
+| `npoly.leggauss` | call | rtol 0 |
+| `npoly.legweight` | call | rtol 0 |
+| `npoly.legzero` | call | rtol 0 |
+| `npoly.legone` | call | rtol 0 |
+| `npoly.legx` | call | rtol 0 |
+| `npoly.legdomain` | call | rtol 0 |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |

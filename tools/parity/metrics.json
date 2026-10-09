@@ -65,25 +65,25 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1169,
-  "ffi": 1169
+  "ext": 1198,
+  "ffi": 1198
  },
  "groups": {
   "NumPy core": {
-   "both": 521,
+   "both": 552,
    "excluded": 152,
-   "impl_ext": 521,
-   "impl_ffi": 525,
-   "in_scope": 584,
-   "m2_ext": 89.2,
-   "m2_ffi": 89.9,
-   "m3": 20.7,
-   "m4_ext": 89.2,
-   "m4_ffi": 89.9,
-   "m5": 99.2,
-   "symbols": 736,
-   "verified_ext": 521,
-   "verified_ffi": 525
+   "impl_ext": 552,
+   "impl_ffi": 556,
+   "in_scope": 615,
+   "m2_ext": 89.8,
+   "m2_ffi": 90.4,
+   "m3": 19.8,
+   "m4_ext": 89.8,
+   "m4_ffi": 90.4,
+   "m5": 99.3,
+   "symbols": 767,
+   "verified_ext": 552,
+   "verified_ffi": 556
   },
   "SciPy": {
    "both": 1056,
@@ -198,6 +198,22 @@
    "symbols": 34,
    "verified_ext": 33,
    "verified_ffi": 33
+  },
+  "numpy.polynomial.legendre": {
+   "both": 31,
+   "excluded": 0,
+   "impl_ext": 31,
+   "impl_ffi": 31,
+   "in_scope": 31,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
+   "m3": 0.0,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
+   "m5": 100.0,
+   "symbols": 31,
+   "verified_ext": 31,
+   "verified_ffi": 31
   },
   "numpy.polynomial.polynomial": {
    "both": 28,
@@ -537,7 +553,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1172,
+ "registry_functions": 1201,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",

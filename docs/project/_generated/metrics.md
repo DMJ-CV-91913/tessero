@@ -4,7 +4,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 
 | Scope | Symbols | Excluded (M3) | In scope | FFI (M2) | Extension (M2) | Verified FFI / ext (M4) | Parity (M5) |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **NumPy core** | 736 | 152 (20.7 %) | 584 | **525 (89.9 %)** | **521 (89.2 %)** | 89.9 % / 89.2 % | 99.2 % |
+| **NumPy core** | 767 | 152 (19.8 %) | 615 | **556 (90.4 %)** | **552 (89.8 %)** | 90.4 % / 89.8 % | 99.3 % |
 | &nbsp;&nbsp;numpy | 442 | 80 (18.1 %) | 362 | 326 (90.1 %) | 324 (89.5 %) | 90.1 % / 89.5 % | 99.4 % |
 | &nbsp;&nbsp;numpy.ndarray | 70 | 13 (18.6 %) | 57 | 43 (75.4 %) | 43 (75.4 %) | 75.4 % / 75.4 % | 100.0 % |
 | &nbsp;&nbsp;numpy.linalg | 32 | 0 (0.0 %) | 32 | 30 (93.8 %) | 30 (93.8 %) | 93.8 % / 93.8 % | 100.0 % |
@@ -12,6 +12,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial | 7 | 1 (14.3 %) | 6 | 6 (100.0 %) | 6 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.polynomial.polynomial | 28 | 0 (0.0 %) | 28 | 28 (100.0 %) | 28 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.polynomial.chebyshev | 34 | 0 (0.0 %) | 34 | 33 (97.1 %) | 33 (97.1 %) | 97.1 % / 97.1 % | 100.0 % |
+| &nbsp;&nbsp;numpy.polynomial.legendre | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 37 (86.0 %) | 35 (81.4 %) | 86.0 % / 81.4 % | 94.6 % |
 | **SciPy** | 1562 | 60 (3.8 %) | 1502 | **1060 (70.6 %)** | **1056 (70.3 %)** | 70.6 % / 70.3 % | 99.6 % |
@@ -34,7 +35,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 158 (96.9 %) | 158 (96.9 %) | 96.9 % / 96.9 % | 100.0 % |
 
-The kernel function registry holds 1172 functions; their fixtures pass on the FFI backend for 1169 and on the extension for 1169.
+The kernel function registry holds 1201 functions; their fixtures pass on the FFI backend for 1198 and on the extension for 1198.
 Registry functions without a recorded fixture run: np.cumulativeSimpson, np.cumulativeTrapezoid, special.logSoftmax.
 
 Exclusions by category (definitions in `tools/parity/scope.yaml`):
