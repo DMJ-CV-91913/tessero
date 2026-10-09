@@ -480,9 +480,11 @@
         "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.czt_points": "pass",
         "signal.dbode": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
+        "signal.dfreqresp": "pass",
         "signal.dimpulse": "pass",
         "signal.dlsim": "pass",
         "signal.dstep": "pass",
@@ -2336,7 +2338,9 @@
             "signal.check_COLA": 0,
             "signal.check_NOLA": 0,
             "signal.band_stop_obj": 0,
-            "signal.freqresp": 7.252842609230709e-14
+            "signal.freqresp": 7.252842609230709e-14,
+            "signal.dfreqresp": 2.63847466774757e-12,
+            "signal.czt_points": 1.5762793438885855e-15
         },
         "ext": {
             "np.median": 0,
@@ -3505,7 +3509,9 @@
             "signal.check_COLA": 0,
             "signal.check_NOLA": 0,
             "signal.band_stop_obj": 0,
-            "signal.freqresp": 7.252842609230709e-14
+            "signal.freqresp": 7.252842609230709e-14,
+            "signal.dfreqresp": 2.63847466774757e-12,
+            "signal.czt_points": 1.5762793438885855e-15
         }
     },
     "ext": {
@@ -3989,9 +3995,11 @@
         "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.czt_points": "pass",
         "signal.dbode": "pass",
         "signal.deconvolve": "pass",
         "signal.detrend": "pass",
+        "signal.dfreqresp": "pass",
         "signal.dimpulse": "pass",
         "signal.dlsim": "pass",
         "signal.dstep": "pass",

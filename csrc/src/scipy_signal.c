@@ -5211,6 +5211,55 @@ static int r_freqresp(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     return rc;
 }
 
+/* dfreqresp(system, w): discrete-time LTI frequency response of a (num, den, dt) system (passed as a sequence) at
+   the given frequencies (scipy.signal.dfreqresp). H = polyval(num, z)/polyval(den, z) at z = e^jw. Returns (w, H).
+   The dt element, if present, does not affect the response values. */
+static int r_dfreqresp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 5 || args[0].count < 2) { fn_set_error("dfreqresp: system must be a (num, den[, dt]) tuple"); return TSR_EARG; }
+    if (nargs < 2 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("dfreqresp: w must be a 1-D array of frequencies"); return TSR_EARG; }
+    int64_t lb, la, lw;
+    double *b = fn_arg_doubles(&args[0].items[0], &lb), *a = b ? fn_arg_doubles(&args[0].items[1], &la) : NULL;
+    double *w = a ? fn_arg_doubles(&args[1], &lw) : NULL;
+    const int64_t nb = args[0].items[0].arr.shape[0], na = args[0].items[1].arr.shape[0], nw = args[1].arr.shape[0];
+    double *wout = w ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw}) : NULL;
+    double *h = wout ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){nw}) : NULL;
+    int rc = (!b || !a || !w || !wout || !h) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < nw; i++) {
+            const double complex z = cexp(I * w[i]);
+            double complex num = 0.0, den = 0.0;
+            for (int64_t j = 0; j < nb; j++) num = num * z + b[j];
+            for (int64_t j = 0; j < na; j++) den = den * z + a[j];
+            const double complex H = num / den;
+            wout[i] = w[i]; h[2 * i] = creal(H); h[2 * i + 1] = cimag(H);
+        }
+    }
+    fn_free_doubles(b, lb); fn_free_doubles(a, la); fn_free_doubles(w, lw);
+    return rc;
+}
+
+/* czt_points(m, w=None, a=1): the points at which the chirp z-transform is sampled (scipy.signal.czt_points).
+   Only the default w (equally spaced around the unit circle) is supported here: a * exp(2j*pi*k/m), with a an
+   optional real starting point (default 1). */
+static int r_czt_points(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("czt_points: m must be an integer"); return TSR_EARG; }
+    if (nargs > 1 && args[1].kind != 0) { fn_set_error("czt_points: only the default w (None) is supported here"); return TSR_EARG; }
+    const int64_t m = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    const double a = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    if (m < 1) { fn_set_error("czt_points: m must be positive"); return TSR_EARG; }
+    double *out = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){m});
+    if (!out) return TSR_ENOMEM;
+    for (int64_t k = 0; k < m; k++) {
+        const double ang = 2.0 * M_PI * (double)k / (double)m;
+        out[2 * k] = a * cos(ang); out[2 * k + 1] = a * sin(ang);
+    }
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -5341,6 +5390,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.check_NOLA", 1, "window, nperseg, noverlap, tol=1e-10", "verdict", r_check_nola, NULL, "Whether a window array meets the Nonzero OverLap Add (NOLA) constraint (scipy.signal.check_NOLA)."),
     ROUTINE("signal.band_stop_obj", 1, "wp, ind, passb, stopb, gpass, gstop, type", "n", r_band_stop_obj, NULL, "Non-integer analog band-stop filter order objective (scipy.signal.band_stop_obj)."),
     ROUTINE("signal.freqresp", 2, "system[], w, n=10000", "w, H", r_freqresp, NULL, "Analog LTI frequency response of a (b, a) system at the given frequencies (scipy.signal.freqresp)."),
+    ROUTINE("signal.dfreqresp", 2, "system[], w, n=10000, whole=False", "w, H", r_dfreqresp, NULL, "Discrete-time LTI frequency response of a (num, den, dt) system at the given frequencies (scipy.signal.dfreqresp)."),
+    ROUTINE("signal.czt_points", 1, "m, w=None, a=1", "out", r_czt_points, NULL, "Points at which the chirp z-transform is sampled, default equally spaced on the unit circle (scipy.signal.czt_points)."),
     ROUTINE("signal.get_window", 1, "window[], Nx, fftbins=True", "out", r_get_window, NULL, "Return a window of length Nx from a name or (name, *params) spec (scipy.signal.get_window)."),
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),

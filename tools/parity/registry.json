@@ -2065,6 +2065,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.czt_points": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.dbode": {
             "kind": "routine",
             "nin": 0,
@@ -2079,6 +2084,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "signal.dfreqresp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "signal.dimpulse": {
             "kind": "routine",

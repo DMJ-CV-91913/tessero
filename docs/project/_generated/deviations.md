@@ -133,6 +133,10 @@
 | `signal.band_stop_obj` | call | rtol 0 |
 | `signal.freqresp` | every call | rtol 0 |
 | `signal.freqresp` | call | rtol 0 |
+| `signal.dfreqresp` | every call | rtol 0 |
+| `signal.dfreqresp` | call | rtol 0 |
+| `signal.czt_points` | every call | rtol 0 |
+| `signal.czt_points` | call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
 | `signal.normalize` | every call | rtol 0 |

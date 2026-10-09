@@ -269,6 +269,20 @@ for N in (2, 3, 4):
     frp.append({'args': [F.enc([np.asarray(b, float), np.asarray(a, float)]), F.enc(w)], 'kwargs': {},
                 'expect': F.enc_result((np.asarray(w2, float), np.asarray(h2, complex)), ['w', 'H']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
 
+# dfreqresp: discrete LTI response of a (num, den, dt) system at explicit frequencies
+dfr = []
+for N in (2, 3, 4):
+    b, a = sg.butter(N, 0.3)
+    w = np.linspace(0.0, np.pi, 24, endpoint=False)
+    w2, h2 = sg.dfreqresp((b, a, 0.1), w=w)
+    dfr.append({'args': [F.enc([np.asarray(b, float), np.asarray(a, float), 0.1]), F.enc(w)], 'kwargs': {},
+                'expect': F.enc_result((np.asarray(w2, float), np.asarray(h2, complex)), ['w', 'H']), 'compare': 'tol', 'tol': {'atol': 1e-11}})
+
+# czt_points: default (equally spaced on the unit circle)
+czp = []
+for m in (8, 16, 11):
+    czp.append({'args': [F.enc(m)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sg.czt_points(m), complex), []), 'compare': 'tol', 'tol': {'atol': 1e-12}})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -869,6 +883,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'check_COLA', 'cases': cola}, {'fn': 'check_NOLA', 'cases': nola},
                  {'fn': 'band_stop_obj', 'cases': bso, 'tol': {'atol': 1e-11}},
                  {'fn': 'freqresp', 'cases': frp, 'tol': {'atol': 1e-11}},
+                 {'fn': 'dfreqresp', 'cases': dfr, 'tol': {'atol': 1e-11}},
+                 {'fn': 'czt_points', 'cases': czp, 'tol': {'atol': 1e-12}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},
