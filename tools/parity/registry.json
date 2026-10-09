@@ -2135,6 +2135,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.freqz_sos": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.freqz_zpk": {
             "kind": "routine",
             "nin": 0,
@@ -2279,6 +2284,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 3
+        },
+        "signal.max_len_seq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "signal.medfilt": {
             "kind": "routine",

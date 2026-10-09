@@ -2909,6 +2909,12 @@
                 "doc": "Frequency response of a digital filter (scipy.signal.freqz)."
             },
             {
+                "name": "freqzSos",
+                "static": true,
+                "sig": "freqzSos(mixed $sos, mixed $worN, mixed $whole = false, mixed $fs = '2*pi'): mixed",
+                "doc": "Digital frequency response of a second-order-section cascade (scipy.signal.freqz_sos)."
+            },
+            {
                 "name": "freqzZpk",
                 "static": true,
                 "sig": "freqzZpk(mixed $z, mixed $p, mixed $k, mixed $worN = 512, mixed $whole = false): mixed",
@@ -3081,6 +3087,12 @@
                 "static": true,
                 "sig": "lsim(mixed $A, mixed $B, mixed $C, mixed $D, mixed $U, mixed $T, mixed $interp = true): mixed",
                 "doc": "Simulate a continuous-time state-space system (scipy.signal.lsim)."
+            },
+            {
+                "name": "maxLenSeq",
+                "static": true,
+                "sig": "maxLenSeq(mixed $nbits, mixed $state = null, mixed $length = null, mixed $taps = null): mixed",
+                "doc": "Maximum-length (LFSR) sequence of 0/1 and the final register state (scipy.signal.max_len_seq)."
             },
             {
                 "name": "medfilt",
@@ -16465,6 +16477,18 @@
                 "name": "sweepPoly",
                 "static": true,
                 "sig": "sweepPoly($t, $poly, $phi = 0)",
+                "doc": ""
+            },
+            {
+                "name": "freqzSos",
+                "static": true,
+                "sig": "freqzSos($sos, $worN, $whole = false, $fs = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "maxLenSeq",
+                "static": true,
+                "sig": "maxLenSeq($nbits, $state = null, $length = null, $taps = null)",
                 "doc": ""
             },
             {
