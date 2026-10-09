@@ -1810,7 +1810,137 @@
             "nin": 0,
             "nout": 1
         },
+        "npoly.polyadd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polycompanion": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyder": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polydiv": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "npoly.polydomain": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyfit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyfromroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polygrid2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polygrid3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyint": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyline": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polymul": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polymulx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyone": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polypow": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polysub": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polytrim": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "npoly.polyval": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyval2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyval3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyvalfromroots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyvander": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyvander2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyvander3d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyx": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "npoly.polyzero": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

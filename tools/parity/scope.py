@@ -60,10 +60,28 @@ def spec_entries():
     out = {}
     for name in registry:
         mod, _, fn = name.partition('.')
-        for ref in refs.get(name, [f'{PREFIX.get(mod, mod)}.{fn}']):
+        for ref in refs.get(name, default_refs(mod, fn)):
             m, _, n = ref.rpartition('.')
             out.setdefault((m, n), []).append({'name': name})
     return out
+
+
+# numpy.polynomial's six basis submodules; a function's basis is read from its name prefix.
+NPOLY_SUB = [('herme', 'hermite_e'), ('herm', 'hermite'), ('cheb', 'chebyshev'), ('leg', 'legendre'),
+             ('lag', 'laguerre'), ('poly', 'polynomial')]
+NPOLY_CLASS_SUB = {'Polynomial': 'polynomial', 'Chebyshev': 'chebyshev', 'Legendre': 'legendre',
+                   'Laguerre': 'laguerre', 'Hermite': 'hermite', 'HermiteE': 'hermite_e'}
+
+
+def default_refs(mod, fn):
+    """The census symbol(s) a registry function <mod>.<fn> references when its spec gives no explicit ref."""
+    if mod == 'npoly':
+        if fn in NPOLY_CLASS_SUB:                           # a basis class: the same object at the top level and in its submodule
+            return [f'numpy.polynomial.{fn}', f'numpy.polynomial.{NPOLY_CLASS_SUB[fn]}.{fn}']
+        for pre, sub in NPOLY_SUB:
+            if fn.startswith(pre):
+                return [f'numpy.polynomial.{sub}.{fn}']      # e.g. polyadd -> numpy.polynomial.polynomial.polyadd
+    return [f'{PREFIX.get(mod, mod)}.{fn}']
 
 
 def api_methods(api):
