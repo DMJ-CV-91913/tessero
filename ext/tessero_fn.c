@@ -76,7 +76,7 @@ static fn_bind *g_binds = NULL;
 static int g_nbinds = 0;
 static HashTable g_by_method;       /* "class::method" (lower case) -> bind index */
 
-zend_class_entry *tsr_ce_special, *tsr_ce_stats, *tsr_ce_np, *tsr_ce_linalg, *tsr_ce_slinalg, *tsr_ce_distance, *tsr_ce_sparse, *tsr_ce_signal, *tsr_ce_ndimage, *tsr_ce_csgraph, *tsr_ce_signal_windows, *tsr_ce_interpolate, *tsr_ce_cluster;
+zend_class_entry *tsr_ce_special, *tsr_ce_stats, *tsr_ce_np, *tsr_ce_linalg, *tsr_ce_slinalg, *tsr_ce_distance, *tsr_ce_sparse, *tsr_ce_signal, *tsr_ce_ndimage, *tsr_ce_csgraph, *tsr_ce_signal_windows, *tsr_ce_interpolate, *tsr_ce_cluster, *tsr_ce_npoly;
 
 /* ================================================================ helpers */
 
@@ -1056,10 +1056,10 @@ void tsr_register_fn(void)
     g_nbinds = n;
     /* module index 3 (random) goes to Tessero\Ext\Random\Generator (instance methods, tessero_random.c); the
        others are abstract classes of static methods. linalg (index 4) is Tessero\Ext\Linalg. */
-    static const char *const MODS[14][2] = {{"special", "Special"}, {"stats", "Stats"}, {"np", "Np"}, {"random", "Random\\Generator"}, {"linalg", "Linalg"}, {"slinalg", "ScipyLinalg"}, {"distance", "Distance"}, {"sparse", "Sparse"}, {"signal", "Signal"}, {"ndimage", "Ndimage"}, {"csgraph", "Csgraph"}, {"windows", "SignalWindows"}, {"interpolate", "Interpolate"}, {"cluster", "Cluster"}};
-    zend_function_entry *fes[14];
-    int nfe[14] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    for (int m = 0; m < 14; m++) fes[m] = pecalloc((size_t)n + 1, sizeof(zend_function_entry), 1);
+    static const char *const MODS[15][2] = {{"special", "Special"}, {"stats", "Stats"}, {"np", "Np"}, {"random", "Random\\Generator"}, {"linalg", "Linalg"}, {"slinalg", "ScipyLinalg"}, {"distance", "Distance"}, {"sparse", "Sparse"}, {"signal", "Signal"}, {"ndimage", "Ndimage"}, {"csgraph", "Csgraph"}, {"windows", "SignalWindows"}, {"interpolate", "Interpolate"}, {"cluster", "Cluster"}, {"npoly", "Polynomial"}};
+    zend_function_entry *fes[15];
+    int nfe[15] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (int m = 0; m < 15; m++) fes[m] = pecalloc((size_t)n + 1, sizeof(zend_function_entry), 1);
     char buf[16384];
     for (int id = 0; id < n; id++) {
         const int64_t len = tsr_fn_info(id, buf, sizeof buf);
@@ -1074,7 +1074,7 @@ void tsr_register_fn(void)
         const char *full = tsr_fn_name(id);
         const char *dot = strchr(full, '.');
         int m = -1;
-        for (int k = 0; k < 14; k++)
+        for (int k = 0; k < 15; k++)
             if (dot && (size_t)(dot - full) == strlen(MODS[k][0]) && strncmp(full, MODS[k][0], (size_t)(dot - full)) == 0) m = k;
         if (m < 0) { zval_ptr_dtor(&info); continue; }
         char method[64];
@@ -1100,8 +1100,8 @@ void tsr_register_fn(void)
     tsr_stats_register_pb(fes[1], &nfe[1]);   /* poisson_binom: a vector-shape distribution, hand-written on Stats */
     /* the abstract static-method classes: special/stats/np (indices 0-2) and linalg (index 4) */
     struct { zend_class_entry **ce; int m; } statics[] = {
-        {&tsr_ce_special, 0}, {&tsr_ce_stats, 1}, {&tsr_ce_np, 2}, {&tsr_ce_linalg, 4}, {&tsr_ce_slinalg, 5}, {&tsr_ce_distance, 6}, {&tsr_ce_sparse, 7}, {&tsr_ce_signal, 8}, {&tsr_ce_ndimage, 9}, {&tsr_ce_csgraph, 10}, {&tsr_ce_signal_windows, 11}, {&tsr_ce_interpolate, 12}, {&tsr_ce_cluster, 13}};
-    for (int j = 0; j < 13; j++) {
+        {&tsr_ce_special, 0}, {&tsr_ce_stats, 1}, {&tsr_ce_np, 2}, {&tsr_ce_linalg, 4}, {&tsr_ce_slinalg, 5}, {&tsr_ce_distance, 6}, {&tsr_ce_sparse, 7}, {&tsr_ce_signal, 8}, {&tsr_ce_ndimage, 9}, {&tsr_ce_csgraph, 10}, {&tsr_ce_signal_windows, 11}, {&tsr_ce_interpolate, 12}, {&tsr_ce_cluster, 13}, {&tsr_ce_npoly, 14}};
+    for (int j = 0; j < 14; j++) {
         const int m = statics[j].m;
         zend_class_entry ce;
         INIT_CLASS_ENTRY_EX(ce, "", 0, fes[m]);

@@ -19,6 +19,7 @@ extern const fn_table TSR_SCIPY_NDIMAGE_TABLE;     /* scipy.ndimage (src/scipy_n
 extern const fn_table TSR_SCIPY_CSGRAPH_TABLE;     /* scipy.sparse.csgraph (src/scipy_csgraph.c) */
 extern const fn_table TSR_SCIPY_INTERPOLATE_TABLE; /* scipy.interpolate (src/scipy_interpolate.c) */
 extern const fn_table TSR_SCIPY_CLUSTER_TABLE; /* scipy.cluster.vq (src/scipy_cluster.c) */
+extern const fn_table TSR_NP_POLYNOMIAL_TABLE; /* numpy.polynomial (src/np_polynomial.c) */
 extern const fn_table TSR_NP_IO_TABLE;             /* numpy.loadtxt (src/np_io.c) */
 extern const fn_table TSR_NP_POLY_TABLE;           /* numpy.polyfit/polyval/roots (src/np_poly.c) */
 /* scipy.stats functions (cxx/stats_fn_*.cpp). Weak while the modules are being written: a missing one is
@@ -34,7 +35,7 @@ extern const fn_table TSR_STATS_FN_TESTS_TABLE TSR_WEAK;
 extern const fn_table TSR_STATS_FN_TESTS2_TABLE TSR_WEAK;
 
 const fn_table *const TSR_FN_TABLES[] = {&TSR_GEN_SPECIAL_TABLE, &TSR_NP_STATS_TABLE, &TSR_NP_SETS_TABLE,
-                                             &TSR_NP_RANDOM_TABLE, &TSR_NP_SHAPE_TABLE, &TSR_NP_NUMERIC_TABLE, &TSR_NP_LINALG_TABLE, &TSR_SCIPY_LINALG_TABLE, &TSR_SPECIAL_COMPLEX_TABLE, &TSR_SPATIAL_DISTANCE_TABLE, &TSR_SCIPY_SPARSE_TABLE, &TSR_SCIPY_SIGNAL_TABLE, &TSR_SCIPY_NDIMAGE_TABLE, &TSR_SCIPY_CSGRAPH_TABLE, &TSR_SCIPY_INTERPOLATE_TABLE, &TSR_SCIPY_CLUSTER_TABLE, &TSR_NP_IO_TABLE, &TSR_NP_POLY_TABLE, &TSR_STATS_FN_DESC_TABLE, &TSR_STATS_FN_CORR_TABLE,
+                                             &TSR_NP_RANDOM_TABLE, &TSR_NP_SHAPE_TABLE, &TSR_NP_NUMERIC_TABLE, &TSR_NP_LINALG_TABLE, &TSR_SCIPY_LINALG_TABLE, &TSR_SPECIAL_COMPLEX_TABLE, &TSR_SPATIAL_DISTANCE_TABLE, &TSR_SCIPY_SPARSE_TABLE, &TSR_SCIPY_SIGNAL_TABLE, &TSR_SCIPY_NDIMAGE_TABLE, &TSR_SCIPY_CSGRAPH_TABLE, &TSR_SCIPY_INTERPOLATE_TABLE, &TSR_SCIPY_CLUSTER_TABLE, &TSR_NP_POLYNOMIAL_TABLE, &TSR_NP_IO_TABLE, &TSR_NP_POLY_TABLE, &TSR_STATS_FN_DESC_TABLE, &TSR_STATS_FN_CORR_TABLE,
                                              &TSR_STATS_FN_TESTS_TABLE, &TSR_STATS_FN_TESTS2_TABLE};
 const int TSR_FN_NTABLES = (int)(sizeof TSR_FN_TABLES / sizeof TSR_FN_TABLES[0]);
 
