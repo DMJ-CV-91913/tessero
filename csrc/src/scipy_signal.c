@@ -4757,6 +4757,49 @@ static int r_ellip(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
+/* phase-normalized analog Bessel prototype poles into p[0..N-1], gain *k=1 (same math as r_besselap, norm
+   'phase'); poles are left unsorted (the digital pipeline's zpk2tf is order-independent). */
+static int ea_besselap_poles(int N, double complex *p, double *k)
+{
+    double *hi = (double *)malloc((size_t)(N + 1) * sizeof(double));
+    if (!hi) return TSR_ENOMEM;
+    const double ln2 = log(2.0);
+    for (int i = 0; i <= N; i++) { const int kk = N - i; hi[i] = exp(lgamma((double)(2 * N - kk) + 1.0) - (double)(N - kk) * ln2 - lgamma((double)(N - kk) + 1.0) - lgamma((double)kk + 1.0)); }
+    const double a_last = hi[N];
+    int64_t nz = 0; double *roots = sig_polyroots(hi, N + 1, &nz);
+    free(hi);
+    if (nz != N || !roots) { free(roots); return TSR_ECONVERGE; }
+    const double scale = pow(a_last, -1.0 / (double)N);
+    for (int i = 0; i < N; i++) p[i] = (roots[2 * i] * scale) + (roots[2 * i + 1] * scale) * I;
+    free(roots);
+    *k = 1.0;
+    return TSR_OK;
+}
+
+/* bessel(N, Wn, btype='low', analog=False, output='ba', norm='phase'): Bessel/Thomson IIR filter design, digital
+   lowpass/highpass, output 'ba' (scipy.signal.bessel, phase normalization). Phase-normalized analog prototype
+   then the shared digital pipeline. */
+static int r_bessel(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const int N = (args[0].kind == 1) ? (int)args[0].num : 0;
+    if (N < 1 || N > 25) { fn_set_error("bessel: order N must be between 1 and 25"); return TSR_EARG; }
+    if (!(args[1].kind == 1)) { fn_set_error("bessel: a scalar Wn (lowpass/highpass) is required"); return TSR_EARG; }
+    const double Wn = args[1].num;
+    int hp = 0;
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) {
+        if (strcmp(args[2].str, "high") == 0 || strcmp(args[2].str, "highpass") == 0) hp = 1;
+        else if (!(strcmp(args[2].str, "low") == 0 || strcmp(args[2].str, "lowpass") == 0)) { fn_set_error("bessel: only lowpass/highpass are supported"); return TSR_EARG; }
+    }
+    double complex *p = (double complex *)malloc((size_t)N * sizeof(double complex));
+    if (!p) return TSR_ENOMEM;
+    double k = 1.0;
+    int rc = ea_besselap_poles(N, p, &k);
+    if (rc == TSR_OK) rc = iir_lp_proto_to_ba_z(NULL, 0, p, N, k, hp, Wn, &res[0]);   /* consumes/frees p */
+    else free(p);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
@@ -4879,6 +4922,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.besselap", 3, "N, norm='phase'", "z, p, k", r_besselap, NULL, "Analog Bessel filter prototype (z, p, k); norm 'phase' (default) or 'delay' (scipy.signal.besselap)."),
     ROUTINE("signal.ellipap", 3, "N, rp, rs", "z, p, k", r_ellipap, NULL, "Analog elliptic (Cauer) filter prototype (z, p, k) with rp dB passband ripple and rs dB stopband attenuation (scipy.signal.ellipap)."),
     ROUTINE("signal.ellip", 2, "N, rp, rs, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_ellip, NULL, "Elliptic (Cauer) IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.ellip)."),
+    ROUTINE("signal.bessel", 2, "N, Wn, btype='low', analog=False, output='ba', norm='phase', fs=None", "b, a", r_bessel, NULL, "Bessel/Thomson IIR filter design (phase norm), digital lowpass/highpass, output 'ba' (scipy.signal.bessel)."),
 };
 
 const fn_table TSR_SCIPY_SIGNAL_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
