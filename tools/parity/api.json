@@ -2825,6 +2825,12 @@
                 "doc": "Cross power spectral density by Welch's method (scipy.signal.csd)."
             },
             {
+                "name": "cztPoints",
+                "static": true,
+                "sig": "cztPoints(mixed $m, mixed $w = null, mixed $a = 1): mixed",
+                "doc": "Points at which the chirp z-transform is sampled, default equally spaced on the unit circle (scipy.signal.czt_points)."
+            },
+            {
                 "name": "dbode",
                 "static": true,
                 "sig": "dbode(mixed $num, mixed $den, mixed $worN = 512, mixed $whole = false): mixed",
@@ -2841,6 +2847,12 @@
                 "static": true,
                 "sig": "detrend(mixed $data, mixed $axis = -1, mixed $type = 'linear', mixed $bp = 0, mixed $overwriteData = false): mixed",
                 "doc": "Remove a constant or piecewise-linear least-squares trend along an axis (scipy.signal.detrend)."
+            },
+            {
+                "name": "dfreqresp",
+                "static": true,
+                "sig": "dfreqresp(mixed $system, mixed $w, mixed $n = 10000, mixed $whole = false): mixed",
+                "doc": "Discrete-time LTI frequency response of a (num, den, dt) system at the given frequencies (scipy.signal.dfreqresp)."
             },
             {
                 "name": "dimpulse",
@@ -16561,6 +16573,18 @@
                 "name": "freqresp",
                 "static": true,
                 "sig": "freqresp($system, $w, $n = 10000)",
+                "doc": ""
+            },
+            {
+                "name": "dfreqresp",
+                "static": true,
+                "sig": "dfreqresp($system, $w, $n = 10000, $whole = false)",
+                "doc": ""
+            },
+            {
+                "name": "cztPoints",
+                "static": true,
+                "sig": "cztPoints($m, $w = null, $a = 1)",
                 "doc": ""
             },
             {
