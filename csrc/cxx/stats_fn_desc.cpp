@@ -2177,6 +2177,85 @@ static int stat_normplot(const tsr_arg *args, int nargs, tsr_result *res, int ye
 static int r_boxcox_normplot(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)nres; return stat_normplot(a, n, res, 0); }
 static int r_yeojohnson_normplot(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)nres; return stat_normplot(a, n, res, 1); }
 
+/* multivariate_normal(mean, cov, x): the pdf and log-pdf at each row of x (shape (m, d)). */
+static int r_multivariate_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multivariate_normal: mean 1-D, cov 2-D, x (m,d)"); return TSR_EARG; }
+    const int64_t d = args[0].arr.shape[0], m = args[2].arr.shape[0];
+    int64_t lm, lc, lx; double *mean = fn_arg_doubles(&args[0], &lm), *C = mean ? fn_arg_doubles(&args[1], &lc) : nullptr, *X = C ? fn_arg_doubles(&args[2], &lx) : nullptr;
+    if (!X) { fn_free_doubles(mean, lm); fn_free_doubles(C, lc); return TSR_ENOMEM; }
+    std::vector<double> L(d * d, 0.0), z(d);
+    int rc = TSR_OK;
+    for (int64_t a = 0; a < d && rc == TSR_OK; a++) for (int64_t b = 0; b <= a; b++) {
+        double s = C[a * d + b]; for (int64_t c = 0; c < b; c++) s -= L[a * d + c] * L[b * d + c];
+        if (a == b) { if (s <= 0.0) { rc = TSR_EARG; fn_set_error("multivariate_normal: covariance not positive definite"); break; } L[a * d + a] = std::sqrt(s); }
+        else L[a * d + b] = s / L[b * d + b];
+    }
+    double logdet = 0.0; for (int64_t a = 0; a < d; a++) logdet += 2.0 * std::log(L[a * d + a]);
+    const double c0 = (double)d * std::log(2.0 * M_PI);
+    int64_t sh[1] = {m};
+    double *pdf = (rc == TSR_OK) ? (double *)fn_result_array(&res[0], TSR_F64, 1, sh) : nullptr;
+    double *lpdf = pdf ? (double *)fn_result_array(&res[1], TSR_F64, 1, sh) : nullptr;
+    if (rc == TSR_OK && !lpdf) rc = TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) {
+        for (int64_t a = 0; a < d; a++) { double s = X[j * d + a] - mean[a]; for (int64_t c = 0; c < a; c++) s -= L[a * d + c] * z[c]; z[a] = s / L[a * d + a]; }
+        double maha = 0.0; for (int64_t a = 0; a < d; a++) maha += z[a] * z[a];
+        double lp = -0.5 * (c0 + logdet + maha); lpdf[j] = lp; pdf[j] = std::exp(lp);
+    }
+    fn_free_doubles(mean, lm); fn_free_doubles(C, lc); fn_free_doubles(X, lx);
+    return rc;
+}
+/* dirichlet(alpha, x): the pdf at each row of x (shape (m, k)); rows must lie on the simplex. */
+static int r_dirichlet(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("dirichlet: alpha 1-D, x (m,k)"); return TSR_EARG; }
+    const int64_t k = args[0].arr.shape[0], m = args[1].arr.shape[0];
+    int64_t la, lx; double *al = fn_arg_doubles(&args[0], &la), *X = al ? fn_arg_doubles(&args[1], &lx) : nullptr;
+    if (!X) { fn_free_doubles(al, la); return TSR_ENOMEM; }
+    double asum = 0.0, lg = 0.0; for (int64_t i = 0; i < k; i++) { asum += al[i]; lg += std::lgamma(al[i]); }
+    const double c = std::lgamma(asum) - lg;
+    int64_t sh[1] = {m}; double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) { double s = c; for (int64_t i = 0; i < k; i++) s += (al[i] - 1.0) * std::log(X[j * k + i]); out[j] = std::exp(s); }
+    fn_free_doubles(al, la); fn_free_doubles(X, lx);
+    return rc;
+}
+/* multinomial(n, p, x): the pmf at each row of x (shape (m, k)). */
+static int r_multinomial(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 1 || args[1].kind != 3 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multinomial: n int, p 1-D, x (m,k)"); return TSR_EARG; }
+    const double nn = args[0].num; const int64_t k = args[1].arr.shape[0], m = args[2].arr.shape[0];
+    int64_t lp, lx; double *p = fn_arg_doubles(&args[1], &lp), *X = p ? fn_arg_doubles(&args[2], &lx) : nullptr;
+    if (!X) { fn_free_doubles(p, lp); return TSR_ENOMEM; }
+    int64_t sh[1] = {m}; double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) { double s = std::lgamma(nn + 1.0);
+        for (int64_t i = 0; i < k; i++) { s -= std::lgamma(X[j * k + i] + 1.0); if (p[i] > 0.0) s += X[j * k + i] * std::log(p[i]); }
+        out[j] = std::exp(s); }
+    fn_free_doubles(p, lp); fn_free_doubles(X, lx);
+    return rc;
+}
+/* multivariate_hypergeom(m, n, x): the pmf at each row of x (shape (mm, k)); m are the per-color counts. */
+static int r_multivariate_hypergeom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multivariate_hypergeom: m 1-D, n int, x (mm,k)"); return TSR_EARG; }
+    const int64_t k = args[0].arr.shape[0], mm = args[2].arr.shape[0]; const double n = args[1].num;
+    int64_t lmc, lx; double *mc = fn_arg_doubles(&args[0], &lmc), *X = mc ? fn_arg_doubles(&args[2], &lx) : nullptr;
+    if (!X) { fn_free_doubles(mc, lmc); return TSR_ENOMEM; }
+    double M = 0.0; for (int64_t i = 0; i < k; i++) M += mc[i];
+    auto logC = [](double a, double b) { return std::lgamma(a + 1.0) - std::lgamma(b + 1.0) - std::lgamma(a - b + 1.0); };
+    const double denom = logC(M, n);
+    int64_t sh[1] = {mm}; double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < mm; j++) { double s = -denom; for (int64_t i = 0; i < k; i++) s += logC(mc[i], X[j * k + i]); out[j] = std::exp(s); }
+    fn_free_doubles(mc, lmc); fn_free_doubles(X, lx);
+    return rc;
+}
+
 }  // namespace
 
 /* ================================================================ registry */
@@ -2289,6 +2368,14 @@ static const fn_def DEFS[] = {
             "Box-Cox normality plot: lambdas and probability-plot correlations (scipy.stats.boxcox_normplot)."),
     ROUTINE("stats.yeojohnson_normplot", 2, "x, la, lb, N=80", "lmbdas, ppcc", r_yeojohnson_normplot, NULL,
             "Yeo-Johnson normality plot: lambdas and probability-plot correlations (scipy.stats.yeojohnson_normplot)."),
+    ROUTINE("stats.multivariate_normal", 2, "mean, cov, x", "pdf, logpdf", r_multivariate_normal, NULL,
+            "Multivariate normal pdf and log-pdf at each row of x (scipy.stats.multivariate_normal)."),
+    ROUTINE("stats.dirichlet", 1, "alpha, x", "pdf", r_dirichlet, NULL,
+            "Dirichlet pdf at each row of x (scipy.stats.dirichlet)."),
+    ROUTINE("stats.multinomial", 1, "n, p, x", "pmf", r_multinomial, NULL,
+            "Multinomial pmf at each row of x (scipy.stats.multinomial)."),
+    ROUTINE("stats.multivariate_hypergeom", 1, "m, n, x", "pmf", r_multivariate_hypergeom, NULL,
+            "Multivariate hypergeometric pmf at each row of x (scipy.stats.multivariate_hypergeom)."),
     ROUTINE("stats.boxcox_llf", 1, "lmb, data, axis=0, keepdims=False, nan_policy='propagate'", "llf", r_llf, NULL,
             "Box-Cox log-likelihood (scipy.stats.boxcox_llf)."),
     ROUTINE("stats.yeojohnson_llf", 1, "lmb, data, axis=0, nan_policy='propagate', keepdims=False", "llf", r_llf, &ONE,
