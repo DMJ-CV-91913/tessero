@@ -1915,6 +1915,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.bessel": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.besselap": {
             "kind": "routine",
             "nin": 0,

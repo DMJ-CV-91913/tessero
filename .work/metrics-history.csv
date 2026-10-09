@@ -141,3 +141,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-08,scipy.signal: besselap,87.7,87.0,69.0,68.7,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,scipy.signal: ellipap,87.7,87.0,69.0,68.8,99.1,99.6,71.7,71.7,79.1,79.1
 2026-10-08,scipy.signal: ellip,87.7,87.0,69.1,68.8,99.1,99.6,71.7,71.7,79.1,79.1
+2026-10-08,scipy.signal: bessel,87.7,87.0,69.2,68.9,99.1,99.6,71.7,71.7,79.1,79.1

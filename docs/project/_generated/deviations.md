@@ -110,6 +110,7 @@
 | `signal.cheby1` | every call | rtol 0 |
 | `signal.cheby2` | every call | rtol 0 |
 | `signal.ellip` | every call | rtol 0 |
+| `signal.bessel` | every call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
 | `signal.normalize` | every call | rtol 0 |

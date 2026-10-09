@@ -168,6 +168,12 @@ for (N, rp, rs, Wn, bt) in [(2, 1.0, 40.0, 0.2, 'low'), (3, 0.5, 60.0, 0.3, 'low
     b, a = sg.ellip(N, rp, rs, Wn, btype=bt)
     elc.append({'args': [F.enc(N), F.enc(rp), F.enc(rs), F.enc(Wn), F.enc(bt)], 'kwargs': {}, 'expect': F.enc_result((b, a), ['b', 'a']), 'compare': 'tol'})
 
+# bessel: Bessel/Thomson IIR filter design (phase norm), digital lowpass/highpass, output 'ba'
+bslc = []
+for (N, Wn, bt) in [(2, 0.2, 'low'), (3, 0.3, 'low'), (4, 0.25, 'low'), (2, 0.5, 'high'), (3, 0.6, 'high'), (1, 0.3, 'low')]:
+    b, a = sg.bessel(N, Wn, btype=bt)
+    bslc.append({'args': [F.enc(N), F.enc(Wn), F.enc(bt)], 'kwargs': {}, 'expect': F.enc_result((b, a), ['b', 'a']), 'compare': 'tol'})
+
 # waveform generators (pure, host-independent)
 def _wave_case(fn, args, pyargs):
     return {'args': [F.enc(a) for a in args], 'kwargs': {}, 'expect': F.enc_result(getattr(sg, fn)(*pyargs), []), 'compare': 'tol'}
@@ -756,6 +762,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'cheby1', 'cases': cb1c, 'tol': {'atol': 1e-12}},
                  {'fn': 'cheby2', 'cases': cb2c, 'tol': {'atol': 1e-12}},
                  {'fn': 'ellip', 'cases': elc, 'tol': {'atol': 1e-12}},
+                 {'fn': 'bessel', 'cases': bslc, 'tol': {'atol': 1e-12}},
                  {'fn': 'square', 'cases': sqw}, {'fn': 'sawtooth', 'cases': saw},
                  {'fn': 'chirp', 'cases': chp, 'tol': {'atol': 1e-12}},
                  {'fn': 'gausspulse', 'cases': gps, 'tol': {'atol': 1e-12}},

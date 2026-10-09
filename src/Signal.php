@@ -21,6 +21,7 @@ final class Signal
     'abcd_normalize' => 'abcdNormalize',
     'argrelmax' => 'argrelmax',
     'argrelmin' => 'argrelmin',
+    'bessel' => 'bessel',
     'besselap' => 'besselap',
     'bilinear' => 'bilinear',
     'bilinear_zpk' => 'bilinearZpk',
@@ -166,6 +167,18 @@ final class Signal
     public static function argrelmin(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed
     {
         return Registry::routine('signal.argrelmin', [$data, $axis, $order, $mode]);
+    }
+
+    /**
+     * Bessel/Thomson IIR filter design (phase norm), digital lowpass/highpass, output 'ba' (scipy.signal.bessel).
+     *
+     * scipy.signal.bessel
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function bessel(mixed $N, mixed $Wn, mixed $btype = 'low', mixed $analog = false, mixed $output = 'ba', mixed $norm = 'phase', mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.bessel', [$N, $Wn, $btype, $analog, $output, $norm, $fs]);
     }
 
     /**
