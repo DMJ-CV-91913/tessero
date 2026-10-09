@@ -3985,7 +3985,47 @@
             "nin": 0,
             "nout": 3
         },
+        "sparse.eye": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.eye_array": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.find": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "sparse.hstack": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.identity": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.kron": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.kronsum": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.tril": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.triu": {
             "kind": "routine",
             "nin": 0,
             "nout": 4

@@ -60,6 +60,43 @@ vs = [stack_case('vstack', [dense(2, 4), dense(3, 4)]), stack_case('vstack', [de
 calls.append({'fn': 'hstack', 'cases': hs})
 calls.append({'fn': 'vstack', 'cases': vs})
 
+
+def csr_dict(X):
+    X = sp.csr_array(X); X.sum_duplicates(); X.sort_indices(); X.eliminate_zeros()
+    return {'data': F.enc(X.data), 'indices': F.enc(X.indices), 'indptr': F.enc(X.indptr), 'shape': F.enc(np.array(X.shape))}
+
+
+# eye / eye_array (same cases) and identity
+ec = [{'args': [F.enc(m), F.enc(n), F.enc(k)], 'kwargs': {}, 'expect': {'dict': csr_dict(sp.eye_array(m, n, k=k))}, 'compare': 'tol'}
+      for (m, n, k) in [(4, 4, 0), (5, 6, 1), (5, 6, -2), (3, 5, 0), (6, 3, 2)]]
+calls.append({'fn': 'eye', 'cases': ec})
+calls.append({'fn': 'eye_array', 'cases': ec})
+calls.append({'fn': 'identity', 'cases': [{'args': [F.enc(n)], 'kwargs': {}, 'expect': {'dict': csr_dict(sp.identity(n))}, 'compare': 'tol'} for n in (1, 3, 5)]})
+# kron (general shapes), kronsum (square)
+kr = []
+for A, B in [(dense(3, 4), dense(2, 2)), (dense(2, 3), dense(3, 1)), (np.diag([1., 2., 3.]), dense(2, 2))]:
+    kr.append({'args': [F.enc(A), F.enc(B)], 'kwargs': {}, 'expect': {'dict': csr_dict(sp.kron(A, B))}, 'compare': 'tol'})
+calls.append({'fn': 'kron', 'cases': kr})
+ks = []
+for A, B in [(dense(3, 3), dense(2, 2)), (np.diag([2., 3.]), dense(3, 3)), (dense(2, 2), np.diag([1., 2., 3., 4.]))]:
+    ks.append({'args': [F.enc(A), F.enc(B)], 'kwargs': {}, 'expect': {'dict': csr_dict(sp.kronsum(A, B))}, 'compare': 'tol'})
+calls.append({'fn': 'kronsum', 'cases': ks})
+# tril / triu
+for fn_, fx in (('tril', sp.tril), ('triu', sp.triu)):
+    cs = []
+    for A in (dense(5, 5), dense(4, 6), dense(6, 4)):
+        for k in (-1, 0, 2):
+            cs.append({'args': [F.enc(A), F.enc(k)], 'kwargs': {}, 'expect': {'dict': csr_dict(fx(A, k))}, 'compare': 'tol'})
+    calls.append({'fn': fn_, 'cases': cs})
+# find: row, col, data (row-major order)
+fc = []
+for A in MATS[:4] + [dense(5, 5)]:
+    I, J, V = sp.find(sp.csr_array(A))
+    order = np.lexsort((J, I))
+    fc.append({'args': [F.enc(A)], 'kwargs': {},
+               'expect': {'dict': {'row': F.enc(I[order].astype(np.int32)), 'col': F.enc(J[order].astype(np.int32)), 'data': F.enc(V[order])}}, 'compare': 'tol'})
+calls.append({'fn': 'find', 'cases': fc})
+
 out = {'module': 'sparse', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

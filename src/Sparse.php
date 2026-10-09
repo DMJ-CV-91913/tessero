@@ -26,7 +26,15 @@ final class Sparse
     'csr_matrix' => 'csrMatrix',
     'dia_array' => 'diaArray',
     'dia_matrix' => 'diaMatrix',
+    'eye' => 'eye',
+    'eye_array' => 'eyeArray',
+    'find' => 'find',
     'hstack' => 'hstack',
+    'identity' => 'identity',
+    'kron' => 'kron',
+    'kronsum' => 'kronsum',
+    'tril' => 'tril',
+    'triu' => 'triu',
     'vstack' => 'vstack',
     ];
 
@@ -143,6 +151,42 @@ final class Sparse
     }
 
     /**
+     * Sparse matrix with ones on a diagonal, as CSR (scipy.sparse.eye).
+     *
+     * scipy.sparse.eye
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function eye(mixed $m, mixed $n = null, mixed $k = 0): mixed
+    {
+        return Registry::routine('sparse.eye', [$m, $n, $k]);
+    }
+
+    /**
+     * Sparse matrix with ones on a diagonal, as CSR (scipy.sparse.eye_array).
+     *
+     * scipy.sparse.eye_array
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function eyeArray(mixed $m, mixed $n = null, mixed $k = 0): mixed
+    {
+        return Registry::routine('sparse.eye_array', [$m, $n, $k]);
+    }
+
+    /**
+     * Row, column and value of each nonzero, row-major (scipy.sparse.find).
+     *
+     * scipy.sparse.find
+     *
+     * @return mixed one array, or an array keyed by row, col, data when several results are requested
+     */
+    public static function find(mixed $A): mixed
+    {
+        return Registry::routine('sparse.find', [$A]);
+    }
+
+    /**
      * Stack sparse blocks horizontally, as CSR storage (scipy.sparse.hstack).
      *
      * scipy.sparse.hstack: the positional arguments are numpy's *blocks.
@@ -150,6 +194,66 @@ final class Sparse
     public static function hstack(mixed ...$blocks): mixed
     {
         return Registry::routineVariadic('sparse.hstack', $blocks);
+    }
+
+    /**
+     * Sparse identity matrix, as CSR (scipy.sparse.identity).
+     *
+     * scipy.sparse.identity
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function identity(mixed $n): mixed
+    {
+        return Registry::routine('sparse.identity', [$n]);
+    }
+
+    /**
+     * Kronecker product of two matrices, as CSR (scipy.sparse.kron).
+     *
+     * scipy.sparse.kron
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function kron(mixed $A, mixed $B): mixed
+    {
+        return Registry::routine('sparse.kron', [$A, $B]);
+    }
+
+    /**
+     * Kronecker sum of two square matrices, as CSR (scipy.sparse.kronsum).
+     *
+     * scipy.sparse.kronsum
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function kronsum(mixed $A, mixed $B): mixed
+    {
+        return Registry::routine('sparse.kronsum', [$A, $B]);
+    }
+
+    /**
+     * Lower-triangular part of a matrix, as CSR (scipy.sparse.tril).
+     *
+     * scipy.sparse.tril
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function tril(mixed $A, mixed $k = 0): mixed
+    {
+        return Registry::routine('sparse.tril', [$A, $k]);
+    }
+
+    /**
+     * Upper-triangular part of a matrix, as CSR (scipy.sparse.triu).
+     *
+     * scipy.sparse.triu
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function triu(mixed $A, mixed $k = 0): mixed
+    {
+        return Registry::routine('sparse.triu', [$A, $k]);
     }
 
     /**

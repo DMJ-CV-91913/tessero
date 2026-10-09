@@ -914,7 +914,15 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.csr_matrix` | `Tessero\Sparse::csrMatrix()` |
 | `scipy.sparse.dia_array` | `Tessero\Sparse::diaArray()` |
 | `scipy.sparse.dia_matrix` | `Tessero\Sparse::diaMatrix()` |
+| `scipy.sparse.eye` | `Tessero\Sparse::eye()` |
+| `scipy.sparse.eye_array` | `Tessero\Sparse::eyeArray()` |
+| `scipy.sparse.find` | `Tessero\Sparse::find()` |
 | `scipy.sparse.hstack` | `Tessero\Sparse::hstack()` |
+| `scipy.sparse.identity` | `Tessero\Sparse::identity()` |
+| `scipy.sparse.kron` | `Tessero\Sparse::kron()` |
+| `scipy.sparse.kronsum` | `Tessero\Sparse::kronsum()` |
+| `scipy.sparse.tril` | `Tessero\Sparse::tril()` |
+| `scipy.sparse.triu` | `Tessero\Sparse::triu()` |
 | `scipy.sparse.vstack` | `Tessero\Sparse::vstack()` |
 
 ## scipy.sparse.csgraph
