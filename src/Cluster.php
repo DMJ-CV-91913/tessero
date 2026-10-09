@@ -18,6 +18,7 @@ final class Cluster
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'kmeans' => 'kmeans',
     'kmeans2' => 'kmeans2',
     'vq' => 'vq',
     'whiten' => 'whiten',
@@ -37,6 +38,18 @@ final class Cluster
         }
 
         return self::{self::FUNCTIONS[$name]}(...$args);
+    }
+
+    /**
+     * k-means from an explicit initial code book; returns the code book and mean distortion (scipy.cluster.vq.kmeans).
+     *
+     * scipy.cluster.kmeans
+     *
+     * @return mixed one array, or an array keyed by codebook, distortion when several results are requested
+     */
+    public static function kmeans(mixed $obs, mixed $kOrGuess, mixed $iter = 20, mixed $thresh = 1e-5): mixed
+    {
+        return Registry::routine('cluster.kmeans', [$obs, $kOrGuess, $iter, $thresh]);
     }
 
     /**

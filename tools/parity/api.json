@@ -4005,6 +4005,12 @@
                 "doc": "Call a function by its SciPy/NumPy name: Cluster::apply('log_ndtr', $x)."
             },
             {
+                "name": "kmeans",
+                "static": true,
+                "sig": "kmeans(mixed $obs, mixed $kOrGuess, mixed $iter = 20, mixed $thresh = 1.0E-5): mixed",
+                "doc": "k-means from an explicit initial code book; returns the code book and mean distortion (scipy.cluster.vq.kmeans)."
+            },
+            {
                 "name": "kmeans2",
                 "static": true,
                 "sig": "kmeans2(mixed $data, mixed $k, mixed $iter = 10, mixed $thresh = 1.0E-5, mixed $minit = 'matrix', mixed $missing = 'warn'): mixed",
@@ -17323,6 +17329,12 @@
                 "name": "kmeans2",
                 "static": true,
                 "sig": "kmeans2($data, $k, $iter = 10, $thresh = 1.0E-5, $minit = 'matrix', $missing = 'warn')",
+                "doc": ""
+            },
+            {
+                "name": "kmeans",
+                "static": true,
+                "sig": "kmeans($obs, $kOrGuess, $iter = 20, $thresh = 1.0E-5)",
                 "doc": ""
             }
         ]
