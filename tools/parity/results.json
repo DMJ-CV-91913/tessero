@@ -321,6 +321,7 @@
         "np.nansum": "pass",
         "np.nanvar": "pass",
         "np.ndim": "pass",
+        "np.newton_cotes": "pass",
         "np.nonzero": "pass",
         "np.ones_like": "pass",
         "np.outer": "pass",
@@ -351,6 +352,7 @@
         "np.right_shift": "pass",
         "np.roll": "pass",
         "np.rollaxis": "pass",
+        "np.romb": "pass",
         "np.roots": "pass",
         "np.rot90": "pass",
         "np.round": "pass",
@@ -2734,7 +2736,9 @@
             "interpolate.insert": 0,
             "interpolate.spalde": 3.2993527154954304e-15,
             "interpolate.NdPPoly": 2.4329376124482784e-15,
-            "interpolate.NdBSpline": 1.0600843637708987e-12
+            "interpolate.NdBSpline": 1.0600843637708987e-12,
+            "np.romb": 9.309392106234266e-16,
+            "np.newton_cotes": 5.892484031575249e-11
         },
         "ext": {
             "np.median": 0,
@@ -4102,7 +4106,9 @@
             "interpolate.insert": 0,
             "interpolate.spalde": 3.2993527154954304e-15,
             "interpolate.NdPPoly": 2.4329376124482784e-15,
-            "interpolate.NdBSpline": 1.0600843637708987e-12
+            "interpolate.NdBSpline": 1.0600843637708987e-12,
+            "np.romb": 9.309392106234266e-16,
+            "np.newton_cotes": 5.892484031575249e-11
         }
     },
     "ext": {
@@ -4427,6 +4433,7 @@
         "np.nansum": "pass",
         "np.nanvar": "pass",
         "np.ndim": "pass",
+        "np.newton_cotes": "pass",
         "np.nonzero": "pass",
         "np.ones_like": "pass",
         "np.outer": "pass",
@@ -4457,6 +4464,7 @@
         "np.right_shift": "pass",
         "np.roll": "pass",
         "np.rollaxis": "pass",
+        "np.romb": "pass",
         "np.roots": "pass",
         "np.rot90": "pass",
         "np.round": "pass",

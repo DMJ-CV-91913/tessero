@@ -372,6 +372,10 @@ legacy:
     simpson: {ffi: [NpC::simpson], ext: [XNpC::simpson], fixtures: [np.simpson]}
     # cumulative_simpson: the running Simpson integral (forward/backward Cartwright subintervals), an np.* routine
     cumulative_simpson: {ffi: [NpC::cumulativeSimpson], ext: [XNpC::cumulativeSimpson], fixtures: [np.cumulative_simpson]}
+    # romb: Romberg integration of 2**k+1 samples (Richardson extrapolation), an np.* routine
+    romb: {ffi: [NpC::romb], ext: [XNpC::romb], fixtures: [np.romb]}
+    # newton_cotes: equally-spaced Newton-Cotes quadrature weights (moment equations), an np.* routine
+    newton_cotes: {ffi: [NpC::newtonCotes], ext: [XNpC::newtonCotes], fixtures: [np.newton_cotes]}
   scipy.spatial:
     # a pure-PHP k-d tree (exact nearest-neighbour query) -> one class, both backends; verified against scipy's
     # distances and indices by the spatial.json fixtures.

@@ -412,6 +412,16 @@ def main():
            call('cumulative_simpson', [F(6)], {'dx': 2.0}, f=_csimp),
            call('cumulative_simpson', [F(2)], {'initial': 0.0}, f=_csimp), call('cumulative_simpson', [B(7)], f=_csimp)]
     blocks['cumulative_simpson'] = cs
+    # romb (scipy.integrate): Romberg integration of 2**k+1 equally-spaced samples
+    from scipy.integrate import romb as _romb, newton_cotes as _nc
+    cs = []
+    for npow in (2, 3, 4, 5):
+        y = F(2 ** npow + 1)
+        cs.append(call('romb', [y], f=_romb))
+        cs.append(call('romb', [y], {'dx': 0.4}, f=_romb))
+    blocks['romb'] = cs
+    # newton_cotes (scipy.integrate): equally-spaced quadrature weights (the weights array)
+    blocks['newton_cotes'] = [call('newton_cotes', [n], f=lambda nn: _nc(nn)[0]) for n in range(1, 7)]
 
     # ---- completeness: spacing, modf, bitwise_and/or/xor, fromiter, can_cast (literal-only, host-independent:
     # these are integer/ulp/type-rule ops with no BLAS or transcendental loop, shared with the splice generator)

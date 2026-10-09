@@ -1415,6 +1415,11 @@
             "nin": 0,
             "nout": 1
         },
+        "np.newton_cotes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "np.nonzero": {
             "kind": "routine",
             "nin": 0,
@@ -1561,6 +1566,11 @@
             "nout": 1
         },
         "np.rollaxis": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "np.romb": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

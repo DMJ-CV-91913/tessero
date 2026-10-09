@@ -101,6 +101,8 @@ const CALL_RTOL = [
     'leggauss' => 1e-9, 'laggauss' => 1e-9, 'hermgauss' => 1e-9, 'hermegauss' => 1e-9,
     // tensor B-spline: per-dimension de Boor composition sums in a different order than SciPy's direct tensor eval
     'NdBSpline' => 1e-9,
+    // Newton-Cotes weights: solving the moment Vandermonde in float64 vs SciPy's exact-rational weights
+    'newton_cotes' => 1e-6,
 ];
 // absolute tolerances: polyfit/roots/*fit coefficients can be legitimately ~0, where a relative tolerance is meaningless
 const CALL_ATOL = ['polyfit' => 1e-8, 'roots' => 1e-8,

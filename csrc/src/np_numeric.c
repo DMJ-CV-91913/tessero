@@ -4171,9 +4171,64 @@ static int r_sort_complex(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return TSR_OK;
 }
 
+extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
+
+/* romb(y, dx=1.0): Romberg integration of 2**k + 1 equally-spaced samples via Richardson extrapolation
+   (scipy.integrate.romb). */
+static int r_romb(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("romb: y must be a 1-D array"); return TSR_EARG; }
+    const double dx = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1.0;
+    int64_t ny; double *y = fn_arg_doubles(&args[0], &ny);
+    int rc = y ? TSR_OK : TSR_ENOMEM;
+    int64_t n = ny - 1; int kk = 0; while (((int64_t)1 << kk) < n) kk++;
+    if (rc == TSR_OK && ((int64_t)1 << kk) != n) { fn_set_error("romb: number of samples must be 2**k + 1"); rc = TSR_EARG; }
+    if (rc == TSR_OK) {
+        double *R = (double *)calloc((size_t)(kk + 1) * (kk + 1), sizeof(double));
+        if (!R) rc = TSR_ENOMEM;
+        else {
+            const double h = (double)n * dx; const int64_t w = kk + 1;
+            R[0] = 0.5 * h * (y[0] + y[n]);
+            for (int i = 1; i <= kk; i++) {
+                int64_t step = n >> i; double s = 0.0;
+                for (int64_t j = step; j < n; j += 2 * step) s += y[j];
+                R[i * w] = 0.5 * R[(i - 1) * w] + (h / (double)((int64_t)1 << i)) * s;
+                double f = 4.0;
+                for (int mm = 1; mm <= i; mm++) { R[i * w + mm] = R[i * w + mm - 1] + (R[i * w + mm - 1] - R[(i - 1) * w + mm - 1]) / (f - 1.0); f *= 4.0; }
+            }
+            fn_result_num(&res[0], R[kk * w + kk]);
+            free(R);
+        }
+    }
+    fn_free_doubles(y, ny);
+    return rc;
+}
+/* newton_cotes(rn, equal=0): the equally-spaced Newton-Cotes quadrature weights for rn intervals (rn+1 points),
+   from the moment equations sum_i w_i i**m = rn**(m+1)/(m+1) (scipy.integrate.newton_cotes; returns the weights). */
+static int r_newton_cotes(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("newton_cotes: rn must be an integer"); return TSR_EARG; }
+    const int64_t N = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    if (N < 1) { fn_set_error("newton_cotes: rn must be >= 1"); return TSR_EARG; }
+    const int64_t p = N + 1;
+    double *A = (double *)malloc((size_t)p * p * sizeof(double)), *b = (double *)malloc((size_t)p * sizeof(double));
+    int rc = (A && b) ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        for (int64_t m = 0; m < p; m++) { for (int64_t i = 0; i < p; i++) A[m * p + i] = pow((double)i, (double)m); b[m] = pow((double)N, (double)(m + 1)) / (double)(m + 1); }
+        if (sl_dense_solve(A, b, p, 1) != 0) { fn_set_error("newton_cotes: singular moment system"); rc = TSR_EARG; }
+        else { double *o = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){p}); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < p; i++) o[i] = b[i]; }
+    }
+    free(A); free(b);
+    return rc;
+}
+
 /* ================================================================ table */
 
 static const fn_def DEFS[] = {
+    ROUTINE("np.romb", 1, "y, dx=1.0", "out", r_romb, NULL, "Romberg integration of 2**k+1 equally-spaced samples (scipy.integrate.romb)."),
+    ROUTINE("np.newton_cotes", 1, "rn, equal=0", "weights", r_newton_cotes, NULL, "Equally-spaced Newton-Cotes quadrature weights for rn intervals (scipy.integrate.newton_cotes)."),
     ROUTINE("np.finfo", 13, "dtype", "eps, epsneg, max, min, tiny, smallest_normal, resolution, precision, bits, nmant, nexp, maxexp, minexp", r_finfo, NULL, "The machine limits of a floating-point dtype as a dict of the common fields (numpy.finfo)."),
     ROUTINE("np.iinfo", 3, "dtype", "min, max, bits", r_iinfo, NULL, "The limits of an integer dtype as a dict (min, max, bits) (numpy.iinfo)."),
     ROUTINE("np.einsum", 1, "subscripts, *operands", "out", r_einsum, NULL, "Einstein summation over the operands (numpy.einsum); real float64 operands."),

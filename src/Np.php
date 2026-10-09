@@ -140,6 +140,7 @@ final class Np
     'nansum' => 'nansum',
     'nanvar' => 'nanvar',
     'ndim' => 'ndim',
+    'newton_cotes' => 'newtonCotes',
     'nonzero' => 'nonzero',
     'ones_like' => 'onesLike',
     'outer' => 'outer',
@@ -170,6 +171,7 @@ final class Np
     'right_shift' => 'rightShift',
     'roll' => 'roll',
     'rollaxis' => 'rollaxis',
+    'romb' => 'romb',
     'roots' => 'roots',
     'rot90' => 'rot90',
     'round' => 'round',
@@ -1470,6 +1472,16 @@ final class Np
     }
 
     /**
+     * Equally-spaced Newton-Cotes quadrature weights for rn intervals (scipy.integrate.newton_cotes).
+     *
+     * numpy.newton_cotes
+     */
+    public static function newtonCotes(mixed $rn, mixed $equal = 0): mixed
+    {
+        return Registry::routine('np.newton_cotes', [$rn, $equal]);
+    }
+
+    /**
      * Indices of the non-zero elements, one array per axis (numpy.nonzero).
      *
      * numpy.nonzero
@@ -1767,6 +1779,16 @@ final class Np
     public static function rollaxis(mixed $a, mixed $axis, mixed $start = 0): mixed
     {
         return Registry::routine('np.rollaxis', [$a, $axis, $start]);
+    }
+
+    /**
+     * Romberg integration of 2**k+1 equally-spaced samples (scipy.integrate.romb).
+     *
+     * numpy.romb
+     */
+    public static function romb(mixed $y, mixed $dx = 1.0): mixed
+    {
+        return Registry::routine('np.romb', [$y, $dx]);
     }
 
     /**
