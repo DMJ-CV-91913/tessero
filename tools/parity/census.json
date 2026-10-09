@@ -3037,6 +3037,161 @@
 },
 {
 "kind": "class",
+"module": "numpy.polynomial.legendre",
+"name": "Legendre"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "leg2poly"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legadd"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legcompanion"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legder"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legdiv"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.legendre",
+"name": "legdomain"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legfit"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legfromroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "leggauss"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "leggrid2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "leggrid3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legint"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legline"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legmul"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legmulx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.legendre",
+"name": "legone"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legpow"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legroots"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legsub"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legtrim"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legval"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legval2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legval3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legvander"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legvander2d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legvander3d"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "legweight"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.legendre",
+"name": "legx"
+},
+{
+"kind": "constant",
+"module": "numpy.polynomial.legendre",
+"name": "legzero"
+},
+{
+"kind": "function",
+"module": "numpy.polynomial.legendre",
+"name": "poly2leg"
+},
+{
+"kind": "class",
 "module": "numpy.random",
 "name": "BitGenerator"
 },

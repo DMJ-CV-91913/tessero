@@ -4385,16 +4385,190 @@
                 "doc": "Evaluate a Laguerre series at x (numpy.polynomial.laguerre.lagval)."
             },
             {
+                "name": "leg2poly",
+                "static": true,
+                "sig": "leg2poly(mixed $c): mixed",
+                "doc": "Convert a Legendre series to a power series (numpy.polynomial.legendre.leg2poly)."
+            },
+            {
+                "name": "legadd",
+                "static": true,
+                "sig": "legadd(mixed $c1, mixed $c2): mixed",
+                "doc": "Sum of two Legendre series (numpy.polynomial.legendre.legadd)."
+            },
+            {
+                "name": "legcompanion",
+                "static": true,
+                "sig": "legcompanion(mixed $c): mixed",
+                "doc": "Companion matrix of a Legendre series (numpy.polynomial.legendre.legcompanion)."
+            },
+            {
+                "name": "legder",
+                "static": true,
+                "sig": "legder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed",
+                "doc": "Derivative of a Legendre series (numpy.polynomial.legendre.legder)."
+            },
+            {
+                "name": "legdiv",
+                "static": true,
+                "sig": "legdiv(mixed $c1, mixed $c2): mixed",
+                "doc": "Quotient and remainder of Legendre-series division (numpy.polynomial.legendre.legdiv)."
+            },
+            {
+                "name": "legdomain",
+                "static": true,
+                "sig": "legdomain(): mixed",
+                "doc": "The default Legendre domain [-1, 1] (numpy.polynomial.legendre.legdomain)."
+            },
+            {
+                "name": "legfit",
+                "static": true,
+                "sig": "legfit(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Least-squares Legendre-series fit (numpy.polynomial.legendre.legfit)."
+            },
+            {
+                "name": "legfromroots",
+                "static": true,
+                "sig": "legfromroots(mixed $roots): mixed",
+                "doc": "Legendre series with the given roots (numpy.polynomial.legendre.legfromroots)."
+            },
+            {
+                "name": "leggauss",
+                "static": true,
+                "sig": "leggauss(mixed $deg): mixed",
+                "doc": "Gauss-Legendre quadrature nodes and weights (numpy.polynomial.legendre.leggauss)."
+            },
+            {
+                "name": "leggrid2d",
+                "static": true,
+                "sig": "leggrid2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a Legendre series on a 2-D grid (numpy.polynomial.legendre.leggrid2d)."
+            },
+            {
+                "name": "leggrid3d",
+                "static": true,
+                "sig": "leggrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a Legendre series on a 3-D grid (numpy.polynomial.legendre.leggrid3d)."
+            },
+            {
+                "name": "legint",
+                "static": true,
+                "sig": "legint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed",
+                "doc": "Antiderivative of a Legendre series (numpy.polynomial.legendre.legint)."
+            },
+            {
+                "name": "legline",
+                "static": true,
+                "sig": "legline(mixed $off, mixed $scl): mixed",
+                "doc": "Legendre series for off + scl*x (numpy.polynomial.legendre.legline)."
+            },
+            {
+                "name": "legmul",
+                "static": true,
+                "sig": "legmul(mixed $c1, mixed $c2): mixed",
+                "doc": "Product of two Legendre series (numpy.polynomial.legendre.legmul)."
+            },
+            {
+                "name": "legmulx",
+                "static": true,
+                "sig": "legmulx(mixed $c): mixed",
+                "doc": "Multiply a Legendre series by x (numpy.polynomial.legendre.legmulx)."
+            },
+            {
+                "name": "legone",
+                "static": true,
+                "sig": "legone(): mixed",
+                "doc": "The one Legendre series (numpy.polynomial.legendre.legone)."
+            },
+            {
+                "name": "legpow",
+                "static": true,
+                "sig": "legpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed",
+                "doc": "Legendre series raised to a power (numpy.polynomial.legendre.legpow)."
+            },
+            {
+                "name": "legroots",
+                "static": true,
+                "sig": "legroots(mixed $c): mixed",
+                "doc": "Roots of a Legendre series (numpy.polynomial.legendre.legroots)."
+            },
+            {
+                "name": "legsub",
+                "static": true,
+                "sig": "legsub(mixed $c1, mixed $c2): mixed",
+                "doc": "Difference of two Legendre series (numpy.polynomial.legendre.legsub)."
+            },
+            {
+                "name": "legtrim",
+                "static": true,
+                "sig": "legtrim(mixed $c, mixed $tol = 0): mixed",
+                "doc": "Trim trailing small coefficients (numpy.polynomial.legendre.legtrim)."
+            },
+            {
                 "name": "legval",
                 "static": true,
                 "sig": "legval(mixed $x, mixed $c): mixed",
                 "doc": "Evaluate a Legendre series at x (numpy.polynomial.legendre.legval)."
             },
             {
+                "name": "legval2d",
+                "static": true,
+                "sig": "legval2d(mixed $x, mixed $y, mixed $c): mixed",
+                "doc": "Evaluate a 2-D Legendre series (numpy.polynomial.legendre.legval2d)."
+            },
+            {
+                "name": "legval3d",
+                "static": true,
+                "sig": "legval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed",
+                "doc": "Evaluate a 3-D Legendre series (numpy.polynomial.legendre.legval3d)."
+            },
+            {
+                "name": "legvander",
+                "static": true,
+                "sig": "legvander(mixed $x, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of the Legendre basis (numpy.polynomial.legendre.legvander)."
+            },
+            {
+                "name": "legvander2d",
+                "static": true,
+                "sig": "legvander2d(mixed $x, mixed $y, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 2-D Legendre basis (numpy.polynomial.legendre.legvander2d)."
+            },
+            {
+                "name": "legvander3d",
+                "static": true,
+                "sig": "legvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed",
+                "doc": "Pseudo-Vandermonde matrix of a 3-D Legendre basis (numpy.polynomial.legendre.legvander3d)."
+            },
+            {
+                "name": "legweight",
+                "static": true,
+                "sig": "legweight(mixed $x): mixed",
+                "doc": "Legendre weight, identically 1 (numpy.polynomial.legendre.legweight)."
+            },
+            {
+                "name": "legx",
+                "static": true,
+                "sig": "legx(): mixed",
+                "doc": "The identity Legendre series x (numpy.polynomial.legendre.legx)."
+            },
+            {
+                "name": "legzero",
+                "static": true,
+                "sig": "legzero(): mixed",
+                "doc": "The zero Legendre series (numpy.polynomial.legendre.legzero)."
+            },
+            {
                 "name": "poly2cheb",
                 "static": true,
                 "sig": "poly2cheb(mixed $pol): mixed",
                 "doc": "Convert a power series to a Chebyshev series (numpy.polynomial.chebyshev.poly2cheb)."
+            },
+            {
+                "name": "poly2leg",
+                "static": true,
+                "sig": "poly2leg(mixed $pol): mixed",
+                "doc": "Convert a power series to a Legendre series (numpy.polynomial.legendre.poly2leg)."
             },
             {
                 "name": "polyadd",
@@ -18386,6 +18560,180 @@
                 "name": "chebdomain",
                 "static": true,
                 "sig": "chebdomain()",
+                "doc": ""
+            },
+            {
+                "name": "legadd",
+                "static": true,
+                "sig": "legadd($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "legsub",
+                "static": true,
+                "sig": "legsub($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "legmul",
+                "static": true,
+                "sig": "legmul($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "legmulx",
+                "static": true,
+                "sig": "legmulx($c)",
+                "doc": ""
+            },
+            {
+                "name": "legpow",
+                "static": true,
+                "sig": "legpow($c, $pow, $maxpower = 16)",
+                "doc": ""
+            },
+            {
+                "name": "legdiv",
+                "static": true,
+                "sig": "legdiv($c1, $c2)",
+                "doc": ""
+            },
+            {
+                "name": "legder",
+                "static": true,
+                "sig": "legder($c, $m = 1, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "legint",
+                "static": true,
+                "sig": "legint($c, $m = 1, $k = 0, $lbnd = 0, $scl = 1)",
+                "doc": ""
+            },
+            {
+                "name": "legfromroots",
+                "static": true,
+                "sig": "legfromroots($roots)",
+                "doc": ""
+            },
+            {
+                "name": "legline",
+                "static": true,
+                "sig": "legline($off, $scl)",
+                "doc": ""
+            },
+            {
+                "name": "legtrim",
+                "static": true,
+                "sig": "legtrim($c, $tol = 0)",
+                "doc": ""
+            },
+            {
+                "name": "legvander",
+                "static": true,
+                "sig": "legvander($x, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "legval2d",
+                "static": true,
+                "sig": "legval2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "legval3d",
+                "static": true,
+                "sig": "legval3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "leggrid2d",
+                "static": true,
+                "sig": "leggrid2d($x, $y, $c)",
+                "doc": ""
+            },
+            {
+                "name": "leggrid3d",
+                "static": true,
+                "sig": "leggrid3d($x, $y, $z, $c)",
+                "doc": ""
+            },
+            {
+                "name": "legvander2d",
+                "static": true,
+                "sig": "legvander2d($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "legvander3d",
+                "static": true,
+                "sig": "legvander3d($x, $y, $z, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "legcompanion",
+                "static": true,
+                "sig": "legcompanion($c)",
+                "doc": ""
+            },
+            {
+                "name": "legroots",
+                "static": true,
+                "sig": "legroots($c)",
+                "doc": ""
+            },
+            {
+                "name": "legfit",
+                "static": true,
+                "sig": "legfit($x, $y, $deg)",
+                "doc": ""
+            },
+            {
+                "name": "leg2poly",
+                "static": true,
+                "sig": "leg2poly($c)",
+                "doc": ""
+            },
+            {
+                "name": "poly2leg",
+                "static": true,
+                "sig": "poly2leg($pol)",
+                "doc": ""
+            },
+            {
+                "name": "leggauss",
+                "static": true,
+                "sig": "leggauss($deg)",
+                "doc": ""
+            },
+            {
+                "name": "legweight",
+                "static": true,
+                "sig": "legweight($x)",
+                "doc": ""
+            },
+            {
+                "name": "legzero",
+                "static": true,
+                "sig": "legzero()",
+                "doc": ""
+            },
+            {
+                "name": "legone",
+                "static": true,
+                "sig": "legone()",
+                "doc": ""
+            },
+            {
+                "name": "legx",
+                "static": true,
+                "sig": "legx()",
+                "doc": ""
+            },
+            {
+                "name": "legdomain",
+                "static": true,
+                "sig": "legdomain()",
                 "doc": ""
             }
         ]

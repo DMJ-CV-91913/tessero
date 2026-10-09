@@ -58,6 +58,7 @@ phases:
   numpy.polynomial: 6
   numpy.polynomial.polynomial: 6
   numpy.polynomial.chebyshev: 6
+  numpy.polynomial.legendre: 6
   numpy.random: 3
   numpy.random.Generator: 3
   numpy.ndarray: 4

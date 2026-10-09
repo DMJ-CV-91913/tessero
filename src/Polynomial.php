@@ -58,8 +58,37 @@ final class Polynomial
     'hermeval' => 'hermeval',
     'hermval' => 'hermval',
     'lagval' => 'lagval',
+    'leg2poly' => 'leg2poly',
+    'legadd' => 'legadd',
+    'legcompanion' => 'legcompanion',
+    'legder' => 'legder',
+    'legdiv' => 'legdiv',
+    'legdomain' => 'legdomain',
+    'legfit' => 'legfit',
+    'legfromroots' => 'legfromroots',
+    'leggauss' => 'leggauss',
+    'leggrid2d' => 'leggrid2d',
+    'leggrid3d' => 'leggrid3d',
+    'legint' => 'legint',
+    'legline' => 'legline',
+    'legmul' => 'legmul',
+    'legmulx' => 'legmulx',
+    'legone' => 'legone',
+    'legpow' => 'legpow',
+    'legroots' => 'legroots',
+    'legsub' => 'legsub',
+    'legtrim' => 'legtrim',
     'legval' => 'legval',
+    'legval2d' => 'legval2d',
+    'legval3d' => 'legval3d',
+    'legvander' => 'legvander',
+    'legvander2d' => 'legvander2d',
+    'legvander3d' => 'legvander3d',
+    'legweight' => 'legweight',
+    'legx' => 'legx',
+    'legzero' => 'legzero',
     'poly2cheb' => 'poly2cheb',
+    'poly2leg' => 'poly2leg',
     'polyadd' => 'polyadd',
     'polycompanion' => 'polycompanion',
     'polyder' => 'polyder',
@@ -510,6 +539,210 @@ final class Polynomial
     }
 
     /**
+     * Convert a Legendre series to a power series (numpy.polynomial.legendre.leg2poly).
+     *
+     * scipy.npoly.leg2poly
+     */
+    public static function leg2poly(mixed $c): mixed
+    {
+        return Registry::routine('npoly.leg2poly', [$c]);
+    }
+
+    /**
+     * Sum of two Legendre series (numpy.polynomial.legendre.legadd).
+     *
+     * scipy.npoly.legadd
+     */
+    public static function legadd(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.legadd', [$c1, $c2]);
+    }
+
+    /**
+     * Companion matrix of a Legendre series (numpy.polynomial.legendre.legcompanion).
+     *
+     * scipy.npoly.legcompanion
+     */
+    public static function legcompanion(mixed $c): mixed
+    {
+        return Registry::routine('npoly.legcompanion', [$c]);
+    }
+
+    /**
+     * Derivative of a Legendre series (numpy.polynomial.legendre.legder).
+     *
+     * scipy.npoly.legder
+     */
+    public static function legder(mixed $c, mixed $m = 1, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.legder', [$c, $m, $scl]);
+    }
+
+    /**
+     * Quotient and remainder of Legendre-series division (numpy.polynomial.legendre.legdiv).
+     *
+     * scipy.npoly.legdiv
+     *
+     * @return mixed one array, or an array keyed by quo, rem when several results are requested
+     */
+    public static function legdiv(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.legdiv', [$c1, $c2]);
+    }
+
+    /**
+     * The default Legendre domain [-1, 1] (numpy.polynomial.legendre.legdomain).
+     *
+     * scipy.npoly.legdomain
+     */
+    public static function legdomain(): mixed
+    {
+        return Registry::routine('npoly.legdomain', []);
+    }
+
+    /**
+     * Least-squares Legendre-series fit (numpy.polynomial.legendre.legfit).
+     *
+     * scipy.npoly.legfit
+     */
+    public static function legfit(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.legfit', [$x, $y, $deg]);
+    }
+
+    /**
+     * Legendre series with the given roots (numpy.polynomial.legendre.legfromroots).
+     *
+     * scipy.npoly.legfromroots
+     */
+    public static function legfromroots(mixed $roots): mixed
+    {
+        return Registry::routine('npoly.legfromroots', [$roots]);
+    }
+
+    /**
+     * Gauss-Legendre quadrature nodes and weights (numpy.polynomial.legendre.leggauss).
+     *
+     * scipy.npoly.leggauss
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function leggauss(mixed $deg): mixed
+    {
+        return Registry::routine('npoly.leggauss', [$deg]);
+    }
+
+    /**
+     * Evaluate a Legendre series on a 2-D grid (numpy.polynomial.legendre.leggrid2d).
+     *
+     * scipy.npoly.leggrid2d
+     */
+    public static function leggrid2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.leggrid2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a Legendre series on a 3-D grid (numpy.polynomial.legendre.leggrid3d).
+     *
+     * scipy.npoly.leggrid3d
+     */
+    public static function leggrid3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.leggrid3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Antiderivative of a Legendre series (numpy.polynomial.legendre.legint).
+     *
+     * scipy.npoly.legint
+     */
+    public static function legint(mixed $c, mixed $m = 1, mixed $k = 0, mixed $lbnd = 0, mixed $scl = 1): mixed
+    {
+        return Registry::routine('npoly.legint', [$c, $m, $k, $lbnd, $scl]);
+    }
+
+    /**
+     * Legendre series for off + scl*x (numpy.polynomial.legendre.legline).
+     *
+     * scipy.npoly.legline
+     */
+    public static function legline(mixed $off, mixed $scl): mixed
+    {
+        return Registry::routine('npoly.legline', [$off, $scl]);
+    }
+
+    /**
+     * Product of two Legendre series (numpy.polynomial.legendre.legmul).
+     *
+     * scipy.npoly.legmul
+     */
+    public static function legmul(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.legmul', [$c1, $c2]);
+    }
+
+    /**
+     * Multiply a Legendre series by x (numpy.polynomial.legendre.legmulx).
+     *
+     * scipy.npoly.legmulx
+     */
+    public static function legmulx(mixed $c): mixed
+    {
+        return Registry::routine('npoly.legmulx', [$c]);
+    }
+
+    /**
+     * The one Legendre series (numpy.polynomial.legendre.legone).
+     *
+     * scipy.npoly.legone
+     */
+    public static function legone(): mixed
+    {
+        return Registry::routine('npoly.legone', []);
+    }
+
+    /**
+     * Legendre series raised to a power (numpy.polynomial.legendre.legpow).
+     *
+     * scipy.npoly.legpow
+     */
+    public static function legpow(mixed $c, mixed $pow, mixed $maxpower = 16): mixed
+    {
+        return Registry::routine('npoly.legpow', [$c, $pow, $maxpower]);
+    }
+
+    /**
+     * Roots of a Legendre series (numpy.polynomial.legendre.legroots).
+     *
+     * scipy.npoly.legroots
+     */
+    public static function legroots(mixed $c): mixed
+    {
+        return Registry::routine('npoly.legroots', [$c]);
+    }
+
+    /**
+     * Difference of two Legendre series (numpy.polynomial.legendre.legsub).
+     *
+     * scipy.npoly.legsub
+     */
+    public static function legsub(mixed $c1, mixed $c2): mixed
+    {
+        return Registry::routine('npoly.legsub', [$c1, $c2]);
+    }
+
+    /**
+     * Trim trailing small coefficients (numpy.polynomial.legendre.legtrim).
+     *
+     * scipy.npoly.legtrim
+     */
+    public static function legtrim(mixed $c, mixed $tol = 0): mixed
+    {
+        return Registry::routine('npoly.legtrim', [$c, $tol]);
+    }
+
+    /**
      * Evaluate a Legendre series at x (numpy.polynomial.legendre.legval).
      *
      * scipy.npoly.legval
@@ -520,6 +753,86 @@ final class Polynomial
     }
 
     /**
+     * Evaluate a 2-D Legendre series (numpy.polynomial.legendre.legval2d).
+     *
+     * scipy.npoly.legval2d
+     */
+    public static function legval2d(mixed $x, mixed $y, mixed $c): mixed
+    {
+        return Registry::routine('npoly.legval2d', [$x, $y, $c]);
+    }
+
+    /**
+     * Evaluate a 3-D Legendre series (numpy.polynomial.legendre.legval3d).
+     *
+     * scipy.npoly.legval3d
+     */
+    public static function legval3d(mixed $x, mixed $y, mixed $z, mixed $c): mixed
+    {
+        return Registry::routine('npoly.legval3d', [$x, $y, $z, $c]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of the Legendre basis (numpy.polynomial.legendre.legvander).
+     *
+     * scipy.npoly.legvander
+     */
+    public static function legvander(mixed $x, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.legvander', [$x, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 2-D Legendre basis (numpy.polynomial.legendre.legvander2d).
+     *
+     * scipy.npoly.legvander2d
+     */
+    public static function legvander2d(mixed $x, mixed $y, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.legvander2d', [$x, $y, $deg]);
+    }
+
+    /**
+     * Pseudo-Vandermonde matrix of a 3-D Legendre basis (numpy.polynomial.legendre.legvander3d).
+     *
+     * scipy.npoly.legvander3d
+     */
+    public static function legvander3d(mixed $x, mixed $y, mixed $z, mixed $deg): mixed
+    {
+        return Registry::routine('npoly.legvander3d', [$x, $y, $z, $deg]);
+    }
+
+    /**
+     * Legendre weight, identically 1 (numpy.polynomial.legendre.legweight).
+     *
+     * scipy.npoly.legweight
+     */
+    public static function legweight(mixed $x): mixed
+    {
+        return Registry::routine('npoly.legweight', [$x]);
+    }
+
+    /**
+     * The identity Legendre series x (numpy.polynomial.legendre.legx).
+     *
+     * scipy.npoly.legx
+     */
+    public static function legx(): mixed
+    {
+        return Registry::routine('npoly.legx', []);
+    }
+
+    /**
+     * The zero Legendre series (numpy.polynomial.legendre.legzero).
+     *
+     * scipy.npoly.legzero
+     */
+    public static function legzero(): mixed
+    {
+        return Registry::routine('npoly.legzero', []);
+    }
+
+    /**
      * Convert a power series to a Chebyshev series (numpy.polynomial.chebyshev.poly2cheb).
      *
      * scipy.npoly.poly2cheb
@@ -527,6 +840,16 @@ final class Polynomial
     public static function poly2cheb(mixed $pol): mixed
     {
         return Registry::routine('npoly.poly2cheb', [$pol]);
+    }
+
+    /**
+     * Convert a power series to a Legendre series (numpy.polynomial.legendre.poly2leg).
+     *
+     * scipy.npoly.poly2leg
+     */
+    public static function poly2leg(mixed $pol): mixed
+    {
+        return Registry::routine('npoly.poly2leg', [$pol]);
     }
 
     /**
