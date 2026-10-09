@@ -141,6 +141,8 @@
 | `signal.peak_prominences` | call | rtol 0 |
 | `signal.peak_widths` | every call | rtol 0 |
 | `signal.peak_widths` | call | rtol 0 |
+| `signal.resample_poly` | every call | rtol 0 |
+| `signal.resample_poly` | call | rtol 0 |
 | `signal.chirp` | every call | rtol 0 |
 | `signal.gausspulse` | every call | rtol 0 |
 | `signal.normalize` | every call | rtol 0 |

@@ -1020,6 +1020,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.peak_widths` | `Tessero\Signal::peakWidths()` |
 | `scipy.signal.periodogram` | `Tessero\Signal::periodogram()` |
 | `scipy.signal.resample` | `Tessero\Signal::resample()` |
+| `scipy.signal.resample_poly` | `Tessero\Signal::resamplePoly()` |
 | `scipy.signal.residue` | `Tessero\Signal::residue()` |
 | `scipy.signal.residuez` | `Tessero\Signal::residuez()` |
 | `scipy.signal.savgol_coeffs` | `Tessero\Signal::savgolCoeffs()` |

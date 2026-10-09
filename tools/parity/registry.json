@@ -2370,6 +2370,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.resample_poly": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.residue": {
             "kind": "routine",
             "nin": 0,

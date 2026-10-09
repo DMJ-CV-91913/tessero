@@ -108,6 +108,7 @@ final class Signal
     'peak_widths' => 'peakWidths',
     'periodogram' => 'periodogram',
     'resample' => 'resample',
+    'resample_poly' => 'resamplePoly',
     'residue' => 'residue',
     'residuez' => 'residuez',
     'savgol_coeffs' => 'savgolCoeffs',
@@ -1163,6 +1164,16 @@ final class Signal
     public static function resample(mixed $x, mixed $num, mixed $t = null, mixed $axis = 0, mixed $window = null, mixed $domain = 'time'): mixed
     {
         return Registry::routine('signal.resample', [$x, $num, $t, $axis, $window, $domain]);
+    }
+
+    /**
+     * Polyphase (up/down) resampling of a 1-D signal with the default kaiser FIR (scipy.signal.resample_poly).
+     *
+     * scipy.signal.resample_poly
+     */
+    public static function resamplePoly(mixed $x, mixed $up, mixed $down, mixed $axis = 0, mixed $window = 'kaiser', mixed $padtype = 'constant', mixed $cval = null): mixed
+    {
+        return Registry::routine('signal.resample_poly', [$x, $up, $down, $axis, $window, $padtype, $cval]);
     }
 
     /**
