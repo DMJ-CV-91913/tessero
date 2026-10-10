@@ -1222,6 +1222,7 @@
         "stats.invgamma": "pass",
         "stats.invgauss": "pass",
         "stats.invweibull": "pass",
+        "stats.invwishart": "pass",
         "stats.iqr": "pass",
         "stats.irwinhall": "pass",
         "stats.jarque_bera": "pass",
@@ -1259,6 +1260,7 @@
         "stats.loguniform": "pass",
         "stats.lomax": "pass",
         "stats.mannwhitneyu": "pass",
+        "stats.matrix_normal": "pass",
         "stats.maxwell": "pass",
         "stats.median_abs_deviation": "pass",
         "stats.median_test": "pass",
@@ -1360,6 +1362,7 @@
         "stats.weibull_min": "pass",
         "stats.weightedtau": "pass",
         "stats.wilcoxon": "pass",
+        "stats.wishart": "pass",
         "stats.wrapcauchy": "pass",
         "stats.yeojohnson": "pass",
         "stats.yeojohnson_llf": "pass",
@@ -2782,7 +2785,10 @@
             "stats.multinomial": 7.143405097657713e-15,
             "stats.multivariate_hypergeom": 3.572005470722011e-15,
             "stats.multivariate_t": 1.0389372517295568e-15,
-            "stats.vonmises_fisher": 1.1129148643299467e-14
+            "stats.vonmises_fisher": 1.1129148643299467e-14,
+            "stats.matrix_normal": 0,
+            "stats.wishart": 7.075071310731475e-15,
+            "stats.invwishart": 1.430774088960687e-14
         },
         "ext": {
             "np.median": 0,
@@ -4174,7 +4180,10 @@
             "stats.multinomial": 7.143405097657713e-15,
             "stats.multivariate_hypergeom": 3.572005470722011e-15,
             "stats.multivariate_t": 1.0389372517295568e-15,
-            "stats.vonmises_fisher": 1.1129148643299467e-14
+            "stats.vonmises_fisher": 1.1129148643299467e-14,
+            "stats.matrix_normal": 0,
+            "stats.wishart": 7.075071310731475e-15,
+            "stats.invwishart": 1.430774088960687e-14
         }
     },
     "ext": {
@@ -5400,6 +5409,7 @@
         "stats.invgamma": "pass",
         "stats.invgauss": "pass",
         "stats.invweibull": "pass",
+        "stats.invwishart": "pass",
         "stats.iqr": "pass",
         "stats.irwinhall": "pass",
         "stats.jarque_bera": "pass",
@@ -5437,6 +5447,7 @@
         "stats.loguniform": "pass",
         "stats.lomax": "pass",
         "stats.mannwhitneyu": "pass",
+        "stats.matrix_normal": "pass",
         "stats.maxwell": "pass",
         "stats.median_abs_deviation": "pass",
         "stats.median_test": "pass",
@@ -5538,6 +5549,7 @@
         "stats.weibull_min": "pass",
         "stats.weightedtau": "pass",
         "stats.wilcoxon": "pass",
+        "stats.wishart": "pass",
         "stats.wrapcauchy": "pass",
         "stats.yeojohnson": "pass",
         "stats.yeojohnson_llf": "pass",

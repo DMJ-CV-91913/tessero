@@ -17,6 +17,7 @@
 #include "../src/fn.h"
 
 extern "C" void tsr_special_iv(const void *, const double *, double *);   /* modified Bessel I_v (for vonmises_fisher) */
+extern "C" int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
 
 #include <algorithm>
 #include <cmath>
@@ -2309,6 +2310,77 @@ static int r_vonmises_fisher(const void *ctx, const tsr_arg *args, int nargs, ts
     fn_free_doubles(mu, lm); fn_free_doubles(X, lx);
     return rc;
 }
+/* log-determinant of a d-by-d SPD matrix via Cholesky; sets *ok=0 if not positive definite. */
+static double stat_logdet(const double *C, int64_t d, int *ok)
+{
+    std::vector<double> L(d * d, 0.0);
+    if (!stat_chol(C, d, L.data())) { *ok = 0; return 0.0; }
+    double s = 0.0; for (int64_t a = 0; a < d; a++) s += 2.0 * std::log(L[a * d + a]);
+    *ok = 1; return s;
+}
+/* multivariate log-gamma Gamma_d(a). */
+static double stat_mgl(double a, int64_t d)
+{
+    double s = (double)d * (d - 1) / 4.0 * std::log(M_PI);
+    for (int64_t j = 1; j <= d; j++) s += std::lgamma(a + (1.0 - (double)j) / 2.0);
+    return s;
+}
+/* matrix_normal(M, U, V, X): matrix-normal pdf and log-pdf at a single matrix X (n-by-p). */
+static int r_matrix_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("matrix_normal: M, U, V, X must be 2-D arrays"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0], p = args[0].arr.shape[1];
+    int64_t lM, lU, lV, lX; double *M = fn_arg_doubles(&args[0], &lM), *U = M ? fn_arg_doubles(&args[1], &lU) : nullptr,
+        *V = U ? fn_arg_doubles(&args[2], &lV) : nullptr, *X = V ? fn_arg_doubles(&args[3], &lX) : nullptr;
+    int rc = X ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        std::vector<double> A(n * p), Ucopy(U, U + n * n), B, Vcopy(V, V + p * p), M2(p * p, 0.0);
+        for (int64_t k = 0; k < n * p; k++) A[k] = X[k] - M[k];
+        B = A;
+        int okU, okV; double ldU = stat_logdet(U, n, &okU), ldV = stat_logdet(V, p, &okV);
+        if (!okU || !okV) { fn_set_error("matrix_normal: U or V not positive definite"); rc = TSR_EARG; }
+        else if (sl_dense_solve(Ucopy.data(), B.data(), n, p) != 0) { fn_set_error("matrix_normal: U is singular"); rc = TSR_EARG; }
+        else {
+            for (int64_t i = 0; i < p; i++) for (int64_t j = 0; j < p; j++) { double s = 0.0; for (int64_t k = 0; k < n; k++) s += A[k * p + i] * B[k * p + j]; M2[i * p + j] = s; }
+            if (sl_dense_solve(Vcopy.data(), M2.data(), p, p) != 0) { fn_set_error("matrix_normal: V is singular"); rc = TSR_EARG; }
+            else { double tr = 0.0; for (int64_t i = 0; i < p; i++) tr += M2[i * p + i];
+                double lp = -0.5 * ((double)n * p * std::log(2.0 * M_PI) + (double)p * ldU + (double)n * ldV + tr);
+                fn_result_num(&res[0], std::exp(lp)); fn_result_num(&res[1], lp); }
+        }
+    }
+    fn_free_doubles(M, lM); fn_free_doubles(U, lU); fn_free_doubles(V, lV); fn_free_doubles(X, lX);
+    return rc;
+}
+/* wishart / inverse-wishart pdf and log-pdf at a single SPD matrix X (d-by-d). inv=1 selects inverse-Wishart. */
+static int stat_wishart(const tsr_arg *args, tsr_result *res, int inv)
+{
+    if (args[0].kind != 1 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("wishart: df scalar, scale and X 2-D"); return TSR_EARG; }
+    const double df = args[0].num; const int64_t d = args[1].arr.shape[0];
+    int64_t lS, lX; double *S = fn_arg_doubles(&args[1], &lS), *X = S ? fn_arg_doubles(&args[2], &lX) : nullptr;
+    int rc = X ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        int okS, okX; double ldS = stat_logdet(S, d, &okS), ldX = stat_logdet(X, d, &okX);
+        if (!okS || !okX) { fn_set_error("wishart: scale or X not positive definite"); rc = TSR_EARG; }
+        else {
+            std::vector<double> Acopy, Bcopy;                 /* solve A Y = B -> trace(Y) */
+            if (!inv) { Acopy.assign(S, S + d * d); Bcopy.assign(X, X + d * d); }   /* tr(scale^-1 X) */
+            else { Acopy.assign(X, X + d * d); Bcopy.assign(S, S + d * d); }        /* tr(X^-1 scale) */
+            if (sl_dense_solve(Acopy.data(), Bcopy.data(), d, d) != 0) { fn_set_error("wishart: singular matrix"); rc = TSR_EARG; }
+            else {
+                double tr = 0.0; for (int64_t i = 0; i < d; i++) tr += Bcopy[i * d + i];
+                double mgl = stat_mgl(0.5 * df, d), lp;
+                if (!inv) lp = 0.5 * (df - d - 1) * ldX - 0.5 * tr - 0.5 * df * d * std::log(2.0) - 0.5 * df * ldS - mgl;
+                else lp = 0.5 * df * ldS - 0.5 * (df + d + 1) * ldX - 0.5 * tr - 0.5 * df * d * std::log(2.0) - mgl;
+                fn_result_num(&res[0], std::exp(lp)); fn_result_num(&res[1], lp);
+            }
+        }
+    }
+    fn_free_doubles(S, lS); fn_free_doubles(X, lX);
+    return rc;
+}
+static int r_wishart(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)n; (void)nres; return stat_wishart(a, res, 0); }
+static int r_invwishart(const void *ctx, const tsr_arg *a, int n, tsr_result *res, int nres) { (void)ctx; (void)n; (void)nres; return stat_wishart(a, res, 1); }
 
 }  // namespace
 
@@ -2434,6 +2506,12 @@ static const fn_def DEFS[] = {
             "Multivariate Student-t pdf and log-pdf at each row of x (scipy.stats.multivariate_t)."),
     ROUTINE("stats.vonmises_fisher", 1, "mu, kappa, x", "pdf", r_vonmises_fisher, NULL,
             "Von Mises-Fisher pdf at each row of x (scipy.stats.vonmises_fisher)."),
+    ROUTINE("stats.matrix_normal", 2, "mean, rowcov, colcov, x", "pdf, logpdf", r_matrix_normal, NULL,
+            "Matrix-normal pdf and log-pdf at a matrix x (scipy.stats.matrix_normal)."),
+    ROUTINE("stats.wishart", 2, "df, scale, x", "pdf, logpdf", r_wishart, NULL,
+            "Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.wishart)."),
+    ROUTINE("stats.invwishart", 2, "df, scale, x", "pdf, logpdf", r_invwishart, NULL,
+            "Inverse-Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.invwishart)."),
     ROUTINE("stats.boxcox_llf", 1, "lmb, data, axis=0, keepdims=False, nan_policy='propagate'", "llf", r_llf, NULL,
             "Box-Cox log-likelihood (scipy.stats.boxcox_llf)."),
     ROUTINE("stats.yeojohnson_llf", 1, "lmb, data, axis=0, nan_policy='propagate', keepdims=False", "llf", r_llf, &ONE,
