@@ -26,6 +26,7 @@ final class Distance
     'correlation' => 'correlation',
     'cosine' => 'cosine',
     'dice' => 'dice',
+    'distance_matrix' => 'distanceMatrix',
     'euclidean' => 'euclidean',
     'hamming' => 'hamming',
     'is_valid_dm' => 'isValidDm',
@@ -34,6 +35,8 @@ final class Distance
     'jensenshannon' => 'jensenshannon',
     'mahalanobis' => 'mahalanobis',
     'minkowski' => 'minkowski',
+    'minkowski_distance' => 'minkowskiDistance',
+    'minkowski_distance_p' => 'minkowskiDistanceP',
     'num_obs_dm' => 'numObsDm',
     'num_obs_y' => 'numObsY',
     'pdist' => 'pdist',
@@ -143,6 +146,16 @@ final class Distance
     }
 
     /**
+     * Matrix of all pairwise Minkowski distances between two point sets (scipy.spatial.distance_matrix).
+     *
+     * scipy.spatial.distance.distance_matrix
+     */
+    public static function distanceMatrix(mixed $x, mixed $y, mixed $p = 2, mixed $threshold = 1000000): mixed
+    {
+        return Registry::routine('distance.distance_matrix', [$x, $y, $p, $threshold]);
+    }
+
+    /**
      * Euclidean distance between two 1-D arrays (scipy.spatial.distance.euclidean).
      *
      * scipy.spatial.distance.euclidean
@@ -220,6 +233,26 @@ final class Distance
     public static function minkowski(mixed $u, mixed $v, mixed $p = 2, mixed $w = null): mixed
     {
         return Registry::routine('distance.minkowski', [$u, $v, $p, $w]);
+    }
+
+    /**
+     * Per-point Minkowski distance between two arrays of points (scipy.spatial.minkowski_distance).
+     *
+     * scipy.spatial.distance.minkowski_distance
+     */
+    public static function minkowskiDistance(mixed $x, mixed $y, mixed $p = 2): mixed
+    {
+        return Registry::routine('distance.minkowski_distance', [$x, $y, $p]);
+    }
+
+    /**
+     * p-th power of the Minkowski distance, no final root (scipy.spatial.minkowski_distance_p).
+     *
+     * scipy.spatial.distance.minkowski_distance_p
+     */
+    public static function minkowskiDistanceP(mixed $x, mixed $y, mixed $p = 2): mixed
+    {
+        return Registry::routine('distance.minkowski_distance_p', [$x, $y, $p]);
     }
 
     /**

@@ -140,6 +140,11 @@
             "nin": 0,
             "nout": 1
         },
+        "distance.distance_matrix": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "distance.euclidean": {
             "kind": "routine",
             "nin": 0,
@@ -176,6 +181,16 @@
             "nout": 1
         },
         "distance.minkowski": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.minkowski_distance": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.minkowski_distance_p": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
