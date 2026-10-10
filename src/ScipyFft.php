@@ -19,9 +19,13 @@ final class ScipyFft
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'dct' => 'dct',
+    'dctn' => 'dctn',
     'dst' => 'dst',
+    'dstn' => 'dstn',
     'idct' => 'idct',
+    'idctn' => 'idctn',
     'idst' => 'idst',
+    'idstn' => 'idstn',
     ];
 
     private function __construct()
@@ -51,6 +55,16 @@ final class ScipyFft
     }
 
     /**
+     * n-D discrete cosine transform over a 2-D array, types 2/3 (scipy.fft.dctn).
+     *
+     * scipy.scipyfft.dctn
+     */
+    public static function dctn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed
+    {
+        return Registry::routine('scipyfft.dctn', [$x, $type, $s, $axes, $norm]);
+    }
+
+    /**
      * Discrete sine transform, types 2/3, norm='backward' (scipy.fft.dst).
      *
      * scipy.scipyfft.dst
@@ -58,6 +72,16 @@ final class ScipyFft
     public static function dst(mixed $x, mixed $type = 2, mixed $n = null, mixed $axis = -1, mixed $norm = null): mixed
     {
         return Registry::routine('scipyfft.dst', [$x, $type, $n, $axis, $norm]);
+    }
+
+    /**
+     * n-D discrete sine transform over a 2-D array, types 2/3 (scipy.fft.dstn).
+     *
+     * scipy.scipyfft.dstn
+     */
+    public static function dstn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed
+    {
+        return Registry::routine('scipyfft.dstn', [$x, $type, $s, $axes, $norm]);
     }
 
     /**
@@ -71,6 +95,16 @@ final class ScipyFft
     }
 
     /**
+     * n-D inverse discrete cosine transform over a 2-D array (scipy.fft.idctn).
+     *
+     * scipy.scipyfft.idctn
+     */
+    public static function idctn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed
+    {
+        return Registry::routine('scipyfft.idctn', [$x, $type, $s, $axes, $norm]);
+    }
+
+    /**
      * Inverse discrete sine transform, types 2/3, norm='backward' (scipy.fft.idst).
      *
      * scipy.scipyfft.idst
@@ -78,5 +112,15 @@ final class ScipyFft
     public static function idst(mixed $x, mixed $type = 2, mixed $n = null, mixed $axis = -1, mixed $norm = null): mixed
     {
         return Registry::routine('scipyfft.idst', [$x, $type, $n, $axis, $norm]);
+    }
+
+    /**
+     * n-D inverse discrete sine transform over a 2-D array (scipy.fft.idstn).
+     *
+     * scipy.scipyfft.idstn
+     */
+    public static function idstn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed
+    {
+        return Registry::routine('scipyfft.idstn', [$x, $type, $s, $axes, $norm]);
     }
 }

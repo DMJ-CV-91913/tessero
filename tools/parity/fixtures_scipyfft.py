@@ -21,6 +21,18 @@ for name, fn in FN.items():
                           'tol': {'atol': 1e-10, 'rtol': 1e-10}})
     calls.append({'fn': name, 'cases': cases})
 
+# n-D variants over 2-D arrays
+FN2 = {'dctn': sf.dctn, 'idctn': sf.idctn, 'dstn': sf.dstn, 'idstn': sf.idstn}
+for name, fn in FN2.items():
+    cases = []
+    for (m, n) in ((3, 4), (5, 5), (4, 6)):
+        x = rng.normal(size=(m, n))
+        for t in (2, 3):
+            cases.append({'args': [F.enc(x), F.enc(t)], 'kwargs': {},
+                          'expect': F.enc_result(np.asarray(fn(x, type=t), float), []), 'compare': 'tol',
+                          'tol': {'atol': 1e-10, 'rtol': 1e-10}})
+    calls.append({'fn': name, 'cases': cases})
+
 out = {'module': 'scipyfft', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

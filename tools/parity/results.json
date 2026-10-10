@@ -689,9 +689,13 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "scipyfft.dct": "pass",
+        "scipyfft.dctn": "pass",
         "scipyfft.dst": "pass",
+        "scipyfft.dstn": "pass",
         "scipyfft.idct": "pass",
+        "scipyfft.idctn": "pass",
         "scipyfft.idst": "pass",
+        "scipyfft.idstn": "pass",
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
@@ -2908,7 +2912,11 @@
             "scipyfft.dct": 1.537965763029087e-14,
             "scipyfft.idct": 1.0348925533376129e-13,
             "scipyfft.dst": 5.420133866325052e-15,
-            "scipyfft.idst": 1.0682430074180631e-14
+            "scipyfft.idst": 1.0682430074180631e-14,
+            "scipyfft.dctn": 7.804879767800092e-14,
+            "scipyfft.idctn": 3.9415031627694214e-13,
+            "scipyfft.dstn": 3.4932030592740952e-15,
+            "scipyfft.idstn": 4.3196617495071975e-14
         },
         "ext": {
             "np.median": 0,
@@ -4363,7 +4371,11 @@
             "scipyfft.dct": 1.537965763029087e-14,
             "scipyfft.idct": 1.0348925533376129e-13,
             "scipyfft.dst": 5.420133866325052e-15,
-            "scipyfft.idst": 1.0682430074180631e-14
+            "scipyfft.idst": 1.0682430074180631e-14,
+            "scipyfft.dctn": 7.804879767800092e-14,
+            "scipyfft.idctn": 3.9415031627694214e-13,
+            "scipyfft.dstn": 3.4932030592740952e-15,
+            "scipyfft.idstn": 4.3196617495071975e-14
         }
     },
     "ext": {
@@ -5056,9 +5068,13 @@
         "random.weibull": "pass",
         "random.zipf": "pass",
         "scipyfft.dct": "pass",
+        "scipyfft.dctn": "pass",
         "scipyfft.dst": "pass",
+        "scipyfft.dstn": "pass",
         "scipyfft.idct": "pass",
+        "scipyfft.idctn": "pass",
         "scipyfft.idst": "pass",
+        "scipyfft.idstn": "pass",
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
