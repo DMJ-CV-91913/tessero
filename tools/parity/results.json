@@ -688,6 +688,10 @@
         "random.wald": "pass",
         "random.weibull": "pass",
         "random.zipf": "pass",
+        "scipyfft.dct": "pass",
+        "scipyfft.dst": "pass",
+        "scipyfft.idct": "pass",
+        "scipyfft.idst": "pass",
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
@@ -2900,7 +2904,11 @@
             "distance.minkowski_distance_p": 0,
             "distance.geometric_slerp": 3.7128810157033085e-15,
             "distance.procrustes": 7.810518837960525e-15,
-            "stats.dirichlet_multinomial": 1.7638064021643667e-14
+            "stats.dirichlet_multinomial": 1.7638064021643667e-14,
+            "scipyfft.dct": 1.537965763029087e-14,
+            "scipyfft.idct": 1.0348925533376129e-13,
+            "scipyfft.dst": 5.420133866325052e-15,
+            "scipyfft.idst": 1.0682430074180631e-14
         },
         "ext": {
             "np.median": 0,
@@ -4351,7 +4359,11 @@
             "distance.minkowski_distance_p": 0,
             "distance.geometric_slerp": 3.7128810157033085e-15,
             "distance.procrustes": 7.810518837960525e-15,
-            "stats.dirichlet_multinomial": 1.7638064021643667e-14
+            "stats.dirichlet_multinomial": 1.7638064021643667e-14,
+            "scipyfft.dct": 1.537965763029087e-14,
+            "scipyfft.idct": 1.0348925533376129e-13,
+            "scipyfft.dst": 5.420133866325052e-15,
+            "scipyfft.idst": 1.0682430074180631e-14
         }
     },
     "ext": {
@@ -5043,6 +5055,10 @@
         "random.wald": "pass",
         "random.weibull": "pass",
         "random.zipf": "pass",
+        "scipyfft.dct": "pass",
+        "scipyfft.dst": "pass",
+        "scipyfft.idct": "pass",
+        "scipyfft.idst": "pass",
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
