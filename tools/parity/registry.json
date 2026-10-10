@@ -230,6 +230,11 @@
             "nin": 0,
             "nout": 1
         },
+        "hierarchy.is_isomorphic": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "hierarchy.is_monotonic": {
             "kind": "routine",
             "nin": 0,
@@ -5403,6 +5408,31 @@
         "special.zetac": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "splinalg.is_sptriangular": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "splinalg.norm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.spbandwidth": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "splinalg.spsolve": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.spsolve_triangular": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "stats.alexandergovern": {

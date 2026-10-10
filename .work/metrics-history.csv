@@ -179,3 +179,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-10,"scipy.cluster.hierarchy: Z-dependent queries (num_obs, validity, maxdists, inconsistent, cophenet, leaves_list, mlab)",91.7,91.1,74.5,74.3,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,"scipy.cluster.hierarchy: fcluster + fclusterdata (all criteria, both backends)",91.7,91.1,74.6,74.4,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,scipy.cluster.hierarchy: leaders + cut_tree (both backends),91.7,91.1,74.8,74.6,99.4,99.7,72.6,72.6,84.2,84.2
+2026-10-10,scipy.sparse.linalg direct solves/norms/structure + hierarchy is_isomorphic,91.7,91.1,75.3,75.1,99.4,99.7,72.6,72.6,84.2,84.2

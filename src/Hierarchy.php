@@ -28,6 +28,7 @@ final class Hierarchy
     'fclusterdata' => 'fclusterdata',
     'from_mlab_linkage' => 'fromMlabLinkage',
     'inconsistent' => 'inconsistent',
+    'is_isomorphic' => 'isIsomorphic',
     'is_monotonic' => 'isMonotonic',
     'is_valid_im' => 'isValidIm',
     'is_valid_linkage' => 'isValidLinkage',
@@ -159,6 +160,16 @@ final class Hierarchy
     public static function inconsistent(mixed $Z, mixed $d = 2): mixed
     {
         return Registry::routine('hierarchy.inconsistent', [$Z, $d]);
+    }
+
+    /**
+     * Whether two flat-cluster labellings are isomorphic (scipy.cluster.hierarchy.is_isomorphic).
+     *
+     * scipy.hierarchy.is_isomorphic
+     */
+    public static function isIsomorphic(mixed $T1, mixed $T2): mixed
+    {
+        return Registry::routine('hierarchy.is_isomorphic', [$T1, $T2]);
     }
 
     /**
