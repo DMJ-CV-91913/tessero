@@ -262,6 +262,42 @@ static int r_structural_rank(const void *ctx, const tsr_arg *args, int nargs, ts
     return TSR_OK;
 }
 
+/* minimum_spanning_tree(csgraph): Kruskal MST of the undirected graph, returned dense with each tree edge
+   at [min(i,j)][max(i,j)] = weight (SciPy's orientation). Unique (so order-independent) for distinct weights. */
+typedef struct { int64_t i, j; double w; } csg_ed;
+static int csg_edcmp(const void *a, const void *b)
+{
+    double wa = ((const csg_ed *)a)->w, wb = ((const csg_ed *)b)->w;
+    return wa < wb ? -1 : (wa > wb ? 1 : 0);
+}
+static int64_t csg_find(int64_t *p, int64_t x) { while (p[x] != x) { p[x] = p[p[x]]; x = p[x]; } return x; }
+
+static int r_minimum_spanning_tree(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("minimum_spanning_tree: graph must be square"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0], tot; double *A = fn_arg_doubles(&args[0], &tot);
+    if (!A) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
+    csg_ed *ed = (csg_ed *)malloc((size_t)(n * n + 1) * sizeof(csg_ed));
+    int64_t *p = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    if (!out || !ed || !p) { free(ed); free(p); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n * n; i++) out[i] = 0.0;
+    int64_t ne = 0;
+    for (int64_t i = 0; i < n; i++) for (int64_t j = i + 1; j < n; j++) {
+        double w = A[i * n + j] != 0.0 ? A[i * n + j] : A[j * n + i];
+        if (w != 0.0) { ed[ne].i = i; ed[ne].j = j; ed[ne].w = w; ne++; }
+    }
+    qsort(ed, (size_t)ne, sizeof(csg_ed), csg_edcmp);
+    for (int64_t i = 0; i < n; i++) p[i] = i;
+    for (int64_t e = 0; e < ne; e++) {
+        int64_t ri = csg_find(p, ed[e].i), rj = csg_find(p, ed[e].j);
+        if (ri != rj) { p[ri] = rj; out[ed[e].i * n + ed[e].j] = ed[e].w; }
+    }
+    free(ed); free(p); fn_free_doubles(A, tot);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("csgraph.connected_components", 2, "csgraph, directed=True, connection='weak'", "n_components, labels", r_connected_components, NULL, "Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components)."),
     ROUTINE("csgraph.shortest_path", 1, "csgraph, method='auto', directed=True, return_predecessors=False, unweighted=False, overwrite=False, indices=None", "dist_matrix", r_shortest_path, NULL, "All-pairs shortest path distance matrix (scipy.sparse.csgraph.shortest_path; dense, indices=None)."),
@@ -273,6 +309,7 @@ static const fn_def DEFS[] = {
     ROUTINE("csgraph.breadth_first_order", 2, "csgraph, i_start, directed=True, return_predecessors=True", "node_array, predecessors", r_breadth_first_order, NULL, "Breadth-first traversal order and predecessors (scipy.sparse.csgraph.breadth_first_order)."),
     ROUTINE("csgraph.depth_first_order", 2, "csgraph, i_start, directed=True, return_predecessors=True", "node_array, predecessors", r_depth_first_order, NULL, "Depth-first traversal order and predecessors (scipy.sparse.csgraph.depth_first_order)."),
     ROUTINE("csgraph.structural_rank", 1, "graph", "rank", r_structural_rank, NULL, "Structural rank of a graph's sparsity pattern (scipy.sparse.csgraph.structural_rank)."),
+    ROUTINE("csgraph.minimum_spanning_tree", 1, "csgraph, overwrite=False", "mst", r_minimum_spanning_tree, NULL, "Minimum spanning tree of an undirected graph, returned dense (scipy.sparse.csgraph.minimum_spanning_tree)."),
 };
 
 const fn_table TSR_SCIPY_CSGRAPH_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

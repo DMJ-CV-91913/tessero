@@ -183,3 +183,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-10,"scipy.sparse.linalg: inv, matrix_power, expm",91.7,91.1,75.5,75.3,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,scipy.sparse.linalg: expm_multiply + E4 exclusions for object-returning fns,91.7,91.1,75.9,75.7,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,"scipy.sparse.csgraph: laplacian, breadth/depth_first_order, structural_rank",91.7,91.1,76.2,76.0,99.4,99.7,72.6,72.6,84.2,84.2
+2026-10-10,scipy.sparse.csgraph: minimum_spanning_tree,91.7,91.1,76.3,76.1,99.4,99.7,72.6,72.6,84.2,84.2

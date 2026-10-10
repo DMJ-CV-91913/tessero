@@ -102,6 +102,21 @@ for A in GRAPHS:
 calls += [{'fn': 'laplacian', 'cases': lap_c}, {'fn': 'breadth_first_order', 'cases': bfo_c},
           {'fn': 'depth_first_order', 'cases': dfo_c}, {'fn': 'structural_rank', 'cases': sr_c}]
 
+# minimum_spanning_tree: undirected graphs with DISTINCT weights (unique MST, order-independent)
+from scipy.sparse.csgraph import minimum_spanning_tree as _mst
+mst_c = []
+for n in (6, 7, 8):
+    A = np.zeros((n, n)); w = 1.0
+    perm = rng.permutation(n * n)
+    k = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            if rng.uniform() < 0.55:
+                val = float(perm[k] + 1); k += 1          # distinct positive weights
+                A[i, j] = val; A[j, i] = val
+    mst_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(_mst(sp.csr_array(A)).toarray(), float), []), 'compare': 'tol'})
+calls.append({'fn': 'minimum_spanning_tree', 'cases': mst_c})
+
 out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
