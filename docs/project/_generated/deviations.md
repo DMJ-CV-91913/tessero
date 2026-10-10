@@ -63,6 +63,8 @@
 | `hierarchy.ward` | call | rtol 1e-09 |
 | `hierarchy.centroid` | call | rtol 1e-09 |
 | `hierarchy.median` | call | rtol 1e-09 |
+| `hierarchy.fcluster` | call | rtol 1e-09 |
+| `hierarchy.fclusterdata` | call | rtol 1e-09 |
 | `hierarchy.maxdists` | call | rtol 1e-09 |
 | `hierarchy.inconsistent` | call | rtol 1e-09 |
 | `hierarchy.maxinconsts` | call | rtol 1e-09 |

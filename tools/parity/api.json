@@ -5353,6 +5353,18 @@
                 "doc": "Whether a linkage Z and condensed distances Y have matching numbers of observations (scipy.cluster.hierarchy.correspond)."
             },
             {
+                "name": "fcluster",
+                "static": true,
+                "sig": "fcluster(mixed $Z, mixed $t, mixed $criterion = 'inconsistent', mixed $depth = 2, mixed $R = null, mixed $monocrit = null): mixed",
+                "doc": "Flat clusters from a linkage matrix (scipy.cluster.hierarchy.fcluster)."
+            },
+            {
+                "name": "fclusterdata",
+                "static": true,
+                "sig": "fclusterdata(mixed $X, mixed $t, mixed $criterion = 'inconsistent', mixed $metric = 'euclidean', mixed $depth = 2, mixed $method = 'single'): mixed",
+                "doc": "Flat clusters directly from observations (scipy.cluster.hierarchy.fclusterdata)."
+            },
+            {
                 "name": "fromMlabLinkage",
                 "static": true,
                 "sig": "fromMlabLinkage(mixed $Z): mixed",
@@ -20397,6 +20409,18 @@
                 "name": "fromMlabLinkage",
                 "static": true,
                 "sig": "fromMlabLinkage($Z)",
+                "doc": ""
+            },
+            {
+                "name": "fcluster",
+                "static": true,
+                "sig": "fcluster($Z, $t, $criterion = 'inconsistent', $depth = 2, $R = null, $monocrit = null)",
+                "doc": ""
+            },
+            {
+                "name": "fclusterdata",
+                "static": true,
+                "sig": "fclusterdata($X, $t, $criterion = 'inconsistent', $metric = 'euclidean', $depth = 2, $method = 'single')",
                 "doc": ""
             }
         ]
