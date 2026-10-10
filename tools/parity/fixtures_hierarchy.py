@@ -10,7 +10,7 @@ import numpy as np
 from scipy.cluster.hierarchy import (linkage, single, complete, average, weighted, ward, centroid, median,
     num_obs_linkage, is_valid_linkage, is_monotonic, is_valid_im, correspond, maxdists, inconsistent,
     maxinconsts, maxRstat, leaves_list, cophenet, to_mlab_linkage, from_mlab_linkage, fcluster, fclusterdata,
-    leaders, cut_tree)
+    leaders, cut_tree, is_isomorphic)
 from scipy.spatial.distance import pdist
 import fixtures_np as F
 
@@ -137,8 +137,17 @@ for (n, f, meth) in ((12, 2, 'ward'), (15, 3, 'average'), (10, 2, 'single'), (14
         fcld_c.append(int_arr_case([F.enc(X), F.enc(a), F.enc(crit), F.enc('euclidean'), F.enc(2), F.enc(meth)],
                                    fclusterdata(X, arg, criterion=crit, metric='euclidean', method=meth)))
 
-# ---- leaders + cut_tree ----
-lead_c, cut_c = [], []
+# ---- leaders + cut_tree + is_isomorphic ----
+lead_c, cut_c, iso_c = [], [], []
+_isorng = np.random.default_rng(7)
+for n in (10, 14, 8):
+    T1 = _isorng.integers(1, 5, size=n)
+    perm = {v: i + 10 for i, v in enumerate(np.unique(T1))}        # relabel -> isomorphic
+    T2 = np.array([perm[v] for v in T1])
+    T3 = T1.copy(); T3[0] = (T3[0] % 4) + 1                         # perturb one -> usually not isomorphic
+    for (a, b) in ((T1, T2), (T1, T1), (T1, T3)):
+        iso_c.append({'args': [F.enc(np.asarray(a, dtype=np.int64)), F.enc(np.asarray(b, dtype=np.int64))], 'kwargs': {},
+                      'expect': F.enc_result(bool(is_isomorphic(a, b)), []), 'compare': 'tol'})
 for (n, f, meth) in ((12, 2, 'ward'), (15, 3, 'average'), (10, 2, 'single')):
     X = obs(n, f); Z = linkage(pdist(X), method=meth); Zf = np.asarray(Z, float)
     heights = np.sort(Zf[:, 2])
@@ -158,7 +167,7 @@ for (n, f, meth) in ((12, 2, 'ward'), (15, 3, 'average'), (10, 2, 'single')):
 
 calls += [
     {'fn': 'fcluster', 'cases': fcl_c}, {'fn': 'fclusterdata', 'cases': fcld_c},
-    {'fn': 'leaders', 'cases': lead_c}, {'fn': 'cut_tree', 'cases': cut_c},
+    {'fn': 'leaders', 'cases': lead_c}, {'fn': 'cut_tree', 'cases': cut_c}, {'fn': 'is_isomorphic', 'cases': iso_c},
     {'fn': 'num_obs_linkage', 'cases': num_obs_c}, {'fn': 'is_valid_linkage', 'cases': valid_c},
     {'fn': 'is_monotonic', 'cases': mono_c}, {'fn': 'is_valid_im', 'cases': validim_c},
     {'fn': 'correspond', 'cases': corr_c}, {'fn': 'maxdists', 'cases': maxd_c},

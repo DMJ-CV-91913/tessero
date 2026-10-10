@@ -5383,6 +5383,12 @@
                 "doc": "Inconsistency matrix of a linkage (scipy.cluster.hierarchy.inconsistent)."
             },
             {
+                "name": "isIsomorphic",
+                "static": true,
+                "sig": "isIsomorphic(mixed $T1, mixed $T2): mixed",
+                "doc": "Whether two flat-cluster labellings are isomorphic (scipy.cluster.hierarchy.is_isomorphic)."
+            },
+            {
                 "name": "isMonotonic",
                 "static": true,
                 "sig": "isMonotonic(mixed $Z): mixed",
@@ -5471,6 +5477,50 @@
                 "static": true,
                 "sig": "weighted(mixed $y): mixed",
                 "doc": "Weighted (WPGMA) linkage (scipy.cluster.hierarchy.weighted)."
+            }
+        ],
+        "constants": [
+            "FUNCTIONS"
+        ]
+    },
+    {
+        "class": "Tessero\\SparseLinalg",
+        "methods": [
+            {
+                "name": "apply",
+                "static": true,
+                "sig": "apply(string $name, mixed ...$args): mixed",
+                "doc": "Call a function by its SciPy/NumPy name: SparseLinalg::apply('log_ndtr', $x)."
+            },
+            {
+                "name": "isSptriangular",
+                "static": true,
+                "sig": "isSptriangular(mixed $A): mixed",
+                "doc": "Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular)."
+            },
+            {
+                "name": "norm",
+                "static": true,
+                "sig": "norm(mixed $x, mixed $ord = null, mixed $axis = null): mixed",
+                "doc": "Norm of a sparse matrix (scipy.sparse.linalg.norm)."
+            },
+            {
+                "name": "spbandwidth",
+                "static": true,
+                "sig": "spbandwidth(mixed $A): mixed",
+                "doc": "Lower and upper bandwidth of a sparse matrix (scipy.sparse.linalg.spbandwidth)."
+            },
+            {
+                "name": "spsolve",
+                "static": true,
+                "sig": "spsolve(mixed $A, mixed $b, mixed $permcSpec = null, mixed $useUmfpack = true): mixed",
+                "doc": "Solve a sparse linear system A x = b (scipy.sparse.linalg.spsolve)."
+            },
+            {
+                "name": "spsolveTriangular",
+                "static": true,
+                "sig": "spsolveTriangular(mixed $A, mixed $b, mixed $lower = true, mixed $overwriteA = false, mixed $overwriteB = false, mixed $unitDiagonal = false): mixed",
+                "doc": "Solve a triangular sparse system (scipy.sparse.linalg.spsolve_triangular)."
             }
         ],
         "constants": [
@@ -20445,6 +20495,47 @@
                 "name": "cutTree",
                 "static": true,
                 "sig": "cutTree($Z, $nClusters = null, $height = null)",
+                "doc": ""
+            },
+            {
+                "name": "isIsomorphic",
+                "static": true,
+                "sig": "isIsomorphic($T1, $T2)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Ext\\SparseLinalg",
+        "methods": [
+            {
+                "name": "spsolve",
+                "static": true,
+                "sig": "spsolve($A, $b, $permcSpec = null, $useUmfpack = true)",
+                "doc": ""
+            },
+            {
+                "name": "spsolveTriangular",
+                "static": true,
+                "sig": "spsolveTriangular($A, $b, $lower = true, $overwriteA = false, $overwriteB = false, $unitDiagonal = false)",
+                "doc": ""
+            },
+            {
+                "name": "norm",
+                "static": true,
+                "sig": "norm($x, $ord = null, $axis = null)",
+                "doc": ""
+            },
+            {
+                "name": "spbandwidth",
+                "static": true,
+                "sig": "spbandwidth($A)",
+                "doc": ""
+            },
+            {
+                "name": "isSptriangular",
+                "static": true,
+                "sig": "isSptriangular($A)",
                 "doc": ""
             }
         ]

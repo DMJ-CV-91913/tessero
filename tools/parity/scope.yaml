@@ -49,6 +49,7 @@ exclude:
   - {category: E4, module: scipy.constants, names: [ConstantWarning]}
   - {category: E6, module: scipy.interpolate, names: [interp1d, interp2d, spline, splmake, spleval, spltopp]}
   - {category: E7, module: scipy.cluster.hierarchy, names: [dendrogram, set_link_color_palette]}
+  - {category: E4, module: scipy.cluster.hierarchy, names: [to_tree, ClusterNode, DisjointSet]}
   - {category: E7, module: scipy.spatial, names: [delaunay_plot_2d, convex_hull_plot_2d, voronoi_plot_2d]}
 
 phases:
