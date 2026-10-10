@@ -20,13 +20,16 @@ final class Csgraph
     public const FUNCTIONS = [
     'bellman_ford' => 'bellmanFord',
     'breadth_first_order' => 'breadthFirstOrder',
+    'breadth_first_tree' => 'breadthFirstTree',
     'connected_components' => 'connectedComponents',
     'depth_first_order' => 'depthFirstOrder',
+    'depth_first_tree' => 'depthFirstTree',
     'dijkstra' => 'dijkstra',
     'floyd_warshall' => 'floydWarshall',
     'johnson' => 'johnson',
     'laplacian' => 'laplacian',
     'minimum_spanning_tree' => 'minimumSpanningTree',
+    'reconstruct_path' => 'reconstructPath',
     'shortest_path' => 'shortestPath',
     'structural_rank' => 'structuralRank',
     ];
@@ -70,6 +73,16 @@ final class Csgraph
     }
 
     /**
+     * Breadth-first spanning tree, returned dense (scipy.sparse.csgraph.breadth_first_tree).
+     *
+     * scipy.sparse.csgraph.breadth_first_tree
+     */
+    public static function breadthFirstTree(mixed $csgraph, mixed $iStart, mixed $directed = true): mixed
+    {
+        return Registry::routine('csgraph.breadth_first_tree', [$csgraph, $iStart, $directed]);
+    }
+
+    /**
      * Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components).
      *
      * scipy.sparse.csgraph.connected_components
@@ -91,6 +104,16 @@ final class Csgraph
     public static function depthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed
     {
         return Registry::routine('csgraph.depth_first_order', [$csgraph, $iStart, $directed, $returnPredecessors]);
+    }
+
+    /**
+     * Depth-first spanning tree, returned dense (scipy.sparse.csgraph.depth_first_tree).
+     *
+     * scipy.sparse.csgraph.depth_first_tree
+     */
+    public static function depthFirstTree(mixed $csgraph, mixed $iStart, mixed $directed = true): mixed
+    {
+        return Registry::routine('csgraph.depth_first_tree', [$csgraph, $iStart, $directed]);
     }
 
     /**
@@ -141,6 +164,16 @@ final class Csgraph
     public static function minimumSpanningTree(mixed $csgraph, mixed $overwrite = false): mixed
     {
         return Registry::routine('csgraph.minimum_spanning_tree', [$csgraph, $overwrite]);
+    }
+
+    /**
+     * Reconstruct the tree of a shortest-path predecessor list, returned dense (scipy.sparse.csgraph.reconstruct_path).
+     *
+     * scipy.sparse.csgraph.reconstruct_path
+     */
+    public static function reconstructPath(mixed $csgraph, mixed $predecessors, mixed $directed = true): mixed
+    {
+        return Registry::routine('csgraph.reconstruct_path', [$csgraph, $predecessors, $directed]);
     }
 
     /**
