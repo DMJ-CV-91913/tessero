@@ -2529,6 +2529,12 @@
                 "doc": "Dice dissimilarity between two boolean 1-D arrays (scipy.spatial.distance.dice)."
             },
             {
+                "name": "distanceMatrix",
+                "static": true,
+                "sig": "distanceMatrix(mixed $x, mixed $y, mixed $p = 2, mixed $threshold = 1000000): mixed",
+                "doc": "Matrix of all pairwise Minkowski distances between two point sets (scipy.spatial.distance_matrix)."
+            },
+            {
                 "name": "euclidean",
                 "static": true,
                 "sig": "euclidean(mixed $u, mixed $v, mixed $w = null): mixed",
@@ -2575,6 +2581,18 @@
                 "static": true,
                 "sig": "minkowski(mixed $u, mixed $v, mixed $p = 2, mixed $w = null): mixed",
                 "doc": "Minkowski distance of order p (scipy.spatial.distance.minkowski)."
+            },
+            {
+                "name": "minkowskiDistance",
+                "static": true,
+                "sig": "minkowskiDistance(mixed $x, mixed $y, mixed $p = 2): mixed",
+                "doc": "Per-point Minkowski distance between two arrays of points (scipy.spatial.minkowski_distance)."
+            },
+            {
+                "name": "minkowskiDistanceP",
+                "static": true,
+                "sig": "minkowskiDistanceP(mixed $x, mixed $y, mixed $p = 2): mixed",
+                "doc": "p-th power of the Minkowski distance, no final root (scipy.spatial.minkowski_distance_p)."
             },
             {
                 "name": "numObsDm",
@@ -18505,6 +18523,24 @@
     {
         "class": "Tessero\\Ext\\Distance",
         "methods": [
+            {
+                "name": "distanceMatrix",
+                "static": true,
+                "sig": "distanceMatrix($x, $y, $p = 2, $threshold = 1000000)",
+                "doc": ""
+            },
+            {
+                "name": "minkowskiDistance",
+                "static": true,
+                "sig": "minkowskiDistance($x, $y, $p = 2)",
+                "doc": ""
+            },
+            {
+                "name": "minkowskiDistanceP",
+                "static": true,
+                "sig": "minkowskiDistanceP($x, $y, $p = 2)",
+                "doc": ""
+            },
             {
                 "name": "pdist",
                 "static": true,

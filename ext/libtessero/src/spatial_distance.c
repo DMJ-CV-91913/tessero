@@ -334,7 +334,80 @@ static int r_squareform(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return TSR_EARG;
 }
 
+/* ---- scipy.spatial top-level Minkowski helpers (credited to scipy.spatial.* via scope.py) ---- */
+/* p-th-power Minkowski contribution between two k-vectors; p==inf -> max |a-b| (root is then the identity). */
+static double spt_mink_p(const double *a, const double *b, int64_t k, double p, int inf)
+{
+    if (inf) { double m = 0.0; for (int64_t d = 0; d < k; d++) { double t = fabs(a[d] - b[d]); if (t > m) m = t; } return m; }
+    double s = 0.0; for (int64_t d = 0; d < k; d++) s += pow(fabs(a[d] - b[d]), p);
+    return s;
+}
+static double spt_read_p(const tsr_arg *args, int nargs, int idx)
+{
+    if (nargs > idx && args[idx].kind == 1) return (args[idx].flags & 1) ? (double)args[idx].ival : args[idx].num;
+    return 2.0;
+}
+
+/* distance_matrix(x, y, p=2): x (m, k), y (n, k) -> (m, n) Minkowski distances. */
+static int r_distance_matrix(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("distance_matrix: x and y must be 2-D"); return TSR_EARG; }
+    int64_t m = args[0].arr.shape[0], k = args[0].arr.shape[1], n = args[1].arr.shape[0];
+    if (args[1].arr.shape[1] != k) { fn_set_error("distance_matrix: x and y must have the same number of columns"); return TSR_EARG; }
+    double p = spt_read_p(args, nargs, 2); int inf = isinf(p);
+    int64_t lx, ly; double *X = fn_arg_doubles(&args[0], &lx); if (!X) return TSR_ENOMEM;
+    double *Y = fn_arg_doubles(&args[1], &ly); if (!Y) { fn_free_doubles(X, lx); return TSR_ENOMEM; }
+    int64_t sh[2] = {m, n};
+    double *D = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+    if (!D) { fn_free_doubles(X, lx); fn_free_doubles(Y, ly); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) {
+        double s = spt_mink_p(&X[i * k], &Y[j * k], k, p, inf);
+        D[i * n + j] = inf ? s : pow(s, 1.0 / p);
+    }
+    fn_free_doubles(X, lx); fn_free_doubles(Y, ly);
+    return TSR_OK;
+}
+
+/* per-point Minkowski between x and y ((m,k) vs (m,k) or (k,); both (k,) -> scalar). root applies the 1/p power. */
+static int spt_pointwise(const tsr_arg *args, int nargs, tsr_result *res, int root)
+{
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("minkowski_distance: x and y must be arrays"); return TSR_EARG; }
+    double p = spt_read_p(args, nargs, 2); int inf = isinf(p);
+    const tsr_array *xa = &args[0].arr, *ya = &args[1].arr;
+    int64_t k = xa->shape[xa->ndim - 1];
+    if (ya->shape[ya->ndim - 1] != k) { fn_set_error("minkowski_distance: last dimension mismatch"); return TSR_EARG; }
+    int64_t m = xa->ndim == 2 ? xa->shape[0] : (ya->ndim == 2 ? ya->shape[0] : 1);
+    int scalar = (xa->ndim == 1 && ya->ndim == 1);
+    int64_t lx, ly; double *X = fn_arg_doubles(&args[0], &lx); if (!X) return TSR_ENOMEM;
+    double *Y = fn_arg_doubles(&args[1], &ly); if (!Y) { fn_free_doubles(X, lx); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (scalar) {
+        double s = spt_mink_p(X, Y, k, p, inf);
+        fn_result_num(&res[0], (root && !inf) ? pow(s, 1.0 / p) : s);
+    } else {
+        int64_t sh[1] = {m};
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+        if (!out) rc = TSR_ENOMEM;
+        else for (int64_t i = 0; i < m; i++) {
+            const double *xi = xa->ndim == 2 ? &X[i * k] : X;
+            const double *yi = ya->ndim == 2 ? &Y[i * k] : Y;
+            double s = spt_mink_p(xi, yi, k, p, inf);
+            out[i] = (root && !inf) ? pow(s, 1.0 / p) : s;
+        }
+    }
+    fn_free_doubles(X, lx); fn_free_doubles(Y, ly);
+    return rc;
+}
+static int r_minkowski_distance(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return spt_pointwise(args, nargs, res, 1); }
+static int r_minkowski_distance_p(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return spt_pointwise(args, nargs, res, 0); }
+
 static const fn_def DEFS[] = {
+    ROUTINE("distance.distance_matrix", 1, "x, y, p=2, threshold=1000000", "D", r_distance_matrix, NULL, "Matrix of all pairwise Minkowski distances between two point sets (scipy.spatial.distance_matrix)."),
+    ROUTINE("distance.minkowski_distance", 1, "x, y, p=2", "d", r_minkowski_distance, NULL, "Per-point Minkowski distance between two arrays of points (scipy.spatial.minkowski_distance)."),
+    ROUTINE("distance.minkowski_distance_p", 1, "x, y, p=2", "d", r_minkowski_distance_p, NULL, "p-th power of the Minkowski distance, no final root (scipy.spatial.minkowski_distance_p)."),
     ROUTINE("distance.pdist", 1, "X, metric=None, p=None", "out", r_pdist, NULL, "Pairwise distances between the rows of X, condensed (scipy.spatial.distance.pdist); real float64."),
     ROUTINE("distance.cdist", 1, "XA, XB, metric=None, p=None", "out", r_cdist, NULL, "Distances between each pair of rows of XA and XB (scipy.spatial.distance.cdist); real float64."),
     ROUTINE("distance.squareform", 1, "X", "out", r_squareform, NULL, "Convert between a condensed distance vector and a square form (scipy.spatial.distance.squareform)."),

@@ -88,6 +88,8 @@ def default_refs(mod, fn):
         for pre, sub in NPOLY_SUB:
             if fn.startswith(pre):
                 return [f'numpy.polynomial.{sub}.{fn}']      # e.g. polyadd -> numpy.polynomial.polynomial.polyadd
+    if mod == 'distance' and fn in ('distance_matrix', 'minkowski_distance', 'minkowski_distance_p'):
+        return [f'scipy.spatial.{fn}']                       # scipy.spatial top-level, served by the Distance facade
     return [f'{PREFIX.get(mod, mod)}.{fn}']
 
 
