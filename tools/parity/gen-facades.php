@@ -34,6 +34,7 @@ const CLASSES = [
     'npoly' => ['Polynomial', 'numpy.polynomial: evaluation and calculus in the power, Chebyshev, Legendre, Laguerre, Hermite and HermiteE bases, shared by both backends through the kernel.'],
     'hierarchy' => ['Hierarchy', 'scipy.cluster.hierarchy: agglomerative linkage (single, complete, average, weighted, ward, centroid, median) and dependent cluster queries, shared by both backends through the kernel.'],
     'splinalg' => ['SparseLinalg', 'scipy.sparse.linalg: direct sparse solves, matrix norms and structure queries, shared by both backends through the kernel.'],
+    'scipyfft' => ['ScipyFft', 'scipy.fft: discrete cosine and sine transforms (dct/idct/dst/idst), shared by both backends through the kernel.'],
     'random' => ['Random/GeneratorMethods', 'The distribution methods of numpy.random.Generator, drawn with NumPy\'s own distribution code from this generator\'s PCG64 stream, so every call matches NumPy bit for bit.'],
 ];
 
