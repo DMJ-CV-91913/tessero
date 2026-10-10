@@ -10,13 +10,16 @@
         "constants.values": "pass",
         "csgraph.bellman_ford": "pass",
         "csgraph.breadth_first_order": "pass",
+        "csgraph.breadth_first_tree": "pass",
         "csgraph.connected_components": "pass",
         "csgraph.depth_first_order": "pass",
+        "csgraph.depth_first_tree": "pass",
         "csgraph.dijkstra": "pass",
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
         "csgraph.laplacian": "pass",
         "csgraph.minimum_spanning_tree": "pass",
+        "csgraph.reconstruct_path": "pass",
         "csgraph.shortest_path": "pass",
         "csgraph.structural_rank": "pass",
         "datetime.busday_count": "pass",
@@ -2874,7 +2877,10 @@
             "csgraph.breadth_first_order": 0,
             "csgraph.depth_first_order": 0,
             "csgraph.structural_rank": 0,
-            "csgraph.minimum_spanning_tree": 0
+            "csgraph.minimum_spanning_tree": 0,
+            "csgraph.reconstruct_path": 0,
+            "csgraph.breadth_first_tree": 0,
+            "csgraph.depth_first_tree": 0
         },
         "ext": {
             "np.median": 0,
@@ -4312,7 +4318,10 @@
             "csgraph.breadth_first_order": 0,
             "csgraph.depth_first_order": 0,
             "csgraph.structural_rank": 0,
-            "csgraph.minimum_spanning_tree": 0
+            "csgraph.minimum_spanning_tree": 0,
+            "csgraph.reconstruct_path": 0,
+            "csgraph.breadth_first_tree": 0,
+            "csgraph.depth_first_tree": 0
         }
     },
     "ext": {
@@ -4326,13 +4335,16 @@
         "constants.values": "pass",
         "csgraph.bellman_ford": "pass",
         "csgraph.breadth_first_order": "pass",
+        "csgraph.breadth_first_tree": "pass",
         "csgraph.connected_components": "pass",
         "csgraph.depth_first_order": "pass",
+        "csgraph.depth_first_tree": "pass",
         "csgraph.dijkstra": "pass",
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
         "csgraph.laplacian": "pass",
         "csgraph.minimum_spanning_tree": "pass",
+        "csgraph.reconstruct_path": "pass",
         "csgraph.shortest_path": "pass",
         "csgraph.structural_rank": "pass",
         "datetime.busday_count": "pass",

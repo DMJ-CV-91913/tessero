@@ -3935,6 +3935,12 @@
                 "doc": "Breadth-first traversal order and predecessors (scipy.sparse.csgraph.breadth_first_order)."
             },
             {
+                "name": "breadthFirstTree",
+                "static": true,
+                "sig": "breadthFirstTree(mixed $csgraph, mixed $iStart, mixed $directed = true): mixed",
+                "doc": "Breadth-first spanning tree, returned dense (scipy.sparse.csgraph.breadth_first_tree)."
+            },
+            {
                 "name": "connectedComponents",
                 "static": true,
                 "sig": "connectedComponents(mixed $csgraph, mixed $directed = true, mixed $connection = 'weak'): mixed",
@@ -3945,6 +3951,12 @@
                 "static": true,
                 "sig": "depthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed",
                 "doc": "Depth-first traversal order and predecessors (scipy.sparse.csgraph.depth_first_order)."
+            },
+            {
+                "name": "depthFirstTree",
+                "static": true,
+                "sig": "depthFirstTree(mixed $csgraph, mixed $iStart, mixed $directed = true): mixed",
+                "doc": "Depth-first spanning tree, returned dense (scipy.sparse.csgraph.depth_first_tree)."
             },
             {
                 "name": "dijkstra",
@@ -3975,6 +3987,12 @@
                 "static": true,
                 "sig": "minimumSpanningTree(mixed $csgraph, mixed $overwrite = false): mixed",
                 "doc": "Minimum spanning tree of an undirected graph, returned dense (scipy.sparse.csgraph.minimum_spanning_tree)."
+            },
+            {
+                "name": "reconstructPath",
+                "static": true,
+                "sig": "reconstructPath(mixed $csgraph, mixed $predecessors, mixed $directed = true): mixed",
+                "doc": "Reconstruct the tree of a shortest-path predecessor list, returned dense (scipy.sparse.csgraph.reconstruct_path)."
             },
             {
                 "name": "shortestPath",
@@ -19101,6 +19119,24 @@
                 "name": "minimumSpanningTree",
                 "static": true,
                 "sig": "minimumSpanningTree($csgraph, $overwrite = false)",
+                "doc": ""
+            },
+            {
+                "name": "reconstructPath",
+                "static": true,
+                "sig": "reconstructPath($csgraph, $predecessors, $directed = true)",
+                "doc": ""
+            },
+            {
+                "name": "breadthFirstTree",
+                "static": true,
+                "sig": "breadthFirstTree($csgraph, $iStart, $directed = true)",
+                "doc": ""
+            },
+            {
+                "name": "depthFirstTree",
+                "static": true,
+                "sig": "depthFirstTree($csgraph, $iStart, $directed = true)",
                 "doc": ""
             }
         ]
