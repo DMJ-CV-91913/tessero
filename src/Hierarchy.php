@@ -23,6 +23,8 @@ final class Hierarchy
     'complete' => 'complete',
     'cophenet' => 'cophenet',
     'correspond' => 'correspond',
+    'fcluster' => 'fcluster',
+    'fclusterdata' => 'fclusterdata',
     'from_mlab_linkage' => 'fromMlabLinkage',
     'inconsistent' => 'inconsistent',
     'is_monotonic' => 'isMonotonic',
@@ -105,6 +107,26 @@ final class Hierarchy
     public static function correspond(mixed $Z, mixed $Y): mixed
     {
         return Registry::routine('hierarchy.correspond', [$Z, $Y]);
+    }
+
+    /**
+     * Flat clusters from a linkage matrix (scipy.cluster.hierarchy.fcluster).
+     *
+     * scipy.hierarchy.fcluster
+     */
+    public static function fcluster(mixed $Z, mixed $t, mixed $criterion = 'inconsistent', mixed $depth = 2, mixed $R = null, mixed $monocrit = null): mixed
+    {
+        return Registry::routine('hierarchy.fcluster', [$Z, $t, $criterion, $depth, $R, $monocrit]);
+    }
+
+    /**
+     * Flat clusters directly from observations (scipy.cluster.hierarchy.fclusterdata).
+     *
+     * scipy.hierarchy.fclusterdata
+     */
+    public static function fclusterdata(mixed $X, mixed $t, mixed $criterion = 'inconsistent', mixed $metric = 'euclidean', mixed $depth = 2, mixed $method = 'single'): mixed
+    {
+        return Registry::routine('hierarchy.fclusterdata', [$X, $t, $criterion, $metric, $depth, $method]);
     }
 
     /**

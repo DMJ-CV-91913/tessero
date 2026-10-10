@@ -77,6 +77,8 @@
         "hierarchy.complete": "pass",
         "hierarchy.cophenet": "pass",
         "hierarchy.correspond": "pass",
+        "hierarchy.fcluster": "pass",
+        "hierarchy.fclusterdata": "pass",
         "hierarchy.from_mlab_linkage": "pass",
         "hierarchy.inconsistent": "pass",
         "hierarchy.is_monotonic": "pass",
@@ -2836,7 +2838,9 @@
             "hierarchy.leaves_list": 0,
             "hierarchy.cophenet": 0,
             "hierarchy.to_mlab_linkage": 0,
-            "hierarchy.from_mlab_linkage": 0
+            "hierarchy.from_mlab_linkage": 0,
+            "hierarchy.fcluster": 0,
+            "hierarchy.fclusterdata": 0
         },
         "ext": {
             "np.median": 0,
@@ -4255,7 +4259,9 @@
             "hierarchy.leaves_list": 0,
             "hierarchy.cophenet": 0,
             "hierarchy.to_mlab_linkage": 0,
-            "hierarchy.from_mlab_linkage": 0
+            "hierarchy.from_mlab_linkage": 0,
+            "hierarchy.fcluster": 0,
+            "hierarchy.fclusterdata": 0
         }
     },
     "ext": {
@@ -4336,6 +4342,8 @@
         "hierarchy.complete": "pass",
         "hierarchy.cophenet": "pass",
         "hierarchy.correspond": "pass",
+        "hierarchy.fcluster": "pass",
+        "hierarchy.fclusterdata": "pass",
         "hierarchy.from_mlab_linkage": "pass",
         "hierarchy.inconsistent": "pass",
         "hierarchy.is_monotonic": "pass",
