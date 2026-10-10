@@ -176,3 +176,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-10,scipy.stats: matrix_normal/wishart/invwishart densities (both backends),91.7,91.1,72.9,72.7,99.4,99.7,71.7,71.7,84.2,84.2
 2026-10-10,"scipy.special: perm, assoc_laguerre, diric (both backends)",91.7,91.1,73.1,72.9,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,scipy.cluster.hierarchy: linkage + method aliases,91.7,91.1,73.6,73.4,99.4,99.7,72.6,72.6,84.2,84.2
+2026-10-10,"scipy.cluster.hierarchy: Z-dependent queries (num_obs, validity, maxdists, inconsistent, cophenet, leaves_list, mlab)",91.7,91.1,74.5,74.3,99.4,99.7,72.6,72.6,84.2,84.2

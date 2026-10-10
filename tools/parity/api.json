@@ -5341,10 +5341,76 @@
                 "doc": "Complete/farthest-point linkage (scipy.cluster.hierarchy.complete)."
             },
             {
+                "name": "cophenet",
+                "static": true,
+                "sig": "cophenet(mixed $Z): mixed",
+                "doc": "Condensed cophenetic distances of a linkage (scipy.cluster.hierarchy.cophenet)."
+            },
+            {
+                "name": "correspond",
+                "static": true,
+                "sig": "correspond(mixed $Z, mixed $Y): mixed",
+                "doc": "Whether a linkage Z and condensed distances Y have matching numbers of observations (scipy.cluster.hierarchy.correspond)."
+            },
+            {
+                "name": "fromMlabLinkage",
+                "static": true,
+                "sig": "fromMlabLinkage(mixed $Z): mixed",
+                "doc": "Convert a MATLAB-form linkage matrix to SciPy form (scipy.cluster.hierarchy.from_mlab_linkage)."
+            },
+            {
+                "name": "inconsistent",
+                "static": true,
+                "sig": "inconsistent(mixed $Z, mixed $d = 2): mixed",
+                "doc": "Inconsistency matrix of a linkage (scipy.cluster.hierarchy.inconsistent)."
+            },
+            {
+                "name": "isMonotonic",
+                "static": true,
+                "sig": "isMonotonic(mixed $Z): mixed",
+                "doc": "Whether the linkage is monotonic -- non-decreasing merge heights (scipy.cluster.hierarchy.is_monotonic)."
+            },
+            {
+                "name": "isValidIm",
+                "static": true,
+                "sig": "isValidIm(mixed $R): mixed",
+                "doc": "Whether R is a valid inconsistency matrix (scipy.cluster.hierarchy.is_valid_im)."
+            },
+            {
+                "name": "isValidLinkage",
+                "static": true,
+                "sig": "isValidLinkage(mixed $Z): mixed",
+                "doc": "Whether Z is a valid linkage matrix (scipy.cluster.hierarchy.is_valid_linkage)."
+            },
+            {
+                "name": "leavesList",
+                "static": true,
+                "sig": "leavesList(mixed $Z): mixed",
+                "doc": "Leaf ids in left-first pre-order dendrogram order (scipy.cluster.hierarchy.leaves_list)."
+            },
+            {
                 "name": "linkage",
                 "static": true,
                 "sig": "linkage(mixed $y, mixed $method = 'single'): mixed",
                 "doc": "Agglomerative hierarchical clustering linkage matrix (scipy.cluster.hierarchy.linkage)."
+            },
+            {
+                "name": "maxRstat",
+                "static": true,
+                "sig": "maxRstat(mixed $Z, mixed $R, mixed $i): mixed",
+                "doc": "Maximum of inconsistency-matrix statistic i below each non-singleton cluster (scipy.cluster.hierarchy.maxRstat)."
+            },
+            {
+                "name": "maxdists",
+                "static": true,
+                "sig": "maxdists(mixed $Z): mixed",
+                "doc": "Maximum merge distance below each non-singleton cluster (scipy.cluster.hierarchy.maxdists)."
+            },
+            {
+                "name": "maxinconsts",
+                "static": true,
+                "sig": "maxinconsts(mixed $Z, mixed $R): mixed",
+                "doc": "Maximum inconsistency coefficient below each non-singleton cluster (scipy.cluster.hierarchy.maxinconsts)."
             },
             {
                 "name": "median",
@@ -5353,10 +5419,22 @@
                 "doc": "Median (WPGMC) linkage (scipy.cluster.hierarchy.median)."
             },
             {
+                "name": "numObsLinkage",
+                "static": true,
+                "sig": "numObsLinkage(mixed $Z): mixed",
+                "doc": "Number of original observations in a linkage matrix (scipy.cluster.hierarchy.num_obs_linkage)."
+            },
+            {
                 "name": "single",
                 "static": true,
                 "sig": "single(mixed $y): mixed",
                 "doc": "Single/nearest-point linkage (scipy.cluster.hierarchy.single)."
+            },
+            {
+                "name": "toMlabLinkage",
+                "static": true,
+                "sig": "toMlabLinkage(mixed $Z): mixed",
+                "doc": "Convert a linkage matrix to MATLAB form (scipy.cluster.hierarchy.to_mlab_linkage)."
             },
             {
                 "name": "ward",
@@ -20241,6 +20319,84 @@
                 "name": "median",
                 "static": true,
                 "sig": "median($y)",
+                "doc": ""
+            },
+            {
+                "name": "numObsLinkage",
+                "static": true,
+                "sig": "numObsLinkage($Z)",
+                "doc": ""
+            },
+            {
+                "name": "isValidLinkage",
+                "static": true,
+                "sig": "isValidLinkage($Z)",
+                "doc": ""
+            },
+            {
+                "name": "isMonotonic",
+                "static": true,
+                "sig": "isMonotonic($Z)",
+                "doc": ""
+            },
+            {
+                "name": "isValidIm",
+                "static": true,
+                "sig": "isValidIm($R)",
+                "doc": ""
+            },
+            {
+                "name": "correspond",
+                "static": true,
+                "sig": "correspond($Z, $Y)",
+                "doc": ""
+            },
+            {
+                "name": "maxdists",
+                "static": true,
+                "sig": "maxdists($Z)",
+                "doc": ""
+            },
+            {
+                "name": "inconsistent",
+                "static": true,
+                "sig": "inconsistent($Z, $d = 2)",
+                "doc": ""
+            },
+            {
+                "name": "maxinconsts",
+                "static": true,
+                "sig": "maxinconsts($Z, $R)",
+                "doc": ""
+            },
+            {
+                "name": "maxRstat",
+                "static": true,
+                "sig": "maxRstat($Z, $R, $i)",
+                "doc": ""
+            },
+            {
+                "name": "leavesList",
+                "static": true,
+                "sig": "leavesList($Z)",
+                "doc": ""
+            },
+            {
+                "name": "cophenet",
+                "static": true,
+                "sig": "cophenet($Z)",
+                "doc": ""
+            },
+            {
+                "name": "toMlabLinkage",
+                "static": true,
+                "sig": "toMlabLinkage($Z)",
+                "doc": ""
+            },
+            {
+                "name": "fromMlabLinkage",
+                "static": true,
+                "sig": "fromMlabLinkage($Z)",
                 "doc": ""
             }
         ]
