@@ -560,6 +560,13 @@ def main():
         mnc.append({'args': [F.enc(n), F.enc(p), F.enc(X)], 'kwargs': {},
                     'expect': F.enc(np.asarray(st.multinomial(n, p).pmf(X))), 'compare': 'tol'})
     B['multinomial'] = mnc
+    dmn = []
+    for k in (3, 4, 5):
+        alpha = rr.uniform(0.5, 4.0, k); n = int(rr.integers(8, 20))
+        X = rr.multinomial(n, rr.dirichlet(alpha), size=5).astype(float)
+        dmn.append({'args': [F.enc(alpha), F.enc(n), F.enc(X)], 'kwargs': {},
+                    'expect': F.enc(np.asarray(st.dirichlet_multinomial(alpha, n).pmf(X))), 'compare': 'tol'})
+    B['dirichlet_multinomial'] = dmn
     hc = []
     for colors in ([6, 7, 8, 5], [10, 4, 6], [3, 3, 3, 3, 3]):
         m = np.array(colors); n = int(m.sum() // 3); Xi = st.multivariate_hypergeom(m, n).rvs(size=5, random_state=rr)

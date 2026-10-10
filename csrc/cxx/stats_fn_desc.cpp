@@ -2241,6 +2241,24 @@ static int r_multinomial(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     fn_free_doubles(p, lp); fn_free_doubles(X, lx);
     return rc;
 }
+/* dirichlet_multinomial(alpha, n, x): the pmf at each row of x (shape (m, k)). */
+static int r_dirichlet_multinomial(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("dirichlet_multinomial: alpha 1-D, n int, x (m,k)"); return TSR_EARG; }
+    const int64_t k = args[0].arr.shape[0], m = args[2].arr.shape[0]; const double nn = args[1].num;
+    int64_t la, lx; double *al = fn_arg_doubles(&args[0], &la), *X = al ? fn_arg_doubles(&args[2], &lx) : nullptr;
+    if (!X) { fn_free_doubles(al, la); return TSR_ENOMEM; }
+    double A = 0.0; for (int64_t i = 0; i < k; i++) A += al[i];
+    const double base = std::lgamma(nn + 1.0) + std::lgamma(A) - std::lgamma(nn + A);
+    int64_t sh[1] = {m}; double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    int rc = out ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) { double s = base;
+        for (int64_t i = 0; i < k; i++) s += std::lgamma(X[j * k + i] + al[i]) - std::lgamma(X[j * k + i] + 1.0) - std::lgamma(al[i]);
+        out[j] = std::exp(s); }
+    fn_free_doubles(al, la); fn_free_doubles(X, lx);
+    return rc;
+}
 /* multivariate_hypergeom(m, n, x): the pmf at each row of x (shape (mm, k)); m are the per-color counts. */
 static int r_multivariate_hypergeom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -2500,6 +2518,8 @@ static const fn_def DEFS[] = {
             "Dirichlet pdf at each row of x (scipy.stats.dirichlet)."),
     ROUTINE("stats.multinomial", 1, "n, p, x", "pmf", r_multinomial, NULL,
             "Multinomial pmf at each row of x (scipy.stats.multinomial)."),
+    ROUTINE("stats.dirichlet_multinomial", 1, "alpha, n, x", "pmf", r_dirichlet_multinomial, NULL,
+            "Dirichlet-multinomial pmf at each row of x (scipy.stats.dirichlet_multinomial)."),
     ROUTINE("stats.multivariate_hypergeom", 1, "m, n, x", "pmf", r_multivariate_hypergeom, NULL,
             "Multivariate hypergeometric pmf at each row of x (scipy.stats.multivariate_hypergeom)."),
     ROUTINE("stats.multivariate_t", 2, "loc, shape, df, x", "pdf, logpdf", r_multivariate_t, NULL,
