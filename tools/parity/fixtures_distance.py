@@ -96,8 +96,15 @@ xv = rng.uniform(-5, 5, 4); yv = rng.uniform(-5, 5, 4)
 for p in (1.0, 2.0, 3.0):
     md_c.append({'args': [F.enc(xv), F.enc(yv), F.enc(p)], 'kwargs': {},
                  'expect': F.enc_result(float(spt.minkowski_distance(xv, yv, p)), []), 'compare': 'tol'})
+gs_c = []
+for dim in (2, 3, 4):
+    a = rng.normal(size=dim); a /= np.linalg.norm(a)
+    b = rng.normal(size=dim); b /= np.linalg.norm(b)
+    t = np.array([0.0, 0.2, 0.5, 0.8, 1.0])
+    gs_c.append({'args': [F.enc(a), F.enc(b), F.enc(t)], 'kwargs': {},
+                 'expect': F.enc_result(np.asarray(spt.geometric_slerp(a, b, t), float), []), 'compare': 'tol'})
 spatial_blocks = [{'fn': 'distance_matrix', 'cases': dm_c}, {'fn': 'minkowski_distance', 'cases': md_c},
-                  {'fn': 'minkowski_distance_p', 'cases': mdp_c}]
+                  {'fn': 'minkowski_distance_p', 'cases': mdp_c}, {'fn': 'geometric_slerp', 'cases': gs_c}]
 
 out = {'module': 'distance', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'pdist', 'cases': pdist_cases}, {'fn': 'cdist', 'cases': cdist_cases},
