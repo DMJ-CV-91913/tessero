@@ -11,6 +11,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <lapacke.h>
 
 enum { D_EUCLID, D_SQEUCLID, D_CITYBLOCK, D_CHEBYSHEV, D_COSINE, D_CORRELATION, D_HAMMING, D_BRAYCURTIS, D_CANBERRA, D_MINKOWSKI };
 
@@ -430,7 +431,70 @@ static int r_geometric_slerp(const void *ctx, const tsr_arg *args, int nargs, ts
     return TSR_OK;
 }
 
+/* procrustes(data1, data2): standardize both (center columns, scale to unit Frobenius norm), rotate data2
+   onto data1 by the orthogonal Procrustes solution, return (mtx1, mtx2, disparity). SVD via LAPACK dgesdd. */
+static int r_procrustes(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("procrustes: data1 and data2 must be 2-D"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0], k = args[0].arr.shape[1];
+    if (args[1].arr.shape[0] != n || args[1].arr.shape[1] != k) { fn_set_error("procrustes: inputs must have the same shape"); return TSR_EARG; }
+    int64_t l1, l2; double *D1 = fn_arg_doubles(&args[0], &l1); if (!D1) return TSR_ENOMEM;
+    double *D2 = fn_arg_doubles(&args[1], &l2); if (!D2) { fn_free_doubles(D1, l1); return TSR_ENOMEM; }
+    int64_t sh[2] = {n, k};
+    double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);          /* mtx1 (standardized data1) */
+    double *B2 = (double *)fn_result_array(&res[1], TSR_F64, 2, sh);         /* mtx2 (rotated data2)     */
+    double *M = (double *)calloc((size_t)(k * k), sizeof(double));
+    double *B = (double *)malloc((size_t)(n * k) * sizeof(double));
+    double *U = (double *)malloc((size_t)(k * k) * sizeof(double));
+    double *Vt = (double *)malloc((size_t)(k * k) * sizeof(double));
+    double *w = (double *)malloc((size_t)k * sizeof(double));
+    double *R = (double *)malloc((size_t)(k * k) * sizeof(double));
+    int rc = TSR_OK;
+    if (!A || !B2 || !M || !B || !U || !Vt || !w || !R) rc = TSR_ENOMEM;
+    else {
+        /* center columns and scale to unit Frobenius norm */
+        for (int64_t c = 0; c < k; c++) {
+            double mu1 = 0.0, mu2 = 0.0;
+            for (int64_t i = 0; i < n; i++) { mu1 += D1[i * k + c]; mu2 += D2[i * k + c]; }
+            mu1 /= (double)n; mu2 /= (double)n;
+            for (int64_t i = 0; i < n; i++) { A[i * k + c] = D1[i * k + c] - mu1; B[i * k + c] = D2[i * k + c] - mu2; }
+        }
+        double f1 = 0.0, f2 = 0.0;
+        for (int64_t i = 0; i < n * k; i++) { f1 += A[i] * A[i]; f2 += B[i] * B[i]; }
+        f1 = sqrt(f1); f2 = sqrt(f2);
+        if (f1 == 0.0 || f2 == 0.0) { fn_set_error("procrustes: input matrices must contain >1 unique point"); rc = TSR_EARG; }
+        else {
+            for (int64_t i = 0; i < n * k; i++) { A[i] /= f1; B[i] /= f2; }
+            /* M = A^T @ B  (k x k) */
+            for (int64_t p = 0; p < k; p++) for (int64_t q = 0; q < k; q++) {
+                double s = 0.0; for (int64_t i = 0; i < n; i++) s += A[i * k + p] * B[i * k + q];
+                M[p * k + q] = s;
+            }
+            lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)k, (lapack_int)k, M, (lapack_int)k, w, U, (lapack_int)k, Vt, (lapack_int)k);
+            if (info != 0) { fn_set_error("procrustes: SVD failed"); rc = TSR_EARG; }
+            else {
+                double scale = 0.0; for (int64_t i = 0; i < k; i++) scale += w[i];
+                for (int64_t p = 0; p < k; p++) for (int64_t q = 0; q < k; q++) {   /* R = U @ Vt */
+                    double s = 0.0; for (int64_t r = 0; r < k; r++) s += U[p * k + r] * Vt[r * k + q];
+                    R[p * k + q] = s;
+                }
+                for (int64_t i = 0; i < n; i++) for (int64_t d = 0; d < k; d++) {    /* B2 = (B @ R^T) * scale */
+                    double s = 0.0; for (int64_t q = 0; q < k; q++) s += B[i * k + q] * R[d * k + q];
+                    B2[i * k + d] = s * scale;
+                }
+                double disp = 0.0; for (int64_t i = 0; i < n * k; i++) { double t = A[i] - B2[i]; disp += t * t; }
+                fn_result_num(&res[2], disp);
+            }
+        }
+    }
+    free(M); free(B); free(U); free(Vt); free(w); free(R);
+    fn_free_doubles(D1, l1); fn_free_doubles(D2, l2);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
+    ROUTINE("distance.procrustes", 3, "data1, data2", "mtx1, mtx2, disparity", r_procrustes, NULL, "Procrustes analysis: standardize and align two point sets (scipy.spatial.procrustes)."),
     ROUTINE("distance.distance_matrix", 1, "x, y, p=2, threshold=1000000", "D", r_distance_matrix, NULL, "Matrix of all pairwise Minkowski distances between two point sets (scipy.spatial.distance_matrix)."),
     ROUTINE("distance.minkowski_distance", 1, "x, y, p=2", "d", r_minkowski_distance, NULL, "Per-point Minkowski distance between two arrays of points (scipy.spatial.minkowski_distance)."),
     ROUTINE("distance.minkowski_distance_p", 1, "x, y, p=2", "d", r_minkowski_distance_p, NULL, "p-th power of the Minkowski distance, no final root (scipy.spatial.minkowski_distance_p)."),
