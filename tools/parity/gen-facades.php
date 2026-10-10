@@ -32,6 +32,7 @@ const CLASSES = [
     'interpolate' => ['Interpolate', 'scipy.interpolate: 1-D piecewise-cubic interpolation evaluated at query points (pchip_interpolate, PchipInterpolator, Akima1DInterpolator, CubicSpline not-a-knot, CubicHermiteSpline), shared by both backends through the kernel.'],
     'cluster' => ['Cluster', 'scipy.cluster.vq: observation whitening and vector quantization (whiten, vq), shared by both backends through the kernel.'],
     'npoly' => ['Polynomial', 'numpy.polynomial: evaluation and calculus in the power, Chebyshev, Legendre, Laguerre, Hermite and HermiteE bases, shared by both backends through the kernel.'],
+    'hierarchy' => ['Hierarchy', 'scipy.cluster.hierarchy: agglomerative linkage (single, complete, average, weighted, ward, centroid, median) and dependent cluster queries, shared by both backends through the kernel.'],
     'random' => ['Random/GeneratorMethods', 'The distribution methods of numpy.random.Generator, drawn with NumPy\'s own distribution code from this generator\'s PCG64 stream, so every call matches NumPy bit for bit.'],
 ];
 

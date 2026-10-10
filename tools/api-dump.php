@@ -32,13 +32,13 @@ if (! class_exists('Illuminate\\Support\\Facades\\Facade')) {
 
 $classes = ['Tessero\\NDArray', 'Tessero\\Math', 'Tessero\\Tessero', 'Tessero\\Linalg\\Linalg', 'Tessero\\Fft\\Fft',
     'Tessero\\ScipyLinalg', 'Tessero\\Constants', 'Tessero\\Distance', 'Tessero\\Signal', 'Tessero\\SignalWindows', 'Tessero\\Ndimage', 'Tessero\\Csgraph',
-    'Tessero\\Interpolate', 'Tessero\\Cluster', 'Tessero\\Polynomial', 'Tessero\\Random\\Generator', 'Tessero\\Sparse\\CsrMatrix', 'Tessero\\Optimize\\Minimize', 'Tessero\\Optimize\\Root',
+    'Tessero\\Interpolate', 'Tessero\\Cluster', 'Tessero\\Polynomial', 'Tessero\\Hierarchy', 'Tessero\\Random\\Generator', 'Tessero\\Sparse\\CsrMatrix', 'Tessero\\Optimize\\Minimize', 'Tessero\\Optimize\\Root',
     'Tessero\\Optimize\\LeastSquares', 'Tessero\\Optimize\\LinearProgramming', 'Tessero\\Optimize\\Assignment', 'Tessero\\Mdp\\MarkovDecisionProcess',
     'Tessero\\Io\\Npy', 'Tessero\\Integrate\\Quad', 'Tessero\\Spatial\\KDTree', 'Tessero\\Datetime\\Datetime', 'Tessero\\Ext\\NDArray', 'Tessero\\Ext\\Math', 'Tessero\\Ext\\Engine', 'Tessero\\Ext\\Random\\Generator',
     'Tessero\\Np', 'Tessero\\Special', 'Tessero\\Stats', 'Tessero\\Stats\\Distribution', 'Tessero\\Ext\\Np', 'Tessero\\Ext\\Special',
     'Tessero\\Ext\\Stats', 'Tessero\\Ext\\Distribution', 'Tessero\\Ext\\Fft\\Fft',
     'Tessero\\Ext\\Linalg', 'Tessero\\Ext\\ScipyLinalg', 'Tessero\\Ext\\Signal', 'Tessero\\Ext\\SignalWindows',
-    'Tessero\\Ext\\Distance', 'Tessero\\Ext\\Ndimage', 'Tessero\\Ext\\Csgraph', 'Tessero\\Ext\\Interpolate', 'Tessero\\Ext\\Cluster', 'Tessero\\Ext\\Polynomial',
+    'Tessero\\Ext\\Distance', 'Tessero\\Ext\\Ndimage', 'Tessero\\Ext\\Csgraph', 'Tessero\\Ext\\Interpolate', 'Tessero\\Ext\\Cluster', 'Tessero\\Ext\\Polynomial', 'Tessero\\Ext\\Hierarchy',
     'Tessero\\Laravel\\TesseroManager', 'Tessero\\Laravel\\Rules\\NumericArray'];
 
 function sig(ReflectionMethod $m): string
