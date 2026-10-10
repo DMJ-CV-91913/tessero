@@ -2619,6 +2619,12 @@
                 "doc": "Pairwise distances between the rows of X, condensed (scipy.spatial.distance.pdist); real float64."
             },
             {
+                "name": "procrustes",
+                "static": true,
+                "sig": "procrustes(mixed $data1, mixed $data2): mixed",
+                "doc": "Procrustes analysis: standardize and align two point sets (scipy.spatial.procrustes)."
+            },
+            {
                 "name": "rogerstanimoto",
                 "static": true,
                 "sig": "rogerstanimoto(mixed $u, mixed $v, mixed $w = null): mixed",
@@ -18529,6 +18535,12 @@
     {
         "class": "Tessero\\Ext\\Distance",
         "methods": [
+            {
+                "name": "procrustes",
+                "static": true,
+                "sig": "procrustes($data1, $data2)",
+                "doc": ""
+            },
             {
                 "name": "distanceMatrix",
                 "static": true,

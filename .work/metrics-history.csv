@@ -191,3 +191,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-10,scipy.sparse: diags + diags_array,91.7,91.1,76.9,76.7,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,scipy.spatial: distance_matrix + minkowski_distance + minkowski_distance_p (via Distance facade),91.7,91.1,77.2,76.9,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,scipy.spatial: geometric_slerp,91.7,91.1,77.2,77.0,99.4,99.7,72.6,72.6,84.2,84.2
+2026-10-10,scipy.spatial: procrustes,91.7,91.1,77.3,77.1,99.4,99.7,72.6,72.6,84.2,84.2

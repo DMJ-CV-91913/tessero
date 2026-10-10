@@ -103,8 +103,16 @@ for dim in (2, 3, 4):
     t = np.array([0.0, 0.2, 0.5, 0.8, 1.0])
     gs_c.append({'args': [F.enc(a), F.enc(b), F.enc(t)], 'kwargs': {},
                  'expect': F.enc_result(np.asarray(spt.geometric_slerp(a, b, t), float), []), 'compare': 'tol'})
+pc_c = []
+for (n, k) in ((6, 3), (8, 2), (5, 4)):
+    a = rng.normal(size=(n, k)); b = rng.normal(size=(n, k))
+    m1, m2, disp = spt.procrustes(a, b)
+    pc_c.append({'args': [F.enc(a), F.enc(b)], 'kwargs': {},
+                 'expect': {'dict': {'mtx1': F.enc(np.asarray(m1, float)), 'mtx2': F.enc(np.asarray(m2, float)),
+                                     'disparity': F.enc_result(float(disp), [])}}, 'compare': 'tol'})
 spatial_blocks = [{'fn': 'distance_matrix', 'cases': dm_c}, {'fn': 'minkowski_distance', 'cases': md_c},
-                  {'fn': 'minkowski_distance_p', 'cases': mdp_c}, {'fn': 'geometric_slerp', 'cases': gs_c}]
+                  {'fn': 'minkowski_distance_p', 'cases': mdp_c}, {'fn': 'geometric_slerp', 'cases': gs_c},
+                  {'fn': 'procrustes', 'cases': pc_c}]
 
 out = {'module': 'distance', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'pdist', 'cases': pdist_cases}, {'fn': 'cdist', 'cases': cdist_cases},
