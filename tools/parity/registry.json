@@ -4060,6 +4060,11 @@
             "nin": 1,
             "nout": 4
         },
+        "special.assoc_laguerre": {
+            "kind": "ufunc",
+            "nin": 3,
+            "nout": 1
+        },
         "special.bdtr": {
             "kind": "ufunc",
             "nin": 3,
@@ -4238,6 +4243,11 @@
         "special.digamma": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "special.diric": {
+            "kind": "ufunc",
+            "nin": 2,
             "nout": 1
         },
         "special.ellipe": {
@@ -5021,6 +5031,11 @@
             "nout": 1
         },
         "special.pdtrik": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.perm": {
             "kind": "ufunc",
             "nin": 2,
             "nout": 1

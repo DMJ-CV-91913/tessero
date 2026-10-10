@@ -217,6 +217,9 @@ void tsr_special_pdtri(const void *, const double *, double *);
 void tsr_special_pdtri__int(const void *, const double *, double *);
 void tsr_special_pdtrik(const void *, const double *, double *);
 void tsr_special_poch(const void *, const double *, double *);
+void tsr_special_perm(const void *, const double *, double *);
+void tsr_special_assoc_laguerre(const void *, const double *, double *);
+void tsr_special_diric(const void *, const double *, double *);
 void tsr_special_powm1(const void *, const double *, double *);
 void tsr_special_pro_ang1(const void *, const double *, double *);
 void tsr_special_pro_ang1_cv(const void *, const double *, double *);
@@ -456,6 +459,9 @@ const fn_def TSR_GEN_SPECIAL[] = {
     UFUNCI("special.pdtri", 2, 1, "k, y", "y", tsr_special_pdtri, tsr_special_pdtri__int, 1, "Inverse to `pdtr` vs m."),
     UFUNCI("special.pdtrik", 2, 1, "p, m", "y", tsr_special_pdtrik, NULL, 0, "Inverse to `pdtr` vs `k`."),
     UFUNCI("special.poch", 2, 1, "z, m", "y", tsr_special_poch, NULL, 0, "Pochhammer symbol."),
+    UFUNCI("special.perm", 2, 1, "N, k", "y", tsr_special_perm, NULL, 0, "Number of permutations of N things taken k at a time (non-exact, via the Pochhammer symbol)."),
+    UFUNCI("special.assoc_laguerre", 3, 1, "x, n, k", "L", tsr_special_assoc_laguerre, NULL, 0, "Associated Laguerre polynomial L_n^k(x) (= eval_genlaguerre(n, k, x))."),
+    UFUNCI("special.diric", 2, 1, "x, n", "y", tsr_special_diric, NULL, 0, "Periodic sinc (Dirichlet) function."),
     UFUNCI("special.powm1", 2, 1, "x, y", "y", tsr_special_powm1, NULL, 0, "Computes ``x**y - 1``."),
     UFUNCI("special.pro_ang1", 4, 2, "m, n, c, x", "s, sp", tsr_special_pro_ang1, NULL, 0, "Prolate spheroidal angular function of the first kind and its derivative."),
     UFUNCI("special.pro_ang1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_pro_ang1_cv, NULL, 0, "Prolate spheroidal angular function pro_ang1 for precomputed characteristic value."),
