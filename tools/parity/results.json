@@ -55,6 +55,7 @@
         "distance.num_obs_dm": "pass",
         "distance.num_obs_y": "pass",
         "distance.pdist": "pass",
+        "distance.procrustes": "pass",
         "distance.rogerstanimoto": "pass",
         "distance.russellrao": "pass",
         "distance.seuclidean": "pass",
@@ -2896,7 +2897,8 @@
             "distance.distance_matrix": 0,
             "distance.minkowski_distance": 0,
             "distance.minkowski_distance_p": 0,
-            "distance.geometric_slerp": 3.7128810157033085e-15
+            "distance.geometric_slerp": 3.7128810157033085e-15,
+            "distance.procrustes": 7.810518837960525e-15
         },
         "ext": {
             "np.median": 0,
@@ -4345,7 +4347,8 @@
             "distance.distance_matrix": 0,
             "distance.minkowski_distance": 0,
             "distance.minkowski_distance_p": 0,
-            "distance.geometric_slerp": 3.7128810157033085e-15
+            "distance.geometric_slerp": 3.7128810157033085e-15,
+            "distance.procrustes": 7.810518837960525e-15
         }
     },
     "ext": {
@@ -4404,6 +4407,7 @@
         "distance.num_obs_dm": "pass",
         "distance.num_obs_y": "pass",
         "distance.pdist": "pass",
+        "distance.procrustes": "pass",
         "distance.rogerstanimoto": "pass",
         "distance.russellrao": "pass",
         "distance.seuclidean": "pass",

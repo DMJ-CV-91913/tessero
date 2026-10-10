@@ -41,6 +41,7 @@ final class Distance
     'num_obs_dm' => 'numObsDm',
     'num_obs_y' => 'numObsY',
     'pdist' => 'pdist',
+    'procrustes' => 'procrustes',
     'rogerstanimoto' => 'rogerstanimoto',
     'russellrao' => 'russellrao',
     'seuclidean' => 'seuclidean',
@@ -294,6 +295,18 @@ final class Distance
     public static function pdist(mixed $X, mixed $metric = null, mixed $p = null): mixed
     {
         return Registry::routine('distance.pdist', [$X, $metric, $p]);
+    }
+
+    /**
+     * Procrustes analysis: standardize and align two point sets (scipy.spatial.procrustes).
+     *
+     * scipy.spatial.distance.procrustes
+     *
+     * @return mixed one array, or an array keyed by mtx1, mtx2, disparity when several results are requested
+     */
+    public static function procrustes(mixed $data1, mixed $data2): mixed
+    {
+        return Registry::routine('distance.procrustes', [$data1, $data2]);
     }
 
     /**

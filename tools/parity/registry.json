@@ -215,6 +215,11 @@
             "nin": 0,
             "nout": 1
         },
+        "distance.procrustes": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "distance.rogerstanimoto": {
             "kind": "routine",
             "nin": 0,
