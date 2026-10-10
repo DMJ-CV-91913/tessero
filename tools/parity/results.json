@@ -9,11 +9,15 @@
         "constants.nu2lambda": "pass",
         "constants.values": "pass",
         "csgraph.bellman_ford": "pass",
+        "csgraph.breadth_first_order": "pass",
         "csgraph.connected_components": "pass",
+        "csgraph.depth_first_order": "pass",
         "csgraph.dijkstra": "pass",
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
+        "csgraph.laplacian": "pass",
         "csgraph.shortest_path": "pass",
+        "csgraph.structural_rank": "pass",
         "datetime.busday_count": "pass",
         "datetime.busday_offset": "pass",
         "datetime.datetime64": "pass",
@@ -2864,7 +2868,11 @@
             "splinalg.inv": 7.18637572071345e-16,
             "splinalg.matrix_power": 3.1656007086102025e-15,
             "splinalg.expm": 8.4537291803958e-16,
-            "splinalg.expm_multiply": 8.737944101923437e-15
+            "splinalg.expm_multiply": 8.737944101923437e-15,
+            "csgraph.laplacian": 2.220446049250313e-16,
+            "csgraph.breadth_first_order": 0,
+            "csgraph.depth_first_order": 0,
+            "csgraph.structural_rank": 0
         },
         "ext": {
             "np.median": 0,
@@ -4297,7 +4305,11 @@
             "splinalg.inv": 7.18637572071345e-16,
             "splinalg.matrix_power": 3.1656007086102025e-15,
             "splinalg.expm": 8.4537291803958e-16,
-            "splinalg.expm_multiply": 8.737944101923437e-15
+            "splinalg.expm_multiply": 8.737944101923437e-15,
+            "csgraph.laplacian": 2.220446049250313e-16,
+            "csgraph.breadth_first_order": 0,
+            "csgraph.depth_first_order": 0,
+            "csgraph.structural_rank": 0
         }
     },
     "ext": {
@@ -4310,11 +4322,15 @@
         "constants.nu2lambda": "pass",
         "constants.values": "pass",
         "csgraph.bellman_ford": "pass",
+        "csgraph.breadth_first_order": "pass",
         "csgraph.connected_components": "pass",
+        "csgraph.depth_first_order": "pass",
         "csgraph.dijkstra": "pass",
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
+        "csgraph.laplacian": "pass",
         "csgraph.shortest_path": "pass",
+        "csgraph.structural_rank": "pass",
         "datetime.busday_count": "pass",
         "datetime.busday_offset": "pass",
         "datetime.datetime64": "pass",

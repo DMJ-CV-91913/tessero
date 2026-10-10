@@ -83,6 +83,25 @@ for A in POS + [g_neg]:
 calls.append({'fn': 'bellman_ford', 'cases': bf})
 calls.append({'fn': 'floyd_warshall', 'cases': [dist_case('floyd_warshall', g_neg, True, False)]})
 
+# ---- traversal + structure -----------------------------------------------------------------------
+from scipy.sparse.csgraph import laplacian, breadth_first_order, depth_first_order, structural_rank
+
+GRAPHS = [dir_wgraph(6, 0.4), dir_wgraph(8, 0.3), undirected(6, 0.5), path5, two_plus_iso, dir_wgraph(5, 0.5)]
+lap_c, bfo_c, dfo_c, sr_c = [], [], [], []
+for A in GRAPHS:
+    lap_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(laplacian(A), float), []), 'compare': 'tol'})
+    lap_c.append({'args': [F.enc(A), F.enc(True)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(laplacian(A, normed=True), float), []), 'compare': 'tol'})
+    for directed in (True, False):
+        no, pr = breadth_first_order(sp.csr_array(A), 0, directed=directed, return_predecessors=True)
+        bfo_c.append({'args': [F.enc(A), F.enc(0), F.enc(bool(directed))], 'kwargs': {},
+                      'expect': F.enc_result((np.asarray(no, dtype=np.int64), np.asarray(pr, dtype=np.int64)), ['node_array', 'predecessors']), 'compare': 'tol'})
+        no, pr = depth_first_order(sp.csr_array(A), 0, directed=directed, return_predecessors=True)
+        dfo_c.append({'args': [F.enc(A), F.enc(0), F.enc(bool(directed))], 'kwargs': {},
+                      'expect': F.enc_result((np.asarray(no, dtype=np.int64), np.asarray(pr, dtype=np.int64)), ['node_array', 'predecessors']), 'compare': 'tol'})
+    sr_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': F.enc_result(int(structural_rank(sp.csr_array(A))), []), 'compare': 'tol'})
+calls += [{'fn': 'laplacian', 'cases': lap_c}, {'fn': 'breadth_first_order', 'cases': bfo_c},
+          {'fn': 'depth_first_order', 'cases': dfo_c}, {'fn': 'structural_rank', 'cases': sr_c}]
+
 out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

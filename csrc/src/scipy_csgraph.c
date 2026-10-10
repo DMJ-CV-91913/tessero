@@ -129,6 +129,139 @@ static int r_johnson(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 static int r_floyd_warshall(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return csg_shortest(args, nargs, 1, 3, &res[0]); }   /* (csgraph, directed, return_pred, unweighted, overwrite) */
 
+/* ---------------------------------------------------------------- traversal + structure (dense adjacency) */
+/* SciPy orders a node's neighbours as out-edges (row, ascending) first, then in-edges (column, ascending)
+   not already seen as out-edges; directed graphs use the out pass only. The neighbour at scan position t<n
+   is the out-candidate v=t; t>=n is the in-only candidate v=t-n. */
+
+/* laplacian(csgraph, normed=False): L = diag(d) - A with d the column sums; normed gives the symmetric
+   normalized Laplacian I - D^{-1/2} A D^{-1/2}. Returned dense (SciPy returns dense for a dense input). */
+static int r_laplacian(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("laplacian: graph must be a square adjacency matrix"); return TSR_EARG; }
+    int normed = nargs > 1 && args[1].kind == 4 && args[1].num != 0.0;
+    int64_t n = args[0].arr.shape[0], tot; double *A = fn_arg_doubles(&args[0], &tot);
+    if (!A) return TSR_ENOMEM;
+    double *d = (double *)calloc((size_t)(n > 0 ? n : 1), sizeof(double));
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
+    if (!d || !out) { free(d); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t j = 0; j < n; j++) { double s = 0.0; for (int64_t i = 0; i < n; i++) s += A[i * n + j]; d[j] = s; }
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) {
+        if (!normed) out[i * n + j] = (i == j ? d[i] : 0.0) - A[i * n + j];
+        else {
+            double wi = d[i] > 0.0 ? sqrt(d[i]) : 1.0;     /* isolated vertices normalize by 1 (SciPy) */
+            double wj = d[j] > 0.0 ? sqrt(d[j]) : 1.0;
+            double diag = (i == j && d[i] > 0.0) ? 1.0 : 0.0;
+            out[i * n + j] = diag - A[i * n + j] / (wi * wj);
+        }
+    }
+    free(d); fn_free_doubles(A, tot);
+    return TSR_OK;
+}
+
+/* breadth_first_order(csgraph, i_start, directed=True, return_predecessors=True) -> (node_array, predecessors) */
+static int r_breadth_first_order(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2) { fn_set_error("breadth_first_order: graph (square) and i_start required"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    int64_t start = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
+    int64_t tot; double *A = fn_arg_doubles(&args[0], &tot); if (!A) return TSR_ENOMEM;
+    int64_t *order = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int32_t *pred = (int32_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int32_t));
+    unsigned char *vis = (unsigned char *)calloc((size_t)(n > 0 ? n : 1), 1);
+    if (!order || !pred || !vis) { free(order); free(pred); free(vis); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) pred[i] = -9999;
+    int64_t cnt = 0, head = 0;
+    vis[start] = 1; order[cnt++] = start;
+    int64_t lim = directed ? n : 2 * n;
+    while (head < cnt) {
+        int64_t u = order[head++];
+        for (int64_t t = 0; t < lim; t++) {
+            int64_t v = t < n ? t : t - n;
+            int out = A[u * n + v] != 0.0, in_ = A[v * n + u] != 0.0;
+            if ((t < n ? out : (in_ && !out)) && !vis[v]) { vis[v] = 1; pred[v] = (int32_t)u; order[cnt++] = v; }
+        }
+    }
+    int32_t *no = (int32_t *)fn_result_array(&res[0], TSR_I32, 1, (int64_t[]){cnt});
+    int32_t *pr = (int32_t *)fn_result_array(&res[1], TSR_I32, 1, (int64_t[]){n});
+    if (!no || !pr) { free(order); free(pred); free(vis); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < cnt; i++) no[i] = (int32_t)order[i];
+    memcpy(pr, pred, (size_t)n * sizeof(int32_t));
+    free(order); free(pred); free(vis); fn_free_doubles(A, tot);
+    return TSR_OK;
+}
+
+/* depth_first_order(csgraph, i_start, directed=True, return_predecessors=True) -> (node_array, predecessors) */
+static int r_depth_first_order(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2) { fn_set_error("depth_first_order: graph (square) and i_start required"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    int64_t start = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
+    int64_t tot; double *A = fn_arg_doubles(&args[0], &tot); if (!A) return TSR_ENOMEM;
+    int64_t *order = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int64_t *stack = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int64_t *iter = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int32_t *pred = (int32_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int32_t));
+    unsigned char *vis = (unsigned char *)calloc((size_t)(n > 0 ? n : 1), 1);
+    if (!order || !stack || !iter || !pred || !vis) { free(order); free(stack); free(iter); free(pred); free(vis); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) pred[i] = -9999;
+    int64_t cnt = 0, sp = 0;
+    int64_t lim = directed ? n : 2 * n;
+    vis[start] = 1; order[cnt++] = start; stack[sp] = start; iter[start] = 0;
+    while (sp >= 0) {
+        int64_t u = stack[sp], t = iter[u], found = -1;
+        while (t < lim) {
+            int64_t v = t < n ? t : t - n;
+            int out = A[u * n + v] != 0.0, in_ = A[v * n + u] != 0.0;
+            if ((t < n ? out : (in_ && !out)) && !vis[v]) { found = v; break; }
+            t++;
+        }
+        iter[u] = t + 1;
+        if (found >= 0) { vis[found] = 1; pred[found] = (int32_t)u; order[cnt++] = found; sp++; stack[sp] = found; iter[found] = 0; }
+        else sp--;
+    }
+    int32_t *no = (int32_t *)fn_result_array(&res[0], TSR_I32, 1, (int64_t[]){cnt});
+    int32_t *pr = (int32_t *)fn_result_array(&res[1], TSR_I32, 1, (int64_t[]){n});
+    if (!no || !pr) { free(order); free(stack); free(iter); free(pred); free(vis); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < cnt; i++) no[i] = (int32_t)order[i];
+    memcpy(pr, pred, (size_t)n * sizeof(int32_t));
+    free(order); free(stack); free(iter); free(pred); free(vis); fn_free_doubles(A, tot);
+    return TSR_OK;
+}
+
+/* augmenting-path search for bipartite matching on the nonzero pattern (rows -> columns). */
+static int csg_kuhn(const double *A, int64_t n, int64_t u, int64_t *matchR, unsigned char *seen)
+{
+    for (int64_t v = 0; v < n; v++) if (A[u * n + v] != 0.0 && !seen[v]) {
+        seen[v] = 1;
+        if (matchR[v] < 0 || csg_kuhn(A, n, matchR[v], matchR, seen)) { matchR[v] = u; return 1; }
+    }
+    return 0;
+}
+
+/* structural_rank(graph): size of a maximum matching of the sparsity pattern (bipartite rows/columns). */
+static int r_structural_rank(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("structural_rank: graph must be square"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0], tot; double *A = fn_arg_doubles(&args[0], &tot);
+    if (!A) return TSR_ENOMEM;
+    int64_t *matchR = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    unsigned char *seen = (unsigned char *)malloc((size_t)(n > 0 ? n : 1));
+    if (!matchR || !seen) { free(matchR); free(seen); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) matchR[i] = -1;
+    int64_t rank = 0;
+    for (int64_t u = 0; u < n; u++) { memset(seen, 0, (size_t)n); if (csg_kuhn(A, n, u, matchR, seen)) rank++; }
+    free(matchR); free(seen); fn_free_doubles(A, tot);
+    fn_result_int(&res[0], rank);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("csgraph.connected_components", 2, "csgraph, directed=True, connection='weak'", "n_components, labels", r_connected_components, NULL, "Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components)."),
     ROUTINE("csgraph.shortest_path", 1, "csgraph, method='auto', directed=True, return_predecessors=False, unweighted=False, overwrite=False, indices=None", "dist_matrix", r_shortest_path, NULL, "All-pairs shortest path distance matrix (scipy.sparse.csgraph.shortest_path; dense, indices=None)."),
@@ -136,6 +269,10 @@ static const fn_def DEFS[] = {
     ROUTINE("csgraph.bellman_ford", 1, "csgraph, directed=True, indices=None, return_predecessors=False, unweighted=False", "dist_matrix", r_bellman_ford, NULL, "Bellman-Ford all-pairs shortest paths, allows negative weights (scipy.sparse.csgraph.bellman_ford; indices=None)."),
     ROUTINE("csgraph.johnson", 1, "csgraph, directed=True, indices=None, return_predecessors=False, unweighted=False", "dist_matrix", r_johnson, NULL, "Johnson all-pairs shortest paths (scipy.sparse.csgraph.johnson; indices=None)."),
     ROUTINE("csgraph.floyd_warshall", 1, "csgraph, directed=True, return_predecessors=False, unweighted=False, overwrite=False", "dist_matrix", r_floyd_warshall, NULL, "Floyd-Warshall all-pairs shortest paths (scipy.sparse.csgraph.floyd_warshall)."),
+    ROUTINE("csgraph.laplacian", 1, "csgraph, normed=False", "L", r_laplacian, NULL, "Graph Laplacian, plain or symmetric-normalized (scipy.sparse.csgraph.laplacian)."),
+    ROUTINE("csgraph.breadth_first_order", 2, "csgraph, i_start, directed=True, return_predecessors=True", "node_array, predecessors", r_breadth_first_order, NULL, "Breadth-first traversal order and predecessors (scipy.sparse.csgraph.breadth_first_order)."),
+    ROUTINE("csgraph.depth_first_order", 2, "csgraph, i_start, directed=True, return_predecessors=True", "node_array, predecessors", r_depth_first_order, NULL, "Depth-first traversal order and predecessors (scipy.sparse.csgraph.depth_first_order)."),
+    ROUTINE("csgraph.structural_rank", 1, "graph", "rank", r_structural_rank, NULL, "Structural rank of a graph's sparsity pattern (scipy.sparse.csgraph.structural_rank)."),
 };
 
 const fn_table TSR_SCIPY_CSGRAPH_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

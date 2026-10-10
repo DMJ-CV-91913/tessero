@@ -3929,10 +3929,22 @@
                 "doc": "Bellman-Ford all-pairs shortest paths, allows negative weights (scipy.sparse.csgraph.bellman_ford; indices=None)."
             },
             {
+                "name": "breadthFirstOrder",
+                "static": true,
+                "sig": "breadthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed",
+                "doc": "Breadth-first traversal order and predecessors (scipy.sparse.csgraph.breadth_first_order)."
+            },
+            {
                 "name": "connectedComponents",
                 "static": true,
                 "sig": "connectedComponents(mixed $csgraph, mixed $directed = true, mixed $connection = 'weak'): mixed",
                 "doc": "Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components)."
+            },
+            {
+                "name": "depthFirstOrder",
+                "static": true,
+                "sig": "depthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed",
+                "doc": "Depth-first traversal order and predecessors (scipy.sparse.csgraph.depth_first_order)."
             },
             {
                 "name": "dijkstra",
@@ -3953,10 +3965,22 @@
                 "doc": "Johnson all-pairs shortest paths (scipy.sparse.csgraph.johnson; indices=None)."
             },
             {
+                "name": "laplacian",
+                "static": true,
+                "sig": "laplacian(mixed $csgraph, mixed $normed = false): mixed",
+                "doc": "Graph Laplacian, plain or symmetric-normalized (scipy.sparse.csgraph.laplacian)."
+            },
+            {
                 "name": "shortestPath",
                 "static": true,
                 "sig": "shortestPath(mixed $csgraph, mixed $method = 'auto', mixed $directed = true, mixed $returnPredecessors = false, mixed $unweighted = false, mixed $overwrite = false, mixed $indices = null): mixed",
                 "doc": "All-pairs shortest path distance matrix (scipy.sparse.csgraph.shortest_path; dense, indices=None)."
+            },
+            {
+                "name": "structuralRank",
+                "static": true,
+                "sig": "structuralRank(mixed $graph): mixed",
+                "doc": "Structural rank of a graph's sparsity pattern (scipy.sparse.csgraph.structural_rank)."
             }
         ],
         "constants": [
@@ -19041,6 +19065,30 @@
                 "name": "floydWarshall",
                 "static": true,
                 "sig": "floydWarshall($csgraph, $directed = true, $returnPredecessors = false, $unweighted = false, $overwrite = false)",
+                "doc": ""
+            },
+            {
+                "name": "laplacian",
+                "static": true,
+                "sig": "laplacian($csgraph, $normed = false)",
+                "doc": ""
+            },
+            {
+                "name": "breadthFirstOrder",
+                "static": true,
+                "sig": "breadthFirstOrder($csgraph, $iStart, $directed = true, $returnPredecessors = true)",
+                "doc": ""
+            },
+            {
+                "name": "depthFirstOrder",
+                "static": true,
+                "sig": "depthFirstOrder($csgraph, $iStart, $directed = true, $returnPredecessors = true)",
+                "doc": ""
+            },
+            {
+                "name": "structuralRank",
+                "static": true,
+                "sig": "structuralRank($graph)",
                 "doc": ""
             }
         ]
