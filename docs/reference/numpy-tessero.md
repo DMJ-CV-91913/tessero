@@ -351,6 +351,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.agm` | `Tessero\Special::agm()` |
 | `scipy.special.airy` | `Tessero\Special::airy()` |
 | `scipy.special.airye` | `Tessero\Special::airye()` |
+| `scipy.special.assoc_laguerre` | `Tessero\Special::assocLaguerre()` |
 | `scipy.special.bdtr` | `Tessero\Special::bdtr()` |
 | `scipy.special.bdtrc` | `Tessero\Special::bdtrc()` |
 | `scipy.special.bdtri` | `Tessero\Special::bdtri()` |
@@ -387,6 +388,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.cotdg` | `Tessero\Special::cotdg()` |
 | `scipy.special.dawsn` | `Tessero\Special::dawsn()` |
 | `scipy.special.digamma` | `Tessero\Special::digamma()` |
+| `scipy.special.diric` | `Tessero\Special::diric()` |
 | `scipy.special.ellipe` | `Tessero\Special::ellipe()` |
 | `scipy.special.ellipeinc` | `Tessero\Special::ellipeinc()` |
 | `scipy.special.ellipj` | `Tessero\Special::ellipj()` |
@@ -544,6 +546,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.pdtrc` | `Tessero\Special::pdtrc()` |
 | `scipy.special.pdtri` | `Tessero\Special::pdtri()` |
 | `scipy.special.pdtrik` | `Tessero\Special::pdtrik()` |
+| `scipy.special.perm` | `Tessero\Special::perm()` |
 | `scipy.special.poch` | `Tessero\Special::poch()` |
 | `scipy.special.polygamma` | `Tessero\Special::polygamma()` |
 | `scipy.special.powm1` | `Tessero\Special::powm1()` |
