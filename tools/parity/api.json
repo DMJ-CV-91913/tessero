@@ -2541,6 +2541,12 @@
                 "doc": "Euclidean distance between two 1-D arrays (scipy.spatial.distance.euclidean)."
             },
             {
+                "name": "geometricSlerp",
+                "static": true,
+                "sig": "geometricSlerp(mixed $start, mixed $end, mixed $t): mixed",
+                "doc": "Geometric spherical linear interpolation between two unit vectors (scipy.spatial.geometric_slerp)."
+            },
+            {
                 "name": "hamming",
                 "static": true,
                 "sig": "hamming(mixed $u, mixed $v, mixed $w = null): mixed",
@@ -18539,6 +18545,12 @@
                 "name": "minkowskiDistanceP",
                 "static": true,
                 "sig": "minkowskiDistanceP($x, $y, $p = 2)",
+                "doc": ""
+            },
+            {
+                "name": "geometricSlerp",
+                "static": true,
+                "sig": "geometricSlerp($start, $end, $t)",
                 "doc": ""
             },
             {

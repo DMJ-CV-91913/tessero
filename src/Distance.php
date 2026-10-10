@@ -28,6 +28,7 @@ final class Distance
     'dice' => 'dice',
     'distance_matrix' => 'distanceMatrix',
     'euclidean' => 'euclidean',
+    'geometric_slerp' => 'geometricSlerp',
     'hamming' => 'hamming',
     'is_valid_dm' => 'isValidDm',
     'is_valid_y' => 'isValidY',
@@ -163,6 +164,16 @@ final class Distance
     public static function euclidean(mixed $u, mixed $v, mixed $w = null): mixed
     {
         return Registry::routine('distance.euclidean', [$u, $v, $w]);
+    }
+
+    /**
+     * Geometric spherical linear interpolation between two unit vectors (scipy.spatial.geometric_slerp).
+     *
+     * scipy.spatial.distance.geometric_slerp
+     */
+    public static function geometricSlerp(mixed $start, mixed $end, mixed $t): mixed
+    {
+        return Registry::routine('distance.geometric_slerp', [$start, $end, $t]);
     }
 
     /**
