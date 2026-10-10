@@ -109,6 +109,17 @@ for mats in [[dense(2, 3), dense(3, 2), dense(1, 4)], [dense(2, 2), dense(3, 3)]
     bd.append({'args': [F.enc(M) for M in mats], 'kwargs': {},
                'expect': {'dict': csr_dict(sp.block_diag(mats))}, 'compare': 'tol'})
 calls.append({'fn': 'block_diag', 'cases': bd})
+# diags / diags_array: build from per-offset diagonals (correct length each), explicit shape
+def diag_len(m, n, k):
+    return min(m - max(0, -k), n - max(0, k))
+dg = []
+for (m, n, offs) in [(5, 5, [-1, 0, 2]), (4, 6, [0, 1]), (6, 4, [-2, 0]), (5, 5, [-1, 1])]:
+    diagonals = [rng.uniform(-5, 5, diag_len(m, n, k)) for k in offs]
+    expect = {'dict': csr_dict(sp.diags(diagonals, offs, shape=(m, n)))}
+    dg.append({'args': [F.enc([np.asarray(d) for d in diagonals]), F.enc(np.array(offs)), F.enc(np.array([m, n]))],
+               'kwargs': {}, 'expect': expect, 'compare': 'tol'})
+calls.append({'fn': 'diags', 'cases': dg})
+calls.append({'fn': 'diags_array', 'cases': dg})
 
 out = {'module': 'sparse', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:

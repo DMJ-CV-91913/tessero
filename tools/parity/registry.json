@@ -4170,6 +4170,16 @@
             "nin": 0,
             "nout": 3
         },
+        "sparse.diags": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.diags_array": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "sparse.eye": {
             "kind": "routine",
             "nin": 0,
