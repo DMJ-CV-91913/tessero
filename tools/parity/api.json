@@ -11038,6 +11038,12 @@
                 "doc": "An inverted Weibull continuous random variable."
             },
             {
+                "name": "invwishart",
+                "static": true,
+                "sig": "invwishart(mixed $df, mixed $scale, mixed $x): mixed",
+                "doc": "Inverse-Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.invwishart)."
+            },
+            {
                 "name": "iqr",
                 "static": true,
                 "sig": "iqr(mixed $x, mixed $axis = null, mixed $rng = null, mixed $scale = 1.0, mixed $nanPolicy = 'propagate', mixed $interpolation = 'linear', mixed $keepdims = false): mixed",
@@ -11258,6 +11264,12 @@
                 "static": true,
                 "sig": "mannwhitneyu(mixed $x, mixed $y, mixed $useContinuity = true, mixed $alternative = 'two-sided', mixed $axis = 0, mixed $method = 'auto', mixed $nanPolicy = 'propagate', mixed $keepdims = false): mixed",
                 "doc": "Mann-Whitney U rank test on two independent samples (scipy.stats.mannwhitneyu)."
+            },
+            {
+                "name": "matrixNormal",
+                "static": true,
+                "sig": "matrixNormal(mixed $mean, mixed $rowcov, mixed $colcov, mixed $x): mixed",
+                "doc": "Matrix-normal pdf and log-pdf at a matrix x (scipy.stats.matrix_normal)."
             },
             {
                 "name": "maxwell",
@@ -11858,6 +11870,12 @@
                 "static": true,
                 "sig": "wilcoxon(mixed $x, mixed $y = null, mixed $zeroMethod = 'wilcox', mixed $correction = false, mixed $alternative = 'two-sided', mixed $method = 'auto', mixed $axis = 0, mixed $nanPolicy = 'propagate', mixed $keepdims = false): mixed",
                 "doc": "Wilcoxon signed-rank test; zstatistic with method='asymptotic' / 'approx' (scipy.stats.wilcoxon)."
+            },
+            {
+                "name": "wishart",
+                "static": true,
+                "sig": "wishart(mixed $df, mixed $scale, mixed $x): mixed",
+                "doc": "Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.wishart)."
             },
             {
                 "name": "wrapcauchy",
@@ -15098,6 +15116,24 @@
                 "name": "vonmisesFisher",
                 "static": true,
                 "sig": "vonmisesFisher($mu, $kappa, $x)",
+                "doc": ""
+            },
+            {
+                "name": "matrixNormal",
+                "static": true,
+                "sig": "matrixNormal($mean, $rowcov, $colcov, $x)",
+                "doc": ""
+            },
+            {
+                "name": "wishart",
+                "static": true,
+                "sig": "wishart($df, $scale, $x)",
+                "doc": ""
+            },
+            {
+                "name": "invwishart",
+                "static": true,
+                "sig": "invwishart($df, $scale, $x)",
                 "doc": ""
             },
             {
