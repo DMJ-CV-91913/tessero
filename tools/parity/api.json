@@ -5353,6 +5353,12 @@
                 "doc": "Whether a linkage Z and condensed distances Y have matching numbers of observations (scipy.cluster.hierarchy.correspond)."
             },
             {
+                "name": "cutTree",
+                "static": true,
+                "sig": "cutTree(mixed $Z, mixed $nClusters = null, mixed $height = null): mixed",
+                "doc": "Group membership at each requested cut of the dendrogram (scipy.cluster.hierarchy.cut_tree)."
+            },
+            {
                 "name": "fcluster",
                 "static": true,
                 "sig": "fcluster(mixed $Z, mixed $t, mixed $criterion = 'inconsistent', mixed $depth = 2, mixed $R = null, mixed $monocrit = null): mixed",
@@ -5393,6 +5399,12 @@
                 "static": true,
                 "sig": "isValidLinkage(mixed $Z): mixed",
                 "doc": "Whether Z is a valid linkage matrix (scipy.cluster.hierarchy.is_valid_linkage)."
+            },
+            {
+                "name": "leaders",
+                "static": true,
+                "sig": "leaders(mixed $Z, mixed $T): mixed",
+                "doc": "Root (leader) nodes of the flat clusters in T (scipy.cluster.hierarchy.leaders)."
             },
             {
                 "name": "leavesList",
@@ -20421,6 +20433,18 @@
                 "name": "fclusterdata",
                 "static": true,
                 "sig": "fclusterdata($X, $t, $criterion = 'inconsistent', $metric = 'euclidean', $depth = 2, $method = 'single')",
+                "doc": ""
+            },
+            {
+                "name": "leaders",
+                "static": true,
+                "sig": "leaders($Z, $T)",
+                "doc": ""
+            },
+            {
+                "name": "cutTree",
+                "static": true,
+                "sig": "cutTree($Z, $nClusters = null, $height = null)",
                 "doc": ""
             }
         ]
