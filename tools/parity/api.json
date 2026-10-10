@@ -11066,6 +11066,12 @@
                 "doc": "Dirichlet pdf at each row of x (scipy.stats.dirichlet)."
             },
             {
+                "name": "dirichletMultinomial",
+                "static": true,
+                "sig": "dirichletMultinomial(mixed $alpha, mixed $n, mixed $x): mixed",
+                "doc": "Dirichlet-multinomial pmf at each row of x (scipy.stats.dirichlet_multinomial)."
+            },
+            {
                 "name": "dlaplace",
                 "static": true,
                 "sig": "dlaplace(mixed $a, mixed $loc = 0): Tessero\\Stats\\Distribution",
@@ -15462,6 +15468,12 @@
                 "name": "multinomial",
                 "static": true,
                 "sig": "multinomial($n, $p, $x)",
+                "doc": ""
+            },
+            {
+                "name": "dirichletMultinomial",
+                "static": true,
+                "sig": "dirichletMultinomial($alpha, $n, $x)",
                 "doc": ""
             },
             {
