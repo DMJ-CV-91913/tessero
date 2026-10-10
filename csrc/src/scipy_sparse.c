@@ -343,6 +343,39 @@ static int r_sp_spdiags(const void *ctx, const tsr_arg *a, int nargs, tsr_result
     fn_free_doubles(data, ld); fn_free_doubles(offs, lo);
     return rc;
 }
+/* diags(diagonals, offsets=0, shape=None): build an m-by-n matrix placing diagonals[p] on diagonal offsets[p]
+   (entry t of diagonal k -> (t+max(0,-k), t+max(0,k))); duplicate offsets sum, as SciPy. Returned CSR. */
+static int r_sp_diags(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const tsr_arg *items; int64_t nd;
+    if (a[0].kind == 5) { items = a[0].items; nd = a[0].count; }
+    else if (a[0].kind == 3 && a[0].arr.ndim == 1) { items = &a[0]; nd = 1; }
+    else { fn_set_error("sparse.diags: diagonals must be a sequence of 1-D arrays"); return TSR_EARG; }
+    int64_t *offs = (int64_t *)malloc((size_t)(nd > 0 ? nd : 1) * sizeof(int64_t));
+    if (!offs) return TSR_ENOMEM;
+    if (nargs > 1 && a[1].kind == 3) { int64_t lo; double *od = fn_arg_doubles(&a[1], &lo); if (!od) { free(offs); return TSR_ENOMEM; } for (int64_t p = 0; p < nd; p++) offs[p] = (int64_t)od[p]; fn_free_doubles(od, lo); }
+    else { int64_t o = (nargs > 1) ? sp_int(a, nargs, 1, 0) : 0; for (int64_t p = 0; p < nd; p++) offs[p] = o; }
+    /* shape: explicit (m, n) as a 2-int array/sequence, else inferred square. */
+    int64_t m = -1, n = -1;
+    if (nargs > 2 && a[2].kind == 3 && a[2].arr.ndim == 1) { int64_t ls; double *sd = fn_arg_doubles(&a[2], &ls); if (sd && ls >= 2) { m = (int64_t)sd[0]; n = (int64_t)sd[1]; } fn_free_doubles(sd, ls); }
+    else if (nargs > 2 && a[2].kind == 5 && a[2].count >= 2) { m = (int64_t)(a[2].items[0].flags & 1 ? a[2].items[0].ival : a[2].items[0].num); n = (int64_t)(a[2].items[1].flags & 1 ? a[2].items[1].ival : a[2].items[1].num); }
+    if (m < 0) { int64_t mx = 0; for (int64_t p = 0; p < nd; p++) { int64_t L = items[p].arr.shape[0], k = offs[p] < 0 ? -offs[p] : offs[p]; if (L + k > mx) mx = L + k; } m = n = mx; }
+    double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
+    if (!D) { free(offs); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    for (int64_t p = 0; p < nd && rc == TSR_OK; p++) {
+        int64_t L, k = offs[p]; double *d = fn_arg_doubles(&items[p], &L);
+        if (!d) { rc = TSR_ENOMEM; break; }
+        int64_t r0 = k < 0 ? -k : 0, c0 = k > 0 ? k : 0;
+        for (int64_t t = 0; t < L; t++) { int64_t r = t + r0, c = t + c0; if (r < m && c < n) D[r * n + c] += d[t]; }
+        fn_free_doubles(d, L);
+    }
+    if (rc == TSR_OK) rc = emit_csr(res, D, m, n);
+    free(D); free(offs);
+    return rc;
+}
+
 /* block_diag(mats): block-diagonal assembly of a sequence of dense blocks, as CSR. */
 static int r_sp_block_diag(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -388,6 +421,8 @@ static const fn_def DEFS[] = {
     ROUTINE("sparse.find", 3, "A", "row, col, data", r_sp_find, NULL, "Row, column and value of each nonzero, row-major (scipy.sparse.find)."),
     ROUTINE("sparse.spdiags", 4, "data, diags, m, n", "data, indices, indptr, shape", r_sp_spdiags, NULL, "Sparse matrix from diagonals, as CSR (scipy.sparse.spdiags)."),
     ROUTINE("sparse.block_diag", 4, "*blocks", "data, indices, indptr, shape", r_sp_block_diag, NULL, "Block-diagonal assembly of blocks, as CSR (scipy.sparse.block_diag)."),
+    ROUTINE("sparse.diags", 4, "diagonals[], offsets=0, shape=None", "data, indices, indptr, shape", r_sp_diags, NULL, "Sparse matrix from diagonals, as CSR (scipy.sparse.diags)."),
+    ROUTINE("sparse.diags_array", 4, "diagonals[], offsets=0, shape=None", "data, indices, indptr, shape", r_sp_diags, NULL, "Sparse matrix from diagonals, as CSR (scipy.sparse.diags_array)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

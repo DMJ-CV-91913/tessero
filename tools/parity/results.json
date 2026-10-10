@@ -901,6 +901,8 @@
         "sparse.csr_matrix": "pass",
         "sparse.dia_array": "pass",
         "sparse.dia_matrix": "pass",
+        "sparse.diags": "pass",
+        "sparse.diags_array": "pass",
         "sparse.eye": "pass",
         "sparse.eye_array": "pass",
         "sparse.find": "pass",
@@ -2884,7 +2886,9 @@
             "csgraph.breadth_first_tree": 0,
             "csgraph.depth_first_tree": 0,
             "csgraph.construct_dist_matrix": 0,
-            "csgraph.min_weight_full_bipartite_matching": 0
+            "csgraph.min_weight_full_bipartite_matching": 0,
+            "sparse.diags": 0,
+            "sparse.diags_array": 0
         },
         "ext": {
             "np.median": 0,
@@ -4327,7 +4331,9 @@
             "csgraph.breadth_first_tree": 0,
             "csgraph.depth_first_tree": 0,
             "csgraph.construct_dist_matrix": 0,
-            "csgraph.min_weight_full_bipartite_matching": 0
+            "csgraph.min_weight_full_bipartite_matching": 0,
+            "sparse.diags": 0,
+            "sparse.diags_array": 0
         }
     },
     "ext": {
@@ -5232,6 +5238,8 @@
         "sparse.csr_matrix": "pass",
         "sparse.dia_array": "pass",
         "sparse.dia_matrix": "pass",
+        "sparse.diags": "pass",
+        "sparse.diags_array": "pass",
         "sparse.eye": "pass",
         "sparse.eye_array": "pass",
         "sparse.find": "pass",
