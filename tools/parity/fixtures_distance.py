@@ -4,6 +4,7 @@ AVX512 float64 dispatch), so they are host-independent and this generator does n
 import json, os
 import numpy as np
 import scipy.spatial.distance as dist
+import scipy.spatial as spt
 import fixtures_np as F  # enc / enc_result
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'distance.json')
@@ -75,9 +76,32 @@ metric_blocks.append({'fn': 'num_obs_y', 'cases': [call('num_obs_y', [_cvec]), c
 metric_blocks.append({'fn': 'is_valid_dm', 'cases': [call('is_valid_dm', [_dm]), call('is_valid_dm', [np.ones((3, 3))])]})
 metric_blocks.append({'fn': 'is_valid_y', 'cases': [call('is_valid_y', [_cvec]), call('is_valid_y', [pos(4)])]})
 
+# scipy.spatial top-level Minkowski functions (served by the Distance facade; refs scipy.spatial.* via scope.py)
+dm_c, md_c, mdp_c = [], [], []
+for (m, n, k) in ((4, 5, 2), (6, 3, 3), (3, 3, 4)):
+    x = rng.uniform(-5, 5, (m, k)); y = rng.uniform(-5, 5, (n, k))
+    for p in (1.0, 2.0, 3.0, float('inf')):
+        dm_c.append({'args': [F.enc(x), F.enc(y), F.enc(p)], 'kwargs': {},
+                     'expect': F.enc_result(np.asarray(spt.distance_matrix(x, y, p), float), []), 'compare': 'tol'})
+for (m, k) in ((5, 3), (4, 2), (6, 4)):
+    x = rng.uniform(-5, 5, (m, k)); y = rng.uniform(-5, 5, (m, k))
+    for p in (1.0, 2.0, 3.0, float('inf')):
+        md_c.append({'args': [F.enc(x), F.enc(y), F.enc(p)], 'kwargs': {},
+                     'expect': F.enc_result(np.asarray(spt.minkowski_distance(x, y, p), float), []), 'compare': 'tol'})
+        if not np.isinf(p):
+            mdp_c.append({'args': [F.enc(x), F.enc(y), F.enc(p)], 'kwargs': {},
+                          'expect': F.enc_result(np.asarray(spt.minkowski_distance_p(x, y, p), float), []), 'compare': 'tol'})
+# scalar (both 1-D) cases
+xv = rng.uniform(-5, 5, 4); yv = rng.uniform(-5, 5, 4)
+for p in (1.0, 2.0, 3.0):
+    md_c.append({'args': [F.enc(xv), F.enc(yv), F.enc(p)], 'kwargs': {},
+                 'expect': F.enc_result(float(spt.minkowski_distance(xv, yv, p)), []), 'compare': 'tol'})
+spatial_blocks = [{'fn': 'distance_matrix', 'cases': dm_c}, {'fn': 'minkowski_distance', 'cases': md_c},
+                  {'fn': 'minkowski_distance_p', 'cases': mdp_c}]
+
 out = {'module': 'distance', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'pdist', 'cases': pdist_cases}, {'fn': 'cdist', 'cases': cdist_cases},
-                 {'fn': 'squareform', 'cases': square_cases}] + metric_blocks}
+                 {'fn': 'squareform', 'cases': square_cases}] + metric_blocks + spatial_blocks}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'distance: pdist {len(pdist_cases)}, cdist {len(cdist_cases)}, squareform {len(square_cases)}, + {len(metric_blocks)} metric fns')
