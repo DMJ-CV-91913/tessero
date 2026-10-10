@@ -16,6 +16,7 @@
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
         "csgraph.laplacian": "pass",
+        "csgraph.minimum_spanning_tree": "pass",
         "csgraph.shortest_path": "pass",
         "csgraph.structural_rank": "pass",
         "datetime.busday_count": "pass",
@@ -2872,7 +2873,8 @@
             "csgraph.laplacian": 2.220446049250313e-16,
             "csgraph.breadth_first_order": 0,
             "csgraph.depth_first_order": 0,
-            "csgraph.structural_rank": 0
+            "csgraph.structural_rank": 0,
+            "csgraph.minimum_spanning_tree": 0
         },
         "ext": {
             "np.median": 0,
@@ -4309,7 +4311,8 @@
             "csgraph.laplacian": 2.220446049250313e-16,
             "csgraph.breadth_first_order": 0,
             "csgraph.depth_first_order": 0,
-            "csgraph.structural_rank": 0
+            "csgraph.structural_rank": 0,
+            "csgraph.minimum_spanning_tree": 0
         }
     },
     "ext": {
@@ -4329,6 +4332,7 @@
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
         "csgraph.laplacian": "pass",
+        "csgraph.minimum_spanning_tree": "pass",
         "csgraph.shortest_path": "pass",
         "csgraph.structural_rank": "pass",
         "datetime.busday_count": "pass",

@@ -60,6 +60,11 @@
             "nin": 0,
             "nout": 1
         },
+        "csgraph.minimum_spanning_tree": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "csgraph.shortest_path": {
             "kind": "routine",
             "nin": 0,

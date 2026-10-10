@@ -26,6 +26,7 @@ final class Csgraph
     'floyd_warshall' => 'floydWarshall',
     'johnson' => 'johnson',
     'laplacian' => 'laplacian',
+    'minimum_spanning_tree' => 'minimumSpanningTree',
     'shortest_path' => 'shortestPath',
     'structural_rank' => 'structuralRank',
     ];
@@ -130,6 +131,16 @@ final class Csgraph
     public static function laplacian(mixed $csgraph, mixed $normed = false): mixed
     {
         return Registry::routine('csgraph.laplacian', [$csgraph, $normed]);
+    }
+
+    /**
+     * Minimum spanning tree of an undirected graph, returned dense (scipy.sparse.csgraph.minimum_spanning_tree).
+     *
+     * scipy.sparse.csgraph.minimum_spanning_tree
+     */
+    public static function minimumSpanningTree(mixed $csgraph, mixed $overwrite = false): mixed
+    {
+        return Registry::routine('csgraph.minimum_spanning_tree', [$csgraph, $overwrite]);
     }
 
     /**
