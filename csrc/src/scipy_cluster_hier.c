@@ -656,6 +656,32 @@ done:
     return rc;
 }
 
+/* is_isomorphic(T1, T2): do two flat-cluster labellings describe the same partition (a bijection of labels)? */
+static int r_is_isomorphic(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || args[0].kind != 3 || args[1].kind != 3) { fn_set_error("is_isomorphic: two label arrays are required"); return TSR_EARG; }
+    int64_t L1, L2; double *A = fn_arg_doubles(&args[0], &L1); if (!A) return TSR_ENOMEM;
+    double *B = fn_arg_doubles(&args[1], &L2); if (!B) { fn_free_doubles(A, L1); return TSR_ENOMEM; }
+    if (L1 != L2) { fn_free_doubles(A, L1); fn_free_doubles(B, L2); hier_bool(&res[0], 0); return TSR_OK; }
+    int64_t ma = 0, mb = 0;
+    for (int64_t i = 0; i < L1; i++) { int64_t a = (int64_t)A[i], b = (int64_t)B[i]; if (a > ma) ma = a; if (b > mb) mb = b; }
+    int64_t *d1 = (int64_t *)malloc((size_t)(ma + 1) * sizeof(int64_t));
+    int64_t *d2 = (int64_t *)malloc((size_t)(mb + 1) * sizeof(int64_t));
+    if (!d1 || !d2) { free(d1); free(d2); fn_free_doubles(A, L1); fn_free_doubles(B, L2); return TSR_ENOMEM; }
+    for (int64_t i = 0; i <= ma; i++) d1[i] = -1;
+    for (int64_t i = 0; i <= mb; i++) d2[i] = -1;
+    int ok = 1;
+    for (int64_t i = 0; i < L1 && ok; i++) {
+        int64_t a = (int64_t)A[i], b = (int64_t)B[i];
+        if (d1[a] == -1) d1[a] = b; else if (d1[a] != b) ok = 0;
+        if (d2[b] == -1) d2[b] = a; else if (d2[b] != a) ok = 0;
+    }
+    free(d1); free(d2); fn_free_doubles(A, L1); fn_free_doubles(B, L2);
+    hier_bool(&res[0], ok);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("hierarchy.linkage", 1, "y, method='single'", "Z", r_linkage, NULL, "Agglomerative hierarchical clustering linkage matrix (scipy.cluster.hierarchy.linkage)."),
     ROUTINE("hierarchy.single", 1, "y", "Z", r_single, NULL, "Single/nearest-point linkage (scipy.cluster.hierarchy.single)."),
@@ -682,6 +708,7 @@ static const fn_def DEFS[] = {
     ROUTINE("hierarchy.fclusterdata", 1, "X, t, criterion='inconsistent', metric='euclidean', depth=2, method='single'", "T", r_fclusterdata, NULL, "Flat clusters directly from observations (scipy.cluster.hierarchy.fclusterdata)."),
     ROUTINE("hierarchy.leaders", 2, "Z, T", "L, M", r_leaders, NULL, "Root (leader) nodes of the flat clusters in T (scipy.cluster.hierarchy.leaders)."),
     ROUTINE("hierarchy.cut_tree", 1, "Z, n_clusters=None, height=None", "groups", r_cut_tree, NULL, "Group membership at each requested cut of the dendrogram (scipy.cluster.hierarchy.cut_tree)."),
+    ROUTINE("hierarchy.is_isomorphic", 2, "T1, T2", "iso", r_is_isomorphic, NULL, "Whether two flat-cluster labellings are isomorphic (scipy.cluster.hierarchy.is_isomorphic)."),
 };
 
 const fn_table TSR_SCIPY_HIERARCHY_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
