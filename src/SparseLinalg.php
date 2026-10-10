@@ -18,7 +18,10 @@ final class SparseLinalg
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'expm' => 'expm',
+    'inv' => 'inv',
     'is_sptriangular' => 'isSptriangular',
+    'matrix_power' => 'matrixPower',
     'norm' => 'norm',
     'spbandwidth' => 'spbandwidth',
     'spsolve' => 'spsolve',
@@ -42,6 +45,26 @@ final class SparseLinalg
     }
 
     /**
+     * Matrix exponential of a sparse matrix (scipy.sparse.linalg.expm).
+     *
+     * scipy.splinalg.expm
+     */
+    public static function expm(mixed $A): mixed
+    {
+        return Registry::routine('splinalg.expm', [$A]);
+    }
+
+    /**
+     * Inverse of a square sparse matrix, returned dense (scipy.sparse.linalg.inv).
+     *
+     * scipy.splinalg.inv
+     */
+    public static function inv(mixed $A): mixed
+    {
+        return Registry::routine('splinalg.inv', [$A]);
+    }
+
+    /**
      * Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular).
      *
      * scipy.splinalg.is_sptriangular
@@ -51,6 +74,16 @@ final class SparseLinalg
     public static function isSptriangular(mixed $A): mixed
     {
         return Registry::routine('splinalg.is_sptriangular', [$A]);
+    }
+
+    /**
+     * Integer matrix power of a square sparse matrix (scipy.sparse.linalg.matrix_power).
+     *
+     * scipy.splinalg.matrix_power
+     */
+    public static function matrixPower(mixed $A, mixed $power): mixed
+    {
+        return Registry::routine('splinalg.matrix_power', [$A, $power]);
     }
 
     /**

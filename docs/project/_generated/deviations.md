@@ -601,6 +601,9 @@
 | `special.yv` | every call | rtol 1e-11 |
 | `special.iv` | every call | rtol 1e-11 |
 | `special.kv` | every call | rtol 1e-11 |
+| `splinalg.inv` | call | rtol 1e-09 |
+| `splinalg.matrix_power` | call | rtol 1e-09 |
+| `splinalg.expm` | call | rtol 1e-08 |
 | `splinalg.spsolve` | call | rtol 1e-09 |
 | `splinalg.spsolve_triangular` | call | rtol 1e-09 |
 | `splinalg.norm` | call | rtol 1e-09 |
