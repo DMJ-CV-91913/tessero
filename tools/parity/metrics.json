@@ -66,8 +66,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1363,
-  "ffi": 1363
+  "ext": 1364,
+  "ffi": 1364
  },
  "groups": {
   "NumPy core": {
@@ -87,20 +87,20 @@
    "verified_ffi": 649
   },
   "SciPy": {
-   "both": 1134,
+   "both": 1135,
    "excluded": 70,
-   "impl_ext": 1134,
-   "impl_ffi": 1137,
+   "impl_ext": 1135,
+   "impl_ffi": 1138,
    "in_scope": 1492,
-   "m2_ext": 76.0,
-   "m2_ffi": 76.2,
+   "m2_ext": 76.1,
+   "m2_ffi": 76.3,
    "m3": 4.5,
-   "m4_ext": 76.0,
-   "m4_ffi": 76.2,
+   "m4_ext": 76.1,
+   "m4_ffi": 76.3,
    "m5": 99.7,
    "symbols": 1562,
-   "verified_ext": 1134,
-   "verified_ffi": 1137
+   "verified_ext": 1135,
+   "verified_ffi": 1138
   }
  },
  "modules": {
@@ -505,20 +505,20 @@
    "verified_ffi": 20
   },
   "scipy.sparse.csgraph": {
-   "both": 10,
+   "both": 11,
    "excluded": 0,
-   "impl_ext": 10,
-   "impl_ffi": 10,
+   "impl_ext": 11,
+   "impl_ffi": 11,
    "in_scope": 26,
-   "m2_ext": 38.5,
-   "m2_ffi": 38.5,
+   "m2_ext": 42.3,
+   "m2_ffi": 42.3,
    "m3": 0.0,
-   "m4_ext": 38.5,
-   "m4_ffi": 38.5,
+   "m4_ext": 42.3,
+   "m4_ffi": 42.3,
    "m5": 100.0,
    "symbols": 26,
-   "verified_ext": 10,
-   "verified_ffi": 10
+   "verified_ext": 11,
+   "verified_ffi": 11
   },
   "scipy.sparse.linalg": {
    "both": 9,
@@ -602,7 +602,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1366,
+ "registry_functions": 1367,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -612,9 +612,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 39971,
-   "covered_ext": 39971,
-   "covered_ffi": 39981,
+   "covered_both": 39975,
+   "covered_ext": 39975,
+   "covered_ffi": 39985,
    "excluded_calls": 2339,
    "excluded_share": 5.5,
    "in_scope_calls": 40209,
@@ -691,9 +691,9 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2219,
-    "covered_ext": 2219,
-    "covered_ffi": 2227,
+    "covered_both": 2223,
+    "covered_ext": 2223,
+    "covered_ffi": 2231,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,
@@ -711,9 +711,9 @@
       "n": 25
      },
      "250": {
-      "both": 211,
-      "ext": 211,
-      "ffi": 213,
+      "both": 212,
+      "ext": 212,
+      "ffi": 214,
       "n": 250
      },
      "50": {
@@ -723,9 +723,9 @@
       "n": 50
      }
     },
-    "u_both": 93.9,
-    "u_ext": 93.9,
-    "u_ffi": 94.3
+    "u_both": 94.1,
+    "u_ext": 94.1,
+    "u_ffi": 94.5
    }
   },
   "total_calls": 42551,

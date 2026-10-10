@@ -3971,6 +3971,12 @@
                 "doc": "Graph Laplacian, plain or symmetric-normalized (scipy.sparse.csgraph.laplacian)."
             },
             {
+                "name": "minimumSpanningTree",
+                "static": true,
+                "sig": "minimumSpanningTree(mixed $csgraph, mixed $overwrite = false): mixed",
+                "doc": "Minimum spanning tree of an undirected graph, returned dense (scipy.sparse.csgraph.minimum_spanning_tree)."
+            },
+            {
                 "name": "shortestPath",
                 "static": true,
                 "sig": "shortestPath(mixed $csgraph, mixed $method = 'auto', mixed $directed = true, mixed $returnPredecessors = false, mixed $unweighted = false, mixed $overwrite = false, mixed $indices = null): mixed",
@@ -19089,6 +19095,12 @@
                 "name": "structuralRank",
                 "static": true,
                 "sig": "structuralRank($graph)",
+                "doc": ""
+            },
+            {
+                "name": "minimumSpanningTree",
+                "static": true,
+                "sig": "minimumSpanningTree($csgraph, $overwrite = false)",
                 "doc": ""
             }
         ]
