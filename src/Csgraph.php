@@ -19,11 +19,15 @@ final class Csgraph
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'bellman_ford' => 'bellmanFord',
+    'breadth_first_order' => 'breadthFirstOrder',
     'connected_components' => 'connectedComponents',
+    'depth_first_order' => 'depthFirstOrder',
     'dijkstra' => 'dijkstra',
     'floyd_warshall' => 'floydWarshall',
     'johnson' => 'johnson',
+    'laplacian' => 'laplacian',
     'shortest_path' => 'shortestPath',
+    'structural_rank' => 'structuralRank',
     ];
 
     private function __construct()
@@ -53,6 +57,18 @@ final class Csgraph
     }
 
     /**
+     * Breadth-first traversal order and predecessors (scipy.sparse.csgraph.breadth_first_order).
+     *
+     * scipy.sparse.csgraph.breadth_first_order
+     *
+     * @return mixed one array, or an array keyed by node_array, predecessors when several results are requested
+     */
+    public static function breadthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed
+    {
+        return Registry::routine('csgraph.breadth_first_order', [$csgraph, $iStart, $directed, $returnPredecessors]);
+    }
+
+    /**
      * Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components).
      *
      * scipy.sparse.csgraph.connected_components
@@ -62,6 +78,18 @@ final class Csgraph
     public static function connectedComponents(mixed $csgraph, mixed $directed = true, mixed $connection = 'weak'): mixed
     {
         return Registry::routine('csgraph.connected_components', [$csgraph, $directed, $connection]);
+    }
+
+    /**
+     * Depth-first traversal order and predecessors (scipy.sparse.csgraph.depth_first_order).
+     *
+     * scipy.sparse.csgraph.depth_first_order
+     *
+     * @return mixed one array, or an array keyed by node_array, predecessors when several results are requested
+     */
+    public static function depthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed
+    {
+        return Registry::routine('csgraph.depth_first_order', [$csgraph, $iStart, $directed, $returnPredecessors]);
     }
 
     /**
@@ -95,6 +123,16 @@ final class Csgraph
     }
 
     /**
+     * Graph Laplacian, plain or symmetric-normalized (scipy.sparse.csgraph.laplacian).
+     *
+     * scipy.sparse.csgraph.laplacian
+     */
+    public static function laplacian(mixed $csgraph, mixed $normed = false): mixed
+    {
+        return Registry::routine('csgraph.laplacian', [$csgraph, $normed]);
+    }
+
+    /**
      * All-pairs shortest path distance matrix (scipy.sparse.csgraph.shortest_path; dense, indices=None).
      *
      * scipy.sparse.csgraph.shortest_path
@@ -102,5 +140,15 @@ final class Csgraph
     public static function shortestPath(mixed $csgraph, mixed $method = 'auto', mixed $directed = true, mixed $returnPredecessors = false, mixed $unweighted = false, mixed $overwrite = false, mixed $indices = null): mixed
     {
         return Registry::routine('csgraph.shortest_path', [$csgraph, $method, $directed, $returnPredecessors, $unweighted, $overwrite, $indices]);
+    }
+
+    /**
+     * Structural rank of a graph's sparsity pattern (scipy.sparse.csgraph.structural_rank).
+     *
+     * scipy.sparse.csgraph.structural_rank
+     */
+    public static function structuralRank(mixed $graph): mixed
+    {
+        return Registry::routine('csgraph.structural_rank', [$graph]);
     }
 }
