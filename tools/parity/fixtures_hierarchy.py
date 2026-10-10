@@ -9,7 +9,7 @@ import json, os
 import numpy as np
 from scipy.cluster.hierarchy import (linkage, single, complete, average, weighted, ward, centroid, median,
     num_obs_linkage, is_valid_linkage, is_monotonic, is_valid_im, correspond, maxdists, inconsistent,
-    maxinconsts, maxRstat, leaves_list, cophenet, to_mlab_linkage, from_mlab_linkage)
+    maxinconsts, maxRstat, leaves_list, cophenet, to_mlab_linkage, from_mlab_linkage, fcluster, fclusterdata)
 from scipy.spatial.distance import pdist
 import fixtures_np as F
 
@@ -105,7 +105,39 @@ Zc, yc = ZSET[0]
 ymis = np.asarray(pdist(obs(5, 2)), float)                               # wrong number of observations
 corr_c.append(bool_case([F.enc(np.asarray(Zc, float)), F.enc(ymis)], correspond(Zc, ymis)))
 
+# ---- flat clusters ----
+def int_arr_case(args, expect):
+    return {'args': args, 'kwargs': {}, 'expect': F.enc_result(np.asarray(expect, dtype=np.int64), []), 'compare': 'tol', 'tol': TOL}
+
+fcl_c, fcld_c = [], []
+for (n, f, meth) in ((12, 2, 'ward'), (15, 3, 'average'), (10, 2, 'single'), (14, 4, 'complete')):
+    X = obs(n, f); y = pdist(X); Z = linkage(y, method=meth)
+    heights = np.sort(np.asarray(Z, float)[:, 2])
+    R = inconsistent(Z, 2)
+    MR = maxRstat(Z, R, 3); MI = maxinconsts(Z, R)
+    for t in (heights[len(heights) // 4], heights[len(heights) // 2], heights[-2]):
+        fcl_c.append(int_arr_case([F.enc(np.asarray(Z, float)), F.enc(float(t)), F.enc('distance')],
+                                  fcluster(Z, t, criterion='distance')))
+    for t in (float(np.max(R[:, 3]) * 0.5 + 1e-9), float(np.max(R[:, 3]) + 1.0)):
+        fcl_c.append(int_arr_case([F.enc(np.asarray(Z, float)), F.enc(t)],
+                                  fcluster(Z, t, criterion='inconsistent')))
+    for mc in (2, 3, 5):
+        fcl_c.append(int_arr_case([F.enc(np.asarray(Z, float)), F.enc(int(mc)), F.enc('maxclust')],
+                                  fcluster(Z, mc, criterion='maxclust')))
+    tmr = float(np.median(MR))
+    fcl_c.append(int_arr_case([F.enc(np.asarray(Z, float)), F.enc(tmr), F.enc('monocrit'), F.enc(2), None, F.enc(np.asarray(MR, float))],
+                              fcluster(Z, tmr, criterion='monocrit', monocrit=MR)))
+    for mc in (2, 4):
+        fcl_c.append(int_arr_case([F.enc(np.asarray(Z, float)), F.enc(int(mc)), F.enc('maxclust_monocrit'), F.enc(2), None, F.enc(np.asarray(MI, float))],
+                                  fcluster(Z, mc, criterion='maxclust_monocrit', monocrit=MI)))
+    # fclusterdata: straight from observations (euclidean + method)
+    for (crit, arg) in (('distance', float(heights[len(heights) // 2])), ('maxclust', 3)):
+        a = float(arg) if crit == 'distance' else int(arg)
+        fcld_c.append(int_arr_case([F.enc(X), F.enc(a), F.enc(crit), F.enc('euclidean'), F.enc(2), F.enc(meth)],
+                                   fclusterdata(X, arg, criterion=crit, metric='euclidean', method=meth)))
+
 calls += [
+    {'fn': 'fcluster', 'cases': fcl_c}, {'fn': 'fclusterdata', 'cases': fcld_c},
     {'fn': 'num_obs_linkage', 'cases': num_obs_c}, {'fn': 'is_valid_linkage', 'cases': valid_c},
     {'fn': 'is_monotonic', 'cases': mono_c}, {'fn': 'is_valid_im', 'cases': validim_c},
     {'fn': 'correspond', 'cases': corr_c}, {'fn': 'maxdists', 'cases': maxd_c},

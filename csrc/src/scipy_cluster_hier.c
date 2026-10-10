@@ -223,6 +223,21 @@ static void incon_collect(const double *Z, int64_t n_obs, int64_t node, int dept
     if (c1 >= n_obs) incon_collect(Z, n_obs, c1, depth - 1, buf, cnt);
 }
 
+/* fill the (m x 4) inconsistency matrix R from a linkage Z at depth d (buf is scratch of length m). */
+static void fill_inconsistent(const double *Z, int64_t m, int64_t n_obs, int d, double *R, double *buf)
+{
+    for (int64_t i = 0; i < m; i++) {
+        int64_t cnt = 0;
+        incon_collect(Z, n_obs, n_obs + i, d, buf, &cnt);
+        double s = 0.0; for (int64_t k = 0; k < cnt; k++) s += buf[k];
+        double mean = s / (double)cnt, var = 0.0;
+        for (int64_t k = 0; k < cnt; k++) { double df = buf[k] - mean; var += df * df; }
+        double sd = cnt < 2 ? 0.0 : sqrt(var / (double)(cnt - 1));        /* SciPy uses the sample std (ddof=1) */
+        R[i * 4 + 0] = mean; R[i * 4 + 1] = sd; R[i * 4 + 2] = (double)cnt;
+        R[i * 4 + 3] = (cnt < 2 || sd == 0.0) ? 0.0 : (Z[i * 4 + 2] - mean) / sd;
+    }
+}
+
 static int r_inconsistent(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -236,16 +251,7 @@ static int r_inconsistent(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     double *R = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
     double *buf = (double *)malloc((size_t)m * sizeof(double));
     if (!R || !buf) { free(buf); fn_free_doubles(Z, L); return TSR_ENOMEM; }
-    for (int64_t i = 0; i < m; i++) {
-        int64_t cnt = 0;
-        incon_collect(Z, n_obs, n_obs + i, d, buf, &cnt);
-        double s = 0.0; for (int64_t k = 0; k < cnt; k++) s += buf[k];
-        double mean = s / (double)cnt, var = 0.0;
-        for (int64_t k = 0; k < cnt; k++) { double df = buf[k] - mean; var += df * df; }
-        double sd = cnt < 2 ? 0.0 : sqrt(var / (double)(cnt - 1));        /* SciPy uses the sample std (ddof=1) */
-        R[i * 4 + 0] = mean; R[i * 4 + 1] = sd; R[i * 4 + 2] = (double)cnt;
-        R[i * 4 + 3] = (cnt < 2 || sd == 0.0) ? 0.0 : (Z[i * 4 + 2] - mean) / sd;
-    }
+    fill_inconsistent(Z, m, n_obs, d, R, buf);
     free(buf); fn_free_doubles(Z, L);
     return TSR_OK;
 }
@@ -378,6 +384,167 @@ static int r_from_mlab_linkage(const void *ctx, const tsr_arg *args, int nargs, 
     return TSR_OK;
 }
 
+/* ------------------------------------------------------------------ flat clusters (fcluster family) */
+/* SciPy's cluster_monocrit: fill T[0..n-1] with 1-based flat-cluster labels. A flat cluster forms at the
+   highest node whose criterion MC[node] <= cutoff; labels are numbered in the left-first post-order the
+   traversal finalises leaves, matching scipy.cluster.hierarchy exactly. */
+static void cluster_monocrit(const double *Z, const double *MC, int64_t *T, double cutoff, int64_t n)
+{
+    int64_t *curr = (int64_t *)malloc((size_t)(2 * n) * sizeof(int64_t));
+    unsigned char *vis = (unsigned char *)calloc((size_t)(2 * n), 1);
+    if (!curr || !vis) { free(curr); free(vis); return; }
+    int64_t k = 0, n_cluster = 0, cluster_leader = -1;
+    curr[0] = 2 * n - 2;
+    while (k >= 0) {
+        int64_t root = curr[k];
+        int64_t ilc = (int64_t)Z[(root - n) * 4 + 0], irc = (int64_t)Z[(root - n) * 4 + 1];
+        if (cluster_leader == -1 && MC[root - n] <= cutoff) { cluster_leader = root; n_cluster++; }
+        if (ilc >= n && !vis[ilc]) { vis[ilc] = 1; curr[++k] = ilc; continue; }
+        if (irc >= n && !vis[irc]) { vis[irc] = 1; curr[++k] = irc; continue; }
+        if (ilc < n) { if (cluster_leader == -1) n_cluster++; T[ilc] = n_cluster; }
+        if (irc < n) { if (cluster_leader == -1) n_cluster++; T[irc] = n_cluster; }
+        if (cluster_leader == root) cluster_leader = -1;
+        k--;
+    }
+    free(curr); free(vis);
+}
+
+/* number of flat clusters a cutoff on the monotonic criterion MC would produce. */
+static int64_t count_monocrit(const double *Z, const double *MC, double thresh, int64_t n,
+                              int64_t *curr, unsigned char *vis)
+{
+    memset(vis, 0, (size_t)(2 * n));
+    int64_t k = 0, nc = 0;
+    curr[0] = 2 * n - 2;
+    while (k >= 0) {
+        int64_t root = curr[k];
+        int64_t ilc = (int64_t)Z[(root - n) * 4 + 0], irc = (int64_t)Z[(root - n) * 4 + 1];
+        if (MC[root - n] <= thresh) { nc++; k--; continue; }                 /* whole subtree is one cluster */
+        if (ilc >= n && !vis[ilc]) { vis[ilc] = 1; curr[++k] = ilc; continue; }
+        if (irc >= n && !vis[irc]) { vis[irc] = 1; curr[++k] = irc; continue; }
+        if (ilc < n) nc++;
+        if (irc < n) nc++;
+        k--;
+    }
+    return nc;
+}
+
+/* maxclust / maxclust_monocrit: SciPy's index-bracketing binary search over the criterion MC (indices
+   0..n-2), choosing cutoff = MC[upper] where upper is the bracket's high side. Reproduces scipy exactly
+   even when MC is not monotonic (as maxinconsts can be). */
+static void cluster_maxclust_monocrit(const double *Z, const double *MC, int64_t *T, int64_t n, int64_t max_nc)
+{
+    int64_t *curr = (int64_t *)malloc((size_t)(2 * n) * sizeof(int64_t));
+    unsigned char *vis = (unsigned char *)malloc((size_t)(2 * n));
+    if (!curr || !vis) { free(curr); free(vis); return; }
+    int64_t lo = 0, hi = n - 1;                                              /* SciPy brackets with hi = n-1 */
+    while (hi - lo > 1) {
+        int64_t mid = (lo + hi) / 2;                                         /* mid < hi <= n-1, so MC[mid] is in range */
+        if (count_monocrit(Z, MC, MC[mid], n, curr, vis) > max_nc) lo = mid; else hi = mid;
+    }
+    double cutoff = MC[hi < n - 1 ? hi : n - 2];                             /* clamp the degenerate hi == n-1 case */
+    free(curr); free(vis);
+    cluster_monocrit(Z, MC, T, cutoff, n);
+}
+
+/* run fcluster into T given a linkage Z (m x 4) and its parameters. */
+static int fcluster_core(const double *Z, int64_t m, int64_t *T, double t, int crit, int depth,
+                         const double *monocrit)
+{
+    int64_t n_obs = m + 1;
+    double *MC = (double *)malloc((size_t)m * sizeof(double));
+    double *val = (double *)malloc((size_t)m * sizeof(double));
+    if (!MC || !val) { free(MC); free(val); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (crit == 0) {                              /* inconsistent: MC = max over subtree of R[:,3] */
+        double *R = (double *)malloc((size_t)(m * 4) * sizeof(double));
+        if (!R) { rc = TSR_ENOMEM; }
+        else { fill_inconsistent(Z, m, n_obs, depth, R, val);
+               for (int64_t i = 0; i < m; i++) val[i] = R[i * 4 + 3];
+               hier_subtree_max(Z, m, n_obs, val, MC); free(R); }
+    } else if (crit == 1 || crit == 4) {          /* distance | maxclust: MC = maxdists */
+        for (int64_t i = 0; i < m; i++) val[i] = Z[i * 4 + 2];
+        hier_subtree_max(Z, m, n_obs, val, MC);
+    } else {                                      /* monocrit | maxclust_monocrit: user-supplied vector */
+        for (int64_t i = 0; i < m; i++) MC[i] = monocrit[i];
+    }
+    if (rc == TSR_OK) {
+        if (crit == 4 || crit == 5) cluster_maxclust_monocrit(Z, MC, T, n_obs, (int64_t)t);
+        else cluster_monocrit(Z, MC, T, t, n_obs);
+    }
+    free(MC); free(val);
+    return rc;
+}
+
+/* crit codes: 0 inconsistent, 1 distance, 2 monocrit, 4 maxclust, 5 maxclust_monocrit. */
+static int fcluster_crit(const char *s)
+{
+    if (!strcmp(s, "inconsistent")) return 0;
+    if (!strcmp(s, "distance")) return 1;
+    if (!strcmp(s, "monocrit")) return 2;
+    if (!strcmp(s, "maxclust")) return 4;
+    if (!strcmp(s, "maxclust_monocrit")) return 5;
+    return -1;
+}
+
+static int r_fcluster(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || !is_Z(&args[0])) { fn_set_error("fcluster: Z must be (m, 4) and t is required"); return TSR_EARG; }
+    double t = (args[1].flags & 1) ? (double)args[1].ival : args[1].num;
+    int crit = 0;
+    if (nargs > 2 && args[2].kind == 2) { crit = fcluster_crit(args[2].str); if (crit < 0) { fn_set_error("fcluster: invalid criterion"); return TSR_EARG; } }
+    int depth = 2;
+    if (nargs > 3 && args[3].kind != 0) depth = (int)((args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num);
+    const double *monocrit = NULL; int64_t Lmc = 0; double *mcbuf = NULL;
+    if ((crit == 2 || crit == 5)) {
+        if (nargs < 6 || args[5].kind != 3) { fn_set_error("fcluster: monocrit vector required for this criterion"); return TSR_EARG; }
+        mcbuf = fn_arg_doubles(&args[5], &Lmc); if (!mcbuf) return TSR_ENOMEM; monocrit = mcbuf;
+    }
+    int64_t m = args[0].arr.shape[0], L; double *Z = fn_arg_doubles(&args[0], &L);
+    if (!Z) { if (mcbuf) fn_free_doubles(mcbuf, Lmc); return TSR_ENOMEM; }
+    int64_t sh[1] = {m + 1};
+    int64_t *T = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, sh);
+    int rc = T ? fcluster_core(Z, m, T, t, crit, depth, monocrit) : TSR_ENOMEM;
+    fn_free_doubles(Z, L);
+    if (mcbuf) fn_free_doubles(mcbuf, Lmc);
+    return rc;
+}
+
+/* fclusterdata(X, t, criterion='inconsistent', metric='euclidean', depth=2, method='single'):
+   pdist(X, metric) -> linkage(method) -> fcluster. Euclidean metric only (SciPy's default). */
+static int r_fclusterdata(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("fclusterdata: X must be a 2-D observation matrix"); return TSR_EARG; }
+    double t = (args[1].flags & 1) ? (double)args[1].ival : args[1].num;
+    int crit = 0;
+    if (nargs > 2 && args[2].kind == 2) { crit = fcluster_crit(args[2].str); if (crit < 0) { fn_set_error("fclusterdata: invalid criterion"); return TSR_EARG; } }
+    if (nargs > 3 && args[3].kind == 2 && strcmp(args[3].str, "euclidean")) { fn_set_error("fclusterdata: only metric='euclidean' is supported"); return TSR_EARG; }
+    int depth = 2;
+    if (nargs > 4 && args[4].kind != 0) depth = (int)((args[4].flags & 1) ? args[4].ival : (int64_t)args[4].num);
+    int method = 0;
+    if (nargs > 5 && args[5].kind == 2) { method = hier_method_code(args[5].str); if (method < 0) { fn_set_error("fclusterdata: unknown method"); return TSR_EARG; } }
+    int64_t n = args[0].arr.shape[0], dim = args[0].arr.shape[1], lo; double *X = fn_arg_doubles(&args[0], &lo);
+    if (!X) return TSR_ENOMEM;
+    const int sq = method >= 4;
+    double *W = (double *)calloc((size_t)(n * n), sizeof(double));
+    double *Z = (double *)malloc((size_t)((n - 1) * 4) * sizeof(double));
+    if (!W || !Z) { free(W); free(Z); fn_free_doubles(X, lo); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) for (int64_t j = i + 1; j < n; j++) {
+        double s = 0.0; for (int64_t c = 0; c < dim; c++) { double df = X[i * dim + c] - X[j * dim + c]; s += df * df; }
+        double d = sq ? s : sqrt(s); W[i * n + j] = W[j * n + i] = d;
+    }
+    for (int64_t i = 0; i < n; i++) W[i * n + i] = INFINITY;
+    hier_core(W, n, method, Z);
+    fn_free_doubles(X, lo); free(W);
+    int64_t sh[1] = {n};
+    int64_t *T = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, sh);
+    int rc = T ? fcluster_core(Z, n - 1, T, t, crit, depth, NULL) : TSR_ENOMEM;
+    free(Z);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("hierarchy.linkage", 1, "y, method='single'", "Z", r_linkage, NULL, "Agglomerative hierarchical clustering linkage matrix (scipy.cluster.hierarchy.linkage)."),
     ROUTINE("hierarchy.single", 1, "y", "Z", r_single, NULL, "Single/nearest-point linkage (scipy.cluster.hierarchy.single)."),
@@ -400,6 +567,8 @@ static const fn_def DEFS[] = {
     ROUTINE("hierarchy.cophenet", 1, "Z", "d", r_cophenet, NULL, "Condensed cophenetic distances of a linkage (scipy.cluster.hierarchy.cophenet)."),
     ROUTINE("hierarchy.to_mlab_linkage", 1, "Z", "mZ", r_to_mlab_linkage, NULL, "Convert a linkage matrix to MATLAB form (scipy.cluster.hierarchy.to_mlab_linkage)."),
     ROUTINE("hierarchy.from_mlab_linkage", 1, "Z", "Z", r_from_mlab_linkage, NULL, "Convert a MATLAB-form linkage matrix to SciPy form (scipy.cluster.hierarchy.from_mlab_linkage)."),
+    ROUTINE("hierarchy.fcluster", 1, "Z, t, criterion='inconsistent', depth=2, R=None, monocrit=None", "T", r_fcluster, NULL, "Flat clusters from a linkage matrix (scipy.cluster.hierarchy.fcluster)."),
+    ROUTINE("hierarchy.fclusterdata", 1, "X, t, criterion='inconsistent', metric='euclidean', depth=2, method='single'", "T", r_fclusterdata, NULL, "Flat clusters directly from observations (scipy.cluster.hierarchy.fclusterdata)."),
 };
 
 const fn_table TSR_SCIPY_HIERARCHY_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
