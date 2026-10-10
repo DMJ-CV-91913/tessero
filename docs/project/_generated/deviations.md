@@ -604,6 +604,7 @@
 | `splinalg.inv` | call | rtol 1e-09 |
 | `splinalg.matrix_power` | call | rtol 1e-09 |
 | `splinalg.expm` | call | rtol 1e-08 |
+| `splinalg.expm_multiply` | call | rtol 1e-08 |
 | `splinalg.spsolve` | call | rtol 1e-09 |
 | `splinalg.spsolve_triangular` | call | rtol 1e-09 |
 | `splinalg.norm` | call | rtol 1e-09 |

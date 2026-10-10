@@ -42,7 +42,8 @@ exclude:
   - {category: E4, module: scipy.sparse, names: [SparseEfficiencyWarning, SparseWarning, issparse, isspmatrix, sparray, spmatrix,
       isspmatrix_csr, isspmatrix_csc, isspmatrix_coo, isspmatrix_bsr, isspmatrix_dia, isspmatrix_lil, isspmatrix_dok,
       get_index_dtype, safely_cast_index_arrays]}
-  - {category: E4, module: scipy.sparse.linalg, names: [ArpackError, ArpackNoConvergence, MatrixRankWarning, test, use_solver]}
+  - {category: E4, module: scipy.sparse.linalg, names: [ArpackError, ArpackNoConvergence, MatrixRankWarning, test, use_solver,
+      aslinearoperator, factorized, splu, spilu, LinearOperator, SuperLU, LaplacianNd]}
   - {category: E4, module: scipy.integrate, names: [IntegrationWarning, ODEintWarning, OdeSolution, OdeSolver, DenseOutput]}
   - {category: E4, module: scipy.signal, names: [BadCoefficients]}
   - {category: E4, module: scipy.fft, names: [set_backend, skip_backend, set_global_backend, register_backend, set_workers, get_workers]}

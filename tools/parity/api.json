@@ -5499,6 +5499,12 @@
                 "doc": "Matrix exponential of a sparse matrix (scipy.sparse.linalg.expm)."
             },
             {
+                "name": "expmMultiply",
+                "static": true,
+                "sig": "expmMultiply(mixed $A, mixed $B, mixed $start = null, mixed $stop = null, mixed $num = null, mixed $endpoint = null): mixed",
+                "doc": "Action of the matrix exponential, expm(A) @ B (scipy.sparse.linalg.expm_multiply)."
+            },
+            {
                 "name": "inv",
                 "static": true,
                 "sig": "inv(mixed $A): mixed",
@@ -20572,6 +20578,12 @@
                 "name": "expm",
                 "static": true,
                 "sig": "expm($A)",
+                "doc": ""
+            },
+            {
+                "name": "expmMultiply",
+                "static": true,
+                "sig": "expmMultiply($A, $B, $start = null, $stop = null, $num = null, $endpoint = null)",
                 "doc": ""
             }
         ]
