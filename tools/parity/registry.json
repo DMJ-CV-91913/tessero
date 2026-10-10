@@ -195,17 +195,82 @@
             "nin": 0,
             "nout": 1
         },
+        "hierarchy.cophenet": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.correspond": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "hierarchy.from_mlab_linkage": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.inconsistent": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.is_monotonic": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.is_valid_im": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.is_valid_linkage": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.leaves_list": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "hierarchy.linkage": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "hierarchy.maxRstat": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "hierarchy.maxdists": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.maxinconsts": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "hierarchy.median": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
+        "hierarchy.num_obs_linkage": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "hierarchy.single": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.to_mlab_linkage": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

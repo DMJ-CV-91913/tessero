@@ -21,9 +21,22 @@ final class Hierarchy
     'average' => 'average',
     'centroid' => 'centroid',
     'complete' => 'complete',
+    'cophenet' => 'cophenet',
+    'correspond' => 'correspond',
+    'from_mlab_linkage' => 'fromMlabLinkage',
+    'inconsistent' => 'inconsistent',
+    'is_monotonic' => 'isMonotonic',
+    'is_valid_im' => 'isValidIm',
+    'is_valid_linkage' => 'isValidLinkage',
+    'leaves_list' => 'leavesList',
     'linkage' => 'linkage',
+    'maxRstat' => 'maxRstat',
+    'maxdists' => 'maxdists',
+    'maxinconsts' => 'maxinconsts',
     'median' => 'median',
+    'num_obs_linkage' => 'numObsLinkage',
     'single' => 'single',
+    'to_mlab_linkage' => 'toMlabLinkage',
     'ward' => 'ward',
     'weighted' => 'weighted',
     ];
@@ -75,6 +88,86 @@ final class Hierarchy
     }
 
     /**
+     * Condensed cophenetic distances of a linkage (scipy.cluster.hierarchy.cophenet).
+     *
+     * scipy.hierarchy.cophenet
+     */
+    public static function cophenet(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.cophenet', [$Z]);
+    }
+
+    /**
+     * Whether a linkage Z and condensed distances Y have matching numbers of observations (scipy.cluster.hierarchy.correspond).
+     *
+     * scipy.hierarchy.correspond
+     */
+    public static function correspond(mixed $Z, mixed $Y): mixed
+    {
+        return Registry::routine('hierarchy.correspond', [$Z, $Y]);
+    }
+
+    /**
+     * Convert a MATLAB-form linkage matrix to SciPy form (scipy.cluster.hierarchy.from_mlab_linkage).
+     *
+     * scipy.hierarchy.from_mlab_linkage
+     */
+    public static function fromMlabLinkage(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.from_mlab_linkage', [$Z]);
+    }
+
+    /**
+     * Inconsistency matrix of a linkage (scipy.cluster.hierarchy.inconsistent).
+     *
+     * scipy.hierarchy.inconsistent
+     */
+    public static function inconsistent(mixed $Z, mixed $d = 2): mixed
+    {
+        return Registry::routine('hierarchy.inconsistent', [$Z, $d]);
+    }
+
+    /**
+     * Whether the linkage is monotonic -- non-decreasing merge heights (scipy.cluster.hierarchy.is_monotonic).
+     *
+     * scipy.hierarchy.is_monotonic
+     */
+    public static function isMonotonic(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.is_monotonic', [$Z]);
+    }
+
+    /**
+     * Whether R is a valid inconsistency matrix (scipy.cluster.hierarchy.is_valid_im).
+     *
+     * scipy.hierarchy.is_valid_im
+     */
+    public static function isValidIm(mixed $R): mixed
+    {
+        return Registry::routine('hierarchy.is_valid_im', [$R]);
+    }
+
+    /**
+     * Whether Z is a valid linkage matrix (scipy.cluster.hierarchy.is_valid_linkage).
+     *
+     * scipy.hierarchy.is_valid_linkage
+     */
+    public static function isValidLinkage(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.is_valid_linkage', [$Z]);
+    }
+
+    /**
+     * Leaf ids in left-first pre-order dendrogram order (scipy.cluster.hierarchy.leaves_list).
+     *
+     * scipy.hierarchy.leaves_list
+     */
+    public static function leavesList(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.leaves_list', [$Z]);
+    }
+
+    /**
      * Agglomerative hierarchical clustering linkage matrix (scipy.cluster.hierarchy.linkage).
      *
      * scipy.hierarchy.linkage
@@ -82,6 +175,36 @@ final class Hierarchy
     public static function linkage(mixed $y, mixed $method = 'single'): mixed
     {
         return Registry::routine('hierarchy.linkage', [$y, $method]);
+    }
+
+    /**
+     * Maximum of inconsistency-matrix statistic i below each non-singleton cluster (scipy.cluster.hierarchy.maxRstat).
+     *
+     * scipy.hierarchy.maxRstat
+     */
+    public static function maxRstat(mixed $Z, mixed $R, mixed $i): mixed
+    {
+        return Registry::routine('hierarchy.maxRstat', [$Z, $R, $i]);
+    }
+
+    /**
+     * Maximum merge distance below each non-singleton cluster (scipy.cluster.hierarchy.maxdists).
+     *
+     * scipy.hierarchy.maxdists
+     */
+    public static function maxdists(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.maxdists', [$Z]);
+    }
+
+    /**
+     * Maximum inconsistency coefficient below each non-singleton cluster (scipy.cluster.hierarchy.maxinconsts).
+     *
+     * scipy.hierarchy.maxinconsts
+     */
+    public static function maxinconsts(mixed $Z, mixed $R): mixed
+    {
+        return Registry::routine('hierarchy.maxinconsts', [$Z, $R]);
     }
 
     /**
@@ -95,6 +218,16 @@ final class Hierarchy
     }
 
     /**
+     * Number of original observations in a linkage matrix (scipy.cluster.hierarchy.num_obs_linkage).
+     *
+     * scipy.hierarchy.num_obs_linkage
+     */
+    public static function numObsLinkage(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.num_obs_linkage', [$Z]);
+    }
+
+    /**
      * Single/nearest-point linkage (scipy.cluster.hierarchy.single).
      *
      * scipy.hierarchy.single
@@ -102,6 +235,16 @@ final class Hierarchy
     public static function single(mixed $y): mixed
     {
         return Registry::routine('hierarchy.single', [$y]);
+    }
+
+    /**
+     * Convert a linkage matrix to MATLAB form (scipy.cluster.hierarchy.to_mlab_linkage).
+     *
+     * scipy.hierarchy.to_mlab_linkage
+     */
+    public static function toMlabLinkage(mixed $Z): mixed
+    {
+        return Registry::routine('hierarchy.to_mlab_linkage', [$Z]);
     }
 
     /**

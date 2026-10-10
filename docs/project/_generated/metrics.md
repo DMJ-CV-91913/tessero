@@ -18,7 +18,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 37 (86.0 %) | 35 (81.4 %) | 86.0 % / 81.4 % | 94.6 % |
-| **SciPy** | 1562 | 60 (3.8 %) | 1502 | **1106 (73.6 %)** | **1103 (73.4 %)** | 73.6 % / 73.4 % | 99.7 % |
+| **SciPy** | 1562 | 60 (3.8 %) | 1502 | **1119 (74.5 %)** | **1116 (74.3 %)** | 74.5 % / 74.3 % | 99.7 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 244 (72.6 %) | 244 (72.6 %) | 72.6 % / 72.6 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 250 (84.2 %) | 250 (84.2 %) | 84.2 % / 84.2 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 90 (97.8 %) | 90 (97.8 %) | 97.8 % / 97.8 % | 100.0 % |
@@ -34,11 +34,11 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.spatial | 18 | 3 (16.7 %) | 15 | 2 (13.3 %) | 2 (13.3 %) | 13.3 % / 13.3 % | 100.0 % |
 | &nbsp;&nbsp;scipy.spatial.distance | 27 | 0 (0.0 %) | 27 | 26 (96.3 %) | 26 (96.3 %) | 96.3 % / 96.3 % | 100.0 % |
 | &nbsp;&nbsp;scipy.cluster.vq | 4 | 0 (0.0 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.cluster.hierarchy | 32 | 2 (6.2 %) | 30 | 8 (26.7 %) | 8 (26.7 %) | 26.7 % / 26.7 % | 100.0 % |
+| &nbsp;&nbsp;scipy.cluster.hierarchy | 32 | 2 (6.2 %) | 30 | 21 (70.0 %) | 21 (70.0 %) | 70.0 % / 70.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 158 (96.9 %) | 158 (96.9 %) | 96.9 % / 96.9 % | 100.0 % |
 
-The kernel function registry holds 1335 functions; their fixtures pass on the FFI backend for 1332 and on the extension for 1332.
+The kernel function registry holds 1348 functions; their fixtures pass on the FFI backend for 1345 and on the extension for 1345.
 Registry functions without a recorded fixture run: np.cumulativeSimpson, np.cumulativeTrapezoid, special.logSoftmax.
 
 Exclusions by category (definitions in `tools/parity/scope.yaml`):
