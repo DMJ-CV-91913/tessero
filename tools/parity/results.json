@@ -880,6 +880,7 @@
         "special.agm": "pass",
         "special.airy": "pass",
         "special.airye": "pass",
+        "special.assoc_laguerre": "pass",
         "special.bdtr": "pass",
         "special.bdtrc": "pass",
         "special.bdtri": "pass",
@@ -916,6 +917,7 @@
         "special.cotdg": "pass",
         "special.dawsn": "pass",
         "special.digamma": "pass",
+        "special.diric": "pass",
         "special.ellipe": "pass",
         "special.ellipeinc": "pass",
         "special.ellipj": "pass",
@@ -1073,6 +1075,7 @@
         "special.pdtrc": "pass",
         "special.pdtri": "pass",
         "special.pdtrik": "pass",
+        "special.perm": "pass",
         "special.poch": "pass",
         "special.polygamma": "pass",
         "special.powm1": "pass",
@@ -2788,7 +2791,10 @@
             "stats.vonmises_fisher": 1.1129148643299467e-14,
             "stats.matrix_normal": 0,
             "stats.wishart": 7.075071310731475e-15,
-            "stats.invwishart": 1.430774088960687e-14
+            "stats.invwishart": 1.430774088960687e-14,
+            "special.perm": 0,
+            "special.assoc_laguerre": 0,
+            "special.diric": 0
         },
         "ext": {
             "np.median": 0,
@@ -4183,7 +4189,10 @@
             "stats.vonmises_fisher": 1.1129148643299467e-14,
             "stats.matrix_normal": 0,
             "stats.wishart": 7.075071310731475e-15,
-            "stats.invwishart": 1.430774088960687e-14
+            "stats.invwishart": 1.430774088960687e-14,
+            "special.perm": 0,
+            "special.assoc_laguerre": 0,
+            "special.diric": 0
         }
     },
     "ext": {
@@ -5067,6 +5076,7 @@
         "special.agm": "pass",
         "special.airy": "pass",
         "special.airye": "pass",
+        "special.assoc_laguerre": "pass",
         "special.bdtr": "pass",
         "special.bdtrc": "pass",
         "special.bdtri": "pass",
@@ -5103,6 +5113,7 @@
         "special.cotdg": "pass",
         "special.dawsn": "pass",
         "special.digamma": "pass",
+        "special.diric": "pass",
         "special.ellipe": "pass",
         "special.ellipeinc": "pass",
         "special.ellipj": "pass",
@@ -5260,6 +5271,7 @@
         "special.pdtrc": "pass",
         "special.pdtri": "pass",
         "special.pdtrik": "pass",
+        "special.perm": "pass",
         "special.poch": "pass",
         "special.polygamma": "pass",
         "special.powm1": "pass",

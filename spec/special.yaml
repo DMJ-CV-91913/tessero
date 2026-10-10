@@ -1220,6 +1220,27 @@ functions:
     outs: [y]
     impl: "o[0] = scipy_xsfw::cephes_poch(i[0], i[1]);"
     doc: "Pochhammer symbol."
+  - name: perm
+    ref: scipy.special.perm
+    args: [N, k]
+    outs: [y]
+    impl: "{ double N = i[0]; double k = i[1]; o[0] = (k > N || N < 0.0 || k < 0.0) ? 0.0 : scipy_xsfw::cephes_poch(N - k + 1.0, k); }"
+    domain: {N: [0, 1, 2, 3, 5, 8, 12, 20], k: [0, 1, 2, 3, 4, 6]}
+    doc: "Number of permutations of N things taken k at a time (non-exact, via the Pochhammer symbol)."
+  - name: assoc_laguerre
+    ref: scipy.special.assoc_laguerre
+    args: [x, n, k]
+    outs: [L]
+    impl: "o[0] = scipy_port::eval_genlaguerre(i[1], i[2], i[0]);"
+    domain: {x: [-2, -0.5, 0, 0.5, 1, 2, 4, 7], n: [0, 1, 2, 3, 4, 5, 6], k: [0, 0.5, 1, 2]}
+    doc: "Associated Laguerre polynomial L_n^k(x) (= eval_genlaguerre(n, k, x))."
+  - name: diric
+    ref: scipy.special.diric
+    args: [x, n]
+    outs: [y]
+    impl: "{ double x = i[0]; double nn = i[1]; double den = std::sin(x / 2.0); if (den == 0.0) { double r = std::round(x / (2.0 * M_PI)); o[0] = std::pow(-1.0, (nn - 1.0) * r); } else o[0] = std::sin(nn * x / 2.0) / (nn * den); }"
+    domain: {n: [1, 2, 3, 4, 5]}
+    doc: "Periodic sinc (Dirichlet) function."
   - name: powm1
     ref: scipy.special.powm1
     args: [x, y]

@@ -217,6 +217,9 @@ extern "C" void tsr_special_pdtri(const void *, const double *i, double *o) { TS
 extern "C" void tsr_special_pdtri__int(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = scipy_xsfw::cephes_pdtri_wrap((long)i[0], i[1]);) }
 extern "C" void tsr_special_pdtrik(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = pdtrik_double(i[0], i[1]);) }
 extern "C" void tsr_special_poch(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = scipy_xsfw::cephes_poch(i[0], i[1]);) }
+extern "C" void tsr_special_perm(const void *, const double *i, double *o) { TSR_GUARD(1, { double N = i[0]; double k = i[1]; o[0] = (k > N || N < 0.0 || k < 0.0) ? 0.0 : scipy_xsfw::cephes_poch(N - k + 1.0, k); }) }
+extern "C" void tsr_special_assoc_laguerre(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = scipy_port::eval_genlaguerre(i[1], i[2], i[0]);) }
+extern "C" void tsr_special_diric(const void *, const double *i, double *o) { TSR_GUARD(1, { double x = i[0]; double nn = i[1]; double den = std::sin(x / 2.0); if (den == 0.0) { double r = std::round(x / (2.0 * M_PI)); o[0] = std::pow(-1.0, (nn - 1.0) * r); } else o[0] = std::sin(nn * x / 2.0) / (nn * den); }) }
 extern "C" void tsr_special_powm1(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = powm1_double(i[0], i[1]);) }
 extern "C" void tsr_special_pro_ang1(const void *, const double *i, double *o) { TSR_GUARD(2, if (!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))) { o[0] = NAN; o[1] = NAN; } else { xsf::prolate_aswfa_nocv(i[0], i[1], i[2], i[3], o[0], o[1]); }) }
 extern "C" void tsr_special_pro_ang1_cv(const void *, const double *i, double *o) { TSR_GUARD(2, if (!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))) { o[0] = NAN; o[1] = NAN; } else { xsf::prolate_aswfa(i[0], i[1], i[2], i[3], i[4], o[0], o[1]); }) }

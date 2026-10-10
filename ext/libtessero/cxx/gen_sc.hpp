@@ -193,6 +193,9 @@ void tsr_special_pdtrc(const void *, const double *, double *);
 void tsr_special_pdtri(const void *, const double *, double *);
 void tsr_special_pdtrik(const void *, const double *, double *);
 void tsr_special_poch(const void *, const double *, double *);
+void tsr_special_perm(const void *, const double *, double *);
+void tsr_special_assoc_laguerre(const void *, const double *, double *);
+void tsr_special_diric(const void *, const double *, double *);
 void tsr_special_powm1(const void *, const double *, double *);
 void tsr_special_pro_ang1(const void *, const double *, double *);
 void tsr_special_pro_ang1_cv(const void *, const double *, double *);
@@ -516,6 +519,9 @@ inline double pdtrc(double x0, double x1) { const double i[2] = {x0, x1}; double
 inline double pdtri(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_pdtri(nullptr, i, o); return o[0]; }
 inline double pdtrik(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_pdtrik(nullptr, i, o); return o[0]; }
 inline double poch(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_poch(nullptr, i, o); return o[0]; }
+inline double perm(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_perm(nullptr, i, o); return o[0]; }
+inline double assoc_laguerre(double x0, double x1, double x2) { const double i[3] = {x0, x1, x2}; double o[1]; tsr_special_assoc_laguerre(nullptr, i, o); return o[0]; }
+inline double diric(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_diric(nullptr, i, o); return o[0]; }
 inline double powm1(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_powm1(nullptr, i, o); return o[0]; }
 inline void pro_ang1(double x0, double x1, double x2, double x3, double &y0, double &y1) { const double i[4] = {x0, x1, x2, x3}; double o[2]; tsr_special_pro_ang1(nullptr, i, o); y0 = o[0]; y1 = o[1]; }
 inline void pro_ang1_cv(double x0, double x1, double x2, double x3, double x4, double &y0, double &y1) { const double i[5] = {x0, x1, x2, x3, x4}; double o[2]; tsr_special_pro_ang1_cv(nullptr, i, o); y0 = o[0]; y1 = o[1]; }

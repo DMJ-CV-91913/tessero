@@ -21,6 +21,7 @@ final class Special
     'agm' => 'agm',
     'airy' => 'airy',
     'airye' => 'airye',
+    'assoc_laguerre' => 'assocLaguerre',
     'bdtr' => 'bdtr',
     'bdtrc' => 'bdtrc',
     'bdtri' => 'bdtri',
@@ -57,6 +58,7 @@ final class Special
     'cotdg' => 'cotdg',
     'dawsn' => 'dawsn',
     'digamma' => 'digamma',
+    'diric' => 'diric',
     'ellipe' => 'ellipe',
     'ellipeinc' => 'ellipeinc',
     'ellipj' => 'ellipj',
@@ -214,6 +216,7 @@ final class Special
     'pdtrc' => 'pdtrc',
     'pdtri' => 'pdtri',
     'pdtrik' => 'pdtrik',
+    'perm' => 'perm',
     'poch' => 'poch',
     'polygamma' => 'polygamma',
     'powm1' => 'powm1',
@@ -312,6 +315,16 @@ final class Special
     public static function airye(mixed $z, ?array $out = null): array
     {
         return Registry::ufunc('special.airye', [$z], $out);
+    }
+
+    /**
+     * Associated Laguerre polynomial L_n^k(x) (= eval_genlaguerre(n, k, x)).
+     *
+     * scipy.special.assoc_laguerre
+     */
+    public static function assocLaguerre(mixed $x, mixed $n, mixed $k, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.assoc_laguerre', [$x, $n, $k], $out);
     }
 
     /**
@@ -672,6 +685,16 @@ final class Special
     public static function digamma(mixed $z, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.digamma', [$z], $out);
+    }
+
+    /**
+     * Periodic sinc (Dirichlet) function.
+     *
+     * scipy.special.diric
+     */
+    public static function diric(mixed $x, mixed $n, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.diric', [$x, $n], $out);
     }
 
     /**
@@ -2288,6 +2311,16 @@ final class Special
     public static function pdtrik(mixed $p, mixed $m, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.pdtrik', [$p, $m], $out);
+    }
+
+    /**
+     * Number of permutations of N things taken k at a time (non-exact, via the Pochhammer symbol).
+     *
+     * scipy.special.perm
+     */
+    public static function perm(mixed $N, mixed $k, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.perm', [$N, $k], $out);
     }
 
     /**

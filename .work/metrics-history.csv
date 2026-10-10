@@ -174,3 +174,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-09,scipy.stats: multivariate_normal/dirichlet/multinomial/multivariate_hypergeom densities (both backends),91.7,91.1,72.6,72.4,99.4,99.7,71.7,71.7,82.5,82.5
 2026-10-09,scipy.stats: multivariate_t + vonmises_fisher densities (both backends),91.7,91.1,72.7,72.5,99.4,99.7,71.7,71.7,83.2,83.2
 2026-10-10,scipy.stats: matrix_normal/wishart/invwishart densities (both backends),91.7,91.1,72.9,72.7,99.4,99.7,71.7,71.7,84.2,84.2
+2026-10-10,"scipy.special: perm, assoc_laguerre, diric (both backends)",91.7,91.1,73.1,72.9,99.4,99.7,72.6,72.6,84.2,84.2
