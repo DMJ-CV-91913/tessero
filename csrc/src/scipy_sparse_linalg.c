@@ -11,6 +11,16 @@
 #include <string.h>
 
 extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
+extern int sl_expm(const double *A, int64_t n, double *out);                /* np_linalg.c (Pade scaling-squaring) */
+
+/* C = A * B, all n-by-n row-major; C must be distinct from A and B. */
+static void spl_mm(double *C, const double *A, const double *B, int64_t n)
+{
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) {
+        double s = 0.0; for (int64_t k = 0; k < n; k++) s += A[i * n + k] * B[k * n + j];
+        C[i * n + j] = s;
+    }
+}
 
 static void spl_bool(tsr_result *r, int b) { memset(r, 0, sizeof *r); r->kind = 4; r->num = b ? 1.0 : 0.0; }
 
@@ -159,12 +169,96 @@ static int r_is_sptriangular(const void *ctx, const tsr_arg *args, int nargs, ts
     return TSR_OK;
 }
 
+/* inv(A): dense inverse of a square (sparse) matrix -- scipy.sparse.linalg.inv returns the (typically dense)
+   inverse; here it is returned as a dense array. Solve A X = I. */
+static int r_inv(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("inv: A must be square"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0], L; double *A = fn_arg_doubles(&args[0], &L);
+    if (!A) return TSR_ENOMEM;
+    double *M = (double *)malloc((size_t)(n * n) * sizeof(double));
+    int64_t sh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+    int rc = TSR_OK;
+    if (!M || !out) rc = TSR_ENOMEM;
+    else {
+        memcpy(M, A, (size_t)(n * n) * sizeof(double));
+        for (int64_t i = 0; i < n * n; i++) out[i] = 0.0;
+        for (int64_t i = 0; i < n; i++) out[i * n + i] = 1.0;
+        if (sl_dense_solve(M, out, n, n) != 0) { fn_set_error("inv: matrix is singular"); rc = TSR_EARG; }
+    }
+    free(M); fn_free_doubles(A, L);
+    return rc;
+}
+
+/* matrix_power(A, p): A**p by binary exponentiation (dense). p<0 inverts first. */
+static int r_matrix_power(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("matrix_power: A must be square"); return TSR_EARG; }
+    if (nargs < 2) { fn_set_error("matrix_power: power is required"); return TSR_EARG; }
+    int64_t p = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int64_t n = args[0].arr.shape[0], L; double *A = fn_arg_doubles(&args[0], &L);
+    if (!A) return TSR_ENOMEM;
+    int64_t sh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+    double *base = (double *)malloc((size_t)(n * n) * sizeof(double));
+    double *tmp = (double *)malloc((size_t)(n * n) * sizeof(double));
+    int rc = TSR_OK;
+    if (!out || !base || !tmp) rc = TSR_ENOMEM;
+    else {
+        memcpy(base, A, (size_t)(n * n) * sizeof(double));
+        if (p < 0) {                                                        /* base <- inv(A) */
+            double *M = (double *)malloc((size_t)(n * n) * sizeof(double));
+            if (!M) rc = TSR_ENOMEM;
+            else {
+                memcpy(M, A, (size_t)(n * n) * sizeof(double));
+                for (int64_t i = 0; i < n * n; i++) base[i] = 0.0;
+                for (int64_t i = 0; i < n; i++) base[i * n + i] = 1.0;
+                if (sl_dense_solve(M, base, n, n) != 0) { fn_set_error("matrix_power: matrix is singular"); rc = TSR_EARG; }
+                free(M); p = -p;
+            }
+        }
+        if (rc == TSR_OK) {
+            for (int64_t i = 0; i < n * n; i++) out[i] = 0.0;             /* out <- identity */
+            for (int64_t i = 0; i < n; i++) out[i * n + i] = 1.0;
+            while (p > 0) {
+                if (p & 1) { spl_mm(tmp, out, base, n); memcpy(out, tmp, (size_t)(n * n) * sizeof(double)); }
+                p >>= 1;
+                if (p > 0) { spl_mm(tmp, base, base, n); memcpy(base, tmp, (size_t)(n * n) * sizeof(double)); }
+            }
+        }
+    }
+    free(base); free(tmp); fn_free_doubles(A, L);
+    return rc;
+}
+
+/* expm(A): matrix exponential (dense Pade scaling-squaring), the value scipy.sparse.linalg.expm returns. */
+static int r_expm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("expm: A must be square"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0], L; double *A = fn_arg_doubles(&args[0], &L);
+    if (!A) return TSR_ENOMEM;
+    int64_t sh[2] = {n, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+    int rc = TSR_OK;
+    if (!out) rc = TSR_ENOMEM;
+    else if (sl_expm(A, n, out) != 0) { fn_set_error("expm: the matrix exponential failed"); rc = TSR_EARG; }
+    fn_free_doubles(A, L);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("splinalg.spsolve", 1, "A, b, permc_spec=None, use_umfpack=True", "x", r_spsolve, NULL, "Solve a sparse linear system A x = b (scipy.sparse.linalg.spsolve)."),
     ROUTINE("splinalg.spsolve_triangular", 1, "A, b, lower=True, overwrite_A=False, overwrite_b=False, unit_diagonal=False", "x", r_spsolve_triangular, NULL, "Solve a triangular sparse system (scipy.sparse.linalg.spsolve_triangular)."),
     ROUTINE("splinalg.norm", 1, "x, ord=None, axis=None", "n", r_norm, NULL, "Norm of a sparse matrix (scipy.sparse.linalg.norm)."),
     ROUTINE("splinalg.spbandwidth", 2, "A", "lower, upper", r_spbandwidth, NULL, "Lower and upper bandwidth of a sparse matrix (scipy.sparse.linalg.spbandwidth)."),
     ROUTINE("splinalg.is_sptriangular", 2, "A", "lower, upper", r_is_sptriangular, NULL, "Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular)."),
+    ROUTINE("splinalg.inv", 1, "A", "Ainv", r_inv, NULL, "Inverse of a square sparse matrix, returned dense (scipy.sparse.linalg.inv)."),
+    ROUTINE("splinalg.matrix_power", 1, "A, power", "Ap", r_matrix_power, NULL, "Integer matrix power of a square sparse matrix (scipy.sparse.linalg.matrix_power)."),
+    ROUTINE("splinalg.expm", 1, "A", "eA", r_expm, NULL, "Matrix exponential of a sparse matrix (scipy.sparse.linalg.expm)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_LINALG_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

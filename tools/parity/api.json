@@ -5493,10 +5493,28 @@
                 "doc": "Call a function by its SciPy/NumPy name: SparseLinalg::apply('log_ndtr', $x)."
             },
             {
+                "name": "expm",
+                "static": true,
+                "sig": "expm(mixed $A): mixed",
+                "doc": "Matrix exponential of a sparse matrix (scipy.sparse.linalg.expm)."
+            },
+            {
+                "name": "inv",
+                "static": true,
+                "sig": "inv(mixed $A): mixed",
+                "doc": "Inverse of a square sparse matrix, returned dense (scipy.sparse.linalg.inv)."
+            },
+            {
                 "name": "isSptriangular",
                 "static": true,
                 "sig": "isSptriangular(mixed $A): mixed",
                 "doc": "Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular)."
+            },
+            {
+                "name": "matrixPower",
+                "static": true,
+                "sig": "matrixPower(mixed $A, mixed $power): mixed",
+                "doc": "Integer matrix power of a square sparse matrix (scipy.sparse.linalg.matrix_power)."
             },
             {
                 "name": "norm",
@@ -20536,6 +20554,24 @@
                 "name": "isSptriangular",
                 "static": true,
                 "sig": "isSptriangular($A)",
+                "doc": ""
+            },
+            {
+                "name": "inv",
+                "static": true,
+                "sig": "inv($A)",
+                "doc": ""
+            },
+            {
+                "name": "matrixPower",
+                "static": true,
+                "sig": "matrixPower($A, $power)",
+                "doc": ""
+            },
+            {
+                "name": "expm",
+                "static": true,
+                "sig": "expm($A)",
                 "doc": ""
             }
         ]
