@@ -1,7 +1,7 @@
 ARG_ENABLE("tessero", "Tessero native extension", "no");
 if (PHP_TESSERO != "no") {
     // BEGIN sources (tools/sync-ext.sh)
-    var TESSERO_KERNEL = "alloc.c array.c elementwise.c fft.c fn_core.c fn_tables.c gen_special_table.c index.c lp.c matmul.c mdp.c mmap.c np_io.c np_linalg.c np_numeric.c np_poly.c np_polynomial.c np_random.c np_sets.c np_shape.c np_stats.c reduce.c rng.c scipy_cluster.c scipy_csgraph.c scipy_interpolate.c scipy_ndimage.c scipy_signal.c scipy_sparse.c sort.c sparse.c spatial_distance.c ufunc.c";
+    var TESSERO_KERNEL = "alloc.c array.c elementwise.c fft.c fn_core.c fn_tables.c gen_special_table.c index.c lp.c matmul.c mdp.c mmap.c np_io.c np_linalg.c np_numeric.c np_poly.c np_polynomial.c np_random.c np_sets.c np_shape.c np_stats.c reduce.c rng.c scipy_cluster.c scipy_cluster_hier.c scipy_csgraph.c scipy_interpolate.c scipy_ndimage.c scipy_signal.c scipy_sparse.c sort.c sparse.c spatial_distance.c ufunc.c";
     var TESSERO_KERNEL_CXX = "dist_basic.cpp dist_cont1.cpp dist_cont2.cpp dist_cont3.cpp dist_cont4.cpp dist_cont5.cpp dist_cont6.cpp dist_disc.cpp fn_guard.cpp gen_special.cpp stats_dist.cpp stats_fn_corr.cpp stats_fn_desc.cpp stats_fn_tests2.cpp stats_fn_tests.cpp";
     // END sources
     var TP = configure_module_dirname + "/libtessero/third_party";

@@ -5314,6 +5314,68 @@
         ]
     },
     {
+        "class": "Tessero\\Hierarchy",
+        "methods": [
+            {
+                "name": "apply",
+                "static": true,
+                "sig": "apply(string $name, mixed ...$args): mixed",
+                "doc": "Call a function by its SciPy/NumPy name: Hierarchy::apply('log_ndtr', $x)."
+            },
+            {
+                "name": "average",
+                "static": true,
+                "sig": "average(mixed $y): mixed",
+                "doc": "Average (UPGMA) linkage (scipy.cluster.hierarchy.average)."
+            },
+            {
+                "name": "centroid",
+                "static": true,
+                "sig": "centroid(mixed $y): mixed",
+                "doc": "Centroid (UPGMC) linkage (scipy.cluster.hierarchy.centroid)."
+            },
+            {
+                "name": "complete",
+                "static": true,
+                "sig": "complete(mixed $y): mixed",
+                "doc": "Complete/farthest-point linkage (scipy.cluster.hierarchy.complete)."
+            },
+            {
+                "name": "linkage",
+                "static": true,
+                "sig": "linkage(mixed $y, mixed $method = 'single'): mixed",
+                "doc": "Agglomerative hierarchical clustering linkage matrix (scipy.cluster.hierarchy.linkage)."
+            },
+            {
+                "name": "median",
+                "static": true,
+                "sig": "median(mixed $y): mixed",
+                "doc": "Median (WPGMC) linkage (scipy.cluster.hierarchy.median)."
+            },
+            {
+                "name": "single",
+                "static": true,
+                "sig": "single(mixed $y): mixed",
+                "doc": "Single/nearest-point linkage (scipy.cluster.hierarchy.single)."
+            },
+            {
+                "name": "ward",
+                "static": true,
+                "sig": "ward(mixed $y): mixed",
+                "doc": "Ward variance-minimizing linkage (scipy.cluster.hierarchy.ward)."
+            },
+            {
+                "name": "weighted",
+                "static": true,
+                "sig": "weighted(mixed $y): mixed",
+                "doc": "Weighted (WPGMA) linkage (scipy.cluster.hierarchy.weighted)."
+            }
+        ],
+        "constants": [
+            "FUNCTIONS"
+        ]
+    },
+    {
         "class": "Tessero\\Random\\Generator",
         "methods": [
             {
@@ -20126,6 +20188,59 @@
                 "name": "hermedomain",
                 "static": true,
                 "sig": "hermedomain()",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Ext\\Hierarchy",
+        "methods": [
+            {
+                "name": "linkage",
+                "static": true,
+                "sig": "linkage($y, $method = 'single')",
+                "doc": ""
+            },
+            {
+                "name": "single",
+                "static": true,
+                "sig": "single($y)",
+                "doc": ""
+            },
+            {
+                "name": "complete",
+                "static": true,
+                "sig": "complete($y)",
+                "doc": ""
+            },
+            {
+                "name": "average",
+                "static": true,
+                "sig": "average($y)",
+                "doc": ""
+            },
+            {
+                "name": "weighted",
+                "static": true,
+                "sig": "weighted($y)",
+                "doc": ""
+            },
+            {
+                "name": "ward",
+                "static": true,
+                "sig": "ward($y)",
+                "doc": ""
+            },
+            {
+                "name": "centroid",
+                "static": true,
+                "sig": "centroid($y)",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": true,
+                "sig": "median($y)",
                 "doc": ""
             }
         ]

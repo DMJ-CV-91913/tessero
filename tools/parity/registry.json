@@ -180,6 +180,46 @@
             "nin": 0,
             "nout": 1
         },
+        "hierarchy.average": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.centroid": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.complete": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.linkage": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.median": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.single": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.ward": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "hierarchy.weighted": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "interpolate.Akima1DInterpolator": {
             "kind": "routine",
             "nin": 0,

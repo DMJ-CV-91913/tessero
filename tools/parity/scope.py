@@ -43,7 +43,7 @@ def load_json(path, default):
 PREFIX = {'special': 'scipy.special', 'stats': 'scipy.stats', 'np': 'numpy', 'random': 'numpy.random.Generator', 'linalg': 'numpy.linalg', 'slinalg': 'scipy.linalg',
           'signal': 'scipy.signal', 'windows': 'scipy.signal.windows', 'integrate': 'scipy.integrate', 'interpolate': 'scipy.interpolate', 'cluster': 'scipy.cluster.vq',
           'optimize': 'scipy.optimize', 'ndimage': 'scipy.ndimage', 'spatial': 'scipy.spatial', 'distance': 'scipy.spatial.distance',
-          'sparse': 'scipy.sparse', 'csgraph': 'scipy.sparse.csgraph', 'npoly': 'numpy.polynomial'}
+          'sparse': 'scipy.sparse', 'csgraph': 'scipy.sparse.csgraph', 'npoly': 'numpy.polynomial', 'hierarchy': 'scipy.cluster.hierarchy'}
 
 
 def spec_entries():
