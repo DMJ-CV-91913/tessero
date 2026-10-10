@@ -23,6 +23,7 @@ final class Hierarchy
     'complete' => 'complete',
     'cophenet' => 'cophenet',
     'correspond' => 'correspond',
+    'cut_tree' => 'cutTree',
     'fcluster' => 'fcluster',
     'fclusterdata' => 'fclusterdata',
     'from_mlab_linkage' => 'fromMlabLinkage',
@@ -30,6 +31,7 @@ final class Hierarchy
     'is_monotonic' => 'isMonotonic',
     'is_valid_im' => 'isValidIm',
     'is_valid_linkage' => 'isValidLinkage',
+    'leaders' => 'leaders',
     'leaves_list' => 'leavesList',
     'linkage' => 'linkage',
     'maxRstat' => 'maxRstat',
@@ -110,6 +112,16 @@ final class Hierarchy
     }
 
     /**
+     * Group membership at each requested cut of the dendrogram (scipy.cluster.hierarchy.cut_tree).
+     *
+     * scipy.hierarchy.cut_tree
+     */
+    public static function cutTree(mixed $Z, mixed $nClusters = null, mixed $height = null): mixed
+    {
+        return Registry::routine('hierarchy.cut_tree', [$Z, $nClusters, $height]);
+    }
+
+    /**
      * Flat clusters from a linkage matrix (scipy.cluster.hierarchy.fcluster).
      *
      * scipy.hierarchy.fcluster
@@ -177,6 +189,18 @@ final class Hierarchy
     public static function isValidLinkage(mixed $Z): mixed
     {
         return Registry::routine('hierarchy.is_valid_linkage', [$Z]);
+    }
+
+    /**
+     * Root (leader) nodes of the flat clusters in T (scipy.cluster.hierarchy.leaders).
+     *
+     * scipy.hierarchy.leaders
+     *
+     * @return mixed one array, or an array keyed by L, M when several results are requested
+     */
+    public static function leaders(mixed $Z, mixed $T): mixed
+    {
+        return Registry::routine('hierarchy.leaders', [$Z, $T]);
     }
 
     /**
