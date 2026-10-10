@@ -3947,6 +3947,12 @@
                 "doc": "Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components)."
             },
             {
+                "name": "constructDistMatrix",
+                "static": true,
+                "sig": "constructDistMatrix(mixed $graph, mixed $predecessors, mixed $directed = true): mixed",
+                "doc": "Distance matrix from a predecessor tree (scipy.sparse.csgraph.construct_dist_matrix)."
+            },
+            {
                 "name": "depthFirstOrder",
                 "static": true,
                 "sig": "depthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed",
@@ -19125,6 +19131,12 @@
                 "name": "reconstructPath",
                 "static": true,
                 "sig": "reconstructPath($csgraph, $predecessors, $directed = true)",
+                "doc": ""
+            },
+            {
+                "name": "constructDistMatrix",
+                "static": true,
+                "sig": "constructDistMatrix($graph, $predecessors, $directed = true)",
                 "doc": ""
             },
             {
