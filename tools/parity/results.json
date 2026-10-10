@@ -1150,7 +1150,10 @@
         "special.yv": "pass",
         "special.yve": "pass",
         "special.zetac": "pass",
+        "splinalg.expm": "pass",
+        "splinalg.inv": "pass",
         "splinalg.is_sptriangular": "pass",
+        "splinalg.matrix_power": "pass",
         "splinalg.norm": "pass",
         "splinalg.spbandwidth": "pass",
         "splinalg.spsolve": "pass",
@@ -2856,7 +2859,10 @@
             "splinalg.spsolve_triangular": 3.6594287047200537e-16,
             "splinalg.norm": 1.5542260163899512e-16,
             "splinalg.spbandwidth": 0,
-            "splinalg.is_sptriangular": 0
+            "splinalg.is_sptriangular": 0,
+            "splinalg.inv": 7.18637572071345e-16,
+            "splinalg.matrix_power": 3.1656007086102025e-15,
+            "splinalg.expm": 8.4537291803958e-16
         },
         "ext": {
             "np.median": 0,
@@ -4285,7 +4291,10 @@
             "splinalg.spsolve_triangular": 3.6594287047200537e-16,
             "splinalg.norm": 1.5542260163899512e-16,
             "splinalg.spbandwidth": 0,
-            "splinalg.is_sptriangular": 0
+            "splinalg.is_sptriangular": 0,
+            "splinalg.inv": 7.18637572071345e-16,
+            "splinalg.matrix_power": 3.1656007086102025e-15,
+            "splinalg.expm": 8.4537291803958e-16
         }
     },
     "ext": {
@@ -5439,7 +5448,10 @@
         "special.yv": "pass",
         "special.yve": "pass",
         "special.zetac": "pass",
+        "splinalg.expm": "pass",
+        "splinalg.inv": "pass",
         "splinalg.is_sptriangular": "pass",
+        "splinalg.matrix_power": "pass",
         "splinalg.norm": "pass",
         "splinalg.spbandwidth": "pass",
         "splinalg.spsolve": "pass",

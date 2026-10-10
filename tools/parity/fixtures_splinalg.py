@@ -65,7 +65,23 @@ for (n, kl, ku) in ((6, 1, 2), (7, 3, 0), (5, 0, 0), (8, 2, 2)):
     isl, isu = sl.is_sptriangular(As)
     trit_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': {'dict': {'lower': bool(isl), 'upper': bool(isu)}}, 'compare': 'tol'})
 
+inv_c, pow_c, expm_c = [], [], []
+for n in (4, 5, 6):
+    A = spd(n); As = sp.csr_array(A)
+    inv_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sl.inv(As).toarray(), float), []), 'compare': 'tol', 'tol': TOL})
+for n in (4, 5):
+    A = rng.normal(size=(n, n)); A[np.abs(A) < 0.5] = 0.0; A += np.eye(n)
+    As = sp.csr_array(A)
+    for p in (0, 1, 2, 3):
+        Ap = sl.matrix_power(As, p)
+        Ap = Ap.toarray() if hasattr(Ap, 'toarray') else np.asarray(Ap)
+        pow_c.append({'args': [F.enc(A), F.enc(int(p))], 'kwargs': {}, 'expect': F.enc_result(np.asarray(Ap, float), []), 'compare': 'tol', 'tol': TOL})
+for n in (3, 4, 5):
+    A = rng.normal(size=(n, n)) * 0.5
+    expm_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sl.expm(sp.csr_array(A)).toarray(), float), []), 'compare': 'tol', 'tol': {'atol': 1e-8, 'rtol': 1e-8}})
+
 out = {'module': 'splinalg', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': [
+    {'fn': 'inv', 'cases': inv_c}, {'fn': 'matrix_power', 'cases': pow_c}, {'fn': 'expm', 'cases': expm_c},
     {'fn': 'spsolve', 'cases': solve_c}, {'fn': 'spsolve_triangular', 'cases': trisolve_c},
     {'fn': 'norm', 'cases': norm_c}, {'fn': 'spbandwidth', 'cases': band_c},
     {'fn': 'is_sptriangular', 'cases': trit_c},
