@@ -3105,6 +3105,26 @@
             "nin": 1,
             "nout": 1
         },
+        "scipyfft.dct": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "scipyfft.dst": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "scipyfft.idct": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "scipyfft.idst": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.abcd_normalize": {
             "kind": "routine",
             "nin": 0,
