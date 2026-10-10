@@ -62,11 +62,58 @@ static int r_dst(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
 static int r_idst(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return fft_run(args, nargs, res, 1, 1); }
 
+/* one in-place 1-D transform of a length-L vector buf (which: 0 cos, 1 sin; forward/inverse as above). */
+static void fft_1d(double *buf, int64_t L, int which, int type, int inverse)
+{
+    int eff = inverse ? (type == 2 ? 3 : 2) : type;
+    double *y = (double *)malloc((size_t)L * sizeof(double));
+    if (!y) return;
+    if (which == 0) fft_dctcore(buf, L, eff, y); else fft_dstcore(buf, L, eff, y);
+    double sc = inverse ? 1.0 / (double)(2 * L) : 1.0;
+    for (int64_t i = 0; i < L; i++) buf[i] = y[i] * sc;
+    free(y);
+}
+
+/* separable n-D transform over a 2-D array: transform every row, then every column. */
+static int fft_run_nd(const tsr_arg *args, int nargs, tsr_result *res, int which, int inverse)
+{
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("scipy.fft: dctn/dstn input must be 2-D here"); return TSR_EARG; }
+    int type = fft_type(args, nargs);
+    if (type != 2 && type != 3) { fn_set_error("scipy.fft: only type 2 and 3 are supported here"); return TSR_EARG; }
+    int64_t m = args[0].arr.shape[0], n = args[0].arr.shape[1], L;
+    double *x = fn_arg_doubles(&args[0], &L); if (!x) return TSR_ENOMEM;
+    int64_t sh[2] = {m, n};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+    double *col = (double *)malloc((size_t)m * sizeof(double));
+    if (!out || !col) { free(col); fn_free_doubles(x, L); return TSR_ENOMEM; }
+    memcpy(out, x, (size_t)(m * n) * sizeof(double));
+    for (int64_t i = 0; i < m; i++) fft_1d(&out[i * n], n, which, type, inverse);     /* rows */
+    for (int64_t j = 0; j < n; j++) {                                                   /* columns */
+        for (int64_t i = 0; i < m; i++) col[i] = out[i * n + j];
+        fft_1d(col, m, which, type, inverse);
+        for (int64_t i = 0; i < m; i++) out[i * n + j] = col[i];
+    }
+    free(col); fn_free_doubles(x, L);
+    return TSR_OK;
+}
+static int r_dctn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return fft_run_nd(args, nargs, res, 0, 0); }
+static int r_idctn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return fft_run_nd(args, nargs, res, 0, 1); }
+static int r_dstn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return fft_run_nd(args, nargs, res, 1, 0); }
+static int r_idstn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return fft_run_nd(args, nargs, res, 1, 1); }
+
 static const fn_def DEFS[] = {
     ROUTINE("scipyfft.dct", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_dct, NULL, "Discrete cosine transform, types 2/3, norm='backward' (scipy.fft.dct)."),
     ROUTINE("scipyfft.idct", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_idct, NULL, "Inverse discrete cosine transform, types 2/3, norm='backward' (scipy.fft.idct)."),
     ROUTINE("scipyfft.dst", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_dst, NULL, "Discrete sine transform, types 2/3, norm='backward' (scipy.fft.dst)."),
     ROUTINE("scipyfft.idst", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_idst, NULL, "Inverse discrete sine transform, types 2/3, norm='backward' (scipy.fft.idst)."),
+    ROUTINE("scipyfft.dctn", 1, "x, type=2, s=None, axes=None, norm=None", "y", r_dctn, NULL, "n-D discrete cosine transform over a 2-D array, types 2/3 (scipy.fft.dctn)."),
+    ROUTINE("scipyfft.idctn", 1, "x, type=2, s=None, axes=None, norm=None", "y", r_idctn, NULL, "n-D inverse discrete cosine transform over a 2-D array (scipy.fft.idctn)."),
+    ROUTINE("scipyfft.dstn", 1, "x, type=2, s=None, axes=None, norm=None", "y", r_dstn, NULL, "n-D discrete sine transform over a 2-D array, types 2/3 (scipy.fft.dstn)."),
+    ROUTINE("scipyfft.idstn", 1, "x, type=2, s=None, axes=None, norm=None", "y", r_idstn, NULL, "n-D inverse discrete sine transform over a 2-D array (scipy.fft.idstn)."),
 };
 
 const fn_table TSR_SCIPY_FFT_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

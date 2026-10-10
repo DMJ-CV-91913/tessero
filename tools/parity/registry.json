@@ -3110,7 +3110,17 @@
             "nin": 0,
             "nout": 1
         },
+        "scipyfft.dctn": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "scipyfft.dst": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "scipyfft.dstn": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -3120,7 +3130,17 @@
             "nin": 0,
             "nout": 1
         },
+        "scipyfft.idctn": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "scipyfft.idst": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "scipyfft.idstn": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
