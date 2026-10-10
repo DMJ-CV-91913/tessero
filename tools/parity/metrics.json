@@ -47,6 +47,10 @@
   "scipy.sparse": {
    "E4": 15
   },
+  "scipy.sparse.csgraph": {
+   "E2": 3,
+   "E4": 1
+  },
   "scipy.sparse.linalg": {
    "E4": 11
   },
@@ -88,15 +92,15 @@
   },
   "SciPy": {
    "both": 1140,
-   "excluded": 70,
+   "excluded": 74,
    "impl_ext": 1140,
    "impl_ffi": 1143,
-   "in_scope": 1492,
-   "m2_ext": 76.4,
-   "m2_ffi": 76.6,
-   "m3": 4.5,
-   "m4_ext": 76.4,
-   "m4_ffi": 76.6,
+   "in_scope": 1488,
+   "m2_ext": 76.6,
+   "m2_ffi": 76.8,
+   "m3": 4.7,
+   "m4_ext": 76.6,
+   "m4_ffi": 76.8,
    "m5": 99.7,
    "symbols": 1562,
    "verified_ext": 1140,
@@ -506,15 +510,15 @@
   },
   "scipy.sparse.csgraph": {
    "both": 16,
-   "excluded": 0,
+   "excluded": 4,
    "impl_ext": 16,
    "impl_ffi": 16,
-   "in_scope": 26,
-   "m2_ext": 61.5,
-   "m2_ffi": 61.5,
-   "m3": 0.0,
-   "m4_ext": 61.5,
-   "m4_ffi": 61.5,
+   "in_scope": 22,
+   "m2_ext": 72.7,
+   "m2_ffi": 72.7,
+   "m3": 15.4,
+   "m4_ext": 72.7,
+   "m4_ffi": 72.7,
    "m5": 100.0,
    "symbols": 26,
    "verified_ext": 16,

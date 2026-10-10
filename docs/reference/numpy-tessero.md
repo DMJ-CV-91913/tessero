@@ -950,11 +950,21 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | NumPy / SciPy | Tessero |
 |---|---|
 | `scipy.sparse.csgraph.bellman_ford` | `Tessero\Csgraph::bellmanFord()` |
+| `scipy.sparse.csgraph.breadth_first_order` | `Tessero\Csgraph::breadthFirstOrder()` |
+| `scipy.sparse.csgraph.breadth_first_tree` | `Tessero\Csgraph::breadthFirstTree()` |
 | `scipy.sparse.csgraph.connected_components` | `Tessero\Csgraph::connectedComponents()` |
+| `scipy.sparse.csgraph.construct_dist_matrix` | `Tessero\Csgraph::constructDistMatrix()` |
+| `scipy.sparse.csgraph.depth_first_order` | `Tessero\Csgraph::depthFirstOrder()` |
+| `scipy.sparse.csgraph.depth_first_tree` | `Tessero\Csgraph::depthFirstTree()` |
 | `scipy.sparse.csgraph.dijkstra` | `Tessero\Csgraph::dijkstra()` |
 | `scipy.sparse.csgraph.floyd_warshall` | `Tessero\Csgraph::floydWarshall()` |
 | `scipy.sparse.csgraph.johnson` | `Tessero\Csgraph::johnson()` |
+| `scipy.sparse.csgraph.laplacian` | `Tessero\Csgraph::laplacian()` |
+| `scipy.sparse.csgraph.min_weight_full_bipartite_matching` | `Tessero\Csgraph::minWeightFullBipartiteMatching()` |
+| `scipy.sparse.csgraph.minimum_spanning_tree` | `Tessero\Csgraph::minimumSpanningTree()` |
+| `scipy.sparse.csgraph.reconstruct_path` | `Tessero\Csgraph::reconstructPath()` |
 | `scipy.sparse.csgraph.shortest_path` | `Tessero\Csgraph::shortestPath()` |
+| `scipy.sparse.csgraph.structural_rank` | `Tessero\Csgraph::structuralRank()` |
 
 ## scipy.signal
 
