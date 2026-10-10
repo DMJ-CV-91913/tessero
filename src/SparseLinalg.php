@@ -19,6 +19,7 @@ final class SparseLinalg
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'expm' => 'expm',
+    'expm_multiply' => 'expmMultiply',
     'inv' => 'inv',
     'is_sptriangular' => 'isSptriangular',
     'matrix_power' => 'matrixPower',
@@ -52,6 +53,16 @@ final class SparseLinalg
     public static function expm(mixed $A): mixed
     {
         return Registry::routine('splinalg.expm', [$A]);
+    }
+
+    /**
+     * Action of the matrix exponential, expm(A) @ B (scipy.sparse.linalg.expm_multiply).
+     *
+     * scipy.splinalg.expm_multiply
+     */
+    public static function expmMultiply(mixed $A, mixed $B, mixed $start = null, mixed $stop = null, mixed $num = null, mixed $endpoint = null): mixed
+    {
+        return Registry::routine('splinalg.expm_multiply', [$A, $B, $start, $stop, $num, $endpoint]);
     }
 
     /**
