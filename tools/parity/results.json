@@ -42,6 +42,7 @@
         "distance.dice": "pass",
         "distance.distance_matrix": "pass",
         "distance.euclidean": "pass",
+        "distance.geometric_slerp": "pass",
         "distance.hamming": "pass",
         "distance.is_valid_dm": "pass",
         "distance.is_valid_y": "pass",
@@ -2894,7 +2895,8 @@
             "sparse.diags_array": 0,
             "distance.distance_matrix": 0,
             "distance.minkowski_distance": 0,
-            "distance.minkowski_distance_p": 0
+            "distance.minkowski_distance_p": 0,
+            "distance.geometric_slerp": 3.7128810157033085e-15
         },
         "ext": {
             "np.median": 0,
@@ -4342,7 +4344,8 @@
             "sparse.diags_array": 0,
             "distance.distance_matrix": 0,
             "distance.minkowski_distance": 0,
-            "distance.minkowski_distance_p": 0
+            "distance.minkowski_distance_p": 0,
+            "distance.geometric_slerp": 3.7128810157033085e-15
         }
     },
     "ext": {
@@ -4388,6 +4391,7 @@
         "distance.dice": "pass",
         "distance.distance_matrix": "pass",
         "distance.euclidean": "pass",
+        "distance.geometric_slerp": "pass",
         "distance.hamming": "pass",
         "distance.is_valid_dm": "pass",
         "distance.is_valid_y": "pass",

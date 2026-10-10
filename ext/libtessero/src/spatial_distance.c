@@ -404,10 +404,37 @@ static int r_minkowski_distance(const void *ctx, const tsr_arg *args, int nargs,
 static int r_minkowski_distance_p(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return spt_pointwise(args, nargs, res, 0); }
 
+/* geometric_slerp(start, end, t): spherical interpolation of two unit vectors; result (len(t), dim). */
+static int r_geometric_slerp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 || args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("geometric_slerp: start, end (1-D) and t (1-D) are required"); return TSR_EARG; }
+    int64_t dim = args[0].arr.shape[0], nt = args[2].arr.shape[0];
+    if (args[1].arr.shape[0] != dim) { fn_set_error("geometric_slerp: start and end must have the same length"); return TSR_EARG; }
+    int64_t ls, le, lt; double *S = fn_arg_doubles(&args[0], &ls); if (!S) return TSR_ENOMEM;
+    double *E = fn_arg_doubles(&args[1], &le); if (!E) { fn_free_doubles(S, ls); return TSR_ENOMEM; }
+    double *T = fn_arg_doubles(&args[2], &lt); if (!T) { fn_free_doubles(S, ls); fn_free_doubles(E, le); return TSR_ENOMEM; }
+    double dot = 0.0; for (int64_t d = 0; d < dim; d++) dot += S[d] * E[d];
+    if (dot > 1.0) dot = 1.0; else if (dot < -1.0) dot = -1.0;
+    double omega = acos(dot), so = sin(omega);
+    int64_t sh[2] = {nt, dim};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+    if (!out) { fn_free_doubles(S, ls); fn_free_doubles(E, le); fn_free_doubles(T, lt); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < nt; i++) {
+        double a, b;
+        if (so < 1e-12) { a = 1.0 - T[i]; b = T[i]; }                      /* (near-)parallel: linear */
+        else { a = sin((1.0 - T[i]) * omega) / so; b = sin(T[i] * omega) / so; }
+        for (int64_t d = 0; d < dim; d++) out[i * dim + d] = a * S[d] + b * E[d];
+    }
+    fn_free_doubles(S, ls); fn_free_doubles(E, le); fn_free_doubles(T, lt);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("distance.distance_matrix", 1, "x, y, p=2, threshold=1000000", "D", r_distance_matrix, NULL, "Matrix of all pairwise Minkowski distances between two point sets (scipy.spatial.distance_matrix)."),
     ROUTINE("distance.minkowski_distance", 1, "x, y, p=2", "d", r_minkowski_distance, NULL, "Per-point Minkowski distance between two arrays of points (scipy.spatial.minkowski_distance)."),
     ROUTINE("distance.minkowski_distance_p", 1, "x, y, p=2", "d", r_minkowski_distance_p, NULL, "p-th power of the Minkowski distance, no final root (scipy.spatial.minkowski_distance_p)."),
+    ROUTINE("distance.geometric_slerp", 1, "start, end, t", "out", r_geometric_slerp, NULL, "Geometric spherical linear interpolation between two unit vectors (scipy.spatial.geometric_slerp)."),
     ROUTINE("distance.pdist", 1, "X, metric=None, p=None", "out", r_pdist, NULL, "Pairwise distances between the rows of X, condensed (scipy.spatial.distance.pdist); real float64."),
     ROUTINE("distance.cdist", 1, "XA, XB, metric=None, p=None", "out", r_cdist, NULL, "Distances between each pair of rows of XA and XB (scipy.spatial.distance.cdist); real float64."),
     ROUTINE("distance.squareform", 1, "X", "out", r_squareform, NULL, "Convert between a condensed distance vector and a square form (scipy.spatial.distance.squareform)."),
