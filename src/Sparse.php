@@ -27,6 +27,8 @@ final class Sparse
     'csr_matrix' => 'csrMatrix',
     'dia_array' => 'diaArray',
     'dia_matrix' => 'diaMatrix',
+    'diags' => 'diags',
+    'diags_array' => 'diagsArray',
     'eye' => 'eye',
     'eye_array' => 'eyeArray',
     'find' => 'find',
@@ -160,6 +162,30 @@ final class Sparse
     public static function diaMatrix(mixed $A): mixed
     {
         return Registry::routine('sparse.dia_matrix', [$A]);
+    }
+
+    /**
+     * Sparse matrix from diagonals, as CSR (scipy.sparse.diags).
+     *
+     * scipy.sparse.diags
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function diags(mixed $diagonals, mixed $offsets = 0, mixed $shape = null): mixed
+    {
+        return Registry::routine('sparse.diags', [$diagonals, $offsets, $shape]);
+    }
+
+    /**
+     * Sparse matrix from diagonals, as CSR (scipy.sparse.diags_array).
+     *
+     * scipy.sparse.diags_array
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function diagsArray(mixed $diagonals, mixed $offsets = 0, mixed $shape = null): mixed
+    {
+        return Registry::routine('sparse.diags_array', [$diagonals, $offsets, $shape]);
     }
 
     /**
