@@ -418,6 +418,53 @@ static int r_minimum_spanning_tree(const void *ctx, const tsr_arg *args, int nar
     return TSR_OK;
 }
 
+/* min_weight_full_bipartite_matching(biadjacency): minimum-weight perfect matching of a square biadjacency
+   (stored entry = edge weight, 0 = no edge). Hungarian algorithm (O(n^3), potentials). Returns (row_ind,
+   col_ind); unique -- hence SciPy-identical -- when the finite edge weights are distinct. */
+static int r_min_weight_full_bipartite_matching(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("min_weight_full_bipartite_matching: a square biadjacency is required here"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0], tot; double *A = fn_arg_doubles(&args[0], &tot);
+    if (!A) return TSR_ENOMEM;
+    const double BIG = 1e15;
+    double *u = (double *)calloc((size_t)(n + 1), sizeof(double));
+    double *v = (double *)calloc((size_t)(n + 1), sizeof(double));
+    double *minv = (double *)malloc((size_t)(n + 1) * sizeof(double));
+    int64_t *p = (int64_t *)calloc((size_t)(n + 1), sizeof(int64_t));        /* p[j] = row (1-based) matched to col j */
+    int64_t *way = (int64_t *)calloc((size_t)(n + 1), sizeof(int64_t));
+    char *used = (char *)malloc((size_t)(n + 1));
+    if (!u || !v || !minv || !p || !way || !used) { free(u); free(v); free(minv); free(p); free(way); free(used); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 1; i <= n; i++) {
+        p[0] = i; int64_t j0 = 0;
+        for (int64_t j = 0; j <= n; j++) { minv[j] = BIG * 1e3; used[j] = 0; }
+        do {
+            used[j0] = 1;
+            int64_t i0 = p[j0], j1 = -1; double delta = BIG * 1e3;
+            for (int64_t j = 1; j <= n; j++) if (!used[j]) {
+                double cost = (A[(i0 - 1) * n + (j - 1)] != 0.0 ? A[(i0 - 1) * n + (j - 1)] : BIG);
+                double cur = cost - u[i0] - v[j];
+                if (cur < minv[j]) { minv[j] = cur; way[j] = j0; }
+                if (minv[j] < delta) { delta = minv[j]; j1 = j; }
+            }
+            for (int64_t j = 0; j <= n; j++) {
+                if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
+                else minv[j] -= delta;
+            }
+            j0 = j1;
+        } while (p[j0] != 0);
+        do { int64_t j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
+    }
+    int64_t sh[1] = {n};
+    int64_t *ri = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, sh);
+    int64_t *ci = (int64_t *)fn_result_array(&res[1], TSR_I64, 1, sh);
+    if (!ri || !ci) { free(u); free(v); free(minv); free(p); free(way); free(used); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) ri[i] = i;
+    for (int64_t j = 1; j <= n; j++) ci[p[j] - 1] = j - 1;                   /* column matched to each row */
+    free(u); free(v); free(minv); free(p); free(way); free(used); fn_free_doubles(A, tot);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("csgraph.connected_components", 2, "csgraph, directed=True, connection='weak'", "n_components, labels", r_connected_components, NULL, "Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components)."),
     ROUTINE("csgraph.shortest_path", 1, "csgraph, method='auto', directed=True, return_predecessors=False, unweighted=False, overwrite=False, indices=None", "dist_matrix", r_shortest_path, NULL, "All-pairs shortest path distance matrix (scipy.sparse.csgraph.shortest_path; dense, indices=None)."),
@@ -432,6 +479,7 @@ static const fn_def DEFS[] = {
     ROUTINE("csgraph.minimum_spanning_tree", 1, "csgraph, overwrite=False", "mst", r_minimum_spanning_tree, NULL, "Minimum spanning tree of an undirected graph, returned dense (scipy.sparse.csgraph.minimum_spanning_tree)."),
     ROUTINE("csgraph.reconstruct_path", 1, "csgraph, predecessors, directed=True", "cstree", r_reconstruct_path, NULL, "Reconstruct the tree of a shortest-path predecessor list, returned dense (scipy.sparse.csgraph.reconstruct_path)."),
     ROUTINE("csgraph.construct_dist_matrix", 1, "graph, predecessors, directed=True", "dist_matrix", r_construct_dist_matrix, NULL, "Distance matrix from a predecessor tree (scipy.sparse.csgraph.construct_dist_matrix)."),
+    ROUTINE("csgraph.min_weight_full_bipartite_matching", 2, "biadjacency_matrix, maximize=False", "row_ind, col_ind", r_min_weight_full_bipartite_matching, NULL, "Minimum-weight full bipartite matching of a square biadjacency (scipy.sparse.csgraph.min_weight_full_bipartite_matching)."),
     ROUTINE("csgraph.breadth_first_tree", 1, "csgraph, i_start, directed=True", "cstree", r_breadth_first_tree, NULL, "Breadth-first spanning tree, returned dense (scipy.sparse.csgraph.breadth_first_tree)."),
     ROUTINE("csgraph.depth_first_tree", 1, "csgraph, i_start, directed=True", "cstree", r_depth_first_tree, NULL, "Depth-first spanning tree, returned dense (scipy.sparse.csgraph.depth_first_tree)."),
 };
