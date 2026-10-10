@@ -29,6 +29,7 @@ final class Csgraph
     'floyd_warshall' => 'floydWarshall',
     'johnson' => 'johnson',
     'laplacian' => 'laplacian',
+    'min_weight_full_bipartite_matching' => 'minWeightFullBipartiteMatching',
     'minimum_spanning_tree' => 'minimumSpanningTree',
     'reconstruct_path' => 'reconstructPath',
     'shortest_path' => 'shortestPath',
@@ -165,6 +166,18 @@ final class Csgraph
     public static function laplacian(mixed $csgraph, mixed $normed = false): mixed
     {
         return Registry::routine('csgraph.laplacian', [$csgraph, $normed]);
+    }
+
+    /**
+     * Minimum-weight full bipartite matching of a square biadjacency (scipy.sparse.csgraph.min_weight_full_bipartite_matching).
+     *
+     * scipy.sparse.csgraph.min_weight_full_bipartite_matching
+     *
+     * @return mixed one array, or an array keyed by row_ind, col_ind when several results are requested
+     */
+    public static function minWeightFullBipartiteMatching(mixed $biadjacencyMatrix, mixed $maximize = false): mixed
+    {
+        return Registry::routine('csgraph.min_weight_full_bipartite_matching', [$biadjacencyMatrix, $maximize]);
     }
 
     /**

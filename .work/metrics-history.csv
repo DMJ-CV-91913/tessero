@@ -186,3 +186,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-10,scipy.sparse.csgraph: minimum_spanning_tree,91.7,91.1,76.3,76.1,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,"scipy.sparse.csgraph: reconstruct_path, breadth/depth_first_tree",91.7,91.1,76.5,76.3,99.4,99.7,72.6,72.6,84.2,84.2
 2026-10-10,scipy.sparse.csgraph: construct_dist_matrix,91.7,91.1,76.5,76.3,99.4,99.7,72.6,72.6,84.2,84.2
+2026-10-10,scipy.sparse.csgraph: min_weight_full_bipartite_matching (Hungarian),91.7,91.1,76.6,76.4,99.4,99.7,72.6,72.6,84.2,84.2

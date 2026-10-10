@@ -75,6 +75,11 @@
             "nin": 0,
             "nout": 1
         },
+        "csgraph.min_weight_full_bipartite_matching": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "csgraph.minimum_spanning_tree": {
             "kind": "routine",
             "nin": 0,

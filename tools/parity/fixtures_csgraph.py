@@ -150,6 +150,21 @@ for A, directed in [(dir_wgraph(6, 0.4), True), (dir_wgraph(7, 0.35), True), (sy
                   'expect': F.enc_result(np.asarray(construct_dist_matrix(A, P, directed=directed), float), []), 'compare': 'tol'})
 calls.append({'fn': 'construct_dist_matrix', 'cases': cdm_c})
 
+# min_weight_full_bipartite_matching: square, guaranteed full matching, distinct finite weights (unique optimum)
+from scipy.sparse.csgraph import min_weight_full_bipartite_matching as _mwm
+mwm_c = []
+for n in (4, 5, 6):
+    vals = rng.permutation(n * n) + 1.0                   # distinct positive weights
+    A = vals.reshape(n, n).astype(float)
+    mask = rng.uniform(size=(n, n)) < 0.4
+    for i in range(n):
+        mask[i, i] = False                                # keep the diagonal (ensures a full matching)
+    A[mask] = 0.0
+    ri, ci = _mwm(sp.csr_array(A))
+    mwm_c.append({'args': [F.enc(A)], 'kwargs': {},
+                  'expect': F.enc_result((np.asarray(ri, dtype=np.int64), np.asarray(ci, dtype=np.int64)), ['row_ind', 'col_ind']), 'compare': 'tol'})
+calls.append({'fn': 'min_weight_full_bipartite_matching', 'cases': mwm_c})
+
 out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
