@@ -5657,10 +5657,22 @@
                 "doc": "Discrete cosine transform, types 2/3, norm='backward' (scipy.fft.dct)."
             },
             {
+                "name": "dctn",
+                "static": true,
+                "sig": "dctn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed",
+                "doc": "n-D discrete cosine transform over a 2-D array, types 2/3 (scipy.fft.dctn)."
+            },
+            {
                 "name": "dst",
                 "static": true,
                 "sig": "dst(mixed $x, mixed $type = 2, mixed $n = null, mixed $axis = -1, mixed $norm = null): mixed",
                 "doc": "Discrete sine transform, types 2/3, norm='backward' (scipy.fft.dst)."
+            },
+            {
+                "name": "dstn",
+                "static": true,
+                "sig": "dstn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed",
+                "doc": "n-D discrete sine transform over a 2-D array, types 2/3 (scipy.fft.dstn)."
             },
             {
                 "name": "idct",
@@ -5669,10 +5681,22 @@
                 "doc": "Inverse discrete cosine transform, types 2/3, norm='backward' (scipy.fft.idct)."
             },
             {
+                "name": "idctn",
+                "static": true,
+                "sig": "idctn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed",
+                "doc": "n-D inverse discrete cosine transform over a 2-D array (scipy.fft.idctn)."
+            },
+            {
                 "name": "idst",
                 "static": true,
                 "sig": "idst(mixed $x, mixed $type = 2, mixed $n = null, mixed $axis = -1, mixed $norm = null): mixed",
                 "doc": "Inverse discrete sine transform, types 2/3, norm='backward' (scipy.fft.idst)."
+            },
+            {
+                "name": "idstn",
+                "static": true,
+                "sig": "idstn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed",
+                "doc": "n-D inverse discrete sine transform over a 2-D array (scipy.fft.idstn)."
             }
         ],
         "constants": [
@@ -20843,6 +20867,30 @@
                 "name": "idst",
                 "static": true,
                 "sig": "idst($x, $type = 2, $n = null, $axis = -1, $norm = null)",
+                "doc": ""
+            },
+            {
+                "name": "dctn",
+                "static": true,
+                "sig": "dctn($x, $type = 2, $s = null, $axes = null, $norm = null)",
+                "doc": ""
+            },
+            {
+                "name": "idctn",
+                "static": true,
+                "sig": "idctn($x, $type = 2, $s = null, $axes = null, $norm = null)",
+                "doc": ""
+            },
+            {
+                "name": "dstn",
+                "static": true,
+                "sig": "dstn($x, $type = 2, $s = null, $axes = null, $norm = null)",
+                "doc": ""
+            },
+            {
+                "name": "idstn",
+                "static": true,
+                "sig": "idstn($x, $type = 2, $s = null, $axes = null, $norm = null)",
                 "doc": ""
             }
         ]
