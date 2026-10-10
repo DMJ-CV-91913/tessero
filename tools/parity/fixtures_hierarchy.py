@@ -9,7 +9,8 @@ import json, os
 import numpy as np
 from scipy.cluster.hierarchy import (linkage, single, complete, average, weighted, ward, centroid, median,
     num_obs_linkage, is_valid_linkage, is_monotonic, is_valid_im, correspond, maxdists, inconsistent,
-    maxinconsts, maxRstat, leaves_list, cophenet, to_mlab_linkage, from_mlab_linkage, fcluster, fclusterdata)
+    maxinconsts, maxRstat, leaves_list, cophenet, to_mlab_linkage, from_mlab_linkage, fcluster, fclusterdata,
+    leaders, cut_tree)
 from scipy.spatial.distance import pdist
 import fixtures_np as F
 
@@ -136,8 +137,28 @@ for (n, f, meth) in ((12, 2, 'ward'), (15, 3, 'average'), (10, 2, 'single'), (14
         fcld_c.append(int_arr_case([F.enc(X), F.enc(a), F.enc(crit), F.enc('euclidean'), F.enc(2), F.enc(meth)],
                                    fclusterdata(X, arg, criterion=crit, metric='euclidean', method=meth)))
 
+# ---- leaders + cut_tree ----
+lead_c, cut_c = [], []
+for (n, f, meth) in ((12, 2, 'ward'), (15, 3, 'average'), (10, 2, 'single')):
+    X = obs(n, f); Z = linkage(pdist(X), method=meth); Zf = np.asarray(Z, float)
+    heights = np.sort(Zf[:, 2])
+    for mc in (3, 5):
+        T = fcluster(Z, mc, criterion='maxclust').astype(np.int32)
+        Lr, Mr = leaders(Z, T)
+        lead_c.append({'args': [F.enc(Zf), F.enc(np.asarray(T, dtype=np.int64))], 'kwargs': {},
+                       'expect': F.enc_result((np.asarray(Lr, dtype=np.int64), np.asarray(Mr, dtype=np.int64)), ['L', 'M']),
+                       'compare': 'tol', 'tol': TOL})
+    # cut_tree: full tree, by n_clusters, by height
+    cut_c.append(int_arr_case([F.enc(Zf)], np.asarray(cut_tree(Z), dtype=np.int64)))
+    cut_c.append(int_arr_case([F.enc(Zf), F.enc(np.asarray([2, 3, 5], dtype=np.int64))],
+                              np.asarray(cut_tree(Z, n_clusters=[2, 3, 5]), dtype=np.int64)))
+    hts = [float(heights[len(heights) // 3]), float(heights[2 * len(heights) // 3])]
+    cut_c.append(int_arr_case([F.enc(Zf), None, F.enc(np.asarray(hts, float))],
+                              np.asarray(cut_tree(Z, height=hts), dtype=np.int64)))
+
 calls += [
     {'fn': 'fcluster', 'cases': fcl_c}, {'fn': 'fclusterdata', 'cases': fcld_c},
+    {'fn': 'leaders', 'cases': lead_c}, {'fn': 'cut_tree', 'cases': cut_c},
     {'fn': 'num_obs_linkage', 'cases': num_obs_c}, {'fn': 'is_valid_linkage', 'cases': valid_c},
     {'fn': 'is_monotonic', 'cases': mono_c}, {'fn': 'is_valid_im', 'cases': validim_c},
     {'fn': 'correspond', 'cases': corr_c}, {'fn': 'maxdists', 'cases': maxd_c},

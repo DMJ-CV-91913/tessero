@@ -545,6 +545,117 @@ static int r_fclusterdata(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return rc;
 }
 
+/* leaders(Z, T): for each flat cluster the leader node -- the root of its maximal single-label subtree.
+   Returns parallel arrays L (leader node ids) and M (their cluster labels), in SciPy's discovery order. */
+static int r_leaders(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || !is_Z(&args[0]) || args[1].kind != 3) { fn_set_error("leaders: Z (m, 4) and T are required"); return TSR_EARG; }
+    int64_t m = args[0].arr.shape[0], Lz, Lt;
+    double *Z = fn_arg_doubles(&args[0], &Lz); if (!Z) return TSR_ENOMEM;
+    double *Td = fn_arg_doubles(&args[1], &Lt); if (!Td) { fn_free_doubles(Z, Lz); return TSR_ENOMEM; }
+    int64_t n = m + 1;
+    if (Lt != n) { fn_free_doubles(Z, Lz); fn_free_doubles(Td, Lt); fn_set_error("leaders: len(T) != Z.shape[0] + 1"); return TSR_EARG; }
+    int64_t *cid = (int64_t *)malloc((size_t)(2 * n - 1) * sizeof(int64_t));
+    int64_t mx = 0;
+    if (!cid) { fn_free_doubles(Z, Lz); fn_free_doubles(Td, Lt); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) { cid[i] = (int64_t)Td[i]; if (cid[i] > mx) mx = cid[i]; }
+    for (int64_t i = 0; i < m; i++) cid[n + i] = -1;
+    unsigned char *seen = (unsigned char *)calloc((size_t)(mx + 1), 1);
+    if (!seen) { free(cid); fn_free_doubles(Z, Lz); fn_free_doubles(Td, Lt); return TSR_ENOMEM; }
+    int64_t nc = 0;
+    for (int64_t i = 0; i < n; i++) if (cid[i] >= 0 && !seen[cid[i]]) { seen[cid[i]] = 1; nc++; }
+    free(seen);
+    int64_t *Lb = (int64_t *)malloc((size_t)nc * sizeof(int64_t));
+    int64_t *Mb = (int64_t *)malloc((size_t)nc * sizeof(int64_t));
+    if (!Lb || !Mb) { free(Lb); free(Mb); free(cid); fn_free_doubles(Z, Lz); fn_free_doubles(Td, Lt); return TSR_ENOMEM; }
+    int64_t k = 0, bad = -1;
+    for (int64_t i = 0; i < m && bad < 0; i++) {
+        int64_t lc = (int64_t)Z[i * 4 + 0], rc = (int64_t)Z[i * 4 + 1], lf = cid[lc], rf = cid[rc];
+        if (lf == rf) { cid[n + i] = lf; continue; }
+        if (lf != -1) { if (k >= nc) { bad = lc; break; } Lb[k] = lc; Mb[k] = lf; k++; }
+        if (rf != -1) { if (k >= nc) { bad = rc; break; } Lb[k] = rc; Mb[k] = rf; k++; }
+        cid[n + i] = -1;
+    }
+    if (bad < 0 && cid[2 * n - 2] != -1) { if (k >= nc) bad = 2 * n - 2; else { Lb[k] = 2 * n - 2; Mb[k] = cid[2 * n - 2]; k++; } }
+    free(cid); fn_free_doubles(Z, Lz); fn_free_doubles(Td, Lt);
+    if (bad >= 0) { free(Lb); free(Mb); fn_set_error("leaders: T is not a valid cluster assignment"); return TSR_EARG; }
+    int64_t sh[1] = {nc};
+    int64_t *Lo = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, sh);
+    int64_t *Mo = (int64_t *)fn_result_array(&res[1], TSR_I64, 1, sh);
+    if (!Lo || !Mo) { free(Lb); free(Mb); return TSR_ENOMEM; }
+    memcpy(Lo, Lb, (size_t)nc * sizeof(int64_t));
+    memcpy(Mo, Mb, (size_t)nc * sizeof(int64_t));
+    free(Lb); free(Mb);
+    return TSR_OK;
+}
+
+/* cut_tree(Z, n_clusters=None, height=None): group membership at each requested cut, SciPy's relabelling
+   (merge the two members into the lower group id, compact ids above the higher one). Output (nobs, ncols). */
+static int r_cut_tree(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (!is_Z(&args[0])) { fn_set_error("cut_tree: Z must be (m, 4)"); return TSR_EARG; }
+    int64_t m = args[0].arr.shape[0], L; double *Z = fn_arg_doubles(&args[0], &L);
+    if (!Z) return TSR_ENOMEM;
+    int64_t n = m + 1;                                                       /* nobs */
+    /* requested columns: step index at which to read the grouping (0..m). */
+    int rc = TSR_OK;
+    const tsr_arg *ncl = nargs > 1 ? &args[1] : NULL, *hgt = nargs > 2 ? &args[2] : NULL;
+    int64_t ncols; int64_t *cols = NULL;                                     /* step index per output column */
+    if (ncl && ncl->kind == 3) {                                            /* n_clusters array */
+        int64_t Ln; double *v = fn_arg_doubles(ncl, &Ln); if (!v) { fn_free_doubles(Z, L); return TSR_ENOMEM; }
+        ncols = Ln; cols = (int64_t *)malloc((size_t)ncols * sizeof(int64_t));
+        if (cols) for (int64_t j = 0; j < ncols; j++) cols[j] = n - (int64_t)v[j];
+        fn_free_doubles(v, Ln);
+    } else if (ncl && ncl->kind == 1) {                                     /* n_clusters scalar */
+        ncols = 1; cols = (int64_t *)malloc(sizeof(int64_t));
+        if (cols) cols[0] = n - (int64_t)((ncl->flags & 1) ? ncl->ival : (int64_t)ncl->num);
+    } else if (hgt && hgt->kind == 3) {                                     /* height array: searchsorted on merge dists */
+        int64_t Lh; double *h = fn_arg_doubles(hgt, &Lh); if (!h) { fn_free_doubles(Z, L); return TSR_ENOMEM; }
+        ncols = Lh; cols = (int64_t *)malloc((size_t)ncols * sizeof(int64_t));
+        if (cols) for (int64_t j = 0; j < ncols; j++) { int64_t s = 0; while (s < m && Z[s * 4 + 2] < h[j]) s++; cols[j] = s; }
+        fn_free_doubles(h, Lh);
+    } else {                                                                /* full cut tree: columns 0..n-1 */
+        ncols = n; cols = (int64_t *)malloc((size_t)ncols * sizeof(int64_t));
+        if (cols) for (int64_t j = 0; j < ncols; j++) cols[j] = j;
+    }
+    int64_t *last = (int64_t *)malloc((size_t)n * sizeof(int64_t));
+    int64_t *cur = (int64_t *)malloc((size_t)n * sizeof(int64_t));
+    int64_t sh[2] = {n, ncols};
+    int64_t *G = (int64_t *)fn_result_array(&res[0], TSR_I64, 2, sh);        /* (nobs, ncols) */
+    /* member lists per cluster id, as in cophenet */
+    int64_t total = n + m;
+    int64_t **mem = (int64_t **)calloc((size_t)total, sizeof(int64_t *));
+    int64_t *msz = (int64_t *)calloc((size_t)total, sizeof(int64_t));
+    if (!cols || !last || !cur || !G || !mem || !msz) { rc = TSR_ENOMEM; goto done; }
+    for (int64_t i = 0; i < n; i++) { last[i] = i; mem[i] = (int64_t *)malloc(sizeof(int64_t)); if (mem[i]) { mem[i][0] = i; msz[i] = 1; } else rc = TSR_ENOMEM; }
+    /* step 0 grouping = identity */
+    for (int64_t j = 0; j < ncols; j++) if (cols[j] == 0) for (int64_t r = 0; r < n; r++) G[r * ncols + j] = last[r];
+    for (int64_t i = 0; i < m && rc == TSR_OK; i++) {
+        int64_t lc = (int64_t)Z[i * 4 + 0], rcid = (int64_t)Z[i * 4 + 1];
+        /* idx = members of node i (left ++ right); build its member list too */
+        int64_t nl = msz[lc], nr = msz[rcid], id = n + i;
+        mem[id] = (int64_t *)malloc((size_t)(nl + nr) * sizeof(int64_t));
+        if (!mem[id]) { rc = TSR_ENOMEM; break; }
+        memcpy(mem[id], mem[lc], (size_t)nl * sizeof(int64_t));
+        memcpy(mem[id] + nl, mem[rcid], (size_t)nr * sizeof(int64_t));
+        msz[id] = nl + nr;
+        /* mn = min last[idx], mxg = max last[idx] */
+        int64_t mn = last[mem[id][0]], mxg = mn;
+        for (int64_t x = 0; x < nl + nr; x++) { int64_t g = last[mem[id][x]]; if (g < mn) mn = g; if (g > mxg) mxg = g; }
+        for (int64_t r = 0; r < n; r++) cur[r] = last[r];
+        for (int64_t x = 0; x < nl + nr; x++) cur[mem[id][x]] = mn;
+        for (int64_t r = 0; r < n; r++) if (cur[r] > mxg) cur[r] -= 1;
+        for (int64_t j = 0; j < ncols; j++) if (cols[j] == i + 1) for (int64_t r = 0; r < n; r++) G[r * ncols + j] = cur[r];
+        for (int64_t r = 0; r < n; r++) last[r] = cur[r];
+    }
+done:
+    for (int64_t i = 0; i < total; i++) if (mem && mem[i]) free(mem[i]);
+    free(mem); free(msz); free(cols); free(last); free(cur); fn_free_doubles(Z, L);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("hierarchy.linkage", 1, "y, method='single'", "Z", r_linkage, NULL, "Agglomerative hierarchical clustering linkage matrix (scipy.cluster.hierarchy.linkage)."),
     ROUTINE("hierarchy.single", 1, "y", "Z", r_single, NULL, "Single/nearest-point linkage (scipy.cluster.hierarchy.single)."),
@@ -569,6 +680,8 @@ static const fn_def DEFS[] = {
     ROUTINE("hierarchy.from_mlab_linkage", 1, "Z", "Z", r_from_mlab_linkage, NULL, "Convert a MATLAB-form linkage matrix to SciPy form (scipy.cluster.hierarchy.from_mlab_linkage)."),
     ROUTINE("hierarchy.fcluster", 1, "Z, t, criterion='inconsistent', depth=2, R=None, monocrit=None", "T", r_fcluster, NULL, "Flat clusters from a linkage matrix (scipy.cluster.hierarchy.fcluster)."),
     ROUTINE("hierarchy.fclusterdata", 1, "X, t, criterion='inconsistent', metric='euclidean', depth=2, method='single'", "T", r_fclusterdata, NULL, "Flat clusters directly from observations (scipy.cluster.hierarchy.fclusterdata)."),
+    ROUTINE("hierarchy.leaders", 2, "Z, T", "L, M", r_leaders, NULL, "Root (leader) nodes of the flat clusters in T (scipy.cluster.hierarchy.leaders)."),
+    ROUTINE("hierarchy.cut_tree", 1, "Z, n_clusters=None, height=None", "groups", r_cut_tree, NULL, "Group membership at each requested cut of the dendrogram (scipy.cluster.hierarchy.cut_tree)."),
 };
 
 const fn_table TSR_SCIPY_HIERARCHY_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
