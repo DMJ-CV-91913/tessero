@@ -68,6 +68,7 @@ final class Stats
     'differential_entropy' => 'differentialEntropy',
     'directional_stats' => 'directionalStats',
     'dirichlet' => 'dirichlet',
+    'dirichlet_multinomial' => 'dirichletMultinomial',
     'dlaplace' => 'dlaplace',
     'dpareto_lognorm' => 'dparetoLognorm',
     'dweibull' => 'dweibull',
@@ -807,6 +808,16 @@ final class Stats
     public static function dirichlet(mixed $alpha, mixed $x): mixed
     {
         return Registry::routine('stats.dirichlet', [$alpha, $x]);
+    }
+
+    /**
+     * Dirichlet-multinomial pmf at each row of x (scipy.stats.dirichlet_multinomial).
+     *
+     * scipy.stats.dirichlet_multinomial
+     */
+    public static function dirichletMultinomial(mixed $alpha, mixed $n, mixed $x): mixed
+    {
+        return Registry::routine('stats.dirichlet_multinomial', [$alpha, $n, $x]);
     }
 
     /**
