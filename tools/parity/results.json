@@ -12,6 +12,7 @@
         "csgraph.breadth_first_order": "pass",
         "csgraph.breadth_first_tree": "pass",
         "csgraph.connected_components": "pass",
+        "csgraph.construct_dist_matrix": "pass",
         "csgraph.depth_first_order": "pass",
         "csgraph.depth_first_tree": "pass",
         "csgraph.dijkstra": "pass",
@@ -2880,7 +2881,8 @@
             "csgraph.minimum_spanning_tree": 0,
             "csgraph.reconstruct_path": 0,
             "csgraph.breadth_first_tree": 0,
-            "csgraph.depth_first_tree": 0
+            "csgraph.depth_first_tree": 0,
+            "csgraph.construct_dist_matrix": 0
         },
         "ext": {
             "np.median": 0,
@@ -4321,7 +4323,8 @@
             "csgraph.minimum_spanning_tree": 0,
             "csgraph.reconstruct_path": 0,
             "csgraph.breadth_first_tree": 0,
-            "csgraph.depth_first_tree": 0
+            "csgraph.depth_first_tree": 0,
+            "csgraph.construct_dist_matrix": 0
         }
     },
     "ext": {
@@ -4337,6 +4340,7 @@
         "csgraph.breadth_first_order": "pass",
         "csgraph.breadth_first_tree": "pass",
         "csgraph.connected_components": "pass",
+        "csgraph.construct_dist_matrix": "pass",
         "csgraph.depth_first_order": "pass",
         "csgraph.depth_first_tree": "pass",
         "csgraph.dijkstra": "pass",

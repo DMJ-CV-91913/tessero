@@ -314,6 +314,34 @@ static void csg_emit_tree(const double *A, int64_t n, int directed, const int64_
     }
 }
 
+/* construct_dist_matrix(graph, predecessors, directed=True): distance from i to j along the predecessor tree
+   rooted at i; 0 on the diagonal, inf where no path. */
+static int r_construct_dist_matrix(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("construct_dist_matrix: graph (square) and 2-D predecessors required"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
+    int64_t ta, tp; double *A = fn_arg_doubles(&args[0], &ta); if (!A) return TSR_ENOMEM;
+    double *P = fn_arg_doubles(&args[1], &tp); if (!P) { fn_free_doubles(A, ta); return TSR_ENOMEM; }
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
+    if (!out) { fn_free_doubles(A, ta); fn_free_doubles(P, tp); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) {
+        if (i == j) { out[i * n + j] = 0.0; continue; }
+        double d = 0.0; int64_t cur = j, steps = 0, ok = 0;
+        while (steps++ <= n) {
+            int64_t p = (int64_t)P[i * n + cur];
+            if (p < 0 || p >= n) break;                                   /* -9999 sentinel: no path */
+            double w = A[p * n + cur] != 0.0 ? A[p * n + cur] : (!directed ? A[cur * n + p] : 0.0);
+            d += w; cur = p;
+            if (cur == i) { ok = 1; break; }
+        }
+        out[i * n + j] = ok ? d : INFINITY;
+    }
+    fn_free_doubles(A, ta); fn_free_doubles(P, tp);
+    return TSR_OK;
+}
+
 static int r_reconstruct_path(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -403,6 +431,7 @@ static const fn_def DEFS[] = {
     ROUTINE("csgraph.structural_rank", 1, "graph", "rank", r_structural_rank, NULL, "Structural rank of a graph's sparsity pattern (scipy.sparse.csgraph.structural_rank)."),
     ROUTINE("csgraph.minimum_spanning_tree", 1, "csgraph, overwrite=False", "mst", r_minimum_spanning_tree, NULL, "Minimum spanning tree of an undirected graph, returned dense (scipy.sparse.csgraph.minimum_spanning_tree)."),
     ROUTINE("csgraph.reconstruct_path", 1, "csgraph, predecessors, directed=True", "cstree", r_reconstruct_path, NULL, "Reconstruct the tree of a shortest-path predecessor list, returned dense (scipy.sparse.csgraph.reconstruct_path)."),
+    ROUTINE("csgraph.construct_dist_matrix", 1, "graph, predecessors, directed=True", "dist_matrix", r_construct_dist_matrix, NULL, "Distance matrix from a predecessor tree (scipy.sparse.csgraph.construct_dist_matrix)."),
     ROUTINE("csgraph.breadth_first_tree", 1, "csgraph, i_start, directed=True", "cstree", r_breadth_first_tree, NULL, "Breadth-first spanning tree, returned dense (scipy.sparse.csgraph.breadth_first_tree)."),
     ROUTINE("csgraph.depth_first_tree", 1, "csgraph, i_start, directed=True", "cstree", r_depth_first_tree, NULL, "Depth-first spanning tree, returned dense (scipy.sparse.csgraph.depth_first_tree)."),
 };

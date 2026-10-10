@@ -22,6 +22,7 @@ final class Csgraph
     'breadth_first_order' => 'breadthFirstOrder',
     'breadth_first_tree' => 'breadthFirstTree',
     'connected_components' => 'connectedComponents',
+    'construct_dist_matrix' => 'constructDistMatrix',
     'depth_first_order' => 'depthFirstOrder',
     'depth_first_tree' => 'depthFirstTree',
     'dijkstra' => 'dijkstra',
@@ -92,6 +93,16 @@ final class Csgraph
     public static function connectedComponents(mixed $csgraph, mixed $directed = true, mixed $connection = 'weak'): mixed
     {
         return Registry::routine('csgraph.connected_components', [$csgraph, $directed, $connection]);
+    }
+
+    /**
+     * Distance matrix from a predecessor tree (scipy.sparse.csgraph.construct_dist_matrix).
+     *
+     * scipy.sparse.csgraph.construct_dist_matrix
+     */
+    public static function constructDistMatrix(mixed $graph, mixed $predecessors, mixed $directed = true): mixed
+    {
+        return Registry::routine('csgraph.construct_dist_matrix', [$graph, $predecessors, $directed]);
     }
 
     /**

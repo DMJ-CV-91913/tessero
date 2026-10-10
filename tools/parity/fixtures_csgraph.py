@@ -141,6 +141,15 @@ for A, directed in [(dir_wgraph(6, 0.4), True), (dir_wgraph(7, 0.35), True), (sy
 calls += [{'fn': 'reconstruct_path', 'cases': rp_c}, {'fn': 'breadth_first_tree', 'cases': bft_c},
           {'fn': 'depth_first_tree', 'cases': dft_c}]
 
+# construct_dist_matrix: distance matrix rebuilt from the predecessor tree
+from scipy.sparse.csgraph import construct_dist_matrix
+cdm_c = []
+for A, directed in [(dir_wgraph(6, 0.4), True), (dir_wgraph(7, 0.35), True), (sym_wgraph(6, 0.5), False)]:
+    D, P = shortest_path(sp.csr_array(A), directed=directed, return_predecessors=True)
+    cdm_c.append({'args': [F.enc(A), F.enc(np.asarray(P, dtype=np.int64)), F.enc(bool(directed))], 'kwargs': {},
+                  'expect': F.enc_result(np.asarray(construct_dist_matrix(A, P, directed=directed), float), []), 'compare': 'tol'})
+calls.append({'fn': 'construct_dist_matrix', 'cases': cdm_c})
+
 out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

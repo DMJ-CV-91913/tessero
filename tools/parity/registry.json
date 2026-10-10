@@ -40,6 +40,11 @@
             "nin": 0,
             "nout": 2
         },
+        "csgraph.construct_dist_matrix": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "csgraph.depth_first_order": {
             "kind": "routine",
             "nin": 0,
