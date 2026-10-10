@@ -262,6 +262,98 @@ static int r_structural_rank(const void *ctx, const tsr_arg *args, int nargs, ts
     return TSR_OK;
 }
 
+/* BFS/DFS predecessor arrays (pred[j] = parent, -1 if unreached/start), SciPy's out-then-in neighbour order. */
+static void csg_bfs_pred(const double *A, int64_t n, int64_t start, int directed, int64_t *pred, int64_t *q)
+{
+    unsigned char *vis = (unsigned char *)calloc((size_t)(n > 0 ? n : 1), 1);
+    if (!vis) return;
+    for (int64_t i = 0; i < n; i++) pred[i] = -1;
+    int64_t cnt = 0, head = 0, lim = directed ? n : 2 * n;
+    vis[start] = 1; q[cnt++] = start;
+    while (head < cnt) {
+        int64_t u = q[head++];
+        for (int64_t t = 0; t < lim; t++) {
+            int64_t v = t < n ? t : t - n;
+            int out = A[u * n + v] != 0.0, in_ = A[v * n + u] != 0.0;
+            if ((t < n ? out : (in_ && !out)) && !vis[v]) { vis[v] = 1; pred[v] = u; q[cnt++] = v; }
+        }
+    }
+    free(vis);
+}
+static void csg_dfs_pred(const double *A, int64_t n, int64_t start, int directed, int64_t *pred, int64_t *stack, int64_t *iter)
+{
+    unsigned char *vis = (unsigned char *)calloc((size_t)(n > 0 ? n : 1), 1);
+    if (!vis) return;
+    for (int64_t i = 0; i < n; i++) pred[i] = -1;
+    int64_t sp = 0, lim = directed ? n : 2 * n;
+    vis[start] = 1; stack[sp] = start; iter[start] = 0;
+    while (sp >= 0) {
+        int64_t u = stack[sp], t = iter[u], found = -1;
+        while (t < lim) {
+            int64_t v = t < n ? t : t - n;
+            int out = A[u * n + v] != 0.0, in_ = A[v * n + u] != 0.0;
+            if ((t < n ? out : (in_ && !out)) && !vis[v]) { found = v; break; }
+            t++;
+        }
+        iter[u] = t + 1;
+        if (found >= 0) { vis[found] = 1; pred[found] = u; sp++; stack[sp] = found; iter[found] = 0; }
+        else sp--;
+    }
+    free(vis);
+}
+
+/* emit a dense tree from a predecessor vector: edge (pred[j], j) at [pred[j]][j] with its graph weight. */
+static void csg_emit_tree(const double *A, int64_t n, int directed, const int64_t *pred, double *out)
+{
+    for (int64_t i = 0; i < n * n; i++) out[i] = 0.0;
+    for (int64_t j = 0; j < n; j++) {
+        int64_t p = pred[j];
+        if (p < 0 || p >= n) continue;
+        double w = A[p * n + j] != 0.0 ? A[p * n + j] : (!directed ? A[j * n + p] : 0.0);
+        out[p * n + j] = w;
+    }
+}
+
+static int r_reconstruct_path(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2 || args[1].kind != 3) { fn_set_error("reconstruct_path: graph (square) and predecessors required"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
+    int64_t ta, tp; double *A = fn_arg_doubles(&args[0], &ta); if (!A) return TSR_ENOMEM;
+    double *P = fn_arg_doubles(&args[1], &tp); if (!P) { fn_free_doubles(A, ta); return TSR_ENOMEM; }
+    int64_t *pred = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
+    if (!pred || !out) { free(pred); fn_free_doubles(A, ta); fn_free_doubles(P, tp); return TSR_ENOMEM; }
+    for (int64_t j = 0; j < n; j++) { int64_t p = (int64_t)P[j]; pred[j] = (p >= 0 && p < n) ? p : -1; }
+    csg_emit_tree(A, n, directed, pred, out);
+    free(pred); fn_free_doubles(A, ta); fn_free_doubles(P, tp);
+    return TSR_OK;
+}
+
+static int r_first_tree(const tsr_arg *args, int nargs, tsr_result *res, int bfs)
+{
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2) { fn_set_error("*_tree: graph (square) and i_start required"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    int64_t start = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
+    int64_t ta; double *A = fn_arg_doubles(&args[0], &ta); if (!A) return TSR_ENOMEM;
+    int64_t *pred = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int64_t *s1 = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int64_t *s2 = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
+    if (!pred || !s1 || !s2 || !out) { free(pred); free(s1); free(s2); fn_free_doubles(A, ta); return TSR_ENOMEM; }
+    if (bfs) csg_bfs_pred(A, n, start, directed, pred, s1);
+    else csg_dfs_pred(A, n, start, directed, pred, s1, s2);
+    csg_emit_tree(A, n, directed, pred, out);
+    free(pred); free(s1); free(s2); fn_free_doubles(A, ta);
+    return TSR_OK;
+}
+static int r_breadth_first_tree(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return r_first_tree(args, nargs, res, 1); }
+static int r_depth_first_tree(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return r_first_tree(args, nargs, res, 0); }
+
 /* minimum_spanning_tree(csgraph): Kruskal MST of the undirected graph, returned dense with each tree edge
    at [min(i,j)][max(i,j)] = weight (SciPy's orientation). Unique (so order-independent) for distinct weights. */
 typedef struct { int64_t i, j; double w; } csg_ed;
@@ -310,6 +402,9 @@ static const fn_def DEFS[] = {
     ROUTINE("csgraph.depth_first_order", 2, "csgraph, i_start, directed=True, return_predecessors=True", "node_array, predecessors", r_depth_first_order, NULL, "Depth-first traversal order and predecessors (scipy.sparse.csgraph.depth_first_order)."),
     ROUTINE("csgraph.structural_rank", 1, "graph", "rank", r_structural_rank, NULL, "Structural rank of a graph's sparsity pattern (scipy.sparse.csgraph.structural_rank)."),
     ROUTINE("csgraph.minimum_spanning_tree", 1, "csgraph, overwrite=False", "mst", r_minimum_spanning_tree, NULL, "Minimum spanning tree of an undirected graph, returned dense (scipy.sparse.csgraph.minimum_spanning_tree)."),
+    ROUTINE("csgraph.reconstruct_path", 1, "csgraph, predecessors, directed=True", "cstree", r_reconstruct_path, NULL, "Reconstruct the tree of a shortest-path predecessor list, returned dense (scipy.sparse.csgraph.reconstruct_path)."),
+    ROUTINE("csgraph.breadth_first_tree", 1, "csgraph, i_start, directed=True", "cstree", r_breadth_first_tree, NULL, "Breadth-first spanning tree, returned dense (scipy.sparse.csgraph.breadth_first_tree)."),
+    ROUTINE("csgraph.depth_first_tree", 1, "csgraph, i_start, directed=True", "cstree", r_depth_first_tree, NULL, "Depth-first spanning tree, returned dense (scipy.sparse.csgraph.depth_first_tree)."),
 };
 
 const fn_table TSR_SCIPY_CSGRAPH_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

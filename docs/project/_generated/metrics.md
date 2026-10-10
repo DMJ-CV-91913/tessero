@@ -18,7 +18,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 37 (86.0 %) | 35 (81.4 %) | 86.0 % / 81.4 % | 94.6 % |
-| **SciPy** | 1562 | 70 (4.5 %) | 1492 | **1138 (76.3 %)** | **1135 (76.1 %)** | 76.3 % / 76.1 % | 99.7 % |
+| **SciPy** | 1562 | 70 (4.5 %) | 1492 | **1141 (76.5 %)** | **1138 (76.3 %)** | 76.5 % / 76.3 % | 99.7 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 244 (72.6 %) | 244 (72.6 %) | 72.6 % / 72.6 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 250 (84.2 %) | 250 (84.2 %) | 84.2 % / 84.2 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 90 (97.8 %) | 90 (97.8 %) | 97.8 % / 97.8 % | 100.0 % |
@@ -30,7 +30,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.signal.windows | 26 | 0 (0.0 %) | 26 | 21 (80.8 %) | 21 (80.8 %) | 80.8 % / 80.8 % | 100.0 % |
 | &nbsp;&nbsp;scipy.sparse | 53 | 15 (28.3 %) | 38 | 20 (52.6 %) | 20 (52.6 %) | 52.6 % / 52.6 % | 100.0 % |
 | &nbsp;&nbsp;scipy.sparse.linalg | 38 | 11 (28.9 %) | 27 | 11 (40.7 %) | 9 (33.3 %) | 40.7 % / 33.3 % | 81.8 % |
-| &nbsp;&nbsp;scipy.sparse.csgraph | 26 | 0 (0.0 %) | 26 | 11 (42.3 %) | 11 (42.3 %) | 42.3 % / 42.3 % | 100.0 % |
+| &nbsp;&nbsp;scipy.sparse.csgraph | 26 | 0 (0.0 %) | 26 | 14 (53.8 %) | 14 (53.8 %) | 53.8 % / 53.8 % | 100.0 % |
 | &nbsp;&nbsp;scipy.spatial | 18 | 3 (16.7 %) | 15 | 2 (13.3 %) | 2 (13.3 %) | 13.3 % / 13.3 % | 100.0 % |
 | &nbsp;&nbsp;scipy.spatial.distance | 27 | 0 (0.0 %) | 27 | 26 (96.3 %) | 26 (96.3 %) | 96.3 % / 96.3 % | 100.0 % |
 | &nbsp;&nbsp;scipy.cluster.vq | 4 | 0 (0.0 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -38,7 +38,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 158 (96.9 %) | 158 (96.9 %) | 96.9 % / 96.9 % | 100.0 % |
 
-The kernel function registry holds 1367 functions; their fixtures pass on the FFI backend for 1364 and on the extension for 1364.
+The kernel function registry holds 1370 functions; their fixtures pass on the FFI backend for 1367 and on the extension for 1367.
 Registry functions without a recorded fixture run: np.cumulativeSimpson, np.cumulativeTrapezoid, special.logSoftmax.
 
 Exclusions by category (definitions in `tools/parity/scope.yaml`):

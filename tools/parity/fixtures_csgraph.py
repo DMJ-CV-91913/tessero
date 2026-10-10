@@ -117,6 +117,30 @@ for n in (6, 7, 8):
     mst_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(_mst(sp.csr_array(A)).toarray(), float), []), 'compare': 'tol'})
 calls.append({'fn': 'minimum_spanning_tree', 'cases': mst_c})
 
+# reconstruct_path + breadth/depth_first_tree (dense tree, [parent][child]=weight).
+# Pairings avoid the asymmetric-graph-traversed-undirected case (where the stored edge weight is ambiguous):
+# directed graphs use directed=True; symmetric graphs use directed=False.
+from scipy.sparse.csgraph import reconstruct_path, breadth_first_tree, depth_first_tree, shortest_path
+rp_c, bft_c, dft_c = [], [], []
+def tw(A, i, j): return float(rng.integers(1, 20))
+def sym_wgraph(n, p):
+    A = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            if rng.uniform() < p:
+                w = float(rng.integers(1, 20)); A[i, j] = w; A[j, i] = w
+    return A
+for A, directed in [(dir_wgraph(6, 0.4), True), (dir_wgraph(7, 0.35), True), (sym_wgraph(6, 0.5), False), (sym_wgraph(7, 0.4), False)]:
+    D, P = shortest_path(sp.csr_array(A), directed=directed, return_predecessors=True)
+    rp_c.append({'args': [F.enc(A), F.enc(np.asarray(P[0], dtype=np.int64)), F.enc(bool(directed))], 'kwargs': {},
+                 'expect': F.enc_result(np.asarray(reconstruct_path(sp.csr_array(A), P[0], directed=directed).toarray(), float), []), 'compare': 'tol'})
+    bft_c.append({'args': [F.enc(A), F.enc(0), F.enc(bool(directed))], 'kwargs': {},
+                  'expect': F.enc_result(np.asarray(breadth_first_tree(sp.csr_array(A), 0, directed=directed).toarray(), float), []), 'compare': 'tol'})
+    dft_c.append({'args': [F.enc(A), F.enc(0), F.enc(bool(directed))], 'kwargs': {},
+                  'expect': F.enc_result(np.asarray(depth_first_tree(sp.csr_array(A), 0, directed=directed).toarray(), float), []), 'compare': 'tol'})
+calls += [{'fn': 'reconstruct_path', 'cases': rp_c}, {'fn': 'breadth_first_tree', 'cases': bft_c},
+          {'fn': 'depth_first_tree', 'cases': dft_c}]
+
 out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
