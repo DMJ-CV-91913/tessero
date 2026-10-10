@@ -63,6 +63,14 @@
 | `hierarchy.ward` | call | rtol 1e-09 |
 | `hierarchy.centroid` | call | rtol 1e-09 |
 | `hierarchy.median` | call | rtol 1e-09 |
+| `hierarchy.maxdists` | call | rtol 1e-09 |
+| `hierarchy.inconsistent` | call | rtol 1e-09 |
+| `hierarchy.maxinconsts` | call | rtol 1e-09 |
+| `hierarchy.maxRstat` | call | rtol 1e-09 |
+| `hierarchy.leaves_list` | call | rtol 1e-09 |
+| `hierarchy.cophenet` | call | rtol 1e-09 |
+| `hierarchy.to_mlab_linkage` | call | rtol 1e-09 |
+| `hierarchy.from_mlab_linkage` | call | rtol 1e-09 |
 | `interpolate.pchip_interpolate` | call | rtol 0 |
 | `interpolate.PchipInterpolator` | call | rtol 0 |
 | `interpolate.Akima1DInterpolator` | call | rtol 0 |
