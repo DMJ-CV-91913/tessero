@@ -250,6 +250,32 @@ static int r_expm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     return rc;
 }
 
+/* expm_multiply(A, B): expm(A) @ B (the simple no-time-grid form). A square, B a vector (n,) or matrix (n, k). */
+static int r_expm_multiply(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || args[1].kind != 3) { fn_set_error("expm_multiply: A must be square and B an array"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    const tsr_array *Bd = &args[1].arr;
+    int vector = Bd->ndim == 1;
+    int64_t k = vector ? 1 : Bd->shape[1];
+    if (Bd->shape[0] != n) { fn_set_error("expm_multiply: B has the wrong number of rows"); return TSR_EARG; }
+    int64_t La, Lb; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
+    double *B = fn_arg_doubles(&args[1], &Lb); if (!B) { fn_free_doubles(A, La); return TSR_ENOMEM; }
+    double *E = (double *)malloc((size_t)(n * n) * sizeof(double));
+    int64_t sh1[1] = {n}, sh2[2] = {n, k};
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, vector ? sh1 : sh2);
+    int rc = TSR_OK;
+    if (!E || !out) rc = TSR_ENOMEM;
+    else if (sl_expm(A, n, E) != 0) { fn_set_error("expm_multiply: the matrix exponential failed"); rc = TSR_EARG; }
+    else for (int64_t i = 0; i < n; i++) for (int64_t c = 0; c < k; c++) {
+        double s = 0.0; for (int64_t j = 0; j < n; j++) s += E[i * n + j] * B[j * k + c];
+        out[i * k + c] = s;
+    }
+    free(E); fn_free_doubles(A, La); fn_free_doubles(B, Lb);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("splinalg.spsolve", 1, "A, b, permc_spec=None, use_umfpack=True", "x", r_spsolve, NULL, "Solve a sparse linear system A x = b (scipy.sparse.linalg.spsolve)."),
     ROUTINE("splinalg.spsolve_triangular", 1, "A, b, lower=True, overwrite_A=False, overwrite_b=False, unit_diagonal=False", "x", r_spsolve_triangular, NULL, "Solve a triangular sparse system (scipy.sparse.linalg.spsolve_triangular)."),
@@ -259,6 +285,7 @@ static const fn_def DEFS[] = {
     ROUTINE("splinalg.inv", 1, "A", "Ainv", r_inv, NULL, "Inverse of a square sparse matrix, returned dense (scipy.sparse.linalg.inv)."),
     ROUTINE("splinalg.matrix_power", 1, "A, power", "Ap", r_matrix_power, NULL, "Integer matrix power of a square sparse matrix (scipy.sparse.linalg.matrix_power)."),
     ROUTINE("splinalg.expm", 1, "A", "eA", r_expm, NULL, "Matrix exponential of a sparse matrix (scipy.sparse.linalg.expm)."),
+    ROUTINE("splinalg.expm_multiply", 1, "A, B, start=None, stop=None, num=None, endpoint=None", "C", r_expm_multiply, NULL, "Action of the matrix exponential, expm(A) @ B (scipy.sparse.linalg.expm_multiply)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_LINALG_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

@@ -80,8 +80,17 @@ for n in (3, 4, 5):
     A = rng.normal(size=(n, n)) * 0.5
     expm_c.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sl.expm(sp.csr_array(A)).toarray(), float), []), 'compare': 'tol', 'tol': {'atol': 1e-8, 'rtol': 1e-8}})
 
+em_c = []
+for n in (3, 4, 5):
+    A = rng.normal(size=(n, n)) * 0.5; As = sp.csr_array(A)
+    b = rng.normal(size=n)
+    em_c.append({'args': [F.enc(A), F.enc(b)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sl.expm_multiply(As, b), float), []), 'compare': 'tol', 'tol': {'atol': 1e-8, 'rtol': 1e-8}})
+    B = rng.normal(size=(n, 2))
+    em_c.append({'args': [F.enc(A), F.enc(B)], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sl.expm_multiply(As, B), float), []), 'compare': 'tol', 'tol': {'atol': 1e-8, 'rtol': 1e-8}})
+
 out = {'module': 'splinalg', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': [
     {'fn': 'inv', 'cases': inv_c}, {'fn': 'matrix_power', 'cases': pow_c}, {'fn': 'expm', 'cases': expm_c},
+    {'fn': 'expm_multiply', 'cases': em_c},
     {'fn': 'spsolve', 'cases': solve_c}, {'fn': 'spsolve_triangular', 'cases': trisolve_c},
     {'fn': 'norm', 'cases': norm_c}, {'fn': 'spbandwidth', 'cases': band_c},
     {'fn': 'is_sptriangular', 'cases': trit_c},
