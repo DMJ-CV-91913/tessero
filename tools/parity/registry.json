@@ -5770,6 +5770,11 @@
             "nin": null,
             "nout": null
         },
+        "stats.invwishart": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "stats.iqr": {
             "kind": "routine",
             "nin": 0,
@@ -5951,6 +5956,11 @@
             "nout": null
         },
         "stats.mannwhitneyu": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "stats.matrix_normal": {
             "kind": "routine",
             "nin": 0,
             "nout": 2
@@ -6454,6 +6464,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 3
+        },
+        "stats.wishart": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "stats.wrapcauchy": {
             "kind": "dist",

@@ -121,6 +121,7 @@ final class Stats
     'invgamma' => 'invgamma',
     'invgauss' => 'invgauss',
     'invweibull' => 'invweibull',
+    'invwishart' => 'invwishart',
     'iqr' => 'iqr',
     'irwinhall' => 'irwinhall',
     'jarque_bera' => 'jarqueBera',
@@ -158,6 +159,7 @@ final class Stats
     'loguniform' => 'loguniform',
     'lomax' => 'lomax',
     'mannwhitneyu' => 'mannwhitneyu',
+    'matrix_normal' => 'matrixNormal',
     'maxwell' => 'maxwell',
     'median_abs_deviation' => 'medianAbsDeviation',
     'median_test' => 'medianTest',
@@ -258,6 +260,7 @@ final class Stats
     'weibull_min' => 'weibullMin',
     'weightedtau' => 'weightedtau',
     'wilcoxon' => 'wilcoxon',
+    'wishart' => 'wishart',
     'wrapcauchy' => 'wrapcauchy',
     'yeojohnson' => 'yeojohnson',
     'yeojohnson_llf' => 'yeojohnsonLlf',
@@ -1349,6 +1352,18 @@ final class Stats
     }
 
     /**
+     * Inverse-Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.invwishart).
+     *
+     * scipy.stats.invwishart
+     *
+     * @return mixed one array, or an array keyed by pdf, logpdf when several results are requested
+     */
+    public static function invwishart(mixed $df, mixed $scale, mixed $x): mixed
+    {
+        return Registry::routine('stats.invwishart', [$df, $scale, $x]);
+    }
+
+    /**
      * Interquartile range; rng=None means (25, 75) (scipy.stats.iqr).
      *
      * scipy.stats.iqr
@@ -1734,6 +1749,18 @@ final class Stats
     public static function mannwhitneyu(mixed $x, mixed $y, mixed $useContinuity = true, mixed $alternative = 'two-sided', mixed $axis = 0, mixed $method = 'auto', mixed $nanPolicy = 'propagate', mixed $keepdims = false): mixed
     {
         return Registry::routine('stats.mannwhitneyu', [$x, $y, $useContinuity, $alternative, $axis, $method, $nanPolicy, $keepdims]);
+    }
+
+    /**
+     * Matrix-normal pdf and log-pdf at a matrix x (scipy.stats.matrix_normal).
+     *
+     * scipy.stats.matrix_normal
+     *
+     * @return mixed one array, or an array keyed by pdf, logpdf when several results are requested
+     */
+    public static function matrixNormal(mixed $mean, mixed $rowcov, mixed $colcov, mixed $x): mixed
+    {
+        return Registry::routine('stats.matrix_normal', [$mean, $rowcov, $colcov, $x]);
     }
 
     /**
@@ -2786,6 +2813,18 @@ final class Stats
     public static function wilcoxon(mixed $x, mixed $y = null, mixed $zeroMethod = 'wilcox', mixed $correction = false, mixed $alternative = 'two-sided', mixed $method = 'auto', mixed $axis = 0, mixed $nanPolicy = 'propagate', mixed $keepdims = false): mixed
     {
         return Registry::routine('stats.wilcoxon', [$x, $y, $zeroMethod, $correction, $alternative, $method, $axis, $nanPolicy, $keepdims]);
+    }
+
+    /**
+     * Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.wishart).
+     *
+     * scipy.stats.wishart
+     *
+     * @return mixed one array, or an array keyed by pdf, logpdf when several results are requested
+     */
+    public static function wishart(mixed $df, mixed $scale, mixed $x): mixed
+    {
+        return Registry::routine('stats.wishart', [$df, $scale, $x]);
     }
 
     /**

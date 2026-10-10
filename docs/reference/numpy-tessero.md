@@ -698,6 +698,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.invgamma` | `Tessero\Stats::invgamma()` |
 | `scipy.stats.invgauss` | `Tessero\Stats::invgauss()` |
 | `scipy.stats.invweibull` | `Tessero\Stats::invweibull()` |
+| `scipy.stats.invwishart` | `Tessero\Stats::invwishart()` |
 | `scipy.stats.iqr` | `Tessero\Stats::iqr()` |
 | `scipy.stats.irwinhall` | `Tessero\Stats::irwinhall()` |
 | `scipy.stats.jarque_bera` | `Tessero\Stats::jarqueBera()` |
@@ -735,6 +736,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.loguniform` | `Tessero\Stats::loguniform()` |
 | `scipy.stats.lomax` | `Tessero\Stats::lomax()` |
 | `scipy.stats.mannwhitneyu` | `Tessero\Stats::mannwhitneyu()` |
+| `scipy.stats.matrix_normal` | `Tessero\Stats::matrixNormal()` |
 | `scipy.stats.maxwell` | `Tessero\Stats::maxwell()` |
 | `scipy.stats.median_abs_deviation` | `Tessero\Stats::medianAbsDeviation()` |
 | `scipy.stats.median_test` | `Tessero\Stats::medianTest()` |
@@ -835,6 +837,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.weibull_min` | `Tessero\Stats::weibullMin()` |
 | `scipy.stats.weightedtau` | `Tessero\Stats::weightedtau()` |
 | `scipy.stats.wilcoxon` | `Tessero\Stats::wilcoxon()` |
+| `scipy.stats.wishart` | `Tessero\Stats::wishart()` |
 | `scipy.stats.wrapcauchy` | `Tessero\Stats::wrapcauchy()` |
 | `scipy.stats.yeojohnson` | `Tessero\Stats::yeojohnson()` |
 | `scipy.stats.yeojohnson_llf` | `Tessero\Stats::yeojohnsonLlf()` |

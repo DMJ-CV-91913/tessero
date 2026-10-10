@@ -581,6 +581,23 @@ def main():
         vc.append({'args': [F.enc(mu), F.enc(kappa), F.enc(X)], 'kwargs': {},
                    'expect': F.enc(np.asarray(st.vonmises_fisher(mu, kappa).pdf(X))), 'compare': 'tol'})
     B['vonmises_fisher'] = vc
+    # matrix-variate densities (single matrix per call -> pdf + logpdf scalars)
+    mnc = []
+    for (nn, pp) in ((3, 2), (4, 3), (2, 4)):
+        M = rr.normal(size=(nn, pp)); AU = rr.normal(size=(nn, nn)); U = AU @ AU.T + nn * np.eye(nn)
+        AV = rr.normal(size=(pp, pp)); V = AV @ AV.T + pp * np.eye(pp); Xm = rr.normal(size=(nn, pp))
+        md = st.matrix_normal(M, U, V)
+        mnc.append({'args': [F.enc(M), F.enc(U), F.enc(V), F.enc(Xm)], 'kwargs': {},
+                    'expect': {'dict': {'pdf': F.enc_result_one(md.pdf(Xm)), 'logpdf': F.enc_result_one(md.logpdf(Xm))}}, 'compare': 'tol'})
+    B['matrix_normal'] = mnc
+    for fn, fx in (('wishart', st.wishart), ('invwishart', st.invwishart)):
+        wc = []
+        for d in (2, 3, 4):
+            As = rr.normal(size=(d, d)); scale = As @ As.T + d * np.eye(d); df = float(rr.uniform(d + 1, d + 6))
+            Ax = rr.normal(size=(d, d)); Xw = Ax @ Ax.T + d * np.eye(d); dist = fx(df, scale)
+            wc.append({'args': [F.enc(df), F.enc(scale), F.enc(Xw)], 'kwargs': {},
+                       'expect': {'dict': {'pdf': F.enc_result_one(dist.pdf(Xw)), 'logpdf': F.enc_result_one(dist.logpdf(Xw))}}, 'compare': 'tol'})
+        B[fn] = wc
     write('desc', B)
 
 
