@@ -28,10 +28,17 @@ exclude:
       generic, number, integer, inexact, floating, complexfloating, signedinteger, unsignedinteger, ufunc, dtype, ndarray,
       little_endian, index_exp, s_, c_, r_, mgrid, ogrid, asanyarray, require, isdtype, issubdtype, min_scalar_type,
       apply_along_axis, apply_over_axes, vectorize]}
+  - {category: E4, module: numpy, names: [byte, short, ushort, uint, uintc, uintp, ulong, ulonglong, longlong, int8, int16,
+      uint16, uint32, uint64, half, float16, float128, longdouble, complex64, complex256, clongdouble, csingle,
+      True_, False_, newaxis, fromfunction, piecewise, mask_indices, einsum_path, isfortran, may_share_memory,
+      shares_memory, busdaycalendar]}
   - {category: E3, module: numpy.random, names: '*', except: [Generator, default_rng, SeedSequence, PCG64, BitGenerator]}
   - {category: E4, module: numpy.random, names: [BitGenerator]}
   - {category: E4, module: numpy.ndarray, names: [ctypes, dump, dumps, base, flags, flat, setflags, data, device, to_device, itemsize]}
   - {category: E1, module: numpy.ndarray, names: [getfield, setfield]}
+  - {category: E5, module: numpy.ndarray, names: [tofile]}
+  - {category: E4, module: numpy.linalg, names: [LinAlgError]}
+  - {category: E4, module: numpy.polynomial.chebyshev, names: [chebinterpolate]}
   - {category: E4, module: numpy.random.Generator, names: [bit_generator, spawn]}
   - {category: E4, module: numpy.polynomial, names: [set_default_printstyle]}
   - {category: E4, module: scipy.special, names: [errstate, geterr, seterr, SpecialFunctionError, SpecialFunctionWarning]}
