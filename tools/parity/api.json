@@ -8011,6 +8011,12 @@
                 "doc": ""
             },
             {
+                "name": "choice",
+                "static": false,
+                "sig": "choice($a, $size = null, $replace = true, $p = null)",
+                "doc": ""
+            },
+            {
                 "name": "shuffle",
                 "static": false,
                 "sig": "shuffle($x)",
