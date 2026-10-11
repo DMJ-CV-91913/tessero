@@ -1000,6 +1000,117 @@ static int r_histogram(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+
+/* searchsorted(e, v, side='right'): first index with e[idx] > v, in [0, ne]. */
+static int64_t hist2d_bin(const double *e, int64_t ne, double v)
+{
+    int64_t lo = 0, hi = ne;
+    while (lo < hi) { int64_t mid = lo + (hi - lo) / 2; if (e[mid] > v) hi = mid; else lo = mid + 1; }
+    int64_t c = lo;
+    if (v == e[ne - 1]) c -= 1;              /* on the rightmost edge: into the last real bin */
+    return c;                                /* 1..nb is a real bin; <=0 under, >nb over */
+}
+
+static int hist2d_edges(double lo, double hi, int64_t nb, double *e)
+{
+    const double step = (hi - lo) / (double)nb;
+    for (int64_t i = 0; i <= nb; i++) e[i] = (double)i * step + lo;
+    e[nb] = hi;
+    for (int64_t i = 0; i < nb; i++) if (!(e[i] < e[i + 1])) return -1;
+    return 0;
+}
+
+/* numpy.histogram2d(x, y, bins, range, density, weights): the 2-D histogram, matching numpy's
+   histogramdd binning (searchsorted side='right' with the rightmost-edge fix and outlier exclusion).
+   bins is an int (shared) or a pair [nx, ny]; explicit edge arrays are not supported. */
+static int r_histogram2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    double *x = NULL, *y = NULL, *w = NULL, *xe = NULL, *ye = NULL, *cnt = NULL;
+    int64_t nx = 0, ny = 0, nw = 0, nbx = 10, nby = 10;
+    int rc = TSR_OK;
+    if (!require_array(args, nargs, 0, "x") || !require_array(args, nargs, 1, "y")) return TSR_EARG;
+    x = fn_arg_doubles(&args[0], &nx);
+    if (!x) return TSR_ENOMEM;
+    y = fn_arg_doubles(&args[1], &ny);
+    if (!y) { rc = TSR_ENOMEM; goto done; }
+    if (nx != ny) { rc = TSR_EARG; fn_set_error("x and y must have the same length."); goto done; }
+    if (nargs > 2 && args[2].kind == 1) { nbx = nby = (int64_t)args[2].num; }
+    else if (nargs > 2 && args[2].kind == 3) {
+        int64_t k; double *b = fn_arg_doubles(&args[2], &k);
+        if (!b) { rc = TSR_ENOMEM; goto done; }
+        if (k == 1) { nbx = nby = (int64_t)b[0]; }
+        else if (k == 2) { nbx = (int64_t)b[0]; nby = (int64_t)b[1]; }
+        else { fn_free_doubles(b, k); rc = TSR_EARG; fn_set_error("bins must be an int or a pair of ints (explicit edge arrays are not supported)."); goto done; }
+        fn_free_doubles(b, k);
+    }
+    if (nbx < 1 || nby < 1) { rc = TSR_EARG; fn_set_error("`bins` must be positive."); goto done; }
+    double x0 = 0, x1 = 0, y0 = 0, y1 = 0; int have_range = 0;
+    if (nargs > 3 && args[3].kind == 3) {
+        int64_t k; double *r = fn_arg_doubles(&args[3], &k);
+        if (!r) { rc = TSR_ENOMEM; goto done; }
+        if (k != 4) { fn_free_doubles(r, k); rc = TSR_EARG; fn_set_error("range must be [[xmin,xmax],[ymin,ymax]]."); goto done; }
+        x0 = r[0]; x1 = r[1]; y0 = r[2]; y1 = r[3];
+        fn_free_doubles(r, k);
+        have_range = 1;
+    }
+    if (!have_range) {
+        if (nx == 0) { x0 = 0; x1 = 1; y0 = 0; y1 = 1; }
+        else {
+            x0 = x1 = x[0]; y0 = y1 = y[0];
+            for (int64_t i = 1; i < nx; i++) {
+                if (x[i] < x0) x0 = x[i]; if (x[i] > x1) x1 = x[i];
+                if (y[i] < y0) y0 = y[i]; if (y[i] > y1) y1 = y[i];
+            }
+        }
+    }
+    if (x0 == x1) { x0 -= 0.5; x1 += 0.5; }
+    if (y0 == y1) { y0 -= 0.5; y1 += 0.5; }
+    const int density = arg_bool(args, nargs, 4, 0);
+    if (nargs > 5 && args[5].kind == 3) {
+        w = fn_arg_doubles(&args[5], &nw);
+        if (!w) { rc = TSR_ENOMEM; goto done; }
+        if (nw != nx) { rc = TSR_EARG; fn_set_error("weights should have the same length as x and y."); goto done; }
+    }
+    xe = (double *)tsr_alloc((nbx + 1) * 8 + 64);
+    ye = (double *)tsr_alloc((nby + 1) * 8 + 64);
+    cnt = (double *)tsr_alloc(nbx * nby * 8 + 64);
+    if (!xe || !ye || !cnt) { rc = TSR_ENOMEM; goto done; }
+    if (hist2d_edges(x0, x1, nbx, xe) != 0 || hist2d_edges(y0, y1, nby, ye) != 0) {
+        rc = TSR_EARG; fn_set_error("Too many bins for data range."); goto done;
+    }
+    for (int64_t i = 0; i < nbx * nby; i++) cnt[i] = 0;
+    for (int64_t i = 0; i < nx; i++) {
+        int64_t cx = hist2d_bin(xe, nbx + 1, x[i]);
+        int64_t cy = hist2d_bin(ye, nby + 1, y[i]);
+        if (cx >= 1 && cx <= nbx && cy >= 1 && cy <= nby) cnt[(cx - 1) * nby + (cy - 1)] += w ? w[i] : 1.0;
+    }
+    if (density) {
+        double total = 0;
+        for (int64_t i = 0; i < nbx * nby; i++) total += cnt[i];
+        for (int64_t i = 0; i < nbx; i++)
+            for (int64_t j = 0; j < nby; j++)
+                cnt[i * nby + j] = cnt[i * nby + j] / ((xe[i + 1] - xe[i]) * (ye[j + 1] - ye[j])) / total;
+    }
+    {
+        int64_t sh[2] = { nbx, nby };
+        /* numpy.histogram2d always returns float64 counts (like histogramdd). */
+        double *p = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+        if (!p) { rc = TSR_ENOMEM; goto done; }
+        for (int64_t i = 0; i < nbx * nby; i++) p[i] = cnt[i];
+        rc = result_vec(&res[1], TSR_F64, xe, nbx + 1);
+        if (rc == TSR_OK) rc = result_vec(&res[2], TSR_F64, ye, nby + 1);
+    }
+done:
+    if (x) fn_free_doubles(x, nx);
+    if (y) fn_free_doubles(y, ny);
+    if (w) fn_free_doubles(w, nw);
+    if (xe) tsr_free(xe, (nbx + 1) * 8 + 64);
+    if (ye) tsr_free(ye, (nby + 1) * 8 + 64);
+    if (cnt) tsr_free(cnt, nbx * nby * 8 + 64);
+    return rc;
+}
+
 /* numpy.percentile(x, q) with the linear method on a sorted, NaN-free sample (used by the fd estimator) */
 double np_percentile_linear(const double *s, int64_t n, double q)
 {
@@ -1378,6 +1489,8 @@ const fn_def NP_SETS[] = {
             "Histogram of the data: counts (or density) and bin edges (numpy.histogram)."),
     ROUTINE("np.histogram_bin_edges", 1, "a, bins=10, range=None, weights=None", "bin_edges", r_histogram, &H_EDGES,
             "Bin edges numpy.histogram would use (numpy.histogram_bin_edges)."),
+    ROUTINE("np.histogram2d", 3, "x, y, bins=10, range=None, density=False, weights=None", "H, xedges, yedges", r_histogram2d, NULL,
+            "The 2-D histogram of a set of points: counts (or density) and the bin edges (numpy.histogram2d)."),
     ROUTINE("np.cov", 1, "m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None", "cov", r_cov, &C_COV,
             "Covariance matrix (numpy.cov)."),
     ROUTINE("np.corrcoef", 1, "x, y=None, rowvar=True", "corrcoef", r_cov, &C_CORR, "Pearson correlation coefficients (numpy.corrcoef)."),

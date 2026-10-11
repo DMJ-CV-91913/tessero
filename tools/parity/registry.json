@@ -1395,6 +1395,11 @@
             "nin": 0,
             "nout": 2
         },
+        "np.histogram2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "np.histogram_bin_edges": {
             "kind": "routine",
             "nin": 0,
