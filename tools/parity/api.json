@@ -5815,6 +5815,12 @@
                 "doc": "Integers in [low, high); with one bound, [0, low)."
             },
             {
+                "name": "bytes",
+                "static": false,
+                "sig": "bytes(int $length): string",
+                "doc": "`$length` random bytes as a binary string (numpy.random.Generator.bytes). Even $length 0 advances the stream by one 32-bit draw, exactly as NumPy does."
+            },
+            {
                 "name": "choice",
                 "static": false,
                 "sig": "choice(Tessero\\NDArray|array|int $a, array|int|null $size = null, bool $replace = true, ?array $p = null): mixed",
@@ -8103,6 +8109,12 @@
                 "name": "integers",
                 "static": false,
                 "sig": "integers($low, $high = null, $size = null, $endpoint = false)",
+                "doc": ""
+            },
+            {
+                "name": "bytes",
+                "static": false,
+                "sig": "bytes(int $length)",
                 "doc": ""
             },
             {

@@ -172,6 +172,21 @@ void tsr_pcg64_normal(uint64_t *state, int64_t n, double mean, double sd, double
 }
 
 /* Lemire's nearly-divisionless bounded integers, exactly as numpy's random_bounded_uint64_fill (use_masked=False). */
+/* numpy.random.Generator.bytes(length): `length` random bytes. NumPy draws n_uint32 = (length-1)/4 + 1
+   uint32 values (C truncation toward zero, so length 0 still draws one) and returns the first `length`
+   bytes of their little-endian image -- i.e. integers(0, 2**32, n_uint32, uint32).tobytes()[:length]. The
+   tail of the last uint32 beyond `length` is discarded, matching numpy's state advance exactly. */
+void tsr_pcg64_bytes(uint64_t *state, int64_t n, uint8_t *out)
+{
+    int64_t n_uint32 = (n - 1) / 4 + 1;
+    int64_t produced = 0;
+    for (int64_t i = 0; i < n_uint32; i++) {
+        uint32_t u = next32(state);
+        for (int b = 0; b < 4 && produced < n; b++)
+            out[produced++] = (uint8_t)(u >> (8 * b));
+    }
+}
+
 void tsr_pcg64_integers(uint64_t *state, int64_t n, int64_t low, int64_t high, int64_t *out)
 {
     if (n <= 0) return;

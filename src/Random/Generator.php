@@ -86,6 +86,22 @@ final class Generator
     }
 
     /**
+     * `$length` random bytes as a binary string (numpy.random.Generator.bytes). Even $length 0 advances
+     * the stream by one 32-bit draw, exactly as NumPy does.
+     */
+    public function bytes(int $length): string
+    {
+        if ($length < 0) {
+            throw new TesseroException('bytes: length must be non-negative.');
+        }
+        $ffi = Library::ffi();
+        $buf = $ffi->new('uint8_t[' . max(1, $length) . ']');
+        $ffi->tsr_pcg64_bytes($this->state, $length, $buf);
+
+        return $length === 0 ? '' : \FFI::string($buf, $length);
+    }
+
+    /**
      * Sample from a 1-D array (or arange(a) for an int). Probabilities $p use
      * NumPy's CDF-inversion, so the draws match numpy's choice(..., p=p).
      */
