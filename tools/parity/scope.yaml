@@ -373,6 +373,7 @@ legacy:
     dirichlet: {ffi: [R::dirichlet], ext: [XR::dirichlet], fixtures: [random.dirichlet]}
     multinomial: {ffi: [R::multinomial], ext: [XR::multinomial], fixtures: [random.multinomial]}
     permuted: {ffi: [R::permuted], ext: [XR::permuted], fixtures: [random.permuted]}
+    multivariate_hypergeometric: {ffi: [R::multivariateHypergeometric], ext: [XR::multivariateHypergeometric], fixtures: [random.multivariate_hypergeometric]}
     shuffle: {ffi: [R::shuffle], ext: [XR::shuffle], tests: random}
   scipy.special:
     erf: {ffi: [M::erf], ext: [XM::erf], tests: math}

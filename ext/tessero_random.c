@@ -537,6 +537,72 @@ static PHP_METHOD(Generator, permuted)
     }
 }
 
+/* multivariateHypergeometric(colors, nsample, size=null, method='marginals'): sequential hypergeometric draws. */
+static PHP_METHOD(Generator, multivariateHypergeometric)
+{
+    zval *colors_z, *size = NULL;
+    zend_long nsample;
+    zend_string *method = NULL;
+    ZEND_PARSE_PARAMETERS_START(2, 4)
+        Z_PARAM_ARRAY(colors_z)
+        Z_PARAM_LONG(nsample)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL_OR_NULL(size)
+        Z_PARAM_STR_OR_NULL(method)
+    ZEND_PARSE_PARAMETERS_END();
+    uint64_t *st = gen_of(Z_OBJ_P(ZEND_THIS))->st;
+    if (method != NULL && strcmp(ZSTR_VAL(method), "marginals") != 0) {
+        zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: only method='marginals' is supported.", 0); RETURN_THROWS();
+    }
+
+    const int64_t K = zend_hash_num_elements(Z_ARRVAL_P(colors_z));
+    if (K < 1) { zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: colors must have at least one element.", 0); RETURN_THROWS(); }
+    int64_t *colors = (int64_t *)emalloc((size_t)K * sizeof(int64_t));
+    int64_t total = 0;
+    { int64_t i = 0; zval *e; ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(colors_z), e) {
+        int64_t c = zval_get_long(e);
+        if (c < 0) { efree(colors); zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: colors must be nonnegative.", 0); RETURN_THROWS(); }
+        colors[i++] = c; total += c;
+    } ZEND_HASH_FOREACH_END(); }
+    if (nsample < 0) { efree(colors); zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: nsample must be nonnegative.", 0); RETURN_THROWS(); }
+    if (nsample > total) { efree(colors); zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: nsample > sum(colors)", 0); RETURN_THROWS(); }
+
+    int64_t sdims[32];
+    const int snd = size_shape(size, sdims);
+    if (snd == -2) { efree(colors); RETURN_THROWS(); }
+    int nd;
+    int64_t oshape[40], rows = 1;
+    if (snd < 0) { nd = 1; oshape[0] = K; }
+    else { nd = snd + 1; for (int d = 0; d < snd; d++) { oshape[d] = sdims[d]; rows *= sdims[d]; } oshape[snd] = K; }
+
+    if (tsr_ndarray_new(return_value, TSR_I64, nd, oshape, 0) == FAILURE) { efree(colors); RETURN_THROWS(); }
+    tsr_array *o = &Z_TSR_P(return_value)->a;
+    int64_t *out = (int64_t *)((char *)o->data + o->offset);
+
+    const int hid = tsr_fn_find("random.hypergeometric");
+    if (hid < 0) { efree(colors); zval_ptr_dtor(return_value); zend_throw_error(NULL, "random.hypergeometric not registered"); RETURN_THROWS(); }
+    double dummy[1] = { 0.0 };
+    for (int64_t r = 0; r < rows; r++) {
+        int64_t remaining = total, ns = nsample;
+        for (int64_t j = 0; j < K - 1; j++) {
+            int64_t rv = 0;
+            if (ns > 0 && remaining > 0) {
+                double ng = (double)colors[j], nb = (double)(remaining - colors[j]), nns = (double)ns;
+                int64_t res_i = 0;
+                void *ptrs[4] = { &ng, &nb, &nns, &res_i };
+                int rc = tsr_fn_random(hid, st, dummy, 0, NULL, 4, ptrs, NULL, TSR_I64);
+                if (rc < 0) { efree(colors); zval_ptr_dtor(return_value); zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: sampling failed", 0); RETURN_THROWS(); }
+                rv = res_i;
+            }
+            out[r * K + j] = rv;
+            ns -= rv;
+            remaining -= colors[j];
+        }
+        out[r * K + (K - 1)] = ns;
+    }
+    efree(colors);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, seed, "null")
 ZEND_END_ARG_INFO()
@@ -575,6 +641,13 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ai_none_g, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(ai_mvhg, 0, 0, 2)
+    ZEND_ARG_INFO(0, colors)
+    ZEND_ARG_TYPE_INFO(0, nsample, IS_LONG, 0)
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, size, "null")
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, method, "marginals")
+ZEND_END_ARG_INFO()
+
 static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, defaultRng, ai_default_rng, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(Generator, integers, ai_integers, ZEND_ACC_PUBLIC)
@@ -582,6 +655,7 @@ static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, dirichlet, ai_dirichlet, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, multinomial, ai_multinomial, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, permuted, ai_permuted, ZEND_ACC_PUBLIC)
+    PHP_ME(Generator, multivariateHypergeometric, ai_mvhg, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, shuffle, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, permutation, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, getState, ai_none_g, ZEND_ACC_PUBLIC)
