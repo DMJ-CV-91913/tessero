@@ -220,6 +220,55 @@ final class LeastSquares
      * @param list<float> $b
      * @return array{0: list<float>, 1: float}
      */
+    /**
+     * Isotonic (monotonic) regression by the Pool Adjacent Violators Algorithm
+     * (scipy.optimize.isotonic_regression): the weighted least-squares best monotonic fit to $y.
+     *
+     * @param list<int|float>      $y
+     * @param list<int|float>|null $weights
+     * @return list<float>
+     */
+    public static function isotonicRegression(array $y, ?array $weights = null, bool $increasing = true): array
+    {
+        $y = array_map('floatval', array_values($y));
+        $n = count($y);
+        if ($n === 0) {
+            return [];
+        }
+        $w = $weights === null ? array_fill(0, $n, 1.0) : array_map('floatval', array_values($weights));
+        if (! $increasing) {
+            $y = array_reverse($y);
+            $w = array_reverse($w);
+        }
+        $vals = [];
+        $wts = [];
+        $sizes = [];
+        for ($i = 0; $i < $n; $i++) {
+            $v = $y[$i];
+            $ww = $w[$i];
+            $sz = 1;
+            while (($c = count($vals)) > 0 && $vals[$c - 1] >= $v) {
+                $pv = array_pop($vals);
+                $pw = array_pop($wts);
+                $ps = array_pop($sizes);
+                $v = ($pv * $pw + $v * $ww) / ($pw + $ww);
+                $ww = $pw + $ww;
+                $sz = $ps + $sz;
+            }
+            $vals[] = $v;
+            $wts[] = $ww;
+            $sizes[] = $sz;
+        }
+        $out = [];
+        foreach ($vals as $k => $v) {
+            for ($j = 0; $j < $sizes[$k]; $j++) {
+                $out[] = $v;
+            }
+        }
+
+        return $increasing ? $out : array_reverse($out);
+    }
+
     public static function nnls(array $A, array $b, ?int $maxiter = null): array
     {
         $m = count($A);

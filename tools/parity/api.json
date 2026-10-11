@@ -6369,10 +6369,16 @@
                 "doc": "scipy.optimize.lsq_linear (unbounded): the linear least-squares solution of min 0.5||A x - b||^2, returned as an OptimizeResult. The unbounded solution is the ordinary least-squares solution (normal equations); finite bounds (the trf/bvls variants) are not yet supported."
             },
             {
+                "name": "isotonicRegression",
+                "static": true,
+                "sig": "isotonicRegression(array $y, ?array $weights = null, bool $increasing = true): array",
+                "doc": "Isotonic (monotonic) regression by the Pool Adjacent Violators Algorithm (scipy.optimize.isotonic_regression): the weighted least-squares best monotonic fit to $y."
+            },
+            {
                 "name": "nnls",
                 "static": true,
                 "sig": "nnls(array $A, array $b, ?int $maxiter = null): array",
-                "doc": "scipy.optimize.nnls: the non-negative least-squares solution of min ||A x - b|| subject to x >= 0, by the classical Lawson-Hanson active-set method. The solution is unique, so it matches scipy. Returns [x, rnorm]."
+                "doc": ""
             }
         ]
     },

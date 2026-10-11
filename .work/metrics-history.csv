@@ -214,3 +214,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-11,scipy.signal.windows kaiser_bessel_derived (both backends),99.4,99.1,78.3,78.1,99.7,99.7,74.1,74.1,84.5,84.5
 2026-10-11,scipy.signal.windows.taylor (both backends),99.4,99.1,78.4,78.2,99.7,99.7,74.1,74.1,84.5,84.5
 2026-10-11,scipy.signal.windows.chebwin (both backends),99.4,99.1,78.4,78.2,99.7,99.7,74.1,74.1,84.5,84.5
+2026-10-11,"scipy.optimize.isotonic_regression (PAVA, both backends)",99.4,99.1,78.5,78.3,99.7,99.7,74.1,74.1,84.5,84.5

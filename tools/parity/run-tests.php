@@ -542,6 +542,9 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
             } elseif ($fn === 'nnls') {
                 $r = \Tessero\Optimize\LeastSquares::nnls($c['A'], $c['b']);
                 $ok = vecClose($r[0], $c['expect'], $rtol);
+            } elseif ($fn === 'isotonic_regression') {
+                $r = \Tessero\Optimize\LeastSquares::isotonicRegression($c['y'], $c['weights'] ?? null, $c['increasing'] ?? true);
+                $ok = vecClose($r, $c['expect'], $rtol);
             } elseif ($fn === 'lsq_linear') {
                 $r = \Tessero\Optimize\LeastSquares::lsqLinear($c['A'], $c['b']);
                 $ok = vecClose($r->x, $c['expect'], $rtol);
