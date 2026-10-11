@@ -6631,6 +6631,17 @@
         ]
     },
     {
+        "class": "Tessero\\ArrayOps",
+        "methods": [
+            {
+                "name": "block",
+                "static": true,
+                "sig": "block(array $arrays): mixed",
+                "doc": "Assemble a nested list of blocks into a single array (numpy.block)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
