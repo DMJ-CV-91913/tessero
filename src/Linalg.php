@@ -43,6 +43,7 @@ final class Linalg
     'solve' => 'solve',
     'svd' => 'svd',
     'svdvals' => 'svdvals',
+    'tensordot' => 'tensordot',
     'tensorinv' => 'tensorinv',
     'tensorsolve' => 'tensorsolve',
     'trace' => 'trace',
@@ -326,6 +327,16 @@ final class Linalg
     public static function svdvals(mixed $a): mixed
     {
         return Registry::routine('linalg.svdvals', [$a]);
+    }
+
+    /**
+     * Tensor dot product over the given axes (numpy.linalg.tensordot).
+     *
+     * numpy.linalg.tensordot
+     */
+    public static function tensordot(mixed $x1, mixed $x2, mixed $axes = 2): mixed
+    {
+        return Registry::routine('linalg.tensordot', [$x1, $x2, $axes]);
     }
 
     /**

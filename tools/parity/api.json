@@ -17108,6 +17108,12 @@
                 "doc": ""
             },
             {
+                "name": "tensordot",
+                "static": true,
+                "sig": "tensordot($x1, $x2, $axes = 2)",
+                "doc": ""
+            },
+            {
                 "name": "outer",
                 "static": true,
                 "sig": "outer($x1, $x2)",
