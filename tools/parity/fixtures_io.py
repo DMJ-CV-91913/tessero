@@ -92,7 +92,25 @@ cases += [
     ff_text("10 20 30 40", 'int32', ' '),
 ]
 
-out = {'module': 'io', 'numpy': np.__version__, 'io_cases': cases}
+
+def stcase(arr, kwargs=None):
+    kwargs = kwargs or {}
+    buf = io.StringIO()
+    np.savetxt(buf, np.array(arr), **kwargs)
+    return {'input': F.enc(np.array(arr)), 'kwargs': {k: F.enc(v) for k, v in kwargs.items()}, 'expect_text': buf.getvalue()}
+
+
+savetxt_cases = [
+    stcase([[1.5, -2.25, 3.0], [4e10, 5e-8, -6.0]]),
+    stcase([1.0, 2.0, 3.0]),
+    stcase([1.0, 2.0, 3.0], {'fmt': '%.6f'}),
+    stcase([[1.0, 2.0], [3.0, 4.0]], {'delimiter': ','}),
+    stcase([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], {'fmt': '%.3e', 'delimiter': ', '}),
+    stcase([[1.0, 2.0], [3.0, 4.0]], {'fmt': '%g', 'newline': '\r\n'}),
+    stcase([-0.0, 1.25, -3.5], {'fmt': '%.10f'}),
+]
+
+out = {'module': 'io', 'numpy': np.__version__, 'io_cases': cases, 'savetxt_cases': savetxt_cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'io: {len(cases)} cases (loadtxt + fromfile)')

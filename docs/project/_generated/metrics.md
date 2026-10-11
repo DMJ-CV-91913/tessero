@@ -4,8 +4,8 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 
 | Scope | Symbols | Excluded (M3) | In scope | FFI (M2) | Extension (M2) | Verified FFI / ext (M4) | Parity (M5) |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **NumPy core** | 860 | 177 (20.6 %) | 683 | **675 (98.8 %)** | **673 (98.5 %)** | 98.8 % / 98.5 % | 99.7 % |
-| &nbsp;&nbsp;numpy | 442 | 102 (23.1 %) | 340 | 337 (99.1 %) | 335 (98.5 %) | 99.1 % / 98.5 % | 99.4 % |
+| **NumPy core** | 860 | 177 (20.6 %) | 683 | **676 (99.0 %)** | **674 (98.7 %)** | 99.0 % / 98.7 % | 99.7 % |
+| &nbsp;&nbsp;numpy | 442 | 102 (23.1 %) | 340 | 338 (99.4 %) | 336 (98.8 %) | 99.4 % / 98.8 % | 99.4 % |
 | &nbsp;&nbsp;numpy.ndarray | 70 | 14 (20.0 %) | 56 | 53 (94.6 %) | 53 (94.6 %) | 94.6 % / 94.6 % | 100.0 % |
 | &nbsp;&nbsp;numpy.linalg | 32 | 1 (3.1 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.fft | 18 | 0 (0.0 %) | 18 | 18 (100.0 %) | 18 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -38,7 +38,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 158 (96.9 %) | 158 (96.9 %) | 96.9 % / 96.9 % | 100.0 % |
 
-The kernel function registry holds 1400 functions; their fixtures pass on the FFI backend for 1397 and on the extension for 1397.
+The kernel function registry holds 1401 functions; their fixtures pass on the FFI backend for 1398 and on the extension for 1398.
 Registry functions without a recorded fixture run: np.cumulativeSimpson, np.cumulativeTrapezoid, special.logSoftmax.
 
 Exclusions by category (definitions in `tools/parity/scope.yaml`):

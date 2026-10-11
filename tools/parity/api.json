@@ -9300,6 +9300,12 @@
                 "doc": "Round to the given number of decimals, half to even (numpy.round)."
             },
             {
+                "name": "savetxt",
+                "static": true,
+                "sig": "savetxt(mixed $fname, mixed $X, mixed $fmt = null, mixed $delimiter = null, mixed $newline = null, mixed $header = null, mixed $footer = null, mixed $comments = null): mixed",
+                "doc": "Save an array to a text file (numpy.savetxt)."
+            },
+            {
                 "name": "searchsorted",
                 "static": true,
                 "sig": "searchsorted(mixed $a, mixed $v, string $side = 'left'): Tessero\\NDArray|int|float",
@@ -14014,6 +14020,12 @@
                 "name": "genfromtxt",
                 "static": true,
                 "sig": "genfromtxt($fname, $delimiter = null, $skipHeader = 0, $skipFooter = 0, $comments = null, $usecols = null)",
+                "doc": ""
+            },
+            {
+                "name": "savetxt",
+                "static": true,
+                "sig": "savetxt($fname, $X, $fmt = null, $delimiter = null, $newline = null, $header = null, $footer = null, $comments = null)",
                 "doc": ""
             },
             {

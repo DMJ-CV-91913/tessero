@@ -624,6 +624,22 @@ foreach ($files as $file) {
             $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
             if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
         }
+        foreach (($data['savetxt_cases'] ?? []) as $c) {       // numpy.savetxt: write, read back, compare text
+            $tmp = tempnam(sys_get_temp_dir(), 'tsrst');
+            $cargs = [$tmp, decodeValue($c['input'], $arrayClass)];
+            foreach (($c['kwargs'] ?? []) as $k => $v) { $cargs[camelName($k)] = decodeValue($v, $arrayClass); }
+            $checked++;
+            try {
+                [$np, 'savetxt'](...$cargs);
+                $got = (string) file_get_contents($tmp);
+                $p = ($got === $c['expect_text']) ? null : 'text differs';
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            @unlink($tmp);
+            $local['np.savetxt'] = ($local['np.savetxt'] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            if ($p !== null) { $failures++; echo "FAIL np.savetxt: {$p}\n"; }
+        }
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
