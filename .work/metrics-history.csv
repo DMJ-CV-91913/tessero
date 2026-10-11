@@ -218,3 +218,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-11,numpy.histogramdd (both backends),99.6,99.3,78.5,78.3,99.7,99.7,74.1,74.1,84.5,84.5
 2026-10-11,savez/savez_compressed on the ext backend,99.6,99.6,78.5,78.3,100.0,99.7,74.1,74.1,84.5,84.5
 2026-10-11,numpy.block native (both backends),99.7,99.7,78.5,78.3,100.0,99.7,74.1,74.1,84.5,84.5
+2026-10-11,numpy.random.Generator.bytes native (both backends),99.9,99.9,78.5,78.3,100.0,99.7,74.1,74.1,84.5,84.5

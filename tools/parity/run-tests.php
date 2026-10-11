@@ -223,6 +223,10 @@ function compareValue(mixed $want, mixed $got, float $rtol, float $atol, float &
     if (is_array($want) && isset($want['s'])) {              // a string result (e.g. a dtype name)
         return is_string($got) && $got === $want['s'] ? null : 'got ' . var_export($got, true) . " want '{$want['s']}'";
     }
+    if (is_array($want) && isset($want['bytes'])) {          // numpy.random.Generator.bytes: raw bytes, hex-compared
+        return is_string($got) && bin2hex($got) === $want['bytes'] ? null
+            : 'bytes differ: got ' . (is_string($got) ? bin2hex($got) : get_debug_type($got)) . " want {$want['bytes']}";
+    }
     if (is_array($want)) {                                   // an array
         if (! is_object($got)) {
             return 'expected an array of shape (' . implode(',', $want['shape']) . '), got ' . var_export($got, true);

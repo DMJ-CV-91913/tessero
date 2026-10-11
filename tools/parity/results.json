@@ -671,6 +671,7 @@
         "optimize.toms748": "pass",
         "random.beta": "pass",
         "random.binomial": "pass",
+        "random.bytes": "pass",
         "random.chisquare": "pass",
         "random.dirichlet": "pass",
         "random.exponential": "pass",
@@ -2972,7 +2973,8 @@
             "windows.chebwin": 4.588726991526998e-13,
             "optimize.isotonic_regression": null,
             "np.histogramdd": 2.328805302192041e-16,
-            "np.block": null
+            "np.block": null,
+            "random.bytes": 0
         },
         "ext": {
             "np.median": 0,
@@ -4459,7 +4461,8 @@
             "windows.chebwin": 4.588726991526998e-13,
             "optimize.isotonic_regression": null,
             "np.histogramdd": 2.328805302192041e-16,
-            "np.block": null
+            "np.block": null,
+            "random.bytes": 0
         }
     },
     "ext": {
@@ -5134,6 +5137,7 @@
         "optimize.toms748": "pass",
         "random.beta": "pass",
         "random.binomial": "pass",
+        "random.bytes": "pass",
         "random.chisquare": "pass",
         "random.dirichlet": "pass",
         "random.exponential": "pass",
