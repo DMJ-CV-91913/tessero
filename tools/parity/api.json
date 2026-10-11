@@ -3601,6 +3601,12 @@
                 "doc": "Parzen window (scipy.signal.windows.parzen)."
             },
             {
+                "name": "taylor",
+                "static": true,
+                "sig": "taylor(mixed $M, mixed $nbar = 4, mixed $sll = 30, mixed $norm = true, mixed $sym = true): mixed",
+                "doc": "Taylor window (scipy.signal.windows.taylor)."
+            },
+            {
                 "name": "triang",
                 "static": true,
                 "sig": "triang(mixed $M, mixed $sym = true): mixed",
@@ -19010,6 +19016,12 @@
                 "name": "kaiserBesselDerived",
                 "static": true,
                 "sig": "kaiserBesselDerived($M, $beta, $sym = true)",
+                "doc": ""
+            },
+            {
+                "name": "taylor",
+                "static": true,
+                "sig": "taylor($M, $nbar = 4, $sll = 30, $norm = true, $sym = true)",
                 "doc": ""
             },
             {

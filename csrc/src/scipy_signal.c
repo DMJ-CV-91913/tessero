@@ -1308,6 +1308,50 @@ static int r_win_kbd(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return TSR_OK;
 }
 
+/* taylor(M, nbar=4, sll=30, norm=True, sym=True): Taylor window via Fm cosine coefficients. */
+static int r_win_taylor(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int err; int64_t M = win_len(args, nargs, &err); if (err) return TSR_EARG;
+    int rc; if (win_guard(M, &res[0], &rc)) return rc;
+    int64_t nbar = (int64_t)win_dbl(args, nargs, 1, 4.0);
+    double sll = win_dbl(args, nargs, 2, 30.0);
+    int norm = win_sym(args, nargs, 3);
+    int64_t Mext = win_sym(args, nargs, 4) ? M : M + 1;
+    if (nbar < 1) { fn_set_error("taylor: nbar must be >= 1"); return TSR_EARG; }
+    int64_t sh[1] = {M};
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    if (!w) return TSR_ENOMEM;
+    const int64_t K = nbar - 1;
+    if (K <= 0) { for (int64_t n = 0; n < M; n++) w[n] = 1.0; return TSR_OK; }
+    const double B = pow(10.0, sll / 20.0);
+    const double A = acosh(B) / M_PI;
+    const double s2 = (double)(nbar * nbar) / (A * A + ((double)nbar - 0.5) * ((double)nbar - 0.5));
+    double *Fm = (double *)tsr_alloc(K * 8 + 64);
+    if (!Fm) return TSR_ENOMEM;
+    for (int64_t mi = 0; mi < K; mi++) {
+        const double m2 = (double)((mi + 1) * (mi + 1));
+        double numer = (mi % 2 == 0) ? 1.0 : -1.0;
+        for (int64_t j = 0; j < K; j++) { double maj = (double)(j + 1); numer *= (1.0 - m2 / s2 / (A * A + (maj - 0.5) * (maj - 0.5))); }
+        double denom = 2.0;
+        for (int64_t j = 0; j < K; j++) if (j != mi) { double maj = (double)(j + 1); denom *= (1.0 - m2 / (maj * maj)); }
+        Fm[mi] = numer / denom;
+    }
+    double scale = 1.0;
+    if (norm) {
+        const double nc = (double)(Mext - 1) / 2.0; double acc = 0.0;
+        for (int64_t mi = 0; mi < K; mi++) acc += Fm[mi] * cos(2.0 * M_PI * (double)(mi + 1) * (nc - (double)Mext / 2.0 + 0.5) / (double)Mext);
+        scale = 1.0 / (1.0 + 2.0 * acc);
+    }
+    for (int64_t n = 0; n < M; n++) {
+        double acc = 0.0;
+        for (int64_t mi = 0; mi < K; mi++) acc += Fm[mi] * cos(2.0 * M_PI * (double)(mi + 1) * ((double)n - (double)Mext / 2.0 + 0.5) / (double)Mext);
+        w[n] = (1.0 + 2.0 * acc) * scale;
+    }
+    tsr_free(Fm, K * 8 + 64);
+    return TSR_OK;
+}
+
 /* gaussian(M, std, sym=True). */
 static int r_win_gaussian(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -5510,6 +5554,7 @@ static const fn_def DEFS[] = {
     ROUTINE("windows.parzen", 1, "M, sym=True", "out", r_win_parzen, NULL, "Parzen window (scipy.signal.windows.parzen)."),
     ROUTINE("windows.kaiser", 1, "M, beta, sym=True", "out", r_win_kaiser, NULL, "Kaiser window with shape beta (scipy.signal.windows.kaiser)."),
     ROUTINE("windows.kaiser_bessel_derived", 1, "M, beta, sym=True", "out", r_win_kbd, NULL, "Kaiser-Bessel derived window (scipy.signal.windows.kaiser_bessel_derived)."),
+    ROUTINE("windows.taylor", 1, "M, nbar=4, sll=30, norm=True, sym=True", "out", r_win_taylor, NULL, "Taylor window (scipy.signal.windows.taylor)."),
     ROUTINE("windows.gaussian", 1, "M, std, sym=True", "out", r_win_gaussian, NULL, "Gaussian window with standard deviation std (scipy.signal.windows.gaussian)."),
     ROUTINE("windows.general_gaussian", 1, "M, p, sig, sym=True", "out", r_win_general_gaussian, NULL, "Generalized Gaussian window (scipy.signal.windows.general_gaussian)."),
     ROUTINE("windows.exponential", 1, "M, center=None, tau=1.0, sym=True", "out", r_win_exponential, NULL, "Exponential (Poisson) window (scipy.signal.windows.exponential)."),
