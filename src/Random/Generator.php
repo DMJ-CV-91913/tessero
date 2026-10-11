@@ -169,6 +169,46 @@ final class Generator
         }
     }
 
+    /**
+     * Draw from a Dirichlet distribution (numpy.random.Generator.dirichlet). Each sample is a vector of
+     * length count($alpha) that sums to 1, built from independent standard-gamma draws then normalised.
+     *
+     * @param list<int|float> $alpha
+     */
+    public function dirichlet(array $alpha, int|array|null $size = null): NDArray
+    {
+        $k = count($alpha);
+        foreach ($alpha as $a) {
+            if ($a < 0) {
+                throw new TesseroException('dirichlet: alpha must be non-negative.');
+            }
+        }
+        [$shape, $rows] = self::size($size);
+        $rows = max(1, $rows);
+        $flat = [];
+        for ($i = 0; $i < $rows; $i++) {
+            foreach ($alpha as $a) {
+                $flat[] = (float) $a;
+            }
+        }
+        $out = [];
+        if ($k > 0) {
+            $g = $this->standardGamma(NDArray::array($flat, DType::Float64))->toList();
+            for ($i = 0; $i < $rows; $i++) {
+                $s = 0.0;
+                for ($j = 0; $j < $k; $j++) {
+                    $s += $g[$i * $k + $j];
+                }
+                $inv = 1.0 / $s;
+                for ($j = 0; $j < $k; $j++) {
+                    $out[] = $g[$i * $k + $j] * $inv;
+                }
+            }
+        }
+
+        return NDArray::array($out, DType::Float64)->reshape([...$shape, $k]);
+    }
+
     /** @return list<string> the 6 state words as decimal strings (for persistence) */
     /**
      * The PCG64 state vector, for the kernel calls that draw from this generator (scipy.stats rvs).

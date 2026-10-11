@@ -667,6 +667,7 @@
         "random.beta": "pass",
         "random.binomial": "pass",
         "random.chisquare": "pass",
+        "random.dirichlet": "pass",
         "random.exponential": "pass",
         "random.f": "pass",
         "random.gamma": "pass",
@@ -2938,7 +2939,8 @@
             "np.euler_gamma": 0,
             "np.inf": 0,
             "np.nan": 0,
-            "np.histogram2d": 2.6437465135481728e-16
+            "np.histogram2d": 2.6437465135481728e-16,
+            "random.dirichlet": 0
         },
         "ext": {
             "np.median": 0,
@@ -4408,7 +4410,8 @@
             "np.euler_gamma": 0,
             "np.inf": 0,
             "np.nan": 0,
-            "np.histogram2d": 2.6437465135481728e-16
+            "np.histogram2d": 2.6437465135481728e-16,
+            "random.dirichlet": 0
         }
     },
     "ext": {
@@ -5079,6 +5082,7 @@
         "random.beta": "pass",
         "random.binomial": "pass",
         "random.chisquare": "pass",
+        "random.dirichlet": "pass",
         "random.exponential": "pass",
         "random.f": "pass",
         "random.gamma": "pass",
