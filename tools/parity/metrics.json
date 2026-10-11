@@ -82,19 +82,19 @@
  },
  "groups": {
   "NumPy core": {
-   "both": 678,
+   "both": 680,
    "excluded": 177,
-   "impl_ext": 678,
+   "impl_ext": 680,
    "impl_ffi": 680,
    "in_scope": 683,
-   "m2_ext": 99.3,
+   "m2_ext": 99.6,
    "m2_ffi": 99.6,
    "m3": 20.6,
-   "m4_ext": 99.3,
+   "m4_ext": 99.6,
    "m4_ffi": 99.6,
-   "m5": 99.7,
+   "m5": 100.0,
    "symbols": 860,
-   "verified_ext": 678,
+   "verified_ext": 680,
    "verified_ffi": 680
   },
   "SciPy": {
@@ -116,19 +116,19 @@
  },
  "modules": {
   "numpy": {
-   "both": 337,
+   "both": 339,
    "excluded": 102,
-   "impl_ext": 337,
+   "impl_ext": 339,
    "impl_ffi": 339,
    "in_scope": 340,
-   "m2_ext": 99.1,
+   "m2_ext": 99.7,
    "m2_ffi": 99.7,
    "m3": 23.1,
-   "m4_ext": 99.1,
+   "m4_ext": 99.7,
    "m4_ffi": 99.7,
-   "m5": 99.4,
+   "m5": 100.0,
    "symbols": 442,
-   "verified_ext": 337,
+   "verified_ext": 339,
    "verified_ffi": 339
   },
   "numpy.fft": {
@@ -623,8 +623,8 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40033,
-   "covered_ext": 40033,
+   "covered_both": 40035,
+   "covered_ext": 40035,
    "covered_ffi": 40043,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
@@ -664,8 +664,8 @@
   "groups": {
    "NumPy core": {
     "calls": 39800,
-    "covered_both": 37792,
-    "covered_ext": 37792,
+    "covered_both": 37794,
+    "covered_ext": 37794,
     "covered_ffi": 37794,
     "excluded_calls": 2002,
     "excluded_share": 5.0,

@@ -6508,7 +6508,7 @@
             {
                 "name": "encode",
                 "static": true,
-                "sig": "encode(Tessero\\NDArray $array): string",
+                "sig": "encode(Tessero\\NDArray|Tessero\\Ext\\NDArray $array): string",
                 "doc": ""
             },
             {
