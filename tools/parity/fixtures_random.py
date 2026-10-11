@@ -69,6 +69,9 @@ CASES = {
     'multinomial': [([10, [0.2, 0.3, 0.5]], {}), ([100, [0.1, 0.2, 0.3, 0.4]], {'size': 5}),
                     ([20, [0.5, 0.5]], {'size': (2, 2)}), ([0, [0.5, 0.5]], {'size': 3}),
                     ([15, [0.3, 0.3, 0.4]], {}), ([10, [0.6, 0.6, 0.1]], {})],
+    'permuted': [([np.arange(8.0)], {}), ([np.arange(12.0).reshape(3, 4)], {'axis': 1}),
+                 ([np.arange(12.0).reshape(3, 4)], {'axis': 0}), ([np.arange(24.0).reshape(2, 3, 4)], {'axis': 2}),
+                 ([np.arange(24.0).reshape(2, 3, 4)], {'axis': 0}), ([np.arange(6.0).reshape(2, 3)], {'axis': None})],
 }
 
 

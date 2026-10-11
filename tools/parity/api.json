@@ -5809,6 +5809,12 @@
                 "doc": "Draw samples from a multinomial distribution (numpy.random.Generator.multinomial): for each of the len($pvals) categories, a count, built from sequential conditional binomial draws."
             },
             {
+                "name": "permuted",
+                "static": false,
+                "sig": "permuted(Tessero\\NDArray $x, ?int $axis = null, ?Tessero\\NDArray $out = null): Tessero\\NDArray",
+                "doc": "Randomly permute values along an axis, each slice independently (numpy.random.Generator.permuted). With $axis null the flattened array is permuted. Returns a new array (or writes into $out)."
+            },
+            {
                 "name": "stateHandle",
                 "static": false,
                 "sig": "stateHandle(): FFI\\CData",
@@ -8038,6 +8044,12 @@
                 "name": "multinomial",
                 "static": false,
                 "sig": "multinomial(int $n, $pvals, $size = null)",
+                "doc": ""
+            },
+            {
+                "name": "permuted",
+                "static": false,
+                "sig": "permuted(Tessero\\Ext\\NDArray $x, $axis = null, $out = null)",
                 "doc": ""
             },
             {

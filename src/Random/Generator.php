@@ -250,6 +250,43 @@ final class Generator
         return NDArray::array($out, DType::Int64)->reshape([...$shape, $k]);
     }
 
+    /**
+     * Randomly permute values along an axis, each slice independently (numpy.random.Generator.permuted).
+     * With $axis null the flattened array is permuted. Returns a new array (or writes into $out).
+     */
+    public function permuted(NDArray $x, ?int $axis = null, ?NDArray $out = null): NDArray
+    {
+        $ffi = Library::ffi();
+        if ($axis === null) {
+            $work = $x->flatten();
+            $n = $work->size();
+            if ($n > 1) {
+                $item = intdiv($work->nbytes(), $n);
+                Library::check($ffi->tsr_pcg64_shuffle($this->state, $n, max(1, $item), $work->ptr()), 'permuted');
+            }
+            $res = $work->reshape($x->shape());
+        } else {
+            $moved = $x->moveAxis($axis, -1)->copy();
+            $shape = $moved->shape();
+            $l = $shape[count($shape) - 1];
+            $n = $moved->size();
+            if ($l > 1) {
+                $item = intdiv($moved->nbytes(), $n);
+                $buf = $moved->buffer();
+                $rows = intdiv($n, $l);
+                for ($r = 0; $r < $rows; $r++) {
+                    Library::check($ffi->tsr_pcg64_shuffle($this->state, $l, $item, $buf->ptr($r * $l * $item)), 'permuted');
+                }
+            }
+            $res = $moved->moveAxis(-1, $axis)->copy();
+        }
+        if ($out !== null) {
+            return $out->assign($res);
+        }
+
+        return $res;
+    }
+
     /** @return list<string> the 6 state words as decimal strings (for persistence) */
     /**
      * The PCG64 state vector, for the kernel calls that draw from this generator (scipy.stats rvs).

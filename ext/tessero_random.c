@@ -473,6 +473,70 @@ static PHP_METHOD(Generator, multinomial)
     efree(pv);
 }
 
+/* permuted(x, axis=null, out=null): per-slice shuffle along axis (numpy.random.Generator.permuted).
+   Works on a private contiguous copy; axis=null permutes the flattened array. */
+static PHP_METHOD(Generator, permuted)
+{
+    zval *x, *axis = NULL, *out = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 3)
+        Z_PARAM_OBJECT_OF_CLASS(x, tsr_ce_ndarray)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL_OR_NULL(axis)
+        Z_PARAM_ZVAL_OR_NULL(out)
+    ZEND_PARSE_PARAMETERS_END();
+    uint64_t *st = gen_of(Z_OBJ_P(ZEND_THIS))->st;
+
+    const tsr_array *xa = &Z_TSR_P(x)->a;
+    const int nd = xa->ndim;
+    const int isz = (int)tsr_itemsize(xa->dtype);
+    if (tsr_ndarray_contiguous_as(x, xa->dtype, return_value) == FAILURE) RETURN_THROWS();
+    if (Z_OBJ_P(return_value) == Z_OBJ_P(x) || Z_TSR_P(return_value)->a.data == xa->data) {
+        zval c;
+        const tsr_array *r = &Z_TSR_P(return_value)->a;
+        if (tsr_ndarray_new(&c, r->dtype, r->ndim, r->shape, 0) == FAILURE) RETURN_THROWS();
+        memcpy((char *)Z_TSR(c)->a.data, (char *)r->data + r->offset, (size_t)(tsr_array_size(r) * isz));
+        zval_ptr_dtor(return_value);
+        ZVAL_COPY_VALUE(return_value, &c);
+    }
+    tsr_array *o = &Z_TSR_P(return_value)->a;
+    char *data = (char *)o->data + o->offset;
+    const int64_t total = tsr_array_size(o);
+
+    if (axis == NULL || Z_TYPE_P(axis) == IS_NULL) {
+        if (total > 1) tsr_pcg64_shuffle(st, total, isz, data);
+    } else {
+        if (Z_TYPE_P(axis) != IS_LONG) { zval_ptr_dtor(return_value); zend_type_error("permuted(): axis must be an integer or null"); RETURN_THROWS(); }
+        int64_t k = Z_LVAL_P(axis);
+        if (k < 0) k += nd;
+        if (k < 0 || k >= nd) { zval_ptr_dtor(return_value); zend_argument_value_error(2, "is out of bounds for the array"); RETURN_THROWS(); }
+        const int64_t L = o->shape[k];
+        int64_t inner = 1, outer = 1;
+        for (int d = (int)k + 1; d < nd; d++) inner *= o->shape[d];
+        for (int d = 0; d < (int)k; d++) outer *= o->shape[d];
+        if (L > 1) {
+            char *tmp = (char *)emalloc((size_t)L * isz);
+            for (int64_t ob = 0; ob < outer; ob++) {
+                for (int64_t ib = 0; ib < inner; ib++) {
+                    char *base = data + (size_t)(ob * L * inner + ib) * isz;
+                    for (int64_t j = 0; j < L; j++) memcpy(tmp + (size_t)j * isz, base + (size_t)(j * inner) * isz, (size_t)isz);
+                    tsr_pcg64_shuffle(st, L, isz, tmp);
+                    for (int64_t j = 0; j < L; j++) memcpy(base + (size_t)(j * inner) * isz, tmp + (size_t)j * isz, (size_t)isz);
+                }
+            }
+            efree(tmp);
+        }
+    }
+
+    if (out != NULL && Z_TYPE_P(out) == IS_OBJECT) {
+        tsr_array *oa = &Z_TSR_P(out)->a;
+        if (tsr_array_size(oa) == total && tsr_array_is_contiguous(oa)) {
+            memcpy((char *)oa->data + oa->offset, data, (size_t)(total * isz));
+            zval_ptr_dtor(return_value);
+            ZVAL_COPY(return_value, out);
+        }
+    }
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, seed, "null")
 ZEND_END_ARG_INFO()
@@ -500,6 +564,11 @@ ZEND_BEGIN_ARG_INFO_EX(ai_multinomial, 0, 0, 2)
     ZEND_ARG_INFO(0, pvals)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, size, "null")
 ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO_EX(ai_permuted, 0, 0, 1)
+    ZEND_ARG_OBJ_INFO(0, x, Tessero\\Ext\\NDArray, 0)
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, axis, "null")
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, out, "null")
+ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ai_state, 0, 0, 1)
     ZEND_ARG_INFO(0, words)
 ZEND_END_ARG_INFO()
@@ -512,6 +581,7 @@ static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, choice, ai_choice, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, dirichlet, ai_dirichlet, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, multinomial, ai_multinomial, ZEND_ACC_PUBLIC)
+    PHP_ME(Generator, permuted, ai_permuted, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, shuffle, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, permutation, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, getState, ai_none_g, ZEND_ACC_PUBLIC)
