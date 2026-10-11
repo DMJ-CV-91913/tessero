@@ -603,6 +603,20 @@ static PHP_METHOD(Generator, multivariateHypergeometric)
     efree(colors);
 }
 
+/* bytes(length): `length` random bytes (numpy.random.Generator.bytes). length 0 still advances the stream. */
+static PHP_METHOD(Generator, bytes)
+{
+    zend_long length;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_LONG(length)
+    ZEND_PARSE_PARAMETERS_END();
+    if (length < 0) { zend_argument_value_error(1, "must be non-negative"); RETURN_THROWS(); }
+    zend_string *out = zend_string_alloc((size_t)length, 0);
+    tsr_pcg64_bytes(gen_of(Z_OBJ_P(ZEND_THIS))->st, length, (uint8_t *)ZSTR_VAL(out));
+    ZSTR_VAL(out)[length] = '\0';
+    RETURN_STR(out);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, seed, "null")
 ZEND_END_ARG_INFO()
@@ -648,9 +662,14 @@ ZEND_BEGIN_ARG_INFO_EX(ai_mvhg, 0, 0, 2)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, method, "marginals")
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(ai_bytes, 0, 0, 1)
+    ZEND_ARG_TYPE_INFO(0, length, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
 static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, defaultRng, ai_default_rng, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(Generator, integers, ai_integers, ZEND_ACC_PUBLIC)
+    PHP_ME(Generator, bytes, ai_bytes, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, choice, ai_choice, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, dirichlet, ai_dirichlet, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, multinomial, ai_multinomial, ZEND_ACC_PUBLIC)

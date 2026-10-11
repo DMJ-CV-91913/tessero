@@ -18,6 +18,8 @@ OUT = os.path.join(F.ROOT, 'tests', 'fixtures', 'parity', 'random.json')
 
 # method -> list of (args, kwargs); each list is replayed on one generator per seed
 CASES = {
+    # bytes(length): raw bytes. Lengths span the 4-byte buffer boundary, the dropped tail, and 0 (still one draw).
+    'bytes': [([5], {}), ([16], {}), ([1], {}), ([0], {}), ([7], {}), ([13], {}), ([4], {}), ([8], {})],
     'random': [([], {}), ([], {'size': 5}), ([], {'size': (2, 3)}), ([], {'size': 4, 'dtype': np.float32})],
     'standard_normal': [([], {}), ([], {'size': 7}), ([], {'size': (3, 2), 'dtype': np.float32})],
     'standard_exponential': [([], {'size': 6}), ([], {'size': 4, 'method': 'inv'}), ([], {'size': 3, 'dtype': np.float32}),
@@ -81,9 +83,12 @@ def call(g, fn, args, kwargs):
     with np.errstate(all='ignore'):
         try:
             r = getattr(g, fn)(*args, **kwargs)
-            if isinstance(r, np.ndarray) and r.dtype == np.float32:
-                r = r.astype(np.float64)                  # float32 values are exact in float64
-            expect = F.enc_result(r, [])
+            if isinstance(r, (bytes, bytearray)):
+                expect = {'bytes': bytes(r).hex()}         # raw bytes: hex-compared (not an ndarray)
+            else:
+                if isinstance(r, np.ndarray) and r.dtype == np.float32:
+                    r = r.astype(np.float64)              # float32 values are exact in float64
+                expect = F.enc_result(r, [])
         except Exception as e:  # noqa: BLE001
             expect = {'error': type(e).__name__}
     kw = {k: ('float32' if v is np.float32 else v) for k, v in kwargs.items()}
