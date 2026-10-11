@@ -45,6 +45,10 @@ blocks['kaiser'] = (
 blocks['kaiser_bessel_derived'] = (
     [case('kaiser_bessel_derived', M, extra=[8.0]) for M in (2, 8, 16)]
     + [case('kaiser_bessel_derived', 8, extra=[4.0]), case('kaiser_bessel_derived', 16, extra=[14.0])])
+blocks['taylor'] = (
+    [case('taylor', M, extra=[4, 30]) for M in MS]
+    + [case('taylor', 16, {'sym': False}, extra=[5, 40]), case('taylor', 12, extra=[6, 50]),
+       case('taylor', 9, extra=[4, 35]), case('taylor', 16, {'norm': False}, extra=[4, 30])])
 blocks['gaussian'] = (
     [case('gaussian', M, extra=[2.0]) for M in MS]
     + [case('gaussian', 9, {'sym': False}, extra=[1.5])])

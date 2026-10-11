@@ -7025,6 +7025,11 @@
             "nin": 0,
             "nout": 1
         },
+        "windows.taylor": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "windows.triang": {
             "kind": "routine",
             "nin": 0,
