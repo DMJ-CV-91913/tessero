@@ -372,6 +372,7 @@ legacy:
     permutation: {ffi: [R::permutation], ext: [XR::permutation], fixtures: [random.permutation]}
     dirichlet: {ffi: [R::dirichlet], ext: [XR::dirichlet], fixtures: [random.dirichlet]}
     multinomial: {ffi: [R::multinomial], ext: [XR::multinomial], fixtures: [random.multinomial]}
+    permuted: {ffi: [R::permuted], ext: [XR::permuted], fixtures: [random.permuted]}
     shuffle: {ffi: [R::shuffle], ext: [XR::shuffle], tests: random}
   scipy.special:
     erf: {ffi: [M::erf], ext: [XM::erf], tests: math}
