@@ -312,6 +312,7 @@
         "np.fromfile": "pass",
         "np.fromiter": "pass",
         "np.full_like": "pass",
+        "np.genfromtxt": "pass",
         "np.geomspace": "pass",
         "np.gradient": "pass",
         "np.hamming": "pass",
@@ -2946,7 +2947,8 @@
             "random.dirichlet": 0,
             "random.multinomial": 0,
             "random.permuted": 0,
-            "random.multivariate_hypergeometric": 0
+            "random.multivariate_hypergeometric": 0,
+            "np.genfromtxt": null
         },
         "ext": {
             "np.median": 0,
@@ -4420,7 +4422,8 @@
             "random.dirichlet": 0,
             "random.multinomial": 0,
             "random.permuted": 0,
-            "random.multivariate_hypergeometric": 0
+            "random.multivariate_hypergeometric": 0,
+            "np.genfromtxt": null
         }
     },
     "ext": {
@@ -4736,6 +4739,7 @@
         "np.fromfile": "pass",
         "np.fromiter": "pass",
         "np.full_like": "pass",
+        "np.genfromtxt": "pass",
         "np.geomspace": "pass",
         "np.gradient": "pass",
         "np.hamming": "pass",

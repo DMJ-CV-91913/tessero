@@ -8724,6 +8724,12 @@
                 "doc": "An array of fill_value with the shape and dtype of another (numpy.full_like)."
             },
             {
+                "name": "genfromtxt",
+                "static": true,
+                "sig": "genfromtxt(mixed $fname, mixed $delimiter = null, mixed $skipHeader = 0, mixed $skipFooter = 0, mixed $comments = null, mixed $usecols = null): mixed",
+                "doc": "Load a text file of numbers into a float64 array, missing fields as NaN (numpy.genfromtxt)."
+            },
+            {
                 "name": "geomspace",
                 "static": true,
                 "sig": "geomspace(mixed $start, mixed $stop, mixed $num = 50, mixed $endpoint = true, mixed $dtype = null, mixed $axis = 0): mixed",
@@ -14002,6 +14008,12 @@
                 "name": "loadtxt",
                 "static": true,
                 "sig": "loadtxt($fname, $delimiter = null, $skiprows = 0, $comments = null, $usecols = null)",
+                "doc": ""
+            },
+            {
+                "name": "genfromtxt",
+                "static": true,
+                "sig": "genfromtxt($fname, $delimiter = null, $skipHeader = 0, $skipFooter = 0, $comments = null, $usecols = null)",
                 "doc": ""
             },
             {
