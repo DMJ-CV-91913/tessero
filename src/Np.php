@@ -26,6 +26,7 @@ final class Np
     'array_equal' => 'arrayEqual',
     'array_equiv' => 'arrayEquiv',
     'array_split' => 'arraySplit',
+    'asarray_chkfinite' => 'asarrayChkfinite',
     'ascontiguousarray' => 'ascontiguousarray',
     'asfortranarray' => 'asfortranarray',
     'atleast_1d' => 'atleast1d',
@@ -144,6 +145,7 @@ final class Np
     'nonzero' => 'nonzero',
     'ones_like' => 'onesLike',
     'outer' => 'outer',
+    'packbits' => 'packbits',
     'pad' => 'pad',
     'partition' => 'partition',
     'percentile' => 'percentile',
@@ -157,6 +159,7 @@ final class Np
     'polymul' => 'polymul',
     'polysub' => 'polysub',
     'polyval' => 'polyval',
+    'positive' => 'positive',
     'promote_types' => 'promoteTypes',
     'ptp' => 'ptp',
     'put' => 'put',
@@ -209,6 +212,7 @@ final class Np
     'unique_counts' => 'uniqueCounts',
     'unique_inverse' => 'uniqueInverse',
     'unique_values' => 'uniqueValues',
+    'unpackbits' => 'unpackbits',
     'unravel_index' => 'unravelIndex',
     'unstack' => 'unstack',
     'unwrap' => 'unwrap',
@@ -315,6 +319,16 @@ final class Np
     public static function arraySplit(mixed $ary, mixed $indicesOrSections, mixed $axis = 0): mixed
     {
         return Registry::routine('np.array_split', [$ary, $indicesOrSections, $axis]);
+    }
+
+    /**
+     * Convert to array, raising if it contains NaN or Inf (numpy.asarray_chkfinite).
+     *
+     * numpy.asarray_chkfinite
+     */
+    public static function asarrayChkfinite(mixed $a, mixed $dtype = null, mixed $order = null): mixed
+    {
+        return Registry::routine('np.asarray_chkfinite', [$a, $dtype, $order]);
     }
 
     /**
@@ -1512,6 +1526,16 @@ final class Np
     }
 
     /**
+     * Pack binary-valued array elements into uint8, MSB-first (numpy.packbits).
+     *
+     * numpy.packbits
+     */
+    public static function packbits(mixed $a, mixed $axis = null, mixed $bitorder = 'big'): mixed
+    {
+        return Registry::routine('np.packbits', [$a, $axis, $bitorder]);
+    }
+
+    /**
      * Pad an array (numpy.pad): constant, edge, linear_ramp, maximum, mean, median, minimum, reflect, symmetric, wrap, empty.
      *
      * numpy.pad
@@ -1639,6 +1663,16 @@ final class Np
     public static function polyval(mixed $p, mixed $x): mixed
     {
         return Registry::routine('np.polyval', [$p, $x]);
+    }
+
+    /**
+     * Unary plus; a copy of the input (numpy.positive).
+     *
+     * numpy.positive
+     */
+    public static function positive(mixed $x): mixed
+    {
+        return Registry::routine('np.positive', [$x]);
     }
 
     /**
@@ -2167,6 +2201,16 @@ final class Np
     public static function uniqueValues(mixed $x): mixed
     {
         return Registry::routine('np.unique_values', [$x]);
+    }
+
+    /**
+     * Unpack uint8 array elements into bits, MSB-first (numpy.unpackbits).
+     *
+     * numpy.unpackbits
+     */
+    public static function unpackbits(mixed $a, mixed $axis = null, mixed $count = null, mixed $bitorder = 'big'): mixed
+    {
+        return Registry::routine('np.unpackbits', [$a, $axis, $count, $bitorder]);
     }
 
     /**
