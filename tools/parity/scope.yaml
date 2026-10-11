@@ -368,9 +368,9 @@ legacy:
     normal: {ffi: [R::normal], tests: random}
     standard_normal: {ffi: [R::standardNormal], tests: random}
     integers: {ffi: [R::integers], ext: [XR::integers], fixtures: [random.integers]}
-    choice: {ffi: [R::choice], tests: random}
+    choice: {ffi: [R::choice], ext: [XR::choice], tests: random}
     permutation: {ffi: [R::permutation], ext: [XR::permutation], fixtures: [random.permutation]}
-    shuffle: {ffi: [R::shuffle], tests: random}
+    shuffle: {ffi: [R::shuffle], ext: [XR::shuffle], tests: random}
   scipy.special:
     erf: {ffi: [M::erf], ext: [XM::erf], tests: math}
     erfc: {ffi: [M::erfc], ext: [XM::erfc], tests: math}

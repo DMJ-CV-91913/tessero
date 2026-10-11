@@ -239,6 +239,114 @@ static PHP_METHOD(Generator, setState)
     memcpy(gen_of(Z_OBJ_P(ZEND_THIS))->st, st, sizeof st);
 }
 
+/* searchsorted(cdf, x, side='right'): first index with cdf[idx] > x. */
+static int64_t choice_ss_right(const double *cdf, int64_t m, double x)
+{
+    int64_t lo = 0, hi = m;
+    while (lo < hi) { int64_t mid = (lo + hi) >> 1; if (cdf[mid] <= x) lo = mid + 1; else hi = mid; }
+    return lo;
+}
+
+static void choice_elem_to_zval(int dt, const char *p, zval *z)
+{
+    switch (dt) {
+    case TSR_F64: ZVAL_DOUBLE(z, *(const double *)p); break;
+    case TSR_F32: ZVAL_DOUBLE(z, (double)*(const float *)p); break;
+    case TSR_I64: ZVAL_LONG(z, (zend_long)*(const int64_t *)p); break;
+    case TSR_I32: ZVAL_LONG(z, *(const int32_t *)p); break;
+    case TSR_U8:  ZVAL_LONG(z, *(const uint8_t *)p); break;
+    case TSR_BOOL: ZVAL_BOOL(z, *(const uint8_t *)p != 0); break;
+    case TSR_C128:
+        array_init_size(z, 2);
+        add_next_index_double(z, ((const double *)p)[0]);
+        add_next_index_double(z, ((const double *)p)[1]);
+        break;
+    default: ZVAL_NULL(z);
+    }
+}
+
+/* choice(a, size=null, replace=true, p=null): numpy.random.Generator.choice over a 1-D population.
+   Uses the same draws as the FFI method (integers / permutation / cdf.searchsorted on random()). */
+static PHP_METHOD(Generator, choice)
+{
+    zval *a, *size = NULL, *p = NULL;
+    zend_bool replace = 1;
+    ZEND_PARSE_PARAMETERS_START(1, 4)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL_OR_NULL(size)
+        Z_PARAM_BOOL(replace)
+        Z_PARAM_ARRAY_OR_NULL(p)
+    ZEND_PARSE_PARAMETERS_END();
+    uint64_t *st = gen_of(Z_OBJ_P(ZEND_THIS))->st;
+
+    zval pop;
+    int64_t n;
+    if (Z_TYPE_P(a) == IS_LONG) {
+        if (Z_LVAL_P(a) <= 0) { zend_argument_value_error(1, "must be greater than 0"); RETURN_THROWS(); }
+        n = Z_LVAL_P(a);
+        int64_t sh[1] = { n };
+        if (tsr_ndarray_new(&pop, 2, 1, sh, 0) == FAILURE) RETURN_THROWS();
+        int64_t *pp = (int64_t *)((char *)Z_TSR(pop)->a.data + Z_TSR(pop)->a.offset);
+        for (int64_t i = 0; i < n; i++) pp[i] = i;
+    } else {
+        zval src;
+        if (tsr_ndarray_from_zval(a, -1, &src) == FAILURE) RETURN_THROWS();
+        if (Z_TSR(src)->a.ndim != 1) { zval_ptr_dtor(&src); zend_throw_exception(tsr_ce_shape_exception, "choice: population must be 1-D.", 0); RETURN_THROWS(); }
+        if (tsr_ndarray_contiguous_as(&src, Z_TSR(src)->a.dtype, &pop) == FAILURE) { zval_ptr_dtor(&src); RETURN_THROWS(); }
+        zval_ptr_dtor(&src);
+        n = Z_TSR(pop)->a.shape[0];
+        if (n == 0) { zval_ptr_dtor(&pop); zend_throw_exception(tsr_ce_exception, "choice: population is empty.", 0); RETURN_THROWS(); }
+    }
+    const int dt = Z_TSR(pop)->a.dtype;
+    const int64_t isz = tsr_itemsize(dt);
+    const char *base = (const char *)Z_TSR(pop)->a.data + Z_TSR(pop)->a.offset;
+
+    int64_t shape[32];
+    const int nd = size_shape(size, shape);
+    if (nd == -2) { zval_ptr_dtor(&pop); RETURN_THROWS(); }
+    const int scalar = (nd < 0);
+    int64_t count = 1;
+    for (int k = 0; k < nd; k++) count *= shape[k];
+    if (scalar) count = 1;
+
+    int64_t *idx = (int64_t *)emalloc((size_t)(count > 0 ? count : 1) * sizeof(int64_t));
+    if (p != NULL) {
+        if (!replace) { efree(idx); zval_ptr_dtor(&pop); zend_throw_exception(tsr_ce_exception, "choice without replacement and with p is not supported.", 0); RETURN_THROWS(); }
+        if ((int64_t)zend_hash_num_elements(Z_ARRVAL_P(p)) != n) { efree(idx); zval_ptr_dtor(&pop); zend_throw_exception(tsr_ce_shape_exception, "choice: p must have one probability per element.", 0); RETURN_THROWS(); }
+        double *cdf = (double *)emalloc((size_t)n * sizeof(double));
+        double acc = 0; int64_t i = 0;
+        zval *e;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(p), e) { acc += zval_get_double(e); cdf[i++] = acc; } ZEND_HASH_FOREACH_END();
+        const double tot = cdf[n - 1];
+        for (int64_t k = 0; k < n; k++) cdf[k] /= tot;
+        double *u = (double *)emalloc((size_t)(count > 0 ? count : 1) * sizeof(double));
+        tsr_pcg64_random(st, count, u);
+        for (int64_t k = 0; k < count; k++) idx[k] = choice_ss_right(cdf, n, u[k]);
+        efree(u); efree(cdf);
+    } else if (replace) {
+        tsr_pcg64_integers(st, count, 0, n, idx);
+    } else {
+        if (count > n) { efree(idx); zval_ptr_dtor(&pop); zend_throw_exception(tsr_ce_exception, "choice: cannot take a larger sample than the population when replace=false.", 0); RETURN_THROWS(); }
+        int64_t *perm = (int64_t *)emalloc((size_t)n * sizeof(int64_t));
+        for (int64_t k = 0; k < n; k++) perm[k] = k;
+        if (n > 1) tsr_pcg64_shuffle(st, n, 8, perm);
+        for (int64_t k = 0; k < count; k++) idx[k] = perm[k];
+        efree(perm);
+    }
+
+    if (scalar) {
+        choice_elem_to_zval(dt, base + idx[0] * isz, return_value);
+        efree(idx); zval_ptr_dtor(&pop);
+        return;
+    }
+    if (tsr_ndarray_new(return_value, dt, nd, shape, 0) == FAILURE) { efree(idx); zval_ptr_dtor(&pop); RETURN_THROWS(); }
+    char *out = (char *)Z_TSR_P(return_value)->a.data + Z_TSR_P(return_value)->a.offset;
+    for (int64_t k = 0; k < count; k++) memcpy(out + k * isz, base + idx[k] * isz, (size_t)isz);
+    efree(idx);
+    zval_ptr_dtor(&pop);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, seed, "null")
 ZEND_END_ARG_INFO()
@@ -251,6 +359,12 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ai_one, 0, 0, 1)
     ZEND_ARG_INFO(0, x)
 ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO_EX(ai_choice, 0, 0, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, size, "null")
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, replace, "true")
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, p, "null")
+ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ai_state, 0, 0, 1)
     ZEND_ARG_INFO(0, words)
 ZEND_END_ARG_INFO()
@@ -260,6 +374,7 @@ ZEND_END_ARG_INFO()
 static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, defaultRng, ai_default_rng, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(Generator, integers, ai_integers, ZEND_ACC_PUBLIC)
+    PHP_ME(Generator, choice, ai_choice, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, shuffle, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, permutation, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, getState, ai_none_g, ZEND_ACC_PUBLIC)
