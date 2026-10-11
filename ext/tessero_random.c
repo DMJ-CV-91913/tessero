@@ -411,6 +411,68 @@ static PHP_METHOD(Generator, dirichlet)
     }
 }
 
+/* multinomial(n, pvals, size=null): sequential conditional binomials, matching numpy. */
+static PHP_METHOD(Generator, multinomial)
+{
+    zend_long n;
+    zval *pvals_z, *size = NULL;
+    ZEND_PARSE_PARAMETERS_START(2, 3)
+        Z_PARAM_LONG(n)
+        Z_PARAM_ARRAY(pvals_z)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL_OR_NULL(size)
+    ZEND_PARSE_PARAMETERS_END();
+    uint64_t *st = gen_of(Z_OBJ_P(ZEND_THIS))->st;
+
+    const int64_t K = zend_hash_num_elements(Z_ARRVAL_P(pvals_z));
+    if (K < 1) { zend_throw_exception(tsr_ce_exception, "multinomial: pvals must have at least one element.", 0); RETURN_THROWS(); }
+    double *pv = (double *)emalloc((size_t)K * sizeof(double));
+    { int64_t i = 0; zval *e; ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(pvals_z), e) { pv[i++] = zval_get_double(e); } ZEND_HASH_FOREACH_END(); }
+    double head = 0.0;
+    for (int64_t j = 0; j < K - 1; j++) head += pv[j];
+    if (head > 1.0 + 1e-12) { efree(pv); zend_throw_exception(tsr_ce_exception, "multinomial: sum(pvals[:-1]) > 1.0", 0); RETURN_THROWS(); }
+
+    int64_t sdims[32];
+    const int snd = size_shape(size, sdims);
+    if (snd == -2) { efree(pv); RETURN_THROWS(); }
+    int nd;
+    int64_t oshape[40], rows = 1;
+    if (snd < 0) { nd = 1; oshape[0] = K; }
+    else { nd = snd + 1; for (int d = 0; d < snd; d++) { oshape[d] = sdims[d]; rows *= sdims[d]; } oshape[snd] = K; }
+    if (snd < 0) rows = 1;
+    if (snd >= 0 && snd == 0) rows = 1;
+
+    if (tsr_ndarray_new(return_value, TSR_I64, nd, oshape, 0) == FAILURE) { efree(pv); RETURN_THROWS(); }
+    tsr_array *o = &Z_TSR_P(return_value)->a;
+    int64_t *out = (int64_t *)((char *)o->data + o->offset);
+
+    const int bid = tsr_fn_find("random.binomial");
+    if (bid < 0) { efree(pv); zval_ptr_dtor(return_value); zend_throw_error(NULL, "random.binomial not registered"); RETURN_THROWS(); }
+    double dummy[1] = { 0.0 };
+    for (int64_t r = 0; r < rows; r++) {
+        int64_t remaining = n;
+        double psum = 1.0;
+        for (int64_t j = 0; j < K - 1; j++) {
+            double pj = psum > 0.0 ? pv[j] / psum : 0.0;
+            if (pj > 1.0) pj = 1.0;
+            int64_t bj = 0;
+            if (remaining > 0) {
+                double nd_in = (double)remaining, pj_in = pj;
+                int64_t res_i = 0;
+                void *ptrs[3] = { &nd_in, &pj_in, &res_i };
+                int rc = tsr_fn_random(bid, st, dummy, 0, NULL, 3, ptrs, NULL, TSR_I64);
+                if (rc < 0) { efree(pv); zval_ptr_dtor(return_value); zend_throw_exception(tsr_ce_exception, "multinomial: sampling failed", 0); RETURN_THROWS(); }
+                bj = res_i;
+            }
+            out[r * K + j] = bj;
+            remaining -= bj;
+            psum -= pv[j];
+        }
+        out[r * K + (K - 1)] = remaining;
+    }
+    efree(pv);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, seed, "null")
 ZEND_END_ARG_INFO()
@@ -433,6 +495,11 @@ ZEND_BEGIN_ARG_INFO_EX(ai_dirichlet, 0, 0, 1)
     ZEND_ARG_INFO(0, alpha)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, size, "null")
 ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO_EX(ai_multinomial, 0, 0, 2)
+    ZEND_ARG_TYPE_INFO(0, n, IS_LONG, 0)
+    ZEND_ARG_INFO(0, pvals)
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, size, "null")
+ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ai_state, 0, 0, 1)
     ZEND_ARG_INFO(0, words)
 ZEND_END_ARG_INFO()
@@ -444,6 +511,7 @@ static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, integers, ai_integers, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, choice, ai_choice, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, dirichlet, ai_dirichlet, ZEND_ACC_PUBLIC)
+    PHP_ME(Generator, multinomial, ai_multinomial, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, shuffle, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, permutation, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, getState, ai_none_g, ZEND_ACC_PUBLIC)
