@@ -15,6 +15,13 @@ def case(content, kwargs=None):
             'kwargs': {k: F.enc(v) for k, v in kwargs.items()}, 'expect': F.enc_result(r, [])}
 
 
+def gcase(content, kwargs=None):
+    kwargs = kwargs or {}
+    r = np.genfromtxt(io.StringIO(content), **kwargs)
+    return {'fn': 'genfromtxt', 'content': content,
+            'kwargs': {k: F.enc(v) for k, v in kwargs.items()}, 'expect': F.enc_result(r, [])}
+
+
 cases = [
     case("1 2 3\n4 5 6\n7 8 9\n"),                 # grid -> 2-D
     case("1 2 3\n"),                               # single row -> 1-D
@@ -27,6 +34,20 @@ cases = [
     case("1.5 -2.5 3.0\n-4.25 5.0 -6.5\n"),
     case("\n1 2\n\n3 4\n"),                        # blank lines skipped
     case("10,20\n30,40\n50,60\n", {'delimiter': ',', 'skiprows': 1}),
+]
+
+cases += [
+    gcase("1 2 3\n4 5 6\n7 8 9\n"),
+    gcase("1 2 3\n"),
+    gcase("1\n2\n3\n"),
+    gcase("5\n"),
+    gcase("1,2,3\n4,5,6\n", {'delimiter': ','}),
+    gcase("1,,3\n4,5,6\n", {'delimiter': ','}),
+    gcase("skip\n1 2\n3 4\n", {'skip_header': 1}),
+    gcase("1 2\n3 4\n5 6\n", {'skip_footer': 1}),
+    gcase("# c\n1 2\n3 4\n"),
+    gcase("1.5 -2.5 3.0\n-4.25 5.0 -6.5\n"),
+    gcase("10,,30\n,50,\n", {'delimiter': ','}),
 ]
 
 def ff_bin(content_bytes, read_dtype, kwargs=None):
