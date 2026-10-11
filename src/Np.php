@@ -185,6 +185,7 @@ final class Np
     'roots' => 'roots',
     'rot90' => 'rot90',
     'round' => 'round',
+    'savetxt' => 'savetxt',
     'searchsorted' => 'searchsorted',
     'select' => 'select',
     'setdiff1d' => 'setdiff1d',
@@ -1932,6 +1933,16 @@ final class Np
     public static function round(mixed $a, mixed $decimals = 0): mixed
     {
         return Registry::routine('np.round', [$a, $decimals]);
+    }
+
+    /**
+     * Save an array to a text file (numpy.savetxt).
+     *
+     * numpy.savetxt
+     */
+    public static function savetxt(mixed $fname, mixed $X, mixed $fmt = null, mixed $delimiter = null, mixed $newline = null, mixed $header = null, mixed $footer = null, mixed $comments = null): mixed
+    {
+        return Registry::routine('np.savetxt', [$fname, $X, $fmt, $delimiter, $newline, $header, $footer, $comments]);
     }
 
     /**

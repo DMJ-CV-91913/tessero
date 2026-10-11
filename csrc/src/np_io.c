@@ -248,9 +248,72 @@ static int r_genfromtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return TSR_OK;
 }
 
+
+/* numpy.savetxt: write a 1-D or 2-D array to a text file. Supports fmt (a single printf float conversion),
+   delimiter, newline, header, footer and comments. Returns the number of bytes written. */
+static int st_valid_fmt(const char *fmt)
+{
+    int specs = 0;
+    for (const char *p = fmt; *p; p++) {
+        if (*p != '%') continue;
+        if (p[1] == '%') { p++; continue; }
+        const char *q = p + 1;
+        while (*q && !strchr("eEfFgGdiu", *q)) {
+            if (*q == 'n' || *q == 's' || *q == 'p') return 0;      /* reject dangerous conversions */
+            q++;
+        }
+        if (!*q || !strchr("eEfFgG", *q)) return 0;                 /* only float conversions supported */
+        specs++;
+        p = q;
+    }
+    return specs == 1;
+}
+
+static int r_savetxt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 2 || !args[0].str) { fn_set_error("savetxt: the file name must be a string"); return TSR_EARG; }
+    if (args[1].kind != 3) { fn_set_error("savetxt: X must be an array"); return TSR_EARG; }
+    const char *fname = args[0].str;
+    const char *fmt = (nargs > 2 && args[2].kind == 2 && args[2].str && args[2].str[0]) ? args[2].str : "%.18e";
+    const char *delim = (nargs > 3 && args[3].kind == 2 && args[3].str) ? args[3].str : " ";
+    const char *newline = (nargs > 4 && args[4].kind == 2 && args[4].str) ? args[4].str : "\n";
+    const char *header = (nargs > 5 && args[5].kind == 2 && args[5].str) ? args[5].str : "";
+    const char *footer = (nargs > 6 && args[6].kind == 2 && args[6].str) ? args[6].str : "";
+    const char *comments = (nargs > 7 && args[7].kind == 2 && args[7].str) ? args[7].str : "# ";
+    if (!st_valid_fmt(fmt)) { fn_set_error("savetxt: unsupported fmt '%s' (one float conversion expected)", fmt); return TSR_EARG; }
+    const int ndim = args[1].arr.ndim;
+    if (ndim > 2) { fn_set_error("savetxt: X must be 1-D or 2-D"); return TSR_EARG; }
+    int64_t n;
+    double *a = fn_arg_doubles(&args[1], &n);
+    if (!a) return TSR_ENOMEM;
+    int64_t rows = ndim <= 1 ? n : args[1].arr.shape[0];
+    int64_t cols = ndim <= 1 ? 1 : args[1].arr.shape[1];
+
+    FILE *fp = fopen(fname, "w");
+    if (!fp) { fn_free_doubles(a, n); fn_set_error("savetxt: could not open '%s'", fname); return TSR_EARG; }
+    long written = 0;
+    char buf[64];
+    if (header[0]) { written += fprintf(fp, "%s%s%s", comments, header, newline); }
+    for (int64_t r = 0; r < rows; r++) {
+        for (int64_t c = 0; c < cols; c++) {
+            snprintf(buf, sizeof buf, fmt, a[r * cols + c]);
+            written += (long)fputs(buf, fp) >= 0 ? (long)strlen(buf) : 0;
+            if (c + 1 < cols) { fputs(delim, fp); written += (long)strlen(delim); }
+        }
+        fputs(newline, fp); written += (long)strlen(newline);
+    }
+    if (footer[0]) { written += fprintf(fp, "%s%s%s", comments, footer, newline); }
+    fclose(fp);
+    fn_free_doubles(a, n);
+    fn_result_num(&res[0], (double)written);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("np.loadtxt", 1, "fname, delimiter=None, skiprows=0, comments=None, usecols=None", "out", r_loadtxt, NULL, "Load a text file of numbers into a float64 array (numpy.loadtxt)."),
     ROUTINE("np.genfromtxt", 1, "fname, delimiter=None, skip_header=0, skip_footer=0, comments=None, usecols=None", "out", r_genfromtxt, NULL, "Load a text file of numbers into a float64 array, missing fields as NaN (numpy.genfromtxt)."),
+    ROUTINE("np.savetxt", 1, "fname, X, fmt=None, delimiter=None, newline=None, header=None, footer=None, comments=None", "nbytes", r_savetxt, NULL, "Save an array to a text file (numpy.savetxt)."),
     ROUTINE("np.fromfile", 1, "fname, dtype=None, count=-1, sep=None, offset=0", "out", r_fromfile, NULL, "Read a binary or text file into a 1-D array of the given dtype (numpy.fromfile)."),
 };
 
