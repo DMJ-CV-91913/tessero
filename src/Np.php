@@ -71,9 +71,11 @@ final class Np
     'divmod' => 'divmod',
     'dsplit' => 'dsplit',
     'dstack' => 'dstack',
+    'e' => 'e',
     'ediff1d' => 'ediff1d',
     'einsum' => 'einsum',
     'empty_like' => 'emptyLike',
+    'euler_gamma' => 'eulerGamma',
     'expand_dims' => 'expandDims',
     'extract' => 'extract',
     'fabs' => 'fabs',
@@ -99,6 +101,7 @@ final class Np
     'identity' => 'identity',
     'iinfo' => 'iinfo',
     'indices' => 'indices',
+    'inf' => 'inf',
     'inner' => 'inner',
     'insert' => 'insert',
     'interp' => 'interp',
@@ -125,6 +128,7 @@ final class Np
     'meshgrid' => 'meshgrid',
     'modf' => 'modf',
     'moveaxis' => 'moveaxis',
+    'nan' => 'nan',
     'nan_to_num' => 'nanToNum',
     'nanargmax' => 'nanargmax',
     'nanargmin' => 'nanargmin',
@@ -149,6 +153,7 @@ final class Np
     'pad' => 'pad',
     'partition' => 'partition',
     'percentile' => 'percentile',
+    'pi' => 'pi',
     'place' => 'place',
     'poly' => 'poly',
     'polyadd' => 'polyadd',
@@ -772,6 +777,16 @@ final class Np
     }
 
     /**
+     * Euler's number e (numpy.e).
+     *
+     * numpy.e
+     */
+    public static function e(): mixed
+    {
+        return Registry::routine('np.e', []);
+    }
+
+    /**
      * Differences between consecutive elements of the flattened array (numpy.ediff1d).
      *
      * numpy.ediff1d
@@ -801,6 +816,16 @@ final class Np
     public static function emptyLike(mixed $a, mixed $dtype = null, mixed $shape = null): mixed
     {
         return Registry::routine('np.empty_like', [$a, $dtype, $shape]);
+    }
+
+    /**
+     * The Euler-Mascheroni constant (numpy.euler_gamma).
+     *
+     * numpy.euler_gamma
+     */
+    public static function eulerGamma(): mixed
+    {
+        return Registry::routine('np.euler_gamma', []);
     }
 
     /**
@@ -1059,6 +1084,16 @@ final class Np
     public static function indices(mixed $dimensions, mixed $dtype = 'int64', mixed $sparse = false): mixed
     {
         return Registry::routine('np.indices', [$dimensions, $dtype, $sparse]);
+    }
+
+    /**
+     * IEEE 754 positive infinity (numpy.inf).
+     *
+     * numpy.inf
+     */
+    public static function inf(): mixed
+    {
+        return Registry::routine('np.inf', []);
     }
 
     /**
@@ -1326,6 +1361,16 @@ final class Np
     }
 
     /**
+     * IEEE 754 not-a-number (numpy.nan).
+     *
+     * numpy.nan
+     */
+    public static function nan(): mixed
+    {
+        return Registry::routine('np.nan', []);
+    }
+
+    /**
      * Replace NaN and infinities by finite numbers (numpy.nan_to_num).
      *
      * numpy.nan_to_num
@@ -1563,6 +1608,16 @@ final class Np
     public static function percentile(mixed $a, mixed $q, int|array|null $axis = null, string $method = 'linear', bool $keepdims = false): NDArray|float|int|bool
     {
         return Registry::gufunc('np.percentile', [$a, $q], $axis, $keepdims, ['method' => $method]);
+    }
+
+    /**
+     * The constant pi (numpy.pi).
+     *
+     * numpy.pi
+     */
+    public static function pi(): mixed
+    {
+        return Registry::routine('np.pi', []);
     }
 
     /**

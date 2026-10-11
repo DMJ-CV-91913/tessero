@@ -19,6 +19,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.array_equal` | `Tessero\Np::arrayEqual()` |
 | `numpy.array_equiv` | `Tessero\Np::arrayEquiv()` |
 | `numpy.array_split` | `Tessero\Np::arraySplit()` |
+| `numpy.asarray_chkfinite` | `Tessero\Np::asarrayChkfinite()` |
 | `numpy.ascontiguousarray` | `Tessero\Np::ascontiguousarray()` |
 | `numpy.asfortranarray` | `Tessero\Np::asfortranarray()` |
 | `numpy.atleast_1d` | `Tessero\Np::atleast1d()` |
@@ -63,9 +64,11 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.divmod` | `Tessero\Np::divmod()` |
 | `numpy.dsplit` | `Tessero\Np::dsplit()` |
 | `numpy.dstack` | `Tessero\Np::dstack()` |
+| `numpy.e` | `Tessero\Np::e()` |
 | `numpy.ediff1d` | `Tessero\Np::ediff1d()` |
 | `numpy.einsum` | `Tessero\Np::einsum()` |
 | `numpy.empty_like` | `Tessero\Np::emptyLike()` |
+| `numpy.euler_gamma` | `Tessero\Np::eulerGamma()` |
 | `numpy.expand_dims` | `Tessero\Np::expandDims()` |
 | `numpy.extract` | `Tessero\Np::extract()` |
 | `numpy.fabs` | `Tessero\Np::fabs()` |
@@ -91,6 +94,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.identity` | `Tessero\Np::identity()` |
 | `numpy.iinfo` | `Tessero\Np::iinfo()` |
 | `numpy.indices` | `Tessero\Np::indices()` |
+| `numpy.inf` | `Tessero\Np::inf()` |
 | `numpy.inner` | `Tessero\Np::inner()` |
 | `numpy.insert` | `Tessero\Np::insert()` |
 | `numpy.interp` | `Tessero\Np::interp()` |
@@ -117,6 +121,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.meshgrid` | `Tessero\Np::meshgrid()` |
 | `numpy.modf` | `Tessero\Np::modf()` |
 | `numpy.moveaxis` | `Tessero\Np::moveaxis()` |
+| `numpy.nan` | `Tessero\Np::nan()` |
 | `numpy.nan_to_num` | `Tessero\Np::nanToNum()` |
 | `numpy.nanargmax` | `Tessero\Np::nanargmax()` |
 | `numpy.nanargmin` | `Tessero\Np::nanargmin()` |
@@ -137,9 +142,11 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.nonzero` | `Tessero\Np::nonzero()` |
 | `numpy.ones_like` | `Tessero\Np::onesLike()` |
 | `numpy.outer` | `Tessero\Np::outer()` |
+| `numpy.packbits` | `Tessero\Np::packbits()` |
 | `numpy.pad` | `Tessero\Np::pad()` |
 | `numpy.partition` | `Tessero\Np::partition()` |
 | `numpy.percentile` | `Tessero\Np::percentile()` |
+| `numpy.pi` | `Tessero\Np::pi()` |
 | `numpy.place` | `Tessero\Np::place()` |
 | `numpy.poly` | `Tessero\Np::poly()` |
 | `numpy.polyadd` | `Tessero\Np::polyadd()` |
@@ -150,6 +157,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.polymul` | `Tessero\Np::polymul()` |
 | `numpy.polysub` | `Tessero\Np::polysub()` |
 | `numpy.polyval` | `Tessero\Np::polyval()` |
+| `numpy.positive` | `Tessero\Np::positive()` |
 | `numpy.promote_types` | `Tessero\Np::promoteTypes()` |
 | `numpy.ptp` | `Tessero\Np::ptp()` |
 | `numpy.put` | `Tessero\Np::put()` |
@@ -202,6 +210,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.unique_counts` | `Tessero\Np::uniqueCounts()` |
 | `numpy.unique_inverse` | `Tessero\Np::uniqueInverse()` |
 | `numpy.unique_values` | `Tessero\Np::uniqueValues()` |
+| `numpy.unpackbits` | `Tessero\Np::unpackbits()` |
 | `numpy.unravel_index` | `Tessero\Np::unravelIndex()` |
 | `numpy.unstack` | `Tessero\Np::unstack()` |
 | `numpy.unwrap` | `Tessero\Np::unwrap()` |
@@ -242,6 +251,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.linalg.solve` | `Tessero\Linalg::solve()` |
 | `numpy.linalg.svd` | `Tessero\Linalg::svd()` |
 | `numpy.linalg.svdvals` | `Tessero\Linalg::svdvals()` |
+| `numpy.linalg.tensordot` | `Tessero\Linalg::tensordot()` |
 | `numpy.linalg.tensorinv` | `Tessero\Linalg::tensorinv()` |
 | `numpy.linalg.tensorsolve` | `Tessero\Linalg::tensorsolve()` |
 | `numpy.linalg.trace` | `Tessero\Linalg::trace()` |
@@ -648,6 +658,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.differential_entropy` | `Tessero\Stats::differentialEntropy()` |
 | `scipy.stats.directional_stats` | `Tessero\Stats::directionalStats()` |
 | `scipy.stats.dirichlet` | `Tessero\Stats::dirichlet()` |
+| `scipy.stats.dirichlet_multinomial` | `Tessero\Stats::dirichletMultinomial()` |
 | `scipy.stats.dlaplace` | `Tessero\Stats::dlaplace()` |
 | `scipy.stats.dpareto_lognorm` | `Tessero\Stats::dparetoLognorm()` |
 | `scipy.stats.dweibull` | `Tessero\Stats::dweibull()` |
@@ -901,7 +912,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.spatial.distance.correlation` | `Tessero\Distance::correlation()` |
 | `scipy.spatial.distance.cosine` | `Tessero\Distance::cosine()` |
 | `scipy.spatial.distance.dice` | `Tessero\Distance::dice()` |
+| `scipy.spatial.distance.distance_matrix` | `Tessero\Distance::distanceMatrix()` |
 | `scipy.spatial.distance.euclidean` | `Tessero\Distance::euclidean()` |
+| `scipy.spatial.distance.geometric_slerp` | `Tessero\Distance::geometricSlerp()` |
 | `scipy.spatial.distance.hamming` | `Tessero\Distance::hamming()` |
 | `scipy.spatial.distance.is_valid_dm` | `Tessero\Distance::isValidDm()` |
 | `scipy.spatial.distance.is_valid_y` | `Tessero\Distance::isValidY()` |
@@ -909,9 +922,12 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.spatial.distance.jensenshannon` | `Tessero\Distance::jensenshannon()` |
 | `scipy.spatial.distance.mahalanobis` | `Tessero\Distance::mahalanobis()` |
 | `scipy.spatial.distance.minkowski` | `Tessero\Distance::minkowski()` |
+| `scipy.spatial.distance.minkowski_distance` | `Tessero\Distance::minkowskiDistance()` |
+| `scipy.spatial.distance.minkowski_distance_p` | `Tessero\Distance::minkowskiDistanceP()` |
 | `scipy.spatial.distance.num_obs_dm` | `Tessero\Distance::numObsDm()` |
 | `scipy.spatial.distance.num_obs_y` | `Tessero\Distance::numObsY()` |
 | `scipy.spatial.distance.pdist` | `Tessero\Distance::pdist()` |
+| `scipy.spatial.distance.procrustes` | `Tessero\Distance::procrustes()` |
 | `scipy.spatial.distance.rogerstanimoto` | `Tessero\Distance::rogerstanimoto()` |
 | `scipy.spatial.distance.russellrao` | `Tessero\Distance::russellrao()` |
 | `scipy.spatial.distance.seuclidean` | `Tessero\Distance::seuclidean()` |
@@ -933,6 +949,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.csr_matrix` | `Tessero\Sparse::csrMatrix()` |
 | `scipy.sparse.dia_array` | `Tessero\Sparse::diaArray()` |
 | `scipy.sparse.dia_matrix` | `Tessero\Sparse::diaMatrix()` |
+| `scipy.sparse.diags` | `Tessero\Sparse::diags()` |
+| `scipy.sparse.diags_array` | `Tessero\Sparse::diagsArray()` |
 | `scipy.sparse.eye` | `Tessero\Sparse::eye()` |
 | `scipy.sparse.eye_array` | `Tessero\Sparse::eyeArray()` |
 | `scipy.sparse.find` | `Tessero\Sparse::find()` |

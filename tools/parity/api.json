@@ -8526,6 +8526,12 @@
                 "doc": "Stack arrays depth-wise, along the third axis (numpy.dstack)."
             },
             {
+                "name": "e",
+                "static": true,
+                "sig": "e(): mixed",
+                "doc": "Euler's number e (numpy.e)."
+            },
+            {
                 "name": "ediff1d",
                 "static": true,
                 "sig": "ediff1d(mixed $ary, mixed $toEnd = null, mixed $toBegin = null): mixed",
@@ -8542,6 +8548,12 @@
                 "static": true,
                 "sig": "emptyLike(mixed $a, mixed $dtype = null, mixed $shape = null): mixed",
                 "doc": "An array with the shape and dtype of another; Tessero fills it with zeros (numpy.empty_like)."
+            },
+            {
+                "name": "eulerGamma",
+                "static": true,
+                "sig": "eulerGamma(): mixed",
+                "doc": "The Euler-Mascheroni constant (numpy.euler_gamma)."
             },
             {
                 "name": "expandDims",
@@ -8692,6 +8704,12 @@
                 "static": true,
                 "sig": "indices(mixed $dimensions, mixed $dtype = 'int64', mixed $sparse = false): mixed",
                 "doc": "An array of grid indices (numpy.indices); sparse=True gives a list of arrays."
+            },
+            {
+                "name": "inf",
+                "static": true,
+                "sig": "inf(): mixed",
+                "doc": "IEEE 754 positive infinity (numpy.inf)."
             },
             {
                 "name": "inner",
@@ -8850,6 +8868,12 @@
                 "doc": "Move axes to new positions (numpy.moveaxis)."
             },
             {
+                "name": "nan",
+                "static": true,
+                "sig": "nan(): mixed",
+                "doc": "IEEE 754 not-a-number (numpy.nan)."
+            },
+            {
                 "name": "nanToNum",
                 "static": true,
                 "sig": "nanToNum(mixed $x, mixed $copy = true, mixed $nan = 0.0, mixed $posinf = null, mixed $neginf = null): mixed",
@@ -8992,6 +9016,12 @@
                 "static": true,
                 "sig": "percentile(mixed $a, mixed $q, array|int|null $axis = null, string $method = 'linear', bool $keepdims = false): Tessero\\NDArray|int|float|bool",
                 "doc": "q-th percentiles along the given axes, q in [0, 100] (numpy.percentile)."
+            },
+            {
+                "name": "pi",
+                "static": true,
+                "sig": "pi(): mixed",
+                "doc": "The constant pi (numpy.pi)."
             },
             {
                 "name": "place",
@@ -13486,6 +13516,36 @@
                 "name": "unpackbits",
                 "static": true,
                 "sig": "unpackbits($a, $axis = null, $count = null, $bitorder = 'big')",
+                "doc": ""
+            },
+            {
+                "name": "pi",
+                "static": true,
+                "sig": "pi()",
+                "doc": ""
+            },
+            {
+                "name": "e",
+                "static": true,
+                "sig": "e()",
+                "doc": ""
+            },
+            {
+                "name": "eulerGamma",
+                "static": true,
+                "sig": "eulerGamma()",
+                "doc": ""
+            },
+            {
+                "name": "inf",
+                "static": true,
+                "sig": "inf()",
+                "doc": ""
+            },
+            {
+                "name": "nan",
+                "static": true,
+                "sig": "nan()",
                 "doc": ""
             },
             {
