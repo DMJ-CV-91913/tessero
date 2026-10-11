@@ -1352,6 +1352,51 @@ static int r_win_taylor(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return TSR_OK;
 }
 
+/* chebwin(M, at, sym=True): Dolph-Chebyshev window. Re(fft(p)) computed as a direct O(M^2) cosine sum. */
+static int r_win_chebwin(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int err; int64_t M0 = win_len(args, nargs, &err); if (err) return TSR_EARG;
+    int rc; if (win_guard(M0, &res[0], &rc)) return rc;
+    double at = win_dbl(args, nargs, 1, 100.0);
+    int64_t M = win_sym(args, nargs, 2) ? M0 : M0 + 1;
+    const double order = (double)M - 1.0;
+    const double val = pow(10.0, fabs(at) / 20.0);
+    const double beta = cosh(acosh(val) / order);
+    double *p = (double *)tsr_alloc(M * 8 + 64);
+    if (!p) return TSR_ENOMEM;
+    for (int64_t k = 0; k < M; k++) {
+        double x = beta * cos(M_PI * (double)k / (double)M);
+        if (x > 1.0) p[k] = cosh(order * acosh(x));
+        else if (x < -1.0) p[k] = (double)(2 * (M % 2) - 1) * cosh(order * acosh(-x));
+        else p[k] = cos(order * acos(x));
+    }
+    const int64_t n = (M % 2) ? (M + 1) / 2 : M / 2 + 1;
+    double *fr = (double *)tsr_alloc(n * 8 + 64);
+    double *wv = (double *)tsr_alloc(M * 8 + 64);
+    if (!fr || !wv) { tsr_free(p, M * 8 + 64); if (fr) tsr_free(fr, n * 8 + 64); if (wv) tsr_free(wv, M * 8 + 64); return TSR_ENOMEM; }
+    for (int64_t j = 0; j < n; j++) {
+        double acc = 0.0;
+        if (M % 2) for (int64_t k = 0; k < M; k++) acc += p[k] * cos(2.0 * M_PI * (double)j * (double)k / (double)M);
+        else       for (int64_t k = 0; k < M; k++) acc += p[k] * cos(M_PI * (double)k * (double)(2 * j - 1) / (double)M);
+        fr[j] = acc;
+    }
+    if (M % 2) {
+        for (int64_t i = 0; i < n - 1; i++) wv[i] = fr[n - 1 - i];
+        for (int64_t j = 0; j < n; j++) wv[n - 1 + j] = fr[j];
+    } else {
+        for (int64_t i = 0; i < n - 1; i++) wv[i] = fr[n - 1 - i];
+        for (int64_t j = 0; j < n - 1; j++) wv[n - 1 + j] = fr[1 + j];
+    }
+    double mx = wv[0];
+    for (int64_t i = 1; i < M; i++) if (wv[i] > mx) mx = wv[i];
+    int64_t sh[1] = {M0};
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    if (w) for (int64_t i = 0; i < M0; i++) w[i] = wv[i] / mx;
+    tsr_free(p, M * 8 + 64); tsr_free(fr, n * 8 + 64); tsr_free(wv, M * 8 + 64);
+    return w ? TSR_OK : TSR_ENOMEM;
+}
+
 /* gaussian(M, std, sym=True). */
 static int r_win_gaussian(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -4577,6 +4622,7 @@ static int r_get_window(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     else if (NM("parzen") || NM("parz") || NM("par")) fn = r_win_parzen;
     else if (NM("kaiser") || NM("ksr")) { fn = r_win_kaiser; need = 1; }
     else if (NM("kaiser_bessel_derived") || NM("kbd")) { fn = r_win_kbd; need = 1; }
+    else if (NM("chebwin") || NM("chebyshev") || NM("cheb")) { fn = r_win_chebwin; need = 1; }
     else if (NM("gaussian") || NM("gauss") || NM("gss")) { fn = r_win_gaussian; need = 1; }
     else if (NM("general_hamming")) { fn = r_win_general_hamming; need = 1; }
     else if (NM("general_gaussian") || NM("general gaussian") || NM("ggs")) { fn = r_win_general_gaussian; need = 2; }
@@ -5555,6 +5601,7 @@ static const fn_def DEFS[] = {
     ROUTINE("windows.kaiser", 1, "M, beta, sym=True", "out", r_win_kaiser, NULL, "Kaiser window with shape beta (scipy.signal.windows.kaiser)."),
     ROUTINE("windows.kaiser_bessel_derived", 1, "M, beta, sym=True", "out", r_win_kbd, NULL, "Kaiser-Bessel derived window (scipy.signal.windows.kaiser_bessel_derived)."),
     ROUTINE("windows.taylor", 1, "M, nbar=4, sll=30, norm=True, sym=True", "out", r_win_taylor, NULL, "Taylor window (scipy.signal.windows.taylor)."),
+    ROUTINE("windows.chebwin", 1, "M, at, sym=True", "out", r_win_chebwin, NULL, "Dolph-Chebyshev window (scipy.signal.windows.chebwin)."),
     ROUTINE("windows.gaussian", 1, "M, std, sym=True", "out", r_win_gaussian, NULL, "Gaussian window with standard deviation std (scipy.signal.windows.gaussian)."),
     ROUTINE("windows.general_gaussian", 1, "M, p, sig, sym=True", "out", r_win_general_gaussian, NULL, "Generalized Gaussian window (scipy.signal.windows.general_gaussian)."),
     ROUTINE("windows.exponential", 1, "M, center=None, tau=1.0, sym=True", "out", r_win_exponential, NULL, "Exponential (Poisson) window (scipy.signal.windows.exponential)."),

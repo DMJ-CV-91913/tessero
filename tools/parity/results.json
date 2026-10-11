@@ -1464,6 +1464,7 @@
         "windows.blackmanharris": "pass",
         "windows.bohman": "pass",
         "windows.boxcar": "pass",
+        "windows.chebwin": "pass",
         "windows.cosine": "pass",
         "windows.exponential": "pass",
         "windows.flattop": "pass",
@@ -2964,7 +2965,8 @@
             "special.ivp": 0,
             "special.kvp": 0,
             "windows.kaiser_bessel_derived": 0,
-            "windows.taylor": 4.649470546041335e-16
+            "windows.taylor": 4.649470546041335e-16,
+            "windows.chebwin": 4.588726991526998e-13
         },
         "ext": {
             "np.median": 0,
@@ -4447,7 +4449,8 @@
             "special.ivp": 0,
             "special.kvp": 0,
             "windows.kaiser_bessel_derived": 0,
-            "windows.taylor": 4.649470546041335e-16
+            "windows.taylor": 4.649470546041335e-16,
+            "windows.chebwin": 4.588726991526998e-13
         }
     },
     "ext": {
@@ -5915,6 +5918,7 @@
         "windows.blackmanharris": "pass",
         "windows.bohman": "pass",
         "windows.boxcar": "pass",
+        "windows.chebwin": "pass",
         "windows.cosine": "pass",
         "windows.exponential": "pass",
         "windows.flattop": "pass",
