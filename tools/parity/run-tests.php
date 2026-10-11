@@ -604,6 +604,21 @@ $t0 = microtime(true);
 foreach ($files as $file) {
     $data = json_decode((string) file_get_contents($file), true, 64, JSON_THROW_ON_ERROR);
     $module = $data['module'];
+    if (isset($data['block_cases'])) {                       // numpy.block: nested-list assembly (pure-PHP Tessero\ArrayOps)
+        foreach ($data['block_cases'] as $c) {
+            $checked++;
+            $w = 0.0;
+            try {
+                $got = \Tessero\ArrayOps::block(decodeValue($c['input'], $arrayClass));
+                $p = compareValue($c['expect'], $got, 1e-12, 0.0, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend]['np.block'] = ($results[$backend]['np.block'] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend]['np.block'] = null;
+            if ($p !== null) { $failures++; echo "FAIL np.block: {$p}\n"; }
+        }
+    }
     if (isset($data['io_cases'])) {                          // numpy.loadtxt etc.: fixture provides the file content
         $np = $classes[$backend]['np'];
         $local = [];

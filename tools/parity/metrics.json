@@ -82,20 +82,20 @@
  },
  "groups": {
   "NumPy core": {
-   "both": 680,
+   "both": 681,
    "excluded": 177,
-   "impl_ext": 680,
-   "impl_ffi": 680,
+   "impl_ext": 681,
+   "impl_ffi": 681,
    "in_scope": 683,
-   "m2_ext": 99.6,
-   "m2_ffi": 99.6,
+   "m2_ext": 99.7,
+   "m2_ffi": 99.7,
    "m3": 20.6,
-   "m4_ext": 99.6,
-   "m4_ffi": 99.6,
+   "m4_ext": 99.7,
+   "m4_ffi": 99.7,
    "m5": 100.0,
    "symbols": 860,
-   "verified_ext": 680,
-   "verified_ffi": 680
+   "verified_ext": 681,
+   "verified_ffi": 681
   },
   "SciPy": {
    "both": 1165,
@@ -116,20 +116,20 @@
  },
  "modules": {
   "numpy": {
-   "both": 339,
+   "both": 340,
    "excluded": 102,
-   "impl_ext": 339,
-   "impl_ffi": 339,
+   "impl_ext": 340,
+   "impl_ffi": 340,
    "in_scope": 340,
-   "m2_ext": 99.7,
-   "m2_ffi": 99.7,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 23.1,
-   "m4_ext": 99.7,
-   "m4_ffi": 99.7,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 442,
-   "verified_ext": 339,
-   "verified_ffi": 339
+   "verified_ext": 340,
+   "verified_ffi": 340
   },
   "numpy.fft": {
    "both": 18,
@@ -623,9 +623,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40035,
-   "covered_ext": 40035,
-   "covered_ffi": 40043,
+   "covered_both": 40039,
+   "covered_ext": 40039,
+   "covered_ffi": 40047,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -664,9 +664,9 @@
   "groups": {
    "NumPy core": {
     "calls": 39800,
-    "covered_both": 37794,
-    "covered_ext": 37794,
-    "covered_ffi": 37794,
+    "covered_both": 37798,
+    "covered_ext": 37798,
+    "covered_ffi": 37798,
     "excluded_calls": 2002,
     "excluded_share": 5.0,
     "in_scope_calls": 37798,
