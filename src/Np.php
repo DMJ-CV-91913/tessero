@@ -89,6 +89,7 @@ final class Np
     'fromfile' => 'fromfile',
     'fromiter' => 'fromiter',
     'full_like' => 'fullLike',
+    'genfromtxt' => 'genfromtxt',
     'geomspace' => 'geomspace',
     'gradient' => 'gradient',
     'hamming' => 'hamming',
@@ -959,6 +960,16 @@ final class Np
     public static function fullLike(mixed $a, mixed $fillValue, mixed $dtype = null, mixed $shape = null): mixed
     {
         return Registry::routine('np.full_like', [$a, $fillValue, $dtype, $shape]);
+    }
+
+    /**
+     * Load a text file of numbers into a float64 array, missing fields as NaN (numpy.genfromtxt).
+     *
+     * numpy.genfromtxt
+     */
+    public static function genfromtxt(mixed $fname, mixed $delimiter = null, mixed $skipHeader = 0, mixed $skipFooter = 0, mixed $comments = null, mixed $usecols = null): mixed
+    {
+        return Registry::routine('np.genfromtxt', [$fname, $delimiter, $skipHeader, $skipFooter, $comments, $usecols]);
     }
 
     /**

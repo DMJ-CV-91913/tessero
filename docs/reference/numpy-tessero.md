@@ -82,6 +82,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.fromfile` | `Tessero\Np::fromfile()` |
 | `numpy.fromiter` | `Tessero\Np::fromiter()` |
 | `numpy.full_like` | `Tessero\Np::fullLike()` |
+| `numpy.genfromtxt` | `Tessero\Np::genfromtxt()` |
 | `numpy.geomspace` | `Tessero\Np::geomspace()` |
 | `numpy.gradient` | `Tessero\Np::gradient()` |
 | `numpy.hamming` | `Tessero\Np::hamming()` |

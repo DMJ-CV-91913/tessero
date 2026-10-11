@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 static int push(double **d, int64_t *cap, int64_t *cnt, double v)
 {
@@ -166,8 +167,90 @@ static int r_fromfile(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     return TSR_OK;
 }
 
+
+/* numpy.genfromtxt: like loadtxt but missing/empty fields become NaN, with skip_header/skip_footer.
+   Float64 output, squeezed as NumPy does. usecols and structured dtypes are not handled. */
+static int r_genfromtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 2 || !args[0].str) { fn_set_error("genfromtxt: the file name must be a string"); return TSR_EARG; }
+    const char *fname = args[0].str;
+    const char *delim = (nargs > 1 && args[1].kind == 2 && args[1].str && args[1].str[0]) ? args[1].str : NULL;
+    int64_t skip_header = 0, skip_footer = 0;
+    if (nargs > 2 && args[2].kind == 1) skip_header = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    if (nargs > 3 && args[3].kind == 1) skip_footer = (args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num;
+    const char *comments = (nargs > 4 && args[4].kind == 2 && args[4].str) ? args[4].str : "#";
+
+    FILE *fp = fopen(fname, "r");
+    if (!fp) { fn_set_error("genfromtxt: could not open '%s'", fname); return TSR_EARG; }
+    double *data = NULL; int64_t cap = 0, cnt = 0, nrows = 0, ncols = -1;
+    char *line = NULL; size_t lcap = 0; ssize_t len; int64_t lineno = 0; int rc = TSR_OK;
+    while ((len = getline(&line, &lcap, fp)) != -1) {
+        (void)len;
+        if (lineno++ < skip_header) continue;
+        if (comments && comments[0]) { char *h = strstr(line, comments); if (h) *h = '\0'; }
+        int64_t rowcols = 0;
+        int hascontent = 0;
+        for (char *p = line; *p; p++) if (*p != ' ' && *p != '\t' && *p != '\n' && *p != '\r') { hascontent = 1; break; }
+        if (!hascontent) {
+            /* blank line: no fields */
+        } else if (delim) {
+            char *eol = line + strlen(line);
+            while (eol > line && (eol[-1] == '\n' || eol[-1] == '\r')) *--eol = '\0';
+            char *s = line;                       /* split into (ndelim + 1) fields; empty field -> NaN */
+            for (;;) {
+                char *d = strchr(s, delim[0]);
+                char *end = d ? d : eol;
+                char *fs = s; while (fs < end && (*fs == ' ' || *fs == '\t')) fs++;
+                char *fe = end; while (fe > fs && (fe[-1] == ' ' || fe[-1] == '\t')) fe--;
+                double v = NAN;
+                if (fe > fs) { char *ep; v = strtod(fs, &ep); if (ep == fs) v = NAN; }
+                if (push(&data, &cap, &cnt, v) < 0) { rc = TSR_ENOMEM; break; }
+                rowcols++;
+                if (!d) break;
+                s = d + 1;
+            }
+        } else {
+            char *s = line, *ep;
+            for (;;) {
+                while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r') s++;
+                if (*s == '\0') break;
+                double v = strtod(s, &ep);
+                if (ep == s) { v = NAN; while (*s && *s != ' ' && *s != '\t' && *s != '\n' && *s != '\r') s++; }
+                else s = ep;
+                if (push(&data, &cap, &cnt, v) < 0) { rc = TSR_ENOMEM; break; }
+                rowcols++;
+            }
+        }
+        if (rc != TSR_OK) break;
+        if (rowcols == 0) continue;
+        if (ncols < 0) ncols = rowcols;
+        else if (rowcols != ncols) { fn_set_error("genfromtxt: row %lld has %lld columns, expected %lld", (long long)lineno, (long long)rowcols, (long long)ncols); rc = TSR_EARG; break; }
+        nrows++;
+    }
+    free(line);
+    fclose(fp);
+    if (rc != TSR_OK) { free(data); return rc; }
+    if (skip_footer > 0 && nrows > 0) {
+        int64_t drop = skip_footer < nrows ? skip_footer : nrows;
+        nrows -= drop; cnt -= drop * ncols;
+    }
+    if (ncols < 0) ncols = 0;
+    int32_t ond; int64_t osh[2];
+    if (nrows == 1 && ncols == 1) { const double v = data[0]; free(data); fn_result_num(&res[0], v); return TSR_OK; }
+    else if (nrows == 1) { ond = 1; osh[0] = ncols; }
+    else if (ncols == 1) { ond = 1; osh[0] = nrows; }
+    else { ond = 2; osh[0] = nrows; osh[1] = ncols; }
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, ond, osh);
+    if (!out) { free(data); return TSR_ENOMEM; }
+    memcpy(out, data, sizeof(double) * (size_t)(nrows * ncols));
+    free(data);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("np.loadtxt", 1, "fname, delimiter=None, skiprows=0, comments=None, usecols=None", "out", r_loadtxt, NULL, "Load a text file of numbers into a float64 array (numpy.loadtxt)."),
+    ROUTINE("np.genfromtxt", 1, "fname, delimiter=None, skip_header=0, skip_footer=0, comments=None, usecols=None", "out", r_genfromtxt, NULL, "Load a text file of numbers into a float64 array, missing fields as NaN (numpy.genfromtxt)."),
     ROUTINE("np.fromfile", 1, "fname, dtype=None, count=-1, sep=None, offset=0", "out", r_fromfile, NULL, "Read a binary or text file into a 1-D array of the given dtype (numpy.fromfile)."),
 };
 
