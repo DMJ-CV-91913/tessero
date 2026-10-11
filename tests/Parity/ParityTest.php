@@ -113,6 +113,21 @@ final class ParityTest extends TestCase
         $this->near($c['expect'], self::arr($c['a'])->argsort($c['axis']), 0.0, 'argsort');
     }
 
+    private function runFill(array $c): void
+    {
+        $this->near($c['expect'], self::arr($c['a'])->fill(self::scalar($c['value'])), 0.0, 'fill');
+    }
+
+    private function runByteswap(array $c): void
+    {
+        $this->near($c['expect'], self::arr($c['a'])->byteswap(), 0.0, 'byteswap');
+    }
+
+    private function runResize(array $c): void
+    {
+        $this->near($c['expect'], self::arr($c['a'])->resize(array_map('intval', $c['shape'])), 0.0, 'resize');
+    }
+
     private function runTransposeMatmul(array $c): void
     {
         $this->near($c['expect'], self::arr($c['a'])->matmul(self::arr($c['b'])->t()), 1e-12, 'a @ b.T');

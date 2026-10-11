@@ -867,6 +867,24 @@
                 "doc": "Choose from a set of arrays by index (numpy.ndarray.choose)."
             },
             {
+                "name": "fill",
+                "static": false,
+                "sig": "fill(mixed $value): self",
+                "doc": "Fill the array with a scalar value (numpy.ndarray.fill); returns a new same-shape array."
+            },
+            {
+                "name": "byteswap",
+                "static": false,
+                "sig": "byteswap(bool $inplace = false): self",
+                "doc": "A copy with each element's bytes reversed (numpy.ndarray.byteswap)."
+            },
+            {
+                "name": "resize",
+                "static": false,
+                "sig": "resize(array|int $shape): self",
+                "doc": "Return a copy resized to the given shape (numpy.ndarray.resize): flattened, zero-padded or truncated."
+            },
+            {
                 "name": "searchsorted",
                 "static": false,
                 "sig": "searchsorted(mixed $v, string $side = 'left'): mixed",
@@ -6877,6 +6895,24 @@
                 "name": "argpartition",
                 "static": false,
                 "sig": "argpartition($arg1, $arg2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "fill",
+                "static": false,
+                "sig": "fill($value)",
+                "doc": ""
+            },
+            {
+                "name": "byteswap",
+                "static": false,
+                "sig": "byteswap(bool $sync = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "resize",
+                "static": false,
+                "sig": "resize($value)",
                 "doc": ""
             },
             {

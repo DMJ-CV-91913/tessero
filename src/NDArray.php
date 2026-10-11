@@ -1568,6 +1568,42 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     public function compress(mixed $condition, ?int $axis = null): mixed { return \Tessero\Np::compress($condition, $this, $axis); }
     /** Choose from a set of arrays by index (numpy.ndarray.choose). */
     public function choose(mixed $choices, mixed $mode = 'raise'): mixed { return \Tessero\Np::choose($this, $choices, $mode); }
+    /** Fill the array with a scalar value (numpy.ndarray.fill); returns a new same-shape array. */
+    public function fill(mixed $value): self
+    {
+        return self::full($this->shape, $value, $this->dtype);
+    }
+    /** A copy with each element's bytes reversed (numpy.ndarray.byteswap). */
+    public function byteswap(bool $inplace = false): self
+    {
+        $isz = $this->dtype->itemsize();
+        $bytes = $this->contiguous()->toBytes();
+        if ($isz <= 1) {
+            return self::fromBytes($bytes, $this->dtype, $this->shape);
+        }
+        $out = '';
+        $n = strlen($bytes);
+        for ($i = 0; $i < $n; $i += $isz) {
+            $out .= strrev(substr($bytes, $i, $isz));
+        }
+        return self::fromBytes($out, $this->dtype, $this->shape);
+    }
+    /** Return a copy resized to the given shape (numpy.ndarray.resize): flattened, zero-padded or truncated. */
+    public function resize(array|int $shape): self
+    {
+        $shape = is_int($shape) ? [$shape] : array_values($shape);
+        $newSize = (int) array_product($shape);
+        if ($newSize === 0) {
+            return self::zeros($shape, $this->dtype);
+        }
+        $vals = $this->flatten()->toList();
+        $vals = array_slice($vals, 0, $newSize);
+        while (count($vals) < $newSize) {
+            $vals[] = 0;
+        }
+
+        return self::fromFlat($vals, $shape, $this->dtype);
+    }
     /** Indices where elements of v keep this sorted if inserted (numpy.ndarray.searchsorted). */
     public function searchsorted(mixed $v, string $side = 'left'): mixed { return \Tessero\Np::searchsorted($this, $v, $side); }
     /** A partial sort: a copy with the kth element in final sorted position (numpy.ndarray.partition). */
