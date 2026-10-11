@@ -486,11 +486,13 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.itstruve0` | `Tessero\Special::itstruve0()` |
 | `scipy.special.iv` | `Tessero\Special::iv()` |
 | `scipy.special.ive` | `Tessero\Special::ive()` |
+| `scipy.special.ivp` | `Tessero\Special::ivp()` |
 | `scipy.special.j0` | `Tessero\Special::j0()` |
 | `scipy.special.j1` | `Tessero\Special::j1()` |
 | `scipy.special.jn` | `Tessero\Special::jn()` |
 | `scipy.special.jv` | `Tessero\Special::jv()` |
 | `scipy.special.jve` | `Tessero\Special::jve()` |
+| `scipy.special.jvp` | `Tessero\Special::jvp()` |
 | `scipy.special.k0` | `Tessero\Special::k0()` |
 | `scipy.special.k0e` | `Tessero\Special::k0e()` |
 | `scipy.special.k1` | `Tessero\Special::k1()` |
@@ -506,6 +508,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.kolmogorov` | `Tessero\Special::kolmogorov()` |
 | `scipy.special.kv` | `Tessero\Special::kv()` |
 | `scipy.special.kve` | `Tessero\Special::kve()` |
+| `scipy.special.kvp` | `Tessero\Special::kvp()` |
 | `scipy.special.lambertw` | `Tessero\Special::lambertw()` |
 | `scipy.special.log1p` | `Tessero\Special::log1p()` |
 | `scipy.special.logSoftmax` | `Tessero\Special::logSoftmax()` |
@@ -607,6 +610,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.yn` | `Tessero\Special::yn()` |
 | `scipy.special.yv` | `Tessero\Special::yv()` |
 | `scipy.special.yve` | `Tessero\Special::yve()` |
+| `scipy.special.yvp` | `Tessero\Special::yvp()` |
+| `scipy.special.zeta` | `Tessero\Special::zeta()` |
 | `scipy.special.zetac` | `Tessero\Special::zetac()` |
 
 ## scipy.stats

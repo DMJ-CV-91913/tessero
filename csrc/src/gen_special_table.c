@@ -260,6 +260,11 @@ void tsr_special_yn__int(const void *, const double *, double *);
 void tsr_special_yv(const void *, const double *, double *);
 void tsr_special_yv__cplx(const void *, const double *, double *);
 void tsr_special_yve(const void *, const double *, double *);
+void tsr_special_zeta(const void *, const double *, double *);
+void tsr_special_jvp(const void *, const double *, double *);
+void tsr_special_yvp(const void *, const double *, double *);
+void tsr_special_ivp(const void *, const double *, double *);
+void tsr_special_kvp(const void *, const double *, double *);
 void tsr_special_zetac(const void *, const double *, double *);
 void tsr_special_softplus(const void *, const double *, double *);
 void tsr_special_sinc(const void *, const double *, double *);
@@ -498,6 +503,11 @@ const fn_def TSR_GEN_SPECIAL[] = {
     UFUNCI("special.yn", 2, 1, "n, x", "Y", tsr_special_yn, tsr_special_yn__int, 1, "Bessel function of the second kind of integer order and real argument."),
     UFUNC_C("special.yv", 2, 1, "v, z", "Y", tsr_special_yv, NULL, 0, tsr_special_yv__cplx, "Bessel function of the second kind of real order and complex argument."),
     UFUNCI("special.yve", 2, 1, "v, z", "Y", tsr_special_yve, NULL, 0, "Exponentially scaled Bessel function of the second kind of real order."),
+    UFUNCI("special.zeta", 2, 1, "x, q", "y", tsr_special_zeta, NULL, 0, "Hurwitz zeta function (scipy.special.zeta)."),
+    UFUNCI("special.jvp", 2, 1, "v, z", "out", tsr_special_jvp, NULL, 0, "First derivative of the Bessel function of the first kind (scipy.special.jvp, n=1)."),
+    UFUNCI("special.yvp", 2, 1, "v, z", "out", tsr_special_yvp, NULL, 0, "First derivative of the Bessel function of the second kind (scipy.special.yvp, n=1)."),
+    UFUNCI("special.ivp", 2, 1, "v, z", "out", tsr_special_ivp, NULL, 0, "First derivative of the modified Bessel function of the first kind (scipy.special.ivp, n=1)."),
+    UFUNCI("special.kvp", 2, 1, "v, z", "out", tsr_special_kvp, NULL, 0, "First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1)."),
     UFUNCI("special.zetac", 1, 1, "x", "y", tsr_special_zetac, NULL, 0, "Riemann zeta function minus 1."),
     UFUNCI("special.softplus", 1, 1, "x", "y", tsr_special_softplus, NULL, 0, "Softplus, log(1 + exp(x)), evaluated stably (scipy.special.softplus)."),
     UFUNCI("special.sinc", 1, 1, "x", "y", tsr_special_sinc, NULL, 0, "Normalized sinc, sin(pi x)/(pi x) with sinc(0)=1 (scipy.special.sinc)."),
