@@ -5803,6 +5803,12 @@
                 "doc": "Draw from a Dirichlet distribution (numpy.random.Generator.dirichlet). Each sample is a vector of length count($alpha) that sums to 1, built from independent standard-gamma draws then normalised."
             },
             {
+                "name": "multinomial",
+                "static": false,
+                "sig": "multinomial(int $n, array $pvals, array|int|null $size = null): Tessero\\NDArray",
+                "doc": "Draw samples from a multinomial distribution (numpy.random.Generator.multinomial): for each of the len($pvals) categories, a count, built from sequential conditional binomial draws."
+            },
+            {
                 "name": "stateHandle",
                 "static": false,
                 "sig": "stateHandle(): FFI\\CData",
@@ -8026,6 +8032,12 @@
                 "name": "dirichlet",
                 "static": false,
                 "sig": "dirichlet($alpha, $size = null)",
+                "doc": ""
+            },
+            {
+                "name": "multinomial",
+                "static": false,
+                "sig": "multinomial(int $n, $pvals, $size = null)",
                 "doc": ""
             },
             {

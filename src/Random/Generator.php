@@ -209,6 +209,47 @@ final class Generator
         return NDArray::array($out, DType::Float64)->reshape([...$shape, $k]);
     }
 
+    /**
+     * Draw samples from a multinomial distribution (numpy.random.Generator.multinomial): for each of the
+     * len($pvals) categories, a count, built from sequential conditional binomial draws.
+     *
+     * @param list<int|float> $pvals
+     */
+    public function multinomial(int $n, array $pvals, int|array|null $size = null): NDArray
+    {
+        $k = count($pvals);
+        if ($k < 1) {
+            throw new TesseroException('multinomial: pvals must have at least one element.');
+        }
+        $head = 0.0;
+        for ($j = 0; $j < $k - 1; $j++) {
+            $head += $pvals[$j];
+        }
+        if ($head > 1.0 + 1e-12) {
+            throw new TesseroException('multinomial: sum(pvals[:-1]) > 1.0');
+        }
+        [$shape, $rows] = self::size($size);
+        $rows = max(1, $rows);
+        $out = [];
+        for ($i = 0; $i < $rows; $i++) {
+            $remaining = $n;
+            $psum = 1.0;
+            for ($j = 0; $j < $k - 1; $j++) {
+                $pj = $psum > 0.0 ? $pvals[$j] / $psum : 0.0;
+                if ($pj > 1.0) {
+                    $pj = 1.0;
+                }
+                $bj = $remaining > 0 ? $this->binomial($remaining, $pj) : 0;
+                $out[] = $bj;
+                $remaining -= $bj;
+                $psum -= $pvals[$j];
+            }
+            $out[] = $remaining;
+        }
+
+        return NDArray::array($out, DType::Int64)->reshape([...$shape, $k]);
+    }
+
     /** @return list<string> the 6 state words as decimal strings (for persistence) */
     /**
      * The PCG64 state vector, for the kernel calls that draw from this generator (scipy.stats rvs).

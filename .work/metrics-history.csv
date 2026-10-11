@@ -204,3 +204,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-11,numpy histogram2d (both backends),98.1,97.5,77.9,77.7,99.4,99.7,72.6,72.6,84.5,84.5
 2026-10-11,ext Generator choice + shuffle mapping,98.1,97.8,77.9,77.7,99.7,99.7,72.6,72.6,84.5,84.5
 2026-10-11,numpy Generator.dirichlet (both backends),98.2,98.0,77.9,77.7,99.7,99.7,72.6,72.6,84.5,84.5
+2026-10-11,numpy Generator.multinomial (both backends),98.4,98.1,77.9,77.7,99.7,99.7,72.6,72.6,84.5,84.5
