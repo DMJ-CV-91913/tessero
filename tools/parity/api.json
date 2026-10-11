@@ -3577,6 +3577,12 @@
                 "doc": "Kaiser window with shape beta (scipy.signal.windows.kaiser)."
             },
             {
+                "name": "kaiserBesselDerived",
+                "static": true,
+                "sig": "kaiserBesselDerived(mixed $M, mixed $beta, mixed $sym = true): mixed",
+                "doc": "Kaiser-Bessel derived window (scipy.signal.windows.kaiser_bessel_derived)."
+            },
+            {
                 "name": "lanczos",
                 "static": true,
                 "sig": "lanczos(mixed $M, mixed $sym = true): mixed",
@@ -18998,6 +19004,12 @@
                 "name": "kaiser",
                 "static": true,
                 "sig": "kaiser($M, $beta, $sym = true)",
+                "doc": ""
+            },
+            {
+                "name": "kaiserBesselDerived",
+                "static": true,
+                "sig": "kaiserBesselDerived($M, $beta, $sym = true)",
                 "doc": ""
             },
             {

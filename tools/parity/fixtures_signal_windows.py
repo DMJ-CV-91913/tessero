@@ -42,6 +42,9 @@ blocks['general_hamming'] = (
 blocks['kaiser'] = (
     [case('kaiser', M, extra=[8.0]) for M in MS]
     + [case('kaiser', 9, {'sym': False}, extra=[14.0]), case('kaiser', 8, extra=[0.5])])
+blocks['kaiser_bessel_derived'] = (
+    [case('kaiser_bessel_derived', M, extra=[8.0]) for M in (2, 8, 16)]
+    + [case('kaiser_bessel_derived', 8, extra=[4.0]), case('kaiser_bessel_derived', 16, extra=[14.0])])
 blocks['gaussian'] = (
     [case('gaussian', M, extra=[2.0]) for M in MS]
     + [case('gaussian', 9, {'sym': False}, extra=[1.5])])

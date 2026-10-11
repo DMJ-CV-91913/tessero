@@ -1474,6 +1474,7 @@
         "windows.hamming": "pass",
         "windows.hann": "pass",
         "windows.kaiser": "pass",
+        "windows.kaiser_bessel_derived": "pass",
         "windows.lanczos": "pass",
         "windows.nuttall": "pass",
         "windows.parzen": "pass",
@@ -2960,7 +2961,8 @@
             "special.jvp": 0,
             "special.yvp": 0,
             "special.ivp": 0,
-            "special.kvp": 0
+            "special.kvp": 0,
+            "windows.kaiser_bessel_derived": 0
         },
         "ext": {
             "np.median": 0,
@@ -4441,7 +4443,8 @@
             "special.jvp": 0,
             "special.yvp": 0,
             "special.ivp": 0,
-            "special.kvp": 0
+            "special.kvp": 0,
+            "windows.kaiser_bessel_derived": 0
         }
     },
     "ext": {
@@ -5919,6 +5922,7 @@
         "windows.hamming": "pass",
         "windows.hann": "pass",
         "windows.kaiser": "pass",
+        "windows.kaiser_bessel_derived": "pass",
         "windows.lanczos": "pass",
         "windows.nuttall": "pass",
         "windows.parzen": "pass",
