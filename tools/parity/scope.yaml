@@ -278,6 +278,13 @@ legacy:
     angle: {ffi: [M::angle], ext: [XM::angle], tests: math}
   numpy.ndarray:
     T: {ffi: [N::t], ext: [XN::t], tests: core}
+    nonzero: {ffi: [N::nonzero], ext: [XN::nonzero], tests: core}
+    mT: {ffi: [N::mT], ext: [XN::mT], tests: core}
+    trace: {ffi: [N::trace], ext: [XN::trace], tests: core}
+    diagonal: {ffi: [N::diagonal], ext: [XN::diagonal], tests: core}
+    repeat: {ffi: [N::repeat], ext: [XN::repeat], tests: core}
+    compress: {ffi: [N::compress], ext: [XN::compress], tests: core}
+    choose: {ffi: [N::choose], ext: [XN::choose], tests: core}
     all: {ffi: [N::all], ext: [XN::all], tests: core}
     any: {ffi: [N::any], ext: [XN::any], tests: core}
     argmax: {ffi: [N::argmax], ext: [XN::argmax], tests: core}
