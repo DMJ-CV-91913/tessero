@@ -285,6 +285,9 @@ legacy:
     repeat: {ffi: [N::repeat], ext: [XN::repeat], tests: core}
     compress: {ffi: [N::compress], ext: [XN::compress], tests: core}
     choose: {ffi: [N::choose], ext: [XN::choose], tests: core}
+    searchsorted: {ffi: [N::searchsorted], ext: [XN::searchsorted], tests: core}
+    partition: {ffi: [N::partition], ext: [XN::partition], tests: core}
+    argpartition: {ffi: [N::argpartition], ext: [XN::argpartition], tests: core}
     all: {ffi: [N::all], ext: [XN::all], tests: core}
     any: {ffi: [N::any], ext: [XN::any], tests: core}
     argmax: {ffi: [N::argmax], ext: [XN::argmax], tests: core}

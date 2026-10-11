@@ -121,6 +121,7 @@ uint64_t *tsr_generator_state(zval *obj);
 void tsr_register_fn(void);
 void tsr_fn_dist_call(int id, int method, zval *args, int nargs, zval *rv);
 void tsr_fn_call_routine(const char *name, zval *args, int nargs, zval *rv);
+void tsr_fn_call_gufunc(const char *name, zval *args, int nargs, zval *rv);
 /* tessero_dist.c: Tessero\Ext\Distribution (frozen scipy.stats distributions) */
 void tsr_register_dist(void);
 void tsr_distribution_new(zval *rv, int id, const char *label, zval *args, int nargs);
