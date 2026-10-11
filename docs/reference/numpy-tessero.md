@@ -178,6 +178,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.roots` | `Tessero\Np::roots()` |
 | `numpy.rot90` | `Tessero\Np::rot90()` |
 | `numpy.round` | `Tessero\Np::round()` |
+| `numpy.savetxt` | `Tessero\Np::savetxt()` |
 | `numpy.searchsorted` | `Tessero\Np::searchsorted()` |
 | `numpy.select` | `Tessero\Np::select()` |
 | `numpy.setdiff1d` | `Tessero\Np::setdiff1d()` |

@@ -408,6 +408,7 @@
         "np.roots": "pass",
         "np.rot90": "pass",
         "np.round": "pass",
+        "np.savetxt": "pass",
         "np.searchsorted": "pass",
         "np.select": "pass",
         "np.setdiff1d": "pass",
@@ -2948,7 +2949,8 @@
             "random.multinomial": 0,
             "random.permuted": 0,
             "random.multivariate_hypergeometric": 0,
-            "np.genfromtxt": null
+            "np.genfromtxt": null,
+            "np.savetxt": null
         },
         "ext": {
             "np.median": 0,
@@ -4423,7 +4425,8 @@
             "random.multinomial": 0,
             "random.permuted": 0,
             "random.multivariate_hypergeometric": 0,
-            "np.genfromtxt": null
+            "np.genfromtxt": null,
+            "np.savetxt": null
         }
     },
     "ext": {
@@ -4835,6 +4838,7 @@
         "np.roots": "pass",
         "np.rot90": "pass",
         "np.round": "pass",
+        "np.savetxt": "pass",
         "np.searchsorted": "pass",
         "np.select": "pass",
         "np.setdiff1d": "pass",
