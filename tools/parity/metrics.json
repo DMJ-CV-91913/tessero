@@ -77,25 +77,25 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1406,
-  "ffi": 1406
+  "ext": 1407,
+  "ffi": 1407
  },
  "groups": {
   "NumPy core": {
-   "both": 677,
+   "both": 678,
    "excluded": 177,
-   "impl_ext": 677,
-   "impl_ffi": 679,
+   "impl_ext": 678,
+   "impl_ffi": 680,
    "in_scope": 683,
-   "m2_ext": 99.1,
-   "m2_ffi": 99.4,
+   "m2_ext": 99.3,
+   "m2_ffi": 99.6,
    "m3": 20.6,
-   "m4_ext": 99.1,
-   "m4_ffi": 99.4,
+   "m4_ext": 99.3,
+   "m4_ffi": 99.6,
    "m5": 99.7,
    "symbols": 860,
-   "verified_ext": 677,
-   "verified_ffi": 679
+   "verified_ext": 678,
+   "verified_ffi": 680
   },
   "SciPy": {
    "both": 1165,
@@ -116,20 +116,20 @@
  },
  "modules": {
   "numpy": {
-   "both": 336,
+   "both": 337,
    "excluded": 102,
-   "impl_ext": 336,
-   "impl_ffi": 338,
+   "impl_ext": 337,
+   "impl_ffi": 339,
    "in_scope": 340,
-   "m2_ext": 98.8,
-   "m2_ffi": 99.4,
+   "m2_ext": 99.1,
+   "m2_ffi": 99.7,
    "m3": 23.1,
-   "m4_ext": 98.8,
-   "m4_ffi": 99.4,
+   "m4_ext": 99.1,
+   "m4_ffi": 99.7,
    "m5": 99.4,
    "symbols": 442,
-   "verified_ext": 336,
-   "verified_ffi": 338
+   "verified_ext": 337,
+   "verified_ffi": 339
   },
   "numpy.fft": {
    "both": 18,
@@ -613,7 +613,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1409,
+ "registry_functions": 1410,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -623,9 +623,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40028,
-   "covered_ext": 40028,
-   "covered_ffi": 40038,
+   "covered_both": 40033,
+   "covered_ext": 40033,
+   "covered_ffi": 40043,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -664,9 +664,9 @@
   "groups": {
    "NumPy core": {
     "calls": 39800,
-    "covered_both": 37787,
-    "covered_ext": 37787,
-    "covered_ffi": 37789,
+    "covered_both": 37792,
+    "covered_ext": 37792,
+    "covered_ffi": 37794,
     "excluded_calls": 2002,
     "excluded_share": 5.0,
     "in_scope_calls": 37798,

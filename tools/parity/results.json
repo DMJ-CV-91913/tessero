@@ -320,6 +320,7 @@
         "np.histogram": "pass",
         "np.histogram2d": "pass",
         "np.histogram_bin_edges": "pass",
+        "np.histogramdd": "pass",
         "np.hsplit": "pass",
         "np.hstack": "pass",
         "np.i0": "pass",
@@ -1525,8 +1526,8 @@
             "np.bincount": 0,
             "np.histogram": 0,
             "np.histogram_bin_edges": 0,
-            "np.cov": 1.9425434033349485e-15,
-            "np.corrcoef": 8.10081470117077e-16,
+            "np.cov": 1.961310162719844e-15,
+            "np.corrcoef": 5.924931642660482e-16,
             "np.correlate": 0,
             "np.convolve": 0,
             "np.lexsort": 0,
@@ -2193,7 +2194,7 @@
             "np.promote_types": 0,
             "np.finfo": 0,
             "np.iinfo": 0,
-            "np.einsum": 1.828415050490341e-16,
+            "np.einsum": 4.0690314953823715e-16,
             "np.around": 0,
             "np.fabs": 0,
             "special.comb": 0,
@@ -2968,7 +2969,8 @@
             "windows.kaiser_bessel_derived": 0,
             "windows.taylor": 4.649470546041335e-16,
             "windows.chebwin": 4.588726991526998e-13,
-            "optimize.isotonic_regression": null
+            "optimize.isotonic_regression": null,
+            "np.histogramdd": 2.328805302192041e-16
         },
         "ext": {
             "np.median": 0,
@@ -3010,8 +3012,8 @@
             "np.bincount": 0,
             "np.histogram": 0,
             "np.histogram_bin_edges": 0,
-            "np.cov": 1.9425434033349485e-15,
-            "np.corrcoef": 8.10081470117077e-16,
+            "np.cov": 1.961310162719844e-15,
+            "np.corrcoef": 5.924931642660482e-16,
             "np.correlate": 0,
             "np.convolve": 0,
             "np.lexsort": 0,
@@ -3678,7 +3680,7 @@
             "np.promote_types": 0,
             "np.finfo": 0,
             "np.iinfo": 0,
-            "np.einsum": 1.828415050490341e-16,
+            "np.einsum": 4.0690314953823715e-16,
             "np.around": 0,
             "np.fabs": 0,
             "special.comb": 0,
@@ -4453,7 +4455,8 @@
             "windows.kaiser_bessel_derived": 0,
             "windows.taylor": 4.649470546041335e-16,
             "windows.chebwin": 4.588726991526998e-13,
-            "optimize.isotonic_regression": null
+            "optimize.isotonic_regression": null,
+            "np.histogramdd": 2.328805302192041e-16
         }
     },
     "ext": {
@@ -4777,6 +4780,7 @@
         "np.histogram": "pass",
         "np.histogram2d": "pass",
         "np.histogram_bin_edges": "pass",
+        "np.histogramdd": "pass",
         "np.hsplit": "pass",
         "np.hstack": "pass",
         "np.i0": "pass",

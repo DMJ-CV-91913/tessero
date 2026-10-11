@@ -252,6 +252,17 @@ def main():
                                      for a in (data((50,)), data((9,), ties=True)) for b in (4, 'auto', 'fd', 'sturges')]
     _hx = data((200,), lo=0, hi=3)
     _hy = data((200,), lo=-2, hi=2)
+    def _hdd(sample, kw):
+        Hh, ee = np.histogramdd(sample, **kw)
+        return {'args': [enc(np.asarray(sample, dtype=float))], 'kwargs': {k: enc(v) for k, v in kw.items()},
+                'expect': {'dict': {'H': enc_result_one(Hh), 'edges': {'list': [enc_result_one(e) for e in ee]}}}}
+    blocks['histogramdd'] = [
+        _hdd(rng.random((50, 2)), {'bins': 4}),
+        _hdd(rng.random((60, 3)), {'bins': 3, 'density': True}),
+        _hdd(rng.random((40, 2)), {'bins': [3, 5], 'weights': rng.uniform(size=40)}),
+        _hdd(rng.random(30), {'bins': 5}),
+        _hdd(rng.random((50, 2)), {'bins': 4, 'range': [[0.0, 1.0], [0.0, 1.0]], 'density': True}),
+    ]
     blocks['histogram2d'] = [
         call('histogram2d', [_hx, _hy], {'bins': 5}, ['H', 'xedges', 'yedges']),
         call('histogram2d', [_hx, _hy], {'bins': [4, 6]}, ['H', 'xedges', 'yedges']),
