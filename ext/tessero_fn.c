@@ -809,6 +809,15 @@ void tsr_fn_call_routine(const char *name, zval *args, int nargs, zval *rv)
     call_routine(&g_binds[id], NULL, args, nargs, rv);
 }
 
+/* Invoke a registry gufunc by name (NDArray methods delegating to np.* gufuncs:
+   searchsorted / partition / argpartition). Argument order matches the facade. */
+void tsr_fn_call_gufunc(const char *name, zval *args, int nargs, zval *rv)
+{
+    const int id = tsr_fn_find(name);
+    if (id < 0 || id >= g_nbinds || g_binds[id].kind != K_GUFUNC) { zend_throw_error(NULL, "unknown Tessero gufunc '%s'", name); return; }
+    call_gufunc(&g_binds[id], args, nargs, rv);
+}
+
 
 /* ================================================================ registration */
 

@@ -2659,6 +2659,31 @@ PHP_METHOD(NDArray, choose)
     tsr_fn_call_routine("np.choose", args, n, return_value);
     if (EG(exception)) RETURN_THROWS();
 }
+PHP_METHOD(NDArray, searchsorted)
+{
+    zval *v; zend_string *side = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2) Z_PARAM_ZVAL(v) Z_PARAM_OPTIONAL Z_PARAM_STR_OR_NULL(side) ZEND_PARSE_PARAMETERS_END();
+    int n = 2; zval args[3]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS); ZVAL_COPY_VALUE(&args[1], v);
+    if (side) { ZVAL_STR(&args[2], side); n = 3; }
+    tsr_fn_call_gufunc("np.searchsorted", args, n, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, partition)
+{
+    zval *kth; zend_long axis = -1;
+    ZEND_PARSE_PARAMETERS_START(1, 2) Z_PARAM_ZVAL(kth) Z_PARAM_OPTIONAL Z_PARAM_LONG(axis) ZEND_PARSE_PARAMETERS_END();
+    zval args[3]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS); ZVAL_COPY_VALUE(&args[1], kth); ZVAL_LONG(&args[2], axis);
+    tsr_fn_call_gufunc("np.partition", args, 3, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, argpartition)
+{
+    zval *kth; zend_long axis = -1;
+    ZEND_PARSE_PARAMETERS_START(1, 2) Z_PARAM_ZVAL(kth) Z_PARAM_OPTIONAL Z_PARAM_LONG(axis) ZEND_PARSE_PARAMETERS_END();
+    zval args[3]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS); ZVAL_COPY_VALUE(&args[1], kth); ZVAL_LONG(&args[2], axis);
+    tsr_fn_call_gufunc("np.argpartition", args, 3, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
 
 static const zend_function_entry ndarray_methods[] = {
     PHP_ME(NDArray, __construct, ai_none, ZEND_ACC_PRIVATE)
@@ -2708,6 +2733,9 @@ static const zend_function_entry ndarray_methods[] = {
     PHP_ME(NDArray, repeat, ai_nd2, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, compress, ai_nd2, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, choose, ai_nd2, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, searchsorted, ai_nd2, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, partition, ai_nd2, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, argpartition, ai_nd2, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, take, ai_take, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, put, ai_put, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, slice, ai_spec, ZEND_ACC_PUBLIC)
