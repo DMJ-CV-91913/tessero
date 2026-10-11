@@ -128,6 +128,16 @@ add("take", a=S, indices=[3, 0, -1], axis=1, expect=np.take(S, [3, 0, -1], axis=
 add("mask", a=S, threshold=57, expect=S[S > 57])
 add("sort", a=R, axis=1, expect=np.sort(R, axis=1))
 add("argsort", a=RI, axis=-1, expect=np.argsort(RI, axis=-1, kind="stable"))
+
+# ndarray in-place-style methods (Tessero returns a new array; compare the resulting values)
+add("fill", a=R, value=7.5, expect=np.full(R.shape, 7.5, dtype=R.dtype))
+add("fill", a=RI, value=3, expect=np.full(RI.shape, 3, dtype=RI.dtype))
+add("byteswap", a=RI, expect=RI.byteswap())
+add("byteswap", a=RI.astype(np.int32), expect=RI.astype(np.int32).byteswap())
+_rf = RI.flatten()
+_grow = np.zeros(_rf.size + 4, dtype=RI.dtype); _grow[:_rf.size] = _rf
+add("resize", a=RI, shape=[_rf.size + 4], expect=_grow)
+add("resize", a=RI, shape=[2, 3], expect=_rf[:6].reshape(2, 3))
 add("transpose_matmul", a=A[0], b=A[1], expect=A[0] @ A[1].T)
 add("matmul", a=rng.standard_normal((2, 3, 7, 4)), b=rng.standard_normal((4, 5)), expect=None)
 cases[-1]["expect"] = enc(np.array(cases[-1]["a"]["data"], dtype=float).reshape(2, 3, 7, 4) @ np.array([float(v) for v in cases[-1]["b"]["data"]]).reshape(4, 5))

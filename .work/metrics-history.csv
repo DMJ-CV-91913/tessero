@@ -209,3 +209,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-11,numpy Generator.multivariate_hypergeometric (both backends),98.7,98.4,77.9,77.7,99.7,99.7,72.6,72.6,84.5,84.5
 2026-10-11,numpy genfromtxt (both backends),98.8,98.5,77.9,77.7,99.7,99.7,72.6,72.6,84.5,84.5
 2026-10-11,numpy savetxt (both backends),99.0,98.7,77.9,77.7,99.7,99.7,72.6,72.6,84.5,84.5
+2026-10-11,numpy.ndarray fill/byteswap/resize (both backends),99.4,99.1,77.9,77.7,99.7,99.7,72.6,72.6,84.5,84.5

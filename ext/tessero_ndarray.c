@@ -2684,6 +2684,63 @@ PHP_METHOD(NDArray, argpartition)
     tsr_fn_call_gufunc("np.argpartition", args, 3, return_value);
     if (EG(exception)) RETURN_THROWS();
 }
+PHP_METHOD(NDArray, fill)
+{
+    zval *value;
+    ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_ZVAL(value) ZEND_PARSE_PARAMETERS_END();
+    tsr_array *a = &Z_TSR_P(ZEND_THIS)->a;
+    const int dt = a->dtype;
+    if (tsr_ndarray_new(return_value, dt, a->ndim, a->shape, 0) == FAILURE) RETURN_THROWS();
+    tsr_array *o = &Z_TSR_P(return_value)->a;
+    const int64_t n = tsr_array_size(o);
+    const int64_t isz = ITEMSIZE[dt];
+    char *p = (char *)o->data + o->offset;
+    if (n > 0) {
+        if (zval_to_elem(value, dt, p) == FAILURE) { zval_ptr_dtor(return_value); RETURN_THROWS(); }
+        for (int64_t i = 1; i < n; i++) memcpy(p + i * isz, p, (size_t)isz);
+    }
+}
+PHP_METHOD(NDArray, byteswap)
+{
+    zend_bool inplace = 0;
+    ZEND_PARSE_PARAMETERS_START(0, 1) Z_PARAM_OPTIONAL Z_PARAM_BOOL(inplace) ZEND_PARSE_PARAMETERS_END();
+    (void)inplace;
+    zval src;
+    if (tsr_ndarray_contiguous_as(ZEND_THIS, Z_TSR_P(ZEND_THIS)->a.dtype, &src) == FAILURE) RETURN_THROWS();
+    tsr_array *sa = &Z_TSR(src)->a;
+    const int dt = sa->dtype;
+    const int64_t isz = ITEMSIZE[dt], n = tsr_array_size(sa);
+    if (tsr_ndarray_new(return_value, dt, sa->ndim, sa->shape, 0) == FAILURE) { zval_ptr_dtor(&src); RETURN_THROWS(); }
+    char *o = (char *)Z_TSR_P(return_value)->a.data + Z_TSR_P(return_value)->a.offset;
+    const char *ip = (const char *)sa->data + sa->offset;
+    for (int64_t e = 0; e < n; e++)
+        for (int64_t b = 0; b < isz; b++) o[e * isz + b] = ip[e * isz + (isz - 1 - b)];
+    zval_ptr_dtor(&src);
+}
+PHP_METHOD(NDArray, resize)
+{
+    zval *shape_z;
+    ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_ZVAL(shape_z) ZEND_PARSE_PARAMETERS_END();
+    int64_t shp[32]; int nd = 0; int64_t newn = 1;
+    if (Z_TYPE_P(shape_z) == IS_LONG) { shp[0] = Z_LVAL_P(shape_z); nd = 1; newn = shp[0] < 0 ? 0 : shp[0]; }
+    else if (Z_TYPE_P(shape_z) == IS_ARRAY) {
+        zval *e;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(shape_z), e) { if (nd < 32) { shp[nd] = zval_get_long(e); newn *= shp[nd]; nd++; } } ZEND_HASH_FOREACH_END();
+    } else { zend_type_error("resize(): shape must be an int or a list of ints"); RETURN_THROWS(); }
+    if (newn < 0) newn = 0;
+    zval src;
+    if (tsr_ndarray_contiguous_as(ZEND_THIS, Z_TSR_P(ZEND_THIS)->a.dtype, &src) == FAILURE) RETURN_THROWS();
+    tsr_array *sa = &Z_TSR(src)->a;
+    const int dt = sa->dtype;
+    const int64_t isz = ITEMSIZE[dt], oldn = tsr_array_size(sa);
+    if (tsr_ndarray_new(return_value, dt, nd, shp, 0) == FAILURE) { zval_ptr_dtor(&src); RETURN_THROWS(); }
+    char *o = (char *)Z_TSR_P(return_value)->a.data + Z_TSR_P(return_value)->a.offset;
+    const char *ip = (const char *)sa->data + sa->offset;
+    const int64_t copyn = newn < oldn ? newn : oldn;
+    if (copyn > 0) memcpy(o, ip, (size_t)(copyn * isz));
+    if (newn > copyn) memset(o + copyn * isz, 0, (size_t)((newn - copyn) * isz));
+    zval_ptr_dtor(&src);
+}
 
 static const zend_function_entry ndarray_methods[] = {
     PHP_ME(NDArray, __construct, ai_none, ZEND_ACC_PRIVATE)
@@ -2736,6 +2793,9 @@ static const zend_function_entry ndarray_methods[] = {
     PHP_ME(NDArray, searchsorted, ai_nd2, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, partition, ai_nd2, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, argpartition, ai_nd2, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, fill, ai_one, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, byteswap, ai_flush, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, resize, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, take, ai_take, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, put, ai_put, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, slice, ai_spec, ZEND_ACC_PUBLIC)

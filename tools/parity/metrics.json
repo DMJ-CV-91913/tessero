@@ -82,20 +82,20 @@
  },
  "groups": {
   "NumPy core": {
-   "both": 674,
+   "both": 677,
    "excluded": 177,
-   "impl_ext": 674,
-   "impl_ffi": 676,
+   "impl_ext": 677,
+   "impl_ffi": 679,
    "in_scope": 683,
-   "m2_ext": 98.7,
-   "m2_ffi": 99.0,
+   "m2_ext": 99.1,
+   "m2_ffi": 99.4,
    "m3": 20.6,
-   "m4_ext": 98.7,
-   "m4_ffi": 99.0,
+   "m4_ext": 99.1,
+   "m4_ffi": 99.4,
    "m5": 99.7,
    "symbols": 860,
-   "verified_ext": 674,
-   "verified_ffi": 676
+   "verified_ext": 677,
+   "verified_ffi": 679
   },
   "SciPy": {
    "both": 1156,
@@ -164,20 +164,20 @@
    "verified_ffi": 31
   },
   "numpy.ndarray": {
-   "both": 53,
+   "both": 56,
    "excluded": 14,
-   "impl_ext": 53,
-   "impl_ffi": 53,
+   "impl_ext": 56,
+   "impl_ffi": 56,
    "in_scope": 56,
-   "m2_ext": 94.6,
-   "m2_ffi": 94.6,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 20.0,
-   "m4_ext": 94.6,
-   "m4_ffi": 94.6,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 70,
-   "verified_ext": 53,
-   "verified_ffi": 53
+   "verified_ext": 56,
+   "verified_ffi": 56
   },
   "numpy.polynomial": {
    "both": 6,

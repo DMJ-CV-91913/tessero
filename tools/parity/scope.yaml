@@ -288,6 +288,9 @@ legacy:
     searchsorted: {ffi: [N::searchsorted], ext: [XN::searchsorted], tests: core}
     partition: {ffi: [N::partition], ext: [XN::partition], tests: core}
     argpartition: {ffi: [N::argpartition], ext: [XN::argpartition], tests: core}
+    fill: {ffi: [N::fill], ext: [XN::fill], tests: core}
+    byteswap: {ffi: [N::byteswap], ext: [XN::byteswap], tests: core}
+    resize: {ffi: [N::resize], ext: [XN::resize], tests: core}
     all: {ffi: [N::all], ext: [XN::all], tests: core}
     any: {ffi: [N::any], ext: [XN::any], tests: core}
     argmax: {ffi: [N::argmax], ext: [XN::argmax], tests: core}
