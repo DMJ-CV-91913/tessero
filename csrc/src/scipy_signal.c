@@ -1274,6 +1274,40 @@ static int r_win_kaiser(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return TSR_OK;
 }
 
+/* kaiser_bessel_derived(M, beta): KBD from the kaiser window's cumulative sum. Symmetric; M must be even. */
+static int r_win_kbd(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int err; int64_t M = win_len(args, nargs, &err); if (err) return TSR_EARG;
+    int rc; if (win_guard(M, &res[0], &rc)) return rc;
+    if (M % 2 != 0) { fn_set_error("kaiser_bessel_derived window is only defined for even M"); return TSR_EARG; }
+    double beta = win_dbl(args, nargs, 1, 0.0);
+    int64_t n = M / 2 + 1;                       /* kaiser(M/2+1, beta), symmetric */
+    double alpha = (double)(n - 1) / 2.0;
+    double den; tsr_special_i0(NULL, &beta, &den);
+    double *cs = (double *)tsr_alloc(n * 8 + 64);
+    if (!cs) return TSR_ENOMEM;
+    double acc = 0.0;
+    for (int64_t i = 0; i < n; i++) {
+        double t = alpha == 0.0 ? 0.0 : ((double)i - alpha) / alpha;
+        double arg = beta * sqrt(1.0 - t * t), num;
+        tsr_special_i0(NULL, &arg, &num);
+        acc += num / den;
+        cs[i] = acc;
+    }
+    int64_t sh[1] = {M};
+    double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    if (!w) { tsr_free(cs, n * 8 + 64); return TSR_ENOMEM; }
+    const double last = cs[n - 1];
+    for (int64_t j = 0; j < M / 2; j++) {
+        double h = sqrt(cs[j] / last);
+        w[j] = h;
+        w[M - 1 - j] = h;
+    }
+    tsr_free(cs, n * 8 + 64);
+    return TSR_OK;
+}
+
 /* gaussian(M, std, sym=True). */
 static int r_win_gaussian(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -4498,6 +4532,7 @@ static int r_get_window(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     else if (NM("barthann") || NM("brthan") || NM("bth")) fn = r_win_barthann;
     else if (NM("parzen") || NM("parz") || NM("par")) fn = r_win_parzen;
     else if (NM("kaiser") || NM("ksr")) { fn = r_win_kaiser; need = 1; }
+    else if (NM("kaiser_bessel_derived") || NM("kbd")) { fn = r_win_kbd; need = 1; }
     else if (NM("gaussian") || NM("gauss") || NM("gss")) { fn = r_win_gaussian; need = 1; }
     else if (NM("general_hamming")) { fn = r_win_general_hamming; need = 1; }
     else if (NM("general_gaussian") || NM("general gaussian") || NM("ggs")) { fn = r_win_general_gaussian; need = 2; }
@@ -5474,6 +5509,7 @@ static const fn_def DEFS[] = {
     ROUTINE("windows.barthann", 1, "M, sym=True", "out", r_win_barthann, NULL, "Bartlett-Hann window (scipy.signal.windows.barthann)."),
     ROUTINE("windows.parzen", 1, "M, sym=True", "out", r_win_parzen, NULL, "Parzen window (scipy.signal.windows.parzen)."),
     ROUTINE("windows.kaiser", 1, "M, beta, sym=True", "out", r_win_kaiser, NULL, "Kaiser window with shape beta (scipy.signal.windows.kaiser)."),
+    ROUTINE("windows.kaiser_bessel_derived", 1, "M, beta, sym=True", "out", r_win_kbd, NULL, "Kaiser-Bessel derived window (scipy.signal.windows.kaiser_bessel_derived)."),
     ROUTINE("windows.gaussian", 1, "M, std, sym=True", "out", r_win_gaussian, NULL, "Gaussian window with standard deviation std (scipy.signal.windows.gaussian)."),
     ROUTINE("windows.general_gaussian", 1, "M, p, sig, sym=True", "out", r_win_general_gaussian, NULL, "Generalized Gaussian window (scipy.signal.windows.general_gaussian)."),
     ROUTINE("windows.exponential", 1, "M, center=None, tau=1.0, sym=True", "out", r_win_exponential, NULL, "Exponential (Poisson) window (scipy.signal.windows.exponential)."),

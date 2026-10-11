@@ -635,6 +635,7 @@
 | `windows.general_cosine` | every call | rtol 1e-09 |
 | `windows.general_hamming` | every call | rtol 1e-09 |
 | `windows.kaiser` | every call | rtol 1e-09 |
+| `windows.kaiser_bessel_derived` | every call | rtol 1e-09 |
 | `windows.gaussian` | every call | rtol 1e-09 |
 | `windows.general_gaussian` | every call | rtol 1e-09 |
 | `windows.exponential` | every call | rtol 1e-09 |
