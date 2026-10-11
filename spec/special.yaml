@@ -1478,6 +1478,51 @@ functions:
     outs: [Y]
     impl: "o[0] = xsf::cyl_bessel_ye(i[0], i[1]);"
     doc: "Exponentially scaled Bessel function of the second kind of real order."
+  - name: zeta
+    ref: scipy.special.zeta
+    args: [x, q]
+    outs: [y]
+    domain:
+      x: [1.5, 2.0, 2.5, 3.0, 5.0, 10.0]
+      q: [0.5, 1.0, 2.0, 5.0, 10.0]
+    impl: "o[0] = xsf::zeta(i[0], i[1]);"
+    doc: "Hurwitz zeta function (scipy.special.zeta)."
+  - name: jvp
+    ref: scipy.special.jvp
+    args: [v, z]
+    outs: [out]
+    domain:
+      v: [0.5, 1.0, 2.0, 3.5]
+      z: [0.5, 1.5, 3.0, 7.0]
+    impl: "o[0] = 0.5 * (xsf::cyl_bessel_j(i[0] - 1.0, i[1]) - xsf::cyl_bessel_j(i[0] + 1.0, i[1]));"
+    doc: "First derivative of the Bessel function of the first kind (scipy.special.jvp, n=1)."
+  - name: yvp
+    ref: scipy.special.yvp
+    args: [v, z]
+    outs: [out]
+    domain:
+      v: [0.5, 1.0, 2.0, 3.5]
+      z: [0.5, 1.5, 3.0, 7.0]
+    impl: "o[0] = 0.5 * (xsf::cyl_bessel_y(i[0] - 1.0, i[1]) - xsf::cyl_bessel_y(i[0] + 1.0, i[1]));"
+    doc: "First derivative of the Bessel function of the second kind (scipy.special.yvp, n=1)."
+  - name: ivp
+    ref: scipy.special.ivp
+    args: [v, z]
+    outs: [out]
+    domain:
+      v: [0.5, 1.0, 2.0, 3.5]
+      z: [0.5, 1.5, 3.0, 7.0]
+    impl: "o[0] = 0.5 * (xsf::cyl_bessel_i(i[0] - 1.0, i[1]) + xsf::cyl_bessel_i(i[0] + 1.0, i[1]));"
+    doc: "First derivative of the modified Bessel function of the first kind (scipy.special.ivp, n=1)."
+  - name: kvp
+    ref: scipy.special.kvp
+    args: [v, z]
+    outs: [out]
+    domain:
+      v: [0.5, 1.0, 2.0, 3.5]
+      z: [0.5, 1.5, 3.0, 7.0]
+    impl: "o[0] = -0.5 * (xsf::cyl_bessel_k(i[0] - 1.0, i[1]) + xsf::cyl_bessel_k(i[0] + 1.0, i[1]));"
+    doc: "First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1)."
   - name: zetac
     ref: scipy.special.zetac
     args: [x]

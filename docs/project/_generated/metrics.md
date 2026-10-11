@@ -18,8 +18,8 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 41 (95.3 %) | 41 (95.3 %) | 95.3 % / 95.3 % | 100.0 % |
-| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1159 (77.9 %)** | **1156 (77.7 %)** | 77.9 % / 77.7 % | 99.7 % |
-| &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 244 (72.6 %) | 244 (72.6 %) | 72.6 % / 72.6 % | 100.0 % |
+| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1164 (78.2 %)** | **1161 (78.0 %)** | 78.2 % / 78.0 % | 99.7 % |
+| &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 249 (74.1 %) | 249 (74.1 %) | 74.1 % / 74.1 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 251 (84.5 %) | 251 (84.5 %) | 84.5 % / 84.5 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 90 (97.8 %) | 90 (97.8 %) | 97.8 % / 97.8 % | 100.0 % |
 | &nbsp;&nbsp;scipy.fft | 41 | 6 (14.6 %) | 35 | 32 (91.4 %) | 32 (91.4 %) | 91.4 % / 91.4 % | 100.0 % |
@@ -38,7 +38,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 158 (96.9 %) | 158 (96.9 %) | 96.9 % / 96.9 % | 100.0 % |
 
-The kernel function registry holds 1401 functions; their fixtures pass on the FFI backend for 1398 and on the extension for 1398.
+The kernel function registry holds 1406 functions; their fixtures pass on the FFI backend for 1403 and on the extension for 1403.
 Registry functions without a recorded fixture run: np.cumulativeSimpson, np.cumulativeTrapezoid, special.logSoftmax.
 
 Exclusions by category (definitions in `tools/parity/scope.yaml`):

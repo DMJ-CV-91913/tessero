@@ -4990,6 +4990,11 @@
             "nin": 2,
             "nout": 1
         },
+        "special.ivp": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
         "special.j0": {
             "kind": "ufunc",
             "nin": 1,
@@ -5011,6 +5016,11 @@
             "nout": 1
         },
         "special.jve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.jvp": {
             "kind": "ufunc",
             "nin": 2,
             "nout": 1
@@ -5086,6 +5096,11 @@
             "nout": 1
         },
         "special.kve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.kvp": {
             "kind": "ufunc",
             "nin": 2,
             "nout": 1
@@ -5591,6 +5606,16 @@
             "nout": 1
         },
         "special.yve": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.yvp": {
+            "kind": "ufunc",
+            "nin": 2,
+            "nout": 1
+        },
+        "special.zeta": {
             "kind": "ufunc",
             "nin": 2,
             "nout": 1
