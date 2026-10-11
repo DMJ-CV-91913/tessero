@@ -5797,6 +5797,12 @@
                 "doc": "Shuffle along axis 0 in place."
             },
             {
+                "name": "dirichlet",
+                "static": false,
+                "sig": "dirichlet(array $alpha, array|int|null $size = null): Tessero\\NDArray",
+                "doc": "Draw from a Dirichlet distribution (numpy.random.Generator.dirichlet). Each sample is a vector of length count($alpha) that sums to 1, built from independent standard-gamma draws then normalised."
+            },
+            {
                 "name": "stateHandle",
                 "static": false,
                 "sig": "stateHandle(): FFI\\CData",
@@ -8014,6 +8020,12 @@
                 "name": "choice",
                 "static": false,
                 "sig": "choice($a, $size = null, $replace = true, $p = null)",
+                "doc": ""
+            },
+            {
+                "name": "dirichlet",
+                "static": false,
+                "sig": "dirichlet($alpha, $size = null)",
                 "doc": ""
             },
             {
