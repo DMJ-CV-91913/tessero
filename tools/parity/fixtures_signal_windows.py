@@ -49,6 +49,10 @@ blocks['taylor'] = (
     [case('taylor', M, extra=[4, 30]) for M in MS]
     + [case('taylor', 16, {'sym': False}, extra=[5, 40]), case('taylor', 12, extra=[6, 50]),
        case('taylor', 9, extra=[4, 35]), case('taylor', 16, {'norm': False}, extra=[4, 30])])
+blocks['chebwin'] = (
+    [case('chebwin', M, extra=[50]) for M in MS if M > 1]
+    + [case('chebwin', 16, extra=[80]), case('chebwin', 11, extra=[100]),
+       case('chebwin', 9, {'sym': False}, extra=[60]), case('chebwin', 51, extra=[100])])
 blocks['gaussian'] = (
     [case('gaussian', M, extra=[2.0]) for M in MS]
     + [case('gaussian', 9, {'sym': False}, extra=[1.5])])

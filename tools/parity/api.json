@@ -3517,6 +3517,12 @@
                 "doc": "Rectangular window (scipy.signal.windows.boxcar)."
             },
             {
+                "name": "chebwin",
+                "static": true,
+                "sig": "chebwin(mixed $M, mixed $at, mixed $sym = true): mixed",
+                "doc": "Dolph-Chebyshev window (scipy.signal.windows.chebwin)."
+            },
+            {
                 "name": "cosine",
                 "static": true,
                 "sig": "cosine(mixed $M, mixed $sym = true): mixed",
@@ -19022,6 +19028,12 @@
                 "name": "taylor",
                 "static": true,
                 "sig": "taylor($M, $nbar = 4, $sll = 30, $norm = true, $sym = true)",
+                "doc": ""
+            },
+            {
+                "name": "chebwin",
+                "static": true,
+                "sig": "chebwin($M, $at, $sym = true)",
                 "doc": ""
             },
             {
