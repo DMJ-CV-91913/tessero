@@ -650,6 +650,7 @@
         "optimize.fminbound": "pass",
         "optimize.fsolve": "pass",
         "optimize.golden": "pass",
+        "optimize.isotonic_regression": "pass",
         "optimize.least_squares": "pass",
         "optimize.leastsq": "pass",
         "optimize.linear_sum_assignment": "pass",
@@ -2966,7 +2967,8 @@
             "special.kvp": 0,
             "windows.kaiser_bessel_derived": 0,
             "windows.taylor": 4.649470546041335e-16,
-            "windows.chebwin": 4.588726991526998e-13
+            "windows.chebwin": 4.588726991526998e-13,
+            "optimize.isotonic_regression": null
         },
         "ext": {
             "np.median": 0,
@@ -4450,7 +4452,8 @@
             "special.kvp": 0,
             "windows.kaiser_bessel_derived": 0,
             "windows.taylor": 4.649470546041335e-16,
-            "windows.chebwin": 4.588726991526998e-13
+            "windows.chebwin": 4.588726991526998e-13,
+            "optimize.isotonic_regression": null
         }
     },
     "ext": {
@@ -5104,6 +5107,7 @@
         "optimize.fminbound": "pass",
         "optimize.fsolve": "pass",
         "optimize.golden": "pass",
+        "optimize.isotonic_regression": "pass",
         "optimize.least_squares": "pass",
         "optimize.leastsq": "pass",
         "optimize.linear_sum_assignment": "pass",
