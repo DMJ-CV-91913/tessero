@@ -10376,6 +10376,12 @@
                 "doc": "Exponentially scaled modified Bessel function of the first kind."
             },
             {
+                "name": "ivp",
+                "static": true,
+                "sig": "ivp(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
+                "doc": "First derivative of the modified Bessel function of the first kind (scipy.special.ivp, n=1)."
+            },
+            {
                 "name": "j0",
                 "static": true,
                 "sig": "j0(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10404,6 +10410,12 @@
                 "static": true,
                 "sig": "jve(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Exponentially scaled Bessel function of the first kind of order `v`."
+            },
+            {
+                "name": "jvp",
+                "static": true,
+                "sig": "jvp(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
+                "doc": "First derivative of the Bessel function of the first kind (scipy.special.jvp, n=1)."
             },
             {
                 "name": "k0",
@@ -10494,6 +10506,12 @@
                 "static": true,
                 "sig": "kve(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Exponentially scaled modified Bessel function of the second kind."
+            },
+            {
+                "name": "kvp",
+                "static": true,
+                "sig": "kvp(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
+                "doc": "First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1)."
             },
             {
                 "name": "lambertw",
@@ -11100,6 +11118,18 @@
                 "static": true,
                 "sig": "yve(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Exponentially scaled Bessel function of the second kind of real order."
+            },
+            {
+                "name": "yvp",
+                "static": true,
+                "sig": "yvp(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
+                "doc": "First derivative of the Bessel function of the second kind (scipy.special.yvp, n=1)."
+            },
+            {
+                "name": "zeta",
+                "static": true,
+                "sig": "zeta(mixed $x, mixed $q, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
+                "doc": "Hurwitz zeta function (scipy.special.zeta)."
             },
             {
                 "name": "zetac",
@@ -15459,6 +15489,36 @@
                 "name": "yve",
                 "static": true,
                 "sig": "yve($v, $z, $out = null)",
+                "doc": ""
+            },
+            {
+                "name": "zeta",
+                "static": true,
+                "sig": "zeta($x, $q, $out = null)",
+                "doc": ""
+            },
+            {
+                "name": "jvp",
+                "static": true,
+                "sig": "jvp($v, $z, $out = null)",
+                "doc": ""
+            },
+            {
+                "name": "yvp",
+                "static": true,
+                "sig": "yvp($v, $z, $out = null)",
+                "doc": ""
+            },
+            {
+                "name": "ivp",
+                "static": true,
+                "sig": "ivp($v, $z, $out = null)",
+                "doc": ""
+            },
+            {
+                "name": "kvp",
+                "static": true,
+                "sig": "kvp($v, $z, $out = null)",
                 "doc": ""
             },
             {

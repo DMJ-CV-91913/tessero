@@ -232,6 +232,11 @@ void tsr_special_y1(const void *, const double *, double *);
 void tsr_special_yn(const void *, const double *, double *);
 void tsr_special_yv(const void *, const double *, double *);
 void tsr_special_yve(const void *, const double *, double *);
+void tsr_special_zeta(const void *, const double *, double *);
+void tsr_special_jvp(const void *, const double *, double *);
+void tsr_special_yvp(const void *, const double *, double *);
+void tsr_special_ivp(const void *, const double *, double *);
+void tsr_special_kvp(const void *, const double *, double *);
 void tsr_special_zetac(const void *, const double *, double *);
 void tsr_special_softplus(const void *, const double *, double *);
 void tsr_special_sinc(const void *, const double *, double *);
@@ -558,6 +563,11 @@ inline double y1(double x0) { const double i[1] = {x0}; double o[1]; tsr_special
 inline double yn(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_yn(nullptr, i, o); return o[0]; }
 inline double yv(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_yv(nullptr, i, o); return o[0]; }
 inline double yve(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_yve(nullptr, i, o); return o[0]; }
+inline double zeta(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_zeta(nullptr, i, o); return o[0]; }
+inline double jvp(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_jvp(nullptr, i, o); return o[0]; }
+inline double yvp(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_yvp(nullptr, i, o); return o[0]; }
+inline double ivp(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_ivp(nullptr, i, o); return o[0]; }
+inline double kvp(double x0, double x1) { const double i[2] = {x0, x1}; double o[1]; tsr_special_kvp(nullptr, i, o); return o[0]; }
 inline double zetac(double x0) { const double i[1] = {x0}; double o[1]; tsr_special_zetac(nullptr, i, o); return o[0]; }
 inline double softplus(double x0) { const double i[1] = {x0}; double o[1]; tsr_special_softplus(nullptr, i, o); return o[0]; }
 inline double sinc(double x0) { const double i[1] = {x0}; double o[1]; tsr_special_sinc(nullptr, i, o); return o[0]; }

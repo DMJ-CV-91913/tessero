@@ -260,6 +260,11 @@ extern "C" void tsr_special_yn__int(const void *, const double *i, double *o) { 
 extern "C" void tsr_special_yv(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = xsf::cyl_bessel_y(i[0], i[1]);) }
 extern "C" void tsr_special_yv__cplx(const void *, const double *i, double *o) { TSR_GUARD(2, std::complex<double> r = xsf::cyl_bessel_y(i[0], std::complex<double>(i[2], i[3])); o[0] = r.real(); o[1] = r.imag();) }
 extern "C" void tsr_special_yve(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = xsf::cyl_bessel_ye(i[0], i[1]);) }
+extern "C" void tsr_special_zeta(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = xsf::zeta(i[0], i[1]);) }
+extern "C" void tsr_special_jvp(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = 0.5 * (xsf::cyl_bessel_j(i[0] - 1.0, i[1]) - xsf::cyl_bessel_j(i[0] + 1.0, i[1]));) }
+extern "C" void tsr_special_yvp(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = 0.5 * (xsf::cyl_bessel_y(i[0] - 1.0, i[1]) - xsf::cyl_bessel_y(i[0] + 1.0, i[1]));) }
+extern "C" void tsr_special_ivp(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = 0.5 * (xsf::cyl_bessel_i(i[0] - 1.0, i[1]) + xsf::cyl_bessel_i(i[0] + 1.0, i[1]));) }
+extern "C" void tsr_special_kvp(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = -0.5 * (xsf::cyl_bessel_k(i[0] - 1.0, i[1]) + xsf::cyl_bessel_k(i[0] + 1.0, i[1]));) }
 extern "C" void tsr_special_zetac(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = xsf::zetac(i[0]);) }
 extern "C" void tsr_special_softplus(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = fmax(i[0], 0.0) + log1p(exp(-fabs(i[0])));) }
 extern "C" void tsr_special_sinc(const void *, const double *i, double *o) { TSR_GUARD(1, double px = 3.141592653589793 * i[0]; o[0] = px == 0.0 ? 1.0 : sin(px) / px;) }

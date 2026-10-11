@@ -77,8 +77,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1398,
-  "ffi": 1398
+  "ext": 1403,
+  "ffi": 1403
  },
  "groups": {
   "NumPy core": {
@@ -98,20 +98,20 @@
    "verified_ffi": 679
   },
   "SciPy": {
-   "both": 1156,
+   "both": 1161,
    "excluded": 74,
-   "impl_ext": 1156,
-   "impl_ffi": 1159,
+   "impl_ext": 1161,
+   "impl_ffi": 1164,
    "in_scope": 1488,
-   "m2_ext": 77.7,
-   "m2_ffi": 77.9,
+   "m2_ext": 78.0,
+   "m2_ffi": 78.2,
    "m3": 4.7,
-   "m4_ext": 77.7,
-   "m4_ffi": 77.9,
+   "m4_ext": 78.0,
+   "m4_ffi": 78.2,
    "m5": 99.7,
    "symbols": 1562,
-   "verified_ext": 1156,
-   "verified_ffi": 1159
+   "verified_ext": 1161,
+   "verified_ffi": 1164
   }
  },
  "modules": {
@@ -580,20 +580,20 @@
    "verified_ffi": 26
   },
   "scipy.special": {
-   "both": 244,
+   "both": 249,
    "excluded": 5,
-   "impl_ext": 244,
-   "impl_ffi": 244,
+   "impl_ext": 249,
+   "impl_ffi": 249,
    "in_scope": 336,
-   "m2_ext": 72.6,
-   "m2_ffi": 72.6,
+   "m2_ext": 74.1,
+   "m2_ffi": 74.1,
    "m3": 1.5,
-   "m4_ext": 72.6,
-   "m4_ffi": 72.6,
+   "m4_ext": 74.1,
+   "m4_ffi": 74.1,
    "m5": 100.0,
    "symbols": 341,
-   "verified_ext": 244,
-   "verified_ffi": 244
+   "verified_ext": 249,
+   "verified_ffi": 249
   },
   "scipy.stats": {
    "both": 251,
@@ -613,7 +613,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1401,
+ "registry_functions": 1406,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -623,9 +623,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40023,
-   "covered_ext": 40023,
-   "covered_ffi": 40033,
+   "covered_both": 40024,
+   "covered_ext": 40024,
+   "covered_ffi": 40034,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -702,9 +702,9 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2236,
-    "covered_ext": 2236,
-    "covered_ffi": 2244,
+    "covered_both": 2237,
+    "covered_ext": 2237,
+    "covered_ffi": 2245,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,

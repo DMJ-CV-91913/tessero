@@ -143,11 +143,13 @@ final class Special
     'itstruve0' => 'itstruve0',
     'iv' => 'iv',
     'ive' => 'ive',
+    'ivp' => 'ivp',
     'j0' => 'j0',
     'j1' => 'j1',
     'jn' => 'jn',
     'jv' => 'jv',
     'jve' => 'jve',
+    'jvp' => 'jvp',
     'k0' => 'k0',
     'k0e' => 'k0e',
     'k1' => 'k1',
@@ -163,6 +165,7 @@ final class Special
     'kolmogorov' => 'kolmogorov',
     'kv' => 'kv',
     'kve' => 'kve',
+    'kvp' => 'kvp',
     'lambertw' => 'lambertw',
     'log1p' => 'log1p',
     'logSoftmax' => 'logSoftmax',
@@ -264,6 +267,8 @@ final class Special
     'yn' => 'yn',
     'yv' => 'yv',
     'yve' => 'yve',
+    'yvp' => 'yvp',
+    'zeta' => 'zeta',
     'zetac' => 'zetac',
     ];
 
@@ -1552,6 +1557,16 @@ final class Special
     }
 
     /**
+     * First derivative of the modified Bessel function of the first kind (scipy.special.ivp, n=1).
+     *
+     * scipy.special.ivp
+     */
+    public static function ivp(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.ivp', [$v, $z], $out);
+    }
+
+    /**
      * Bessel function of the first kind of order 0.
      *
      * scipy.special.j0
@@ -1599,6 +1614,16 @@ final class Special
     public static function jve(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.jve', [$v, $z], $out);
+    }
+
+    /**
+     * First derivative of the Bessel function of the first kind (scipy.special.jvp, n=1).
+     *
+     * scipy.special.jvp
+     */
+    public static function jvp(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.jvp', [$v, $z], $out);
     }
 
     /**
@@ -1751,6 +1776,16 @@ final class Special
     public static function kve(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.kve', [$v, $z], $out);
+    }
+
+    /**
+     * First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1).
+     *
+     * scipy.special.kvp
+     */
+    public static function kvp(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.kvp', [$v, $z], $out);
     }
 
     /**
@@ -2807,6 +2842,26 @@ final class Special
     public static function yve(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.yve', [$v, $z], $out);
+    }
+
+    /**
+     * First derivative of the Bessel function of the second kind (scipy.special.yvp, n=1).
+     *
+     * scipy.special.yvp
+     */
+    public static function yvp(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.yvp', [$v, $z], $out);
+    }
+
+    /**
+     * Hurwitz zeta function (scipy.special.zeta).
+     *
+     * scipy.special.zeta
+     */
+    public static function zeta(mixed $x, mixed $q, ?NDArray $out = null): NDArray|float
+    {
+        return Registry::ufunc('special.zeta', [$x, $q], $out);
     }
 
     /**
