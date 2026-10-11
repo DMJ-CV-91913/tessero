@@ -8172,6 +8172,12 @@
                 "doc": "Split into sections of nearly equal size (numpy.array_split)."
             },
             {
+                "name": "asarrayChkfinite",
+                "static": true,
+                "sig": "asarrayChkfinite(mixed $a, mixed $dtype = null, mixed $order = null): mixed",
+                "doc": "Convert to array, raising if it contains NaN or Inf (numpy.asarray_chkfinite)."
+            },
+            {
                 "name": "ascontiguousarray",
                 "static": true,
                 "sig": "ascontiguousarray(mixed $a, mixed $dtype = null): mixed",
@@ -8880,6 +8886,12 @@
                 "doc": "Outer product of two vectors (numpy.outer)."
             },
             {
+                "name": "packbits",
+                "static": true,
+                "sig": "packbits(mixed $a, mixed $axis = null, mixed $bitorder = 'big'): mixed",
+                "doc": "Pack binary-valued array elements into uint8, MSB-first (numpy.packbits)."
+            },
+            {
                 "name": "pad",
                 "static": true,
                 "sig": "pad(mixed $array, mixed $padWidth, mixed $mode = 'constant', mixed $constantValues = null, mixed $endValues = null, mixed $statLength = null, mixed $reflectType = null): mixed",
@@ -8956,6 +8968,12 @@
                 "static": true,
                 "sig": "polyval(mixed $p, mixed $x): mixed",
                 "doc": "Evaluate a polynomial at x (numpy.polyval)."
+            },
+            {
+                "name": "positive",
+                "static": true,
+                "sig": "positive(mixed $x): mixed",
+                "doc": "Unary plus; a copy of the input (numpy.positive)."
             },
             {
                 "name": "promoteTypes",
@@ -9268,6 +9286,12 @@
                 "static": true,
                 "sig": "uniqueValues(mixed $x): mixed",
                 "doc": "Unique values; NaNs are not merged (numpy.unique_values)."
+            },
+            {
+                "name": "unpackbits",
+                "static": true,
+                "sig": "unpackbits(mixed $a, mixed $axis = null, mixed $count = null, mixed $bitorder = 'big'): mixed",
+                "doc": "Unpack uint8 array elements into bits, MSB-first (numpy.unpackbits)."
             },
             {
                 "name": "unravelIndex",
@@ -13354,6 +13378,30 @@
                 "name": "diff",
                 "static": true,
                 "sig": "diff($a, $n = 1, $axis = -1, $prepend = null, $append = null)",
+                "doc": ""
+            },
+            {
+                "name": "positive",
+                "static": true,
+                "sig": "positive($x)",
+                "doc": ""
+            },
+            {
+                "name": "asarrayChkfinite",
+                "static": true,
+                "sig": "asarrayChkfinite($a, $dtype = null, $order = null)",
+                "doc": ""
+            },
+            {
+                "name": "packbits",
+                "static": true,
+                "sig": "packbits($a, $axis = null, $bitorder = 'big')",
+                "doc": ""
+            },
+            {
+                "name": "unpackbits",
+                "static": true,
+                "sig": "unpackbits($a, $axis = null, $count = null, $bitorder = 'big')",
                 "doc": ""
             },
             {
