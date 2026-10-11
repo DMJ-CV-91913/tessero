@@ -679,6 +679,7 @@
         "random.logistic": "pass",
         "random.lognormal": "pass",
         "random.logseries": "pass",
+        "random.multinomial": "pass",
         "random.negative_binomial": "pass",
         "random.noncentral_chisquare": "pass",
         "random.noncentral_f": "pass",
@@ -2940,7 +2941,8 @@
             "np.inf": 0,
             "np.nan": 0,
             "np.histogram2d": 2.6437465135481728e-16,
-            "random.dirichlet": 0
+            "random.dirichlet": 0,
+            "random.multinomial": 0
         },
         "ext": {
             "np.median": 0,
@@ -4411,7 +4413,8 @@
             "np.inf": 0,
             "np.nan": 0,
             "np.histogram2d": 2.6437465135481728e-16,
-            "random.dirichlet": 0
+            "random.dirichlet": 0,
+            "random.multinomial": 0
         }
     },
     "ext": {
@@ -5094,6 +5097,7 @@
         "random.logistic": "pass",
         "random.lognormal": "pass",
         "random.logseries": "pass",
+        "random.multinomial": "pass",
         "random.negative_binomial": "pass",
         "random.noncentral_chisquare": "pass",
         "random.noncentral_f": "pass",
