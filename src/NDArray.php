@@ -1554,6 +1554,21 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         return $work->moveAxis(-1, $axis)->contiguous();
     }
 
+    /** Indices of the non-zero elements (numpy.ndarray.nonzero). */
+    public function nonzero(): mixed { return \Tessero\Np::nonzero($this); }
+    /** Matrix transpose: swap the last two axes (numpy.ndarray.mT). */
+    public function mT(): mixed { return \Tessero\Np::matrixTranspose($this); }
+    /** Sum along a diagonal (numpy.ndarray.trace). */
+    public function trace(int $offset = 0, int $axis1 = 0, int $axis2 = 1): mixed { return \Tessero\Np::trace($this, $offset, $axis1, $axis2); }
+    /** A diagonal of the matrix (numpy.ndarray.diagonal). */
+    public function diagonal(int $offset = 0, int $axis1 = 0, int $axis2 = 1): mixed { return \Tessero\Np::diagonal($this, $offset, $axis1, $axis2); }
+    /** Repeat elements (numpy.ndarray.repeat). */
+    public function repeat(mixed $repeats, ?int $axis = null): mixed { return \Tessero\Np::repeat($this, $repeats, $axis); }
+    /** Select elements where a boolean condition is true (numpy.ndarray.compress). */
+    public function compress(mixed $condition, ?int $axis = null): mixed { return \Tessero\Np::compress($condition, $this, $axis); }
+    /** Choose from a set of arrays by index (numpy.ndarray.choose). */
+    public function choose(mixed $choices, mixed $mode = 'raise'): mixed { return \Tessero\Np::choose($this, $choices, $mode); }
+
     public function argsort(int $axis = -1): self
     {
         if ($this->dtype === DType::Complex128) {
