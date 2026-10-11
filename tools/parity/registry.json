@@ -6955,6 +6955,11 @@
             "nin": 0,
             "nout": 1
         },
+        "windows.chebwin": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "windows.cosine": {
             "kind": "routine",
             "nin": 0,
