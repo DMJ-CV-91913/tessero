@@ -680,6 +680,7 @@
         "random.lognormal": "pass",
         "random.logseries": "pass",
         "random.multinomial": "pass",
+        "random.multivariate_hypergeometric": "pass",
         "random.negative_binomial": "pass",
         "random.noncentral_chisquare": "pass",
         "random.noncentral_f": "pass",
@@ -2944,7 +2945,8 @@
             "np.histogram2d": 2.6437465135481728e-16,
             "random.dirichlet": 0,
             "random.multinomial": 0,
-            "random.permuted": 0
+            "random.permuted": 0,
+            "random.multivariate_hypergeometric": 0
         },
         "ext": {
             "np.median": 0,
@@ -4417,7 +4419,8 @@
             "np.histogram2d": 2.6437465135481728e-16,
             "random.dirichlet": 0,
             "random.multinomial": 0,
-            "random.permuted": 0
+            "random.permuted": 0,
+            "random.multivariate_hypergeometric": 0
         }
     },
     "ext": {
@@ -5101,6 +5104,7 @@
         "random.lognormal": "pass",
         "random.logseries": "pass",
         "random.multinomial": "pass",
+        "random.multivariate_hypergeometric": "pass",
         "random.negative_binomial": "pass",
         "random.noncentral_chisquare": "pass",
         "random.noncentral_f": "pass",
