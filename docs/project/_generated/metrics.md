@@ -4,7 +4,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 
 | Scope | Symbols | Excluded (M3) | In scope | FFI (M2) | Extension (M2) | Verified FFI / ext (M4) | Parity (M5) |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **NumPy core** | 860 | 177 (20.6 %) | 683 | **670 (98.1 %)** | **666 (97.5 %)** | 98.1 % / 97.5 % | 99.4 % |
+| **NumPy core** | 860 | 177 (20.6 %) | 683 | **670 (98.1 %)** | **668 (97.8 %)** | 98.1 % / 97.8 % | 99.7 % |
 | &nbsp;&nbsp;numpy | 442 | 102 (23.1 %) | 340 | 336 (98.8 %) | 334 (98.2 %) | 98.8 % / 98.2 % | 99.4 % |
 | &nbsp;&nbsp;numpy.ndarray | 70 | 14 (20.0 %) | 56 | 53 (94.6 %) | 53 (94.6 %) | 94.6 % / 94.6 % | 100.0 % |
 | &nbsp;&nbsp;numpy.linalg | 32 | 1 (3.1 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -17,7 +17,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 37 (86.0 %) | 35 (81.4 %) | 86.0 % / 81.4 % | 94.6 % |
+| &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 37 (86.0 %) | 37 (86.0 %) | 86.0 % / 86.0 % | 100.0 % |
 | **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1159 (77.9 %)** | **1156 (77.7 %)** | 77.9 % / 77.7 % | 99.7 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 244 (72.6 %) | 244 (72.6 %) | 72.6 % / 72.6 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 251 (84.5 %) | 251 (84.5 %) | 84.5 % / 84.5 % | 100.0 % |
