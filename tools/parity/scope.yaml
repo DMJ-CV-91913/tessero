@@ -430,6 +430,7 @@ legacy:
     minimize_scalar: {ffi: [Min::minimizeScalar], ext: [Min::minimizeScalar], fixtures: [optimize.minimize_scalar]}
     leastsq: {ffi: [LS::solve], ext: [LS::solve], fixtures: [optimize.leastsq]}
     nnls: {ffi: [LS::nnls], ext: [LS::nnls], fixtures: [optimize.nnls]}
+    isotonic_regression: {ffi: [LS::isotonicRegression], ext: [LS::isotonicRegression], fixtures: [optimize.isotonic_regression]}
     least_squares: {ffi: [LS::leastSquares], ext: [LS::leastSquares], fixtures: [optimize.least_squares]}
     lsq_linear: {ffi: [LS::lsqLinear], ext: [LS::lsqLinear], fixtures: [optimize.lsq_linear]}
     linear_sum_assignment: {ffi: [ASG::linearSumAssignment], ext: [ASG::linearSumAssignment], fixtures: [optimize.linear_sum_assignment]}

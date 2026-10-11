@@ -73,6 +73,13 @@ for _A, _b in (([[1., 0.], [1., 0.], [0., 1.]], [2., 1., 1.]),
     cases.append({'fn': 'nnls', 'A': _A, 'b': _b,
                   'expect': list(so.nnls(np.array(_A), np.array(_b))[0]), 'rtol': 1e-7})
 
+# isotonic_regression: Pool Adjacent Violators (runner calls LeastSquares::isotonicRegression)
+for _y, _w, _inc in (([1., 0.5, 2., 1.5, 3.], None, True), ([8., 4., 6., 2., 9., 1.], None, True),
+                     ([8., 4., 6., 2., 9., 1.], [1., 2., 3., 1., 1., 2.], True), ([5., 4., 3., 6., 2.], None, False),
+                     ([3., 1., 4., 1., 5., 9., 2., 6.], None, True)):
+    cases.append({'fn': 'isotonic_regression', 'y': _y, 'weights': _w, 'increasing': _inc,
+                  'expect': list(so.isotonic_regression(_y, weights=_w, increasing=_inc).x), 'rtol': 1e-9})
+
 # fixed_point: scalar fixed point via Aitken del2 (matches scipy iterate-for-iterate)
 cases.append({'fn': 'fixed_point', 'obj': {'kind': 'lorentz'}, 'x0': 0.5,
               'expect': float(so.fixed_point(lambda x: 1.0 / (1.0 + x * x), 0.5)), 'rtol': 1e-9})
