@@ -8700,6 +8700,12 @@
                 "doc": "Histogram of the data: counts (or density) and bin edges (numpy.histogram)."
             },
             {
+                "name": "histogram2d",
+                "static": true,
+                "sig": "histogram2d(mixed $x, mixed $y, mixed $bins = 10, mixed $range = null, mixed $density = false, mixed $weights = null): mixed",
+                "doc": "The 2-D histogram of a set of points: counts (or density) and the bin edges (numpy.histogram2d)."
+            },
+            {
                 "name": "histogramBinEdges",
                 "static": true,
                 "sig": "histogramBinEdges(mixed $a, mixed $bins = 10, mixed $range = null, mixed $weights = null): mixed",
@@ -12928,6 +12934,12 @@
                 "name": "histogramBinEdges",
                 "static": true,
                 "sig": "histogramBinEdges($a, $bins = 10, $range = null, $weights = null)",
+                "doc": ""
+            },
+            {
+                "name": "histogram2d",
+                "static": true,
+                "sig": "histogram2d($x, $y, $bins = 10, $range = null, $density = false, $weights = null)",
                 "doc": ""
             },
             {

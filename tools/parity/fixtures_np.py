@@ -250,6 +250,15 @@ def main():
     blocks['histogram'] = hs
     blocks['histogram_bin_edges'] = [call('histogram_bin_edges', [a], {'bins': b})
                                      for a in (data((50,)), data((9,), ties=True)) for b in (4, 'auto', 'fd', 'sturges')]
+    _hx = data((200,), lo=0, hi=3)
+    _hy = data((200,), lo=-2, hi=2)
+    blocks['histogram2d'] = [
+        call('histogram2d', [_hx, _hy], {'bins': 5}, ['H', 'xedges', 'yedges']),
+        call('histogram2d', [_hx, _hy], {'bins': [4, 6]}, ['H', 'xedges', 'yedges']),
+        call('histogram2d', [_hx, _hy], {'bins': 5, 'range': [[0.0, 3.0], [-2.0, 2.0]]}, ['H', 'xedges', 'yedges']),
+        call('histogram2d', [_hx, _hy], {'bins': 5, 'density': True}, ['H', 'xedges', 'yedges']),
+        call('histogram2d', [_hx, _hy], {'bins': [4, 6], 'weights': rng.uniform(size=200)}, ['H', 'xedges', 'yedges']),
+    ]
     cv = []
     for m in (data((3, 10)), data((2, 5)), data((10, 3)), data((6,))):
         cv.append(call('cov', [m]))

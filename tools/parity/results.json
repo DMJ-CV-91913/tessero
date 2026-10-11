@@ -317,6 +317,7 @@
         "np.hamming": "pass",
         "np.hanning": "pass",
         "np.histogram": "pass",
+        "np.histogram2d": "pass",
         "np.histogram_bin_edges": "pass",
         "np.hsplit": "pass",
         "np.hstack": "pass",
@@ -1509,8 +1510,8 @@
             "np.bincount": 0,
             "np.histogram": 0,
             "np.histogram_bin_edges": 0,
-            "np.cov": 5.0225990847982474e-15,
-            "np.corrcoef": 3.1384704941984763e-16,
+            "np.cov": 1.9425434033349485e-15,
+            "np.corrcoef": 8.10081470117077e-16,
             "np.correlate": 0,
             "np.convolve": 0,
             "np.lexsort": 0,
@@ -2177,7 +2178,7 @@
             "np.promote_types": 0,
             "np.finfo": 0,
             "np.iinfo": 0,
-            "np.einsum": 1.3075177350501231e-14,
+            "np.einsum": 1.828415050490341e-16,
             "np.around": 0,
             "np.fabs": 0,
             "special.comb": 0,
@@ -2936,7 +2937,8 @@
             "np.e": 0,
             "np.euler_gamma": 0,
             "np.inf": 0,
-            "np.nan": 0
+            "np.nan": 0,
+            "np.histogram2d": 2.6437465135481728e-16
         },
         "ext": {
             "np.median": 0,
@@ -2978,8 +2980,8 @@
             "np.bincount": 0,
             "np.histogram": 0,
             "np.histogram_bin_edges": 0,
-            "np.cov": 5.0225990847982474e-15,
-            "np.corrcoef": 3.1384704941984763e-16,
+            "np.cov": 1.9425434033349485e-15,
+            "np.corrcoef": 8.10081470117077e-16,
             "np.correlate": 0,
             "np.convolve": 0,
             "np.lexsort": 0,
@@ -3646,7 +3648,7 @@
             "np.promote_types": 0,
             "np.finfo": 0,
             "np.iinfo": 0,
-            "np.einsum": 1.3075177350501231e-14,
+            "np.einsum": 1.828415050490341e-16,
             "np.around": 0,
             "np.fabs": 0,
             "special.comb": 0,
@@ -4405,7 +4407,8 @@
             "np.e": 0,
             "np.euler_gamma": 0,
             "np.inf": 0,
-            "np.nan": 0
+            "np.nan": 0,
+            "np.histogram2d": 2.6437465135481728e-16
         }
     },
     "ext": {
@@ -4726,6 +4729,7 @@
         "np.hamming": "pass",
         "np.hanning": "pass",
         "np.histogram": "pass",
+        "np.histogram2d": "pass",
         "np.histogram_bin_edges": "pass",
         "np.hsplit": "pass",
         "np.hstack": "pass",
