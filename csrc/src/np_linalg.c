@@ -1317,12 +1317,15 @@ static int r_vecmat(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 
 /* ================================================================ table */
 
+extern int r_tensordot(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres); /* np_numeric.c */
+
 static const fn_def DEFS[] = {
     ROUTINE("linalg.matmul", 1, "x1, x2", "out", r_la_matmul, NULL, "Matrix product of two arrays (numpy.linalg.matmul)."),
     ROUTINE("linalg.vector_norm", 1, "x, axis=None, keepdims=False, ord=2", "out", r_vector_norm, NULL, "Vector norm over the flattened array (numpy.linalg.vector_norm)."),
     ROUTINE("linalg.matrix_norm", 1, "x, keepdims=False, ord='fro'", "out", r_matrix_norm, NULL, "Matrix norm over the last two axes (numpy.linalg.matrix_norm)."),
     ROUTINE("linalg.trace", 1, "x, offset=0", "out", r_la_trace, NULL, "Sum along the diagonal of a matrix (numpy.linalg.trace)."),
     ROUTINE("linalg.diagonal", 1, "x, offset=0", "out", r_la_diagonal, NULL, "The specified diagonal of a matrix (numpy.linalg.diagonal)."),
+    ROUTINE("linalg.tensordot", 1, "x1, x2, axes=2", "out", r_tensordot, NULL, "Tensor dot product over the given axes (numpy.linalg.tensordot)."),
     ROUTINE("linalg.outer", 1, "x1, x2", "out", r_la_outer, NULL, "Outer product of two 1-D arrays (numpy.linalg.outer)."),
     ROUTINE("linalg.cross", 1, "x1, x2, axis=-1", "out", r_la_cross, NULL, "Cross product of 3-element vectors (numpy.linalg.cross)."),
     ROUTINE("linalg.vecdot", 1, "x1, x2, axis=-1", "out", r_la_vecdot, NULL, "Dot product of two vectors (numpy.linalg.vecdot)."),

@@ -134,6 +134,7 @@
 | `linalg.vector_norm` | every call | rtol 1e-09 |
 | `linalg.matmul` | every call | rtol 1e-09 |
 | `linalg.matrix_norm` | every call | rtol 1e-09 |
+| `linalg.tensordot` | every call | rtol 1e-09 |
 | `np.polyfit` | call | rtol 1e-06 to 1e-05 (3 calls) |
 | `np.roots` | call | rtol 1e-06 |
 | `np.polymul` | call | rtol 1.85e-12: convolution by dot products: summation order differs; bound 2 gamma_n sum|a_k b_k| / |result| |
