@@ -93,6 +93,9 @@ const CALL_RTOL = [
     // pinned environment (tools/parity/fixture_env.py: NumPy's float64 loops are the C library's), must be
     // bit-identical
     'random' => 0.0,
+    // multivariate_normal factorises cov by SVD and applies X @ factor by gemm; both differ from NumPy's
+    // own LAPACK/BLAS in the last digits (cf. matrix_normal/wishart), so it cannot be bit-identical (ADR 0012).
+    'multivariate_normal' => 1e-9,
     // LAPACK-backed polynomial helpers: a different LAPACK may differ in the last few digits (ADR 0012)
     'polyfit' => 1e-6,
     'roots' => 1e-6,
@@ -764,7 +767,7 @@ foreach ($files as $file) {
                 echo "MISSING {$key}: no {$class}::{$method}()\n";
                 continue;
             }
-            $rtol = (float) ($blk['tol']['rtol'] ?? CALL_RTOL[$module === 'random' ? 'random' : $fn] ?? 1e-12);
+            $rtol = (float) ($blk['tol']['rtol'] ?? CALL_RTOL[$fn] ?? ($module === 'random' ? CALL_RTOL['random'] : 1e-12));
             $atol = (float) ($blk['tol']['atol'] ?? CALL_ATOL[$fn] ?? 0.0);
             $problems = [];
             $worst = 0.0;

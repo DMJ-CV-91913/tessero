@@ -20,6 +20,11 @@ OUT = os.path.join(F.ROOT, 'tests', 'fixtures', 'parity', 'random.json')
 CASES = {
     # bytes(length): raw bytes. Lengths span the 4-byte buffer boundary, the dropped tail, and 0 (still one draw).
     'bytes': [([5], {}), ([16], {}), ([1], {}), ([0], {}), ([7], {}), ([13], {}), ([4], {}), ([8], {})],
+    # multivariate_normal: fixed mean/cov (symmetric PD), varying size; replayed on one generator per seed.
+    'multivariate_normal': [([[1.0, -2.0, 0.5], [[3.0, 1.0, 0.2], [1.0, 2.0, -0.3], [0.2, -0.3, 1.5]]], {'size': 4}),
+                            ([[1.0, -2.0, 0.5], [[3.0, 1.0, 0.2], [1.0, 2.0, -0.3], [0.2, -0.3, 1.5]]], {'size': 2}),
+                            ([[1.0, -2.0, 0.5], [[3.0, 1.0, 0.2], [1.0, 2.0, -0.3], [0.2, -0.3, 1.5]]], {}),
+                            ([[1.0, -2.0, 0.5], [[3.0, 1.0, 0.2], [1.0, 2.0, -0.3], [0.2, -0.3, 1.5]]], {'size': [2, 3]})],
     'random': [([], {}), ([], {'size': 5}), ([], {'size': (2, 3)}), ([], {'size': 4, 'dtype': np.float32})],
     'standard_normal': [([], {}), ([], {'size': 7}), ([], {'size': (3, 2), 'dtype': np.float32})],
     'standard_exponential': [([], {'size': 6}), ([], {'size': 4, 'method': 'inv'}), ([], {'size': 3, 'dtype': np.float32}),
