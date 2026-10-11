@@ -96,6 +96,10 @@ final class BackendParityTest extends TestCase
                 $size = (int) array_product($f->shape());
 
                 $this->assertSameResult($this->call(static fn () => $f->flatten()), $this->call(static fn () => $x->flatten()), "{$label} flatten");
+                $this->assertSameResult($this->call(static fn () => $f->fill(3)), $this->call(static fn () => $x->fill(3)), "{$label} fill");
+                $this->assertSameResult($this->call(static fn () => $f->byteswap()), $this->call(static fn () => $x->byteswap()), "{$label} byteswap");
+                $this->assertSameResult($this->call(static fn () => $f->resize([$size + 3])), $this->call(static fn () => $x->resize([$size + 3])), "{$label} resize grow");
+                $this->assertSameResult($this->call(static fn () => $f->resize([$size])), $this->call(static fn () => $x->resize([$size])), "{$label} resize same");
                 $this->assertSameResult($f->nbytes(), $x->nbytes(), "{$label} nbytes");
                 $this->assertSameResult($this->call(static fn () => $f->squeeze()), $this->call(static fn () => $x->squeeze()), "{$label} squeeze");
                 $checked += 3;
