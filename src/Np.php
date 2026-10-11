@@ -94,6 +94,7 @@ final class Np
     'hamming' => 'hamming',
     'hanning' => 'hanning',
     'histogram' => 'histogram',
+    'histogram2d' => 'histogram2d',
     'histogram_bin_edges' => 'histogramBinEdges',
     'hsplit' => 'hsplit',
     'hstack' => 'hstack',
@@ -1012,6 +1013,18 @@ final class Np
     public static function histogram(mixed $a, mixed $bins = 10, mixed $range = null, mixed $density = false, mixed $weights = null): mixed
     {
         return Registry::routine('np.histogram', [$a, $bins, $range, $density, $weights]);
+    }
+
+    /**
+     * The 2-D histogram of a set of points: counts (or density) and the bin edges (numpy.histogram2d).
+     *
+     * numpy.histogram2d
+     *
+     * @return mixed one array, or an array keyed by H, xedges, yedges when several results are requested
+     */
+    public static function histogram2d(mixed $x, mixed $y, mixed $bins = 10, mixed $range = null, mixed $density = false, mixed $weights = null): mixed
+    {
+        return Registry::routine('np.histogram2d', [$x, $y, $bins, $range, $density, $weights]);
     }
 
     /**

@@ -87,6 +87,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.hamming` | `Tessero\Np::hamming()` |
 | `numpy.hanning` | `Tessero\Np::hanning()` |
 | `numpy.histogram` | `Tessero\Np::histogram()` |
+| `numpy.histogram2d` | `Tessero\Np::histogram2d()` |
 | `numpy.histogram_bin_edges` | `Tessero\Np::histogramBinEdges()` |
 | `numpy.hsplit` | `Tessero\Np::hsplit()` |
 | `numpy.hstack` | `Tessero\Np::hstack()` |
