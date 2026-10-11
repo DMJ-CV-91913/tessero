@@ -209,6 +209,29 @@ final class BackendParityTest extends TestCase
         }
     }
 
+    /** savez / savez_compressed: the extension's arrays write .npz that round-trips and matches the FFI .npz. */
+    public function testSavezMatchesFfi(): void
+    {
+        if (! class_exists(\ZipArchive::class)) {
+            $this->markTestSkipped('.npz needs ext-zip.');
+        }
+        $ff = tempnam(sys_get_temp_dir(), 'tsrzf');
+        $xf = tempnam(sys_get_temp_dir(), 'tsrzx');
+        $fa = ['a' => F::array([[1.5, 2.5], [3.5, 4.5]]), 'b' => F::array([10.0, 20.0, 30.0])];
+        $xa = ['a' => X::array([[1.5, 2.5], [3.5, 4.5]]), 'b' => X::array([10.0, 20.0, 30.0])];
+        foreach ([false, true] as $compress) {
+            \Tessero\Io\Npy::saveZ($ff, $fa, $compress);
+            \Tessero\Io\Npy::saveZ($xf, $xa, $compress);
+            $lf = \Tessero\Io\Npy::loadZ($ff);
+            $lx = \Tessero\Io\Npy::loadZ($xf);
+            foreach (['a', 'b'] as $k) {
+                $this->assertSame(bin2hex($lf[$k]->toBytes()), bin2hex($lx[$k]->toBytes()), "savez {$k} compress=" . ($compress ? '1' : '0'));
+            }
+        }
+        @unlink($ff);
+        @unlink($xf);
+    }
+
     private function assertSameResult(mixed $ffi, mixed $ext, string $what): void
     {
         if (is_array($ffi) && isset($ffi['exception'])) {

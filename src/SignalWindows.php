@@ -24,6 +24,7 @@ final class SignalWindows
     'blackmanharris' => 'blackmanharris',
     'bohman' => 'bohman',
     'boxcar' => 'boxcar',
+    'chebwin' => 'chebwin',
     'cosine' => 'cosine',
     'exponential' => 'exponential',
     'flattop' => 'flattop',
@@ -34,9 +35,11 @@ final class SignalWindows
     'hamming' => 'hamming',
     'hann' => 'hann',
     'kaiser' => 'kaiser',
+    'kaiser_bessel_derived' => 'kaiserBesselDerived',
     'lanczos' => 'lanczos',
     'nuttall' => 'nuttall',
     'parzen' => 'parzen',
+    'taylor' => 'taylor',
     'triang' => 'triang',
     'tukey' => 'tukey',
     ];
@@ -115,6 +118,16 @@ final class SignalWindows
     public static function boxcar(mixed $M, mixed $sym = true): mixed
     {
         return Registry::routine('windows.boxcar', [$M, $sym]);
+    }
+
+    /**
+     * Dolph-Chebyshev window (scipy.signal.windows.chebwin).
+     *
+     * scipy.signal.windows.chebwin
+     */
+    public static function chebwin(mixed $M, mixed $at, mixed $sym = true): mixed
+    {
+        return Registry::routine('windows.chebwin', [$M, $at, $sym]);
     }
 
     /**
@@ -218,6 +231,16 @@ final class SignalWindows
     }
 
     /**
+     * Kaiser-Bessel derived window (scipy.signal.windows.kaiser_bessel_derived).
+     *
+     * scipy.signal.windows.kaiser_bessel_derived
+     */
+    public static function kaiserBesselDerived(mixed $M, mixed $beta, mixed $sym = true): mixed
+    {
+        return Registry::routine('windows.kaiser_bessel_derived', [$M, $beta, $sym]);
+    }
+
+    /**
      * Lanczos (sinc) window (scipy.signal.windows.lanczos).
      *
      * scipy.signal.windows.lanczos
@@ -245,6 +268,16 @@ final class SignalWindows
     public static function parzen(mixed $M, mixed $sym = true): mixed
     {
         return Registry::routine('windows.parzen', [$M, $sym]);
+    }
+
+    /**
+     * Taylor window (scipy.signal.windows.taylor).
+     *
+     * scipy.signal.windows.taylor
+     */
+    public static function taylor(mixed $M, mixed $nbar = 4, mixed $sll = 30, mixed $norm = true, mixed $sym = true): mixed
+    {
+        return Registry::routine('windows.taylor', [$M, $nbar, $sll, $norm, $sym]);
     }
 
     /**

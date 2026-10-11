@@ -192,8 +192,8 @@ legacy:
     save: {ffi: [N::save], ext: [XN::save], tests: io}
     load: {ffi: [N::load], ext: [XN::load], tests: io}
     memmap: {ffi: [N::memmap], ext: [XN::memmap], tests: io}
-    savez: {ffi: [Npy::saveZ], tests: io}
-    savez_compressed: {ffi: [Npy::saveZ], tests: io}
+    savez: {ffi: [Npy::saveZ], ext: [Npy::saveZ], tests: io}
+    savez_compressed: {ffi: [Npy::saveZ], ext: [Npy::saveZ], tests: io}
     float64: {ffi: [N::astype], ext: [XN::astype], tests: core}
     float32: {ffi: [N::astype], ext: [XN::astype], tests: core}
     int64: {ffi: [N::astype], ext: [XN::astype], tests: core}
