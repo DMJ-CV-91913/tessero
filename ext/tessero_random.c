@@ -347,6 +347,70 @@ static PHP_METHOD(Generator, choice)
     zval_ptr_dtor(&pop);
 }
 
+/* dirichlet(alpha, size=null): numpy.random.Generator.dirichlet via the standard-gamma method -
+   draw one standard_gamma per component (C order, component-minor) then normalise each sample. */
+static PHP_METHOD(Generator, dirichlet)
+{
+    zval *alpha_z, *size = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ARRAY(alpha_z)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL_OR_NULL(size)
+    ZEND_PARSE_PARAMETERS_END();
+    uint64_t *st = gen_of(Z_OBJ_P(ZEND_THIS))->st;
+
+    const int64_t K = zend_hash_num_elements(Z_ARRVAL_P(alpha_z));
+    double *alpha = (double *)emalloc((size_t)(K > 0 ? K : 1) * sizeof(double));
+    {
+        int64_t i = 0; zval *e;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(alpha_z), e) {
+            double a = zval_get_double(e);
+            if (a < 0) { efree(alpha); zend_throw_exception(tsr_ce_exception, "dirichlet: alpha must be non-negative.", 0); RETURN_THROWS(); }
+            alpha[i++] = a;
+        } ZEND_HASH_FOREACH_END();
+    }
+
+    int64_t sdims[32];
+    const int snd = size_shape(size, sdims);
+    if (snd == -2) { efree(alpha); RETURN_THROWS(); }
+    int nd;
+    int64_t oshape[40];
+    if (snd < 0) { nd = 1; oshape[0] = K; }
+    else { nd = snd + 1; for (int d = 0; d < snd; d++) oshape[d] = sdims[d]; oshape[snd] = K; }
+
+    zval av;
+    { int64_t ash[1] = { K };
+      if (tsr_ndarray_new(&av, TSR_F64, 1, ash, 0) == FAILURE) { efree(alpha); RETURN_THROWS(); }
+      memcpy((char *)Z_TSR(av)->a.data + Z_TSR(av)->a.offset, alpha, (size_t)K * sizeof(double)); }
+    efree(alpha);
+
+    if (tsr_ndarray_new(return_value, TSR_F64, nd, oshape, 0) == FAILURE) { zval_ptr_dtor(&av); RETURN_THROWS(); }
+    tsr_array *o = &Z_TSR_P(return_value)->a;
+
+    const int gid = tsr_fn_find("random.standard_gamma");
+    if (gid < 0) { zval_ptr_dtor(&av); zval_ptr_dtor(return_value); zend_throw_error(NULL, "random.standard_gamma not registered"); RETURN_THROWS(); }
+    double pv[1] = { 0.0 };                 /* dtype=float64 */
+    void *ptrs[2];
+    int64_t strides[2 * 40];
+    const tsr_array *aarr = &Z_TSR(av)->a;
+    ptrs[0] = (char *)aarr->data + aarr->offset;
+    tsr_broadcast_strides(aarr, nd, oshape, strides);
+    ptrs[1] = (char *)o->data + o->offset;
+    for (int d = 0; d < nd; d++) strides[nd + d] = o->strides[d];
+    const int64_t total = tsr_array_size(o);
+    int rc = total > 0 ? tsr_fn_random(gid, st, pv, nd, oshape, 2, ptrs, strides, TSR_F64) : 0;
+    zval_ptr_dtor(&av);
+    if (rc < 0) { zval_ptr_dtor(return_value); zend_throw_exception(tsr_ce_exception, "dirichlet: sampling failed", 0); RETURN_THROWS(); }
+
+    double *out = (double *)((char *)o->data + o->offset);
+    for (int64_t r = 0; K > 0 && r + K <= total; r += K) {
+        double sum = 0;
+        for (int64_t j = 0; j < K; j++) sum += out[r + j];
+        const double inv = 1.0 / sum;
+        for (int64_t j = 0; j < K; j++) out[r + j] *= inv;
+    }
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, seed, "null")
 ZEND_END_ARG_INFO()
@@ -365,6 +429,10 @@ ZEND_BEGIN_ARG_INFO_EX(ai_choice, 0, 0, 1)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, replace, "true")
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, p, "null")
 ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO_EX(ai_dirichlet, 0, 0, 1)
+    ZEND_ARG_INFO(0, alpha)
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, size, "null")
+ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ai_state, 0, 0, 1)
     ZEND_ARG_INFO(0, words)
 ZEND_END_ARG_INFO()
@@ -375,6 +443,7 @@ static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, defaultRng, ai_default_rng, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(Generator, integers, ai_integers, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, choice, ai_choice, ZEND_ACC_PUBLIC)
+    PHP_ME(Generator, dirichlet, ai_dirichlet, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, shuffle, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, permutation, ai_one, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, getState, ai_none_g, ZEND_ACC_PUBLIC)
