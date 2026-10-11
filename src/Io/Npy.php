@@ -37,11 +37,13 @@ final class Npy
         return self::decode($bytes, $path);
     }
 
-    public static function encode(NDArray $array): string
+    public static function encode(NDArray|\Tessero\Ext\NDArray $array): string
     {
         $shape = $array->shape();
         $shapeStr = '(' . implode(', ', $shape) . (count($shape) === 1 ? ',' : '') . ')';
-        $dict = "{'descr': '" . $array->dtype()->descr() . "', 'fortran_order': False, 'shape': {$shapeStr}, }";
+        $dt = $array->dtype();
+        $descr = is_string($dt) ? DType::from_($dt)->descr() : $dt->descr();
+        $dict = "{'descr': '" . $descr . "', 'fortran_order': False, 'shape': {$shapeStr}, }";
         $major = 1;
         $prefix = strlen(self::MAGIC) + 2 + 2;
         if (strlen($dict) + $prefix + 1 > 65535) {
