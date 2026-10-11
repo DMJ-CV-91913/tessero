@@ -867,6 +867,24 @@
                 "doc": "Choose from a set of arrays by index (numpy.ndarray.choose)."
             },
             {
+                "name": "searchsorted",
+                "static": false,
+                "sig": "searchsorted(mixed $v, string $side = 'left'): mixed",
+                "doc": "Indices where elements of v keep this sorted if inserted (numpy.ndarray.searchsorted)."
+            },
+            {
+                "name": "partition",
+                "static": false,
+                "sig": "partition(mixed $kth, int $axis = -1): mixed",
+                "doc": "A partial sort: a copy with the kth element in final sorted position (numpy.ndarray.partition)."
+            },
+            {
+                "name": "argpartition",
+                "static": false,
+                "sig": "argpartition(mixed $kth, int $axis = -1): mixed",
+                "doc": "Indices that would partition the array about the kth element (numpy.ndarray.argpartition)."
+            },
+            {
                 "name": "argsort",
                 "static": false,
                 "sig": "argsort(int $axis = -1): self",
@@ -6817,6 +6835,24 @@
                 "name": "choose",
                 "static": false,
                 "sig": "choose($arg1, $arg2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "searchsorted",
+                "static": false,
+                "sig": "searchsorted($arg1, $arg2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "partition",
+                "static": false,
+                "sig": "partition($arg1, $arg2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "argpartition",
+                "static": false,
+                "sig": "argpartition($arg1, $arg2 = \u2026)",
                 "doc": ""
             },
             {

@@ -1568,6 +1568,12 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     public function compress(mixed $condition, ?int $axis = null): mixed { return \Tessero\Np::compress($condition, $this, $axis); }
     /** Choose from a set of arrays by index (numpy.ndarray.choose). */
     public function choose(mixed $choices, mixed $mode = 'raise'): mixed { return \Tessero\Np::choose($this, $choices, $mode); }
+    /** Indices where elements of v keep this sorted if inserted (numpy.ndarray.searchsorted). */
+    public function searchsorted(mixed $v, string $side = 'left'): mixed { return \Tessero\Np::searchsorted($this, $v, $side); }
+    /** A partial sort: a copy with the kth element in final sorted position (numpy.ndarray.partition). */
+    public function partition(mixed $kth, int $axis = -1): mixed { return \Tessero\Np::partition($this, $kth, $axis); }
+    /** Indices that would partition the array about the kth element (numpy.ndarray.argpartition). */
+    public function argpartition(mixed $kth, int $axis = -1): mixed { return \Tessero\Np::argpartition($this, $kth, $axis); }
 
     public function argsort(int $axis = -1): self
     {
