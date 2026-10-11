@@ -1111,6 +1111,113 @@ done:
     return rc;
 }
 
+/* numpy.histogramdd(sample, bins, range, density, weights): the D-dimensional histogram. sample is (N, D)
+   (a 1-D array is treated as (N, 1)); bins is an int or a length-D list of ints (explicit per-axis edge arrays
+   are not supported). Returns H (D-dimensional, float64) and a length-D sequence of bin-edge arrays. */
+static int r_histogramdd(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (!require_array(args, nargs, 0, "sample")) return TSR_EARG;
+    const int sdim = args[0].arr.ndim;
+    if (sdim < 1 || sdim > 2) { fn_set_error("histogramdd: sample must be 1-D or 2-D"); return TSR_EARG; }
+    int64_t ns = 0;
+    double *s = fn_arg_doubles(&args[0], &ns);
+    if (!s) return TSR_ENOMEM;
+    const int64_t N = sdim == 1 ? ns : args[0].arr.shape[0];
+    const int64_t D = sdim == 1 ? 1 : args[0].arr.shape[1];
+    int rc = TSR_OK;
+    double *w = NULL; int64_t nw = 0;
+    int64_t nb[32], Hsize = 1;
+    double lo[32], hi[32], *edges[32];
+    for (int d = 0; d < 32; d++) edges[d] = NULL;
+    double *cnt = NULL;
+    if (D < 1 || D > 32) { rc = TSR_EARG; fn_set_error("histogramdd: unsupported number of dimensions"); goto done; }
+    for (int64_t d = 0; d < D; d++) nb[d] = 10;
+    /* bins */
+    if (nargs > 1 && args[1].kind == 1) { for (int64_t d = 0; d < D; d++) nb[d] = (int64_t)args[1].num; }
+    else if (nargs > 1 && args[1].kind == 3) {
+        int64_t k; double *b = fn_arg_doubles(&args[1], &k);
+        if (!b) { rc = TSR_ENOMEM; goto done; }
+        if (k == 1) { for (int64_t d = 0; d < D; d++) nb[d] = (int64_t)b[0]; }
+        else if (k == D) { for (int64_t d = 0; d < D; d++) nb[d] = (int64_t)b[d]; }
+        else { fn_free_doubles(b, k); rc = TSR_EARG; fn_set_error("histogramdd: bins must be an int or a length-D list of ints (edge arrays are not supported)."); goto done; }
+        fn_free_doubles(b, k);
+    }
+    for (int64_t d = 0; d < D; d++) if (nb[d] < 1) { rc = TSR_EARG; fn_set_error("histogramdd: `bins` must be positive."); goto done; }
+    /* range: (D, 2) */
+    int have_range = 0; double *rng = NULL; int64_t nr = 0;
+    if (nargs > 2 && args[2].kind == 3) {
+        rng = fn_arg_doubles(&args[2], &nr);
+        if (!rng) { rc = TSR_ENOMEM; goto done; }
+        if (nr != 2 * D) { fn_free_doubles(rng, nr); rc = TSR_EARG; fn_set_error("histogramdd: range must have one (min, max) pair per dimension."); goto done; }
+        have_range = 1;
+    }
+    for (int64_t d = 0; d < D; d++) {
+        if (have_range) { lo[d] = rng[2 * d]; hi[d] = rng[2 * d + 1]; }
+        else if (N == 0) { lo[d] = 0; hi[d] = 1; }
+        else {
+            lo[d] = hi[d] = s[d];
+            for (int64_t i = 1; i < N; i++) { double v = s[i * D + d]; if (v < lo[d]) lo[d] = v; if (v > hi[d]) hi[d] = v; }
+        }
+        if (lo[d] == hi[d]) { lo[d] -= 0.5; hi[d] += 0.5; }
+    }
+    if (rng) fn_free_doubles(rng, nr);
+    const int density = arg_bool(args, nargs, 3, 0);
+    if (nargs > 4 && args[4].kind == 3) {
+        w = fn_arg_doubles(&args[4], &nw);
+        if (!w) { rc = TSR_ENOMEM; goto done; }
+        if (nw != N) { rc = TSR_EARG; fn_set_error("histogramdd: weights should have one value per sample."); goto done; }
+    }
+    for (int64_t d = 0; d < D; d++) {
+        edges[d] = (double *)tsr_alloc((nb[d] + 1) * 8 + 64);
+        if (!edges[d]) { rc = TSR_ENOMEM; goto done; }
+        if (hist2d_edges(lo[d], hi[d], nb[d], edges[d]) != 0) { rc = TSR_EARG; fn_set_error("histogramdd: too many bins for data range."); goto done; }
+        Hsize *= nb[d];
+    }
+    cnt = (double *)tsr_alloc((Hsize > 0 ? Hsize : 1) * 8 + 64);
+    if (!cnt) { rc = TSR_ENOMEM; goto done; }
+    for (int64_t i = 0; i < Hsize; i++) cnt[i] = 0.0;
+    int64_t stride[32]; stride[D - 1] = 1;
+    for (int64_t d = D - 2; d >= 0; d--) stride[d] = stride[d + 1] * nb[d + 1];
+    for (int64_t i = 0; i < N; i++) {
+        int64_t idx = 0, ok = 1;
+        for (int64_t d = 0; d < D; d++) {
+            int64_t c = hist2d_bin(edges[d], nb[d] + 1, s[i * D + d]);
+            if (c < 1 || c > nb[d]) { ok = 0; break; }
+            idx += (c - 1) * stride[d];
+        }
+        if (ok) cnt[idx] += w ? w[i] : 1.0;
+    }
+    if (density) {
+        double tot = 0.0; for (int64_t i = 0; i < Hsize; i++) tot += cnt[i];
+        for (int64_t c = 0; c < Hsize; c++) {
+            double vol = 1.0;
+            for (int64_t d = 0; d < D; d++) { int64_t b = (c / stride[d]) % nb[d]; vol *= (edges[d][b + 1] - edges[d][b]); }
+            cnt[c] = cnt[c] / vol / tot;
+        }
+    }
+    {
+        int64_t Hsh[32]; for (int64_t d = 0; d < D; d++) Hsh[d] = nb[d];
+        double *Hout = (double *)fn_result_array(&res[0], TSR_F64, (int)D, Hsh);
+        if (!Hout) { rc = TSR_ENOMEM; goto done; }
+        for (int64_t i = 0; i < Hsize; i++) Hout[i] = cnt[i];
+        tsr_result *items = fn_result_seq(&res[1], D);
+        if (!items) { rc = TSR_ENOMEM; goto done; }
+        for (int64_t d = 0; d < D; d++) {
+            int64_t esh[1] = { nb[d] + 1 };
+            double *ed = (double *)fn_result_array(&items[d], TSR_F64, 1, esh);
+            if (!ed) { rc = TSR_ENOMEM; goto done; }
+            for (int64_t j = 0; j <= nb[d]; j++) ed[j] = edges[d][j];
+        }
+    }
+done:
+    if (s) fn_free_doubles(s, ns);
+    if (w) fn_free_doubles(w, nw);
+    for (int d = 0; d < 32; d++) if (edges[d]) tsr_free(edges[d], (nb[d] + 1) * 8 + 64);
+    if (cnt) tsr_free(cnt, (Hsize > 0 ? Hsize : 1) * 8 + 64);
+    return rc;
+}
+
 /* numpy.percentile(x, q) with the linear method on a sorted, NaN-free sample (used by the fd estimator) */
 double np_percentile_linear(const double *s, int64_t n, double q)
 {
@@ -1491,6 +1598,8 @@ const fn_def NP_SETS[] = {
             "Bin edges numpy.histogram would use (numpy.histogram_bin_edges)."),
     ROUTINE("np.histogram2d", 3, "x, y, bins=10, range=None, density=False, weights=None", "H, xedges, yedges", r_histogram2d, NULL,
             "The 2-D histogram of a set of points: counts (or density) and the bin edges (numpy.histogram2d)."),
+    ROUTINE("np.histogramdd", 2, "sample, bins=10, range=None, density=False, weights=None", "H, edges", r_histogramdd, NULL,
+            "The D-dimensional histogram of a set of points: counts (or density) and the per-axis bin edges (numpy.histogramdd)."),
     ROUTINE("np.cov", 1, "m, y=None, rowvar=True, bias=False, ddof=None, fweights=None, aweights=None", "cov", r_cov, &C_COV,
             "Covariance matrix (numpy.cov)."),
     ROUTINE("np.corrcoef", 1, "x, y=None, rowvar=True", "corrcoef", r_cov, &C_CORR, "Pearson correlation coefficients (numpy.corrcoef)."),

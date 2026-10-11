@@ -90,6 +90,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.histogram` | `Tessero\Np::histogram()` |
 | `numpy.histogram2d` | `Tessero\Np::histogram2d()` |
 | `numpy.histogram_bin_edges` | `Tessero\Np::histogramBinEdges()` |
+| `numpy.histogramdd` | `Tessero\Np::histogramdd()` |
 | `numpy.hsplit` | `Tessero\Np::hsplit()` |
 | `numpy.hstack` | `Tessero\Np::hstack()` |
 | `numpy.i0` | `Tessero\Np::i0()` |

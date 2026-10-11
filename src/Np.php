@@ -97,6 +97,7 @@ final class Np
     'histogram' => 'histogram',
     'histogram2d' => 'histogram2d',
     'histogram_bin_edges' => 'histogramBinEdges',
+    'histogramdd' => 'histogramdd',
     'hsplit' => 'hsplit',
     'hstack' => 'hstack',
     'i0' => 'i0',
@@ -1047,6 +1048,18 @@ final class Np
     public static function histogramBinEdges(mixed $a, mixed $bins = 10, mixed $range = null, mixed $weights = null): mixed
     {
         return Registry::routine('np.histogram_bin_edges', [$a, $bins, $range, $weights]);
+    }
+
+    /**
+     * The D-dimensional histogram of a set of points: counts (or density) and the per-axis bin edges (numpy.histogramdd).
+     *
+     * numpy.histogramdd
+     *
+     * @return mixed one array, or an array keyed by H, edges when several results are requested
+     */
+    public static function histogramdd(mixed $sample, mixed $bins = 10, mixed $range = null, mixed $density = false, mixed $weights = null): mixed
+    {
+        return Registry::routine('np.histogramdd', [$sample, $bins, $range, $density, $weights]);
     }
 
     /**
