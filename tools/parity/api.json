@@ -8832,6 +8832,12 @@
                 "doc": "Bin edges numpy.histogram would use (numpy.histogram_bin_edges)."
             },
             {
+                "name": "histogramdd",
+                "static": true,
+                "sig": "histogramdd(mixed $sample, mixed $bins = 10, mixed $range = null, mixed $density = false, mixed $weights = null): mixed",
+                "doc": "The D-dimensional histogram of a set of points: counts (or density) and the per-axis bin edges (numpy.histogramdd)."
+            },
+            {
                 "name": "hsplit",
                 "static": true,
                 "sig": "hsplit(mixed $ary, mixed $indicesOrSections): mixed",
@@ -13096,6 +13102,12 @@
                 "name": "histogram2d",
                 "static": true,
                 "sig": "histogram2d($x, $y, $bins = 10, $range = null, $density = false, $weights = null)",
+                "doc": ""
+            },
+            {
+                "name": "histogramdd",
+                "static": true,
+                "sig": "histogramdd($sample, $bins = 10, $range = null, $density = false, $weights = null)",
                 "doc": ""
             },
             {
