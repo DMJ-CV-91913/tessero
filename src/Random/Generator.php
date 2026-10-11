@@ -102,6 +102,55 @@ final class Generator
     }
 
     /**
+     * Draw samples from a multivariate normal distribution (numpy.random.Generator.multivariate_normal,
+     * method 'svd'). $mean is the length-d mean vector and $cov the (d, d) covariance matrix; $size fixes the
+     * number of samples (null: one sample of shape (d,)). The SVD factorisation matches NumPy's.
+     */
+    public function multivariateNormal(mixed $mean, mixed $cov, int|array|null $size = null, string $checkValid = 'warn', float $tol = 1e-8, string $method = 'svd'): NDArray
+    {
+        if ($method !== 'svd') {
+            throw new TesseroException("multivariateNormal: only method 'svd' is supported.");
+        }
+        $meanA = NDArray::asArray($mean, DType::Float64);
+        $covA = NDArray::asArray($cov, DType::Float64);
+        $ms = $meanA->shape();
+        $cs = $covA->shape();
+        if (count($ms) !== 1) {
+            throw new TesseroException('multivariateNormal: mean must be 1-D.');
+        }
+        $dim = $ms[0];
+        if (count($cs) !== 2 || $cs[0] !== $dim || $cs[1] !== $dim) {
+            throw new TesseroException('multivariateNormal: cov must be a (d, d) matrix matching mean.');
+        }
+        if ($size === null) {
+            $finalShape = [$dim];
+            $nrows = 1;
+        } else {
+            $sz = is_int($size) ? [$size] : array_map('intval', array_values($size));
+            $nrows = (int) array_product($sz);
+            $finalShape = array_merge($sz, [$dim]);
+        }
+        if ($nrows === 0) {
+            return NDArray::empty($finalShape, DType::Float64);
+        }
+        $out = NDArray::empty([$nrows, $dim], DType::Float64);
+        $ffi = Library::ffi();
+        Library::check(
+            $ffi->tsr_pcg64_multivariate_normal(
+                $this->state,
+                $ffi->cast('double*', $meanA->ptr()),
+                $ffi->cast('double*', $covA->ptr()),
+                $dim,
+                $nrows,
+                $ffi->cast('double*', $out->ptr())
+            ),
+            'multivariate_normal'
+        );
+
+        return $out->reshape($finalShape);
+    }
+
+    /**
      * Sample from a 1-D array (or arange(a) for an int). Probabilities $p use
      * NumPy's CDF-inversion, so the draws match numpy's choice(..., p=p).
      */

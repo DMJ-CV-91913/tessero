@@ -373,6 +373,7 @@ legacy:
     standard_normal: {ffi: [R::standardNormal], tests: random}
     integers: {ffi: [R::integers], ext: [XR::integers], fixtures: [random.integers]}
     bytes: {ffi: [R::bytes], ext: [XR::bytes], fixtures: [random.bytes]}
+    multivariate_normal: {ffi: [R::multivariateNormal], ext: [XR::multivariateNormal], fixtures: [random.multivariate_normal]}
     choice: {ffi: [R::choice], ext: [XR::choice], tests: random}
     permutation: {ffi: [R::permutation], ext: [XR::permutation], fixtures: [random.permutation]}
     dirichlet: {ffi: [R::dirichlet], ext: [XR::dirichlet], fixtures: [random.dirichlet]}

@@ -15,6 +15,7 @@
 #include "ziggurat.h"
 #include "numpy/random/bitgen.h"
 #include <math.h>
+#include <lapacke.h>
 
 typedef unsigned __int128 u128;
 
@@ -185,6 +186,40 @@ void tsr_pcg64_bytes(uint64_t *state, int64_t n, uint8_t *out)
         for (int b = 0; b < 4 && produced < n; b++)
             out[produced++] = (uint8_t)(u >> (8 * b));
     }
+}
+
+/* numpy.random.Generator.multivariate_normal(mean, cov, size, method='svd'): draw `n` samples of a
+   d-dimensional multivariate normal. NumPy computes X @ (sqrt(s)[:,None] * vh) + mean where (u, s, vh) =
+   np.linalg.svd(cov) and X are n*d standard normals in C order. dgesdd is called raw (numpy applies no sign
+   canonicalisation, and for symmetric PD cov its signs already match). Returns 0, TSR_EARG on a bad SVD,
+   TSR_ENOMEM on allocation failure. out holds n*d doubles (row-major n x d). */
+int tsr_pcg64_multivariate_normal(uint64_t *state, const double *mean, const double *cov, int64_t dim, int64_t n, double *out)
+{
+    if (dim < 1 || n < 0) return TSR_EARG;
+    const size_t dd = (size_t)dim * (size_t)dim;
+    double *x = (double *)malloc((size_t)(n > 0 ? n : 1) * (size_t)dim * sizeof(double));
+    double *cc = (double *)malloc(dd * sizeof(double));
+    double *u = (double *)malloc(dd * sizeof(double));
+    double *vt = (double *)malloc(dd * sizeof(double));
+    double *sv = (double *)malloc((size_t)dim * sizeof(double));
+    double *factor = (double *)malloc(dd * sizeof(double));
+    if (!x || !cc || !u || !vt || !sv || !factor) { free(x); free(cc); free(u); free(vt); free(sv); free(factor); return TSR_ENOMEM; }
+    tsr_pcg64_normal(state, n * dim, 0.0, 1.0, x);              /* X ~ N(0,1), same stream as numpy */
+    memcpy(cc, cov, dd * sizeof(double));
+    lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)dim, (lapack_int)dim, cc, (lapack_int)dim,
+                                     sv, u, (lapack_int)dim, vt, (lapack_int)dim);
+    if (info != 0) { free(x); free(cc); free(u); free(vt); free(sv); free(factor); return TSR_EARG; }
+    for (int64_t i = 0; i < dim; i++) {
+        const double sq = sqrt(sv[i] > 0.0 ? sv[i] : 0.0);
+        for (int64_t j = 0; j < dim; j++) factor[i * dim + j] = sq * vt[i * dim + j];
+    }
+    if (n > 0) {
+        tsr_gemm(TSR_F64, 0, 0, n, dim, dim, 1.0, x, dim, factor, dim, 0.0, out, dim);   /* out = X @ factor */
+        for (int64_t r = 0; r < n; r++)
+            for (int64_t j = 0; j < dim; j++) out[r * dim + j] += mean[j];
+    }
+    free(x); free(cc); free(u); free(vt); free(sv); free(factor);
+    return TSR_OK;
 }
 
 void tsr_pcg64_integers(uint64_t *state, int64_t n, int64_t low, int64_t high, int64_t *out)

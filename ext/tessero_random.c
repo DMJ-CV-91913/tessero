@@ -617,6 +617,57 @@ static PHP_METHOD(Generator, bytes)
     RETURN_STR(out);
 }
 
+/* multivariate_normal(mean, cov, size=null, check_valid='warn', tol=1e-8, method='svd'): SVD-factorised draws. */
+static PHP_METHOD(Generator, multivariateNormal)
+{
+    zval *mean_z, *cov_z, *size = NULL, *cv = NULL, *tl = NULL;
+    zend_string *method = NULL;
+    ZEND_PARSE_PARAMETERS_START(2, 6)
+        Z_PARAM_ARRAY(mean_z)
+        Z_PARAM_ARRAY(cov_z)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL_OR_NULL(size)
+        Z_PARAM_ZVAL_OR_NULL(cv)
+        Z_PARAM_ZVAL_OR_NULL(tl)
+        Z_PARAM_STR_OR_NULL(method)
+    ZEND_PARSE_PARAMETERS_END();
+    (void)cv; (void)tl;
+    if (method && !zend_string_equals_literal(method, "svd")) {
+        zend_throw_exception(tsr_ce_exception, "multivariateNormal: only method 'svd' is supported.", 0);
+        RETURN_THROWS();
+    }
+    uint64_t *st = gen_of(Z_OBJ_P(ZEND_THIS))->st;
+    const int64_t dim = (int64_t)zend_hash_num_elements(Z_ARRVAL_P(mean_z));
+    if (dim < 1) { zend_throw_exception(tsr_ce_exception, "multivariateNormal: mean must be non-empty.", 0); RETURN_THROWS(); }
+    if ((int64_t)zend_hash_num_elements(Z_ARRVAL_P(cov_z)) != dim) {
+        zend_throw_exception(tsr_ce_exception, "multivariateNormal: cov must be a (d, d) matrix matching mean.", 0); RETURN_THROWS();
+    }
+    double *mean = (double *)emalloc((size_t)dim * sizeof(double));
+    double *cov = (double *)emalloc((size_t)dim * (size_t)dim * sizeof(double));
+    { int64_t i = 0; zval *e; ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(mean_z), e) { mean[i++] = zval_get_double(e); } ZEND_HASH_FOREACH_END(); }
+    { int64_t r = 0; zval *row;
+      ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(cov_z), row) {
+        if (Z_TYPE_P(row) != IS_ARRAY || (int64_t)zend_hash_num_elements(Z_ARRVAL_P(row)) != dim) {
+            efree(mean); efree(cov); zend_throw_exception(tsr_ce_exception, "multivariateNormal: cov must be a (d, d) matrix matching mean.", 0); RETURN_THROWS();
+        }
+        int64_t c = 0; zval *e;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), e) { cov[r * dim + c] = zval_get_double(e); c++; } ZEND_HASH_FOREACH_END();
+        r++;
+      } ZEND_HASH_FOREACH_END(); }
+    int64_t sdims[32];
+    const int snd = size_shape(size, sdims);
+    if (snd == -2) { efree(mean); efree(cov); RETURN_THROWS(); }
+    int nd; int64_t oshape[40], nrows = 1;
+    if (snd < 0) { nd = 1; oshape[0] = dim; nrows = 1; }
+    else { nd = snd + 1; for (int d = 0; d < snd; d++) { oshape[d] = sdims[d]; nrows *= sdims[d]; } oshape[snd] = dim; }
+    if (tsr_ndarray_new(return_value, TSR_F64, nd, oshape, 0) == FAILURE) { efree(mean); efree(cov); RETURN_THROWS(); }
+    tsr_array *o = &Z_TSR_P(return_value)->a;
+    double *out = (double *)((char *)o->data + o->offset);
+    int rc = tsr_pcg64_multivariate_normal(st, mean, cov, dim, nrows, out);
+    efree(mean); efree(cov);
+    if (rc < 0) { zval_ptr_dtor(return_value); zend_throw_exception(tsr_ce_exception, "multivariateNormal: SVD did not converge", 0); RETURN_THROWS(); }
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)
     ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, seed, "null")
 ZEND_END_ARG_INFO()
@@ -666,10 +717,20 @@ ZEND_BEGIN_ARG_INFO_EX(ai_bytes, 0, 0, 1)
     ZEND_ARG_TYPE_INFO(0, length, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(ai_mvn, 0, 0, 2)
+    ZEND_ARG_INFO(0, mean)
+    ZEND_ARG_INFO(0, cov)
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, size, "null")
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, checkValid, "'warn'")
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, tol, "1e-8")
+    ZEND_ARG_INFO_WITH_DEFAULT_VALUE(0, method, "'svd'")
+ZEND_END_ARG_INFO()
+
 static const zend_function_entry generator_methods[] = {
     PHP_ME(Generator, defaultRng, ai_default_rng, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     PHP_ME(Generator, integers, ai_integers, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, bytes, ai_bytes, ZEND_ACC_PUBLIC)
+    PHP_ME(Generator, multivariateNormal, ai_mvn, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, choice, ai_choice, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, dirichlet, ai_dirichlet, ZEND_ACC_PUBLIC)
     PHP_ME(Generator, multinomial, ai_multinomial, ZEND_ACC_PUBLIC)

@@ -82,20 +82,20 @@
  },
  "groups": {
   "NumPy core": {
-   "both": 682,
+   "both": 683,
    "excluded": 177,
-   "impl_ext": 682,
-   "impl_ffi": 682,
+   "impl_ext": 683,
+   "impl_ffi": 683,
    "in_scope": 683,
-   "m2_ext": 99.9,
-   "m2_ffi": 99.9,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 20.6,
-   "m4_ext": 99.9,
-   "m4_ffi": 99.9,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 860,
-   "verified_ext": 682,
-   "verified_ffi": 682
+   "verified_ext": 683,
+   "verified_ffi": 683
   },
   "SciPy": {
    "both": 1165,
@@ -308,20 +308,20 @@
    "verified_ffi": 4
   },
   "numpy.random.Generator": {
-   "both": 42,
+   "both": 43,
    "excluded": 2,
-   "impl_ext": 42,
-   "impl_ffi": 42,
+   "impl_ext": 43,
+   "impl_ffi": 43,
    "in_scope": 43,
-   "m2_ext": 97.7,
-   "m2_ffi": 97.7,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 4.4,
-   "m4_ext": 97.7,
-   "m4_ffi": 97.7,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 45,
-   "verified_ext": 42,
-   "verified_ffi": 42
+   "verified_ext": 43,
+   "verified_ffi": 43
   },
   "scipy.cluster.hierarchy": {
    "both": 26,

@@ -155,6 +155,7 @@ void tsr_pcg64_random(uint64_t *state, int64_t n, double *out);      /* [0, 1), 
 void tsr_pcg64_normal(uint64_t *state, int64_t n, double mean, double sd, double *out);
 void tsr_pcg64_integers(uint64_t *state, int64_t n, int64_t low, int64_t high, int64_t *out); /* [low, high) */
 void tsr_pcg64_bytes(uint64_t *state, int64_t n, uint8_t *out);                       /* Generator.bytes */
+int tsr_pcg64_multivariate_normal(uint64_t *state, const double *mean, const double *cov, int64_t dim, int64_t n, double *out); /* Generator.multivariate_normal */
 int tsr_pcg64_shuffle(uint64_t *state, int64_t n, int64_t itemsize, void *data);                 /* Generator.shuffle */
 
 /* ---- sparse CSR (float64) ---- */
