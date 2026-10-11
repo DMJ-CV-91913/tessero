@@ -5821,6 +5821,12 @@
                 "doc": "`$length` random bytes as a binary string (numpy.random.Generator.bytes). Even $length 0 advances the stream by one 32-bit draw, exactly as NumPy does."
             },
             {
+                "name": "multivariateNormal",
+                "static": false,
+                "sig": "multivariateNormal(mixed $mean, mixed $cov, array|int|null $size = null, string $checkValid = 'warn', float $tol = 1.0E-8, string $method = 'svd'): Tessero\\NDArray",
+                "doc": "Draw samples from a multivariate normal distribution (numpy.random.Generator.multivariate_normal, method 'svd'). $mean is the length-d mean vector and $cov the (d, d) covariance matrix; $size fixes the number of samples (null: one sample of shape (d,)). The SVD factorisation matches NumPy's."
+            },
+            {
                 "name": "choice",
                 "static": false,
                 "sig": "choice(Tessero\\NDArray|array|int $a, array|int|null $size = null, bool $replace = true, ?array $p = null): mixed",
@@ -8115,6 +8121,12 @@
                 "name": "bytes",
                 "static": false,
                 "sig": "bytes(int $length)",
+                "doc": ""
+            },
+            {
+                "name": "multivariateNormal",
+                "static": false,
+                "sig": "multivariateNormal($mean, $cov, $size = null, $checkValid = 'warn', $tol = 1.0E-8, $method = 'svd')",
                 "doc": ""
             },
             {
