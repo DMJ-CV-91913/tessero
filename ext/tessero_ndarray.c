@@ -2592,6 +2592,74 @@ ZEND_END_ARG_INFO()
 #define ARG_ME(name) TSR_FE(#name, zim_NDArray_reduceOp, ai_axis_keep)
 #define STATIC_ME(name, ai) PHP_ME(NDArray, name, ai, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
+ZEND_BEGIN_ARG_INFO_EX(ai_nd3, 0, 0, 0)
+    ZEND_ARG_TYPE_INFO(0, offset, IS_LONG, 1)
+    ZEND_ARG_TYPE_INFO(0, axis1, IS_LONG, 1)
+    ZEND_ARG_TYPE_INFO(0, axis2, IS_LONG, 1)
+ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO_EX(ai_nd2, 0, 0, 1)
+    ZEND_ARG_INFO(0, arg1)
+    ZEND_ARG_INFO(0, arg2)
+ZEND_END_ARG_INFO()
+
+PHP_METHOD(NDArray, nonzero)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval args[1]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS);
+    tsr_fn_call_routine("np.nonzero", args, 1, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, mT)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval args[1]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS);
+    tsr_fn_call_routine("np.matrix_transpose", args, 1, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, trace)
+{
+    zend_long off = 0, a1 = 0, a2 = 1;
+    ZEND_PARSE_PARAMETERS_START(0, 3) Z_PARAM_OPTIONAL Z_PARAM_LONG(off) Z_PARAM_LONG(a1) Z_PARAM_LONG(a2) ZEND_PARSE_PARAMETERS_END();
+    zval args[4]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS); ZVAL_LONG(&args[1], off); ZVAL_LONG(&args[2], a1); ZVAL_LONG(&args[3], a2);
+    tsr_fn_call_routine("np.trace", args, 4, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, diagonal)
+{
+    zend_long off = 0, a1 = 0, a2 = 1;
+    ZEND_PARSE_PARAMETERS_START(0, 3) Z_PARAM_OPTIONAL Z_PARAM_LONG(off) Z_PARAM_LONG(a1) Z_PARAM_LONG(a2) ZEND_PARSE_PARAMETERS_END();
+    zval args[4]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS); ZVAL_LONG(&args[1], off); ZVAL_LONG(&args[2], a1); ZVAL_LONG(&args[3], a2);
+    tsr_fn_call_routine("np.diagonal", args, 4, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, repeat)
+{
+    zval *a1, *a2 = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2) Z_PARAM_ZVAL(a1) Z_PARAM_OPTIONAL Z_PARAM_ZVAL_OR_NULL(a2) ZEND_PARSE_PARAMETERS_END();
+    int n = 2; zval args[3]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS); ZVAL_COPY_VALUE(&args[1], a1);
+    if (a2) { ZVAL_COPY_VALUE(&args[2], a2); n = 3; }
+    tsr_fn_call_routine("np.repeat", args, n, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, compress)
+{
+    zval *cond, *ax = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2) Z_PARAM_ZVAL(cond) Z_PARAM_OPTIONAL Z_PARAM_ZVAL_OR_NULL(ax) ZEND_PARSE_PARAMETERS_END();
+    int n = 2; zval args[3]; ZVAL_COPY_VALUE(&args[0], cond); ZVAL_COPY_VALUE(&args[1], ZEND_THIS);
+    if (ax) { ZVAL_COPY_VALUE(&args[2], ax); n = 3; }
+    tsr_fn_call_routine("np.compress", args, n, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+PHP_METHOD(NDArray, choose)
+{
+    zval *ch, *mode = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2) Z_PARAM_ZVAL(ch) Z_PARAM_OPTIONAL Z_PARAM_ZVAL_OR_NULL(mode) ZEND_PARSE_PARAMETERS_END();
+    int n = 2; zval args[3]; ZVAL_COPY_VALUE(&args[0], ZEND_THIS); ZVAL_COPY_VALUE(&args[1], ch);
+    if (mode) { ZVAL_COPY_VALUE(&args[2], mode); n = 3; }
+    tsr_fn_call_routine("np.choose", args, n, return_value);
+    if (EG(exception)) RETURN_THROWS();
+}
+
 static const zend_function_entry ndarray_methods[] = {
     PHP_ME(NDArray, __construct, ai_none, ZEND_ACC_PRIVATE)
     STATIC_ME(array, ai_array)
@@ -2633,6 +2701,13 @@ static const zend_function_entry ndarray_methods[] = {
     PHP_ME(NDArray, nbytes, ai_none, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, view, ai_dtype, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, round, ai_round, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, nonzero, ai_none, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, mT, ai_none, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, trace, ai_nd3, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, diagonal, ai_nd3, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, repeat, ai_nd2, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, compress, ai_nd2, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, choose, ai_nd2, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, take, ai_take, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, put, ai_put, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, slice, ai_spec, ZEND_ACC_PUBLIC)

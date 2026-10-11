@@ -825,6 +825,48 @@
                 "doc": ""
             },
             {
+                "name": "nonzero",
+                "static": false,
+                "sig": "nonzero(): mixed",
+                "doc": "Indices of the non-zero elements (numpy.ndarray.nonzero)."
+            },
+            {
+                "name": "mT",
+                "static": false,
+                "sig": "mT(): mixed",
+                "doc": "Matrix transpose: swap the last two axes (numpy.ndarray.mT)."
+            },
+            {
+                "name": "trace",
+                "static": false,
+                "sig": "trace(int $offset = 0, int $axis1 = 0, int $axis2 = 1): mixed",
+                "doc": "Sum along a diagonal (numpy.ndarray.trace)."
+            },
+            {
+                "name": "diagonal",
+                "static": false,
+                "sig": "diagonal(int $offset = 0, int $axis1 = 0, int $axis2 = 1): mixed",
+                "doc": "A diagonal of the matrix (numpy.ndarray.diagonal)."
+            },
+            {
+                "name": "repeat",
+                "static": false,
+                "sig": "repeat(mixed $repeats, ?int $axis = null): mixed",
+                "doc": "Repeat elements (numpy.ndarray.repeat)."
+            },
+            {
+                "name": "compress",
+                "static": false,
+                "sig": "compress(mixed $condition, ?int $axis = null): mixed",
+                "doc": "Select elements where a boolean condition is true (numpy.ndarray.compress)."
+            },
+            {
+                "name": "choose",
+                "static": false,
+                "sig": "choose(mixed $choices, mixed $mode = 'raise'): mixed",
+                "doc": "Choose from a set of arrays by index (numpy.ndarray.choose)."
+            },
+            {
                 "name": "argsort",
                 "static": false,
                 "sig": "argsort(int $axis = -1): self",
@@ -6733,6 +6775,48 @@
                 "name": "round",
                 "static": false,
                 "sig": "round(int $decimals = 0)",
+                "doc": ""
+            },
+            {
+                "name": "nonzero",
+                "static": false,
+                "sig": "nonzero()",
+                "doc": ""
+            },
+            {
+                "name": "mT",
+                "static": false,
+                "sig": "mT()",
+                "doc": ""
+            },
+            {
+                "name": "trace",
+                "static": false,
+                "sig": "trace(?int $offset = \u2026, ?int $axis1 = \u2026, ?int $axis2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "diagonal",
+                "static": false,
+                "sig": "diagonal(?int $offset = \u2026, ?int $axis1 = \u2026, ?int $axis2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "repeat",
+                "static": false,
+                "sig": "repeat($arg1, $arg2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "compress",
+                "static": false,
+                "sig": "compress($arg1, $arg2 = \u2026)",
+                "doc": ""
+            },
+            {
+                "name": "choose",
+                "static": false,
+                "sig": "choose($arg1, $arg2 = \u2026)",
                 "doc": ""
             },
             {
