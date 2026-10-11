@@ -169,6 +169,7 @@
         "linalg.solve": "pass",
         "linalg.svd": "pass",
         "linalg.svdvals": "pass",
+        "linalg.tensordot": "pass",
         "linalg.tensorinv": "pass",
         "linalg.tensorsolve": "pass",
         "linalg.trace": "pass",
@@ -2924,7 +2925,8 @@
             "np.positive": 0,
             "np.asarray_chkfinite": 0,
             "np.packbits": 0,
-            "np.unpackbits": 0
+            "np.unpackbits": 0,
+            "linalg.tensordot": 1.0339510205351798e-15
         },
         "ext": {
             "np.median": 0,
@@ -4387,7 +4389,8 @@
             "np.positive": 0,
             "np.asarray_chkfinite": 0,
             "np.packbits": 0,
-            "np.unpackbits": 0
+            "np.unpackbits": 0,
+            "linalg.tensordot": 1.0339510205351798e-15
         }
     },
     "ext": {
@@ -4560,6 +4563,7 @@
         "linalg.solve": "pass",
         "linalg.svd": "pass",
         "linalg.svdvals": "pass",
+        "linalg.tensordot": "pass",
         "linalg.tensorinv": "pass",
         "linalg.tensorsolve": "pass",
         "linalg.trace": "pass",

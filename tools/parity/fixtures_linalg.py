@@ -298,6 +298,10 @@ def main():
                              call('matrix_norm', [_mn], {'ord': -1}), call('matrix_norm', [_mn], {'ord': np.inf}),
                              call('matrix_norm', [_mn], {'ord': -np.inf}), call('matrix_norm', [_mn], {'ord': 2}),
                              call('matrix_norm', [_mn], {'ord': 'nuc'})]
+    _ta, _tb = rng.uniform(-3, 3, size=(2, 3, 4)), rng.uniform(-3, 3, size=(3, 4, 5))
+    _ta1, _tb1 = rng.uniform(-3, 3, size=(2, 3)), rng.uniform(-3, 3, size=(3, 4))
+    blocks['tensordot'] = [call('tensordot', [_ta, _tb]), call('tensordot', [_ta, _tb], {'axes': 2}),
+                           call('tensordot', [_ta1, _tb1], {'axes': 1})]
 
     tol = {'rtol': 1e-9, 'atol': 1e-11}
     out = {'module': 'linalg', 'numpy': np.__version__, 'env': fixture_env.env(),

@@ -655,6 +655,11 @@
             "nin": 0,
             "nout": 1
         },
+        "linalg.tensordot": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "linalg.tensorinv": {
             "kind": "routine",
             "nin": 0,

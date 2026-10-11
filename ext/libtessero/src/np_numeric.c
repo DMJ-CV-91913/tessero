@@ -703,7 +703,7 @@ static int r_cross(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 }
 
 /* tensordot(a, b, axes=2) */
-static int r_tensordot(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+int r_tensordot(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     harr ha, hb;
     int rc = get_arr(argk(args, nargs, 0), &ha, "a");
