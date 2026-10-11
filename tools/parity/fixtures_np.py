@@ -489,6 +489,16 @@ def main():
     ]
 
     out = {'module': 'np', 'numpy': np.__version__, 'env': fixture_env.env(), 'calls': [{'fn': k, 'cases': v} for k, v in blocks.items()]}
+    _A = np.array([[1., 2.], [3., 4.]])
+    _blk = [
+        [np.array([1., 2.]), np.array([3., 4., 5.])],                               # 1-D hstack -> (5,)
+        [[_A], [_A]],                                                               # vstack -> (4, 2)
+        [[np.array([[1., 2.]]), np.array([[3.]])], [np.array([[4., 5., 6.]])]],     # mixed widths -> (2, 3)
+        [[np.array([1., 2., 3.])], [np.array([4., 5., 6.])]],                       # 1-D atoms promoted -> (2, 3)
+        [[[np.array([1., 2.])], [np.array([3., 4.])]]],                             # depth-3 -> (1, 2, 2)
+        [[_A, _A], [_A, _A]],                                                       # full 2x2 -> (4, 4)
+    ]
+    out['block_cases'] = [{'input': enc(b), 'expect': enc_result_one(np.block(b))} for b in _blk]
     fixture_env.require_pinned()
     with open(OUT, 'w') as f:
         json.dump(out, f, separators=(',', ':'))

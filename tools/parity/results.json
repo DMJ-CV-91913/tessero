@@ -263,6 +263,7 @@
         "np.bitwise_or": "pass",
         "np.bitwise_xor": "pass",
         "np.blackman": "pass",
+        "np.block": "pass",
         "np.broadcast_arrays": "pass",
         "np.broadcast_shapes": "pass",
         "np.broadcast_to": "pass",
@@ -2970,7 +2971,8 @@
             "windows.taylor": 4.649470546041335e-16,
             "windows.chebwin": 4.588726991526998e-13,
             "optimize.isotonic_regression": null,
-            "np.histogramdd": 2.328805302192041e-16
+            "np.histogramdd": 2.328805302192041e-16,
+            "np.block": null
         },
         "ext": {
             "np.median": 0,
@@ -4456,7 +4458,8 @@
             "windows.taylor": 4.649470546041335e-16,
             "windows.chebwin": 4.588726991526998e-13,
             "optimize.isotonic_regression": null,
-            "np.histogramdd": 2.328805302192041e-16
+            "np.histogramdd": 2.328805302192041e-16,
+            "np.block": null
         }
     },
     "ext": {
@@ -4723,6 +4726,7 @@
         "np.bitwise_or": "pass",
         "np.bitwise_xor": "pass",
         "np.blackman": "pass",
+        "np.block": "pass",
         "np.broadcast_arrays": "pass",
         "np.broadcast_shapes": "pass",
         "np.broadcast_to": "pass",
