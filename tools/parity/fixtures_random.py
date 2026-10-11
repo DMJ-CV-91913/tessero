@@ -72,6 +72,8 @@ CASES = {
     'permuted': [([np.arange(8.0)], {}), ([np.arange(12.0).reshape(3, 4)], {'axis': 1}),
                  ([np.arange(12.0).reshape(3, 4)], {'axis': 0}), ([np.arange(24.0).reshape(2, 3, 4)], {'axis': 2}),
                  ([np.arange(24.0).reshape(2, 3, 4)], {'axis': 0}), ([np.arange(6.0).reshape(2, 3)], {'axis': None})],
+    'multivariate_hypergeometric': [([[10, 5, 8], 7], {}), ([[20, 30, 10, 5], 15], {'size': 5}),
+                                    ([[6, 6], 5], {'size': (2, 2)}), ([[10, 5], 15], {}), ([[10, 5], 20], {})],
 }
 
 

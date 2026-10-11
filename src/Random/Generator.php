@@ -287,6 +287,51 @@ final class Generator
         return $res;
     }
 
+    /**
+     * Draw from a multivariate hypergeometric distribution (numpy.random.Generator.multivariate_hypergeometric,
+     * method='marginals'): sequential univariate hypergeometric draws over the colours.
+     *
+     * @param list<int> $colors
+     */
+    public function multivariateHypergeometric(array $colors, int $nsample, int|array|null $size = null, string $method = 'marginals'): NDArray
+    {
+        if ($method !== 'marginals') {
+            throw new TesseroException("multivariate_hypergeometric: only method='marginals' is supported.");
+        }
+        $k = count($colors);
+        $total = 0;
+        foreach ($colors as $c) {
+            if ($c < 0) {
+                throw new TesseroException('multivariate_hypergeometric: colors must be nonnegative.');
+            }
+            $total += $c;
+        }
+        if ($nsample < 0) {
+            throw new TesseroException('multivariate_hypergeometric: nsample must be nonnegative.');
+        }
+        if ($nsample > $total) {
+            throw new TesseroException('multivariate_hypergeometric: nsample > sum(colors)');
+        }
+        [$shape, $rows] = self::size($size);
+        $rows = max(1, $rows);
+        $out = [];
+        for ($i = 0; $i < $rows; $i++) {
+            $remaining = $total;
+            $ns = $nsample;
+            for ($j = 0; $j < $k - 1; $j++) {
+                $ng = $colors[$j];
+                $nb = $remaining - $colors[$j];
+                $r = ($ns > 0 && $remaining > 0) ? $this->hypergeometric($ng, $nb, $ns) : 0;
+                $out[] = $r;
+                $ns -= $r;
+                $remaining -= $colors[$j];
+            }
+            $out[] = $ns;
+        }
+
+        return NDArray::array($out, DType::Int64)->reshape([...$shape, $k]);
+    }
+
     /** @return list<string> the 6 state words as decimal strings (for persistence) */
     /**
      * The PCG64 state vector, for the kernel calls that draw from this generator (scipy.stats rvs).

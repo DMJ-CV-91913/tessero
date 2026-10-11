@@ -5815,6 +5815,12 @@
                 "doc": "Randomly permute values along an axis, each slice independently (numpy.random.Generator.permuted). With $axis null the flattened array is permuted. Returns a new array (or writes into $out)."
             },
             {
+                "name": "multivariateHypergeometric",
+                "static": false,
+                "sig": "multivariateHypergeometric(array $colors, int $nsample, array|int|null $size = null, string $method = 'marginals'): Tessero\\NDArray",
+                "doc": "Draw from a multivariate hypergeometric distribution (numpy.random.Generator.multivariate_hypergeometric, method='marginals'): sequential univariate hypergeometric draws over the colours."
+            },
+            {
                 "name": "stateHandle",
                 "static": false,
                 "sig": "stateHandle(): FFI\\CData",
@@ -8050,6 +8056,12 @@
                 "name": "permuted",
                 "static": false,
                 "sig": "permuted(Tessero\\Ext\\NDArray $x, $axis = null, $out = null)",
+                "doc": ""
+            },
+            {
+                "name": "multivariateHypergeometric",
+                "static": false,
+                "sig": "multivariateHypergeometric($colors, int $nsample, $size = null, $method = \u2026)",
                 "doc": ""
             },
             {
