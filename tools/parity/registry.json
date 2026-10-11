@@ -7005,6 +7005,11 @@
             "nin": 0,
             "nout": 1
         },
+        "windows.kaiser_bessel_derived": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "windows.lanczos": {
             "kind": "routine",
             "nin": 0,
