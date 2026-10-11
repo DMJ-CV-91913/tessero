@@ -686,6 +686,7 @@
         "random.normal": "pass",
         "random.pareto": "pass",
         "random.permutation": "pass",
+        "random.permuted": "pass",
         "random.poisson": "pass",
         "random.power": "pass",
         "random.random": "pass",
@@ -2942,7 +2943,8 @@
             "np.nan": 0,
             "np.histogram2d": 2.6437465135481728e-16,
             "random.dirichlet": 0,
-            "random.multinomial": 0
+            "random.multinomial": 0,
+            "random.permuted": 0
         },
         "ext": {
             "np.median": 0,
@@ -4414,7 +4416,8 @@
             "np.nan": 0,
             "np.histogram2d": 2.6437465135481728e-16,
             "random.dirichlet": 0,
-            "random.multinomial": 0
+            "random.multinomial": 0,
+            "random.permuted": 0
         }
     },
     "ext": {
@@ -5104,6 +5107,7 @@
         "random.normal": "pass",
         "random.pareto": "pass",
         "random.permutation": "pass",
+        "random.permuted": "pass",
         "random.poisson": "pass",
         "random.power": "pass",
         "random.random": "pass",
