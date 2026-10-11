@@ -4278,6 +4278,13 @@ static int r_unpackbits(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return TSR_OK;
 }
 
+/* numpy module-level constants, exposed as nullary routines (numpy.pi / e / euler_gamma / inf / nan). */
+static int r_const_pi(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)a; (void)n; (void)nr; fn_result_num(&r[0], M_PI); return TSR_OK; }
+static int r_const_e(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)a; (void)n; (void)nr; fn_result_num(&r[0], M_E); return TSR_OK; }
+static int r_const_eg(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)a; (void)n; (void)nr; fn_result_num(&r[0], 0.577215664901532860606512090082); return TSR_OK; }
+static int r_const_inf(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)a; (void)n; (void)nr; fn_result_num(&r[0], INFINITY); return TSR_OK; }
+static int r_const_nan(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)a; (void)n; (void)nr; fn_result_num(&r[0], NAN); return TSR_OK; }
+
 static const fn_def DEFS[] = {
     ROUTINE("np.romb", 1, "y, dx=1.0", "out", r_romb, NULL, "Romberg integration of 2**k+1 equally-spaced samples (scipy.integrate.romb)."),
     ROUTINE("np.newton_cotes", 1, "rn, equal=0", "weights", r_newton_cotes, NULL, "Equally-spaced Newton-Cotes quadrature weights for rn intervals (scipy.integrate.newton_cotes)."),
@@ -4305,6 +4312,11 @@ static const fn_def DEFS[] = {
     ROUTINE("np.asarray_chkfinite", 1, "a, dtype=None, order=None", "out", r_asarray_chkfinite, NULL, "Convert to array, raising if it contains NaN or Inf (numpy.asarray_chkfinite)."),
     ROUTINE("np.packbits", 1, "a, axis=None, bitorder='big'", "out", r_packbits, NULL, "Pack binary-valued array elements into uint8, MSB-first (numpy.packbits)."),
     ROUTINE("np.unpackbits", 1, "a, axis=None, count=None, bitorder='big'", "out", r_unpackbits, NULL, "Unpack uint8 array elements into bits, MSB-first (numpy.unpackbits)."),
+    ROUTINE("np.pi", 1, "", "val", r_const_pi, NULL, "The constant pi (numpy.pi)."),
+    ROUTINE("np.e", 1, "", "val", r_const_e, NULL, "Euler's number e (numpy.e)."),
+    ROUTINE("np.euler_gamma", 1, "", "val", r_const_eg, NULL, "The Euler-Mascheroni constant (numpy.euler_gamma)."),
+    ROUTINE("np.inf", 1, "", "val", r_const_inf, NULL, "IEEE 754 positive infinity (numpy.inf)."),
+    ROUTINE("np.nan", 1, "", "val", r_const_nan, NULL, "IEEE 754 not-a-number (numpy.nan)."),
     ROUTINE("np.ediff1d", 1, "ary, to_end=None, to_begin=None", "out", r_ediff1d, NULL, "Differences between consecutive elements of the flattened array (numpy.ediff1d)."),
     ROUTINE("np.gradient", 1, "f, *varargs, axis=None, edge_order=1", "out", r_gradient, NULL, "Gradient by central differences, one-sided at the edges (numpy.gradient); several axes give a list."),
     ROUTINE("np.trapezoid", 1, "y, x=None, dx=1.0, axis=-1", "out", r_trapezoid, NULL, "Integral by the composite trapezoidal rule (numpy.trapezoid)."),

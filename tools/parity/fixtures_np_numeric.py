@@ -428,6 +428,12 @@ def main():
     blocks['asarray_chkfinite'] = [call('asarray_chkfinite', [rng.normal(size=5)]), call('asarray_chkfinite', [rng.normal(size=(2, 3))])]
     blocks['packbits'] = [call('packbits', [rng.integers(0, 2, size=n).astype(np.uint8)]) for n in (8, 11, 16, 5)]
     blocks['unpackbits'] = [call('unpackbits', [rng.integers(0, 256, size=n).astype(np.uint8)]) for n in (3, 5, 7)]
+    # module-level constants (exposed as nullary routines)
+    blocks['pi'] = [call('pi', [], f=lambda: np.pi)]
+    blocks['e'] = [call('e', [], f=lambda: np.e)]
+    blocks['euler_gamma'] = [call('euler_gamma', [], f=lambda: np.euler_gamma)]
+    blocks['inf'] = [call('inf', [], f=lambda: np.inf)]
+    blocks['nan'] = [call('nan', [], f=lambda: np.nan)]
 
     # ---- completeness: spacing, modf, bitwise_and/or/xor, fromiter, can_cast (literal-only, host-independent:
     # these are integer/ulp/type-rule ops with no BLAS or transcendental loop, shared with the splice generator)
