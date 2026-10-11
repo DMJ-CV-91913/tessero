@@ -4226,6 +4226,58 @@ static int r_newton_cotes(const void *ctx, const tsr_arg *args, int nargs, tsr_r
 
 /* ================================================================ table */
 
+/* numpy.positive: unary plus -- a copy of the input (real float64). */
+static int r_positive(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("positive: expected an array"); return TSR_EARG; }
+    int64_t L; double *a = fn_arg_doubles(&args[0], &L); if (!a) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, args[0].arr.ndim, args[0].arr.shape);
+    if (!out) { fn_free_doubles(a, L); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < L; i++) out[i] = a[i];
+    fn_free_doubles(a, L);
+    return TSR_OK;
+}
+/* numpy.asarray_chkfinite: return the array; error if it holds NaN or Inf. */
+static int r_asarray_chkfinite(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("asarray_chkfinite: expected an array"); return TSR_EARG; }
+    int64_t L; double *a = fn_arg_doubles(&args[0], &L); if (!a) return TSR_ENOMEM;
+    for (int64_t i = 0; i < L; i++) if (!isfinite(a[i])) { fn_free_doubles(a, L); fn_set_error("array must not contain infs or NaNs"); return TSR_EARG; }
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, args[0].arr.ndim, args[0].arr.shape);
+    if (!out) { fn_free_doubles(a, L); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < L; i++) out[i] = a[i];
+    fn_free_doubles(a, L);
+    return TSR_OK;
+}
+/* numpy.packbits(a): pack the flattened 0/1 values into uint8, MSB-first (bitorder='big'). */
+static int r_packbits(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("packbits: expected an array"); return TSR_EARG; }
+    int64_t L; double *a = fn_arg_doubles(&args[0], &L); if (!a) return TSR_ENOMEM;
+    int64_t nb = (L + 7) / 8, sh[1] = {nb};
+    unsigned char *out = (unsigned char *)fn_result_array(&res[0], TSR_U8, 1, sh);
+    if (!out) { fn_free_doubles(a, L); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < nb; i++) { unsigned char b = 0; for (int j = 0; j < 8; j++) { int64_t k = i * 8 + j; if (k < L && a[k] != 0.0) b |= (unsigned char)(1 << (7 - j)); } out[i] = b; }
+    fn_free_doubles(a, L);
+    return TSR_OK;
+}
+/* numpy.unpackbits(a): unpack uint8 values to bits, MSB-first (bitorder='big'). */
+static int r_unpackbits(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("unpackbits: expected an array"); return TSR_EARG; }
+    int64_t L; double *a = fn_arg_doubles(&args[0], &L); if (!a) return TSR_ENOMEM;
+    int64_t nbits = L * 8, sh[1] = {nbits};
+    unsigned char *out = (unsigned char *)fn_result_array(&res[0], TSR_U8, 1, sh);
+    if (!out) { fn_free_doubles(a, L); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < L; i++) { unsigned v = (unsigned)a[i]; for (int j = 0; j < 8; j++) out[i * 8 + j] = (unsigned char)((v >> (7 - j)) & 1); }
+    fn_free_doubles(a, L);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("np.romb", 1, "y, dx=1.0", "out", r_romb, NULL, "Romberg integration of 2**k+1 equally-spaced samples (scipy.integrate.romb)."),
     ROUTINE("np.newton_cotes", 1, "rn, equal=0", "weights", r_newton_cotes, NULL, "Equally-spaced Newton-Cotes quadrature weights for rn intervals (scipy.integrate.newton_cotes)."),
@@ -4249,6 +4301,10 @@ static const fn_def DEFS[] = {
     ROUTINE("np.cross", 1, "a, b, axisa=-1, axisb=-1, axisc=-1, axis=None", "out", r_cross, NULL, "Cross product of 3- (or 2-) element vectors (numpy.cross)."),
     ROUTINE("np.tensordot", 1, "a, b, axes=2", "out", r_tensordot, NULL, "Tensor dot product over the given axes (numpy.tensordot)."),
     ROUTINE("np.diff", 1, "a, n=1, axis=-1, prepend=None, append=None", "out", r_diff, NULL, "n-th discrete difference along an axis (numpy.diff)."),
+    ROUTINE("np.positive", 1, "x", "out", r_positive, NULL, "Unary plus; a copy of the input (numpy.positive)."),
+    ROUTINE("np.asarray_chkfinite", 1, "a, dtype=None, order=None", "out", r_asarray_chkfinite, NULL, "Convert to array, raising if it contains NaN or Inf (numpy.asarray_chkfinite)."),
+    ROUTINE("np.packbits", 1, "a, axis=None, bitorder='big'", "out", r_packbits, NULL, "Pack binary-valued array elements into uint8, MSB-first (numpy.packbits)."),
+    ROUTINE("np.unpackbits", 1, "a, axis=None, count=None, bitorder='big'", "out", r_unpackbits, NULL, "Unpack uint8 array elements into bits, MSB-first (numpy.unpackbits)."),
     ROUTINE("np.ediff1d", 1, "ary, to_end=None, to_begin=None", "out", r_ediff1d, NULL, "Differences between consecutive elements of the flattened array (numpy.ediff1d)."),
     ROUTINE("np.gradient", 1, "f, *varargs, axis=None, edge_order=1", "out", r_gradient, NULL, "Gradient by central differences, one-sided at the edges (numpy.gradient); several axes give a list."),
     ROUTINE("np.trapezoid", 1, "y, x=None, dx=1.0, axis=-1", "out", r_trapezoid, NULL, "Integral by the composite trapezoidal rule (numpy.trapezoid)."),

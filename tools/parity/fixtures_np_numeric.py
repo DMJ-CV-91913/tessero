@@ -423,6 +423,12 @@ def main():
     # newton_cotes (scipy.integrate): equally-spaced quadrature weights (the weights array)
     blocks['newton_cotes'] = [call('newton_cotes', [n], f=lambda nn: _nc(nn)[0]) for n in range(1, 7)]
 
+    # ---- completeness: positive, asarray_chkfinite, packbits, unpackbits
+    blocks['positive'] = [call('positive', [rng.normal(size=6)]), call('positive', [rng.normal(size=(3, 4))])]
+    blocks['asarray_chkfinite'] = [call('asarray_chkfinite', [rng.normal(size=5)]), call('asarray_chkfinite', [rng.normal(size=(2, 3))])]
+    blocks['packbits'] = [call('packbits', [rng.integers(0, 2, size=n).astype(np.uint8)]) for n in (8, 11, 16, 5)]
+    blocks['unpackbits'] = [call('unpackbits', [rng.integers(0, 256, size=n).astype(np.uint8)]) for n in (3, 5, 7)]
+
     # ---- completeness: spacing, modf, bitwise_and/or/xor, fromiter, can_cast (literal-only, host-independent:
     # these are integer/ulp/type-rule ops with no BLAS or transcendental loop, shared with the splice generator)
     import fixtures_misc_blocks
