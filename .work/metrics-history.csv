@@ -221,3 +221,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-11,numpy.random.Generator.bytes native (both backends),99.9,99.9,78.5,78.3,100.0,99.7,74.1,74.1,84.5,84.5
 2026-10-11,numpy.random.Generator.multivariate_normal native -- NumPy core 100%,100.0,100.0,78.5,78.3,100.0,99.7,74.1,74.1,84.5,84.5
 2026-10-12,scipy.constants value/unit/precision/find + physical_constants -- module closed,100.0,100.0,78.8,78.6,100.0,99.7,74.1,74.1,84.5,84.5
+2026-10-12,scipy.fft fht/ifht/fhtoffset (FFTLog) -- module closed,100.0,100.0,79.0,78.8,100.0,99.7,74.1,74.1,84.5,84.5
