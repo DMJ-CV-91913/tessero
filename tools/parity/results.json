@@ -729,6 +729,7 @@
         "scipyfft.idstn": "pass",
         "scipyfft.ifht": "pass",
         "signal.abcd_normalize": "pass",
+        "signal.argrelextrema": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
         "signal.band_stop_obj": "pass",
@@ -749,6 +750,7 @@
         "signal.check_COLA": "pass",
         "signal.check_NOLA": "pass",
         "signal.chirp": "pass",
+        "signal.choose_conv_method": "pass",
         "signal.coherence": "pass",
         "signal.cont2discrete": "pass",
         "signal.convolve": "pass",
@@ -3208,7 +3210,9 @@
             "optimize.check_grad": null,
             "optimize.brute": null,
             "spatial.Rectangle": null,
-            "windows.dpss": 8.50815985283948
+            "windows.dpss": 8.50815985283948,
+            "signal.argrelextrema": 0,
+            "signal.choose_conv_method": 0
         },
         "ext": {
             "np.median": 0,
@@ -4813,7 +4817,9 @@
             "optimize.check_grad": null,
             "optimize.brute": null,
             "spatial.Rectangle": null,
-            "windows.dpss": 8.50815985283948
+            "windows.dpss": 8.50815985283948,
+            "signal.argrelextrema": 0,
+            "signal.choose_conv_method": 0
         }
     },
     "ext": {
@@ -5546,6 +5552,7 @@
         "scipyfft.idstn": "pass",
         "scipyfft.ifht": "pass",
         "signal.abcd_normalize": "pass",
+        "signal.argrelextrema": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
         "signal.band_stop_obj": "pass",
@@ -5566,6 +5573,7 @@
         "signal.check_COLA": "pass",
         "signal.check_NOLA": "pass",
         "signal.chirp": "pass",
+        "signal.choose_conv_method": "pass",
         "signal.coherence": "pass",
         "signal.cont2discrete": "pass",
         "signal.convolve": "pass",
