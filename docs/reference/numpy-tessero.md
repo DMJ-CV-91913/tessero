@@ -556,6 +556,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.mathieu_modsem1` | `Tessero\Special::mathieuModsem1()` |
 | `scipy.special.mathieu_modsem2` | `Tessero\Special::mathieuModsem2()` |
 | `scipy.special.mathieu_sem` | `Tessero\Special::mathieuSem()` |
+| `scipy.special.modfresnelm` | `Tessero\Special::modfresnelm()` |
+| `scipy.special.modfresnelp` | `Tessero\Special::modfresnelp()` |
 | `scipy.special.modstruve` | `Tessero\Special::modstruve()` |
 | `scipy.special.multigammaln` | `Tessero\Special::multigammaln()` |
 | `scipy.special.nbdtr` | `Tessero\Special::nbdtr()` |

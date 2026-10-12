@@ -1169,6 +1169,8 @@
         "special.mathieu_modsem1": "pass",
         "special.mathieu_modsem2": "pass",
         "special.mathieu_sem": "pass",
+        "special.modfresnelm": "pass",
+        "special.modfresnelp": "pass",
         "special.modstruve": "pass",
         "special.multigammaln": "pass",
         "special.nbdtr": "pass",
@@ -3122,7 +3124,7 @@
             "special.kerp_zeros": 1.0890278897916946e-12,
             "special.keip_zeros": 5.13997692851924e-11,
             "special.kelvin_zeros": 5.13997692851924e-11,
-            "special.multigammaln": 2.217240389195107e-16,
+            "special.multigammaln": 1.8794054421872902e-16,
             "special.factorial2": 8.421247238638223e-16,
             "special.bernoulli": 1.7217477443794664e-12,
             "special.euler": 1.1521478377994762e-15,
@@ -3164,7 +3166,9 @@
             "special.pro_cv_seq": 5.504418757621427e-15,
             "special.y0_zeros": 3.8939445409936125e-9,
             "special.y1_zeros": 2.2968447881996035e-9,
-            "special.y1p_zeros": 7.245619911586804e-9
+            "special.y1p_zeros": 7.245619911586804e-9,
+            "special.modfresnelp": 0,
+            "special.modfresnelm": 0
         },
         "ext": {
             "np.median": 0,
@@ -4705,7 +4709,7 @@
             "special.kerp_zeros": 1.0890278897916946e-12,
             "special.keip_zeros": 5.13997692851924e-11,
             "special.kelvin_zeros": 5.13997692851924e-11,
-            "special.multigammaln": 2.217240389195107e-16,
+            "special.multigammaln": 1.8794054421872902e-16,
             "special.factorial2": 8.421247238638223e-16,
             "special.bernoulli": 1.7217477443794664e-12,
             "special.euler": 1.1521478377994762e-15,
@@ -4747,7 +4751,9 @@
             "special.pro_cv_seq": 5.504418757621427e-15,
             "special.y0_zeros": 3.8939445409936125e-9,
             "special.y1_zeros": 2.2968447881996035e-9,
-            "special.y1p_zeros": 7.245619911586804e-9
+            "special.y1p_zeros": 7.245619911586804e-9,
+            "special.modfresnelp": 0,
+            "special.modfresnelm": 0
         }
     },
     "ext": {
@@ -5920,6 +5926,8 @@
         "special.mathieu_modsem1": "pass",
         "special.mathieu_modsem2": "pass",
         "special.mathieu_sem": "pass",
+        "special.modfresnelm": "pass",
+        "special.modfresnelp": "pass",
         "special.modstruve": "pass",
         "special.multigammaln": "pass",
         "special.nbdtr": "pass",

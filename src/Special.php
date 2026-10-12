@@ -212,6 +212,8 @@ final class Special
     'mathieu_modsem1' => 'mathieuModsem1',
     'mathieu_modsem2' => 'mathieuModsem2',
     'mathieu_sem' => 'mathieuSem',
+    'modfresnelm' => 'modfresnelm',
+    'modfresnelp' => 'modfresnelp',
     'modstruve' => 'modstruve',
     'multigammaln' => 'multigammaln',
     'nbdtr' => 'nbdtr',
@@ -2344,6 +2346,30 @@ final class Special
     public static function mathieuSem(mixed $m, mixed $q, mixed $x, ?array $out = null): array
     {
         return Registry::ufunc('special.mathieu_sem', [$m, $q, $x], $out);
+    }
+
+    /**
+     * Modified Fresnel negative integrals F-(x) and K-(x) (scipy.special.modfresnelm).
+     *
+     * scipy.special.modfresnelm
+     *
+     * @return mixed one array, or an array keyed by fm, km when several results are requested
+     */
+    public static function modfresnelm(mixed $x): mixed
+    {
+        return Registry::routine('special.modfresnelm', [$x]);
+    }
+
+    /**
+     * Modified Fresnel positive integrals F+(x) and K+(x) (scipy.special.modfresnelp).
+     *
+     * scipy.special.modfresnelp
+     *
+     * @return mixed one array, or an array keyed by fp, kp when several results are requested
+     */
+    public static function modfresnelp(mixed $x): mixed
+    {
+        return Registry::routine('special.modfresnelp', [$x]);
     }
 
     /**
