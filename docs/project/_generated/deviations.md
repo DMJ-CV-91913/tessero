@@ -331,6 +331,9 @@
 | `scipyfft.idctn` | call | rtol 1e-10 |
 | `scipyfft.dstn` | call | rtol 1e-10 |
 | `scipyfft.idstn` | call | rtol 1e-10 |
+| `scipyfft.fht` | call | rtol 1e-09 |
+| `scipyfft.ifht` | call | rtol 1e-09 |
+| `scipyfft.fhtoffset` | call | rtol 1e-10 |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |

@@ -33,6 +33,29 @@ for name, fn in FN2.items():
                           'tol': {'atol': 1e-10, 'rtol': 1e-10}})
     calls.append({'fn': name, 'cases': cases})
 
+# FFTLog: fht / ifht / fhtoffset
+_fc, _ic, _oc = [], [], []
+for _n in (8, 16, 7, 9):
+    _x = rng.random(_n) + 0.1
+    for _mu in (0.0, 0.5, 1.5):
+        _A = sf.fht(_x, 0.1, _mu)
+        _fc.append({'args': [F.enc(_x), F.enc(0.1), F.enc(_mu)], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(_A, float), []), 'compare': 'tol', 'tol': {'atol': 1e-10, 'rtol': 1e-9}})
+        _a2 = sf.ifht(_A, 0.1, _mu)
+        _ic.append({'args': [F.enc(_A), F.enc(0.1), F.enc(_mu)], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(_a2, float), []), 'compare': 'tol', 'tol': {'atol': 1e-10, 'rtol': 1e-9}})
+    _Ab = sf.fht(_x, 0.1, 1.0, bias=0.2)
+    _fc.append({'args': [F.enc(_x), F.enc(0.1), F.enc(1.0)], 'kwargs': {'bias': F.enc(0.2)},
+                'expect': F.enc_result(np.asarray(_Ab, float), []), 'compare': 'tol', 'tol': {'atol': 1e-10, 'rtol': 1e-9}})
+for _dln in (0.1, 0.05):
+    for _mu in (0.0, 0.5, 2.0):
+        for _bias in (0.0, 0.3):
+            _oc.append({'args': [F.enc(_dln), F.enc(_mu)], 'kwargs': {'bias': F.enc(_bias)},
+                        'expect': F.enc_result(float(sf.fhtoffset(_dln, _mu, 0.0, _bias)), []), 'compare': 'tol', 'tol': {'atol': 1e-12, 'rtol': 1e-10}})
+calls.append({'fn': 'fht', 'cases': _fc})
+calls.append({'fn': 'ifht', 'cases': _ic})
+calls.append({'fn': 'fhtoffset', 'cases': _oc})
+
 out = {'module': 'scipyfft', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

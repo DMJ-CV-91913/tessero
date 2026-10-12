@@ -719,10 +719,13 @@
         "scipyfft.dctn": "pass",
         "scipyfft.dst": "pass",
         "scipyfft.dstn": "pass",
+        "scipyfft.fht": "pass",
+        "scipyfft.fhtoffset": "pass",
         "scipyfft.idct": "pass",
         "scipyfft.idctn": "pass",
         "scipyfft.idst": "pass",
         "scipyfft.idstn": "pass",
+        "scipyfft.ifht": "pass",
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",
@@ -2986,7 +2989,10 @@
             "constants.precision": null,
             "constants.unit": null,
             "constants.find": null,
-            "constants.physical_constants": null
+            "constants.physical_constants": null,
+            "scipyfft.fht": 1.3103018136328568e-13,
+            "scipyfft.ifht": 7.323162592517584e-15,
+            "scipyfft.fhtoffset": 0
         },
         "ext": {
             "np.median": 0,
@@ -4480,7 +4486,10 @@
             "constants.precision": null,
             "constants.unit": null,
             "constants.find": null,
-            "constants.physical_constants": null
+            "constants.physical_constants": null,
+            "scipyfft.fht": 1.3103018136328568e-13,
+            "scipyfft.ifht": 7.323162592517584e-15,
+            "scipyfft.fhtoffset": 0
         }
     },
     "ext": {
@@ -5203,10 +5212,13 @@
         "scipyfft.dctn": "pass",
         "scipyfft.dst": "pass",
         "scipyfft.dstn": "pass",
+        "scipyfft.fht": "pass",
+        "scipyfft.fhtoffset": "pass",
         "scipyfft.idct": "pass",
         "scipyfft.idctn": "pass",
         "scipyfft.idst": "pass",
         "scipyfft.idstn": "pass",
+        "scipyfft.ifht": "pass",
         "signal.abcd_normalize": "pass",
         "signal.argrelmax": "pass",
         "signal.argrelmin": "pass",

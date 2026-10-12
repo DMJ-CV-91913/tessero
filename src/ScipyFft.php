@@ -22,10 +22,13 @@ final class ScipyFft
     'dctn' => 'dctn',
     'dst' => 'dst',
     'dstn' => 'dstn',
+    'fht' => 'fht',
+    'fhtoffset' => 'fhtoffset',
     'idct' => 'idct',
     'idctn' => 'idctn',
     'idst' => 'idst',
     'idstn' => 'idstn',
+    'ifht' => 'ifht',
     ];
 
     private function __construct()
@@ -85,6 +88,26 @@ final class ScipyFft
     }
 
     /**
+     * Fast Hankel transform via the FFTLog algorithm (scipy.fft.fht).
+     *
+     * scipy.scipyfft.fht
+     */
+    public static function fht(mixed $a, mixed $dln, mixed $mu, mixed $offset = 0, mixed $bias = 0): mixed
+    {
+        return Registry::routine('scipyfft.fht', [$a, $dln, $mu, $offset, $bias]);
+    }
+
+    /**
+     * Optimal low-ringing offset for fht (scipy.fft.fhtoffset).
+     *
+     * scipy.scipyfft.fhtoffset
+     */
+    public static function fhtoffset(mixed $dln, mixed $mu, mixed $initial = 0, mixed $bias = 0): mixed
+    {
+        return Registry::routine('scipyfft.fhtoffset', [$dln, $mu, $initial, $bias]);
+    }
+
+    /**
      * Inverse discrete cosine transform, types 2/3, norm='backward' (scipy.fft.idct).
      *
      * scipy.scipyfft.idct
@@ -122,5 +145,15 @@ final class ScipyFft
     public static function idstn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed
     {
         return Registry::routine('scipyfft.idstn', [$x, $type, $s, $axes, $norm]);
+    }
+
+    /**
+     * Inverse fast Hankel transform (scipy.fft.ifht).
+     *
+     * scipy.scipyfft.ifht
+     */
+    public static function ifht(mixed $A, mixed $dln, mixed $mu, mixed $offset = 0, mixed $bias = 0): mixed
+    {
+        return Registry::routine('scipyfft.ifht', [$A, $dln, $mu, $offset, $bias]);
     }
 }
