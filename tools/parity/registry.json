@@ -4520,6 +4520,11 @@
             "nin": 1,
             "nout": 1
         },
+        "special.cg_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.chdtr": {
             "kind": "ufunc",
             "nin": 2,
@@ -4890,6 +4895,11 @@
             "nin": 3,
             "nout": 1
         },
+        "special.h_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.hankel1": {
             "kind": "routine",
             "nin": 0,
@@ -4909,6 +4919,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "special.he_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "special.huber": {
             "kind": "ufunc",
@@ -5030,10 +5045,20 @@
             "nin": 1,
             "nout": 1
         },
+        "special.j_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.jn": {
             "kind": "ufunc",
             "nin": 2,
             "nout": 1
+        },
+        "special.js_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "special.jv": {
             "kind": "ufunc",
@@ -5129,6 +5154,16 @@
             "kind": "ufunc",
             "nin": 2,
             "nout": 1
+        },
+        "special.l_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.la_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "special.lambertw": {
             "kind": "routine",
@@ -5360,6 +5395,11 @@
             "nin": 2,
             "nout": 1
         },
+        "special.p_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.pbdv": {
             "kind": "ufunc",
             "nin": 2,
@@ -5450,6 +5490,11 @@
             "nin": 5,
             "nout": 2
         },
+        "special.ps_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.pseudo_huber": {
             "kind": "ufunc",
             "nin": 2,
@@ -5495,12 +5540,57 @@
             "nin": 0,
             "nout": 2
         },
+        "special.roots_gegenbauer": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_genlaguerre": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_hermite": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_hermitenorm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_jacobi": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_laguerre": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_legendre": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.roots_sh_chebyt": {
             "kind": "routine",
             "nin": 0,
             "nout": 2
         },
         "special.roots_sh_chebyu": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_sh_jacobi": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_sh_legendre": {
             "kind": "routine",
             "nin": 0,
             "nout": 2
