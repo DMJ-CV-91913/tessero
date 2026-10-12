@@ -11041,6 +11041,12 @@
                 "doc": "Even Mathieu function and its derivative."
             },
             {
+                "name": "mathieuEvenCoef",
+                "static": true,
+                "sig": "mathieuEvenCoef(mixed $m, mixed $q): mixed",
+                "doc": "Fourier coefficients of the even Mathieu function ce_m (scipy.special.mathieu_even_coef)."
+            },
+            {
                 "name": "mathieuModcem1",
                 "static": true,
                 "sig": "mathieuModcem1(mixed $m, mixed $q, mixed $x, ?array $out = null): array",
@@ -11063,6 +11069,12 @@
                 "static": true,
                 "sig": "mathieuModsem2(mixed $m, mixed $q, mixed $x, ?array $out = null): array",
                 "doc": "Odd modified Mathieu function of the second kind and its derivative."
+            },
+            {
+                "name": "mathieuOddCoef",
+                "static": true,
+                "sig": "mathieuOddCoef(mixed $m, mixed $q): mixed",
+                "doc": "Fourier coefficients of the odd Mathieu function se_m (scipy.special.mathieu_odd_coef)."
             },
             {
                 "name": "mathieuSem",
@@ -16394,6 +16406,18 @@
                 "name": "modfresnelm",
                 "static": true,
                 "sig": "modfresnelm($x)",
+                "doc": ""
+            },
+            {
+                "name": "mathieuEvenCoef",
+                "static": true,
+                "sig": "mathieuEvenCoef($m, $q)",
+                "doc": ""
+            },
+            {
+                "name": "mathieuOddCoef",
+                "static": true,
+                "sig": "mathieuOddCoef($m, $q)",
                 "doc": ""
             },
             {

@@ -1164,10 +1164,12 @@
         "special.mathieu_a": "pass",
         "special.mathieu_b": "pass",
         "special.mathieu_cem": "pass",
+        "special.mathieu_even_coef": "pass",
         "special.mathieu_modcem1": "pass",
         "special.mathieu_modcem2": "pass",
         "special.mathieu_modsem1": "pass",
         "special.mathieu_modsem2": "pass",
+        "special.mathieu_odd_coef": "pass",
         "special.mathieu_sem": "pass",
         "special.modfresnelm": "pass",
         "special.modfresnelp": "pass",
@@ -3168,7 +3170,9 @@
             "special.y1_zeros": 2.2968447881996035e-9,
             "special.y1p_zeros": 7.245619911586804e-9,
             "special.modfresnelp": 0,
-            "special.modfresnelm": 0
+            "special.modfresnelm": 0,
+            "special.mathieu_even_coef": 0,
+            "special.mathieu_odd_coef": 0
         },
         "ext": {
             "np.median": 0,
@@ -4753,7 +4757,9 @@
             "special.y1_zeros": 2.2968447881996035e-9,
             "special.y1p_zeros": 7.245619911586804e-9,
             "special.modfresnelp": 0,
-            "special.modfresnelm": 0
+            "special.modfresnelm": 0,
+            "special.mathieu_even_coef": 0,
+            "special.mathieu_odd_coef": 0
         }
     },
     "ext": {
@@ -5921,10 +5927,12 @@
         "special.mathieu_a": "pass",
         "special.mathieu_b": "pass",
         "special.mathieu_cem": "pass",
+        "special.mathieu_even_coef": "pass",
         "special.mathieu_modcem1": "pass",
         "special.mathieu_modcem2": "pass",
         "special.mathieu_modsem1": "pass",
         "special.mathieu_modsem2": "pass",
+        "special.mathieu_odd_coef": "pass",
         "special.mathieu_sem": "pass",
         "special.modfresnelm": "pass",
         "special.modfresnelp": "pass",

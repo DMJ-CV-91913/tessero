@@ -207,10 +207,12 @@ final class Special
     'mathieu_a' => 'mathieuA',
     'mathieu_b' => 'mathieuB',
     'mathieu_cem' => 'mathieuCem',
+    'mathieu_even_coef' => 'mathieuEvenCoef',
     'mathieu_modcem1' => 'mathieuModcem1',
     'mathieu_modcem2' => 'mathieuModcem2',
     'mathieu_modsem1' => 'mathieuModsem1',
     'mathieu_modsem2' => 'mathieuModsem2',
+    'mathieu_odd_coef' => 'mathieuOddCoef',
     'mathieu_sem' => 'mathieuSem',
     'modfresnelm' => 'modfresnelm',
     'modfresnelp' => 'modfresnelp',
@@ -2289,6 +2291,16 @@ final class Special
     }
 
     /**
+     * Fourier coefficients of the even Mathieu function ce_m (scipy.special.mathieu_even_coef).
+     *
+     * scipy.special.mathieu_even_coef
+     */
+    public static function mathieuEvenCoef(mixed $m, mixed $q): mixed
+    {
+        return Registry::routine('special.mathieu_even_coef', [$m, $q]);
+    }
+
+    /**
      * Even modified Mathieu function of the first kind and its derivative.
      *
      * scipy.special.mathieu_modcem1
@@ -2334,6 +2346,16 @@ final class Special
     public static function mathieuModsem2(mixed $m, mixed $q, mixed $x, ?array $out = null): array
     {
         return Registry::ufunc('special.mathieu_modsem2', [$m, $q, $x], $out);
+    }
+
+    /**
+     * Fourier coefficients of the odd Mathieu function se_m (scipy.special.mathieu_odd_coef).
+     *
+     * scipy.special.mathieu_odd_coef
+     */
+    public static function mathieuOddCoef(mixed $m, mixed $q): mixed
+    {
+        return Registry::routine('special.mathieu_odd_coef', [$m, $q]);
     }
 
     /**
