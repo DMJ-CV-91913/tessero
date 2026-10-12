@@ -30,6 +30,11 @@ for seed in range(5):
     add('boxcox_normmax', x, st.boxcox_normmax(x, method='pearsonr'))
     add('boxcox_normmax', x, st.boxcox_normmax(x, method='mle'), method='mle')
 
+for seed in range(6):
+    rng = np.random.default_rng(200 + seed)
+    xp = rng.normal(0.0, 1.0, size=40) if seed % 2 else rng.gamma(2.0, 1.0, size=40)
+    add('ppcc_max', xp, st.ppcc_max(xp))
+
 for seed in range(5):
     rng = np.random.default_rng(100 + seed)
     xm = rng.normal(0.0, 2.0, size=40)                               # mixed sign

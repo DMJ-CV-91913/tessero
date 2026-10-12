@@ -1501,6 +1501,7 @@
         "stats.powerlaw": "pass",
         "stats.powerlognorm": "pass",
         "stats.powernorm": "pass",
+        "stats.ppcc_max": "pass",
         "stats.probplot": "pass",
         "stats.quantile": "pass",
         "stats.quantile_test": "pass",
@@ -3198,7 +3199,8 @@
             "special.ellip_harm_2": 7.46554246560211e-15,
             "special.ellip_normal": 6.622245395824866e-15,
             "stats.boxcox_normmax": null,
-            "stats.yeojohnson_normmax": null
+            "stats.yeojohnson_normmax": null,
+            "stats.ppcc_max": null
         },
         "ext": {
             "np.median": 0,
@@ -4798,7 +4800,8 @@
             "special.ellip_harm_2": 7.46554246560211e-15,
             "special.ellip_normal": 6.622245395824866e-15,
             "stats.boxcox_normmax": null,
-            "stats.yeojohnson_normmax": null
+            "stats.yeojohnson_normmax": null,
+            "stats.ppcc_max": null
         }
     },
     "ext": {
@@ -6303,6 +6306,7 @@
         "stats.powerlaw": "pass",
         "stats.powerlognorm": "pass",
         "stats.powernorm": "pass",
+        "stats.ppcc_max": "pass",
         "stats.probplot": "pass",
         "stats.quantile": "pass",
         "stats.quantile_test": "pass",
