@@ -113,6 +113,7 @@ final class Special
     'exprel' => 'exprel',
     'factorial' => 'factorial',
     'factorial2' => 'factorial2',
+    'factorialk' => 'factorialk',
     'fdtr' => 'fdtr',
     'fdtrc' => 'fdtrc',
     'fdtri' => 'fdtri',
@@ -1319,6 +1320,16 @@ final class Special
     public static function factorial2(mixed $n): mixed
     {
         return Registry::routine('special.factorial2', [$n]);
+    }
+
+    /**
+     * Order-k multifactorial (scipy.special.factorialk, exact=False).
+     *
+     * scipy.special.factorialk
+     */
+    public static function factorialk(mixed $n, mixed $k): mixed
+    {
+        return Registry::routine('special.factorialk', [$n, $k]);
     }
 
     /**
