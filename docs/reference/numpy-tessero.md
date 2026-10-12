@@ -1108,6 +1108,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.czt` | `Tessero\Signal::czt()` |
 | `scipy.signal.czt_points` | `Tessero\Signal::cztPoints()` |
 | `scipy.signal.dbode` | `Tessero\Signal::dbode()` |
+| `scipy.signal.decimate` | `Tessero\Signal::decimate()` |
 | `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
 | `scipy.signal.detrend` | `Tessero\Signal::detrend()` |
 | `scipy.signal.dfreqresp` | `Tessero\Signal::dfreqresp()` |
@@ -1119,6 +1120,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.ellipord` | `Tessero\Signal::ellipord()` |
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |
+| `scipy.signal.find_peaks` | `Tessero\Signal::findPeaks()` |
 | `scipy.signal.findfreqs` | `Tessero\Signal::findfreqs()` |
 | `scipy.signal.firls` | `Tessero\Signal::firls()` |
 | `scipy.signal.firwin` | `Tessero\Signal::firwin()` |
@@ -1137,6 +1139,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
 | `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |
 | `scipy.signal.iircomb` | `Tessero\Signal::iircomb()` |
+| `scipy.signal.iirfilter` | `Tessero\Signal::iirfilter()` |
 | `scipy.signal.iirnotch` | `Tessero\Signal::iirnotch()` |
 | `scipy.signal.iirpeak` | `Tessero\Signal::iirpeak()` |
 | `scipy.signal.impulse` | `Tessero\Signal::impulse()` |
@@ -1161,6 +1164,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.max_len_seq` | `Tessero\Signal::maxLenSeq()` |
 | `scipy.signal.medfilt` | `Tessero\Signal::medfilt()` |
 | `scipy.signal.medfilt2d` | `Tessero\Signal::medfilt2d()` |
+| `scipy.signal.minimum_phase` | `Tessero\Signal::minimumPhase()` |
 | `scipy.signal.normalize` | `Tessero\Signal::normalize()` |
 | `scipy.signal.oaconvolve` | `Tessero\Signal::oaconvolve()` |
 | `scipy.signal.order_filter` | `Tessero\Signal::orderFilter()` |
@@ -1189,6 +1193,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.ss2tf` | `Tessero\Signal::ss2tf()` |
 | `scipy.signal.ss2zpk` | `Tessero\Signal::ss2zpk()` |
 | `scipy.signal.step` | `Tessero\Signal::step()` |
+| `scipy.signal.stft` | `Tessero\Signal::stft()` |
 | `scipy.signal.sweep_poly` | `Tessero\Signal::sweepPoly()` |
 | `scipy.signal.symiirorder1` | `Tessero\Signal::symiirorder1()` |
 | `scipy.signal.symiirorder2` | `Tessero\Signal::symiirorder2()` |

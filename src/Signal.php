@@ -55,6 +55,7 @@ final class Signal
     'czt' => 'czt',
     'czt_points' => 'cztPoints',
     'dbode' => 'dbode',
+    'decimate' => 'decimate',
     'deconvolve' => 'deconvolve',
     'detrend' => 'detrend',
     'dfreqresp' => 'dfreqresp',
@@ -66,6 +67,7 @@ final class Signal
     'ellipord' => 'ellipord',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
+    'find_peaks' => 'findPeaks',
     'findfreqs' => 'findfreqs',
     'firls' => 'firls',
     'firwin' => 'firwin',
@@ -84,6 +86,7 @@ final class Signal
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
     'iircomb' => 'iircomb',
+    'iirfilter' => 'iirfilter',
     'iirnotch' => 'iirnotch',
     'iirpeak' => 'iirpeak',
     'impulse' => 'impulse',
@@ -108,6 +111,7 @@ final class Signal
     'max_len_seq' => 'maxLenSeq',
     'medfilt' => 'medfilt',
     'medfilt2d' => 'medfilt2d',
+    'minimum_phase' => 'minimumPhase',
     'normalize' => 'normalize',
     'oaconvolve' => 'oaconvolve',
     'order_filter' => 'orderFilter',
@@ -136,6 +140,7 @@ final class Signal
     'ss2tf' => 'ss2tf',
     'ss2zpk' => 'ss2zpk',
     'step' => 'step',
+    'stft' => 'stft',
     'sweep_poly' => 'sweepPoly',
     'symiirorder1' => 'symiirorder1',
     'symiirorder2' => 'symiirorder2',
@@ -579,6 +584,16 @@ final class Signal
     }
 
     /**
+     * Downsample a 1-D signal after an anti-aliasing filter (scipy.signal.decimate).
+     *
+     * scipy.signal.decimate
+     */
+    public static function decimate(mixed $x, mixed $q, mixed $n = null, mixed $ftype = 'iir', mixed $axis = -1, mixed $zeroPhase = true): mixed
+    {
+        return Registry::routine('signal.decimate', [$x, $q, $n, $ftype, $axis, $zeroPhase]);
+    }
+
+    /**
      * Deconvolve a divisor out of a signal by polynomial division (scipy.signal.deconvolve).
      *
      * scipy.signal.deconvolve
@@ -702,6 +717,16 @@ final class Signal
     public static function filtfilt(mixed $b, mixed $a, mixed $x, mixed $axis = -1, mixed $padtype = 'odd', mixed $padlen = null, mixed $method = 'pad', mixed $irlen = null): mixed
     {
         return Registry::routine('signal.filtfilt', [$b, $a, $x, $axis, $padtype, $padlen, $method, $irlen]);
+    }
+
+    /**
+     * Indices of local maxima satisfying the given criteria (scipy.signal.find_peaks; peak indices).
+     *
+     * scipy.signal.find_peaks
+     */
+    public static function findPeaks(mixed $x, mixed $height = null, mixed $threshold = null, mixed $distance = null, mixed $prominence = null, mixed $width = null, mixed $wlen = null, mixed $relHeight = 0.5, mixed $plateauSize = null): mixed
+    {
+        return Registry::routine('signal.find_peaks', [$x, $height, $threshold, $distance, $prominence, $width, $wlen, $relHeight, $plateauSize]);
     }
 
     /**
@@ -900,6 +925,18 @@ final class Signal
     public static function iircomb(mixed $w0, mixed $Q, mixed $ftype = 'notch', mixed $fs = 2.0, mixed $passZero = false): mixed
     {
         return Registry::routine('signal.iircomb', [$w0, $Q, $ftype, $fs, $passZero]);
+    }
+
+    /**
+     * IIR filter design from order and critical frequencies, output ba (scipy.signal.iirfilter).
+     *
+     * scipy.signal.iirfilter
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function iirfilter(mixed $N, mixed $Wn, mixed $rp = null, mixed $rs = null, mixed $btype = 'band', mixed $analog = false, mixed $ftype = 'butter', mixed $output = 'ba', mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.iirfilter', [$N, $Wn, $rp, $rs, $btype, $analog, $ftype, $output, $fs]);
     }
 
     /**
@@ -1172,6 +1209,16 @@ final class Signal
     public static function medfilt2d(mixed $input, mixed $kernelSize = 3): mixed
     {
         return Registry::routine('signal.medfilt2d', [$input, $kernelSize]);
+    }
+
+    /**
+     * Minimum-phase FIR from a linear-phase filter (scipy.signal.minimum_phase).
+     *
+     * scipy.signal.minimum_phase
+     */
+    public static function minimumPhase(mixed $h, mixed $method = 'homomorphic', mixed $nFft = null, mixed $half = true): mixed
+    {
+        return Registry::routine('signal.minimum_phase', [$h, $method, $nFft, $half]);
     }
 
     /**
@@ -1478,6 +1525,18 @@ final class Signal
     public static function step(mixed $A, mixed $B, mixed $C, mixed $D, mixed $T): mixed
     {
         return Registry::routine('signal.step', [$A, $B, $C, $D, $T]);
+    }
+
+    /**
+     * Short-time Fourier transform (scipy.signal.stft, 1-D).
+     *
+     * scipy.signal.stft
+     *
+     * @return mixed one array, or an array keyed by f, t, Zxx when several results are requested
+     */
+    public static function stft(mixed $x, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = 256, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = false, mixed $returnOnesided = true, mixed $boundary = 'zeros', mixed $padded = true, mixed $axis = -1, mixed $scaling = 'spectrum'): mixed
+    {
+        return Registry::routine('signal.stft', [$x, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $boundary, $padded, $axis, $scaling]);
     }
 
     /**

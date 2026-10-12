@@ -6396,7 +6396,654 @@ static int r_resample_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_
     return rc;
 }
 
+/* ===== port_findpeaks ===== */
+/* ---- find_peaks (scipy.signal.find_peaks): local maxima + plateau/height/threshold/distance/
+   prominence/width selection. Returns the peak-index array (int64). Condition args (height, threshold,
+   prominence, width, plateau_size) accept None, a scalar (min only), or a 2-tuple (min, max) with either
+   element None; array-valued bounds are not supported. ---- */
+typedef struct { int has_min; double mn; int has_max; double mx; } fp_cond;
+typedef struct { double pr; int64_t idx; } fp_pi;
+
+static double fp_arr_at(const tsr_array *x, int64_t i)   /* element i of a 1-D numeric array as double */
+{
+    const char *p = (const char *)x->data + x->offset + i * (x->ndim ? x->strides[0] : 0);
+    if (x->dtype == TSR_F64) return *(const double *)p;
+    if (x->dtype == TSR_F32) return *(const float *)p;
+    if (x->dtype == TSR_I64) return (double)*(const int64_t *)p;
+    if (x->dtype == TSR_I32) return (double)*(const int32_t *)p;
+    return *(const double *)p;
+}
+
+static fp_cond fp_read_cond(const tsr_arg *a)
+{
+    fp_cond c = {0, 0.0, 0, 0.0};
+    if (!a || a->kind == 0) return c;
+    if (a->kind == 1 || a->kind == 4) { c.has_min = 1; c.mn = a->num; return c; }
+    if (a->kind == 5) {                                  /* (min, max) tuple/list */
+        if (a->count >= 1 && a->items[0].kind != 0) { c.has_min = 1; c.mn = a->items[0].num; }
+        if (a->count >= 2 && a->items[1].kind != 0) { c.has_max = 1; c.mx = a->items[1].num; }
+    } else if (a->kind == 3 && a->arr.ndim == 1 && a->arr.shape[0] >= 1) {   /* (min[, max]) as an array */
+        c.has_min = 1; c.mn = fp_arr_at(&a->arr, 0);
+        if (a->arr.shape[0] >= 2) { c.has_max = 1; c.mx = fp_arr_at(&a->arr, 1); }
+    }
+    return c;
+}
+
+static int fp_given(const tsr_arg *a) { return a && a->kind != 0; }
+
+static int fp_cmp_pi(const void *a, const void *b)
+{
+    const fp_pi *p = (const fp_pi *)a, *q = (const fp_pi *)b;
+    if (p->pr < q->pr) return -1; if (p->pr > q->pr) return 1;
+    return (p->idx < q->idx) ? -1 : (p->idx > q->idx ? 1 : 0);
+}
+
+/* compact pk[0..*np) in place, keeping entries where keep[k]; updates *np. */
+static void fp_compact(int64_t *pk, int64_t *np, const char *keep)
+{
+    int64_t w = 0;
+    for (int64_t k = 0; k < *np; k++) if (keep[k]) pk[w++] = pk[k];
+    *np = w;
+}
+
+static int r_find_peaks(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("find_peaks: x must be a 1-D array"); return TSR_EARG; }
+    const tsr_arg *a_height = nargs > 1 ? &args[1] : NULL;
+    const tsr_arg *a_thresh = nargs > 2 ? &args[2] : NULL;
+    const tsr_arg *a_dist   = nargs > 3 ? &args[3] : NULL;
+    const tsr_arg *a_prom   = nargs > 4 ? &args[4] : NULL;
+    const tsr_arg *a_width  = nargs > 5 ? &args[5] : NULL;
+    const tsr_arg *a_wlen   = nargs > 6 ? &args[6] : NULL;
+    const tsr_arg *a_relh   = nargs > 7 ? &args[7] : NULL;
+    const tsr_arg *a_plat   = nargs > 8 ? &args[8] : NULL;
+    double distance = (a_dist && a_dist->kind == 1) ? a_dist->num : 0.0;
+    if (fp_given(a_dist) && distance < 1.0) { fn_set_error("find_peaks: distance must be >= 1"); return TSR_EARG; }
+    double rel_height = (a_relh && a_relh->kind == 1) ? a_relh->num : 0.5;
+    int64_t wlen = -1;
+    if (a_wlen && a_wlen->kind == 1 && a_wlen->num > 1.0) wlen = (int64_t)ceil(a_wlen->num);
+    int64_t N; double *x = fn_arg_doubles(&args[0], &N); if (!x) return TSR_ENOMEM;
+    int rc = TSR_OK;
+    int64_t cap = N > 0 ? N : 1;
+    int64_t *pk = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
+    int64_t *le = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
+    int64_t *re = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
+    char *keep = (char *)malloc((size_t)cap);
+    double *prom = (double *)malloc((size_t)cap * sizeof(double));
+    int64_t *lb = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
+    int64_t *rb = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
+    if (!pk || !le || !re || !keep || !prom || !lb || !rb) { rc = TSR_ENOMEM; goto done; }
+    int64_t np = 0;
+    {   /* _local_maxima_1d: plateau midpoints */
+        int64_t i = 1, imax = N - 1;
+        while (i < imax) {
+            if (x[i - 1] < x[i]) {
+                int64_t ia = i + 1;
+                while (ia < imax && x[ia] == x[i]) ia++;
+                if (x[ia] < x[i]) { int64_t l = i, r = ia - 1; pk[np] = (l + r) / 2; le[np] = l; re[np] = r; np++; i = ia; }
+            }
+            i++;
+        }
+    }
+    if (fp_given(a_plat)) {
+        fp_cond c = fp_read_cond(a_plat);
+        for (int64_t k = 0; k < np; k++) { double ps = (double)(re[k] - le[k] + 1); keep[k] = (!c.has_min || c.mn <= ps) && (!c.has_max || ps <= c.mx); }
+        fp_compact(pk, &np, keep);
+    }
+    if (fp_given(a_height)) {
+        fp_cond c = fp_read_cond(a_height);
+        for (int64_t k = 0; k < np; k++) { double h = x[pk[k]]; keep[k] = (!c.has_min || c.mn <= h) && (!c.has_max || h <= c.mx); }
+        fp_compact(pk, &np, keep);
+    }
+    if (fp_given(a_thresh)) {
+        fp_cond c = fp_read_cond(a_thresh);
+        for (int64_t k = 0; k < np; k++) {
+            int64_t p = pk[k]; double dl = x[p] - x[p - 1], dr = x[p] - x[p + 1];
+            double lo = dl < dr ? dl : dr, hi = dl > dr ? dl : dr;
+            keep[k] = (!c.has_min || c.mn <= lo) && (!c.has_max || hi <= c.mx);
+        }
+        fp_compact(pk, &np, keep);
+    }
+    if (fp_given(a_dist)) {
+        int64_t dist = (int64_t)ceil(distance);
+        for (int64_t k = 0; k < np; k++) keep[k] = 1;
+        fp_pi *arr = (fp_pi *)malloc((size_t)(np > 0 ? np : 1) * sizeof(fp_pi));
+        if (!arr) { rc = TSR_ENOMEM; goto done; }
+        for (int64_t k = 0; k < np; k++) { arr[k].pr = x[pk[k]]; arr[k].idx = k; }
+        qsort(arr, (size_t)np, sizeof(fp_pi), fp_cmp_pi);
+        for (int64_t t = np - 1; t >= 0; t--) {
+            int64_t j = arr[t].idx;
+            if (!keep[j]) continue;
+            int64_t m = j - 1; while (m >= 0 && pk[j] - pk[m] < dist) { keep[m] = 0; m--; }
+            m = j + 1; while (m < np && pk[m] - pk[j] < dist) { keep[m] = 0; m++; }
+        }
+        free(arr);
+        fp_compact(pk, &np, keep);
+    }
+    if (fp_given(a_prom) || fp_given(a_width)) {           /* _peak_prominences */
+        for (int64_t pn = 0; pn < np; pn++) {
+            int64_t peak = pk[pn], i_min = 0, i_max = N - 1;
+            if (wlen >= 2) { int64_t a = peak - wlen / 2, b = peak + wlen / 2; if (a > i_min) i_min = a; if (b < i_max) i_max = b; }
+            int64_t i = peak; lb[pn] = peak; double lmin = x[peak];
+            while (i_min <= i && x[i] <= x[peak]) { if (x[i] < lmin) { lmin = x[i]; lb[pn] = i; } i--; }
+            i = peak; rb[pn] = peak; double rmin = x[peak];
+            while (i <= i_max && x[i] <= x[peak]) { if (x[i] < rmin) { rmin = x[i]; rb[pn] = i; } i++; }
+            prom[pn] = x[peak] - (lmin > rmin ? lmin : rmin);
+        }
+    }
+    if (fp_given(a_prom)) {
+        fp_cond c = fp_read_cond(a_prom);
+        int64_t w = 0;
+        for (int64_t k = 0; k < np; k++) {
+            int ok = (!c.has_min || c.mn <= prom[k]) && (!c.has_max || prom[k] <= c.mx);
+            if (ok) { pk[w] = pk[k]; prom[w] = prom[k]; lb[w] = lb[k]; rb[w] = rb[k]; w++; }
+        }
+        np = w;
+    }
+    if (fp_given(a_width)) {                               /* _peak_widths then select */
+        fp_cond c = fp_read_cond(a_width);
+        for (int64_t k = 0; k < np; k++) {
+            int64_t i_min = lb[k], i_max = rb[k], peak = pk[k];
+            double height = x[peak] - prom[k] * rel_height;
+            int64_t i = peak; while (i_min < i && height < x[i]) i--;
+            double lip = (double)i; if (x[i] < height) lip += (height - x[i]) / (x[i + 1] - x[i]);
+            i = peak; while (i < i_max && height < x[i]) i++;
+            double rip = (double)i; if (x[i] < height) rip -= (height - x[i]) / (x[i - 1] - x[i]);
+            double wd = rip - lip;
+            keep[k] = (!c.has_min || c.mn <= wd) && (!c.has_max || wd <= c.mx);
+        }
+        fp_compact(pk, &np, keep);
+    }
+    {
+        int64_t *out = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, (int64_t[]){np});
+        if (!out) rc = TSR_ENOMEM; else for (int64_t k = 0; k < np; k++) out[k] = pk[k];
+    }
+done:
+    free(pk); free(le); free(re); free(keep); free(prom); free(lb); free(rb); fn_free_doubles(x, N);
+    return rc;
+}
+
+/* ===== port_minphase ===== */
+/* ===== PASTE INTO csrc/src/scipy_signal.c (needs: extern int tsr_fft(...), already declared) ===== */
+
+/* minimum_phase(h, method='homomorphic', n_fft=None, half=True): convert a linear-phase FIR to minimum
+   phase (scipy.signal.minimum_phase). 'homomorphic' (default) is verified to ~1e-13 against scipy via the
+   kernel complex FFT; 'hilbert' is numerically ill-conditioned (its log/exp/DHTM amplifies FFT-backend
+   rounding) so it is provided but not parity-gated. */
+static int64_t mp_default_nfft(int64_t n)
+{
+    double target = 200.0 * (double)(n - 1);                 /* 2^ceil(log2(2*(n-1)/0.01)) */
+    int64_t nf = 1; while ((double)nf < target) nf <<= 1;
+    return nf;
+}
+
+/* in-place elementwise complex exp over an interleaved [re,im,...] buffer of length n. */
+static void mp_cexp_inplace(double *z, int64_t n)
+{
+    for (int64_t i = 0; i < n; i++) {
+        double re = z[2 * i], im = z[2 * i + 1], ex = exp(re);
+        z[2 * i] = ex * cos(im); z[2 * i + 1] = ex * sin(im);
+    }
+}
+
+static int r_minimum_phase(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("minimum_phase: h must be a 1-D array"); return TSR_EARG; }
+    int64_t n; double *h = fn_arg_doubles(&args[0], &n); if (!h) return TSR_ENOMEM;
+    if (n <= 2) { fn_free_doubles(h, n); fn_set_error("minimum_phase: h must be at least 3 samples long"); return TSR_EARG; }
+    const char *method = (nargs > 1 && args[1].kind == 2 && args[1].str) ? args[1].str : "homomorphic";
+    int hilbert = (strcmp(method, "hilbert") == 0);
+    if (!hilbert && strcmp(method, "homomorphic") != 0) { fn_free_doubles(h, n); fn_set_error("minimum_phase: method must be 'homomorphic' or 'hilbert'"); return TSR_EARG; }
+    int half = (nargs > 3 && (args[3].kind == 4 || args[3].kind == 1)) ? (args[3].num != 0.0) : 1;
+    if (hilbert && !half) { fn_free_doubles(h, n); fn_set_error("minimum_phase: half=False is only supported for method='homomorphic'"); return TSR_EARG; }
+    int64_t n_half = n / 2;
+    int64_t n_fft = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : mp_default_nfft(n);
+    if (n_fft < n) { fn_free_doubles(h, n); fn_set_error("minimum_phase: n_fft must be at least len(h)"); return TSR_EARG; }
+
+    int rc = TSR_OK;
+    double *a = (double *)calloc((size_t)(2 * n_fft), sizeof(double));   /* work buffer A (interleaved) */
+    double *b = (double *)malloc((size_t)(2 * n_fft) * sizeof(double));  /* work buffer B */
+    double *win = (double *)malloc((size_t)n_fft * sizeof(double));
+    if (!a || !b || !win) { free(a); free(b); free(win); fn_free_doubles(h, n); return TSR_ENOMEM; }
+
+    for (int64_t i = 0; i < n; i++) a[2 * i] = h[i];         /* a = h zero-padded (imag 0) */
+    tsr_fft(n_fft, 1, 0, a, b);                              /* b = fft(h, n_fft) */
+
+    int64_t n_out = half ? (n_half + n % 2) : n;
+    double *out = NULL;
+
+    if (!hilbert) {
+        /* homomorphic */
+        double minpos = 0.0; int have = 0;
+        for (int64_t i = 0; i < n_fft; i++) { double m = hypot(b[2 * i], b[2 * i + 1]); a[2 * i] = m; a[2 * i + 1] = 0.0; if (m > 0 && (!have || m < minpos)) { minpos = m; have = 1; } }
+        for (int64_t i = 0; i < n_fft; i++) { double m = a[2 * i] + 1e-7 * minpos; m = log(m); if (half) m *= 0.5; a[2 * i] = m; a[2 * i + 1] = 0.0; }
+        tsr_fft(n_fft, 1, 1, a, b);                          /* b = ifft(log-mag) = cepstrum (complex) */
+        win[0] = 1.0; int64_t stop = n_fft / 2;
+        for (int64_t i = 1; i < stop; i++) win[i] = 2.0;
+        for (int64_t i = stop; i < n_fft; i++) win[i] = 0.0;
+        if (n_fft % 2) win[stop] = 1.0;
+        for (int64_t i = 0; i < n_fft; i++) { a[2 * i] = b[2 * i] * win[i]; a[2 * i + 1] = 0.0; }   /* real(cep)*win */
+        tsr_fft(n_fft, 1, 0, a, b);                          /* b = fft(windowed cep) */
+        mp_cexp_inplace(b, n_fft);                           /* b = exp(.) */
+        tsr_fft(n_fft, 1, 1, b, a);                          /* a = ifft(exp(.)) */
+        out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_out});
+        if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n_out; i++) out[i] = a[2 * i];
+    } else {
+        /* hilbert (ill-conditioned; not parity-gated) */
+        for (int64_t i = 0; i < n_fft; i++) {
+            double w = (2.0 * M_PI / (double)n_fft * (double)n_half) * (double)i;
+            double cw = cos(w), sw = sin(w);
+            a[2 * i] = b[2 * i] * cw - b[2 * i + 1] * sw;    /* real(fft(h)*exp(i w)) */
+            a[2 * i + 1] = 0.0;
+        }
+        double hmax = a[0], hmin_ = a[0];
+        for (int64_t i = 1; i < n_fft; i++) { if (a[2 * i] > hmax) hmax = a[2 * i]; if (a[2 * i] < hmin_) hmin_ = a[2 * i]; }
+        double dp = hmax - 1.0, ds = 0.0 - hmin_;
+        double S = 4.0 / ((sqrt(1 + dp + ds) + sqrt(1 - dp + ds)) * (sqrt(1 + dp + ds) + sqrt(1 - dp + ds)));
+        for (int64_t i = 0; i < n_fft; i++) { double v = (a[2 * i] + ds) * S; v = sqrt(v) + 1e-10; a[2 * i] = v; a[2 * i + 1] = 0.0; }
+        /* DHTM: recon = real(ifft(mag * exp(fft(sig * ifft(log(mag)))))) */
+        double *mag = (double *)malloc((size_t)n_fft * sizeof(double));
+        if (!mag) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < n_fft; i++) mag[i] = a[2 * i];
+            for (int64_t i = 0; i < n_fft; i++) { a[2 * i] = log(mag[i]); a[2 * i + 1] = 0.0; }
+            tsr_fft(n_fft, 1, 1, a, b);                      /* b = ifft(log(mag)) */
+            int64_t midpt = n_fft / 2;
+            for (int64_t i = 0; i < n_fft; i++) { double s = (i >= 1 && i < midpt) ? 1.0 : (i > midpt ? -1.0 : 0.0); a[2 * i] = s * b[2 * i]; a[2 * i + 1] = s * b[2 * i + 1]; }
+            tsr_fft(n_fft, 1, 0, a, b);                      /* b = fft(sig*ifft(log(mag))) */
+            mp_cexp_inplace(b, n_fft);
+            for (int64_t i = 0; i < n_fft; i++) { double re = mag[i] * b[2 * i], im = mag[i] * b[2 * i + 1]; a[2 * i] = re; a[2 * i + 1] = im; }
+            tsr_fft(n_fft, 1, 1, a, b);                      /* b = ifft(mag*exp(.)) */
+            out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_out});
+            if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n_out; i++) out[i] = b[2 * i];
+            free(mag);
+        }
+    }
+    free(a); free(b); free(win); fn_free_doubles(h, n);
+    return rc;
+}
+
+/* ===== ROUTINE line (add to the signal ROUTINE table) ===== */
+
+/* ===== port_decimate ===== */
+/* ===== decimate (scipy.signal.decimate) — paste into csrc/src/scipy_signal.c =====
+   Needs these existing routines (prototype them if they appear later in the file):
+     r_cheby1 (ba), r_filtfilt, r_lfilter, r_firwin, r_upfirdn
+   and fn_results_free(). Chains internal routines via the synthetic-tsr_arg pattern,
+   building a kind-3 tsr_arg from a prior routine's tsr_result.arr.
+
+   Feasible paths (deliverable): ftype='iir' (zero_phase True->filtfilt / False->lfilter),
+   and ftype='fir' with zero_phase=False (upfirdn). ftype='fir' zero_phase=True is NOT
+   supported here because Tessero's resample_poly hardcodes a kaiser window (scipy uses the
+   firwin-hamming window), so it cannot reproduce scipy's polyphase result. */
+
+extern int r_cheby1(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+extern int r_filtfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+extern int r_lfilter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+extern int r_firwin(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+extern int r_upfirdn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+
+/* build a kind-3 (array) tsr_arg that views a tsr_result's array (no copy). */
+static tsr_arg dec_arg_from_result(const tsr_result *r)
+{
+    tsr_arg a; memset(&a, 0, sizeof a);
+    a.kind = 3; a.arr = r->arr;
+    return a;
+}
+
+/* copy a scalar-int synthetic arg */
+static tsr_arg dec_iarg(int64_t v) { tsr_arg a; memset(&a, 0, sizeof a); a.kind = 1; a.flags = 1; a.ival = v; a.num = (double)v; return a; }
+static tsr_arg dec_farg(double v)  { tsr_arg a; memset(&a, 0, sizeof a); a.kind = 1; a.num = v; return a; }
+static tsr_arg dec_sarg(const char *s) { tsr_arg a; memset(&a, 0, sizeof a); a.kind = 2; a.str = s; return a; }
+static tsr_arg dec_barg(int v) { tsr_arg a; memset(&a, 0, sizeof a); a.kind = 4; a.num = v ? 1.0 : 0.0; return a; }
+
+/* decimate(x, q, n=None, ftype='iir', axis=-1, zero_phase=True) — 1-D. */
+static int r_decimate(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("decimate: x must be a 1-D array"); return TSR_EARG; }
+    if (args[1].kind != 1) { fn_set_error("decimate: q must be an integer"); return TSR_EARG; }
+    const int64_t q = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    if (q < 1) { fn_set_error("decimate: q must be >= 1"); return TSR_EARG; }
+    const int have_n = (nargs > 2 && args[2].kind == 1);
+    const int64_t n_user = have_n ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : 0;
+    const char *ftype = (nargs > 3 && args[3].kind == 2 && args[3].str) ? args[3].str : "iir";
+    const int zero_phase = (nargs > 5 && (args[5].kind == 4 || args[5].kind == 1)) ? (args[5].num != 0.0) : 1;
+    const int64_t n_in = args[0].arr.shape[0];
+    const int64_t n_out = n_in / q + (n_in % q ? 1 : 0);
+    int rc = TSR_OK;
+
+    if (strcmp(ftype, "iir") == 0) {
+        const int64_t N = have_n ? n_user : 8;
+        /* b, a = cheby1(N, 0.05, 0.8/q, 'low') */
+        tsr_arg cs[4] = { dec_iarg(N), dec_farg(0.05), dec_farg(0.8 / (double)q), dec_sarg("low") };
+        tsr_result ba[2]; memset(ba, 0, sizeof ba);
+        rc = r_cheby1(NULL, cs, 4, ba, 2);
+        if (rc == TSR_OK) {
+            tsr_arg ff[3] = { dec_arg_from_result(&ba[0]), dec_arg_from_result(&ba[1]), args[0] };
+            tsr_result y; memset(&y, 0, sizeof y);
+            rc = (zero_phase ? r_filtfilt : r_lfilter)(NULL, ff, 3, &y, 1);
+            if (rc == TSR_OK) {
+                const double *yd = (const double *)y.arr.data;
+                double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_out});
+                if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n_out; i++) out[i] = yd[i * q];
+                fn_results_free(&y, 1);
+            }
+        }
+        fn_results_free(ba, 2);
+        return rc;
+    }
+
+    if (strcmp(ftype, "fir") == 0) {
+        if (zero_phase) { fn_set_error("decimate: ftype='fir' with zero_phase=True is not supported"); return TSR_EARG; }
+        const int64_t ntaps = (have_n ? n_user : 20 * q) + 1;
+        /* b = firwin(ntaps, 1/q, 'hamming') */
+        tsr_arg fw[3] = { dec_iarg(ntaps), dec_farg(1.0 / (double)q), dec_sarg("hamming") };
+        tsr_result bw; memset(&bw, 0, sizeof bw);
+        rc = r_firwin(NULL, fw, 3, &bw, 1);
+        if (rc == TSR_OK) {
+            /* y = upfirdn(b, x, 1, q); take y[:n_out] */
+            tsr_arg uf[4] = { dec_arg_from_result(&bw), args[0], dec_iarg(1), dec_iarg(q) };
+            tsr_result y; memset(&y, 0, sizeof y);
+            rc = r_upfirdn(NULL, uf, 4, &y, 1);
+            if (rc == TSR_OK) {
+                const double *yd = (const double *)y.arr.data;
+                const int64_t yn = y.arr.shape[0];
+                double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_out});
+                if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < n_out; i++) out[i] = (i < yn) ? yd[i] : 0.0;
+                fn_results_free(&y, 1);
+            }
+        }
+        fn_results_free(&bw, 1);
+        return rc;
+    }
+
+    fn_set_error("decimate: ftype must be 'iir' or 'fir'");
+    return TSR_EARG;
+}
+
+/* ROUTINE line (place among the signal.* entries): */
+
+/* ===== port_stft ===== */
+/* ================================================================= scipy.signal.stft (legacy, 1-D) =====
+ * Insert into csrc/src/scipy_signal.c (uses existing extern tsr_fft; tsr_rfft already used by r_welch).
+ * ROUTINE (3 outputs f, t, Zxx):
+ */
+extern int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);   /* real FFT, interleaved out (same as r_welch) */
+
+/* boundary extension: write x[n] extended by p on each side into out (capacity n+2p); returns extended length.
+   mode: -1 none, 0 zeros, 1 even, 2 odd, 3 constant. even/odd assume n > p (as scipy requires). */
+static int64_t stft_boundary(const double *x, int64_t n, int64_t p, int mode, double *out)
+{
+    if (mode < 0 || p < 1) { for (int64_t i = 0; i < n; i++) out[i] = x[i]; return n; }
+    int64_t o = 0;
+    for (int64_t i = 0; i < p; i++) {
+        double v = 0.0;
+        if (mode == 0) v = 0.0;
+        else if (mode == 3) v = x[0];
+        else if (mode == 1) v = x[p - i];              /* even: x[p..1] */
+        else v = 2.0 * x[0] - x[p - i];                /* odd */
+        out[o++] = v;
+    }
+    for (int64_t i = 0; i < n; i++) out[o++] = x[i];
+    for (int64_t i = 0; i < p; i++) {
+        double v = 0.0;
+        if (mode == 0) v = 0.0;
+        else if (mode == 3) v = x[n - 1];
+        else if (mode == 1) v = x[n - 2 - i];          /* even: x[-2..-p-1] */
+        else v = 2.0 * x[n - 1] - x[n - 2 - i];        /* odd */
+        out[o++] = v;
+    }
+    return o;
+}
+
+static int r_stft(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("stft: x must be a 1-D array"); return TSR_EARG; }
+    const double fs = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1.0;
+    /* window: array (kind 3) or a name (hann/hann_periodic default, boxcar, hamming, blackman) */
+    int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
+    const char *wname = (nargs > 2 && args[2].kind == 2 && args[2].str) ? args[2].str : "hann";
+    int64_t nx; double *x = fn_arg_doubles(&args[0], &nx);
+    if (!x || (nargs > 2 && args[2].kind == 3 && !warr)) { free(x); if (warr) fn_free_doubles(warr, nwin); return TSR_ENOMEM; }
+    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (warr ? nwin : 256);
+    if (!warr && nperseg > nx) nperseg = nx;
+    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : nperseg / 2;
+    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg;
+    int det = 0;                                       /* stft default detrend=False */
+    if (nargs > 6) { if (args[6].kind == 2 && args[6].str) det = !strcmp(args[6].str, "linear") ? 2 : 1; else if ((args[6].kind == 4 || args[6].kind == 1) && args[6].num != 0.0) det = 1; }
+    const int onesided = (nargs > 7 && (args[7].kind == 4 || args[7].kind == 1)) ? (args[7].num != 0.0) : 1;
+    /* boundary default 'zeros'; None when explicitly null */
+    int bmode = 0;
+    if (nargs > 8) {
+        if (args[8].kind == 0) bmode = -1;
+        else if (args[8].kind == 2 && args[8].str) {
+            if (!strcmp(args[8].str, "zeros")) bmode = 0; else if (!strcmp(args[8].str, "even")) bmode = 1;
+            else if (!strcmp(args[8].str, "odd")) bmode = 2; else if (!strcmp(args[8].str, "constant")) bmode = 3;
+            else bmode = 0;
+        }
+    }
+    const int padded = (nargs > 9 && (args[9].kind == 4 || args[9].kind == 1)) ? (args[9].num != 0.0) : 1;
+    const int density = (nargs > 11 && args[11].kind == 2 && args[11].str && !strcmp(args[11].str, "psd"));
+    int rc = TSR_OK;
+    const int64_t nstep = nperseg - noverlap;
+    if (nstep <= 0 || nperseg < 1) { fn_set_error("stft: noverlap must be less than nperseg"); free(x); if (warr) fn_free_doubles(warr, nwin); return TSR_EARG; }
+    if (warr && nwin != nperseg) { fn_set_error("stft: window length must equal nperseg"); free(x); fn_free_doubles(warr, nwin); return TSR_EARG; }
+    const int64_t p = nperseg / 2;
+    /* extend (boundary) then pad to an integer number of segments; cap covers both + a full segment of padding */
+    int64_t cap = nx + (bmode >= 0 ? 2 * p : 0) + nperseg + 1;
+    double *xe = (double *)malloc((size_t)(cap > 0 ? cap : 1) * sizeof(double));
+    double *win = (double *)malloc((size_t)nperseg * sizeof(double));
+    double *seg = (double *)malloc((size_t)nperseg * sizeof(double));
+    const int64_t nb = onesided ? nfft / 2 + 1 : nfft;
+    double *in = (double *)calloc((size_t)(onesided ? nfft : 2 * nfft), sizeof(double));
+    double *Xf = (double *)malloc((size_t)(2 * nb) * sizeof(double));
+    if (!xe || !win || !seg || !in || !Xf) { rc = TSR_ENOMEM; goto done; }
+    {
+        int64_t ne = stft_boundary(x, nx, p, bmode, xe);
+        if (padded) {
+            int64_t nadd = (((-(ne - nperseg)) % nstep) + nstep) % nstep;
+            nadd = (nadd % nperseg + nperseg) % nperseg;   /* match scipy: (-(N-nperseg) % nstep) % nperseg */
+            for (int64_t i = 0; i < nadd; i++) xe[ne + i] = 0.0;   /* xe has room: cap sized for 2p; ensure */
+            ne += nadd;
+        }
+        for (int64_t i = 0; i < nperseg; i++) {
+            if (warr) win[i] = warr[i];
+            else if (!strcmp(wname, "boxcar")) win[i] = 1.0;
+            else if (!strcmp(wname, "hamming")) win[i] = 0.54 - 0.46 * cos(2.0 * M_PI * (double)i / (double)nperseg);
+            else if (!strcmp(wname, "blackman")) win[i] = 0.42 - 0.5 * cos(2.0 * M_PI * (double)i / (double)nperseg) + 0.08 * cos(4.0 * M_PI * (double)i / (double)nperseg);
+            else win[i] = 0.5 - 0.5 * cos(2.0 * M_PI * (double)i / (double)nperseg);   /* hann periodic (default) */
+        }
+        double sw2 = 0, sw = 0; for (int64_t i = 0; i < nperseg; i++) { sw2 += win[i] * win[i]; sw += win[i]; }
+        const double scale = density ? 1.0 / sqrt(fs * sw2) : 1.0 / sw;   /* stft = sqrt of the psd/spectrum scale */
+        const int64_t nseg = nperseg <= ne ? 1 + (ne - nperseg) / nstep : 0;
+        double *f = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nb});
+        double *t = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nseg});
+        double *Z = (double *)fn_result_array(&res[2], TSR_C128, 2, (int64_t[]){nb, nseg});   /* (nfreq, ntime) interleaved */
+        if (!f || !t || !Z) { rc = TSR_ENOMEM; goto done; }
+        for (int64_t k = 0; k < nb; k++) f[k] = onesided ? (double)k * fs / (double)nfft
+                                                         : (double)((k < (nfft + 1) / 2) ? k : k - nfft) * fs / (double)nfft;
+        for (int64_t s = 0; s < nseg; s++) {
+            double tt = ((double)nperseg / 2.0 + (double)s * (double)nstep) / fs;
+            if (bmode >= 0) tt -= ((double)nperseg / 2.0) / fs;
+            t[s] = tt;
+            const double *src = xe + s * nstep;
+            for (int64_t i = 0; i < nperseg; i++) seg[i] = src[i];
+            if (det == 1) { double m = 0; for (int64_t i = 0; i < nperseg; i++) m += seg[i]; m /= (double)nperseg; for (int64_t i = 0; i < nperseg; i++) seg[i] -= m; }
+            else if (det == 2 && nperseg > 1) { double st = 0, sx = 0, stt = 0, stx = 0; const double n = (double)nperseg; for (int64_t i = 0; i < nperseg; i++) { st += i; sx += seg[i]; stt += (double)i * i; stx += (double)i * seg[i]; } const double b = (n * stx - st * sx) / (n * stt - st * st), a = (sx - b * st) / n; for (int64_t i = 0; i < nperseg; i++) seg[i] -= a + b * (double)i; }
+            for (int64_t i = 0; i < nperseg; i++) seg[i] *= win[i];
+            if (onesided) { for (int64_t i = 0; i < nfft; i++) in[i] = i < nperseg ? seg[i] : 0.0; tsr_rfft(nfft, 1, in, Xf); }
+            else { for (int64_t i = 0; i < nfft; i++) { in[2 * i] = i < nperseg ? seg[i] : 0.0; in[2 * i + 1] = 0.0; } tsr_fft(nfft, 1, 0, in, Xf); }
+            for (int64_t k = 0; k < nb; k++) { Z[2 * (k * nseg + s)] = Xf[2 * k] * scale; Z[2 * (k * nseg + s) + 1] = Xf[2 * k + 1] * scale; }
+        }
+    }
+done:
+    free(xe); free(win); free(seg); free(in); free(Xf); free(x); if (warr) fn_free_doubles(warr, nwin);
+    return rc;
+}
+
+/* ===== port_iirfilter ===== */
+/* ---- iirfilter (scipy.signal.iirfilter), output='ba' ----
+   Dispatches to the existing analog-prototype routines (buttap/cheb1ap/cheb2ap/ellipap/besselap) for z,p,k,
+   then runs the scipy zpk pipeline: pre-warp (digital), lp2{lp,hp,bp,bs}_zpk, bilinear_zpk (digital),
+   zpk2tf_real -> (b, a). De-risked: output='ba' matches scipy to 0.0 across butter/cheby1/cheby2/ellip/
+   bessel, N=2..6, low/high/band/stop, analog True/False (600 cases). output 'zpk'/'sos' are a follow-up
+   (the routine harness has no output=-dependent result-count precedent, and analog 'sos' needs zpk2sos
+   pairing='minimal' which the kernel lacks).
+   References existing statics: r_buttap, r_cheb1ap, r_cheb2ap, r_ellipap, r_besselap, zpk2tf_real,
+   fn_results_free. Insert after the IIR-design section (needs read_carr/zpk2tf_real in scope). */
+
+/* read a complex128 (or real) result array into a freshly malloc'd double complex buffer */
+static double complex *iir_res_carr(const tsr_result *r, int64_t *n)
+{
+    const tsr_array *a = &r->arr;
+    int64_t sz = 1; for (int d = 0; d < a->ndim; d++) sz *= a->shape[d];
+    if (a->ndim == 0) sz = (r->kind == 3) ? 0 : 1;
+    *n = sz;
+    double complex *out = (double complex *)malloc((size_t)(sz > 0 ? sz : 1) * sizeof(double complex));
+    if (!out) return NULL;
+    const char *base = (const char *)a->data;
+    for (int64_t i = 0; i < sz; i++) {
+        if (a->dtype == 6) out[i] = ((const double *)base)[2 * i] + I * ((const double *)base)[2 * i + 1];
+        else if (a->dtype == 0) out[i] = ((const double *)base)[i];
+        else out[i] = 0;
+    }
+    return out;
+}
+
+/* analog lowpass prototype z,p,k for ftype via the existing *ap routines (synthetic-arg internal call). */
+static int iir_get_ap(const char *ftype, int64_t N, double rp, double rs,
+                      double complex **z, int64_t *nz, double complex **p, int64_t *np_, double *k)
+{
+    tsr_arg a[3]; memset(a, 0, sizeof a);
+    a[0].kind = 1; a[0].flags = 1; a[0].ival = N; a[0].num = (double)N;
+    fn_routine fn = NULL; int na = 1;
+    if (strcmp(ftype, "butter") == 0) { fn = r_buttap; na = 1; }
+    else if (strcmp(ftype, "cheby1") == 0) { a[1].kind = 1; a[1].num = rp; fn = r_cheb1ap; na = 2; }
+    else if (strcmp(ftype, "cheby2") == 0) { a[1].kind = 1; a[1].num = rs; fn = r_cheb2ap; na = 2; }
+    else if (strcmp(ftype, "ellip") == 0) { a[1].kind = 1; a[1].num = rp; a[2].kind = 1; a[2].num = rs; fn = r_ellipap; na = 3; }
+    else if (strcmp(ftype, "bessel") == 0) { a[1].kind = 2; a[1].str = "phase"; fn = r_besselap; na = 2; }
+    else { fn_set_error("iirfilter: unknown ftype '%s'", ftype); return TSR_EARG; }
+    tsr_result r[3]; memset(r, 0, sizeof r);
+    int rc = fn(NULL, a, na, r, 3);
+    if (rc != TSR_OK) { fn_results_free(r, 3); return rc; }
+    *z = iir_res_carr(&r[0], nz);
+    *p = iir_res_carr(&r[1], np_);
+    *k = r[2].num;
+    fn_results_free(r, 3);
+    if (!*z || !*p) { free(*z); free(*p); return TSR_ENOMEM; }
+    return TSR_OK;
+}
+
+static double complex iir_prodneg(const double complex *v, int64_t n) { double complex pr = 1.0; for (int64_t i = 0; i < n; i++) pr *= -v[i]; return pr; }
+
+/* iirfilter(N, Wn, rp=None, rs=None, btype='band', analog=False, ftype='butter', output='ba', fs=None) */
+static int r_iirfilter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const int64_t N = (args[0].kind == 1) ? ((args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num) : 0;
+    if (N < 1 || N > 64) { fn_set_error("iirfilter: order N must be between 1 and 64"); return TSR_EARG; }
+    double rp = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.0;
+    double rs = (nargs > 3 && args[3].kind == 1) ? args[3].num : 0.0;
+    const char *btype = (nargs > 4 && args[4].kind == 2 && args[4].str) ? args[4].str : "band";
+    const int analog = (nargs > 5 && (args[5].kind == 4 || args[5].kind == 1)) ? (args[5].num != 0.0) : 0;
+    const char *ftype = (nargs > 6 && args[6].kind == 2 && args[6].str) ? args[6].str : "butter";
+    const char *output = (nargs > 7 && args[7].kind == 2 && args[7].str) ? args[7].str : "ba";
+    const int has_fs = (nargs > 8 && args[8].kind == 1);
+    const double fs_in = has_fs ? args[8].num : 0.0;
+    if (strcmp(output, "ba") != 0) { fn_set_error("iirfilter: only output='ba' is supported"); return TSR_EARG; }
+    /* bandtype: 0 low, 1 high, 2 band, 3 stop */
+    int bt;
+    if (!strcmp(btype, "low") || !strcmp(btype, "lowpass")) bt = 0;
+    else if (!strcmp(btype, "high") || !strcmp(btype, "highpass")) bt = 1;
+    else if (!strcmp(btype, "band") || !strcmp(btype, "bandpass")) bt = 2;
+    else if (!strcmp(btype, "stop") || !strcmp(btype, "bandstop")) bt = 3;
+    else { fn_set_error("iirfilter: invalid btype '%s'", btype); return TSR_EARG; }
+    /* read Wn (scalar for low/high, 2-seq for band/stop); apply fs normalization */
+    double wn0 = 0.0, wn1 = 0.0; int wn_n = 0;
+    if (args[1].kind == 1) { wn0 = args[1].num; wn_n = 1; }
+    else if (args[1].kind == 3) { int64_t nw; double *w = fn_arg_doubles(&args[1], &nw); if (!w) return TSR_ENOMEM; if (nw >= 1) wn0 = w[0]; if (nw >= 2) { wn1 = w[1]; } wn_n = (int)nw; fn_free_doubles(w, nw); }
+    if (has_fs) { double half = fs_in / 2.0; wn0 /= half; wn1 /= half; }
+    if ((bt <= 1 && wn_n != 1) || (bt >= 2 && wn_n < 2)) { fn_set_error("iirfilter: Wn must be scalar for low/high, length-2 for band/stop"); return TSR_EARG; }
+    /* prototype */
+    double complex *z = NULL, *p = NULL; int64_t nz = 0, np_ = 0; double k = 1.0;
+    int rc = iir_get_ap(ftype, N, rp, rs, &z, &nz, &p, &np_, &k);
+    if (rc != TSR_OK) return rc;
+    /* pre-warp */
+    double w0, w1;
+    if (!analog) { double fsd = 2.0; w0 = 2.0 * fsd * tan(M_PI * wn0 / fsd); w1 = 2.0 * fsd * tan(M_PI * wn1 / fsd); }
+    else { w0 = wn0; w1 = wn1; }
+    /* transform (grow z,p as needed): worst case band/stop doubles + appends 'degree' */
+    int64_t cap = 2 * (nz + np_) + 2 * np_ + 8;
+    double complex *zz = (double complex *)malloc((size_t)cap * sizeof(double complex));
+    double complex *pp = (double complex *)malloc((size_t)cap * sizeof(double complex));
+    if (!zz || !pp) { free(z); free(p); free(zz); free(pp); return TSR_ENOMEM; }
+    int64_t nzz = 0, npp = 0;
+    const int64_t degree = np_ - nz;                 /* relative degree of the prototype */
+    if (bt == 0) {                                   /* lp2lp */
+        for (int64_t i = 0; i < nz; i++) zz[nzz++] = w0 * z[i];
+        for (int64_t i = 0; i < np_; i++) pp[npp++] = w0 * p[i];
+        for (int64_t i = 0; i < degree; i++) k *= w0;
+    } else if (bt == 1) {                            /* lp2hp */
+        k *= creal(iir_prodneg(z, nz) / iir_prodneg(p, np_));
+        for (int64_t i = 0; i < nz; i++) zz[nzz++] = w0 / z[i];
+        for (int64_t i = 0; i < np_; i++) pp[npp++] = w0 / p[i];
+        for (int64_t i = 0; i < degree; i++) zz[nzz++] = 0.0;
+    } else {                                         /* band/stop: bw, wo from warped pair */
+        double bw = w1 - w0, wo = sqrt(w0 * w1);
+        if (bt == 2) {                               /* lp2bp */
+            for (int64_t i = 0; i < nz; i++) { double complex zl = z[i] * bw / 2.0, s = csqrt(zl * zl - wo * wo); zz[nzz++] = zl + s; zz[nzz++] = zl - s; }
+            for (int64_t i = 0; i < np_; i++) { double complex pl = p[i] * bw / 2.0, s = csqrt(pl * pl - wo * wo); pp[npp++] = pl + s; pp[npp++] = pl - s; }
+            for (int64_t i = 0; i < degree; i++) zz[nzz++] = 0.0;
+            for (int64_t i = 0; i < degree; i++) k *= bw;
+        } else {                                     /* lp2bs */
+            k *= creal(iir_prodneg(z, nz) / iir_prodneg(p, np_));
+            for (int64_t i = 0; i < nz; i++) { double complex zh = (bw / 2.0) / z[i], s = csqrt(zh * zh - wo * wo); zz[nzz++] = zh + s; zz[nzz++] = zh - s; }
+            for (int64_t i = 0; i < np_; i++) { double complex ph = (bw / 2.0) / p[i], s = csqrt(ph * ph - wo * wo); pp[npp++] = ph + s; pp[npp++] = ph - s; }
+            for (int64_t i = 0; i < degree; i++) zz[nzz++] = I * wo;
+            for (int64_t i = 0; i < degree; i++) zz[nzz++] = -I * wo;
+        }
+    }
+    free(z); free(p);
+    /* bilinear_zpk (digital) */
+    if (!analog) {
+        double fsd = 2.0, fs2 = 2.0 * fsd;
+        double complex num = 1.0, den = 1.0;
+        for (int64_t i = 0; i < nzz; i++) num *= (fs2 - zz[i]);
+        for (int64_t i = 0; i < npp; i++) den *= (fs2 - pp[i]);
+        k *= creal(num / den);
+        for (int64_t i = 0; i < nzz; i++) zz[i] = (fs2 + zz[i]) / (fs2 - zz[i]);
+        for (int64_t i = 0; i < npp; i++) pp[i] = (fs2 + pp[i]) / (fs2 - pp[i]);
+        int64_t bdeg = npp - nzz;
+        for (int64_t i = 0; i < bdeg; i++) zz[nzz++] = -1.0;
+    }
+    /* zpk2tf -> (b, a) */
+    double *bb = (double *)malloc((size_t)(nzz + 1) * sizeof(double));
+    double *aa = (double *)malloc((size_t)(npp + 1) * sizeof(double));
+    rc = TSR_OK;
+    if (!bb || !aa) rc = TSR_ENOMEM;
+    else {
+        zpk2tf_real(zz, (int)nzz, pp, (int)npp, k, bb, aa);
+        double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nzz + 1});
+        double *oa = ob ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){npp + 1}) : NULL;
+        if (!ob || !oa) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i <= nzz; i++) ob[i] = bb[i]; for (int64_t i = 0; i <= npp; i++) oa[i] = aa[i]; }
+    }
+    free(zz); free(pp); free(bb); free(aa);
+    return rc;
+}
+
+/* ROUTINE line (place in the fn_def table): */
+
 static const fn_def DEFS[] = {
+    ROUTINE("signal.find_peaks", 1, "x, height=None, threshold=None, distance=None, prominence=None, width=None, wlen=None, rel_height=0.5, plateau_size=None", "out", r_find_peaks, NULL, "Indices of local maxima satisfying the given criteria (scipy.signal.find_peaks; peak indices)."),
+    ROUTINE("signal.minimum_phase", 1, "h, method='homomorphic', n_fft=None, half=True", "out", r_minimum_phase, NULL, "Minimum-phase FIR from a linear-phase filter (scipy.signal.minimum_phase)."),
+    ROUTINE("signal.decimate", 1, "x, q, n=None, ftype='iir', axis=-1, zero_phase=True", "out", r_decimate, NULL, "Downsample a 1-D signal after an anti-aliasing filter (scipy.signal.decimate)."),
+    ROUTINE("signal.stft", 3, "x, fs=1.0, window='hann', nperseg=256, noverlap=None, nfft=None, detrend=False, return_onesided=True, boundary='zeros', padded=True, axis=-1, scaling='spectrum'", "f, t, Zxx", r_stft, NULL, "Short-time Fourier transform (scipy.signal.stft, 1-D)."),
+    ROUTINE("signal.iirfilter", 2, "N, Wn, rp=None, rs=None, btype='band', analog=False, ftype='butter', output='ba', fs=None", "b, a", r_iirfilter, NULL, "IIR filter design from order and critical frequencies, output ba (scipy.signal.iirfilter)."),
     ROUTINE("signal.convolve", 1, "a, v, mode='full'", "out", r_convolve, NULL, "1-D convolution of two sequences, modes full/same/valid (scipy.signal.convolve)."),
     ROUTINE("signal.lfilter", 1, "b, a, x", "out", r_lfilter, NULL, "Filter a 1-D signal with an IIR or FIR filter (scipy.signal.lfilter; zero initial state)."),
     ROUTINE("signal.sosfilt", 1, "sos, x, axis=-1, zi=None", "out", r_sosfilt, NULL, "Filter a 1-D signal through a cascade of second-order sections (scipy.signal.sosfilt; zero initial state)."),
