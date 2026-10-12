@@ -6830,6 +6830,30 @@
                 "static": true,
                 "sig": "riccatiYn(int $n, float $x): array",
                 "doc": "Riccati-Bessel function of the second kind chi_k(x) = -x * y_k(x) and its derivative, k = 0..n."
+            },
+            {
+                "name": "assocLegendreP",
+                "static": true,
+                "sig": "assocLegendreP(int $n, int $m, float $x, int $diffN = 0, bool $norm = false): array",
+                "doc": "Associated Legendre polynomial (Ferrers function) P_n^m(x) and its x-derivatives up to $diffN (0-2), with the Condon-Shortley phase and branch_cut=2 (|x| < 1). If $norm, apply the normalisation factor sqrt((2n+1)(n-m)! / (2(n+m)!))."
+            },
+            {
+                "name": "assocLegendrePAll",
+                "static": true,
+                "sig": "assocLegendrePAll(int $n, int $m, float $x, int $diffN = 0, bool $norm = false): array",
+                "doc": "P_k^j(x) and derivatives for every degree k = 0..n and order j, laid out like scipy's assoc_legendre_p_all: shape [$diffN + 1][n + 1][2m + 1] with the order axis wrapped (index 0..m = orders 0..m, then m+1..2m = orders -m..-1)."
+            },
+            {
+                "name": "sphLegendreP",
+                "static": true,
+                "sig": "sphLegendreP(int $n, int $m, float $theta, int $diffN = 0): array",
+                "doc": "Spherical (fully normalised) Legendre function Y_n^m(theta) without the azimuthal factor, and its theta-derivatives up to $diffN (0-2)."
+            },
+            {
+                "name": "sphLegendrePAll",
+                "static": true,
+                "sig": "sphLegendrePAll(int $n, int $m, float $theta, int $diffN = 0): array",
+                "doc": "sph_legendre_p for every degree/order, laid out like scipy's sph_legendre_p_all."
             }
         ]
     },

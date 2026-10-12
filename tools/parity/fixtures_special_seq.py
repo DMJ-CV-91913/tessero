@@ -44,6 +44,30 @@ for x in (0.3, 0.7, 1.4, 3.0, 6.0):
         add('riccati_jn', [n, x], sp.riccati_jn(n, x))
         add('riccati_yn', [n, x], sp.riccati_yn(n, x))
 
+# associated / spherical Legendre (new 1.15 API): values + derivatives, all orders -n..n
+for x in (-0.6, 0.3, 0.8):
+    for n in range(0, 6):
+        for m in range(-n, n + 1):
+            for dn in (0, 1, 2):
+                for nrm in (0, 1):
+                    add('assoc_legendre_p', [n, m, x, dn, nrm],
+                        sp.assoc_legendre_p(n, m, x, diff_n=dn, norm=bool(nrm)))
+    for N in range(0, 5):
+        for M in range(0, max(1, N + 1)):
+            for dn in (0, 1, 2):
+                for nrm in (0, 1):
+                    add('assoc_legendre_p_all', [N, M, x, dn, nrm],
+                        sp.assoc_legendre_p_all(N, M, x, diff_n=dn, norm=bool(nrm)))
+for th in (0.3, 0.6, 1.2, 2.5):
+    for n in range(0, 6):
+        for m in range(-n, n + 1):
+            for dn in (0, 1, 2):
+                add('sph_legendre_p', [n, m, th, dn], sp.sph_legendre_p(n, m, th, diff_n=dn))
+    for N in range(0, 5):
+        for M in range(0, max(1, N + 1)):
+            for dn in (0, 1, 2):
+                add('sph_legendre_p_all', [N, M, th, dn], sp.sph_legendre_p_all(N, M, th, diff_n=dn))
+
 out = {'module': 'special', 'scipy': __import__('scipy').__version__, 'specseq_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

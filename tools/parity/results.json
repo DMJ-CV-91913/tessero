@@ -962,6 +962,8 @@
         "special.airy": "pass",
         "special.airye": "pass",
         "special.assoc_laguerre": "pass",
+        "special.assoc_legendre_p": "pass",
+        "special.assoc_legendre_p_all": "pass",
         "special.bdtr": "pass",
         "special.bdtrc": "pass",
         "special.bdtri": "pass",
@@ -1249,6 +1251,8 @@
         "special.softplus": "pass",
         "special.spence": "pass",
         "special.sph_harm_y": "pass",
+        "special.sph_legendre_p": "pass",
+        "special.sph_legendre_p_all": "pass",
         "special.spherical_in": "pass",
         "special.spherical_jn": "pass",
         "special.spherical_kn": "pass",
@@ -3130,7 +3134,11 @@
             "special.legendre_p_all": null,
             "special.lqn": null,
             "special.riccati_jn": null,
-            "special.riccati_yn": null
+            "special.riccati_yn": null,
+            "special.assoc_legendre_p": null,
+            "special.assoc_legendre_p_all": null,
+            "special.sph_legendre_p": null,
+            "special.sph_legendre_p_all": null
         },
         "ext": {
             "np.median": 0,
@@ -4696,7 +4704,11 @@
             "special.legendre_p_all": null,
             "special.lqn": null,
             "special.riccati_jn": null,
-            "special.riccati_yn": null
+            "special.riccati_yn": null,
+            "special.assoc_legendre_p": null,
+            "special.assoc_legendre_p_all": null,
+            "special.sph_legendre_p": null,
+            "special.sph_legendre_p_all": null
         }
     },
     "ext": {
@@ -5662,6 +5674,8 @@
         "special.airy": "pass",
         "special.airye": "pass",
         "special.assoc_laguerre": "pass",
+        "special.assoc_legendre_p": "pass",
+        "special.assoc_legendre_p_all": "pass",
         "special.bdtr": "pass",
         "special.bdtrc": "pass",
         "special.bdtri": "pass",
@@ -5949,6 +5963,8 @@
         "special.softplus": "pass",
         "special.spence": "pass",
         "special.sph_harm_y": "pass",
+        "special.sph_legendre_p": "pass",
+        "special.sph_legendre_p_all": "pass",
         "special.spherical_in": "pass",
         "special.spherical_jn": "pass",
         "special.spherical_kn": "pass",

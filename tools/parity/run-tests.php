@@ -734,6 +734,10 @@ foreach ($files as $file) {
                     'lqn' => \Tessero\SpecialSeq::lqn((int) $a[0], (float) $a[1]),
                     'riccati_jn' => \Tessero\SpecialSeq::riccatiJn((int) $a[0], (float) $a[1]),
                     'riccati_yn' => \Tessero\SpecialSeq::riccatiYn((int) $a[0], (float) $a[1]),
+                    'assoc_legendre_p' => \Tessero\SpecialSeq::assocLegendreP((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0), (bool) ($a[4] ?? false)),
+                    'assoc_legendre_p_all' => \Tessero\SpecialSeq::assocLegendrePAll((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0), (bool) ($a[4] ?? false)),
+                    'sph_legendre_p' => \Tessero\SpecialSeq::sphLegendreP((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0)),
+                    'sph_legendre_p_all' => \Tessero\SpecialSeq::sphLegendrePAll((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0)),
                 };
                 $ok = vecClose(flattenNums($r), array_map('floatval', $c['expect']), $rtol);
                 if (! $ok) { $msg = 'did not match scipy'; }
