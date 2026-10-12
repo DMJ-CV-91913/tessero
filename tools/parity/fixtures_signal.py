@@ -445,6 +445,39 @@ for data, order in [(np.array([2., 1., 2., 3., 2., 0., 1., 0.]), 1),
     armin.append({'args': [F.enc(data), F.enc(0), F.enc(int(order))], 'kwargs': {},
                   'expect': F.enc_result(np.asarray(sg.argrelmin(data, order=order)[0], dtype=np.int64), []), 'compare': 'tol'})
 
+# argrelextrema (1-D): comparator string ('greater'/'less'/'greater_equal'/'less_equal') + clip/wrap + order
+arext = []
+_rng_ae = np.random.default_rng(14)
+_ae_comps = {'greater': np.greater, 'less': np.less, 'greater_equal': np.greater_equal, 'less_equal': np.less_equal}
+for data in [np.array([2., 1., 2., 3., 2., 0., 1., 0.]),
+             _rng_ae.integers(0, 5, size=18).astype(float),       # plateaus exercise >= / <=
+             np.sin(np.linspace(0, 6 * np.pi, 40))]:
+    for cname, cfn in _ae_comps.items():
+        for order in [1, 2]:
+            for mode in ['clip', 'wrap']:
+                arext.append({'args': [F.enc(data), F.enc(cname), F.enc(0), F.enc(int(order)), F.enc(mode)], 'kwargs': {},
+                              'expect': F.enc_result(np.asarray(sg.argrelextrema(data, cfn, order=order, mode=mode)[0], dtype=np.int64), []),
+                              'compare': 'tol'})
+
+# choose_conv_method: returns 'direct' / 'fft' by SciPy's operation-count heuristic (measure=False)
+ccm = []
+_rng_cc = np.random.default_rng(15)
+_ccm_cases = [
+    (np.ones(5), np.ones(3)),                                          # tiny -> direct
+    (np.ones(4000), np.ones(4000)),                                    # large -> fft
+    (_rng_cc.standard_normal(500), _rng_cc.standard_normal(50)),
+    (_rng_cc.standard_normal(1500), _rng_cc.standard_normal(1200)),
+    (_rng_cc.integers(0, 10, 120).astype(np.int64), _rng_cc.integers(0, 10, 90).astype(np.int64)),
+    (_rng_cc.integers(0, 10**7, 60).astype(np.int64), _rng_cc.integers(0, 10**7, 60).astype(np.int64)),  # big ints -> direct
+    (np.ones((40, 40)), np.ones((10, 10))),
+    (np.ones((70, 70)), np.ones((60, 60))),
+    ((_rng_cc.random(20) > 0.5), (_rng_cc.random(10) > 0.5)),          # bool -> direct
+]
+for a, b in _ccm_cases:
+    for mode in ['full', 'valid', 'same']:
+        ccm.append({'args': [F.enc(a), F.enc(b), F.enc(mode)], 'kwargs': {},
+                    'expect': {'s': sg.choose_conv_method(a, b, mode=mode)}, 'compare': 'tol'})
+
 # residue / residuez (real-root denominators, distinct magnitudes -> unambiguous pole order)
 rsd, rsz = [], []
 for (b, a) in [([1., 3., 3.], [1., 6., 11., 6.]), ([1., 0.], [1., 3., 2.]),
@@ -939,6 +972,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'ellipord', 'cases': elord, 'tol': {'atol': 1e-9}},
                  {'fn': 'argrelmax', 'cases': armax},
                  {'fn': 'argrelmin', 'cases': armin},
+                 {'fn': 'argrelextrema', 'cases': arext},
+                 {'fn': 'choose_conv_method', 'cases': ccm},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
                  {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},

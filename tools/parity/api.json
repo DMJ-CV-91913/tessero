@@ -2797,6 +2797,12 @@
                 "doc": "Validate and 2-D-normalize state-space matrices (scipy.signal.abcd_normalize)."
             },
             {
+                "name": "argrelextrema",
+                "static": true,
+                "sig": "argrelextrema(mixed $data, mixed $comparator, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed",
+                "doc": "Indices of relative extrema of a 1-D array by a comparator (scipy.signal.argrelextrema)."
+            },
+            {
                 "name": "argrelmax",
                 "static": true,
                 "sig": "argrelmax(mixed $data, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed",
@@ -2915,6 +2921,12 @@
                 "static": true,
                 "sig": "chirp(mixed $t, mixed $f0, mixed $t1, mixed $f1, mixed $method = 'linear', mixed $phi = 0, mixed $vertexZero = true): mixed",
                 "doc": "Frequency-swept cosine (linear/quadratic/logarithmic/hyperbolic) (scipy.signal.chirp)."
+            },
+            {
+                "name": "chooseConvMethod",
+                "static": true,
+                "sig": "chooseConvMethod(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $measure = false): mixed",
+                "doc": "Faster of 'direct'/'fft' convolution by SciPy's op-count heuristic (scipy.signal.choose_conv_method)."
             },
             {
                 "name": "coherence",
@@ -20010,6 +20022,18 @@
                 "name": "argrelmin",
                 "static": true,
                 "sig": "argrelmin($data, $axis = 0, $order = 1, $mode = 'clip')",
+                "doc": ""
+            },
+            {
+                "name": "argrelextrema",
+                "static": true,
+                "sig": "argrelextrema($data, $comparator, $axis = 0, $order = 1, $mode = 'clip')",
+                "doc": ""
+            },
+            {
+                "name": "chooseConvMethod",
+                "static": true,
+                "sig": "chooseConvMethod($in1, $in2, $mode = 'full', $measure = false)",
                 "doc": ""
             },
             {
