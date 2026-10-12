@@ -43,6 +43,7 @@ final class Special
     'boxcox1p' => 'boxcox1p',
     'btdtria' => 'btdtria',
     'btdtrib' => 'btdtrib',
+    'c_roots' => 'cRoots',
     'cbrt' => 'cbrt',
     'chdtr' => 'chdtr',
     'chdtrc' => 'chdtrc',
@@ -168,9 +169,9 @@ final class Special
     'kvp' => 'kvp',
     'lambertw' => 'lambertw',
     'log1p' => 'log1p',
-    'logSoftmax' => 'logSoftmax',
     'log_expit' => 'logExpit',
     'log_ndtr' => 'logNdtr',
+    'log_softmax' => 'logSoftmax',
     'log_wright_bessel' => 'logWrightBessel',
     'loggamma' => 'loggamma',
     'logit' => 'logit',
@@ -235,7 +236,14 @@ final class Special
     'radian' => 'radian',
     'rel_entr' => 'relEntr',
     'rgamma' => 'rgamma',
+    'roots_chebyc' => 'rootsChebyc',
+    'roots_chebys' => 'rootsChebys',
+    'roots_chebyt' => 'rootsChebyt',
+    'roots_chebyu' => 'rootsChebyu',
+    'roots_sh_chebyt' => 'rootsShChebyt',
+    'roots_sh_chebyu' => 'rootsShChebyu',
     'round' => 'round',
+    's_roots' => 'sRoots',
     'shichi' => 'shichi',
     'sici' => 'sici',
     'sinc' => 'sinc',
@@ -254,8 +262,12 @@ final class Special
     'stdtridf' => 'stdtridf',
     'stdtrit' => 'stdtrit',
     'struve' => 'struve',
+    't_roots' => 'tRoots',
     'tandg' => 'tandg',
     'tklmbda' => 'tklmbda',
+    'ts_roots' => 'tsRoots',
+    'u_roots' => 'uRoots',
+    'us_roots' => 'usRoots',
     'voigt_profile' => 'voigtProfile',
     'wofz' => 'wofz',
     'wright_bessel' => 'wrightBessel',
@@ -540,6 +552,18 @@ final class Special
     public static function btdtrib(mixed $x0, mixed $x1, mixed $x2, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.btdtrib', [$x0, $x1, $x2], $out);
+    }
+
+    /**
+     * Alias of roots_chebyc (scipy.special.c_roots).
+     *
+     * scipy.special.c_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function cRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.c_roots', [$n, $mu]);
     }
 
     /**
@@ -1809,16 +1833,6 @@ final class Special
     }
 
     /**
-     * log of softmax over an axis (scipy.special.log_softmax; real).
-     *
-     * scipy.special.logSoftmax
-     */
-    public static function logSoftmax(mixed $x, mixed $axis = null): mixed
-    {
-        return Registry::routine('special.logSoftmax', [$x, $axis]);
-    }
-
-    /**
      * Logarithm of the logistic sigmoid function.
      *
      * scipy.special.log_expit
@@ -1836,6 +1850,16 @@ final class Special
     public static function logNdtr(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.log_ndtr', [$x], $out);
+    }
+
+    /**
+     * log of softmax over an axis (scipy.special.log_softmax; real).
+     *
+     * scipy.special.log_softmax
+     */
+    public static function logSoftmax(mixed $x, mixed $axis = null): mixed
+    {
+        return Registry::routine('special.log_softmax', [$x, $axis]);
     }
 
     /**
@@ -2521,6 +2545,78 @@ final class Special
     }
 
     /**
+     * Gauss-Chebyshev 1st-kind quadrature on [-2, 2] (scipy.special.roots_chebyc).
+     *
+     * scipy.special.roots_chebyc
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsChebyc(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_chebyc', [$n, $mu]);
+    }
+
+    /**
+     * Gauss-Chebyshev 2nd-kind quadrature on [-2, 2] (scipy.special.roots_chebys).
+     *
+     * scipy.special.roots_chebys
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsChebys(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_chebys', [$n, $mu]);
+    }
+
+    /**
+     * Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt).
+     *
+     * scipy.special.roots_chebyt
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsChebyt(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_chebyt', [$n, $mu]);
+    }
+
+    /**
+     * Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu).
+     *
+     * scipy.special.roots_chebyu
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsChebyu(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_chebyu', [$n, $mu]);
+    }
+
+    /**
+     * Shifted Gauss-Chebyshev 1st-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyt).
+     *
+     * scipy.special.roots_sh_chebyt
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsShChebyt(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_sh_chebyt', [$n, $mu]);
+    }
+
+    /**
+     * Shifted Gauss-Chebyshev 2nd-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyu).
+     *
+     * scipy.special.roots_sh_chebyu
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsShChebyu(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_sh_chebyu', [$n, $mu]);
+    }
+
+    /**
      * Round to the nearest integer.
      *
      * scipy.special.round
@@ -2528,6 +2624,18 @@ final class Special
     public static function round(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.round', [$x], $out);
+    }
+
+    /**
+     * Alias of roots_chebys (scipy.special.s_roots).
+     *
+     * scipy.special.s_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function sRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.s_roots', [$n, $mu]);
     }
 
     /**
@@ -2715,6 +2823,18 @@ final class Special
     }
 
     /**
+     * Alias of roots_chebyt (scipy.special.t_roots).
+     *
+     * scipy.special.t_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function tRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.t_roots', [$n, $mu]);
+    }
+
+    /**
      * Tangent of angle `x` given in degrees.
      *
      * scipy.special.tandg
@@ -2732,6 +2852,42 @@ final class Special
     public static function tklmbda(mixed $x, mixed $lmbda, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.tklmbda', [$x, $lmbda], $out);
+    }
+
+    /**
+     * Alias of roots_sh_chebyt (scipy.special.ts_roots).
+     *
+     * scipy.special.ts_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function tsRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.ts_roots', [$n, $mu]);
+    }
+
+    /**
+     * Alias of roots_chebyu (scipy.special.u_roots).
+     *
+     * scipy.special.u_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function uRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.u_roots', [$n, $mu]);
+    }
+
+    /**
+     * Alias of roots_sh_chebyu (scipy.special.us_roots).
+     *
+     * scipy.special.us_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function usRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.us_roots', [$n, $mu]);
     }
 
     /**

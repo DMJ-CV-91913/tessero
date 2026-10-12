@@ -3837,6 +3837,64 @@ static int softmax_impl(const tsr_arg *args, int nargs, tsr_result *res, int is_
 }
 static int r_softmax(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return softmax_impl(args, nargs, res, 0); }
+/* scipy.special Gauss-Chebyshev quadrature nodes and weights (closed form). n points, ascending nodes; the
+   optional `mu` (sum of weights) is not returned (nout fixed at 2). roots_chebyc/s live on [-2, 2]; sh_* on [0, 1]. */
+static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
+static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
+{
+    *x = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
+    *w = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){n});
+    return (*x && *w) ? TSR_OK : TSR_ENOMEM;
+}
+static int r_roots_chebyt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    int64_t n = roots_n(args); if (n < 1) { fn_set_error("roots_chebyt: n must be >= 1"); return TSR_EARG; }
+    double *x, *w; int rc = roots_alloc(res, n, &x, &w); if (rc) return rc;
+    for (int64_t i = 0; i < n; i++) { x[i] = sin(M_PI * (double)(-n + 1 + 2 * i) / (2.0 * (double)n)); w[i] = M_PI / (double)n; }
+    return TSR_OK;
+}
+static int r_roots_chebyu(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    int64_t n = roots_n(args); if (n < 1) { fn_set_error("roots_chebyu: n must be >= 1"); return TSR_EARG; }
+    double *x, *w; int rc = roots_alloc(res, n, &x, &w); if (rc) return rc;
+    for (int64_t i = 0; i < n; i++) { double a = (double)(n - i) * M_PI / (double)(n + 1); x[i] = cos(a); w[i] = M_PI / (double)(n + 1) * sin(a) * sin(a); }
+    return TSR_OK;
+}
+static int r_roots_chebyc(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    int64_t n = roots_n(args); if (n < 1) { fn_set_error("roots_chebyc: n must be >= 1"); return TSR_EARG; }
+    double *x, *w; int rc = roots_alloc(res, n, &x, &w); if (rc) return rc;
+    for (int64_t i = 0; i < n; i++) { x[i] = 2.0 * sin(M_PI * (double)(-n + 1 + 2 * i) / (2.0 * (double)n)); w[i] = 2.0 * M_PI / (double)n; }
+    return TSR_OK;
+}
+static int r_roots_chebys(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    int64_t n = roots_n(args); if (n < 1) { fn_set_error("roots_chebys: n must be >= 1"); return TSR_EARG; }
+    double *x, *w; int rc = roots_alloc(res, n, &x, &w); if (rc) return rc;
+    for (int64_t i = 0; i < n; i++) { double a = (double)(n - i) * M_PI / (double)(n + 1); x[i] = 2.0 * cos(a); w[i] = 2.0 * M_PI / (double)(n + 1) * sin(a) * sin(a); }
+    return TSR_OK;
+}
+static int r_roots_sh_chebyt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    int64_t n = roots_n(args); if (n < 1) { fn_set_error("roots_sh_chebyt: n must be >= 1"); return TSR_EARG; }
+    double *x, *w; int rc = roots_alloc(res, n, &x, &w); if (rc) return rc;
+    for (int64_t i = 0; i < n; i++) { x[i] = (cos((2.0 * (double)(n - i) - 1.0) * M_PI / (2.0 * (double)n)) + 1.0) / 2.0; w[i] = M_PI / (double)n; }
+    return TSR_OK;
+}
+static int r_roots_sh_chebyu(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    int64_t n = roots_n(args); if (n < 1) { fn_set_error("roots_sh_chebyu: n must be >= 1"); return TSR_EARG; }
+    double *x, *w; int rc = roots_alloc(res, n, &x, &w); if (rc) return rc;
+    for (int64_t i = 0; i < n; i++) { double a = (double)(n - i) * M_PI / (double)(n + 1); x[i] = (cos(a) + 1.0) / 2.0; w[i] = M_PI / (double)(n + 1) * sin(a) * sin(a) / 4.0; }
+    return TSR_OK;
+}
+
 static int r_log_softmax(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return softmax_impl(args, nargs, res, 1); }
 
@@ -4298,7 +4356,19 @@ static const fn_def DEFS[] = {
     ROUTINE("np.fabs", 1, "x", "out", r_fabs, NULL, "Element-wise absolute value as float64 (numpy.fabs)."),
     ROUTINE("special.logsumexp", 1, "a, axis=None, keepdims=False", "out", r_logsumexp, NULL, "Stable log of the sum of exponentials over an axis (scipy.special.logsumexp; real a, no b/return_sign)."),
     ROUTINE("special.softmax", 1, "x, axis=None", "out", r_softmax, NULL, "exp(x) normalised over an axis (scipy.special.softmax; real)."),
-    ROUTINE("special.logSoftmax", 1, "x, axis=None", "out", r_log_softmax, NULL, "log of softmax over an axis (scipy.special.log_softmax; real)."),
+    ROUTINE("special.log_softmax", 1, "x, axis=None", "out", r_log_softmax, NULL, "log of softmax over an axis (scipy.special.log_softmax; real)."),
+    ROUTINE("special.roots_chebyt", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt)."),
+    ROUTINE("special.t_roots", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Alias of roots_chebyt (scipy.special.t_roots)."),
+    ROUTINE("special.roots_chebyu", 2, "n, mu=False", "x, w", r_roots_chebyu, NULL, "Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu)."),
+    ROUTINE("special.u_roots", 2, "n, mu=False", "x, w", r_roots_chebyu, NULL, "Alias of roots_chebyu (scipy.special.u_roots)."),
+    ROUTINE("special.roots_chebyc", 2, "n, mu=False", "x, w", r_roots_chebyc, NULL, "Gauss-Chebyshev 1st-kind quadrature on [-2, 2] (scipy.special.roots_chebyc)."),
+    ROUTINE("special.c_roots", 2, "n, mu=False", "x, w", r_roots_chebyc, NULL, "Alias of roots_chebyc (scipy.special.c_roots)."),
+    ROUTINE("special.roots_chebys", 2, "n, mu=False", "x, w", r_roots_chebys, NULL, "Gauss-Chebyshev 2nd-kind quadrature on [-2, 2] (scipy.special.roots_chebys)."),
+    ROUTINE("special.s_roots", 2, "n, mu=False", "x, w", r_roots_chebys, NULL, "Alias of roots_chebys (scipy.special.s_roots)."),
+    ROUTINE("special.roots_sh_chebyt", 2, "n, mu=False", "x, w", r_roots_sh_chebyt, NULL, "Shifted Gauss-Chebyshev 1st-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyt)."),
+    ROUTINE("special.ts_roots", 2, "n, mu=False", "x, w", r_roots_sh_chebyt, NULL, "Alias of roots_sh_chebyt (scipy.special.ts_roots)."),
+    ROUTINE("special.roots_sh_chebyu", 2, "n, mu=False", "x, w", r_roots_sh_chebyu, NULL, "Shifted Gauss-Chebyshev 2nd-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyu)."),
+    ROUTINE("special.us_roots", 2, "n, mu=False", "x, w", r_roots_sh_chebyu, NULL, "Alias of roots_sh_chebyu (scipy.special.us_roots)."),
     ROUTINE("np.isclose", 1, "a, b, rtol=1e-05, atol=1e-08, equal_nan=False", "out", r_isclose, NULL, "Element-wise test for approximate equality within a tolerance (numpy.isclose)."),
     ROUTINE("np.allclose", 1, "a, b, rtol=1e-05, atol=1e-08, equal_nan=False", "out", r_allclose, NULL, "True when two arrays are element-wise equal within a tolerance (numpy.allclose)."),
     ROUTINE("np.outer", 1, "a, b", "out", r_outer, NULL, "Outer product of two vectors (numpy.outer)."),

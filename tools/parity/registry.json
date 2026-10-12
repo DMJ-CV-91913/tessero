@@ -4510,6 +4510,11 @@
             "nin": 3,
             "nout": 1
         },
+        "special.c_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.cbrt": {
             "kind": "ufunc",
             "nin": 1,
@@ -5135,11 +5140,6 @@
             "nin": 1,
             "nout": 1
         },
-        "special.logSoftmax": {
-            "kind": "routine",
-            "nin": 0,
-            "nout": 1
-        },
         "special.log_expit": {
             "kind": "ufunc",
             "nin": 1,
@@ -5148,6 +5148,11 @@
         "special.log_ndtr": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "special.log_softmax": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.log_wright_bessel": {
@@ -5470,10 +5475,45 @@
             "nin": 1,
             "nout": 1
         },
+        "special.roots_chebyc": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_chebys": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_chebyt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_chebyu": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_sh_chebyt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.roots_sh_chebyu": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.round": {
             "kind": "ufunc",
             "nin": 1,
             "nout": 1
+        },
+        "special.s_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "special.shichi": {
             "kind": "ufunc",
@@ -5565,6 +5605,11 @@
             "nin": 2,
             "nout": 1
         },
+        "special.t_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.tandg": {
             "kind": "ufunc",
             "nin": 1,
@@ -5574,6 +5619,21 @@
             "kind": "ufunc",
             "nin": 2,
             "nout": 1
+        },
+        "special.ts_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.u_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.us_roots": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "special.voigt_profile": {
             "kind": "ufunc",
