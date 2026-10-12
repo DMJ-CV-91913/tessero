@@ -551,10 +551,12 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.mathieu_a` | `Tessero\Special::mathieuA()` |
 | `scipy.special.mathieu_b` | `Tessero\Special::mathieuB()` |
 | `scipy.special.mathieu_cem` | `Tessero\Special::mathieuCem()` |
+| `scipy.special.mathieu_even_coef` | `Tessero\Special::mathieuEvenCoef()` |
 | `scipy.special.mathieu_modcem1` | `Tessero\Special::mathieuModcem1()` |
 | `scipy.special.mathieu_modcem2` | `Tessero\Special::mathieuModcem2()` |
 | `scipy.special.mathieu_modsem1` | `Tessero\Special::mathieuModsem1()` |
 | `scipy.special.mathieu_modsem2` | `Tessero\Special::mathieuModsem2()` |
+| `scipy.special.mathieu_odd_coef` | `Tessero\Special::mathieuOddCoef()` |
 | `scipy.special.mathieu_sem` | `Tessero\Special::mathieuSem()` |
 | `scipy.special.modfresnelm` | `Tessero\Special::modfresnelm()` |
 | `scipy.special.modfresnelp` | `Tessero\Special::modfresnelp()` |
