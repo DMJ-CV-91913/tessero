@@ -75,3 +75,13 @@ extern "C" void tsr_modfresnel_minus(double x, double *out)
     xsf::modified_fresnel_minus(x, F, K);
     out[0] = F.real(); out[1] = F.imag(); out[2] = K.real(); out[3] = K.imag();
 }
+
+/* Mathieu Fourier coefficients (scipy.special.mathieu_even_coef/mathieu_odd_coef): the same xsf/specfun
+   routines SciPy uses -- cva2 for the characteristic value, then fcoef for the expansion coefficients.
+   kd selects ce/se and even/odd m (1,2 = cem even/odd; 4,3 = sem even/odd). fc must hold >= 251 doubles. */
+#include "xsf/specfun/specfun.h"
+extern "C" void tsr_mathieu_coef(int kd, int m, double q, double *fc)
+{
+    double a = xsf::specfun::cva2(kd, m, q);
+    xsf::specfun::fcoef(kd, m, q, a, fc);
+}

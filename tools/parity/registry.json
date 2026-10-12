@@ -5330,6 +5330,11 @@
             "nin": 3,
             "nout": 2
         },
+        "special.mathieu_even_coef": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.mathieu_modcem1": {
             "kind": "ufunc",
             "nin": 3,
@@ -5349,6 +5354,11 @@
             "kind": "ufunc",
             "nin": 3,
             "nout": 2
+        },
+        "special.mathieu_odd_coef": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
         },
         "special.mathieu_sem": {
             "kind": "ufunc",

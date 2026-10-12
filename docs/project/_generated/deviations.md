@@ -648,6 +648,8 @@
 | `special.y1p_zeros` | every call | rtol 1e-07 |
 | `special.modfresnelp` | every call | rtol 1e-09 |
 | `special.modfresnelm` | every call | rtol 1e-09 |
+| `special.mathieu_even_coef` | every call | rtol 1e-09 |
+| `special.mathieu_odd_coef` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |
