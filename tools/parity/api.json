@@ -2989,6 +2989,12 @@
                 "doc": "Evaluate a cubic spline at new points (scipy.signal.cspline1d_eval)."
             },
             {
+                "name": "czt",
+                "static": true,
+                "sig": "czt(mixed $x, mixed $m = null, mixed $w = null, mixed $a = 1): mixed",
+                "doc": "Chirp z-transform: frequency response around a spiral in the Z plane (scipy.signal.czt)."
+            },
+            {
                 "name": "cztPoints",
                 "static": true,
                 "sig": "cztPoints(mixed $m, mixed $w = null, mixed $a = 1): mixed",
@@ -3533,6 +3539,12 @@
                 "static": true,
                 "sig": "wiener(mixed $im, mixed $mysize = 3, mixed $noise = null): mixed",
                 "doc": "1-D Wiener filter using local mean and variance (scipy.signal.wiener)."
+            },
+            {
+                "name": "zoomFft",
+                "static": true,
+                "sig": "zoomFft(mixed $x, mixed $fn, mixed $m = null, mixed $fs = 2, mixed $endpoint = false): mixed",
+                "doc": "DFT of x only for frequencies in band fn (scipy.signal.zoom_fft)."
             },
             {
                 "name": "zpk2sos",
@@ -20220,6 +20232,18 @@
                 "name": "cztPoints",
                 "static": true,
                 "sig": "cztPoints($m, $w = null, $a = 1)",
+                "doc": ""
+            },
+            {
+                "name": "czt",
+                "static": true,
+                "sig": "czt($x, $m = null, $w = null, $a = 1)",
+                "doc": ""
+            },
+            {
+                "name": "zoomFft",
+                "static": true,
+                "sig": "zoomFft($x, $fn, $m = null, $fs = 2, $endpoint = false)",
                 "doc": ""
             },
             {
