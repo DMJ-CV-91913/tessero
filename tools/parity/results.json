@@ -1155,6 +1155,7 @@
         "special.logit": "pass",
         "special.logsumexp": "pass",
         "special.lpmv": "pass",
+        "special.lqmn": "pass",
         "special.lqn": "pass",
         "special.mathieu_a": "pass",
         "special.mathieu_b": "pass",
@@ -1260,6 +1261,7 @@
         "special.stdtr": "pass",
         "special.stdtridf": "pass",
         "special.stdtrit": "pass",
+        "special.stirling2": "pass",
         "special.struve": "pass",
         "special.t_roots": "pass",
         "special.tandg": "pass",
@@ -3138,7 +3140,9 @@
             "special.assoc_legendre_p": null,
             "special.assoc_legendre_p_all": null,
             "special.sph_legendre_p": null,
-            "special.sph_legendre_p_all": null
+            "special.sph_legendre_p_all": null,
+            "special.lqmn": null,
+            "special.stirling2": null
         },
         "ext": {
             "np.median": 0,
@@ -4708,7 +4712,9 @@
             "special.assoc_legendre_p": null,
             "special.assoc_legendre_p_all": null,
             "special.sph_legendre_p": null,
-            "special.sph_legendre_p_all": null
+            "special.sph_legendre_p_all": null,
+            "special.lqmn": null,
+            "special.stirling2": null
         }
     },
     "ext": {
@@ -5867,6 +5873,7 @@
         "special.logit": "pass",
         "special.logsumexp": "pass",
         "special.lpmv": "pass",
+        "special.lqmn": "pass",
         "special.lqn": "pass",
         "special.mathieu_a": "pass",
         "special.mathieu_b": "pass",
@@ -5972,6 +5979,7 @@
         "special.stdtr": "pass",
         "special.stdtridf": "pass",
         "special.stdtrit": "pass",
+        "special.stirling2": "pass",
         "special.struve": "pass",
         "special.t_roots": "pass",
         "special.tandg": "pass",

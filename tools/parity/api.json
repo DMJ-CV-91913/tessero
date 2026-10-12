@@ -6854,6 +6854,18 @@
                 "static": true,
                 "sig": "sphLegendrePAll(int $n, int $m, float $theta, int $diffN = 0): array",
                 "doc": "sph_legendre_p for every degree/order, laid out like scipy's sph_legendre_p_all."
+            },
+            {
+                "name": "lqmn",
+                "static": true,
+                "sig": "lqmn(int $m, int $n, float $x): array",
+                "doc": "Legendre function of the second kind Q_n^m(x) and its x-derivative, for all orders 0..m and degrees 0..n (|x| < 1). Returns [q, dq], each shaped [m + 1][n + 1] like scipy's lqmn."
+            },
+            {
+                "name": "stirling2",
+                "static": true,
+                "sig": "stirling2(array|int $n, array|int $k): array|float",
+                "doc": "Stirling number(s) of the second kind via the floating-point dynamic program (matching scipy's exact=False for n <= 50). Scalars return a float; arrays broadcast element-wise."
             }
         ]
     },

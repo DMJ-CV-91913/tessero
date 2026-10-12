@@ -232,3 +232,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,scipy.special orthogonal-polynomial factories (orthopoly1d),100.0,100.0,82.4,82.2,100.0,99.8,89.0,89.0,84.5,84.5
 2026-10-12,"scipy.special sequence/derivative families (legendre_p, lqn, riccati)",100.0,100.0,82.7,82.5,100.0,99.8,90.5,90.5,84.5,84.5
 2026-10-12,scipy.special associated/spherical Legendre (new 1.15 API),100.0,100.0,83.0,82.8,100.0,99.8,91.7,91.7,84.5,84.5
+2026-10-12,scipy.special lqmn + stirling2,100.0,100.0,83.1,82.9,100.0,99.8,92.3,92.3,84.5,84.5
