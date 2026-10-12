@@ -485,6 +485,12 @@ legacy:
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
     approx_fprime: {ffi: [Min::approxGrad], ext: [Min::approxGrad], tests: solvers}
+  scipy.stats:
+    # optimiser-based transform-parameter selectors: pure-PHP Tessero\StatsFns drives the scipy-matched
+    # Brent / bounded minimisers over the Box-Cox / Yeo-Johnson objectives; verified both backends by the
+    # stats_opt.json statsfn_cases.
+    boxcox_normmax: {ffi: [SF::boxcoxNormmax], ext: [SF::boxcoxNormmax], fixtures: [stats.boxcox_normmax]}
+    yeojohnson_normmax: {ffi: [SF::yeojohnsonNormmax], ext: [SF::yeojohnsonNormmax], fixtures: [stats.yeojohnson_normmax]}
   scipy.constants:
     convert_temperature: {ffi: [Const::convertTemperature], ext: [Const::convertTemperature], fixtures: [constants.convert_temperature]}
     lambda2nu: {ffi: [Const::lambda2nu], ext: [Const::lambda2nu], fixtures: [constants.lambda2nu]}

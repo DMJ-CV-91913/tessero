@@ -719,6 +719,30 @@ foreach ($files as $file) {
         }
         continue;
     }
+    if (isset($data['statsfn_cases'])) {                     // scipy.stats optimiser-based helpers (pure-PHP Tessero\StatsFns)
+        foreach ($data['statsfn_cases'] as $c) {
+            $fn = $c['fn'];
+            $key = "stats.{$fn}";
+            $x = array_map('floatval', $c['x']);
+            $rtol = (float) ($c['rtol'] ?? 1e-5);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = match ($fn) {
+                    'boxcox_normmax' => \Tessero\StatsFns::boxcoxNormmax($x, $c['method'] ?? 'pearsonr'),
+                    'yeojohnson_normmax' => \Tessero\StatsFns::yeojohnsonNormmax($x),
+                };
+                $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
     if (isset($data['specseq_cases'])) {                     // scipy.special sequence/derivative families (pure-PHP Tessero\SpecialSeq)
         foreach ($data['specseq_cases'] as $c) {
             $fn = $c['fn'];

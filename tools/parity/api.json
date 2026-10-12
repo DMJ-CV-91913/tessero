@@ -6876,6 +6876,23 @@
         ]
     },
     {
+        "class": "Tessero\\StatsFns",
+        "methods": [
+            {
+                "name": "boxcoxNormmax",
+                "static": true,
+                "sig": "boxcoxNormmax(array $x, string $method = 'pearsonr'): float",
+                "doc": "scipy.stats.boxcox_normmax: the Box-Cox parameter lambda that best normalises x."
+            },
+            {
+                "name": "yeojohnsonNormmax",
+                "static": true,
+                "sig": "yeojohnsonNormmax(array $x): float",
+                "doc": "scipy.stats.yeojohnson_normmax: the Yeo-Johnson parameter lambda maximising the log-likelihood."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
