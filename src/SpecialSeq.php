@@ -227,6 +227,108 @@ final class SpecialSeq
     }
 
     /**
+     * Legendre function of the second kind Q_n^m(x) and its x-derivative, for all orders 0..m and
+     * degrees 0..n (|x| < 1). Returns [q, dq], each shaped [m + 1][n + 1] like scipy's lqmn.
+     *
+     * @return array{0: list<list<float>>, 1: list<list<float>>}
+     */
+    public static function lqmn(int $m, int $n, float $x): array
+    {
+        if ($m < 0 || $n < 0) {
+            throw new TesseroException('m and n must be nonnegative.');
+        }
+        [$Q, $D] = self::lqn($n, $x);
+        $q = [];
+        $dq = [];
+        for ($mm = 0; $mm <= $m; $mm++) {
+            $q[$mm] = array_fill(0, $n + 1, 0.0);
+            $dq[$mm] = array_fill(0, $n + 1, 0.0);
+        }
+        for ($nn = 0; $nn <= $n; $nn++) {
+            $u = self::odeDerivs($nn, $x, $Q[$nn], $D[$nn], $m + 2);
+            for ($mm = 0; $mm <= $m; $mm++) {
+                [$v, $dv] = self::assocFromBase($u, $mm, $x);
+                $q[$mm][$nn] = $v;
+                $dq[$mm][$nn] = $dv;
+            }
+        }
+
+        return [$q, $dq];
+    }
+
+    /**
+     * Stirling number(s) of the second kind via the floating-point dynamic program (matching scipy's
+     * exact=False for n <= 50). Scalars return a float; arrays broadcast element-wise.
+     *
+     * @param int|list<int> $n
+     * @param int|list<int> $k
+     * @return float|list<float>
+     */
+    public static function stirling2(int|array $n, int|array $k): float|array
+    {
+        if (is_int($n) && is_int($k)) {
+            return self::stirling2Scalar($n, $k);
+        }
+        $nArr = is_array($n) ? array_values($n) : null;
+        $kArr = is_array($k) ? array_values($k) : null;
+        $len = max($nArr !== null ? count($nArr) : 0, $kArr !== null ? count($kArr) : 0);
+        $out = [];
+        for ($i = 0; $i < $len; $i++) {
+            $out[$i] = self::stirling2Scalar(
+                $nArr !== null ? (int) $nArr[$i] : (int) $n,
+                $kArr !== null ? (int) $kArr[$i] : (int) $k,
+            );
+        }
+
+        return $out;
+    }
+
+    private static function stirling2Scalar(int $n, int $k): float
+    {
+        if ($k > $n || $k < 0 || $n < 0) {
+            return $n === 0 && $k === 0 ? 1.0 : 0.0;
+        }
+        $prev = array_fill(0, $k + 1, 0.0);
+        $prev[0] = 1.0;
+        for ($i = 1; $i <= $n; $i++) {
+            $cur = array_fill(0, $k + 1, 0.0);
+            $top = min($i, $k);
+            for ($j = 1; $j <= $top; $j++) {
+                $cur[$j] = $j * $prev[$j] + $prev[$j - 1];
+            }
+            $prev = $cur;
+        }
+
+        return $prev[$k];
+    }
+
+    /** Derivatives [f, f', ..., f^(upto)] of a Legendre-ODE solution of degree n seeded with f, f'. */
+    private static function odeDerivs(int $n, float $x, float $y0, float $y1, int $upto): array
+    {
+        $out = [$y0];
+        if ($upto >= 1) {
+            $out[1] = $y1;
+        }
+        for ($k = 0; $k < $upto - 1; $k++) {
+            $out[$k + 2] = (2 * $x * ($k + 1) * $out[$k + 1] - ($n * ($n + 1) - $k * ($k + 1)) * $out[$k]) / (1.0 - $x * $x);
+        }
+
+        return $out;
+    }
+
+    /** From base derivatives $u, the associated value (-1)^mm (1-x^2)^(mm/2) u[mm] and its x-derivative. */
+    private static function assocFromBase(array $u, int $mm, float $x): array
+    {
+        $um = $u[$mm];
+        $um1 = $u[$mm + 1];
+        $w = 1.0 - $x * $x;
+        $sgn = $mm % 2 === 0 ? 1.0 : -1.0;
+        $A = -$mm * $x * $um + $w * $um1;
+
+        return [$sgn * $w ** ($mm / 2.0) * $um, $sgn * $w ** ($mm / 2.0 - 1.0) * $A];
+    }
+
+    /**
      * Assemble an "_all" result [$diffN+1][n+1][2m+1] from a per-(degree, order) family builder,
      * with the scipy order-axis wrapping (0..m then -m..-1).
      *

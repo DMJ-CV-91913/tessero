@@ -68,6 +68,15 @@ for th in (0.3, 0.6, 1.2, 2.5):
             for dn in (0, 1, 2):
                 add('sph_legendre_p_all', [N, M, th, dn], sp.sph_legendre_p_all(N, M, th, diff_n=dn))
 
+# lqmn: Legendre Q_n^m + derivative (2-D), |x| < 1
+for x in (0.2, 0.5, -0.4, 0.8):
+    for M in range(0, 4):
+        for N in range(0, 5):
+            add('lqmn', [M, N, x], sp.lqmn(M, N, x))
+# stirling2: scalar pairs, n <= 50 (float DP domain)
+for n, k in [(0, 0), (4, 0), (5, 2), (6, 3), (10, 4), (7, 3), (12, 5), (20, 7), (50, 25), (4, 4), (15, 1), (15, 15)]:
+    add('stirling2', [n, k], sp.stirling2(n, k))
+
 out = {'module': 'special', 'scipy': __import__('scipy').__version__, 'specseq_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
