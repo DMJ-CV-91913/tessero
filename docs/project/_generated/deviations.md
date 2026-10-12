@@ -619,6 +619,10 @@
 | `special.ps_roots` | every call | rtol 1e-09 |
 | `special.roots_sh_jacobi` | every call | rtol 1e-09 |
 | `special.js_roots` | every call | rtol 1e-09 |
+| `special.jn_zeros` | every call | rtol 1e-09 |
+| `special.yn_zeros` | every call | rtol 1e-09 |
+| `special.jnp_zeros` | every call | rtol 1e-09 |
+| `special.ynp_zeros` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |

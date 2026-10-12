@@ -74,6 +74,9 @@ def build():
     }
     for nm, (rf, extra) in gw_fns.items():
         blocks[nm] = [call(rf, [k] + extra) for k in (2, 3, 5, 8)]
+    bz_fns = {'jn_zeros': sc.jn_zeros, 'yn_zeros': sc.yn_zeros, 'jnp_zeros': sc.jnp_zeros, 'ynp_zeros': sc.ynp_zeros}
+    for nm, rf in bz_fns.items():
+        blocks[nm] = [call(rf, [nn, 6]) for nn in (0, 1, 2, 5)]
     return blocks
 
 
@@ -85,6 +88,7 @@ def main():
     GW_TOL = {'roots_legendre', 'p_roots', 'roots_hermite', 'h_roots', 'roots_laguerre', 'l_roots',
               'roots_hermitenorm', 'he_roots', 'roots_jacobi', 'j_roots', 'roots_gegenbauer', 'cg_roots',
               'roots_genlaguerre', 'la_roots', 'roots_sh_legendre', 'ps_roots', 'roots_sh_jacobi', 'js_roots'}
+    GW_TOL = GW_TOL | {'jn_zeros', 'yn_zeros', 'jnp_zeros', 'ynp_zeros'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}
         if k in GW_TOL:

@@ -3839,6 +3839,65 @@ static int r_softmax(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 { (void)ctx; (void)nres; return softmax_impl(args, nargs, res, 0); }
 /* scipy.special Gauss-Chebyshev quadrature nodes and weights (closed form). n points, ascending nodes; the
    optional `mu` (sum of weights) is not returned (nout fixed at 2). roots_chebyc/s live on [-2, 2]; sh_* on [0, 1]. */
+static int64_t roots_argi(const tsr_arg *a, int n, int i) { return (n > i && a[i].kind == 1) ? (a[i].flags & 1 ? a[i].ival : (int64_t)a[i].num) : 0; }
+void tsr_special_jv(const void *, const double *, double *);
+void tsr_special_yv(const void *, const double *, double *);
+void tsr_special_jvp(const void *, const double *, double *);
+void tsr_special_yvp(const void *, const double *, double *);
+
+/* Evaluate f and f' for Bessel-zero kind: 0 = J_n, 1 = Y_n, 2 = J_n', 3 = Y_n'. J_n''/Y_n'' come from the
+   Bessel ODE: C_n'' = -C_n'/x - (1 - n^2/x^2) C_n. */
+static double bz_eval(int kind, double nu, double x, double *deriv)
+{
+    double in[2] = {nu, x}, o[1];
+    if (kind == 0) { tsr_special_jv(NULL, in, o); double fv = o[0]; tsr_special_jvp(NULL, in, o); *deriv = o[0]; return fv; }
+    if (kind == 1) { tsr_special_yv(NULL, in, o); double fv = o[0]; tsr_special_yvp(NULL, in, o); *deriv = o[0]; return fv; }
+    if (kind == 2) { tsr_special_jvp(NULL, in, o); double fp = o[0]; tsr_special_jv(NULL, in, o); double fo = o[0];
+                     *deriv = -fp / x - (1.0 - nu * nu / (x * x)) * fo; return fp; }
+    tsr_special_yvp(NULL, in, o); double fp = o[0]; tsr_special_yv(NULL, in, o); double fo = o[0];
+    *deriv = -fp / x - (1.0 - nu * nu / (x * x)) * fo; return fp;
+}
+
+static int bessel_zeros(int kind, double nu, int64_t nt, double *out)
+{
+    const double h = 0.05;
+    double x = 1e-6, dprev, pf = bz_eval(kind, nu, x, &dprev);
+    int64_t got = 0;
+    while (got < nt && x < 1.0e5) {
+        double x2 = x + h, d2, f2 = bz_eval(kind, nu, x2, &d2);
+        if (pf == 0.0) { pf = f2; x = x2; continue; }
+        if ((pf < 0.0) != (f2 < 0.0)) {
+            double a = x, b = x2, r = 0.5 * (a + b);
+            for (int it = 0; it < 100; it++) {
+                double dr, fr = bz_eval(kind, nu, r, &dr);
+                if (fr == 0.0) break;
+                double da, fa = bz_eval(kind, nu, a, &da);
+                if ((fa < 0.0) != (fr < 0.0)) b = r; else a = r;
+                double rn = (dr != 0.0) ? r - fr / dr : 0.5 * (a + b);
+                if (rn <= a || rn >= b) rn = 0.5 * (a + b);
+                if (rn == r || (rn - r < 1e-15 && r - rn < 1e-15)) { r = rn; break; }
+                r = rn;
+            }
+            out[got++] = r;
+        }
+        pf = f2; x = x2;
+    }
+    return got == nt ? TSR_OK : TSR_EARG;
+}
+
+static int bz_run(const tsr_arg *args, int nargs, tsr_result *res, int kind)
+{
+    int64_t nu = roots_argi(args, nargs, 0), nt = roots_argi(args, nargs, 1);
+    if (nt < 1) { fn_set_error("*_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nt});
+    if (!out) return TSR_ENOMEM;
+    return bessel_zeros(kind, (double)nu, nt, out);
+}
+static int r_jn_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 0); }
+static int r_yn_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 1); }
+static int r_jnp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 2); }
+static int r_ynp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 3); }
+
 static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
@@ -4357,6 +4416,10 @@ static const fn_def DEFS[] = {
     ROUTINE("special.logsumexp", 1, "a, axis=None, keepdims=False", "out", r_logsumexp, NULL, "Stable log of the sum of exponentials over an axis (scipy.special.logsumexp; real a, no b/return_sign)."),
     ROUTINE("special.softmax", 1, "x, axis=None", "out", r_softmax, NULL, "exp(x) normalised over an axis (scipy.special.softmax; real)."),
     ROUTINE("special.log_softmax", 1, "x, axis=None", "out", r_log_softmax, NULL, "log of softmax over an axis (scipy.special.log_softmax; real)."),
+    ROUTINE("special.jn_zeros", 1, "n, nt", "zeros", r_jn_zeros, NULL, "First nt positive zeros of the Bessel function Jn (scipy.special.jn_zeros)."),
+    ROUTINE("special.yn_zeros", 1, "n, nt", "zeros", r_yn_zeros, NULL, "First nt positive zeros of the Bessel function Yn (scipy.special.yn_zeros)."),
+    ROUTINE("special.jnp_zeros", 1, "n, nt", "zeros", r_jnp_zeros, NULL, "First nt positive zeros of the Bessel derivative Jn' (scipy.special.jnp_zeros)."),
+    ROUTINE("special.ynp_zeros", 1, "n, nt", "zeros", r_ynp_zeros, NULL, "First nt positive zeros of the Bessel derivative Yn' (scipy.special.ynp_zeros)."),
     ROUTINE("special.roots_chebyt", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt)."),
     ROUTINE("special.t_roots", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Alias of roots_chebyt (scipy.special.t_roots)."),
     ROUTINE("special.roots_chebyu", 2, "n, mu=False", "x, w", r_roots_chebyu, NULL, "Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu)."),
