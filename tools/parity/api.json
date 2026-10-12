@@ -6889,6 +6889,12 @@
                 "static": true,
                 "sig": "yeojohnsonNormmax(array $x): float",
                 "doc": "scipy.stats.yeojohnson_normmax: the Yeo-Johnson parameter lambda maximising the log-likelihood."
+            },
+            {
+                "name": "ppccMax",
+                "static": true,
+                "sig": "ppccMax(array $x): float",
+                "doc": "scipy.stats.ppcc_max: the shape parameter (Tukey-lambda) maximising the probability-plot correlation coefficient for x."
             }
         ]
     },

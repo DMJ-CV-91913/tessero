@@ -731,6 +731,7 @@ foreach ($files as $file) {
                 $got = match ($fn) {
                     'boxcox_normmax' => \Tessero\StatsFns::boxcoxNormmax($x, $c['method'] ?? 'pearsonr'),
                     'yeojohnson_normmax' => \Tessero\StatsFns::yeojohnsonNormmax($x),
+                    'ppcc_max' => \Tessero\StatsFns::ppccMax($x),
                 };
                 $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
                 if (! $ok) { $msg = 'did not match scipy'; }
