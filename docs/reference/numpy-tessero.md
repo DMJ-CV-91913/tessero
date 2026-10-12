@@ -1182,6 +1182,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.ss2zpk` | `Tessero\Signal::ss2zpk()` |
 | `scipy.signal.step` | `Tessero\Signal::step()` |
 | `scipy.signal.sweep_poly` | `Tessero\Signal::sweepPoly()` |
+| `scipy.signal.tf2sos` | `Tessero\Signal::tf2sos()` |
 | `scipy.signal.tf2ss` | `Tessero\Signal::tf2ss()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
 | `scipy.signal.unique_roots` | `Tessero\Signal::uniqueRoots()` |

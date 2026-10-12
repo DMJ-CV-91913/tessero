@@ -129,6 +129,7 @@ final class Signal
     'ss2zpk' => 'ss2zpk',
     'step' => 'step',
     'sweep_poly' => 'sweepPoly',
+    'tf2sos' => 'tf2sos',
     'tf2ss' => 'tf2ss',
     'tf2zpk' => 'tf2zpk',
     'unique_roots' => 'uniqueRoots',
@@ -1396,6 +1397,16 @@ final class Signal
     public static function sweepPoly(mixed $t, mixed $poly, mixed $phi = 0): mixed
     {
         return Registry::routine('signal.sweep_poly', [$t, $poly, $phi]);
+    }
+
+    /**
+     * Second-order sections from transfer-function coefficients (scipy.signal.tf2sos, pairing='nearest').
+     *
+     * scipy.signal.tf2sos
+     */
+    public static function tf2sos(mixed $b, mixed $a, mixed $pairing = null, mixed $analog = false): mixed
+    {
+        return Registry::routine('signal.tf2sos', [$b, $a, $pairing, $analog]);
     }
 
     /**

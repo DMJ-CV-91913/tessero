@@ -185,6 +185,8 @@ static int r_zpk2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 }
 
 /* ---- zpk2sos (scipy.signal.zpk2sos, pairing='nearest', analog=False) ---- */
+static double *sig_polyroots(const double *p, int64_t m, int64_t *nz);          /* defined below (used by tf2sos) */
+static int sig_normalize(const double *b, int64_t nb, const double *a, int64_t na, double **b2, int64_t *nb2, double **a2, int64_t *na2);
 #define ZS_TOL (100.0 * DBL_EPSILON)
 #define ZS_ISREAL(x) (cimag(x) == 0.0)
 
@@ -274,15 +276,10 @@ static void zs_section(const double complex *zz, int nz, const double complex *p
     for (int i = 0; i <= np; i++) row[5 - np + i] = a[i];
 }
 
-static int r_zpk2sos(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+/* core of zpk2sos on complex root arrays (does not take ownership of zin/pin). */
+static int zpk2sos_core(const double complex *zin, int64_t nz0, const double complex *pin, int64_t np0, double k, tsr_result *res)
 {
-    (void)ctx; (void)nres;
-    int64_t nz0, np0;
-    double complex *zin = read_carr(&args[0], &nz0); if (!zin) return TSR_ENOMEM;
-    double complex *pin = read_carr(&args[1], &np0); if (!pin) { free(zin); return TSR_ENOMEM; }
-    const double k = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     if (nz0 == 0 && np0 == 0) {
-        free(zin); free(pin);
         double *o = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){1, 6});
         if (!o) return TSR_ENOMEM;
         o[0] = k; o[1] = 0; o[2] = 0; o[3] = 1; o[4] = 0; o[5] = 0;
@@ -343,7 +340,52 @@ static int r_zpk2sos(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     }
     out[0] *= k; out[1] *= k; out[2] *= k;                   /* gain into the first section */
 done:
-    free(zin); free(pin); free(zpad); free(ppad); free(zc); free(pc);
+    free(zpad); free(ppad); free(zc); free(pc);
+    return rc;
+}
+
+static int r_zpk2sos(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nz0, np0;
+    double complex *zin = read_carr(&args[0], &nz0); if (!zin) return TSR_ENOMEM;
+    double complex *pin = read_carr(&args[1], &np0); if (!pin) { free(zin); return TSR_ENOMEM; }
+    const double k = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    int rc = zpk2sos_core(zin, nz0, pin, np0, k, res);
+    free(zin); free(pin);
+    return rc;
+}
+
+/* tf2sos(b, a, pairing=None, analog=False): second-order sections from transfer-function coefficients
+   (scipy.signal.tf2sos) = zpk2sos(*tf2zpk(b, a)). */
+static int r_tf2sos(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("tf2sos: b and a must be arrays (a 1-D)"); return TSR_EARG; }
+    int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
+    double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
+    int rc = TSR_OK;
+    if (sig_normalize(b, nb, a, na, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("tf2sos: normalize failed"); fn_free_doubles(b, nb); fn_free_doubles(a, na); return TSR_EARG; }
+    const double k = b2[0];
+    for (int64_t i = 0; i < nb2; i++) b2[i] /= k;
+    int64_t nz = 0, npz = 0;
+    double *zr = sig_polyroots(b2, nb2, &nz);
+    double *pr = sig_polyroots(a2, na2, &npz);
+    if (nz < 0 || npz < 0) { fn_set_error("tf2sos: root solve failed"); rc = TSR_EARG; }
+    else {
+        double complex *zc = (double complex *)malloc((size_t)(nz ? nz : 1) * sizeof(double complex));
+        double complex *pc = (double complex *)malloc((size_t)(npz ? npz : 1) * sizeof(double complex));
+        if (!zc || !pc) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < nz; i++) zc[i] = zr[2 * i] + I * zr[2 * i + 1];
+            for (int64_t i = 0; i < npz; i++) pc[i] = pr[2 * i] + I * pr[2 * i + 1];
+            rc = zpk2sos_core(zc, nz, pc, npz, k, res);
+        }
+        free(zc); free(pc);
+    }
+    free(zr); free(pr); free(b2); free(a2);
+    fn_free_doubles(b, nb); fn_free_doubles(a, na);
     return rc;
 }
 
@@ -5993,6 +6035,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.freqz", 2, "b, a=1, worN=512, whole=False", "w, h", r_freqz, NULL, "Frequency response of a digital filter (scipy.signal.freqz)."),
     ROUTINE("signal.zpk2tf", 2, "z, p, k", "b, a", r_zpk2tf, NULL, "Transfer-function (b, a) from zeros, poles and gain (scipy.signal.zpk2tf)."),
     ROUTINE("signal.zpk2sos", 1, "z, p, k, pairing=None, analog=False", "out", r_zpk2sos, NULL, "Second-order sections from zeros, poles and gain (scipy.signal.zpk2sos, pairing='nearest')."),
+    ROUTINE("signal.tf2sos", 1, "b, a, pairing=None, analog=False", "out", r_tf2sos, NULL, "Second-order sections from transfer-function coefficients (scipy.signal.tf2sos, pairing='nearest')."),
     ROUTINE("signal.butter", 2, "N, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_butter, NULL, "Butterworth IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.butter)."),
     ROUTINE("signal.cheby1", 2, "N, rp, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_cheby1, NULL, "Chebyshev type I IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.cheby1)."),
     ROUTINE("signal.cheby2", 2, "N, rs, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_cheby2, NULL, "Chebyshev type II IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.cheby2)."),
