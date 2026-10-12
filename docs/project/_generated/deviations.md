@@ -706,3 +706,4 @@
 | `windows.general_gaussian` | every call | rtol 1e-09 |
 | `windows.exponential` | every call | rtol 1e-09 |
 | `windows.tukey` | every call | rtol 1e-09 |
+| `windows.dpss` | every call | rtol 1e-07 |

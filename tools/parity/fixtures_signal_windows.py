@@ -67,8 +67,22 @@ blocks['tukey'] = (
     + [case('tukey', 8, extra=[0.3]), case('tukey', 8, extra=[0.0]), case('tukey', 8, extra=[1.0]),
        case('tukey', 9, {'sym': False}, extra=[0.5])])
 
+blocks['dpss'] = (
+    # single taper (Kmax=None): norm='approximate' by default
+    [case('dpss', M, extra=[NW]) for M in [8, 11, 15, 16] for NW in [2.5, 3.0]]
+    # multiple tapers (Kmax given): l2 norm by default
+    + [case('dpss', M, {'Kmax': K}, extra=[3.0]) for M in [15, 16] for K in [1, 2, 3, 4]]
+    # periodic form and explicit norms
+    + [case('dpss', 16, {'Kmax': 3, 'sym': False}, extra=[3.0]),
+       case('dpss', 15, {'sym': False}, extra=[2.5]),
+       case('dpss', 16, {'norm': 2}, extra=[3.0]),
+       case('dpss', 16, {'norm': 'subsample'}, extra=[3.0]),
+       case('dpss', 15, {'norm': 'approximate'}, extra=[2.5]),
+       case('dpss', 16, {'Kmax': 4, 'norm': 'approximate'}, extra=[3.0])])
+
+TOL = {'dpss': {'rtol': 1e-7, 'atol': 1e-9}}
 out = {'module': 'windows', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
-       'calls': [{'fn': k, 'cases': v, 'tol': {'rtol': 1e-9, 'atol': 1e-11}} for k, v in blocks.items()]}
+       'calls': [{'fn': k, 'cases': v, 'tol': TOL.get(k, {'rtol': 1e-9, 'atol': 1e-11})} for k, v in blocks.items()]}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
 print(f'windows: {len(blocks)} functions, {sum(len(v) for v in blocks.values())} cases')

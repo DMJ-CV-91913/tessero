@@ -26,6 +26,7 @@ final class SignalWindows
     'boxcar' => 'boxcar',
     'chebwin' => 'chebwin',
     'cosine' => 'cosine',
+    'dpss' => 'dpss',
     'exponential' => 'exponential',
     'flattop' => 'flattop',
     'gaussian' => 'gaussian',
@@ -138,6 +139,16 @@ final class SignalWindows
     public static function cosine(mixed $M, mixed $sym = true): mixed
     {
         return Registry::routine('windows.cosine', [$M, $sym]);
+    }
+
+    /**
+     * Discrete prolate spheroidal (Slepian) sequences (scipy.signal.windows.dpss).
+     *
+     * scipy.signal.windows.dpss
+     */
+    public static function dpss(mixed $M, mixed $NW, mixed $Kmax = null, mixed $sym = true, mixed $norm = null): mixed
+    {
+        return Registry::routine('windows.dpss', [$M, $NW, $Kmax, $sym, $norm]);
     }
 
     /**

@@ -1586,6 +1586,7 @@
         "windows.boxcar": "pass",
         "windows.chebwin": "pass",
         "windows.cosine": "pass",
+        "windows.dpss": "pass",
         "windows.exponential": "pass",
         "windows.flattop": "pass",
         "windows.gaussian": "pass",
@@ -3206,7 +3207,8 @@
             "stats.ppcc_max": null,
             "optimize.check_grad": null,
             "optimize.brute": null,
-            "spatial.Rectangle": null
+            "spatial.Rectangle": null,
+            "windows.dpss": 8.50815985283948
         },
         "ext": {
             "np.median": 0,
@@ -4810,7 +4812,8 @@
             "stats.ppcc_max": null,
             "optimize.check_grad": null,
             "optimize.brute": null,
-            "spatial.Rectangle": null
+            "spatial.Rectangle": null,
+            "windows.dpss": 8.50815985283948
         }
     },
     "ext": {
@@ -6400,6 +6403,7 @@
         "windows.boxcar": "pass",
         "windows.chebwin": "pass",
         "windows.cosine": "pass",
+        "windows.dpss": "pass",
         "windows.exponential": "pass",
         "windows.flattop": "pass",
         "windows.gaussian": "pass",
