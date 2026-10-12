@@ -405,6 +405,13 @@ legacy:
     sh_chebyt: {ffi: [OP::shChebyt], ext: [OP::shChebyt], fixtures: [special.sh_chebyt]}
     sh_chebyu: {ffi: [OP::shChebyu], ext: [OP::shChebyu], fixtures: [special.sh_chebyu]}
     sh_jacobi: {ffi: [OP::shJacobi], ext: [OP::shJacobi], fixtures: [special.sh_jacobi]}
+    # sequence/derivative families: pure-PHP Tessero\SpecialSeq recurrences (the regular Riccati-Bessel
+    # uses Miller's downward recurrence), verified by the special_seq.json specseq_cases on both backends.
+    legendre_p: {ffi: [SQ::legendreP], ext: [SQ::legendreP], fixtures: [special.legendre_p]}
+    legendre_p_all: {ffi: [SQ::legendrePAll], ext: [SQ::legendrePAll], fixtures: [special.legendre_p_all]}
+    lqn: {ffi: [SQ::lqn], ext: [SQ::lqn], fixtures: [special.lqn]}
+    riccati_jn: {ffi: [SQ::riccatiJn], ext: [SQ::riccatiJn], fixtures: [special.riccati_jn]}
+    riccati_yn: {ffi: [SQ::riccatiYn], ext: [SQ::riccatiYn], fixtures: [special.riccati_yn]}
   # scipy.linalg is fully on both backends via the kernel registry (slinalg.*), verified by
   # tests/fixtures/parity/slinalg.json and classified from the registry (scope.py PREFIX slinalg -> scipy.linalg):
   # solve, inv, det, svdvals, lstsq, pinv, norm, eigvalsh, svd, eigh, qr, cholesky, solve_triangular, lu, eigvals,
