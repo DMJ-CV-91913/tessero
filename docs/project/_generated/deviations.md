@@ -414,6 +414,10 @@
 | `signal.zpk2sos` | call | rtol 1e-07 |
 | `signal.tf2sos` | every call | rtol 1e-06 |
 | `signal.tf2sos` | call | rtol 1e-06 |
+| `signal.cspline1d` | every call | rtol 1e-09 |
+| `signal.qspline1d` | every call | rtol 1e-09 |
+| `signal.cspline1d_eval` | every call | rtol 1e-09 |
+| `signal.qspline1d_eval` | every call | rtol 1e-09 |
 | `signal.residue` | every call | rtol 0 |
 | `signal.residue` | call | rtol 0 |
 | `signal.residuez` | every call | rtol 0 |

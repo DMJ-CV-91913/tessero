@@ -4698,6 +4698,73 @@ static int r_firls(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return rc;
 }
 
+/* centered cubic / quadratic B-spline basis functions (scipy.signal._spline_filters._cubic/_quadratic). */
+static double bspl_cubic(double x) { x = fabs(x); if (x < 1.0) return 2.0 / 3.0 - x * x + x * x * x / 2.0; if (x < 2.0) { double t = 2.0 - x; return t * t * t / 6.0; } return 0.0; }
+static double bspl_quad(double x) { x = fabs(x); if (x < 0.5) return 0.75 - x * x; if (x < 1.5) { double t = 1.5 - x; return 0.5 * t * t; } return 0.0; }
+
+/* cspline1d / qspline1d (lamb=0): spline coefficients via the symmetric exponential IIR recursion
+   (scipy.signal._spline_filters._cubic_coeff/_quadratic_coeff). zi is the pole, scale 6 (cubic) / 8 (quad). */
+static int spline1d_coeff(const tsr_arg *args, int nargs, tsr_result *res, double zi, double scale, const char *name)
+{
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("%s: signal must be a 1-D array", name); return TSR_EARG; }
+    if (nargs > 1 && args[1].kind == 1 && args[1].num != 0.0) { fn_set_error("%s: smoothing (lamb != 0) is not supported", name); return TSR_EARG; }
+    int64_t K; double *s = fn_arg_doubles(&args[0], &K); if (!s) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){K});
+    if (!out) { fn_free_doubles(s, K); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (K == 1) { out[0] = zi / (zi - 1.0) * (s[0] + zi * s[0]); fn_free_doubles(s, K); return TSR_OK; }
+    double *yp = (double *)malloc((size_t)K * sizeof(double));
+    if (!yp) { fn_free_doubles(s, K); return TSR_ENOMEM; }
+    double Y0 = 0.0, p = 1.0;
+    for (int64_t k = 0; k < K; k++) { Y0 += p * s[k]; p *= zi; }
+    yp[0] = s[0] + zi * Y0;
+    for (int64_t k = 1; k < K; k++) yp[k] = s[k] + zi * yp[k - 1];
+    out[K - 1] = zi / (zi - 1.0) * yp[K - 1];
+    for (int64_t k = K - 2; k >= 0; k--) out[k] = zi * (out[k + 1] - yp[k]);
+    for (int64_t k = 0; k < K; k++) out[k] *= scale;
+    free(yp); fn_free_doubles(s, K);
+    return rc;
+}
+
+static int r_cspline1d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_coeff(a, n, r, -2.0 + sqrt(3.0), 6.0, "cspline1d"); }
+static int r_qspline1d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_coeff(a, n, r, -3.0 + 2.0 * sqrt(2.0), 8.0, "qspline1d"); }
+
+/* cspline1d_eval / qspline1d_eval: evaluate the spline at points newx, with mirror-symmetric edges
+   (scipy.signal._spline_filters). ntaps = 4 (cubic) / 3 (quad); half = 2.0 (cubic) / 1.5 (quad). */
+static int spline1d_eval(const tsr_arg *args, int nargs, tsr_result *res, int cubic, const char *name)
+{
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("%s: cj and newx must be arrays", name); return TSR_EARG; }
+    int64_t N, M; double *cj = fn_arg_doubles(&args[0], &N); if (!cj) return TSR_ENOMEM;
+    double *nx = fn_arg_doubles(&args[1], &M); if (!nx) { fn_free_doubles(cj, N); return TSR_ENOMEM; }
+    if (N == 0) { fn_free_doubles(cj, N); fn_free_doubles(nx, M); fn_set_error("%s: spline coefficients must not be empty", name); return TSR_EARG; }
+    double dx = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    double x0 = (nargs > 3 && args[3].kind == 1) ? args[3].num : 0.0;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, args[1].arr.ndim, args[1].arr.shape);
+    int rc = TSR_OK;
+    if (!out) rc = TSR_ENOMEM;
+    else {
+        const int ntaps = cubic ? 4 : 3;
+        const double half = cubic ? 2.0 : 1.5;
+        for (int64_t i = 0; i < M; i++) {
+            double x = (nx[i] - x0) / dx;
+            for (;;) { if (x < 0.0) x = -x; else if (x > (double)(N - 1)) x = 2.0 * (double)(N - 1) - x; else break; }
+            int64_t jlower = (int64_t)floor(x - half) + 1;
+            double s = 0.0;
+            for (int t = 0; t < ntaps; t++) {
+                int64_t thisj = jlower + t, indj = thisj < 0 ? 0 : (thisj > N - 1 ? N - 1 : thisj);
+                double u = x - (double)thisj;
+                s += cj[indj] * (cubic ? bspl_cubic(u) : bspl_quad(u));
+            }
+            out[i] = s;
+        }
+    }
+    fn_free_doubles(cj, N); fn_free_doubles(nx, M);
+    return rc;
+}
+
+static int r_cspline1d_eval(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_eval(a, n, r, 1, "cspline1d_eval"); }
+static int r_qspline1d_eval(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_eval(a, n, r, 0, "qspline1d_eval"); }
+
 /* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
    1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
 static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -6139,6 +6206,10 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.cheb1ap", 3, "N, rp", "z, p, k", r_cheb1ap, NULL, "Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap)."),
     ROUTINE("signal.cheb2ap", 3, "N, rs", "z, p, k", r_cheb2ap, NULL, "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."),
     ROUTINE("signal.gauss_spline", 1, "x, n", "out", r_gauss_spline, NULL, "Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline)."),
+    ROUTINE("signal.cspline1d", 1, "signal, lamb=0.0", "out", r_cspline1d, NULL, "Cubic-spline coefficients of a 1-D signal, lamb=0 (scipy.signal.cspline1d)."),
+    ROUTINE("signal.qspline1d", 1, "signal, lamb=0.0", "out", r_qspline1d, NULL, "Quadratic-spline coefficients of a 1-D signal (scipy.signal.qspline1d)."),
+    ROUTINE("signal.cspline1d_eval", 1, "cj, newx, dx=1.0, x0=0.0", "out", r_cspline1d_eval, NULL, "Evaluate a cubic spline at new points (scipy.signal.cspline1d_eval)."),
+    ROUTINE("signal.qspline1d_eval", 1, "cj, newx, dx=1.0, x0=0.0", "out", r_qspline1d_eval, NULL, "Evaluate a quadratic spline at new points (scipy.signal.qspline1d_eval)."),
     ROUTINE("signal.vectorstrength", 2, "events, period", "strength, phase", r_vectorstrength, NULL, "Vector strength and mean phase of events over a period (scipy.signal.vectorstrength)."),
     ROUTINE("signal.medfilt", 1, "volume, kernel_size=None", "out", r_medfilt, NULL, "Zero-padded N-D median filter (scipy.signal.medfilt)."),
     ROUTINE("signal.medfilt2d", 1, "input, kernel_size=3", "out", r_medfilt2d, NULL, "Zero-padded 2-D median filter (scipy.signal.medfilt2d)."),
