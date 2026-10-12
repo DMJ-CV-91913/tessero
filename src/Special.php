@@ -68,6 +68,9 @@ final class Special
     'dawsn' => 'dawsn',
     'digamma' => 'digamma',
     'diric' => 'diric',
+    'ellip_harm' => 'ellipHarm',
+    'ellip_harm_2' => 'ellipHarm2',
+    'ellip_normal' => 'ellipNormal',
     'ellipe' => 'ellipe',
     'ellipeinc' => 'ellipeinc',
     'ellipj' => 'ellipj',
@@ -869,6 +872,36 @@ final class Special
     public static function diric(mixed $x, mixed $n, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.diric', [$x, $n], $out);
+    }
+
+    /**
+     * Ellipsoidal harmonic (Lame function of the first kind) E^p_n(s) (scipy.special.ellip_harm).
+     *
+     * scipy.special.ellip_harm
+     */
+    public static function ellipHarm(mixed $h2, mixed $k2, mixed $n, mixed $p, mixed $s): mixed
+    {
+        return Registry::routine('special.ellip_harm', [$h2, $k2, $n, $p, $s]);
+    }
+
+    /**
+     * Ellipsoidal harmonic of the second kind F^p_n(s) (scipy.special.ellip_harm_2).
+     *
+     * scipy.special.ellip_harm_2
+     */
+    public static function ellipHarm2(mixed $h2, mixed $k2, mixed $n, mixed $p, mixed $s): mixed
+    {
+        return Registry::routine('special.ellip_harm_2', [$h2, $k2, $n, $p, $s]);
+    }
+
+    /**
+     * Normalization constant for ellipsoidal harmonics (scipy.special.ellip_normal).
+     *
+     * scipy.special.ellip_normal
+     */
+    public static function ellipNormal(mixed $h2, mixed $k2, mixed $n, mixed $p): mixed
+    {
+        return Registry::routine('special.ellip_normal', [$h2, $k2, $n, $p]);
     }
 
     /**

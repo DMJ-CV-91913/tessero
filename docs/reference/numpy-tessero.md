@@ -412,6 +412,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.dawsn` | `Tessero\Special::dawsn()` |
 | `scipy.special.digamma` | `Tessero\Special::digamma()` |
 | `scipy.special.diric` | `Tessero\Special::diric()` |
+| `scipy.special.ellip_harm` | `Tessero\Special::ellipHarm()` |
+| `scipy.special.ellip_harm_2` | `Tessero\Special::ellipHarm2()` |
+| `scipy.special.ellip_normal` | `Tessero\Special::ellipNormal()` |
 | `scipy.special.ellipe` | `Tessero\Special::ellipe()` |
 | `scipy.special.ellipeinc` | `Tessero\Special::ellipeinc()` |
 | `scipy.special.ellipj` | `Tessero\Special::ellipj()` |
