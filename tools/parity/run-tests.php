@@ -738,6 +738,7 @@ foreach ($files as $file) {
                     'assoc_legendre_p_all' => \Tessero\SpecialSeq::assocLegendrePAll((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0), (bool) ($a[4] ?? false)),
                     'sph_legendre_p' => \Tessero\SpecialSeq::sphLegendreP((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0)),
                     'sph_legendre_p_all' => \Tessero\SpecialSeq::sphLegendrePAll((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0)),
+                    'sph_harm_y_all' => \Tessero\SpecialSeq::sphHarmYAll((int) $a[0], (int) $a[1], (float) $a[2], (float) $a[3]),
                     'lqmn' => \Tessero\SpecialSeq::lqmn((int) $a[0], (int) $a[1], (float) $a[2]),
                     'stirling2' => \Tessero\SpecialSeq::stirling2((int) $a[0], (int) $a[1]),
                 };
