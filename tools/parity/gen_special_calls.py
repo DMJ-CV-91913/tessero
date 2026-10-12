@@ -103,6 +103,10 @@ def build():
     blocks['fresnels_zeros'] = [call(sc.fresnels_zeros, [nt]) for nt in (3, 5)]
     blocks['pbdn_seq'] = [call(sc.pbdn_seq, [n, z]) for n in (0, 1, 2, 3, 4) for z in (0.8, 1.5, 2.5)]
     blocks['jnjnp_zeros'] = [call(sc.jnjnp_zeros, [nt]) for nt in (5, 10, 20)]
+    _eh = [(5.0, 8.0), (2.0, 9.0), (1.0, 3.0)]
+    blocks['ellip_harm'] = [call(sc.ellip_harm, [h2, k2, n, p, s]) for (h2, k2) in _eh for n in range(0, 5) for p in range(1, 2 * n + 2) for s in (3.5, 6.0)]
+    blocks['ellip_harm_2'] = [call(sc.ellip_harm_2, [h2, k2, n, p, s]) for (h2, k2) in _eh for n in range(0, 4) for p in range(1, 2 * n + 2) for s in (3.5, 6.0)]
+    blocks['ellip_normal'] = [call(sc.ellip_normal, [h2, k2, n, p]) for (h2, k2) in _eh for n in range(0, 4) for p in range(1, 2 * n + 2)]
     blocks['multigammaln'] = [call(sc.multigammaln, [F(5, lo=2.0, hi=9.0), d]) for d in (1, 2, 3)] + [call(sc.multigammaln, [3.5, 2])]
     import numpy as _np
     blocks['factorial2'] = [call(sc.factorial2, [_np.arange(0, 12)])]
@@ -130,11 +134,12 @@ def main():
     GW_TOL = GW_TOL | {'mathieu_even_coef', 'mathieu_odd_coef'}
     GW_TOL = GW_TOL | {'erf_zeros', 'fresnel_zeros', 'fresnelc_zeros', 'fresnels_zeros'}
     GW_TOL = GW_TOL | {'pbdn_seq', 'jnjnp_zeros'}
+    GW_TOL = GW_TOL | {'ellip_harm', 'ellip_harm_2', 'ellip_normal'}
     GW_TOL = GW_TOL | {'factorial2', 'factorialk', 'bernoulli', 'euler'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}
         if k in GW_TOL:
-            kv = k in {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros', 'kelvin_zeros', 'obl_cv_seq', 'pro_cv_seq', 'y0_zeros', 'y1_zeros', 'y1p_zeros'}
+            kv = k in {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros', 'kelvin_zeros', 'obl_cv_seq', 'pro_cv_seq', 'y0_zeros', 'y1_zeros', 'y1p_zeros', 'ellip_harm_2', 'ellip_normal'}
             by_fn[k]['tol'] = {'rtol': 1e-7, 'atol': 1e-8} if kv else {'rtol': 1e-9, 'atol': 1e-11}
     data['calls'] = list(by_fn.values())
     fixture_env.require_pinned()

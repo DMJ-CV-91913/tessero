@@ -4635,6 +4635,21 @@
             "nin": 2,
             "nout": 1
         },
+        "special.ellip_harm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.ellip_harm_2": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.ellip_normal": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.ellipe": {
             "kind": "ufunc",
             "nin": 1,

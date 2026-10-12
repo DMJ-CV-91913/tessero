@@ -10213,6 +10213,24 @@
                 "doc": "Periodic sinc (Dirichlet) function."
             },
             {
+                "name": "ellipHarm",
+                "static": true,
+                "sig": "ellipHarm(mixed $h2, mixed $k2, mixed $n, mixed $p, mixed $s): mixed",
+                "doc": "Ellipsoidal harmonic (Lame function of the first kind) E^p_n(s) (scipy.special.ellip_harm)."
+            },
+            {
+                "name": "ellipHarm2",
+                "static": true,
+                "sig": "ellipHarm2(mixed $h2, mixed $k2, mixed $n, mixed $p, mixed $s): mixed",
+                "doc": "Ellipsoidal harmonic of the second kind F^p_n(s) (scipy.special.ellip_harm_2)."
+            },
+            {
+                "name": "ellipNormal",
+                "static": true,
+                "sig": "ellipNormal(mixed $h2, mixed $k2, mixed $n, mixed $p): mixed",
+                "doc": "Normalization constant for ellipsoidal harmonics (scipy.special.ellip_normal)."
+            },
+            {
                 "name": "ellipe",
                 "static": true,
                 "sig": "ellipe(mixed $m, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -16502,6 +16520,24 @@
                 "name": "jnjnpZeros",
                 "static": true,
                 "sig": "jnjnpZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "ellipHarm",
+                "static": true,
+                "sig": "ellipHarm($h2, $k2, $n, $p, $s)",
+                "doc": ""
+            },
+            {
+                "name": "ellipHarm2",
+                "static": true,
+                "sig": "ellipHarm2($h2, $k2, $n, $p, $s)",
+                "doc": ""
+            },
+            {
+                "name": "ellipNormal",
+                "static": true,
+                "sig": "ellipNormal($h2, $k2, $n, $p)",
                 "doc": ""
             },
             {
