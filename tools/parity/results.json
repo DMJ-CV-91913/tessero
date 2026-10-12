@@ -1092,6 +1092,8 @@
         "special.j1": "pass",
         "special.j_roots": "pass",
         "special.jn": "pass",
+        "special.jn_zeros": "pass",
+        "special.jnp_zeros": "pass",
         "special.js_roots": "pass",
         "special.jv": "pass",
         "special.jve": "pass",
@@ -1235,6 +1237,8 @@
         "special.y0": "pass",
         "special.y1": "pass",
         "special.yn": "pass",
+        "special.yn_zeros": "pass",
+        "special.ynp_zeros": "pass",
         "special.yv": "pass",
         "special.yve": "pass",
         "special.yvp": "pass",
@@ -3052,7 +3056,11 @@
             "special.roots_sh_legendre": 4.7982771565539906e-15,
             "special.ps_roots": 4.7982771565539906e-15,
             "special.roots_sh_jacobi": 1.0265597120652513e-14,
-            "special.js_roots": 1.0265597120652513e-14
+            "special.js_roots": 1.0265597120652513e-14,
+            "special.jn_zeros": 2.1569992573606469e-16,
+            "special.yn_zeros": 2.624453218211419e-16,
+            "special.jnp_zeros": 4.362031043621474e-16,
+            "special.ynp_zeros": 2.0536970791936923e-16
         },
         "ext": {
             "np.median": 0,
@@ -4579,7 +4587,11 @@
             "special.roots_sh_legendre": 4.7982771565539906e-15,
             "special.ps_roots": 4.7982771565539906e-15,
             "special.roots_sh_jacobi": 1.0265597120652513e-14,
-            "special.js_roots": 1.0265597120652513e-14
+            "special.js_roots": 1.0265597120652513e-14,
+            "special.jn_zeros": 2.1569992573606469e-16,
+            "special.yn_zeros": 2.624453218211419e-16,
+            "special.jnp_zeros": 4.362031043621474e-16,
+            "special.ynp_zeros": 2.0536970791936923e-16
         }
     },
     "ext": {
@@ -5675,6 +5687,8 @@
         "special.j1": "pass",
         "special.j_roots": "pass",
         "special.jn": "pass",
+        "special.jn_zeros": "pass",
+        "special.jnp_zeros": "pass",
         "special.js_roots": "pass",
         "special.jv": "pass",
         "special.jve": "pass",
@@ -5818,6 +5832,8 @@
         "special.y0": "pass",
         "special.y1": "pass",
         "special.yn": "pass",
+        "special.yn_zeros": "pass",
+        "special.ynp_zeros": "pass",
         "special.yv": "pass",
         "special.yve": "pass",
         "special.yvp": "pass",

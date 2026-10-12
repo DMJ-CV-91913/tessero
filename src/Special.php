@@ -152,6 +152,8 @@ final class Special
     'j1' => 'j1',
     'j_roots' => 'jRoots',
     'jn' => 'jn',
+    'jn_zeros' => 'jnZeros',
+    'jnp_zeros' => 'jnpZeros',
     'js_roots' => 'jsRoots',
     'jv' => 'jv',
     'jve' => 'jve',
@@ -295,6 +297,8 @@ final class Special
     'y0' => 'y0',
     'y1' => 'y1',
     'yn' => 'yn',
+    'yn_zeros' => 'ynZeros',
+    'ynp_zeros' => 'ynpZeros',
     'yv' => 'yv',
     'yve' => 'yve',
     'yvp' => 'yvp',
@@ -1684,6 +1688,26 @@ final class Special
     public static function jn(mixed $n, mixed $z, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.jn', [$n, $z], $out);
+    }
+
+    /**
+     * First nt positive zeros of the Bessel function Jn (scipy.special.jn_zeros).
+     *
+     * scipy.special.jn_zeros
+     */
+    public static function jnZeros(mixed $n, mixed $nt): mixed
+    {
+        return Registry::routine('special.jn_zeros', [$n, $nt]);
+    }
+
+    /**
+     * First nt positive zeros of the Bessel derivative Jn' (scipy.special.jnp_zeros).
+     *
+     * scipy.special.jnp_zeros
+     */
+    public static function jnpZeros(mixed $n, mixed $nt): mixed
+    {
+        return Registry::routine('special.jnp_zeros', [$n, $nt]);
     }
 
     /**
@@ -3212,6 +3236,26 @@ final class Special
     public static function yn(mixed $n, mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.yn', [$n, $x], $out);
+    }
+
+    /**
+     * First nt positive zeros of the Bessel function Yn (scipy.special.yn_zeros).
+     *
+     * scipy.special.yn_zeros
+     */
+    public static function ynZeros(mixed $n, mixed $nt): mixed
+    {
+        return Registry::routine('special.yn_zeros', [$n, $nt]);
+    }
+
+    /**
+     * First nt positive zeros of the Bessel derivative Yn' (scipy.special.ynp_zeros).
+     *
+     * scipy.special.ynp_zeros
+     */
+    public static function ynpZeros(mixed $n, mixed $nt): mixed
+    {
+        return Registry::routine('special.ynp_zeros', [$n, $nt]);
     }
 
     /**

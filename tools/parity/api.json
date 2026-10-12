@@ -10545,6 +10545,18 @@
                 "doc": "Bessel function of the first kind of real order and complex argument (alias of jv)."
             },
             {
+                "name": "jnZeros",
+                "static": true,
+                "sig": "jnZeros(mixed $n, mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Bessel function Jn (scipy.special.jn_zeros)."
+            },
+            {
+                "name": "jnpZeros",
+                "static": true,
+                "sig": "jnpZeros(mixed $n, mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Bessel derivative Jn' (scipy.special.jnp_zeros)."
+            },
+            {
                 "name": "jsRoots",
                 "static": true,
                 "sig": "jsRoots(mixed $n, mixed $p1, mixed $q1, mixed $mu = false): mixed",
@@ -11401,6 +11413,18 @@
                 "static": true,
                 "sig": "yn(mixed $n, mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Bessel function of the second kind of integer order and real argument."
+            },
+            {
+                "name": "ynZeros",
+                "static": true,
+                "sig": "ynZeros(mixed $n, mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Bessel function Yn (scipy.special.yn_zeros)."
+            },
+            {
+                "name": "ynpZeros",
+                "static": true,
+                "sig": "ynpZeros(mixed $n, mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Bessel derivative Yn' (scipy.special.ynp_zeros)."
             },
             {
                 "name": "yv",
@@ -15880,6 +15904,30 @@
                 "name": "logSoftmax",
                 "static": true,
                 "sig": "logSoftmax($x, $axis = null)",
+                "doc": ""
+            },
+            {
+                "name": "jnZeros",
+                "static": true,
+                "sig": "jnZeros($n, $nt)",
+                "doc": ""
+            },
+            {
+                "name": "ynZeros",
+                "static": true,
+                "sig": "ynZeros($n, $nt)",
+                "doc": ""
+            },
+            {
+                "name": "jnpZeros",
+                "static": true,
+                "sig": "jnpZeros($n, $nt)",
+                "doc": ""
+            },
+            {
+                "name": "ynpZeros",
+                "static": true,
+                "sig": "ynpZeros($n, $nt)",
                 "doc": ""
             },
             {
