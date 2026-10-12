@@ -1342,6 +1342,7 @@
         "stats.boltzmann": "pass",
         "stats.boxcox": "pass",
         "stats.boxcox_llf": "pass",
+        "stats.boxcox_normmax": "pass",
         "stats.boxcox_normplot": "pass",
         "stats.bradford": "pass",
         "stats.brunnermunzel": "pass",
@@ -1566,6 +1567,7 @@
         "stats.wrapcauchy": "pass",
         "stats.yeojohnson": "pass",
         "stats.yeojohnson_llf": "pass",
+        "stats.yeojohnson_normmax": "pass",
         "stats.yeojohnson_normplot": "pass",
         "stats.yulesimon": "pass",
         "stats.zipf": "pass",
@@ -3194,7 +3196,9 @@
             "special.jnjnp_zeros": 0,
             "special.ellip_harm": 4.1780598692888897e-16,
             "special.ellip_harm_2": 7.46554246560211e-15,
-            "special.ellip_normal": 6.622245395824866e-15
+            "special.ellip_normal": 6.622245395824866e-15,
+            "stats.boxcox_normmax": null,
+            "stats.yeojohnson_normmax": null
         },
         "ext": {
             "np.median": 0,
@@ -4792,7 +4796,9 @@
             "special.jnjnp_zeros": 0,
             "special.ellip_harm": 4.1780598692888897e-16,
             "special.ellip_harm_2": 7.46554246560211e-15,
-            "special.ellip_normal": 6.622245395824866e-15
+            "special.ellip_normal": 6.622245395824866e-15,
+            "stats.boxcox_normmax": null,
+            "stats.yeojohnson_normmax": null
         }
     },
     "ext": {
@@ -6138,6 +6144,7 @@
         "stats.boltzmann": "pass",
         "stats.boxcox": "pass",
         "stats.boxcox_llf": "pass",
+        "stats.boxcox_normmax": "pass",
         "stats.boxcox_normplot": "pass",
         "stats.bradford": "pass",
         "stats.brunnermunzel": "pass",
@@ -6362,6 +6369,7 @@
         "stats.wrapcauchy": "pass",
         "stats.yeojohnson": "pass",
         "stats.yeojohnson_llf": "pass",
+        "stats.yeojohnson_normmax": "pass",
         "stats.yeojohnson_normplot": "pass",
         "stats.yulesimon": "pass",
         "stats.zipf": "pass",
