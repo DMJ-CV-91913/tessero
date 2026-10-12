@@ -11071,6 +11071,18 @@
                 "doc": "Odd Mathieu function and its derivative."
             },
             {
+                "name": "modfresnelm",
+                "static": true,
+                "sig": "modfresnelm(mixed $x): mixed",
+                "doc": "Modified Fresnel negative integrals F-(x) and K-(x) (scipy.special.modfresnelm)."
+            },
+            {
+                "name": "modfresnelp",
+                "static": true,
+                "sig": "modfresnelp(mixed $x): mixed",
+                "doc": "Modified Fresnel positive integrals F+(x) and K+(x) (scipy.special.modfresnelp)."
+            },
+            {
                 "name": "modstruve",
                 "static": true,
                 "sig": "modstruve(mixed $v, mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -16370,6 +16382,18 @@
                 "name": "y1pZeros",
                 "static": true,
                 "sig": "y1pZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "modfresnelp",
+                "static": true,
+                "sig": "modfresnelp($x)",
+                "doc": ""
+            },
+            {
+                "name": "modfresnelm",
+                "static": true,
+                "sig": "modfresnelm($x)",
                 "doc": ""
             },
             {

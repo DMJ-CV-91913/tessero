@@ -59,3 +59,19 @@ extern "C" void tsr_loggamma_cpx(const double *in, double *out)
     out[0] = z.real();
     out[1] = z.imag();
 }
+
+/* Modified Fresnel integrals (scipy.special.modfresnelp/modfresnelm): real x -> two complex outputs
+   F and K, written interleaved as [F.re, F.im, K.re, K.im] (np_numeric.c r_modfresnelp/m). */
+#include "xsf/fresnel.h"
+extern "C" void tsr_modfresnel_plus(double x, double *out)
+{
+    std::complex<double> F, K;
+    xsf::modified_fresnel_plus(x, F, K);
+    out[0] = F.real(); out[1] = F.imag(); out[2] = K.real(); out[3] = K.imag();
+}
+extern "C" void tsr_modfresnel_minus(double x, double *out)
+{
+    std::complex<double> F, K;
+    xsf::modified_fresnel_minus(x, F, K);
+    out[0] = F.real(); out[1] = F.imag(); out[2] = K.real(); out[3] = K.imag();
+}
