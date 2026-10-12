@@ -18,7 +18,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 43 (100.0 %) | 43 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1168 (78.5 %)** | **1165 (78.3 %)** | 78.5 % / 78.3 % | 99.7 % |
+| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1173 (78.8 %)** | **1170 (78.6 %)** | 78.8 % / 78.6 % | 99.7 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 249 (74.1 %) | 249 (74.1 %) | 74.1 % / 74.1 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 251 (84.5 %) | 251 (84.5 %) | 84.5 % / 84.5 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 90 (97.8 %) | 90 (97.8 %) | 97.8 % / 97.8 % | 100.0 % |
@@ -36,7 +36,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.cluster.vq | 4 | 0 (0.0 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.cluster.hierarchy | 32 | 5 (15.6 %) | 27 | 26 (96.3 %) | 26 (96.3 %) | 96.3 % / 96.3 % | 100.0 % |
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 158 (96.9 %) | 158 (96.9 %) | 96.9 % / 96.9 % | 100.0 % |
+| &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 163 (100.0 %) | 163 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 
 The kernel function registry holds 1410 functions; their fixtures pass on the FFI backend for 1407 and on the extension for 1407.
 Registry functions without a recorded fixture run: np.cumulativeSimpson, np.cumulativeTrapezoid, special.logSoftmax.

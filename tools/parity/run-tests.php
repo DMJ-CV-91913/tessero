@@ -742,6 +742,35 @@ foreach ($files as $file) {
             $results[$backend]["constants.{$hn}"] = $hok ? 'pass' : 'fail';
             $results['max_rel'][$backend]["constants.{$hn}"] = null;
         }
+        foreach (['value', 'precision'] as $fn) {            // float-valued CODATA lookups
+            $ok = true;
+            foreach ($data[$fn] ?? [] as $c) {
+                $checked++;
+                $got = (float) \Tessero\Constants::$fn($c['key']);
+                if (abs($got - (float) $c['expect']) > 1e-12 * (1 + abs((float) $c['expect']))) { $ok = false; $failures++; echo "FAIL constants.{$fn}: {$c['key']}\n"; }
+            }
+            $results[$backend]["constants.{$fn}"] = $ok ? 'pass' : 'fail';
+            $results['max_rel'][$backend]["constants.{$fn}"] = null;
+        }
+        $uok = true;
+        foreach ($data['unit'] ?? [] as $c) {
+            $checked++;
+            if (\Tessero\Constants::unit($c['key']) !== $c['expect']) { $uok = false; $failures++; echo "FAIL constants.unit: {$c['key']}\n"; }
+        }
+        $results[$backend]['constants.unit'] = $uok ? 'pass' : 'fail';
+        $results['max_rel'][$backend]['constants.unit'] = null;
+        $fok = true;
+        foreach ($data['find'] ?? [] as $c) {
+            $checked++;
+            if (\Tessero\Constants::find($c['sub']) !== $c['expect']) { $fok = false; $failures++; echo "FAIL constants.find: {$c['sub']}\n"; }
+        }
+        $results[$backend]['constants.find'] = $fok ? 'pass' : 'fail';
+        $results['max_rel'][$backend]['constants.find'] = null;
+        $pcok = count(\Tessero\Constants::physicalConstants()) === ($data['physical_constants_count'] ?? -1);
+        $checked++;
+        if (! $pcok) { $failures++; echo "FAIL constants.physical_constants: count mismatch\n"; }
+        $results[$backend]['constants.physical_constants'] = $pcok ? 'pass' : 'fail';
+        $results['max_rel'][$backend]['constants.physical_constants'] = null;
         continue;
     }
     $class = $classes[$backend][$module] ?? null;
