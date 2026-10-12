@@ -387,6 +387,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.boxcox1p` | `Tessero\Special::boxcox1p()` |
 | `scipy.special.btdtria` | `Tessero\Special::btdtria()` |
 | `scipy.special.btdtrib` | `Tessero\Special::btdtrib()` |
+| `scipy.special.c_roots` | `Tessero\Special::cRoots()` |
 | `scipy.special.cbrt` | `Tessero\Special::cbrt()` |
 | `scipy.special.chdtr` | `Tessero\Special::chdtr()` |
 | `scipy.special.chdtrc` | `Tessero\Special::chdtrc()` |
@@ -512,9 +513,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.kvp` | `Tessero\Special::kvp()` |
 | `scipy.special.lambertw` | `Tessero\Special::lambertw()` |
 | `scipy.special.log1p` | `Tessero\Special::log1p()` |
-| `scipy.special.logSoftmax` | `Tessero\Special::logSoftmax()` |
 | `scipy.special.log_expit` | `Tessero\Special::logExpit()` |
 | `scipy.special.log_ndtr` | `Tessero\Special::logNdtr()` |
+| `scipy.special.log_softmax` | `Tessero\Special::logSoftmax()` |
 | `scipy.special.log_wright_bessel` | `Tessero\Special::logWrightBessel()` |
 | `scipy.special.loggamma` | `Tessero\Special::loggamma()` |
 | `scipy.special.logit` | `Tessero\Special::logit()` |
@@ -579,7 +580,14 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.radian` | `Tessero\Special::radian()` |
 | `scipy.special.rel_entr` | `Tessero\Special::relEntr()` |
 | `scipy.special.rgamma` | `Tessero\Special::rgamma()` |
+| `scipy.special.roots_chebyc` | `Tessero\Special::rootsChebyc()` |
+| `scipy.special.roots_chebys` | `Tessero\Special::rootsChebys()` |
+| `scipy.special.roots_chebyt` | `Tessero\Special::rootsChebyt()` |
+| `scipy.special.roots_chebyu` | `Tessero\Special::rootsChebyu()` |
+| `scipy.special.roots_sh_chebyt` | `Tessero\Special::rootsShChebyt()` |
+| `scipy.special.roots_sh_chebyu` | `Tessero\Special::rootsShChebyu()` |
 | `scipy.special.round` | `Tessero\Special::round()` |
+| `scipy.special.s_roots` | `Tessero\Special::sRoots()` |
 | `scipy.special.shichi` | `Tessero\Special::shichi()` |
 | `scipy.special.sici` | `Tessero\Special::sici()` |
 | `scipy.special.sinc` | `Tessero\Special::sinc()` |
@@ -598,8 +606,12 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.stdtridf` | `Tessero\Special::stdtridf()` |
 | `scipy.special.stdtrit` | `Tessero\Special::stdtrit()` |
 | `scipy.special.struve` | `Tessero\Special::struve()` |
+| `scipy.special.t_roots` | `Tessero\Special::tRoots()` |
 | `scipy.special.tandg` | `Tessero\Special::tandg()` |
 | `scipy.special.tklmbda` | `Tessero\Special::tklmbda()` |
+| `scipy.special.ts_roots` | `Tessero\Special::tsRoots()` |
+| `scipy.special.u_roots` | `Tessero\Special::uRoots()` |
+| `scipy.special.us_roots` | `Tessero\Special::usRoots()` |
 | `scipy.special.voigt_profile` | `Tessero\Special::voigtProfile()` |
 | `scipy.special.wofz` | `Tessero\Special::wofz()` |
 | `scipy.special.wright_bessel` | `Tessero\Special::wrightBessel()` |

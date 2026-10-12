@@ -9891,6 +9891,12 @@
                 "doc": "btdtria(a, p, x, out=None)."
             },
             {
+                "name": "cRoots",
+                "static": true,
+                "sig": "cRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_chebyc (scipy.special.c_roots)."
+            },
+            {
                 "name": "cbrt",
                 "static": true,
                 "sig": "cbrt(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10641,12 +10647,6 @@
                 "doc": "Calculates log(1 + x) for use when `x` is near zero."
             },
             {
-                "name": "logSoftmax",
-                "static": true,
-                "sig": "logSoftmax(mixed $x, mixed $axis = null): mixed",
-                "doc": "log of softmax over an axis (scipy.special.log_softmax; real)."
-            },
-            {
                 "name": "logExpit",
                 "static": true,
                 "sig": "logExpit(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10657,6 +10657,12 @@
                 "static": true,
                 "sig": "logNdtr(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Logarithm of Gaussian cumulative distribution function."
+            },
+            {
+                "name": "logSoftmax",
+                "static": true,
+                "sig": "logSoftmax(mixed $x, mixed $axis = null): mixed",
+                "doc": "log of softmax over an axis (scipy.special.log_softmax; real)."
             },
             {
                 "name": "logWrightBessel",
@@ -11043,10 +11049,52 @@
                 "doc": "Reciprocal of the gamma function."
             },
             {
+                "name": "rootsChebyc",
+                "static": true,
+                "sig": "rootsChebyc(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Chebyshev 1st-kind quadrature on [-2, 2] (scipy.special.roots_chebyc)."
+            },
+            {
+                "name": "rootsChebys",
+                "static": true,
+                "sig": "rootsChebys(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Chebyshev 2nd-kind quadrature on [-2, 2] (scipy.special.roots_chebys)."
+            },
+            {
+                "name": "rootsChebyt",
+                "static": true,
+                "sig": "rootsChebyt(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt)."
+            },
+            {
+                "name": "rootsChebyu",
+                "static": true,
+                "sig": "rootsChebyu(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu)."
+            },
+            {
+                "name": "rootsShChebyt",
+                "static": true,
+                "sig": "rootsShChebyt(mixed $n, mixed $mu = false): mixed",
+                "doc": "Shifted Gauss-Chebyshev 1st-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyt)."
+            },
+            {
+                "name": "rootsShChebyu",
+                "static": true,
+                "sig": "rootsShChebyu(mixed $n, mixed $mu = false): mixed",
+                "doc": "Shifted Gauss-Chebyshev 2nd-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyu)."
+            },
+            {
                 "name": "round",
                 "static": true,
                 "sig": "round(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Round to the nearest integer."
+            },
+            {
+                "name": "sRoots",
+                "static": true,
+                "sig": "sRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_chebys (scipy.special.s_roots)."
             },
             {
                 "name": "shichi",
@@ -11157,6 +11205,12 @@
                 "doc": "Struve function."
             },
             {
+                "name": "tRoots",
+                "static": true,
+                "sig": "tRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_chebyt (scipy.special.t_roots)."
+            },
+            {
                 "name": "tandg",
                 "static": true,
                 "sig": "tandg(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -11167,6 +11221,24 @@
                 "static": true,
                 "sig": "tklmbda(mixed $x, mixed $lmbda, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Cumulative distribution function of the Tukey lambda distribution."
+            },
+            {
+                "name": "tsRoots",
+                "static": true,
+                "sig": "tsRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_sh_chebyt (scipy.special.ts_roots)."
+            },
+            {
+                "name": "uRoots",
+                "static": true,
+                "sig": "uRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_chebyu (scipy.special.u_roots)."
+            },
+            {
+                "name": "usRoots",
+                "static": true,
+                "sig": "usRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_sh_chebyu (scipy.special.us_roots)."
             },
             {
                 "name": "voigtProfile",
@@ -15700,6 +15772,78 @@
                 "name": "logSoftmax",
                 "static": true,
                 "sig": "logSoftmax($x, $axis = null)",
+                "doc": ""
+            },
+            {
+                "name": "rootsChebyt",
+                "static": true,
+                "sig": "rootsChebyt($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "tRoots",
+                "static": true,
+                "sig": "tRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsChebyu",
+                "static": true,
+                "sig": "rootsChebyu($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "uRoots",
+                "static": true,
+                "sig": "uRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsChebyc",
+                "static": true,
+                "sig": "rootsChebyc($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "cRoots",
+                "static": true,
+                "sig": "cRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsChebys",
+                "static": true,
+                "sig": "rootsChebys($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "sRoots",
+                "static": true,
+                "sig": "sRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsShChebyt",
+                "static": true,
+                "sig": "rootsShChebyt($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "tsRoots",
+                "static": true,
+                "sig": "tsRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsShChebyu",
+                "static": true,
+                "sig": "rootsShChebyu($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "usRoots",
+                "static": true,
+                "sig": "usRoots($n, $mu = false)",
                 "doc": ""
             },
             {
