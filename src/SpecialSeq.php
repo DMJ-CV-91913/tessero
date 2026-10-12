@@ -227,6 +227,33 @@ final class SpecialSeq
     }
 
     /**
+     * Spherical harmonics Y_n^m(theta, phi) for every degree 0..n and order, laid out like scipy's
+     * sph_harm_y_all: Y = sph_legendre_p(n, m, theta) * exp(i*m*phi). Each complex value is returned as a
+     * [re, im] pair; the result is [n + 1][2m + 1][2].
+     *
+     * @return list<list<list<float>>>
+     */
+    public static function sphHarmYAll(int $n, int $m, float $theta, float $phi): array
+    {
+        if ($n < 0 || $m < 0) {
+            throw new TesseroException('n and m must be nonnegative.');
+        }
+        $plane = self::sphLegendrePAll($n, $m, $theta, 0)[0];   // real [n+1][2m+1]
+        $out = [];
+        for ($nn = 0; $nn <= $n; $nn++) {
+            $row = [];
+            for ($j = 0; $j < 2 * $m + 1; $j++) {
+                $ord = $j <= $m ? $j : $j - (2 * $m + 1);
+                $p = $plane[$nn][$j];
+                $row[$j] = [$p * cos($ord * $phi), $p * sin($ord * $phi)];
+            }
+            $out[$nn] = $row;
+        }
+
+        return $out;
+    }
+
+    /**
      * Legendre function of the second kind Q_n^m(x) and its x-derivative, for all orders 0..m and
      * degrees 0..n (|x| < 1). Returns [q, dq], each shaped [m + 1][n + 1] like scipy's lqmn.
      *
