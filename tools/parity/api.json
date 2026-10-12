@@ -3561,6 +3561,12 @@
                 "doc": "Simple cosine (half-period sine) window (scipy.signal.windows.cosine)."
             },
             {
+                "name": "dpss",
+                "static": true,
+                "sig": "dpss(mixed $M, mixed $NW, mixed $Kmax = null, mixed $sym = true, mixed $norm = null): mixed",
+                "doc": "Discrete prolate spheroidal (Slepian) sequences (scipy.signal.windows.dpss)."
+            },
+            {
                 "name": "exponential",
                 "static": true,
                 "sig": "exponential(mixed $M, mixed $center = null, mixed $tau = 1.0, mixed $sym = true): mixed",
@@ -20303,6 +20309,12 @@
                 "name": "tukey",
                 "static": true,
                 "sig": "tukey($M, $alpha = 0.5, $sym = true)",
+                "doc": ""
+            },
+            {
+                "name": "dpss",
+                "static": true,
+                "sig": "dpss($M, $NW, $Kmax = null, $sym = true, $norm = null)",
                 "doc": ""
             }
         ]
