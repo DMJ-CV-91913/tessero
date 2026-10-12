@@ -4366,6 +4366,24 @@ static int r_fresnel_zeros(const void *c, const tsr_arg *a, int na, tsr_result *
     return TSR_OK;
 }
 
+void tsr_jdzo(int, double *, int64_t *, int64_t *, int64_t *);
+
+/* scipy.special.jnjnp_zeros(nt): the first nt zeros of Jn and Jn' by magnitude, with the order n,
+   rank m, and type t (0 = Jn, 1 = Jn') of each. Delegates to xsf jdzo (identical to scipy). */
+static int r_jnjnp_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(a, na, 0);
+    if (nt < 1 || nt > 1200) { fn_set_error("jnjnp_zeros: nt must be in 1..1200"); return TSR_EARG; }
+    double *zo = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){nt});
+    int64_t *nn = (int64_t *)fn_result_array(&r[1], TSR_I64, 1, (int64_t[]){nt});
+    int64_t *mm = (int64_t *)fn_result_array(&r[2], TSR_I64, 1, (int64_t[]){nt});
+    int64_t *tt = (int64_t *)fn_result_array(&r[3], TSR_I64, 1, (int64_t[]){nt});
+    if (!zo || !nn || !mm || !tt) return TSR_ENOMEM;
+    tsr_jdzo((int)nt, zo, nn, mm, tt);
+    return TSR_OK;
+}
+
 void tsr_cpbdn(int, double, double, double *, double *);
 
 /* scipy.special.pbdn_seq(n, z): complex parabolic cylinder Dn(z) and derivatives for orders 0..n1,
@@ -4936,6 +4954,7 @@ static const fn_def DEFS[] = {
     ROUTINE("special.fresnelc_zeros", 1, "nt", "zeros", r_fresnelc_zeros, NULL, "First nt complex zeros of the Fresnel cosine integral (scipy.special.fresnelc_zeros)."),
     ROUTINE("special.fresnels_zeros", 1, "nt", "zeros", r_fresnels_zeros, NULL, "First nt complex zeros of the Fresnel sine integral (scipy.special.fresnels_zeros)."),
     ROUTINE("special.pbdn_seq", 2, "n, z", "pb, pd", r_pbdn_seq, NULL, "Complex parabolic cylinder Dn(z) and derivatives for a sequence of orders (scipy.special.pbdn_seq)."),
+    ROUTINE("special.jnjnp_zeros", 4, "nt", "zo, n, m, t", r_jnjnp_zeros, NULL, "First nt zeros of Jn and Jn' by magnitude with their order/rank/type (scipy.special.jnjnp_zeros)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
     ROUTINE("special.factorialk", 1, "n, k", "out", r_factorialk, NULL, "Order-k multifactorial (scipy.special.factorialk, exact=False)."),

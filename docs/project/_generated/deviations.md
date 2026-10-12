@@ -656,6 +656,7 @@
 | `special.fresnels_zeros` | every call | rtol 1e-09 |
 | `special.pbdn_seq` | every call | rtol 1e-09 |
 | `special.factorialk` | every call | rtol 1e-09 |
+| `special.jnjnp_zeros` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |

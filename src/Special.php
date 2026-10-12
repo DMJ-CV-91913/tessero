@@ -169,6 +169,7 @@ final class Special
     'j_roots' => 'jRoots',
     'jn' => 'jn',
     'jn_zeros' => 'jnZeros',
+    'jnjnp_zeros' => 'jnjnpZeros',
     'jnp_zeros' => 'jnpZeros',
     'jnyn_zeros' => 'jnynZeros',
     'js_roots' => 'jsRoots',
@@ -1900,6 +1901,18 @@ final class Special
     public static function jnZeros(mixed $n, mixed $nt): mixed
     {
         return Registry::routine('special.jn_zeros', [$n, $nt]);
+    }
+
+    /**
+     * First nt zeros of Jn and Jn' by magnitude with their order/rank/type (scipy.special.jnjnp_zeros).
+     *
+     * scipy.special.jnjnp_zeros
+     *
+     * @return mixed one array, or an array keyed by zo, n, m, t when several results are requested
+     */
+    public static function jnjnpZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.jnjnp_zeros', [$nt]);
     }
 
     /**
