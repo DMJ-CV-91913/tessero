@@ -1208,6 +1208,7 @@
         "special.obl_rad2_cv": "pass",
         "special.owens_t": "pass",
         "special.p_roots": "pass",
+        "special.pbdn_seq": "pass",
         "special.pbdv": "pass",
         "special.pbdv_seq": "pass",
         "special.pbvv": "pass",
@@ -3180,7 +3181,8 @@
             "special.erf_zeros": 0,
             "special.fresnel_zeros": 0,
             "special.fresnelc_zeros": 0,
-            "special.fresnels_zeros": 0
+            "special.fresnels_zeros": 0,
+            "special.pbdn_seq": 0
         },
         "ext": {
             "np.median": 0,
@@ -4771,7 +4773,8 @@
             "special.erf_zeros": 0,
             "special.fresnel_zeros": 0,
             "special.fresnelc_zeros": 0,
-            "special.fresnels_zeros": 0
+            "special.fresnels_zeros": 0,
+            "special.pbdn_seq": 0
         }
     },
     "ext": {
@@ -5983,6 +5986,7 @@
         "special.obl_rad2_cv": "pass",
         "special.owens_t": "pass",
         "special.p_roots": "pass",
+        "special.pbdn_seq": "pass",
         "special.pbdv": "pass",
         "special.pbdv_seq": "pass",
         "special.pbvv": "pass",

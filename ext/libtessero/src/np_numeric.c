@@ -4342,6 +4342,25 @@ static int r_fresnel_zeros(const void *c, const tsr_arg *a, int na, tsr_result *
     return TSR_OK;
 }
 
+void tsr_cpbdn(int, double, double, double *, double *);
+
+/* scipy.special.pbdn_seq(n, z): complex parabolic cylinder Dn(z) and derivatives for orders 0..n1,
+   where n1 = max(1, |n|). Returns two complex128 arrays of length n1 + 1. */
+static int r_pbdn_seq(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t n = roots_argi(a, na, 0);
+    double zre = seq_argf(a, na, 1);
+    if (n < 0) { fn_set_error("pbdn_seq: n must be >= 0"); return TSR_EARG; }
+    int n1 = (n <= 1) ? 1 : (int)n;
+    int64_t len = (int64_t)n1 + 1;
+    double *b = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){len});
+    double *d = (double *)fn_result_array(&r[1], TSR_C128, 1, (int64_t[]){len});
+    if (!b || !d) return TSR_ENOMEM;
+    tsr_cpbdn(n1, zre, 0.0, b, d);
+    return TSR_OK;
+}
+
 static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
@@ -4892,6 +4911,7 @@ static const fn_def DEFS[] = {
     ROUTINE("special.fresnel_zeros", 2, "nt", "zfs, zfc", r_fresnel_zeros, NULL, "First nt complex zeros of the Fresnel sine and cosine integrals (scipy.special.fresnel_zeros)."),
     ROUTINE("special.fresnelc_zeros", 1, "nt", "zeros", r_fresnelc_zeros, NULL, "First nt complex zeros of the Fresnel cosine integral (scipy.special.fresnelc_zeros)."),
     ROUTINE("special.fresnels_zeros", 1, "nt", "zeros", r_fresnels_zeros, NULL, "First nt complex zeros of the Fresnel sine integral (scipy.special.fresnels_zeros)."),
+    ROUTINE("special.pbdn_seq", 2, "n, z", "pb, pd", r_pbdn_seq, NULL, "Complex parabolic cylinder Dn(z) and derivatives for a sequence of orders (scipy.special.pbdn_seq)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
     ROUTINE("special.bernoulli", 1, "n", "out", r_bernoulli, NULL, "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."),
