@@ -83,7 +83,39 @@ final class StatsFns
         return Minimize::fminbound(fn (float $l): float => -self::yjLlf($l, $x), $lb, $ub, 1.48e-8);
     }
 
+    /**
+     * scipy.stats.ppcc_max: the shape parameter (Tukey-lambda) maximising the probability-plot
+     * correlation coefficient for x.
+     *
+     * @param list<float> $x
+     */
+    public static function ppccMax(array $x): float
+    {
+        $x = array_map('floatval', array_values($x));
+        foreach ($x as $v) {
+            if (! is_finite($v)) {
+                throw new TesseroException('ppcc_max: x must be finite.');
+            }
+        }
+        sort($x);
+        $mi = self::uom(count($x));
+        $obj = static function (float $shape) use ($mi, $x): float {
+            $q = [];
+            foreach ($mi as $i => $m) {
+                $q[$i] = self::tukeyPpf($m, $shape);
+            }
+            return 1.0 - self::pearsonr($q, $x);
+        };
+        return Minimize::brent($obj, [0.0, 1.0]);
+    }
+
     // ---- pure-PHP helpers ----------------------------------------------------------------
+
+    /** Tukey-lambda quantile function. */
+    private static function tukeyPpf(float $q, float $lmb): float
+    {
+        return $lmb === 0.0 ? log($q / (1.0 - $q)) : ($q ** $lmb - (1.0 - $q) ** $lmb) / $lmb;
+    }
 
     /** @param list<float> $x @return list<float> */
     private static function boxcox(array $x, float $lmb): array
