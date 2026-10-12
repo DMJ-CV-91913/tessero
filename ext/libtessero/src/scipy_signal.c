@@ -1308,6 +1308,111 @@ static int r_win_kbd(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     return TSR_OK;
 }
 
+/* dpss(M, NW, Kmax=None, sym=True, norm=None): discrete prolate spheroidal (Slepian) sequences via the
+   symmetric tridiagonal eigenvalue formulation (Percival & Walden 1993, pg 379/390). Returns a single taper
+   of shape (M,) when Kmax is None, otherwise the first Kmax tapers of shape (Kmax, M). `norm` selects the
+   taper normalization: 2 (l2, the default when Kmax is given), 'approximate' (max-norm then the
+   M^2/(M^2+NW) even-length correction, the default when Kmax is None), or 'subsample' (max-norm then an
+   FFT-subsample-shift correction, here evaluated as a direct DFT sum). */
+static int r_win_dpss(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int err; int64_t M0 = win_len(args, nargs, &err); if (err) return TSR_EARG;
+    double NW = win_dbl(args, nargs, 1, -1.0);
+    int singleton = 1; int64_t Kmax = 1;                 /* Kmax=None -> a single taper */
+    if (nargs > 2 && args[2].kind == 1) {
+        singleton = 0;
+        Kmax = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    }
+    int sym = win_sym(args, nargs, 3);
+    int norm_l2, norm_subsample = 0;                     /* default: 'approximate' (singleton) else l2 (2) */
+    {
+        const tsr_arg *a = (nargs > 4) ? &args[4] : NULL;
+        if (!a || a->kind == 0) norm_l2 = singleton ? 0 : 1;
+        else if (a->kind == 1 || a->kind == 4) norm_l2 = (a->num == 2.0);
+        else if (a->kind == 2 && a->str) { norm_l2 = 0; norm_subsample = (strcmp(a->str, "subsample") == 0); }
+        else norm_l2 = singleton ? 0 : 1;
+    }
+    { int rc; if (win_guard(M0, &res[0], &rc)) return rc; }   /* _len_guards: M<=1 -> ones(M) */
+    if (Kmax <= 0 || Kmax > M0) { fn_set_error("dpss: Kmax must be greater than 0 and less than M"); return TSR_EARG; }
+    if (NW >= (double)M0 / 2.0) { fn_set_error("dpss: NW must be less than M/2."); return TSR_EARG; }
+    if (NW <= 0.0) { fn_set_error("dpss: NW must be positive"); return TSR_EARG; }
+    int64_t Mc = sym ? M0 : M0 + 1;                      /* _extend: periodic form computes length M+1 */
+    double mc = (double)Mc;
+    double cw = cos(2.0 * M_PI * NW / mc);
+    double *d = (double *)malloc((size_t)Mc * sizeof(double));
+    double *e = (double *)malloc((size_t)(Mc > 1 ? Mc - 1 : 1) * sizeof(double));
+    double *z = (double *)malloc((size_t)Mc * (size_t)Mc * sizeof(double));
+    if (!d || !e || !z) { free(d); free(e); free(z); return TSR_ENOMEM; }
+    for (int64_t t = 0; t < Mc; t++) { double h = ((double)(Mc - 1 - 2 * t)) / 2.0; d[t] = h * h * cw; }
+    for (int64_t t = 1; t < Mc; t++) e[t - 1] = (double)t * (double)(Mc - t) / 2.0;
+    if (LAPACKE_dstev(LAPACK_ROW_MAJOR, 'V', (lapack_int)Mc, d, e, z, (lapack_int)Mc) != 0) {
+        free(d); free(e); free(z);
+        fn_set_error("dpss: tridiagonal eigenvalue computation failed");
+        return TSR_EARG;
+    }
+    /* dstev returns ascending eigenvalues; eigenvector j is column j (z[i*Mc+j]). Keep the top Kmax,
+       largest eigenvalue first. */
+    double *wins = (double *)malloc((size_t)Kmax * (size_t)Mc * sizeof(double));
+    if (!wins) { free(d); free(e); free(z); return TSR_ENOMEM; }
+    for (int64_t k = 0; k < Kmax; k++) {
+        int64_t col = Mc - 1 - k;
+        for (int64_t i = 0; i < Mc; i++) wins[k * Mc + i] = z[i * Mc + col];
+    }
+    free(d); free(e); free(z);
+    double thresh = 1.0 / mc; if (thresh < 1e-7) thresh = 1e-7;
+    for (int64_t k = 0; k < Kmax; k++) {
+        double *row = &wins[k * Mc];
+        if (k % 2 == 0) {                                /* symmetric tapers: positive average */
+            double s = 0.0; for (int64_t i = 0; i < Mc; i++) s += row[i];
+            if (s < 0.0) for (int64_t i = 0; i < Mc; i++) row[i] = -row[i];
+        } else {                                         /* antisymmetric tapers: first lobe positive */
+            double first = 0.0;
+            for (int64_t i = 0; i < Mc; i++) if (row[i] * row[i] > thresh) { first = row[i]; break; }
+            if (first < 0.0) for (int64_t i = 0; i < Mc; i++) row[i] = -row[i];
+        }
+    }
+    if (!norm_l2) {                                      /* l-inf norm + even-length correction */
+        double mx = wins[0];
+        for (int64_t i = 0; i < Kmax * Mc; i++) if (wins[i] > mx) mx = wins[i];
+        for (int64_t i = 0; i < Kmax * Mc; i++) wins[i] /= mx;
+        if (Mc % 2 == 0) {
+            double correction;
+            if (norm_subsample) {
+                double total = 0.0;                      /* Re(sum of subsample-shifted rfft of taper 0) */
+                for (int64_t n = 0; n < Mc; n++) total += wins[n];
+                for (int64_t m = 1; m <= Mc / 2; m++) {
+                    double A = 0.0, B = 0.0;
+                    for (int64_t n = 0; n < Mc; n++) {
+                        double ang = 2.0 * M_PI * (double)m * (double)n / mc;
+                        A += wins[n] * cos(ang); B += wins[n] * sin(ang);
+                    }
+                    double phi = M_PI * (1.0 - 1.0 / mc) * (double)m;
+                    total += 2.0 * (A * cos(phi) + B * sin(phi));
+                }
+                correction = mc / total;
+            } else {
+                correction = mc * mc / (mc * mc + NW);
+            }
+            for (int64_t i = 0; i < Kmax * Mc; i++) wins[i] *= correction;
+        }
+    }
+    if (singleton) {                                     /* output, truncating the periodic trailing sample */
+        int64_t sh[1] = {M0};
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+        if (!out) { free(wins); return TSR_ENOMEM; }
+        for (int64_t i = 0; i < M0; i++) out[i] = wins[i];
+    } else {
+        int64_t sh[2] = {Kmax, M0};
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+        if (!out) { free(wins); return TSR_ENOMEM; }
+        for (int64_t k = 0; k < Kmax; k++)
+            for (int64_t i = 0; i < M0; i++) out[k * M0 + i] = wins[k * Mc + i];
+    }
+    free(wins);
+    return TSR_OK;
+}
+
 /* taylor(M, nbar=4, sll=30, norm=True, sym=True): Taylor window via Fm cosine coefficients. */
 static int r_win_taylor(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -5606,6 +5711,7 @@ static const fn_def DEFS[] = {
     ROUTINE("windows.general_gaussian", 1, "M, p, sig, sym=True", "out", r_win_general_gaussian, NULL, "Generalized Gaussian window (scipy.signal.windows.general_gaussian)."),
     ROUTINE("windows.exponential", 1, "M, center=None, tau=1.0, sym=True", "out", r_win_exponential, NULL, "Exponential (Poisson) window (scipy.signal.windows.exponential)."),
     ROUTINE("windows.tukey", 1, "M, alpha=0.5, sym=True", "out", r_win_tukey, NULL, "Tukey (tapered cosine) window (scipy.signal.windows.tukey)."),
+    ROUTINE("windows.dpss", 1, "M, NW, Kmax=None, sym=True, norm=None", "out", r_win_dpss, NULL, "Discrete prolate spheroidal (Slepian) sequences (scipy.signal.windows.dpss)."),
     ROUTINE("signal.correlation_lags", 1, "in1_len, in2_len, mode='full'", "out", r_correlation_lags, NULL, "Lag indices for the output of signal.correlate (scipy.signal.correlation_lags)."),
     ROUTINE("signal.resample", 1, "x, num, t=None, axis=0, window=None, domain='time'", "out", r_resample, NULL, "Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None)."),
     ROUTINE("signal.firwin", 1, "numtaps, cutoff, window='hamming', pass_zero=True, scale=True, fs=None", "out", r_firwin, NULL, "FIR filter design by the window method (scipy.signal.firwin)."),

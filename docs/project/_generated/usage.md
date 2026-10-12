@@ -5,7 +5,7 @@
 | Scope | Calls | To excluded symbols | In scope | Verified FFI | Verified extension | Verified on both |
 |---|---:|---:|---:|---:|---:|---:|
 | **NumPy core** | 39800 | 2002 (5.0 %) | 37798 | 100.0 % | 100.0 % | **100.0 %** |
-| **SciPy** | 2748 | 386 (14.0 %) | 2362 | 95.5 % | 95.1 % | **95.1 %** |
+| **SciPy** | 2748 | 386 (14.0 %) | 2362 | 95.5 % | 95.2 % | **95.2 %** |
 | **NumPy and SciPy** | 42548 | 2388 (5.6 %) | 40160 | 99.7 % | 99.7 % | **99.7 %** |
 
 The most-called in-scope symbols, and how many of them are verified:
