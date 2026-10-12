@@ -129,6 +129,17 @@ for _x in ([1.3, 0.7, 0.8, 1.9, 1.2], [-1.2, 1.0], [0.5, 0.5, 0.5], [2.0, 2.0, 2
     _p = [0.5, -1.0, 2.0, 0.3, 1.5][:len(_x)]
     cases.append({'fn': 'rosen_hess_prod', 'x': _x, 'p': _p, 'expect': list(map(float, so.rosen_hess_prod(np.array(_x), np.array(_p)))), 'rtol': 1e-10})
 
+# check_grad: 2-norm of analytic vs forward-difference gradient (Rosenbrock)
+for _x in ([1.3, 0.7, 0.8], [-1.2, 1.0], [0.5, 0.5, 0.5, 0.5]):
+    cases.append({'fn': 'check_grad', 'obj': {'kind': 'rosen'}, 'x0': _x,
+                  'expect': float(so.check_grad(so.rosen, so.rosen_der, np.array(_x, float))), 'rtol': 1e-9})
+
+# brute (finish=None): grid argmin of Rosenbrock over a box
+for _r in ([(-2.0, 2.0), (-2.0, 2.0)], [(-1.5, 2.5), (-1.5, 2.5), (-1.5, 2.5)]):
+    _b = np.atleast_1d(so.brute(so.rosen, _r, Ns=20, finish=None))
+    cases.append({'fn': 'brute', 'obj': {'kind': 'rosen'}, 'ranges': [list(r) for r in _r], 'Ns': 20,
+                  'expect': list(map(float, _b)), 'rtol': 1e-9})
+
 out = {'module': 'optimize', 'scipy': __import__('scipy').__version__, 'solver_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

@@ -98,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1263,
+   "both": 1265,
    "excluded": 74,
-   "impl_ext": 1263,
-   "impl_ffi": 1266,
+   "impl_ext": 1265,
+   "impl_ffi": 1268,
    "in_scope": 1488,
-   "m2_ext": 84.9,
-   "m2_ffi": 85.1,
+   "m2_ext": 85.0,
+   "m2_ffi": 85.2,
    "m3": 4.7,
-   "m4_ext": 84.9,
-   "m4_ffi": 85.1,
+   "m4_ext": 85.0,
+   "m4_ffi": 85.2,
    "m5": 99.8,
    "symbols": 1562,
-   "verified_ext": 1263,
-   "verified_ffi": 1266
+   "verified_ext": 1265,
+   "verified_ffi": 1268
   }
  },
  "modules": {
@@ -452,20 +452,20 @@
    "verified_ffi": 66
   },
   "scipy.optimize": {
-   "both": 31,
+   "both": 33,
    "excluded": 5,
-   "impl_ext": 31,
-   "impl_ffi": 32,
+   "impl_ext": 33,
+   "impl_ffi": 34,
    "in_scope": 66,
-   "m2_ext": 47.0,
-   "m2_ffi": 48.5,
+   "m2_ext": 50.0,
+   "m2_ffi": 51.5,
    "m3": 7.0,
-   "m4_ext": 47.0,
-   "m4_ffi": 48.5,
-   "m5": 96.9,
+   "m4_ext": 50.0,
+   "m4_ffi": 51.5,
+   "m5": 97.1,
    "symbols": 71,
-   "verified_ext": 31,
-   "verified_ffi": 32
+   "verified_ext": 33,
+   "verified_ffi": 34
   },
   "scipy.signal": {
    "both": 118,
@@ -622,9 +622,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40042,
-   "covered_ext": 40042,
-   "covered_ffi": 40050,
+   "covered_both": 40045,
+   "covered_ext": 40045,
+   "covered_ffi": 40053,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -701,9 +701,9 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2244,
-    "covered_ext": 2244,
-    "covered_ffi": 2252,
+    "covered_both": 2247,
+    "covered_ext": 2247,
+    "covered_ffi": 2255,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,
@@ -721,9 +721,9 @@
       "n": 25
      },
      "250": {
-      "both": 219,
-      "ext": 219,
-      "ffi": 221,
+      "both": 220,
+      "ext": 220,
+      "ffi": 222,
       "n": 250
      },
      "50": {
@@ -733,9 +733,9 @@
       "n": 50
      }
     },
-    "u_both": 95.0,
-    "u_ext": 95.0,
-    "u_ffi": 95.3
+    "u_both": 95.1,
+    "u_ext": 95.1,
+    "u_ffi": 95.5
    }
   },
   "total_calls": 42551,

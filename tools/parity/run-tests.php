@@ -588,6 +588,16 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
             } elseif ($fn === 'fmin_bfgs') {
                 $ok = vecClose(\Tessero\Optimize\Minimize::fminBfgs($obj, array_map('floatval', $c['x0'])), $c['expect'], $rtol);
+            } elseif ($fn === 'check_grad') {
+                $grad = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
+                $got = \Tessero\Optimize\Minimize::checkGrad($obj, $grad, array_map('floatval', $c['x0']));
+                $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+            } elseif ($fn === 'brute') {
+                $ranges = array_map(static fn ($r): array => [(float) $r[0], (float) $r[1]], $c['ranges']);
+                $got = \Tessero\Optimize\Minimize::brute($obj, $ranges, (int) ($c['Ns'] ?? 20));
+                $g = is_array($got) ? $got : [$got];
+                $exp = is_array($c['expect']) ? $c['expect'] : [$c['expect']];
+                $ok = vecClose($g, $exp, $rtol);
             }
         } catch (\Throwable $e) {
             $msg = $e->getMessage();

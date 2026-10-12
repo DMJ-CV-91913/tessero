@@ -109,6 +109,71 @@ final class Minimize
         return self::minimize($fun, $x0, $fprime, 'BFGS')->x;
     }
 
+    /**
+     * scipy.optimize.check_grad: the 2-norm of the difference between the analytic gradient and a
+     * forward-difference approximation of it at x0 (absolute step epsilon, as in scipy).
+     *
+     * @param callable(list<float>): float $func
+     * @param callable(list<float>): list<float> $grad
+     * @param list<float> $x0
+     */
+    public static function checkGrad(callable $func, callable $grad, array $x0, float $epsilon = 1.4901161193847656e-08): float
+    {
+        $x0 = array_map('floatval', array_values($x0));
+        $g = $grad($x0);
+        $f0 = (float) $func($x0);
+        $n = count($x0);
+        $sum = 0.0;
+        for ($i = 0; $i < $n; $i++) {
+            $xp = $x0;
+            $xp[$i] += $epsilon;
+            $fd = ((float) $func($xp) - $f0) / $epsilon;
+            $d = (float) $g[$i] - $fd;
+            $sum += $d * $d;
+        }
+
+        return sqrt($sum);
+    }
+
+    /**
+     * scipy.optimize.brute (finish=None): minimise by evaluating func on a regular grid over the given
+     * ranges (Ns points per dimension, inclusive) and returning the grid point with the smallest value.
+     *
+     * @param callable(list<float>): float $func
+     * @param list<array{0: float, 1: float}> $ranges
+     * @return float|list<float>
+     */
+    public static function brute(callable $func, array $ranges, int $Ns = 20): float|array
+    {
+        $dims = count($ranges);
+        $axes = [];
+        foreach ($ranges as [$lo, $hi]) {
+            $ax = [];
+            for ($j = 0; $j < $Ns; $j++) {
+                $ax[$j] = (float) $lo + ((float) $hi - (float) $lo) * $j / ($Ns - 1);
+            }
+            $axes[] = $ax;
+        }
+        $best = INF;
+        $bestpt = array_fill(0, $dims, 0.0);
+        $total = (int) ($Ns ** $dims);
+        for ($idx = 0; $idx < $total; $idx++) {
+            $pt = [];
+            $t = $idx;
+            for ($d = 0; $d < $dims; $d++) {
+                $pt[$d] = $axes[$d][$t % $Ns];
+                $t = intdiv($t, $Ns);
+            }
+            $v = (float) $func($pt);
+            if ($v < $best) {
+                $best = $v;
+                $bestpt = $pt;
+            }
+        }
+
+        return $dims === 1 ? $bestpt[0] : $bestpt;
+    }
+
     private int $nfev = 0;
 
     private int $njev = 0;
