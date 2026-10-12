@@ -341,6 +341,14 @@
 | `signal.stft` | call | rtol 1e-09 |
 | `signal.iirfilter` | every call | rtol 1e-07 |
 | `signal.iirfilter` | call | rtol 1e-07 |
+| `signal.iirdesign` | every call | rtol 1e-07 |
+| `signal.iirdesign` | call | rtol 1e-07 |
+| `signal.envelope` | every call | rtol 1e-07 |
+| `signal.envelope` | call | rtol 1e-07 |
+| `signal.firwin_2d` | every call | rtol 1e-09 |
+| `signal.firwin_2d` | call | rtol 1e-09 |
+| `signal.istft` | every call | rtol 1e-08 |
+| `signal.istft` | call | rtol 1e-08 |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |
