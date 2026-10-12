@@ -28,9 +28,13 @@ final class Special
     'bdtrik' => 'bdtrik',
     'bdtrin' => 'bdtrin',
     'bei' => 'bei',
+    'bei_zeros' => 'beiZeros',
     'beip' => 'beip',
+    'beip_zeros' => 'beipZeros',
     'ber' => 'ber',
+    'ber_zeros' => 'berZeros',
     'berp' => 'berp',
+    'berp_zeros' => 'berpZeros',
     'besselpoly' => 'besselpoly',
     'beta' => 'beta',
     'betainc' => 'betainc',
@@ -163,10 +167,14 @@ final class Special
     'k1' => 'k1',
     'k1e' => 'k1e',
     'kei' => 'kei',
+    'kei_zeros' => 'keiZeros',
     'keip' => 'keip',
+    'keip_zeros' => 'keipZeros',
     'kelvin' => 'kelvin',
     'ker' => 'ker',
+    'ker_zeros' => 'kerZeros',
     'kerp' => 'kerp',
+    'kerp_zeros' => 'kerpZeros',
     'kl_div' => 'klDiv',
     'kn' => 'kn',
     'kolmogi' => 'kolmogi',
@@ -427,6 +435,16 @@ final class Special
     }
 
     /**
+     * First nt positive zeros of the Kelvin function bei (scipy.special.bei_zeros).
+     *
+     * scipy.special.bei_zeros
+     */
+    public static function beiZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.bei_zeros', [$nt]);
+    }
+
+    /**
      * Derivative of the Kelvin function bei.
      *
      * scipy.special.beip
@@ -434,6 +452,16 @@ final class Special
     public static function beip(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.beip', [$x], $out);
+    }
+
+    /**
+     * First nt positive zeros of the Kelvin derivative bei' (scipy.special.beip_zeros).
+     *
+     * scipy.special.beip_zeros
+     */
+    public static function beipZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.beip_zeros', [$nt]);
     }
 
     /**
@@ -447,6 +475,16 @@ final class Special
     }
 
     /**
+     * First nt positive zeros of the Kelvin function ber (scipy.special.ber_zeros).
+     *
+     * scipy.special.ber_zeros
+     */
+    public static function berZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.ber_zeros', [$nt]);
+    }
+
+    /**
      * Derivative of the Kelvin function ber.
      *
      * scipy.special.berp
@@ -454,6 +492,16 @@ final class Special
     public static function berp(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.berp', [$x], $out);
+    }
+
+    /**
+     * First nt positive zeros of the Kelvin derivative ber' (scipy.special.berp_zeros).
+     *
+     * scipy.special.berp_zeros
+     */
+    public static function berpZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.berp_zeros', [$nt]);
     }
 
     /**
@@ -1803,6 +1851,16 @@ final class Special
     }
 
     /**
+     * First nt positive zeros of the Kelvin function kei (scipy.special.kei_zeros).
+     *
+     * scipy.special.kei_zeros
+     */
+    public static function keiZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.kei_zeros', [$nt]);
+    }
+
+    /**
      * Derivative of the Kelvin function kei.
      *
      * scipy.special.keip
@@ -1810,6 +1868,16 @@ final class Special
     public static function keip(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.keip', [$x], $out);
+    }
+
+    /**
+     * First nt positive zeros of the Kelvin derivative kei' (scipy.special.keip_zeros).
+     *
+     * scipy.special.keip_zeros
+     */
+    public static function keipZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.keip_zeros', [$nt]);
     }
 
     /**
@@ -1835,6 +1903,16 @@ final class Special
     }
 
     /**
+     * First nt positive zeros of the Kelvin function ker (scipy.special.ker_zeros).
+     *
+     * scipy.special.ker_zeros
+     */
+    public static function kerZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.ker_zeros', [$nt]);
+    }
+
+    /**
      * Derivative of the Kelvin function ker.
      *
      * scipy.special.kerp
@@ -1842,6 +1920,16 @@ final class Special
     public static function kerp(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.kerp', [$x], $out);
+    }
+
+    /**
+     * First nt positive zeros of the Kelvin derivative ker' (scipy.special.kerp_zeros).
+     *
+     * scipy.special.kerp_zeros
+     */
+    public static function kerpZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.kerp_zeros', [$nt]);
     }
 
     /**
