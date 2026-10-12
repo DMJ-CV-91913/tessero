@@ -1014,6 +1014,9 @@
         "special.dawsn": "pass",
         "special.digamma": "pass",
         "special.diric": "pass",
+        "special.ellip_harm": "pass",
+        "special.ellip_harm_2": "pass",
+        "special.ellip_normal": "pass",
         "special.ellipe": "pass",
         "special.ellipeinc": "pass",
         "special.ellipj": "pass",
@@ -3188,7 +3191,10 @@
             "special.pbdn_seq": 0,
             "special.sph_harm_y_all": null,
             "special.factorialk": 8.120488408686846e-16,
-            "special.jnjnp_zeros": 0
+            "special.jnjnp_zeros": 0,
+            "special.ellip_harm": 4.1780598692888897e-16,
+            "special.ellip_harm_2": 7.46554246560211e-15,
+            "special.ellip_normal": 6.622245395824866e-15
         },
         "ext": {
             "np.median": 0,
@@ -4783,7 +4789,10 @@
             "special.pbdn_seq": 0,
             "special.sph_harm_y_all": null,
             "special.factorialk": 8.120488408686846e-16,
-            "special.jnjnp_zeros": 0
+            "special.jnjnp_zeros": 0,
+            "special.ellip_harm": 4.1780598692888897e-16,
+            "special.ellip_harm_2": 7.46554246560211e-15,
+            "special.ellip_normal": 6.622245395824866e-15
         }
     },
     "ext": {
@@ -5801,6 +5810,9 @@
         "special.dawsn": "pass",
         "special.digamma": "pass",
         "special.diric": "pass",
+        "special.ellip_harm": "pass",
+        "special.ellip_harm_2": "pass",
+        "special.ellip_normal": "pass",
         "special.ellipe": "pass",
         "special.ellipeinc": "pass",
         "special.ellipj": "pass",

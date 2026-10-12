@@ -16,6 +16,7 @@
 #include "fn.h"
 
 #include <float.h>
+#include <lapacke.h>
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
@@ -4403,6 +4404,150 @@ static int r_pbdn_seq(const void *c, const tsr_arg *a, int na, tsr_result *r, in
     return TSR_OK;
 }
 
+/* ---- ellipsoidal harmonics / Lame functions (scipy.special.ellip_harm / ellip_harm_2 / ellip_normal) ----
+   Port of scipy's _ellip_harm: build a symmetric tridiagonal from the Lame recurrence (4 types K/L/M/N by
+   p-range and n-parity), take its tp-th eigenvector (LAPACK dstev) as the polynomial coefficients, then
+   evaluate a Horner polynomial in lambda = 1 - s^2/h^2 times a type prefactor. The second-kind function and
+   the normalisation use Gauss-Legendre quadrature (endpoint sqrt-singularities removed by a sin^2 sub). */
+
+/* Fill eigv[0..size-1] (size <= 64) and return size, or 0 on error. */
+static int ellip_lame(double h2, double k2, int n, int p, double *eigv)
+{
+    int r = n / 2;
+    double alpha = h2, beta = k2 - h2, gamma = alpha - beta;
+    char t; int tp, size;
+    if (p - 1 < r + 1) { t = 'K'; tp = p; size = r + 1; }
+    else if (p - 1 < (n - r) + (r + 1)) { t = 'L'; tp = p - (r + 1); size = n - r; }
+    else if (p - 1 < 2 * (n - r) + (r + 1)) { t = 'M'; tp = p - (n - r) - (r + 1); size = n - r; }
+    else { t = 'N'; tp = p - 2 * (n - r) - (r + 1); size = r; }
+    if (size < 1 || size > 64) return 0;
+    double g[64], d[64], f[64], ss[64], dd[64];
+    for (int j = 0; j < size; j++) {
+        if (t == 'K') {
+            g[j] = -(2.0 * j + 2) * (2 * j + 1) * beta;
+            if (n % 2) { f[j] = -alpha * (2 * (r - (j + 1)) + 2) * (2 * ((j + 1) + r) + 1); d[j] = ((2 * r + 1) * (2 * r + 2) - 4.0 * j * j) * alpha + (2.0 * j + 1) * (2 * j + 1) * beta; }
+            else { f[j] = -alpha * (2 * (r - (j + 1)) + 2) * (2 * (r + (j + 1)) - 1); d[j] = 2.0 * r * (2 * r + 1) * alpha - 4.0 * j * j * gamma; }
+        } else if (t == 'L') {
+            g[j] = -(2.0 * j + 2) * (2 * j + 3) * beta;
+            if (n % 2) { f[j] = -alpha * (2 * (r - (j + 1)) + 2) * (2 * ((j + 1) + r) + 1); d[j] = (2.0 * r + 1) * (2 * r + 2) * alpha - (2.0 * j + 1) * (2 * j + 1) * gamma; }
+            else { f[j] = -alpha * (2 * (r - (j + 1))) * (2 * (r + (j + 1)) + 1); d[j] = (2.0 * r * (2 * r + 1) - (2.0 * j + 1) * (2 * j + 1)) * alpha + (2.0 * j + 2) * (2 * j + 2) * beta; }
+        } else if (t == 'M') {
+            g[j] = -(2.0 * j + 2) * (2 * j + 1) * beta;
+            if (n % 2) { f[j] = -alpha * (2 * (r - (j + 1)) + 2) * (2 * ((j + 1) + r) + 1); d[j] = ((2 * r + 1) * (2 * r + 2) - (2.0 * j + 1) * (2 * j + 1)) * alpha + 4.0 * j * j * beta; }
+            else { f[j] = -alpha * (2 * (r - (j + 1))) * (2 * (r + (j + 1)) + 1); d[j] = 2.0 * r * (2 * r + 1) * alpha - (2.0 * j + 1) * (2 * j + 1) * gamma; }
+        } else {
+            g[j] = -(2.0 * j + 2) * (2 * j + 3) * beta;
+            if (n % 2) { f[j] = -alpha * (2 * (r - (j + 1))) * (2 * ((j + 1) + r) + 3); d[j] = (2.0 * r + 1) * (2 * r + 2) * alpha - (2.0 * j + 2) * (2 * j + 2) * gamma; }
+            else { f[j] = -alpha * (2 * (r - (j + 1))) * (2 * (r + (j + 1)) + 1); d[j] = 2.0 * r * (2 * r + 1) * alpha - (2.0 * j + 2) * (2 * j + 2) * alpha + (2.0 * j + 1) * (2 * j + 1) * beta; }
+        }
+    }
+    ss[0] = 1.0;
+    for (int i = 1; i < size; i++) ss[i] = sqrt(g[i - 1] / f[i - 1]) * ss[i - 1];
+    for (int i = 0; i < size - 1; i++) dd[i] = g[i] * ss[i] / ss[i + 1];
+    double z[64 * 64];
+    if (LAPACKE_dstev(LAPACK_ROW_MAJOR, 'V', size, d, dd, z, size) != 0) return 0;
+    for (int i = 0; i < size; i++) eigv[i] = z[i * size + (tp - 1)] / ss[i];
+    double denom = eigv[size - 1] / pow(-h2, size - 1);
+    for (int i = 0; i < size; i++) eigv[i] /= denom;
+    return size;
+}
+
+static double ellip_eval(double h2, double k2, int n, int p, double s, const double *eigv, double signm, double signn)
+{
+    double s2 = s * s; int r = n / 2, size; double psi;
+    if (p - 1 < r + 1) { size = r + 1; psi = pow(s, n - 2 * r); }
+    else if (p - 1 < (n - r) + (r + 1)) { size = n - r; psi = pow(s, 1 - n + 2 * r) * signm * sqrt(fabs(s2 - h2)); }
+    else if (p - 1 < 2 * (n - r) + (r + 1)) { size = n - r; psi = pow(s, 1 - n + 2 * r) * signn * sqrt(fabs(s2 - k2)); }
+    else { size = r; psi = pow(s, n - 2 * r) * signm * signn * sqrt(fabs((s2 - h2) * (s2 - k2))); }
+    double lam = 1.0 - s2 / h2, pp = eigv[size - 1];
+    for (int j = size - 2; j >= 0; j--) pp = pp * lam + eigv[j];
+    return pp * psi;
+}
+
+/* Gauss-Legendre nodes/weights on [-1, 1] via Golub-Welsch (LAPACK dstev of the Legendre Jacobi matrix). */
+static int ellip_glnodes(int N, double *x, double *w)
+{
+    double *dg = (double *)calloc((size_t)N, sizeof(double));
+    double *e = (double *)malloc((size_t)(N > 1 ? N - 1 : 1) * sizeof(double));
+    double *z = (double *)malloc((size_t)N * N * sizeof(double));
+    if (!dg || !e || !z) { free(dg); free(e); free(z); return 0; }
+    for (int i = 0; i < N - 1; i++) { double kk = i + 1; e[i] = kk / sqrt(4.0 * kk * kk - 1.0); }
+    int ok = LAPACKE_dstev(LAPACK_ROW_MAJOR, 'V', N, dg, e, z, N) == 0;
+    if (ok) for (int j = 0; j < N; j++) { x[j] = dg[j]; double v0 = z[j]; w[j] = 2.0 * v0 * v0; }
+    free(dg); free(e); free(z);
+    return ok;
+}
+
+#define ELLIP_GLN 256
+
+/* read (h2, k2, n, p[, s]) scalar args */
+static int r_ellip_harm(const void *c, const tsr_arg *a, int na, tsr_result *res, int nr)
+{
+    (void)c; (void)nr;
+    double h2 = seq_argf(a, na, 0), k2 = seq_argf(a, na, 1), s = seq_argf(a, na, 4);
+    int n = (int)roots_argi(a, na, 2), p = (int)roots_argi(a, na, 3);
+    double eigv[64];
+    if (!ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_harm: invalid arguments"); return TSR_EARG; }
+    fn_result_num(&res[0], ellip_eval(h2, k2, n, p, s, eigv, 1.0, 1.0));
+    return TSR_OK;
+}
+
+static int r_ellip_harm_2(const void *c, const tsr_arg *a, int na, tsr_result *res, int nr)
+{
+    (void)c; (void)nr;
+    double h2 = seq_argf(a, na, 0), k2 = seq_argf(a, na, 1), s = seq_argf(a, na, 4);
+    int n = (int)roots_argi(a, na, 2), p = (int)roots_argi(a, na, 3);
+    double eigv[64];
+    if (!ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_harm_2: invalid arguments"); return TSR_EARG; }
+    double *gx = (double *)malloc(2 * ELLIP_GLN * sizeof(double));
+    if (!gx) return TSR_ENOMEM;
+    double *gw = gx + ELLIP_GLN;
+    if (!ellip_glnodes(ELLIP_GLN, gx, gw)) { free(gx); return TSR_EARG; }
+    double hi = 1.0 / s, xm = 0.5 * hi, xc = 0.5 * hi, acc = 0.0;
+    for (int j = 0; j < ELLIP_GLN; j++) {
+        double tt = xc + xm * gx[j], t2 = tt * tt;
+        double i = ellip_eval(h2, k2, n, p, 1.0 / tt, eigv, 1.0, 1.0);
+        acc += gw[j] / (i * i * sqrt(1 - t2 * k2) * sqrt(1 - t2 * h2));
+    }
+    acc *= xm;
+    free(gx);
+    fn_result_num(&res[0], acc * (2 * n + 1) * ellip_eval(h2, k2, n, p, s, eigv, 1.0, 1.0));
+    return TSR_OK;
+}
+
+static int r_ellip_normal(const void *c, const tsr_arg *a, int na, tsr_result *res, int nr)
+{
+    (void)c; (void)nr;
+    double h2 = seq_argf(a, na, 0), k2 = seq_argf(a, na, 1);
+    int n = (int)roots_argi(a, na, 2), p = (int)roots_argi(a, na, 3);
+    double eigv[64];
+    if (!ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_normal: invalid arguments"); return TSR_EARG; }
+    double h = sqrt(h2), kk = sqrt(k2);
+    double *gx = (double *)malloc(2 * ELLIP_GLN * sizeof(double));
+    if (!gx) return TSR_ENOMEM;
+    double *gw = gx + ELLIP_GLN;
+    if (!ellip_glnodes(ELLIP_GLN, gx, gw)) { free(gx); return TSR_EARG; }
+    /* over [h,k] with weight (t-h)^-1/2 (k-t)^-1/2: t = h + (k-h) sin^2 th, dt/sqrt = 2 dth, th in [0,pi/2] */
+    double xm = 0.25 * M_PI, xc = 0.25 * M_PI;   /* [0, pi/2] */
+    double res_a = 0.0, res1 = 0.0, res2 = 0.0, res3 = 0.0;
+    for (int j = 0; j < ELLIP_GLN; j++) {
+        double th = xc + xm * gx[j], sth = sin(th), w = gw[j] * xm;
+        double thk = h + (kk - h) * sth * sth;      /* [h,k] node */
+        double Ehk = ellip_eval(h2, k2, n, p, thk, eigv, 1.0, 1.0);
+        double base_hk = Ehk * Ehk / sqrt((thk + h) * (thk + kk)) * 2.0;
+        res_a += w * base_hk;
+        res1 += w * base_hk * thk * thk;
+        double t0h = h * sth * sth;                 /* [0,h] node */
+        double E0h = ellip_eval(h2, k2, n, p, t0h, eigv, 1.0, 1.0);
+        double base_0h = E0h * E0h / sqrt((t0h + h) * (k2 - t0h * t0h)) * 2.0 * sqrt(h) * sth;
+        res2 += w * base_0h;
+        res3 += w * base_0h * t0h * t0h;
+    }
+    free(gx);
+    fn_result_num(&res[0], 8.0 * (res1 * res2 - res_a * res3));
+    return TSR_OK;
+}
+
 static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
@@ -4955,6 +5100,9 @@ static const fn_def DEFS[] = {
     ROUTINE("special.fresnels_zeros", 1, "nt", "zeros", r_fresnels_zeros, NULL, "First nt complex zeros of the Fresnel sine integral (scipy.special.fresnels_zeros)."),
     ROUTINE("special.pbdn_seq", 2, "n, z", "pb, pd", r_pbdn_seq, NULL, "Complex parabolic cylinder Dn(z) and derivatives for a sequence of orders (scipy.special.pbdn_seq)."),
     ROUTINE("special.jnjnp_zeros", 4, "nt", "zo, n, m, t", r_jnjnp_zeros, NULL, "First nt zeros of Jn and Jn' by magnitude with their order/rank/type (scipy.special.jnjnp_zeros)."),
+    ROUTINE("special.ellip_harm", 1, "h2, k2, n, p, s", "E", r_ellip_harm, NULL, "Ellipsoidal harmonic (Lame function of the first kind) E^p_n(s) (scipy.special.ellip_harm)."),
+    ROUTINE("special.ellip_harm_2", 1, "h2, k2, n, p, s", "F", r_ellip_harm_2, NULL, "Ellipsoidal harmonic of the second kind F^p_n(s) (scipy.special.ellip_harm_2)."),
+    ROUTINE("special.ellip_normal", 1, "h2, k2, n, p", "gamma", r_ellip_normal, NULL, "Normalization constant for ellipsoidal harmonics (scipy.special.ellip_normal)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
     ROUTINE("special.factorialk", 1, "n, k", "out", r_factorialk, NULL, "Order-k multifactorial (scipy.special.factorialk, exact=False)."),
