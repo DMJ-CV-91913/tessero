@@ -61,6 +61,19 @@ def build():
     }
     for nm, rf in roots_fns.items():
         blocks[nm] = [call(rf, [k]) for k in (1, 2, 3, 5, 8)]
+    gw_fns = {
+        'roots_legendre': (sc.roots_legendre, []), 'p_roots': (sc.p_roots, []),
+        'roots_hermite': (sc.roots_hermite, []), 'h_roots': (sc.h_roots, []),
+        'roots_laguerre': (sc.roots_laguerre, []), 'l_roots': (sc.l_roots, []),
+        'roots_hermitenorm': (sc.roots_hermitenorm, []), 'he_roots': (sc.he_roots, []),
+        'roots_jacobi': (sc.roots_jacobi, [1.5, 0.7]), 'j_roots': (sc.j_roots, [1.5, 0.7]),
+        'roots_gegenbauer': (sc.roots_gegenbauer, [1.3]), 'cg_roots': (sc.cg_roots, [1.3]),
+        'roots_genlaguerre': (sc.roots_genlaguerre, [1.5]), 'la_roots': (sc.la_roots, [1.5]),
+        'roots_sh_legendre': (sc.roots_sh_legendre, []), 'ps_roots': (sc.ps_roots, []),
+        'roots_sh_jacobi': (sc.roots_sh_jacobi, [2.0, 1.0]), 'js_roots': (sc.js_roots, [2.0, 1.0]),
+    }
+    for nm, (rf, extra) in gw_fns.items():
+        blocks[nm] = [call(rf, [k] + extra) for k in (2, 3, 5, 8)]
     return blocks
 
 
@@ -69,8 +82,13 @@ def main():
     with open(OUT) as fh:
         data = json.load(fh)
     by_fn = {c['fn']: c for c in data['calls']}
+    GW_TOL = {'roots_legendre', 'p_roots', 'roots_hermite', 'h_roots', 'roots_laguerre', 'l_roots',
+              'roots_hermitenorm', 'he_roots', 'roots_jacobi', 'j_roots', 'roots_gegenbauer', 'cg_roots',
+              'roots_genlaguerre', 'la_roots', 'roots_sh_legendre', 'ps_roots', 'roots_sh_jacobi', 'js_roots'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}
+        if k in GW_TOL:
+            by_fn[k]['tol'] = {'rtol': 1e-9, 'atol': 1e-11}
     data['calls'] = list(by_fn.values())
     fixture_env.require_pinned()
     with open(OUT, 'w') as fh:

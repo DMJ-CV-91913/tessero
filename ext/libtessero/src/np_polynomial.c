@@ -1708,6 +1708,100 @@ static int r_poly2herme(const void *x, const tsr_arg *a, int n, tsr_result *r, i
     fn_free_doubles(pol, nc);
     return rc;
 }
+static double roots_dbl(const tsr_arg *a, int n, int idx, double dflt)
+{ return (n > idx && a[idx].kind == 1) ? (a[idx].flags & 1 ? (double)a[idx].ival : a[idx].num) : dflt; }
+
+/* Golub-Welsch: nodes = eigenvalues of the symmetric tridiagonal Jacobi matrix (diag d[n], sub-diag e[n-1]);
+   weights = mu0 * (first component of each normalized eigenvector)^2. d and e are overwritten. */
+static int gw_tridiag(int64_t n, double *d, double *e, double mu0, double *x, double *w)
+{
+    double *Z = (double *)malloc((size_t)(n * n) * sizeof(double));
+    if (!Z) return TSR_ENOMEM;
+    lapack_int info = LAPACKE_dstev(LAPACK_ROW_MAJOR, 'V', (lapack_int)n, d, e, Z, (lapack_int)n);
+    if (info != 0) { free(Z); return TSR_ECONVERGE; }
+    for (int64_t j = 0; j < n; j++) { x[j] = d[j]; w[j] = mu0 * Z[j] * Z[j]; }
+    free(Z);
+    return TSR_OK;
+}
+
+/* Jacobi matrix (diag d[n], sub-diag e[n-1]) and mu0 for weight (1-x)^a (1+x)^b on [-1, 1]. */
+static double jacobi_tridiag(int64_t n, double a, double b, double *d, double *e)
+{
+    for (int64_t k = 0; k < n; k++) {
+        double t = 2.0 * (double)k + a + b;
+        d[k] = (t == 0.0 || t + 2.0 == 0.0) ? (b - a) / (a + b + 2.0) : (b * b - a * a) / (t * (t + 2.0));
+    }
+    for (int64_t k = 1; k < n; k++) {
+        double t = 2.0 * (double)k + a + b;
+        e[k - 1] = sqrt(4.0 * (double)k * ((double)k + a) * ((double)k + b) * ((double)k + a + b) / (t * t * (t + 1.0) * (t - 1.0)));
+    }
+    return pow(2.0, a + b + 1.0) * exp(lgamma(a + 1.0) + lgamma(b + 1.0) - lgamma(a + b + 2.0));
+}
+
+static int roots_jacobi_like(int64_t n, double a, double b, tsr_result *res)
+{
+    double *x = npoly_out1(&res[0], n), *w = x ? npoly_out1(&res[1], n) : NULL;
+    double *d = (double *)malloc((size_t)n * sizeof(double)), *e = (double *)malloc((size_t)(n > 1 ? n - 1 : 1) * sizeof(double));
+    if (!x || !w || !d || !e) { free(d); free(e); return TSR_ENOMEM; }
+    double mu0 = jacobi_tridiag(n, a, b, d, e);
+    int rc = gw_tridiag(n, d, e, mu0, x, w);
+    free(d); free(e);
+    return rc;
+}
+
+static int r_roots_jacobi(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
+    if (m < 1) { fn_set_error("roots_jacobi: n must be >= 1"); return TSR_EARG; }
+    return roots_jacobi_like(m, roots_dbl(a, n, 1, 0.0), roots_dbl(a, n, 2, 0.0), r);
+}
+static int r_roots_gegenbauer(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
+    if (m < 1) { fn_set_error("roots_gegenbauer: n must be >= 1"); return TSR_EARG; }
+    double lam = roots_dbl(a, n, 1, 0.0);
+    return roots_jacobi_like(m, lam - 0.5, lam - 0.5, r);
+}
+static int r_roots_genlaguerre(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
+    if (m < 1) { fn_set_error("roots_genlaguerre: n must be >= 1"); return TSR_EARG; }
+    double al = roots_dbl(a, n, 1, 0.0);
+    double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
+    double *d = (double *)malloc((size_t)m * sizeof(double)), *e = (double *)malloc((size_t)(m > 1 ? m - 1 : 1) * sizeof(double));
+    if (!xo || !wo || !d || !e) { free(d); free(e); return TSR_ENOMEM; }
+    for (int64_t k = 0; k < m; k++) d[k] = 2.0 * (double)k + al + 1.0;
+    for (int64_t k = 1; k < m; k++) e[k - 1] = sqrt((double)k * ((double)k + al));
+    int rc = gw_tridiag(m, d, e, exp(lgamma(al + 1.0)), xo, wo);
+    free(d); free(e);
+    return rc;
+}
+/* shifted families: compute the [-1,1] Jacobi G-W into the output buffers, then map x->(x+1)/2 and rescale w. */
+static int roots_shifted(int64_t m, double a, double b, double wscale, tsr_result *r)
+{
+    double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
+    double *d = (double *)malloc((size_t)m * sizeof(double)), *e = (double *)malloc((size_t)(m > 1 ? m - 1 : 1) * sizeof(double));
+    if (!xo || !wo || !d || !e) { free(d); free(e); return TSR_ENOMEM; }
+    double mu0 = jacobi_tridiag(m, a, b, d, e);
+    int rc = gw_tridiag(m, d, e, mu0, xo, wo);
+    if (rc == TSR_OK) for (int64_t i = 0; i < m; i++) { xo[i] = (xo[i] + 1.0) / 2.0; wo[i] /= wscale; }
+    free(d); free(e);
+    return rc;
+}
+static int r_roots_sh_legendre(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
+    if (m < 1) { fn_set_error("roots_sh_legendre: n must be >= 1"); return TSR_EARG; }
+    return roots_shifted(m, 0.0, 0.0, 2.0, r);
+}
+static int r_roots_sh_jacobi(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
+    if (m < 1) { fn_set_error("roots_sh_jacobi: n must be >= 1"); return TSR_EARG; }
+    double p1 = roots_dbl(a, n, 1, 0.0), q1 = roots_dbl(a, n, 2, 0.0);
+    return roots_shifted(m, p1 - q1, q1 - 1.0, pow(2.0, p1), r);
+}
+
 static int r_hermegauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
     (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
@@ -1938,6 +2032,24 @@ static const fn_def DEFS[] = {
     ROUTINE("npoly.herme2poly", 1, "c", "out", r_herme2poly, NULL, "Convert a HermiteE series to a power series (numpy.polynomial.hermite_e.herme2poly)."),
     ROUTINE("npoly.poly2herme", 1, "pol", "out", r_poly2herme, NULL, "Convert a power series to a HermiteE series (numpy.polynomial.hermite_e.poly2herme)."),
     ROUTINE("npoly.hermegauss", 2, "deg", "x, w", r_hermegauss, NULL, "Gauss-HermiteE quadrature nodes and weights (numpy.polynomial.hermite_e.hermegauss)."),
+    ROUTINE("special.roots_legendre", 2, "n, mu=False", "x, w", r_leggauss, NULL, "Gauss-Legendre quadrature (scipy.special.roots_legendre)."),
+    ROUTINE("special.p_roots", 2, "n, mu=False", "x, w", r_leggauss, NULL, "Alias of roots_legendre (scipy.special.p_roots)."),
+    ROUTINE("special.roots_hermite", 2, "n, mu=False", "x, w", r_hermgauss, NULL, "Gauss-Hermite (physicists) quadrature (scipy.special.roots_hermite)."),
+    ROUTINE("special.h_roots", 2, "n, mu=False", "x, w", r_hermgauss, NULL, "Alias of roots_hermite (scipy.special.h_roots)."),
+    ROUTINE("special.roots_laguerre", 2, "n, mu=False", "x, w", r_laggauss, NULL, "Gauss-Laguerre quadrature (scipy.special.roots_laguerre)."),
+    ROUTINE("special.l_roots", 2, "n, mu=False", "x, w", r_laggauss, NULL, "Alias of roots_laguerre (scipy.special.l_roots)."),
+    ROUTINE("special.roots_hermitenorm", 2, "n, mu=False", "x, w", r_hermegauss, NULL, "Gauss-Hermite (probabilists) quadrature (scipy.special.roots_hermitenorm)."),
+    ROUTINE("special.he_roots", 2, "n, mu=False", "x, w", r_hermegauss, NULL, "Alias of roots_hermitenorm (scipy.special.he_roots)."),
+    ROUTINE("special.roots_jacobi", 2, "n, alpha, beta, mu=False", "x, w", r_roots_jacobi, NULL, "Gauss-Jacobi quadrature (scipy.special.roots_jacobi)."),
+    ROUTINE("special.j_roots", 2, "n, alpha, beta, mu=False", "x, w", r_roots_jacobi, NULL, "Alias of roots_jacobi (scipy.special.j_roots)."),
+    ROUTINE("special.roots_gegenbauer", 2, "n, alpha, mu=False", "x, w", r_roots_gegenbauer, NULL, "Gauss-Gegenbauer quadrature (scipy.special.roots_gegenbauer)."),
+    ROUTINE("special.cg_roots", 2, "n, alpha, mu=False", "x, w", r_roots_gegenbauer, NULL, "Alias of roots_gegenbauer (scipy.special.cg_roots)."),
+    ROUTINE("special.roots_genlaguerre", 2, "n, alpha, mu=False", "x, w", r_roots_genlaguerre, NULL, "generalized Gauss-Laguerre quadrature (scipy.special.roots_genlaguerre)."),
+    ROUTINE("special.la_roots", 2, "n, alpha, mu=False", "x, w", r_roots_genlaguerre, NULL, "Alias of roots_genlaguerre (scipy.special.la_roots)."),
+    ROUTINE("special.roots_sh_legendre", 2, "n, mu=False", "x, w", r_roots_sh_legendre, NULL, "shifted Gauss-Legendre on [0, 1] quadrature (scipy.special.roots_sh_legendre)."),
+    ROUTINE("special.ps_roots", 2, "n, mu=False", "x, w", r_roots_sh_legendre, NULL, "Alias of roots_sh_legendre (scipy.special.ps_roots)."),
+    ROUTINE("special.roots_sh_jacobi", 2, "n, p1, q1, mu=False", "x, w", r_roots_sh_jacobi, NULL, "shifted Gauss-Jacobi on [0, 1] quadrature (scipy.special.roots_sh_jacobi)."),
+    ROUTINE("special.js_roots", 2, "n, p1, q1, mu=False", "x, w", r_roots_sh_jacobi, NULL, "Alias of roots_sh_jacobi (scipy.special.js_roots)."),
     ROUTINE("npoly.hermeweight", 1, "x", "out", r_hermeweight, NULL, "HermiteE weight exp(-x^2/2) (numpy.polynomial.hermite_e.hermeweight)."),
     ROUTINE("npoly.hermezero", 1, "", "out", r_hermezero, NULL, "The zero HermiteE series (numpy.polynomial.hermite_e.hermezero)."),
     ROUTINE("npoly.hermeone", 1, "", "out", r_hermeone, NULL, "The one HermiteE series (numpy.polynomial.hermite_e.hermeone)."),
