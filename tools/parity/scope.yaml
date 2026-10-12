@@ -485,6 +485,8 @@ legacy:
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
     approx_fprime: {ffi: [Min::approxGrad], ext: [Min::approxGrad], tests: solvers}
+    check_grad: {ffi: [Min::checkGrad], ext: [Min::checkGrad], fixtures: [optimize.check_grad]}
+    brute: {ffi: [Min::brute], ext: [Min::brute], fixtures: [optimize.brute]}
   scipy.stats:
     # optimiser-based transform-parameter selectors: pure-PHP Tessero\StatsFns drives the scipy-matched
     # Brent / bounded minimisers over the Box-Cox / Yeo-Johnson objectives; verified both backends by the
