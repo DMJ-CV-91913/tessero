@@ -4390,6 +4390,11 @@
             "nin": 2,
             "nout": 1
         },
+        "special.ai_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "special.airy": {
             "kind": "ufunc",
             "nin": 1,
@@ -4509,6 +4514,11 @@
             "kind": "ufunc",
             "nin": 2,
             "nout": 1
+        },
+        "special.bi_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
         },
         "special.binom": {
             "kind": "ufunc",
@@ -5109,6 +5119,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "special.jnyn_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
         },
         "special.js_roots": {
             "kind": "routine",

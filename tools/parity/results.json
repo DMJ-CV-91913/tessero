@@ -959,6 +959,7 @@
         "sparse.vstack": "pass",
         "spatial.cKDTree": "pass",
         "special.agm": "pass",
+        "special.ai_zeros": "pass",
         "special.airy": "pass",
         "special.airye": "pass",
         "special.assoc_laguerre": "pass",
@@ -985,6 +986,7 @@
         "special.betainccinv": "pass",
         "special.betaincinv": "pass",
         "special.betaln": "pass",
+        "special.bi_zeros": "pass",
         "special.binom": "pass",
         "special.boxcox": "pass",
         "special.boxcox1p": "pass",
@@ -1114,6 +1116,7 @@
         "special.jn": "pass",
         "special.jn_zeros": "pass",
         "special.jnp_zeros": "pass",
+        "special.jnyn_zeros": "pass",
         "special.js_roots": "pass",
         "special.jv": "pass",
         "special.jve": "pass",
@@ -3142,7 +3145,10 @@
             "special.sph_legendre_p": null,
             "special.sph_legendre_p_all": null,
             "special.lqmn": null,
-            "special.stirling2": null
+            "special.stirling2": null,
+            "special.jnyn_zeros": 4.362031043621474e-16,
+            "special.ai_zeros": 9.719524518763017e-12,
+            "special.bi_zeros": 1.586272477260163e-11
         },
         "ext": {
             "np.median": 0,
@@ -4714,7 +4720,10 @@
             "special.sph_legendre_p": null,
             "special.sph_legendre_p_all": null,
             "special.lqmn": null,
-            "special.stirling2": null
+            "special.stirling2": null,
+            "special.jnyn_zeros": 4.362031043621474e-16,
+            "special.ai_zeros": 9.719524518763017e-12,
+            "special.bi_zeros": 1.586272477260163e-11
         }
     },
     "ext": {
@@ -5677,6 +5686,7 @@
         "sparse.vstack": "pass",
         "spatial.cKDTree": "pass",
         "special.agm": "pass",
+        "special.ai_zeros": "pass",
         "special.airy": "pass",
         "special.airye": "pass",
         "special.assoc_laguerre": "pass",
@@ -5703,6 +5713,7 @@
         "special.betainccinv": "pass",
         "special.betaincinv": "pass",
         "special.betaln": "pass",
+        "special.bi_zeros": "pass",
         "special.binom": "pass",
         "special.boxcox": "pass",
         "special.boxcox1p": "pass",
@@ -5832,6 +5843,7 @@
         "special.jn": "pass",
         "special.jn_zeros": "pass",
         "special.jnp_zeros": "pass",
+        "special.jnyn_zeros": "pass",
         "special.js_roots": "pass",
         "special.jv": "pass",
         "special.jve": "pass",
