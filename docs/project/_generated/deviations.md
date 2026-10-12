@@ -638,6 +638,11 @@
 | `special.jnyn_zeros` | every call | rtol 1e-09 |
 | `special.ai_zeros` | every call | rtol 1e-09 |
 | `special.bi_zeros` | every call | rtol 1e-09 |
+| `special.lmbda` | every call | rtol 1e-09 |
+| `special.pbdv_seq` | every call | rtol 1e-09 |
+| `special.pbvv_seq` | every call | rtol 1e-09 |
+| `special.obl_cv_seq` | every call | rtol 1e-07 |
+| `special.pro_cv_seq` | every call | rtol 1e-07 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |
