@@ -6648,6 +6648,53 @@
         ]
     },
     {
+        "class": "Tessero\\Spatial\\Rectangle",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $maxes, array $mins)",
+                "doc": ""
+            },
+            {
+                "name": "volume",
+                "static": false,
+                "sig": "volume(): float",
+                "doc": ""
+            },
+            {
+                "name": "minDistancePoint",
+                "static": false,
+                "sig": "minDistancePoint(array $x, float $p = 2.0): float",
+                "doc": ""
+            },
+            {
+                "name": "maxDistancePoint",
+                "static": false,
+                "sig": "maxDistancePoint(array $x, float $p = 2.0): float",
+                "doc": ""
+            },
+            {
+                "name": "minDistanceRectangle",
+                "static": false,
+                "sig": "minDistanceRectangle(self $other, float $p = 2.0): float",
+                "doc": ""
+            },
+            {
+                "name": "maxDistanceRectangle",
+                "static": false,
+                "sig": "maxDistanceRectangle(self $other, float $p = 2.0): float",
+                "doc": ""
+            },
+            {
+                "name": "split",
+                "static": false,
+                "sig": "split(int $d, float $split): array",
+                "doc": "Split along axis $d at coordinate $split, returning [less, greater]."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Datetime\\Datetime",
         "methods": [
             {
