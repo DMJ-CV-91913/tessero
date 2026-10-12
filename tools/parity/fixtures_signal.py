@@ -501,6 +501,26 @@ for nt, bd, des, w, fsv in _fls_cases:
                 'expect': F.enc_result(np.asarray(sg.firls(nt, bd, des, **kw), dtype=np.float64), []),
                 'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
 
+# zpk2sos (pairing='nearest', digital): second-order sections from zeros/poles/gain
+z2s = []
+_z2s_designs = []
+for N in [2, 3, 4, 5, 6, 8]:
+    _z2s_designs.append(sg.butter(N, 0.3, output='zpk'))
+    _z2s_designs.append(sg.butter(N, 0.4, btype='high', output='zpk'))
+    _z2s_designs.append(sg.cheby1(N, 1, 0.3, output='zpk'))
+    _z2s_designs.append(sg.cheby2(N, 40, 0.4, output='zpk'))
+    _z2s_designs.append(sg.ellip(N, 1, 40, 0.3, output='zpk'))
+    if N % 2 == 0:
+        _z2s_designs.append(sg.butter(N, [0.3, 0.6], btype='band', output='zpk'))
+for zz, pp, kk in _z2s_designs:
+    z2s.append({'args': [F.enc(np.asarray(zz, complex)), F.enc(np.asarray(pp, complex)), F.enc(float(kk))], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.zpk2sos(zz, pp, kk), dtype=np.float64), []),
+                'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
+# empty system
+z2s.append({'args': [F.enc(np.asarray([], complex)), F.enc(np.asarray([], complex)), F.enc(3.0)], 'kwargs': {},
+            'expect': F.enc_result(np.asarray(sg.zpk2sos([], [], 3.0), dtype=np.float64), []),
+            'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
+
 # residue / residuez (real-root denominators, distinct magnitudes -> unambiguous pole order)
 rsd, rsz = [], []
 for (b, a) in [([1., 3., 3.], [1., 6., 11., 6.]), ([1., 0.], [1., 3., 2.]),
@@ -998,6 +1018,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'argrelextrema', 'cases': arext},
                  {'fn': 'choose_conv_method', 'cases': ccm},
                  {'fn': 'firls', 'cases': fls, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'zpk2sos', 'cases': z2s, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
                  {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},

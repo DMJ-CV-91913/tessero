@@ -3505,6 +3505,12 @@
                 "doc": "1-D Wiener filter using local mean and variance (scipy.signal.wiener)."
             },
             {
+                "name": "zpk2sos",
+                "static": true,
+                "sig": "zpk2sos(mixed $z, mixed $p, mixed $k, mixed $pairing = null, mixed $analog = false): mixed",
+                "doc": "Second-order sections from zeros, poles and gain (scipy.signal.zpk2sos, pairing='nearest')."
+            },
+            {
                 "name": "zpk2ss",
                 "static": true,
                 "sig": "zpk2ss(mixed $z, mixed $p, mixed $k): mixed",
@@ -19524,6 +19530,12 @@
                 "name": "zpk2tf",
                 "static": true,
                 "sig": "zpk2tf($z, $p, $k)",
+                "doc": ""
+            },
+            {
+                "name": "zpk2sos",
+                "static": true,
+                "sig": "zpk2sos($z, $p, $k, $pairing = null, $analog = false)",
                 "doc": ""
             },
             {

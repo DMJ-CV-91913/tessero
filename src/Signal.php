@@ -137,6 +137,7 @@ final class Signal
     'vectorstrength' => 'vectorstrength',
     'welch' => 'welch',
     'wiener' => 'wiener',
+    'zpk2sos' => 'zpk2sos',
     'zpk2ss' => 'zpk2ss',
     'zpk2tf' => 'zpk2tf',
     ];
@@ -1485,6 +1486,16 @@ final class Signal
     public static function wiener(mixed $im, mixed $mysize = 3, mixed $noise = null): mixed
     {
         return Registry::routine('signal.wiener', [$im, $mysize, $noise]);
+    }
+
+    /**
+     * Second-order sections from zeros, poles and gain (scipy.signal.zpk2sos, pairing='nearest').
+     *
+     * scipy.signal.zpk2sos
+     */
+    public static function zpk2sos(mixed $z, mixed $p, mixed $k, mixed $pairing = null, mixed $analog = false): mixed
+    {
+        return Registry::routine('signal.zpk2sos', [$z, $p, $k, $pairing, $analog]);
     }
 
     /**

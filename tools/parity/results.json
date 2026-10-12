@@ -847,6 +847,7 @@
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
         "signal.wiener": "pass",
+        "signal.zpk2sos": "pass",
         "signal.zpk2ss": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
@@ -3214,7 +3215,8 @@
             "windows.dpss": 8.50815985283948,
             "signal.argrelextrema": 0,
             "signal.choose_conv_method": 0,
-            "signal.firls": 1.043871624984004
+            "signal.firls": 1.043871624984004,
+            "signal.zpk2sos": 0
         },
         "ext": {
             "np.median": 0,
@@ -4822,7 +4824,8 @@
             "windows.dpss": 8.50815985283948,
             "signal.argrelextrema": 0,
             "signal.choose_conv_method": 0,
-            "signal.firls": 1.043871624984004
+            "signal.firls": 1.043871624984004,
+            "signal.zpk2sos": 0
         }
     },
     "ext": {
@@ -5673,6 +5676,7 @@
         "signal.vectorstrength": "pass",
         "signal.welch": "pass",
         "signal.wiener": "pass",
+        "signal.zpk2sos": "pass",
         "signal.zpk2ss": "pass",
         "signal.zpk2tf": "pass",
         "slinalg.bandwidth": "pass",
