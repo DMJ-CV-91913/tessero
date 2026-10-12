@@ -9831,6 +9831,12 @@
                 "doc": "First nt positive zeros of the Kelvin function ber (scipy.special.ber_zeros)."
             },
             {
+                "name": "bernoulli",
+                "static": true,
+                "sig": "bernoulli(mixed $n): mixed",
+                "doc": "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."
+            },
+            {
                 "name": "berp",
                 "static": true,
                 "sig": "berp(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10131,6 +10137,12 @@
                 "doc": "Inverse of the error function."
             },
             {
+                "name": "euler",
+                "static": true,
+                "sig": "euler(mixed $n): mixed",
+                "doc": "The first n+1 Euler numbers (scipy.special.euler)."
+            },
+            {
                 "name": "evalChebyc",
                 "static": true,
                 "sig": "evalChebyc(mixed $n, mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10273,6 +10285,12 @@
                 "static": true,
                 "sig": "factorial(mixed $n, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "The factorial n! as gamma(n+1), 0 for n<0 (scipy.special.factorial, exact=False)."
+            },
+            {
+                "name": "factorial2",
+                "static": true,
+                "sig": "factorial2(mixed $n): mixed",
+                "doc": "Double factorial n!! (scipy.special.factorial2, exact=False)."
             },
             {
                 "name": "fdtr",
@@ -16048,6 +16066,24 @@
                 "name": "multigammaln",
                 "static": true,
                 "sig": "multigammaln($a, $d)",
+                "doc": ""
+            },
+            {
+                "name": "factorial2",
+                "static": true,
+                "sig": "factorial2($n)",
+                "doc": ""
+            },
+            {
+                "name": "bernoulli",
+                "static": true,
+                "sig": "bernoulli($n)",
+                "doc": ""
+            },
+            {
+                "name": "euler",
+                "static": true,
+                "sig": "euler($n)",
                 "doc": ""
             },
             {

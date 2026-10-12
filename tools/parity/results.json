@@ -973,6 +973,7 @@
         "special.beip_zeros": "pass",
         "special.ber": "pass",
         "special.ber_zeros": "pass",
+        "special.bernoulli": "pass",
         "special.berp": "pass",
         "special.berp_zeros": "pass",
         "special.besselpoly": "pass",
@@ -1023,6 +1024,7 @@
         "special.erfcx": "pass",
         "special.erfi": "pass",
         "special.erfinv": "pass",
+        "special.euler": "pass",
         "special.eval_chebyc": "pass",
         "special.eval_chebys": "pass",
         "special.eval_chebyt": "pass",
@@ -1047,6 +1049,7 @@
         "special.expn": "pass",
         "special.exprel": "pass",
         "special.factorial": "pass",
+        "special.factorial2": "pass",
         "special.fdtr": "pass",
         "special.fdtrc": "pass",
         "special.fdtri": "pass",
@@ -3080,7 +3083,10 @@
             "special.kerp_zeros": 1.0890278897916946e-12,
             "special.keip_zeros": 5.13997692851924e-11,
             "special.kelvin_zeros": 5.13997692851924e-11,
-            "special.multigammaln": 2.217240389195107e-16
+            "special.multigammaln": 2.217240389195107e-16,
+            "special.factorial2": 8.421247238638223e-16,
+            "special.bernoulli": 1.7217477443794664e-12,
+            "special.euler": 1.1521478377994762e-15
         },
         "ext": {
             "np.median": 0,
@@ -4621,7 +4627,10 @@
             "special.kerp_zeros": 1.0890278897916946e-12,
             "special.keip_zeros": 5.13997692851924e-11,
             "special.kelvin_zeros": 5.13997692851924e-11,
-            "special.multigammaln": 2.217240389195107e-16
+            "special.multigammaln": 2.217240389195107e-16,
+            "special.factorial2": 8.421247238638223e-16,
+            "special.bernoulli": 1.7217477443794664e-12,
+            "special.euler": 1.1521478377994762e-15
         }
     },
     "ext": {
@@ -5598,6 +5607,7 @@
         "special.beip_zeros": "pass",
         "special.ber": "pass",
         "special.ber_zeros": "pass",
+        "special.bernoulli": "pass",
         "special.berp": "pass",
         "special.berp_zeros": "pass",
         "special.besselpoly": "pass",
@@ -5648,6 +5658,7 @@
         "special.erfcx": "pass",
         "special.erfi": "pass",
         "special.erfinv": "pass",
+        "special.euler": "pass",
         "special.eval_chebyc": "pass",
         "special.eval_chebys": "pass",
         "special.eval_chebyt": "pass",
@@ -5672,6 +5683,7 @@
         "special.expn": "pass",
         "special.exprel": "pass",
         "special.factorial": "pass",
+        "special.factorial2": "pass",
         "special.fdtr": "pass",
         "special.fdtrc": "pass",
         "special.fdtri": "pass",

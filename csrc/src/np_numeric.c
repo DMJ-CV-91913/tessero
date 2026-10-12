@@ -3955,6 +3955,70 @@ static int r_kelvin_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r,
 
 /* scipy.special.multigammaln(a, d): ln of the multivariate gamma, element-wise over a with scalar int d:
    (d(d-1)/4) ln(pi) + sum_{j=1..d} lgamma(a + (1-j)/2). */
+/* C(a, b) as an exact-ish double via the multiplicative recurrence (a, b small). */
+static double combi_binom(int64_t a, int64_t b)
+{
+    if (b < 0 || b > a) return 0.0;
+    if (b > a - b) b = a - b;
+    double r = 1.0;
+    for (int64_t i = 0; i < b; i++) r = r * (double)(a - i) / (double)(i + 1);
+    return r;
+}
+
+/* scipy.special.factorial2(n): double factorial, element-wise over non-negative integer n. */
+static int r_factorial2(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)c; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("factorial2: n must be an array"); return TSR_ETYPE; }
+    int64_t na; double *n = fn_arg_doubles(&args[0], &na);
+    if (!n) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, args[0].arr.ndim, args[0].arr.shape);
+    if (!out) { fn_free_doubles(n, na); return TSR_ENOMEM; }
+    const double LSQPI = 0.5 * log(M_PI);
+    for (int64_t i = 0; i < na; i++) {
+        double v = n[i];
+        if (((int64_t)v) % 2 == 0) out[i] = exp(0.5 * v * log(2.0) + lgamma(0.5 * v + 1.0));
+        else                       out[i] = exp(0.5 * (v + 1.0) * log(2.0) + lgamma(0.5 * v + 1.0) - LSQPI);
+    }
+    fn_free_doubles(n, na);
+    return TSR_OK;
+}
+
+/* scipy.special.bernoulli(n): B_0..B_n via B_m = -1/(m+1) sum_{k<m} C(m+1,k) B_k. */
+static int r_bernoulli(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)c; (void)nres;
+    int64_t n = (nargs > 0 && args[0].kind == 1) ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : -1;
+    if (n < 0) { fn_set_error("bernoulli: n must be a non-negative integer"); return TSR_EARG; }
+    double *B = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n + 1});
+    if (!B) return TSR_ENOMEM;
+    B[0] = 1.0;
+    for (int64_t m = 1; m <= n; m++) {
+        double s = 0.0;
+        for (int64_t k = 0; k < m; k++) s += combi_binom(m + 1, k) * B[k];
+        B[m] = -s / (double)(m + 1);
+    }
+    return TSR_OK;
+}
+
+/* scipy.special.euler(n): E_0..E_n via sum_{k<=nn} C(2nn,2k) E_{2k} = 0, odd terms zero. */
+static int r_euler(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)c; (void)nres;
+    int64_t n = (nargs > 0 && args[0].kind == 1) ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : -1;
+    if (n < 0) { fn_set_error("euler: n must be a non-negative integer"); return TSR_EARG; }
+    double *E = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n + 1});
+    if (!E) return TSR_ENOMEM;
+    for (int64_t i = 0; i <= n; i++) E[i] = 0.0;
+    E[0] = 1.0;
+    for (int64_t nn = 1; 2 * nn <= n; nn++) {
+        double s = 0.0;
+        for (int64_t k = 0; k < nn; k++) s += combi_binom(2 * nn, 2 * k) * E[2 * k];
+        E[2 * nn] = -s;
+    }
+    return TSR_OK;
+}
+
 static int r_multigammaln(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)c; (void)nres;
@@ -4535,6 +4599,9 @@ static const fn_def DEFS[] = {
     ROUTINE("special.keip_zeros", 1, "nt", "zeros", r_keip_zeros, NULL, "First nt positive zeros of the Kelvin derivative kei' (scipy.special.keip_zeros)."),
     ROUTINE("special.kelvin_zeros", 8, "nt", "ber, bei, ker, kei, berp, beip, kerp, keip", r_kelvin_zeros, NULL, "First nt zeros of all eight Kelvin functions (scipy.special.kelvin_zeros)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
+    ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
+    ROUTINE("special.bernoulli", 1, "n", "out", r_bernoulli, NULL, "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."),
+    ROUTINE("special.euler", 1, "n", "out", r_euler, NULL, "The first n+1 Euler numbers (scipy.special.euler)."),
     ROUTINE("special.roots_chebyt", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt)."),
     ROUTINE("special.t_roots", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Alias of roots_chebyt (scipy.special.t_roots)."),
     ROUTINE("special.roots_chebyu", 2, "n, mu=False", "x, w", r_roots_chebyu, NULL, "Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu)."),
