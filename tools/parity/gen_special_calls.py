@@ -97,6 +97,10 @@ def build():
     blocks['modfresnelm'] = [call(sc.modfresnelm, [F(6, lo=-3.0, hi=3.0)])]
     blocks['mathieu_even_coef'] = [call(sc.mathieu_even_coef, [m, q]) for m in (0, 1, 2, 3, 4) for q in (2.0, 5.0)]
     blocks['mathieu_odd_coef'] = [call(sc.mathieu_odd_coef, [m, q]) for m in (1, 2, 3, 4) for q in (2.0, 5.0)]
+    blocks['erf_zeros'] = [call(sc.erf_zeros, [nt]) for nt in (3, 5)]
+    blocks['fresnel_zeros'] = [call(sc.fresnel_zeros, [nt]) for nt in (3, 5)]
+    blocks['fresnelc_zeros'] = [call(sc.fresnelc_zeros, [nt]) for nt in (3, 5)]
+    blocks['fresnels_zeros'] = [call(sc.fresnels_zeros, [nt]) for nt in (3, 5)]
     blocks['multigammaln'] = [call(sc.multigammaln, [F(5, lo=2.0, hi=9.0), d]) for d in (1, 2, 3)] + [call(sc.multigammaln, [3.5, 2])]
     import numpy as _np
     blocks['factorial2'] = [call(sc.factorial2, [_np.arange(0, 12)])]
@@ -121,6 +125,7 @@ def main():
     GW_TOL = GW_TOL | {'y0_zeros', 'y1_zeros', 'y1p_zeros'}
     GW_TOL = GW_TOL | {'modfresnelp', 'modfresnelm'}
     GW_TOL = GW_TOL | {'mathieu_even_coef', 'mathieu_odd_coef'}
+    GW_TOL = GW_TOL | {'erf_zeros', 'fresnel_zeros', 'fresnelc_zeros', 'fresnels_zeros'}
     GW_TOL = GW_TOL | {'factorial2', 'bernoulli', 'euler'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}

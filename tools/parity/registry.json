@@ -4700,6 +4700,11 @@
             "nin": 1,
             "nout": 1
         },
+        "special.erf_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.erfc": {
             "kind": "ufunc",
             "nin": 1,
@@ -4879,6 +4884,21 @@
             "kind": "ufunc",
             "nin": 1,
             "nout": 2
+        },
+        "special.fresnel_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "special.fresnelc_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.fresnels_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
         },
         "special.gamma": {
             "kind": "ufunc",

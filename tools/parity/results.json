@@ -1027,6 +1027,7 @@
         "special.elliprj": "pass",
         "special.entr": "pass",
         "special.erf": "pass",
+        "special.erf_zeros": "pass",
         "special.erfc": "pass",
         "special.erfcinv": "pass",
         "special.erfcx": "pass",
@@ -1063,6 +1064,9 @@
         "special.fdtri": "pass",
         "special.fdtridfd": "pass",
         "special.fresnel": "pass",
+        "special.fresnel_zeros": "pass",
+        "special.fresnelc_zeros": "pass",
+        "special.fresnels_zeros": "pass",
         "special.gamma": "pass",
         "special.gammainc": "pass",
         "special.gammaincc": "pass",
@@ -3172,7 +3176,11 @@
             "special.modfresnelp": 0,
             "special.modfresnelm": 0,
             "special.mathieu_even_coef": 0,
-            "special.mathieu_odd_coef": 0
+            "special.mathieu_odd_coef": 0,
+            "special.erf_zeros": 0,
+            "special.fresnel_zeros": 0,
+            "special.fresnelc_zeros": 0,
+            "special.fresnels_zeros": 0
         },
         "ext": {
             "np.median": 0,
@@ -4759,7 +4767,11 @@
             "special.modfresnelp": 0,
             "special.modfresnelm": 0,
             "special.mathieu_even_coef": 0,
-            "special.mathieu_odd_coef": 0
+            "special.mathieu_odd_coef": 0,
+            "special.erf_zeros": 0,
+            "special.fresnel_zeros": 0,
+            "special.fresnelc_zeros": 0,
+            "special.fresnels_zeros": 0
         }
     },
     "ext": {
@@ -5790,6 +5802,7 @@
         "special.elliprj": "pass",
         "special.entr": "pass",
         "special.erf": "pass",
+        "special.erf_zeros": "pass",
         "special.erfc": "pass",
         "special.erfcinv": "pass",
         "special.erfcx": "pass",
@@ -5826,6 +5839,9 @@
         "special.fdtri": "pass",
         "special.fdtridfd": "pass",
         "special.fresnel": "pass",
+        "special.fresnel_zeros": "pass",
+        "special.fresnelc_zeros": "pass",
+        "special.fresnels_zeros": "pass",
         "special.gamma": "pass",
         "special.gammainc": "pass",
         "special.gammaincc": "pass",

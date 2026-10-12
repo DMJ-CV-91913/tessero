@@ -81,6 +81,7 @@ final class Special
     'elliprj' => 'elliprj',
     'entr' => 'entr',
     'erf' => 'erf',
+    'erf_zeros' => 'erfZeros',
     'erfc' => 'erfc',
     'erfcinv' => 'erfcinv',
     'erfcx' => 'erfcx',
@@ -117,6 +118,9 @@ final class Special
     'fdtri' => 'fdtri',
     'fdtridfd' => 'fdtridfd',
     'fresnel' => 'fresnel',
+    'fresnel_zeros' => 'fresnelZeros',
+    'fresnelc_zeros' => 'fresnelcZeros',
+    'fresnels_zeros' => 'fresnelsZeros',
     'gamma' => 'gamma',
     'gammainc' => 'gammainc',
     'gammaincc' => 'gammaincc',
@@ -997,6 +1001,16 @@ final class Special
     }
 
     /**
+     * First nt complex zeros of erf (scipy.special.erf_zeros).
+     *
+     * scipy.special.erf_zeros
+     */
+    public static function erfZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.erf_zeros', [$nt]);
+    }
+
+    /**
      * Complementary error function, ``1 - erf(x)``.
      *
      * scipy.special.erfc
@@ -1356,6 +1370,38 @@ final class Special
     public static function fresnel(mixed $z, ?array $out = null): array
     {
         return Registry::ufunc('special.fresnel', [$z], $out);
+    }
+
+    /**
+     * First nt complex zeros of the Fresnel sine and cosine integrals (scipy.special.fresnel_zeros).
+     *
+     * scipy.special.fresnel_zeros
+     *
+     * @return mixed one array, or an array keyed by zfs, zfc when several results are requested
+     */
+    public static function fresnelZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.fresnel_zeros', [$nt]);
+    }
+
+    /**
+     * First nt complex zeros of the Fresnel cosine integral (scipy.special.fresnelc_zeros).
+     *
+     * scipy.special.fresnelc_zeros
+     */
+    public static function fresnelcZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.fresnelc_zeros', [$nt]);
+    }
+
+    /**
+     * First nt complex zeros of the Fresnel sine integral (scipy.special.fresnels_zeros).
+     *
+     * scipy.special.fresnels_zeros
+     */
+    public static function fresnelsZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.fresnels_zeros', [$nt]);
     }
 
     /**
