@@ -22,7 +22,13 @@ cases = []
 def flat(val):
     if isinstance(val, tuple):
         return [float(v) for part in val for v in np.ravel(np.asarray(part, float))]
-    return [float(v) for v in np.ravel(np.asarray(val, float))]
+    a = np.asarray(val)
+    if np.iscomplexobj(a):
+        out = []
+        for x in a.ravel():
+            out += [float(x.real), float(x.imag)]
+        return out
+    return [float(v) for v in np.ravel(a.astype(float))]
 
 
 def add(fn, args, val):
@@ -67,6 +73,12 @@ for th in (0.3, 0.6, 1.2, 2.5):
         for M in range(0, max(1, N + 1)):
             for dn in (0, 1, 2):
                 add('sph_legendre_p_all', [N, M, th, dn], sp.sph_legendre_p_all(N, M, th, diff_n=dn))
+
+# sph_harm_y_all: complex spherical harmonics for all degrees/orders (= sph_legendre_p * exp(i m phi))
+for th, ph in ((0.6, 0.4), (1.2, 2.0), (0.3, -1.0), (2.5, 3.0)):
+    for n in range(0, 5):
+        for m in range(0, max(1, n + 1)):
+            add('sph_harm_y_all', [n, m, th, ph], sp.sph_harm_y_all(n, m, th, ph))
 
 # lqmn: Legendre Q_n^m + derivative (2-D), |x| < 1
 for x in (0.2, 0.5, -0.4, 0.8):

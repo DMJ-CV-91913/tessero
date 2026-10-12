@@ -1269,6 +1269,7 @@
         "special.softplus": "pass",
         "special.spence": "pass",
         "special.sph_harm_y": "pass",
+        "special.sph_harm_y_all": "pass",
         "special.sph_legendre_p": "pass",
         "special.sph_legendre_p_all": "pass",
         "special.spherical_in": "pass",
@@ -3182,7 +3183,8 @@
             "special.fresnel_zeros": 0,
             "special.fresnelc_zeros": 0,
             "special.fresnels_zeros": 0,
-            "special.pbdn_seq": 0
+            "special.pbdn_seq": 0,
+            "special.sph_harm_y_all": null
         },
         "ext": {
             "np.median": 0,
@@ -4774,7 +4776,8 @@
             "special.fresnel_zeros": 0,
             "special.fresnelc_zeros": 0,
             "special.fresnels_zeros": 0,
-            "special.pbdn_seq": 0
+            "special.pbdn_seq": 0,
+            "special.sph_harm_y_all": null
         }
     },
     "ext": {
@@ -6047,6 +6050,7 @@
         "special.softplus": "pass",
         "special.spence": "pass",
         "special.sph_harm_y": "pass",
+        "special.sph_harm_y_all": "pass",
         "special.sph_legendre_p": "pass",
         "special.sph_legendre_p_all": "pass",
         "special.spherical_in": "pass",

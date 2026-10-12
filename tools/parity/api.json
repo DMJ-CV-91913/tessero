@@ -6856,6 +6856,12 @@
                 "doc": "sph_legendre_p for every degree/order, laid out like scipy's sph_legendre_p_all."
             },
             {
+                "name": "sphHarmYAll",
+                "static": true,
+                "sig": "sphHarmYAll(int $n, int $m, float $theta, float $phi): array",
+                "doc": "Spherical harmonics Y_n^m(theta, phi) for every degree 0..n and order, laid out like scipy's sph_harm_y_all: Y = sph_legendre_p(n, m, theta) * exp(i*m*phi). Each complex value is returned as a [re, im] pair; the result is [n + 1][2m + 1][2]."
+            },
+            {
                 "name": "lqmn",
                 "static": true,
                 "sig": "lqmn(int $m, int $n, float $x): array",
