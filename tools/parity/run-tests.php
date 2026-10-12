@@ -738,6 +738,8 @@ foreach ($files as $file) {
                     'assoc_legendre_p_all' => \Tessero\SpecialSeq::assocLegendrePAll((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0), (bool) ($a[4] ?? false)),
                     'sph_legendre_p' => \Tessero\SpecialSeq::sphLegendreP((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0)),
                     'sph_legendre_p_all' => \Tessero\SpecialSeq::sphLegendrePAll((int) $a[0], (int) $a[1], (float) $a[2], (int) ($a[3] ?? 0)),
+                    'lqmn' => \Tessero\SpecialSeq::lqmn((int) $a[0], (int) $a[1], (float) $a[2]),
+                    'stirling2' => \Tessero\SpecialSeq::stirling2((int) $a[0], (int) $a[1]),
                 };
                 $ok = vecClose(flattenNums($r), array_map('floatval', $c['expect']), $rtol);
                 if (! $ok) { $msg = 'did not match scipy'; }

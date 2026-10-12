@@ -418,6 +418,10 @@ legacy:
     assoc_legendre_p_all: {ffi: [SQ::assocLegendrePAll], ext: [SQ::assocLegendrePAll], fixtures: [special.assoc_legendre_p_all]}
     sph_legendre_p: {ffi: [SQ::sphLegendreP], ext: [SQ::sphLegendreP], fixtures: [special.sph_legendre_p]}
     sph_legendre_p_all: {ffi: [SQ::sphLegendrePAll], ext: [SQ::sphLegendrePAll], fixtures: [special.sph_legendre_p_all]}
+    # lqmn: Legendre Q_n^m + derivative (same (1-x^2)^(m/2) D^m structure as assoc P, Q_n base);
+    # stirling2: Stirling numbers of the 2nd kind via the floating-point DP (scipy exact=False, n<=50).
+    lqmn: {ffi: [SQ::lqmn], ext: [SQ::lqmn], fixtures: [special.lqmn]}
+    stirling2: {ffi: [SQ::stirling2], ext: [SQ::stirling2], fixtures: [special.stirling2]}
   # scipy.linalg is fully on both backends via the kernel registry (slinalg.*), verified by
   # tests/fixtures/parity/slinalg.json and classified from the registry (scope.py PREFIX slinalg -> scipy.linalg):
   # solve, inv, det, svdvals, lstsq, pinv, norm, eigvalsh, svd, eigh, qr, cholesky, solve_triangular, lu, eigvals,
