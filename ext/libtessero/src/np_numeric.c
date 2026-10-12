@@ -3937,6 +3937,50 @@ static int kz_run(const tsr_arg *args, int nargs, tsr_result *res, int which)
     if (!out) return TSR_ENOMEM;
     return kelvin_zeros(which, nt, out);
 }
+/* scipy.special.kelvin_zeros(nt): the first nt zeros of all eight Kelvin functions as a tuple
+   (ber, bei, ker, kei, berp, beip, kerp, keip). */
+static int r_kelvin_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(a, n, 0);
+    if (nt < 1) { fn_set_error("kelvin_zeros: nt must be >= 1"); return TSR_EARG; }
+    for (int which = 0; which < 8; which++) {
+        double *out = (double *)fn_result_array(&r[which], TSR_F64, 1, (int64_t[]){nt});
+        if (!out) return TSR_ENOMEM;
+        int rc = kelvin_zeros(which, nt, out);
+        if (rc != TSR_OK) return rc;
+    }
+    return TSR_OK;
+}
+
+/* scipy.special.multigammaln(a, d): ln of the multivariate gamma, element-wise over a with scalar int d:
+   (d(d-1)/4) ln(pi) + sum_{j=1..d} lgamma(a + (1-j)/2). */
+static int r_multigammaln(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)c; (void)nres;
+    int64_t d = (nargs > 1 && args[1].kind == 1) ? (args[1].flags & 1 ? args[1].ival : (int64_t)args[1].num) : 0;
+    if (d < 1) { fn_set_error("multigammaln: d must be a positive integer"); return TSR_EARG; }
+    const double c0 = 0.25 * (double)d * (double)(d - 1) * log(M_PI);
+    if (args[0].kind == 1) {
+        double a = args[0].flags & 1 ? (double)args[0].ival : args[0].num, mg = c0;
+        for (int64_t j = 1; j <= d; j++) mg += lgamma(a + 0.5 * (1.0 - (double)j));
+        fn_result_num(&res[0], mg);
+        return TSR_OK;
+    }
+    if (args[0].kind != 3) { fn_set_error("multigammaln: a must be a number or array"); return TSR_ETYPE; }
+    int64_t na; double *a = fn_arg_doubles(&args[0], &na);
+    if (!a) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, args[0].arr.ndim, args[0].arr.shape);
+    if (!out) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < na; i++) {
+        double mg = c0;
+        for (int64_t j = 1; j <= d; j++) mg += lgamma(a[i] + 0.5 * (1.0 - (double)j));
+        out[i] = mg;
+    }
+    fn_free_doubles(a, na);
+    return TSR_OK;
+}
+
 static int r_ber_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 0); }
 static int r_bei_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 1); }
 static int r_ker_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 2); }
@@ -4489,6 +4533,8 @@ static const fn_def DEFS[] = {
     ROUTINE("special.beip_zeros", 1, "nt", "zeros", r_beip_zeros, NULL, "First nt positive zeros of the Kelvin derivative bei' (scipy.special.beip_zeros)."),
     ROUTINE("special.kerp_zeros", 1, "nt", "zeros", r_kerp_zeros, NULL, "First nt positive zeros of the Kelvin derivative ker' (scipy.special.kerp_zeros)."),
     ROUTINE("special.keip_zeros", 1, "nt", "zeros", r_keip_zeros, NULL, "First nt positive zeros of the Kelvin derivative kei' (scipy.special.keip_zeros)."),
+    ROUTINE("special.kelvin_zeros", 8, "nt", "ber, bei, ker, kei, berp, beip, kerp, keip", r_kelvin_zeros, NULL, "First nt zeros of all eight Kelvin functions (scipy.special.kelvin_zeros)."),
+    ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.roots_chebyt", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt)."),
     ROUTINE("special.t_roots", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Alias of roots_chebyt (scipy.special.t_roots)."),
     ROUTINE("special.roots_chebyu", 2, "n, mu=False", "x, w", r_roots_chebyu, NULL, "Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu)."),
