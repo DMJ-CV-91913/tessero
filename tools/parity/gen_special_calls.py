@@ -83,6 +83,10 @@ def build():
         blocks[nm] = [call(rf, [nt]) for nt in (3, 6)]
     blocks['kelvin_zeros'] = [call(sc.kelvin_zeros, [nt]) for nt in (3, 5)]
     blocks['multigammaln'] = [call(sc.multigammaln, [F(5, lo=2.0, hi=9.0), d]) for d in (1, 2, 3)] + [call(sc.multigammaln, [3.5, 2])]
+    import numpy as _np
+    blocks['factorial2'] = [call(sc.factorial2, [_np.arange(0, 12)])]
+    blocks['bernoulli'] = [call(sc.bernoulli, [m]) for m in (6, 10, 14)]
+    blocks['euler'] = [call(sc.euler, [m]) for m in (6, 10, 14)]
     return blocks
 
 
@@ -97,6 +101,7 @@ def main():
     GW_TOL = GW_TOL | {'jn_zeros', 'yn_zeros', 'jnp_zeros', 'ynp_zeros'}
     GW_TOL = GW_TOL | {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros'}
     GW_TOL = GW_TOL | {'kelvin_zeros'}
+    GW_TOL = GW_TOL | {'factorial2', 'bernoulli', 'euler'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}
         if k in GW_TOL:

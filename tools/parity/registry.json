@@ -4460,6 +4460,11 @@
             "nin": 0,
             "nout": 1
         },
+        "special.bernoulli": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.berp": {
             "kind": "ufunc",
             "nin": 1,
@@ -4710,6 +4715,11 @@
             "nin": 1,
             "nout": 1
         },
+        "special.euler": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.eval_chebyc": {
             "kind": "ufunc",
             "nin": 2,
@@ -4828,6 +4838,11 @@
         "special.factorial": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "special.factorial2": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.fdtr": {

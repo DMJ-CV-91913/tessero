@@ -33,6 +33,7 @@ final class Special
     'beip_zeros' => 'beipZeros',
     'ber' => 'ber',
     'ber_zeros' => 'berZeros',
+    'bernoulli' => 'bernoulli',
     'berp' => 'berp',
     'berp_zeros' => 'berpZeros',
     'besselpoly' => 'besselpoly',
@@ -83,6 +84,7 @@ final class Special
     'erfcx' => 'erfcx',
     'erfi' => 'erfi',
     'erfinv' => 'erfinv',
+    'euler' => 'euler',
     'eval_chebyc' => 'evalChebyc',
     'eval_chebys' => 'evalChebys',
     'eval_chebyt' => 'evalChebyt',
@@ -107,6 +109,7 @@ final class Special
     'expn' => 'expn',
     'exprel' => 'exprel',
     'factorial' => 'factorial',
+    'factorial2' => 'factorial2',
     'fdtr' => 'fdtr',
     'fdtrc' => 'fdtrc',
     'fdtri' => 'fdtri',
@@ -484,6 +487,16 @@ final class Special
     public static function berZeros(mixed $nt): mixed
     {
         return Registry::routine('special.ber_zeros', [$nt]);
+    }
+
+    /**
+     * The first n+1 Bernoulli numbers (scipy.special.bernoulli).
+     *
+     * scipy.special.bernoulli
+     */
+    public static function bernoulli(mixed $n): mixed
+    {
+        return Registry::routine('special.bernoulli', [$n]);
     }
 
     /**
@@ -993,6 +1006,16 @@ final class Special
     }
 
     /**
+     * The first n+1 Euler numbers (scipy.special.euler).
+     *
+     * scipy.special.euler
+     */
+    public static function euler(mixed $n): mixed
+    {
+        return Registry::routine('special.euler', [$n]);
+    }
+
+    /**
      * Evaluate Chebyshev polynomial of the first kind on [-2, 2] at a point.
      *
      * scipy.special.eval_chebyc
@@ -1230,6 +1253,16 @@ final class Special
     public static function factorial(mixed $n, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.factorial', [$n], $out);
+    }
+
+    /**
+     * Double factorial n!! (scipy.special.factorial2, exact=False).
+     *
+     * scipy.special.factorial2
+     */
+    public static function factorial2(mixed $n): mixed
+    {
+        return Registry::routine('special.factorial2', [$n]);
     }
 
     /**
