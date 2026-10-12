@@ -101,6 +101,19 @@ extern "C" void tsr_fcszo(int kf, int nt, double *out)
     for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
 }
 
+/* Zeros of Jn and Jn' arranged by magnitude (scipy.special.jnjnp_zeros), via xsf's jdzo -- the same
+   routine SciPy uses. jdzo fills n/m/p at [0..nt-1] and zo at [1..nt] (matching scipy's zo[1:nt+1]). */
+extern "C" void tsr_jdzo(int nt, double *zoOut, int64_t *nOut, int64_t *mOut, int64_t *tOut)
+{
+    double zo[1202];
+    int nn[1202], mm[1202], pp[1202];
+    xsf::specfun::jdzo(nt, zo, nn, mm, pp);
+    for (int i = 0; i < nt; i++) {
+        zoOut[i] = zo[i + 1];
+        nOut[i] = nn[i]; mOut[i] = mm[i]; tOut[i] = pp[i];
+    }
+}
+
 /* Complex parabolic cylinder functions D_n(z) and D_n'(z) for orders 0..n (scipy.special.pbdn_seq),
    written interleaved into bOut / dOut. */
 extern "C" void tsr_cpbdn(int n, double zre, double zim, double *bOut, double *dOut)

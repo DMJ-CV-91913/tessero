@@ -513,6 +513,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.j_roots` | `Tessero\Special::jRoots()` |
 | `scipy.special.jn` | `Tessero\Special::jn()` |
 | `scipy.special.jn_zeros` | `Tessero\Special::jnZeros()` |
+| `scipy.special.jnjnp_zeros` | `Tessero\Special::jnjnpZeros()` |
 | `scipy.special.jnp_zeros` | `Tessero\Special::jnpZeros()` |
 | `scipy.special.jnyn_zeros` | `Tessero\Special::jnynZeros()` |
 | `scipy.special.js_roots` | `Tessero\Special::jsRoots()` |
