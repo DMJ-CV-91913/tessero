@@ -4147,6 +4147,76 @@ static int r_bi_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r,
     return TSR_OK;
 }
 
+void tsr_special_obl_cv(const void *, const double *, double *);
+void tsr_special_pro_cv(const void *, const double *, double *);
+void tsr_special_pbdv(const void *, const double *, double *);
+void tsr_special_pbvv(const void *, const double *, double *);
+
+/* read arg i as a double (int or float kind). */
+static double seq_argf(const tsr_arg *a, int n, int i) { return (n > i && a[i].kind == 1) ? (a[i].flags & 1 ? (double)a[i].ival : a[i].num) : 0.0; }
+
+/* scipy.special.obl_cv_seq(m, n, c) / pro_cv_seq: spheroidal characteristic values for modes m..n. */
+static int cv_seq(const tsr_arg *a, int na, tsr_result *r, int oblate)
+{
+    int64_t m = roots_argi(a, na, 0), n = roots_argi(a, na, 1);
+    double cc = seq_argf(a, na, 2);
+    if (n < m || m < 0) { fn_set_error("*_cv_seq: need 0 <= m <= n"); return TSR_EARG; }
+    int64_t len = n - m + 1;
+    double *out = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){len});
+    if (!out) return TSR_ENOMEM;
+    for (int64_t k = 0; k < len; k++) {
+        double in[3] = {(double)m, (double)(m + k), cc}, o[1];
+        if (oblate) tsr_special_obl_cv(NULL, in, o); else tsr_special_pro_cv(NULL, in, o);
+        out[k] = o[0];
+    }
+    return TSR_OK;
+}
+static int r_obl_cv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return cv_seq(a, n, r, 1); }
+static int r_pro_cv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return cv_seq(a, n, r, 0); }
+
+/* scipy.special.pbdv_seq(v, x) / pbvv_seq: parabolic cylinder functions and derivatives for the orders
+   v0, v0+1, ..., v0+n1 where v0 = v - int(v) and n1 = max(1, int(v)). */
+static int pb_seq(const tsr_arg *a, int na, tsr_result *r, int vv)
+{
+    double v = seq_argf(a, na, 0), x = seq_argf(a, na, 1);
+    int n = (int)v, n1 = n < 1 ? 1 : n;
+    double v0 = v - n;
+    int64_t len = (int64_t)n1 + 1;
+    double *dv = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){len});
+    double *dp = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){len});
+    if (!dv || !dp) return TSR_ENOMEM;
+    for (int64_t k = 0; k < len; k++) {
+        double in[2] = {v0 + (double)k, x}, o[2];
+        if (vv) tsr_special_pbvv(NULL, in, o); else tsr_special_pbdv(NULL, in, o);
+        dv[k] = o[0]; dp[k] = o[1];
+    }
+    return TSR_OK;
+}
+static int r_pbdv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return pb_seq(a, n, r, 0); }
+static int r_pbvv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return pb_seq(a, n, r, 1); }
+
+/* scipy.special.lmbda(v, x): lambda function L_k(x) = Gamma(k+1)(2/x)^k J_k(x) and derivative
+   L_k'(x) = -Gamma(k+1)(2/x)^k J_{k+1}(x), for k = v0, v0+1, ..., v (v0 = v - int(v)). */
+static int r_lmbda(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    double v = seq_argf(a, na, 0), x = seq_argf(a, na, 1);
+    int n = (int)v;
+    double v0 = v - n;
+    int64_t len = (int64_t)n + 1;
+    double *vl = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){len});
+    double *dl = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){len});
+    if (!vl || !dl) return TSR_ENOMEM;
+    for (int64_t k = 0; k < len; k++) {
+        double order = v0 + (double)k, pref = tgamma(order + 1.0) * pow(2.0 / x, order);
+        double inj[2] = {order, x}, oj[1];
+        tsr_special_jv(NULL, inj, oj); vl[k] = pref * oj[0];
+        inj[0] = order + 1.0;
+        tsr_special_jv(NULL, inj, oj); dl[k] = -pref * oj[0];
+    }
+    return TSR_OK;
+}
+
 static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
@@ -4681,6 +4751,11 @@ static const fn_def DEFS[] = {
     ROUTINE("special.jnyn_zeros", 4, "n, nt", "jn, jnp, yn, ynp", r_jnyn_zeros, NULL, "First nt zeros of Jn, Jn', Yn, Yn' (scipy.special.jnyn_zeros)."),
     ROUTINE("special.ai_zeros", 4, "nt", "a, ap, ai, aip", r_ai_zeros, NULL, "First nt zeros of Ai and Ai' with the associated values (scipy.special.ai_zeros)."),
     ROUTINE("special.bi_zeros", 4, "nt", "b, bp, bi, bip", r_bi_zeros, NULL, "First nt zeros of Bi and Bi' with the associated values (scipy.special.bi_zeros)."),
+    ROUTINE("special.obl_cv_seq", 1, "m, n, c", "cv", r_obl_cv_seq, NULL, "Oblate spheroidal characteristic values for modes m..n (scipy.special.obl_cv_seq)."),
+    ROUTINE("special.pro_cv_seq", 1, "m, n, c", "cv", r_pro_cv_seq, NULL, "Prolate spheroidal characteristic values for modes m..n (scipy.special.pro_cv_seq)."),
+    ROUTINE("special.pbdv_seq", 2, "v, x", "dv, dp", r_pbdv_seq, NULL, "Parabolic cylinder Dv(x) and derivatives for a sequence of orders (scipy.special.pbdv_seq)."),
+    ROUTINE("special.pbvv_seq", 2, "v, x", "vv, vp", r_pbvv_seq, NULL, "Parabolic cylinder Vv(x) and derivatives for a sequence of orders (scipy.special.pbvv_seq)."),
+    ROUTINE("special.lmbda", 2, "v, x", "vl, dl", r_lmbda, NULL, "Lambda function L_v(x) and its derivative for a sequence of orders (scipy.special.lmbda)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
     ROUTINE("special.bernoulli", 1, "n", "out", r_bernoulli, NULL, "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."),
