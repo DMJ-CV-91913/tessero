@@ -77,6 +77,10 @@ def build():
     bz_fns = {'jn_zeros': sc.jn_zeros, 'yn_zeros': sc.yn_zeros, 'jnp_zeros': sc.jnp_zeros, 'ynp_zeros': sc.ynp_zeros}
     for nm, rf in bz_fns.items():
         blocks[nm] = [call(rf, [nn, 6]) for nn in (0, 1, 2, 5)]
+    kz_fns = {'ber_zeros': sc.ber_zeros, 'bei_zeros': sc.bei_zeros, 'ker_zeros': sc.ker_zeros, 'kei_zeros': sc.kei_zeros,
+              'berp_zeros': sc.berp_zeros, 'beip_zeros': sc.beip_zeros, 'kerp_zeros': sc.kerp_zeros, 'keip_zeros': sc.keip_zeros}
+    for nm, rf in kz_fns.items():
+        blocks[nm] = [call(rf, [nt]) for nt in (3, 6)]
     return blocks
 
 
@@ -89,10 +93,12 @@ def main():
               'roots_hermitenorm', 'he_roots', 'roots_jacobi', 'j_roots', 'roots_gegenbauer', 'cg_roots',
               'roots_genlaguerre', 'la_roots', 'roots_sh_legendre', 'ps_roots', 'roots_sh_jacobi', 'js_roots'}
     GW_TOL = GW_TOL | {'jn_zeros', 'yn_zeros', 'jnp_zeros', 'ynp_zeros'}
+    GW_TOL = GW_TOL | {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}
         if k in GW_TOL:
-            by_fn[k]['tol'] = {'rtol': 1e-9, 'atol': 1e-11}
+            kv = k in {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros'}
+            by_fn[k]['tol'] = {'rtol': 1e-7, 'atol': 1e-8} if kv else {'rtol': 1e-9, 'atol': 1e-11}
     data['calls'] = list(by_fn.values())
     fixture_env.require_pinned()
     with open(OUT, 'w') as fh:

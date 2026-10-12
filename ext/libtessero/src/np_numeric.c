@@ -3885,6 +3885,67 @@ static int bessel_zeros(int kind, double nu, int64_t nt, double *out)
     return got == nt ? TSR_OK : TSR_EARG;
 }
 
+void tsr_special_ber(const void *, const double *, double *);
+void tsr_special_bei(const void *, const double *, double *);
+void tsr_special_ker(const void *, const double *, double *);
+void tsr_special_kei(const void *, const double *, double *);
+void tsr_special_berp(const void *, const double *, double *);
+void tsr_special_beip(const void *, const double *, double *);
+void tsr_special_kerp(const void *, const double *, double *);
+void tsr_special_keip(const void *, const double *, double *);
+
+static double kz_eval(int which, double x)
+{
+    double in[1] = {x}, o[1];
+    switch (which) {
+        case 0: tsr_special_ber(NULL, in, o); break;  case 1: tsr_special_bei(NULL, in, o); break;
+        case 2: tsr_special_ker(NULL, in, o); break;  case 3: tsr_special_kei(NULL, in, o); break;
+        case 4: tsr_special_berp(NULL, in, o); break; case 5: tsr_special_beip(NULL, in, o); break;
+        case 6: tsr_special_kerp(NULL, in, o); break; default: tsr_special_keip(NULL, in, o); break;
+    }
+    return o[0];
+}
+
+static int kelvin_zeros(int which, int64_t nt, double *out)
+{
+    const double h = 0.02;
+    double x = 1e-6, pf = kz_eval(which, x);
+    int64_t got = 0;
+    while (got < nt && x < 1.0e4) {
+        double x2 = x + h, f2 = kz_eval(which, x2);
+        if (pf == 0.0) { pf = f2; x = x2; continue; }
+        if ((pf < 0.0) != (f2 < 0.0)) {
+            double a = x, b = x2;
+            for (int it = 0; it < 200 && (b - a) > 1e-15; it++) {
+                double m = 0.5 * (a + b), fm = kz_eval(which, m);
+                if (fm == 0.0) { a = b = m; break; }
+                double fa = kz_eval(which, a);
+                if ((fa < 0.0) != (fm < 0.0)) b = m; else a = m;
+            }
+            out[got++] = 0.5 * (a + b);
+        }
+        pf = f2; x = x2;
+    }
+    return got == nt ? TSR_OK : TSR_EARG;
+}
+
+static int kz_run(const tsr_arg *args, int nargs, tsr_result *res, int which)
+{
+    int64_t nt = roots_argi(args, nargs, 0);
+    if (nt < 1) { fn_set_error("*_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nt});
+    if (!out) return TSR_ENOMEM;
+    return kelvin_zeros(which, nt, out);
+}
+static int r_ber_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 0); }
+static int r_bei_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 1); }
+static int r_ker_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 2); }
+static int r_kei_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 3); }
+static int r_berp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 4); }
+static int r_beip_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 5); }
+static int r_kerp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 6); }
+static int r_keip_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 7); }
+
 static int bz_run(const tsr_arg *args, int nargs, tsr_result *res, int kind)
 {
     int64_t nu = roots_argi(args, nargs, 0), nt = roots_argi(args, nargs, 1);
@@ -4420,6 +4481,14 @@ static const fn_def DEFS[] = {
     ROUTINE("special.yn_zeros", 1, "n, nt", "zeros", r_yn_zeros, NULL, "First nt positive zeros of the Bessel function Yn (scipy.special.yn_zeros)."),
     ROUTINE("special.jnp_zeros", 1, "n, nt", "zeros", r_jnp_zeros, NULL, "First nt positive zeros of the Bessel derivative Jn' (scipy.special.jnp_zeros)."),
     ROUTINE("special.ynp_zeros", 1, "n, nt", "zeros", r_ynp_zeros, NULL, "First nt positive zeros of the Bessel derivative Yn' (scipy.special.ynp_zeros)."),
+    ROUTINE("special.ber_zeros", 1, "nt", "zeros", r_ber_zeros, NULL, "First nt positive zeros of the Kelvin function ber (scipy.special.ber_zeros)."),
+    ROUTINE("special.bei_zeros", 1, "nt", "zeros", r_bei_zeros, NULL, "First nt positive zeros of the Kelvin function bei (scipy.special.bei_zeros)."),
+    ROUTINE("special.ker_zeros", 1, "nt", "zeros", r_ker_zeros, NULL, "First nt positive zeros of the Kelvin function ker (scipy.special.ker_zeros)."),
+    ROUTINE("special.kei_zeros", 1, "nt", "zeros", r_kei_zeros, NULL, "First nt positive zeros of the Kelvin function kei (scipy.special.kei_zeros)."),
+    ROUTINE("special.berp_zeros", 1, "nt", "zeros", r_berp_zeros, NULL, "First nt positive zeros of the Kelvin derivative ber' (scipy.special.berp_zeros)."),
+    ROUTINE("special.beip_zeros", 1, "nt", "zeros", r_beip_zeros, NULL, "First nt positive zeros of the Kelvin derivative bei' (scipy.special.beip_zeros)."),
+    ROUTINE("special.kerp_zeros", 1, "nt", "zeros", r_kerp_zeros, NULL, "First nt positive zeros of the Kelvin derivative ker' (scipy.special.kerp_zeros)."),
+    ROUTINE("special.keip_zeros", 1, "nt", "zeros", r_keip_zeros, NULL, "First nt positive zeros of the Kelvin derivative kei' (scipy.special.keip_zeros)."),
     ROUTINE("special.roots_chebyt", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt)."),
     ROUTINE("special.t_roots", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Alias of roots_chebyt (scipy.special.t_roots)."),
     ROUTINE("special.roots_chebyu", 2, "n, mu=False", "x, w", r_roots_chebyu, NULL, "Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu)."),

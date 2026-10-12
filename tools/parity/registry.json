@@ -4435,9 +4435,19 @@
             "nin": 1,
             "nout": 1
         },
+        "special.bei_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.beip": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "special.beip_zeros": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.ber": {
@@ -4445,9 +4455,19 @@
             "nin": 1,
             "nout": 1
         },
+        "special.ber_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.berp": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "special.berp_zeros": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.besselpoly": {
@@ -5110,9 +5130,19 @@
             "nin": 1,
             "nout": 1
         },
+        "special.kei_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.keip": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "special.keip_zeros": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.kelvin": {
@@ -5125,9 +5155,19 @@
             "nin": 1,
             "nout": 1
         },
+        "special.ker_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.kerp": {
             "kind": "ufunc",
             "nin": 1,
+            "nout": 1
+        },
+        "special.kerp_zeros": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.kl_div": {
