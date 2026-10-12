@@ -457,6 +457,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.exprel` | `Tessero\Special::exprel()` |
 | `scipy.special.factorial` | `Tessero\Special::factorial()` |
 | `scipy.special.factorial2` | `Tessero\Special::factorial2()` |
+| `scipy.special.factorialk` | `Tessero\Special::factorialk()` |
 | `scipy.special.fdtr` | `Tessero\Special::fdtr()` |
 | `scipy.special.fdtrc` | `Tessero\Special::fdtrc()` |
 | `scipy.special.fdtri` | `Tessero\Special::fdtri()` |
