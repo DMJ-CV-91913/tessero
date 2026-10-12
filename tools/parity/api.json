@@ -2389,6 +2389,36 @@
                 "static": true,
                 "sig": "nu2lambda(float $nu): float",
                 "doc": "scipy.constants.nu2lambda: convert an optical frequency to a wavelength (c / nu)."
+            },
+            {
+                "name": "value",
+                "static": true,
+                "sig": "value(string $key): float",
+                "doc": "scipy.constants.value: the value of a CODATA physical constant by name."
+            },
+            {
+                "name": "unit",
+                "static": true,
+                "sig": "unit(string $key): string",
+                "doc": "scipy.constants.unit: the unit string of a CODATA physical constant."
+            },
+            {
+                "name": "precision",
+                "static": true,
+                "sig": "precision(string $key): float",
+                "doc": "scipy.constants.precision: the relative precision (uncertainty / value) of a CODATA constant."
+            },
+            {
+                "name": "find",
+                "static": true,
+                "sig": "find(?string $sub = null): array",
+                "doc": "scipy.constants.find: the sorted CODATA keys containing $sub (all keys when $sub is null)."
+            },
+            {
+                "name": "physicalConstants",
+                "static": true,
+                "sig": "physicalConstants(): array",
+                "doc": "scipy.constants.physical_constants: the full CODATA table, name => [value, unit, uncertainty]."
             }
         ],
         "constants": [
@@ -2546,7 +2576,9 @@
             "zebi",
             "zepto",
             "zero_Celsius",
-            "zetta"
+            "zetta",
+            "CODATA",
+            "CURRENT"
         ]
     },
     {
