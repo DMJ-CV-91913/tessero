@@ -1102,6 +1102,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.correlate2d` | `Tessero\Signal::correlate2d()` |
 | `scipy.signal.correlation_lags` | `Tessero\Signal::correlationLags()` |
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
+| `scipy.signal.cspline1d` | `Tessero\Signal::cspline1d()` |
+| `scipy.signal.cspline1d_eval` | `Tessero\Signal::cspline1dEval()` |
 | `scipy.signal.czt_points` | `Tessero\Signal::cztPoints()` |
 | `scipy.signal.dbode` | `Tessero\Signal::dbode()` |
 | `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
@@ -1163,6 +1165,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.peak_prominences` | `Tessero\Signal::peakProminences()` |
 | `scipy.signal.peak_widths` | `Tessero\Signal::peakWidths()` |
 | `scipy.signal.periodogram` | `Tessero\Signal::periodogram()` |
+| `scipy.signal.qspline1d` | `Tessero\Signal::qspline1d()` |
+| `scipy.signal.qspline1d_eval` | `Tessero\Signal::qspline1dEval()` |
 | `scipy.signal.resample` | `Tessero\Signal::resample()` |
 | `scipy.signal.resample_poly` | `Tessero\Signal::resamplePoly()` |
 | `scipy.signal.residue` | `Tessero\Signal::residue()` |

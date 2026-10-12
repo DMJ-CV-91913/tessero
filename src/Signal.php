@@ -49,6 +49,8 @@ final class Signal
     'correlate2d' => 'correlate2d',
     'correlation_lags' => 'correlationLags',
     'csd' => 'csd',
+    'cspline1d' => 'cspline1d',
+    'cspline1d_eval' => 'cspline1dEval',
     'czt_points' => 'cztPoints',
     'dbode' => 'dbode',
     'deconvolve' => 'deconvolve',
@@ -110,6 +112,8 @@ final class Signal
     'peak_prominences' => 'peakProminences',
     'peak_widths' => 'peakWidths',
     'periodogram' => 'periodogram',
+    'qspline1d' => 'qspline1d',
+    'qspline1d_eval' => 'qspline1dEval',
     'resample' => 'resample',
     'resample_poly' => 'resamplePoly',
     'residue' => 'residue',
@@ -503,6 +507,26 @@ final class Signal
     public static function csd(mixed $x, mixed $y, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density', mixed $axis = -1, mixed $average = 'mean'): mixed
     {
         return Registry::routine('signal.csd', [$x, $y, $fs, $window, $nperseg, $noverlap, $nfft, $detrend, $returnOnesided, $scaling, $axis, $average]);
+    }
+
+    /**
+     * Cubic-spline coefficients of a 1-D signal, lamb=0 (scipy.signal.cspline1d).
+     *
+     * scipy.signal.cspline1d
+     */
+    public static function cspline1d(mixed $signal, mixed $lamb = 0.0): mixed
+    {
+        return Registry::routine('signal.cspline1d', [$signal, $lamb]);
+    }
+
+    /**
+     * Evaluate a cubic spline at new points (scipy.signal.cspline1d_eval).
+     *
+     * scipy.signal.cspline1d_eval
+     */
+    public static function cspline1dEval(mixed $cj, mixed $newx, mixed $dx = 1.0, mixed $x0 = 0.0): mixed
+    {
+        return Registry::routine('signal.cspline1d_eval', [$cj, $newx, $dx, $x0]);
     }
 
     /**
@@ -1189,6 +1213,26 @@ final class Signal
     public static function periodogram(mixed $x, mixed $fs = 1.0, mixed $window = 'boxcar', mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density'): mixed
     {
         return Registry::routine('signal.periodogram', [$x, $fs, $window, $nfft, $detrend, $returnOnesided, $scaling]);
+    }
+
+    /**
+     * Quadratic-spline coefficients of a 1-D signal (scipy.signal.qspline1d).
+     *
+     * scipy.signal.qspline1d
+     */
+    public static function qspline1d(mixed $signal, mixed $lamb = 0.0): mixed
+    {
+        return Registry::routine('signal.qspline1d', [$signal, $lamb]);
+    }
+
+    /**
+     * Evaluate a quadratic spline at new points (scipy.signal.qspline1d_eval).
+     *
+     * scipy.signal.qspline1d_eval
+     */
+    public static function qspline1dEval(mixed $cj, mixed $newx, mixed $dx = 1.0, mixed $x0 = 0.0): mixed
+    {
+        return Registry::routine('signal.qspline1d_eval', [$cj, $newx, $dx, $x0]);
     }
 
     /**

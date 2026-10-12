@@ -521,6 +521,24 @@ z2s.append({'args': [F.enc(np.asarray([], complex)), F.enc(np.asarray([], comple
             'expect': F.enc_result(np.asarray(sg.zpk2sos([], [], 3.0), dtype=np.float64), []),
             'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
 
+# cspline1d / qspline1d (lamb=0) + their _eval (mirror-symmetric edges)
+csp, qsp, cspe, qspe = [], [], [], []
+_rng_sp = np.random.default_rng(21)
+for K in [1, 2, 5, 8, 13, 20, 50]:
+    sv = _rng_sp.standard_normal(K)
+    csp.append({'args': [F.enc(np.asarray(sv, float))], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.cspline1d(sv), dtype=np.float64), []), 'compare': 'tol'})
+    qsp.append({'args': [F.enc(np.asarray(sv, float))], 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.qspline1d(sv), dtype=np.float64), []), 'compare': 'tol'})
+    if K >= 3:
+        cj = sg.cspline1d(sv); qj = sg.qspline1d(sv)
+        newx = np.linspace(-2.0, K + 1.0, 40)           # includes out-of-range -> mirror
+        for dx, x0 in [(1.0, 0.0), (0.5, 1.0)]:
+            cspe.append({'args': [F.enc(np.asarray(cj, float)), F.enc(np.asarray(newx, float)), F.enc(dx), F.enc(x0)], 'kwargs': {},
+                         'expect': F.enc_result(np.asarray(sg.cspline1d_eval(cj, newx, dx=dx, x0=x0), dtype=np.float64), []), 'compare': 'tol'})
+            qspe.append({'args': [F.enc(np.asarray(qj, float)), F.enc(np.asarray(newx, float)), F.enc(dx), F.enc(x0)], 'kwargs': {},
+                         'expect': F.enc_result(np.asarray(sg.qspline1d_eval(qj, newx, dx=dx, x0=x0), dtype=np.float64), []), 'compare': 'tol'})
+
 # tf2sos (= zpk2sos(*tf2zpk(b,a))); modest orders where roots stay well-conditioned
 t2s = []
 for N in [2, 3, 4, 5, 6]:
@@ -1028,6 +1046,10 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'firls', 'cases': fls, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'zpk2sos', 'cases': z2s, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'tf2sos', 'cases': t2s, 'tol': {'rtol': 1e-6, 'atol': 1e-8}},
+                 {'fn': 'cspline1d', 'cases': csp, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'qspline1d', 'cases': qsp, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'cspline1d_eval', 'cases': cspe, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'qspline1d_eval', 'cases': qspe, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
                  {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},
