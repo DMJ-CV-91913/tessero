@@ -5,7 +5,7 @@
 | Scope | Calls | To excluded symbols | In scope | Verified FFI | Verified extension | Verified on both |
 |---|---:|---:|---:|---:|---:|---:|
 | **NumPy core** | 39800 | 2002 (5.0 %) | 37798 | 100.0 % | 100.0 % | **100.0 %** |
-| **SciPy** | 2748 | 386 (14.0 %) | 2362 | 95.3 % | 95.0 % | **95.0 %** |
+| **SciPy** | 2748 | 386 (14.0 %) | 2362 | 95.5 % | 95.1 % | **95.1 %** |
 | **NumPy and SciPy** | 42548 | 2388 (5.6 %) | 40160 | 99.7 % | 99.7 % | **99.7 %** |
 
 The most-called in-scope symbols, and how many of them are verified:
@@ -15,7 +15,7 @@ The most-called in-scope symbols, and how many of them are verified:
 | top 25 | 25 of 25 (25, 25) | 25 of 25 (25, 25) | 25 of 25 (25, 25) |
 | top 50 | 50 of 50 (50, 50) | 50 of 50 (50, 50) | 50 of 50 (50, 50) |
 | top 100 | 100 of 100 (100, 100) | 94 of 100 (95, 94) | 100 of 100 (100, 100) |
-| top 250 | 250 of 250 (250, 250) | 219 of 250 (221, 219) | 250 of 250 (250, 250) |
+| top 250 | 250 of 250 (250, 250) | 220 of 250 (222, 220) | 250 of 250 (250, 250) |
 
 The 100 most-called in-scope symbols (calls in the corpus, packages calling them, verified per backend):
 
@@ -122,6 +122,6 @@ The 100 most-called in-scope symbols (calls in the corpus, packages calling them
 | 99 | `numpy.multiply` | 68 | 12 | ✔ | ✔ |
 | 100 | `numpy.pad` | 68 | 11 | ✔ | ✔ |
 
-The most-called in-scope symbols not yet verified on both backends: `scipy.sparse.linalg.eigsh` 10 (neither), `scipy.spatial.Delaunay` 10 (neither), `scipy.sparse.linalg.svds` 7 (neither), `scipy.optimize.fmin_powell` 6 (neither), `scipy.sparse.linalg.cg` 6 (FFI only), `scipy.integrate.odeint` 5 (neither), `scipy.sparse.lil_array` 5 (neither), `scipy.sparse.lil_matrix` 5 (neither), `scipy.spatial.ConvexHull` 5 (neither), `scipy.integrate.dblquad` 3 (neither), `scipy.interpolate.UnivariateSpline` 3 (neither), `scipy.optimize.basinhopping` 3 (neither), `scipy.optimize.brute` 3 (neither), `scipy.optimize.differential_evolution` 3 (neither), `scipy.optimize.fmin_cobyla` 3 (neither), `scipy.sparse.linalg.eigs` 3 (neither), `scipy.sparse.linalg.lobpcg` 3 (neither), `scipy.interpolate.RectBivariateSpline` 2 (neither), `scipy.ndimage.generic_filter` 2 (neither), `scipy.optimize.curve_fit` 2 (FFI only), `scipy.optimize.fmin_l_bfgs_b` 2 (neither), `scipy.signal.find_peaks` 2 (neither), `scipy.signal.iirdesign` 2 (neither), `scipy.signal.minimum_phase` 2 (neither), `scipy.sparse.linalg.lsqr` 2 (neither), `scipy.cluster.hierarchy.optimal_leaf_ordering` 1 (neither), `scipy.interpolate.InterpolatedUnivariateSpline` 1 (neither), `scipy.interpolate.LSQUnivariateSpline` 1 (neither), `scipy.interpolate.LinearNDInterpolator` 1 (neither), `scipy.interpolate.Rbf` 1 (neither).
+The most-called in-scope symbols not yet verified on both backends: `scipy.sparse.linalg.eigsh` 10 (neither), `scipy.spatial.Delaunay` 10 (neither), `scipy.sparse.linalg.svds` 7 (neither), `scipy.optimize.fmin_powell` 6 (neither), `scipy.sparse.linalg.cg` 6 (FFI only), `scipy.integrate.odeint` 5 (neither), `scipy.sparse.lil_array` 5 (neither), `scipy.sparse.lil_matrix` 5 (neither), `scipy.spatial.ConvexHull` 5 (neither), `scipy.integrate.dblquad` 3 (neither), `scipy.interpolate.UnivariateSpline` 3 (neither), `scipy.optimize.basinhopping` 3 (neither), `scipy.optimize.differential_evolution` 3 (neither), `scipy.optimize.fmin_cobyla` 3 (neither), `scipy.sparse.linalg.eigs` 3 (neither), `scipy.sparse.linalg.lobpcg` 3 (neither), `scipy.interpolate.RectBivariateSpline` 2 (neither), `scipy.ndimage.generic_filter` 2 (neither), `scipy.optimize.curve_fit` 2 (FFI only), `scipy.optimize.fmin_l_bfgs_b` 2 (neither), `scipy.signal.find_peaks` 2 (neither), `scipy.signal.iirdesign` 2 (neither), `scipy.signal.minimum_phase` 2 (neither), `scipy.sparse.linalg.lsqr` 2 (neither), `scipy.cluster.hierarchy.optimal_leaf_ordering` 1 (neither), `scipy.interpolate.InterpolatedUnivariateSpline` 1 (neither), `scipy.interpolate.LSQUnivariateSpline` 1 (neither), `scipy.interpolate.LinearNDInterpolator` 1 (neither), `scipy.interpolate.Rbf` 1 (neither), `scipy.interpolate.splrep` 1 (neither).
 
 The most-called excluded symbols: `numpy.dtype` 504 (E4), `scipy.sparse.issparse` 317 (E4), `numpy.issubdtype` 222 (E4), `numpy.errstate` 220 (E4), `numpy.asanyarray` 218 (E4), `numpy.isscalar` 191 (E4), `numpy.iterable` 131 (E4), `numpy.random.RandomState` 53 (E3), `numpy.vectorize` 47 (E4), `numpy.apply_along_axis` 44 (E4), `numpy.ndarray` 38 (E4), `scipy.interpolate.interp1d` 36 (E6). Their calls are counted above but not weighted into the in-scope figures.
