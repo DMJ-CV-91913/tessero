@@ -98,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1294,
+   "both": 1297,
    "excluded": 74,
-   "impl_ext": 1294,
-   "impl_ffi": 1297,
+   "impl_ext": 1297,
+   "impl_ffi": 1300,
    "in_scope": 1488,
-   "m2_ext": 87.0,
-   "m2_ffi": 87.2,
+   "m2_ext": 87.2,
+   "m2_ffi": 87.4,
    "m3": 4.7,
-   "m4_ext": 87.0,
-   "m4_ffi": 87.2,
+   "m4_ext": 87.2,
+   "m4_ffi": 87.4,
    "m5": 99.8,
    "symbols": 1562,
-   "verified_ext": 1294,
-   "verified_ffi": 1297
+   "verified_ext": 1297,
+   "verified_ffi": 1300
   }
  },
  "modules": {
@@ -452,20 +452,20 @@
    "verified_ffi": 66
   },
   "scipy.optimize": {
-   "both": 33,
+   "both": 36,
    "excluded": 5,
-   "impl_ext": 33,
-   "impl_ffi": 34,
+   "impl_ext": 36,
+   "impl_ffi": 37,
    "in_scope": 66,
-   "m2_ext": 50.0,
-   "m2_ffi": 51.5,
+   "m2_ext": 54.5,
+   "m2_ffi": 56.1,
    "m3": 7.0,
-   "m4_ext": 50.0,
-   "m4_ffi": 51.5,
-   "m5": 97.1,
+   "m4_ext": 54.5,
+   "m4_ffi": 56.1,
+   "m5": 97.3,
    "symbols": 71,
-   "verified_ext": 33,
-   "verified_ffi": 34
+   "verified_ext": 36,
+   "verified_ffi": 37
   },
   "scipy.signal": {
    "both": 143,
@@ -622,9 +622,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40053,
-   "covered_ext": 40053,
-   "covered_ffi": 40061,
+   "covered_both": 40061,
+   "covered_ext": 40061,
+   "covered_ffi": 40069,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -654,8 +654,8 @@
      "n": 50
     }
    },
-   "u_both": 99.7,
-   "u_ext": 99.7,
+   "u_both": 99.8,
+   "u_ext": 99.8,
    "u_ffi": 99.8
   },
   "corpus_files": 3374,
@@ -701,17 +701,17 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2255,
-    "covered_ext": 2255,
-    "covered_ffi": 2263,
+    "covered_both": 2263,
+    "covered_ext": 2263,
+    "covered_ffi": 2271,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,
     "top": {
      "100": {
-      "both": 94,
-      "ext": 94,
-      "ffi": 95,
+      "both": 95,
+      "ext": 95,
+      "ffi": 96,
       "n": 100
      },
      "25": {
@@ -721,9 +721,9 @@
       "n": 25
      },
      "250": {
-      "both": 223,
-      "ext": 223,
-      "ffi": 225,
+      "both": 224,
+      "ext": 224,
+      "ffi": 226,
       "n": 250
      },
      "50": {
@@ -733,9 +733,9 @@
       "n": 50
      }
     },
-    "u_both": 95.5,
-    "u_ext": 95.5,
-    "u_ffi": 95.8
+    "u_both": 95.8,
+    "u_ext": 95.8,
+    "u_ffi": 96.1
    }
   },
   "total_calls": 42551,

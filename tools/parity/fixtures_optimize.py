@@ -46,6 +46,18 @@ cases = [
      'expect': list(so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='Nelder-Mead').x), 'rtol': 1e-9},
     {'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0], 'method': 'BFGS',
      'expect': list(so.minimize(rosen, [-1.2, 1.0], method='BFGS').x), 'rtol': 1e-4},
+    {'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0], 'method': 'CG',
+     'expect': list(so.minimize(rosen, [-1.2, 1.0], method='CG', jac=so.rosen_der).x), 'rtol': 1e-4},
+    {'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2], 'method': 'CG',
+     'expect': list(so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='CG', jac=so.rosen_der).x), 'rtol': 1e-4},
+    {'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0], 'method': 'Powell',
+     'expect': list(so.minimize(rosen, [-1.2, 1.0], method='Powell').x), 'rtol': 1e-5},
+    {'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2], 'method': 'Powell',
+     'expect': list(so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='Powell').x), 'rtol': 1e-5},
+    {'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0], 'method': 'Newton-CG',
+     'expect': list(so.minimize(rosen, [-1.2, 1.0], method='Newton-CG', jac=so.rosen_der, hessp=lambda x, p: so.rosen_hess_prod(x, p)).x), 'rtol': 1e-4},
+    {'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2], 'method': 'Newton-CG',
+     'expect': list(so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='Newton-CG', jac=so.rosen_der, hessp=lambda x, p: so.rosen_hess_prod(x, p)).x), 'rtol': 1e-4},
     {'fn': 'fmin', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2],
      'expect': list(so.fmin(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], disp=False)), 'rtol': 1e-9},
 ]
@@ -120,6 +132,12 @@ for _fn in ('brent', 'golden'):
                   'expect': float(getattr(so, _fn)(math.sin, brack=(-3.0, -1.5, 0.0))), 'rtol': 1e-6})
 cases.append({'fn': 'fmin_bfgs', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0],
               'expect': list(map(float, so.fmin_bfgs(rosen, [-1.2, 1.0], disp=False))), 'rtol': 1e-4})
+cases.append({'fn': 'fmin_cg', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0],
+              'expect': list(map(float, so.fmin_cg(rosen, [-1.2, 1.0], fprime=so.rosen_der, disp=False))), 'rtol': 1e-4})
+cases.append({'fn': 'fmin_powell', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0],
+              'expect': list(map(float, so.fmin_powell(rosen, [-1.2, 1.0], disp=False))), 'rtol': 1e-5})
+cases.append({'fn': 'fmin_ncg', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0],
+              'expect': list(map(float, so.fmin_ncg(rosen, [-1.2, 1.0], fprime=so.rosen_der, fhess_p=so.rosen_hess_prod, disp=False))), 'rtol': 1e-4})
 
 # rosen family: pure-array test function, gradient, Hessian and Hessian-vector product
 for _x in ([1.3, 0.7, 0.8, 1.9, 1.2], [-1.2, 1.0], [0.5, 0.5, 0.5], [2.0, 2.0, 2.0, 2.0]):

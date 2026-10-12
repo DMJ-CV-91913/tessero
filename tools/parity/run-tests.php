@@ -532,7 +532,16 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $got = \Tessero\Optimize\Root::newton($obj, (float) $c['x0']);
                 $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
             } elseif ($fn === 'minimize') {
-                $got = \Tessero\Optimize\Minimize::minimize($obj, array_map('floatval', $c['x0']), null, (string) $c['method'])->x;
+                $mup = strtoupper((string) $c['method']);
+                $jac = null;
+                $opts = [];
+                if (($c['obj']['kind'] ?? '') === 'rosen' && in_array($mup, ['CG', 'NEWTON-CG', 'NEWTONCG'], true)) {
+                    $jac = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
+                    if ($mup !== 'CG') {
+                        $opts['hessp'] = static fn (array $v, array $p): array => \Tessero\Optimize\Minimize::rosenHessProd($v, $p);
+                    }
+                }
+                $got = \Tessero\Optimize\Minimize::minimize($obj, array_map('floatval', $c['x0']), $jac, (string) $c['method'], null, $opts)->x;
                 $ok = vecClose($got, $c['expect'], $rtol);
             } elseif ($fn === 'fmin') {
                 $got = \Tessero\Optimize\Minimize::fmin($obj, array_map('floatval', $c['x0']));
@@ -588,6 +597,15 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
             } elseif ($fn === 'fmin_bfgs') {
                 $ok = vecClose(\Tessero\Optimize\Minimize::fminBfgs($obj, array_map('floatval', $c['x0'])), $c['expect'], $rtol);
+            } elseif ($fn === 'fmin_cg') {
+                $grad = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
+                $ok = vecClose(\Tessero\Optimize\Minimize::fminCg($obj, array_map('floatval', $c['x0']), $grad), $c['expect'], $rtol);
+            } elseif ($fn === 'fmin_powell') {
+                $ok = vecClose(\Tessero\Optimize\Minimize::fminPowell($obj, array_map('floatval', $c['x0'])), $c['expect'], $rtol);
+            } elseif ($fn === 'fmin_ncg') {
+                $grad = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
+                $hessp = static fn (array $v, array $p): array => \Tessero\Optimize\Minimize::rosenHessProd($v, $p);
+                $ok = vecClose(\Tessero\Optimize\Minimize::fminNcg($obj, array_map('floatval', $c['x0']), $grad, $hessp), $c['expect'], $rtol);
             } elseif ($fn === 'check_grad') {
                 $grad = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
                 $got = \Tessero\Optimize\Minimize::checkGrad($obj, $grad, array_map('floatval', $c['x0']));

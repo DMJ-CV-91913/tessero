@@ -483,6 +483,9 @@ legacy:
     brent: {ffi: [Min::brent], ext: [Min::brent], fixtures: [optimize.brent]}
     golden: {ffi: [Min::golden], ext: [Min::golden], fixtures: [optimize.golden]}
     fmin_bfgs: {ffi: [Min::fminBfgs], ext: [Min::fminBfgs], fixtures: [optimize.fmin_bfgs]}
+    fmin_cg: {ffi: [Min::fminCg], ext: [Min::fminCg], fixtures: [optimize.fmin_cg]}
+    fmin_powell: {ffi: [Min::fminPowell], ext: [Min::fminPowell], fixtures: [optimize.fmin_powell]}
+    fmin_ncg: {ffi: [Min::fminNcg], ext: [Min::fminNcg], fixtures: [optimize.fmin_ncg]}
     curve_fit: {ffi: [LS::curveFit], tests: solvers}
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
