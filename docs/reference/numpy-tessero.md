@@ -538,6 +538,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.l_roots` | `Tessero\Special::lRoots()` |
 | `scipy.special.la_roots` | `Tessero\Special::laRoots()` |
 | `scipy.special.lambertw` | `Tessero\Special::lambertw()` |
+| `scipy.special.lmbda` | `Tessero\Special::lmbda()` |
 | `scipy.special.log1p` | `Tessero\Special::log1p()` |
 | `scipy.special.log_expit` | `Tessero\Special::logExpit()` |
 | `scipy.special.log_ndtr` | `Tessero\Special::logNdtr()` |
@@ -579,6 +580,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.obl_ang1` | `Tessero\Special::oblAng1()` |
 | `scipy.special.obl_ang1_cv` | `Tessero\Special::oblAng1Cv()` |
 | `scipy.special.obl_cv` | `Tessero\Special::oblCv()` |
+| `scipy.special.obl_cv_seq` | `Tessero\Special::oblCvSeq()` |
 | `scipy.special.obl_rad1` | `Tessero\Special::oblRad1()` |
 | `scipy.special.obl_rad1_cv` | `Tessero\Special::oblRad1Cv()` |
 | `scipy.special.obl_rad2` | `Tessero\Special::oblRad2()` |
@@ -586,7 +588,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.owens_t` | `Tessero\Special::owensT()` |
 | `scipy.special.p_roots` | `Tessero\Special::pRoots()` |
 | `scipy.special.pbdv` | `Tessero\Special::pbdv()` |
+| `scipy.special.pbdv_seq` | `Tessero\Special::pbdvSeq()` |
 | `scipy.special.pbvv` | `Tessero\Special::pbvv()` |
+| `scipy.special.pbvv_seq` | `Tessero\Special::pbvvSeq()` |
 | `scipy.special.pbwa` | `Tessero\Special::pbwa()` |
 | `scipy.special.pdtr` | `Tessero\Special::pdtr()` |
 | `scipy.special.pdtrc` | `Tessero\Special::pdtrc()` |
@@ -599,6 +603,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.pro_ang1` | `Tessero\Special::proAng1()` |
 | `scipy.special.pro_ang1_cv` | `Tessero\Special::proAng1Cv()` |
 | `scipy.special.pro_cv` | `Tessero\Special::proCv()` |
+| `scipy.special.pro_cv_seq` | `Tessero\Special::proCvSeq()` |
 | `scipy.special.pro_rad1` | `Tessero\Special::proRad1()` |
 | `scipy.special.pro_rad1_cv` | `Tessero\Special::proRad1Cv()` |
 | `scipy.special.pro_rad2` | `Tessero\Special::proRad2()` |

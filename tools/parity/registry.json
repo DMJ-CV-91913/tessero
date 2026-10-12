@@ -5265,6 +5265,11 @@
             "nin": 0,
             "nout": 1
         },
+        "special.lmbda": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.log1p": {
             "kind": "ufunc",
             "nin": 1,
@@ -5470,6 +5475,11 @@
             "nin": 3,
             "nout": 1
         },
+        "special.obl_cv_seq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.obl_rad1": {
             "kind": "ufunc",
             "nin": 4,
@@ -5505,9 +5515,19 @@
             "nin": 2,
             "nout": 2
         },
+        "special.pbdv_seq": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "special.pbvv": {
             "kind": "ufunc",
             "nin": 2,
+            "nout": 2
+        },
+        "special.pbvv_seq": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 2
         },
         "special.pbwa": {
@@ -5568,6 +5588,11 @@
         "special.pro_cv": {
             "kind": "ufunc",
             "nin": 3,
+            "nout": 1
+        },
+        "special.pro_cv_seq": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.pro_rad1": {

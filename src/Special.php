@@ -194,6 +194,7 @@ final class Special
     'l_roots' => 'lRoots',
     'la_roots' => 'laRoots',
     'lambertw' => 'lambertw',
+    'lmbda' => 'lmbda',
     'log1p' => 'log1p',
     'log_expit' => 'logExpit',
     'log_ndtr' => 'logNdtr',
@@ -235,6 +236,7 @@ final class Special
     'obl_ang1' => 'oblAng1',
     'obl_ang1_cv' => 'oblAng1Cv',
     'obl_cv' => 'oblCv',
+    'obl_cv_seq' => 'oblCvSeq',
     'obl_rad1' => 'oblRad1',
     'obl_rad1_cv' => 'oblRad1Cv',
     'obl_rad2' => 'oblRad2',
@@ -242,7 +244,9 @@ final class Special
     'owens_t' => 'owensT',
     'p_roots' => 'pRoots',
     'pbdv' => 'pbdv',
+    'pbdv_seq' => 'pbdvSeq',
     'pbvv' => 'pbvv',
+    'pbvv_seq' => 'pbvvSeq',
     'pbwa' => 'pbwa',
     'pdtr' => 'pdtr',
     'pdtrc' => 'pdtrc',
@@ -255,6 +259,7 @@ final class Special
     'pro_ang1' => 'proAng1',
     'pro_ang1_cv' => 'proAng1Cv',
     'pro_cv' => 'proCv',
+    'pro_cv_seq' => 'proCvSeq',
     'pro_rad1' => 'proRad1',
     'pro_rad1_cv' => 'proRad1Cv',
     'pro_rad2' => 'proRad2',
@@ -2145,6 +2150,18 @@ final class Special
     }
 
     /**
+     * Lambda function L_v(x) and its derivative for a sequence of orders (scipy.special.lmbda).
+     *
+     * scipy.special.lmbda
+     *
+     * @return mixed one array, or an array keyed by vl, dl when several results are requested
+     */
+    public static function lmbda(mixed $v, mixed $x): mixed
+    {
+        return Registry::routine('special.lmbda', [$v, $x]);
+    }
+
+    /**
      * Calculates log(1 + x) for use when `x` is near zero.
      *
      * scipy.special.log1p
@@ -2571,6 +2588,16 @@ final class Special
     }
 
     /**
+     * Oblate spheroidal characteristic values for modes m..n (scipy.special.obl_cv_seq).
+     *
+     * scipy.special.obl_cv_seq
+     */
+    public static function oblCvSeq(mixed $m, mixed $n, mixed $c): mixed
+    {
+        return Registry::routine('special.obl_cv_seq', [$m, $n, $c]);
+    }
+
+    /**
      * Oblate spheroidal radial function of the first kind and its derivative.
      *
      * scipy.special.obl_rad1
@@ -2653,6 +2680,18 @@ final class Special
     }
 
     /**
+     * Parabolic cylinder Dv(x) and derivatives for a sequence of orders (scipy.special.pbdv_seq).
+     *
+     * scipy.special.pbdv_seq
+     *
+     * @return mixed one array, or an array keyed by dv, dp when several results are requested
+     */
+    public static function pbdvSeq(mixed $v, mixed $x): mixed
+    {
+        return Registry::routine('special.pbdv_seq', [$v, $x]);
+    }
+
+    /**
      * Parabolic cylinder function V.
      *
      * scipy.special.pbvv
@@ -2662,6 +2701,18 @@ final class Special
     public static function pbvv(mixed $v, mixed $x, ?array $out = null): array
     {
         return Registry::ufunc('special.pbvv', [$v, $x], $out);
+    }
+
+    /**
+     * Parabolic cylinder Vv(x) and derivatives for a sequence of orders (scipy.special.pbvv_seq).
+     *
+     * scipy.special.pbvv_seq
+     *
+     * @return mixed one array, or an array keyed by vv, vp when several results are requested
+     */
+    public static function pbvvSeq(mixed $v, mixed $x): mixed
+    {
+        return Registry::routine('special.pbvv_seq', [$v, $x]);
     }
 
     /**
@@ -2788,6 +2839,16 @@ final class Special
     public static function proCv(mixed $m, mixed $n, mixed $c, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.pro_cv', [$m, $n, $c], $out);
+    }
+
+    /**
+     * Prolate spheroidal characteristic values for modes m..n (scipy.special.pro_cv_seq).
+     *
+     * scipy.special.pro_cv_seq
+     */
+    public static function proCvSeq(mixed $m, mixed $n, mixed $c): mixed
+    {
+        return Registry::routine('special.pro_cv_seq', [$m, $n, $c]);
     }
 
     /**

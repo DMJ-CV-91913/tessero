@@ -10963,6 +10963,12 @@
                 "doc": "Lambert W function, branch k (scipy.special.lambertw)."
             },
             {
+                "name": "lmbda",
+                "static": true,
+                "sig": "lmbda(mixed $v, mixed $x): mixed",
+                "doc": "Lambda function L_v(x) and its derivative for a sequence of orders (scipy.special.lmbda)."
+            },
+            {
                 "name": "log1p",
                 "static": true,
                 "sig": "log1p(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -11209,6 +11215,12 @@
                 "doc": "Characteristic value of oblate spheroidal function."
             },
             {
+                "name": "oblCvSeq",
+                "static": true,
+                "sig": "oblCvSeq(mixed $m, mixed $n, mixed $c): mixed",
+                "doc": "Oblate spheroidal characteristic values for modes m..n (scipy.special.obl_cv_seq)."
+            },
+            {
                 "name": "oblRad1",
                 "static": true,
                 "sig": "oblRad1(mixed $m, mixed $n, mixed $c, mixed $x, ?array $out = null): array",
@@ -11251,10 +11263,22 @@
                 "doc": "Parabolic cylinder function D."
             },
             {
+                "name": "pbdvSeq",
+                "static": true,
+                "sig": "pbdvSeq(mixed $v, mixed $x): mixed",
+                "doc": "Parabolic cylinder Dv(x) and derivatives for a sequence of orders (scipy.special.pbdv_seq)."
+            },
+            {
                 "name": "pbvv",
                 "static": true,
                 "sig": "pbvv(mixed $v, mixed $x, ?array $out = null): array",
                 "doc": "Parabolic cylinder function V."
+            },
+            {
+                "name": "pbvvSeq",
+                "static": true,
+                "sig": "pbvvSeq(mixed $v, mixed $x): mixed",
+                "doc": "Parabolic cylinder Vv(x) and derivatives for a sequence of orders (scipy.special.pbvv_seq)."
             },
             {
                 "name": "pbwa",
@@ -11327,6 +11351,12 @@
                 "static": true,
                 "sig": "proCv(mixed $m, mixed $n, mixed $c, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Characteristic value of prolate spheroidal function."
+            },
+            {
+                "name": "proCvSeq",
+                "static": true,
+                "sig": "proCvSeq(mixed $m, mixed $n, mixed $c): mixed",
+                "doc": "Prolate spheroidal characteristic values for modes m..n (scipy.special.pro_cv_seq)."
             },
             {
                 "name": "proRad1",
@@ -16274,6 +16304,36 @@
                 "name": "biZeros",
                 "static": true,
                 "sig": "biZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "oblCvSeq",
+                "static": true,
+                "sig": "oblCvSeq($m, $n, $c)",
+                "doc": ""
+            },
+            {
+                "name": "proCvSeq",
+                "static": true,
+                "sig": "proCvSeq($m, $n, $c)",
+                "doc": ""
+            },
+            {
+                "name": "pbdvSeq",
+                "static": true,
+                "sig": "pbdvSeq($v, $x)",
+                "doc": ""
+            },
+            {
+                "name": "pbvvSeq",
+                "static": true,
+                "sig": "pbvvSeq($v, $x)",
+                "doc": ""
+            },
+            {
+                "name": "lmbda",
+                "static": true,
+                "sig": "lmbda($v, $x)",
                 "doc": ""
             },
             {
