@@ -4765,6 +4765,122 @@ static int spline1d_eval(const tsr_arg *args, int nargs, tsr_result *res, int cu
 static int r_cspline1d_eval(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_eval(a, n, r, 1, "cspline1d_eval"); }
 static int r_qspline1d_eval(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_eval(a, n, r, 0, "qspline1d_eval"); }
 
+/* ---- chirp z-transform (Bluestein): czt / zoom_fft ---- */
+/* smallest 2,3,5-smooth integer >= n (any nfft >= n+m-1 gives the same linear-convolution result, so this
+   need not match scipy's next_fast_len exactly). */
+static int64_t sig_next_fast_len(int64_t n)
+{
+    if (n <= 6) return n < 1 ? 1 : n;
+    int64_t best = 2 * n;
+    for (int64_t p5 = 1; p5 < 2 * n; p5 *= 5)
+        for (int64_t p35 = p5; p35 < 2 * n; p35 *= 3) {
+            int64_t f = p35; while (f < n) f *= 2;
+            if (f < best) best = f;
+        }
+    return best;
+}
+
+/* Bluestein core: y[j] = ( ifft( fft(1/chirp) * fft(x*Awk2) ) )[n-1+j] * wk2[j], j=0..m-1.
+   wk2 has length max(m,n); Awk2 has length n. Returns 0 on success, -1 on allocation failure. */
+static int czt_bluestein(const double complex *x, int64_t n, int64_t m, const double complex *Awk2,
+                         const double complex *wk2, double complex *out)
+{
+    int64_t nfft = sig_next_fast_len(n + m - 1);
+    double *cv = (double *)calloc((size_t)(2 * nfft), sizeof(double));
+    double *ax = (double *)calloc((size_t)(2 * nfft), sizeof(double));
+    double *Fc = (double *)malloc((size_t)(2 * nfft) * sizeof(double));
+    double *Fx = (double *)malloc((size_t)(2 * nfft) * sizeof(double));
+    double *y = (double *)malloc((size_t)(2 * nfft) * sizeof(double));
+    if (!cv || !ax || !Fc || !Fx || !y) { free(cv); free(ax); free(Fc); free(Fx); free(y); return -1; }
+    int64_t idx = 0;
+    for (int64_t i = n - 1; i >= 1; i--) { double complex v = 1.0 / wk2[i]; cv[2 * idx] = creal(v); cv[2 * idx + 1] = cimag(v); idx++; }
+    for (int64_t i = 0; i < m; i++) { double complex v = 1.0 / wk2[i]; cv[2 * idx] = creal(v); cv[2 * idx + 1] = cimag(v); idx++; }
+    tsr_fft(nfft, 1, 0, cv, Fc);
+    for (int64_t i = 0; i < n; i++) { double complex v = x[i] * Awk2[i]; ax[2 * i] = creal(v); ax[2 * i + 1] = cimag(v); }
+    tsr_fft(nfft, 1, 0, ax, Fx);
+    for (int64_t i = 0; i < nfft; i++) {
+        double complex A = Fc[2 * i] + I * Fc[2 * i + 1], B = Fx[2 * i] + I * Fx[2 * i + 1], p = A * B;
+        y[2 * i] = creal(p); y[2 * i + 1] = cimag(p);
+    }
+    tsr_fft(nfft, 1, 1, y, Fx);                              /* inverse (scales by 1/nfft); reuse Fx as output */
+    for (int64_t j = 0; j < m; j++) { int64_t t = n - 1 + j; out[j] = (Fx[2 * t] + I * Fx[2 * t + 1]) * wk2[j]; }
+    free(cv); free(ax); free(Fc); free(Fx); free(y);
+    return 0;
+}
+
+/* an optional complex scalar argument: None -> dflt, a real number, or a 1-element complex array. */
+static double complex read_cscalar(const tsr_arg *a, double complex dflt)
+{
+    if (!a || a->kind == 0) return dflt;
+    if (a->kind == 1 || a->kind == 4) return a->num;
+    if (a->kind == 3) { int64_t nn; double complex *v = read_carr(a, &nn); if (v && nn >= 1) { double complex r = v[0]; free(v); return r; } free(v); }
+    return dflt;
+}
+
+/* czt(x, m=None, w=None, a=1+0j): chirp z-transform (scipy.signal.czt). */
+static int r_czt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t n; double complex *x = read_carr(&args[0], &n); if (!x) return TSR_ENOMEM;
+    int64_t m = (nargs > 1 && args[1].kind == 1) ? ((args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num) : n;
+    if (m < 1 || n < 1) { free(x); fn_set_error("czt: m and len(x) must be >= 1"); return TSR_EARG; }
+    const int w_none = (nargs <= 2 || args[2].kind == 0);
+    double complex w = read_cscalar(nargs > 2 ? &args[2] : NULL, 0.0);
+    double complex a = read_cscalar(nargs > 3 ? &args[3] : NULL, 1.0);
+    int64_t maxmn = m > n ? m : n;
+    double complex *wk2 = (double complex *)malloc((size_t)maxmn * sizeof(double complex));
+    double complex *Awk2 = (double complex *)malloc((size_t)n * sizeof(double complex));
+    double complex *out = (double complex *)malloc((size_t)m * sizeof(double complex));
+    int rc = TSR_OK;
+    if (!wk2 || !Awk2 || !out) rc = TSR_ENOMEM;
+    else {
+        for (int64_t k = 0; k < maxmn; k++) {
+            if (w_none) wk2[k] = cexp(-(I * M_PI * (double)((k * k) % (2 * m))) / (double)m);
+            else wk2[k] = cpow(w, (double)(k * k) / 2.0);
+        }
+        for (int64_t k = 0; k < n; k++) Awk2[k] = cpow(a, -(double)k) * wk2[k];
+        if (czt_bluestein(x, n, m, Awk2, wk2, out) != 0) rc = TSR_ENOMEM;
+        else {
+            double *o = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){m});
+            if (!o) rc = TSR_ENOMEM; else for (int64_t j = 0; j < m; j++) { o[2 * j] = creal(out[j]); o[2 * j + 1] = cimag(out[j]); }
+        }
+    }
+    free(x); free(wk2); free(Awk2); free(out);
+    return rc;
+}
+
+/* zoom_fft(x, fn, m=None, fs=2, endpoint=False): DFT over a frequency band (scipy.signal.zoom_fft). */
+static int r_zoom_fft(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t n; double complex *x = read_carr(&args[0], &n); if (!x) return TSR_ENOMEM;
+    double f1 = 0.0, f2 = 0.0;
+    if (nargs > 1 && args[1].kind == 3) { int64_t nf; double complex *fv = read_carr(&args[1], &nf); if (fv && nf >= 2) { f1 = creal(fv[0]); f2 = creal(fv[1]); } else if (fv && nf == 1) { f1 = 0.0; f2 = creal(fv[0]); } free(fv); }
+    else if (nargs > 1 && args[1].kind == 1) { f1 = 0.0; f2 = args[1].num; }
+    int64_t m = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : n;
+    double fs = (nargs > 3 && args[3].kind == 1) ? args[3].num : 2.0;
+    int endpoint = (nargs > 4 && (args[4].kind == 4 || args[4].kind == 1)) ? (args[4].num != 0.0) : 0;
+    if (m < 1 || n < 1) { free(x); fn_set_error("zoom_fft: m and len(x) must be >= 1"); return TSR_EARG; }
+    double scale = endpoint ? ((f2 - f1) * (double)m) / (fs * (double)(m - 1)) : (f2 - f1) / fs;
+    int64_t maxmn = m > n ? m : n;
+    double complex *wk2 = (double complex *)malloc((size_t)maxmn * sizeof(double complex));
+    double complex *Awk2 = (double complex *)malloc((size_t)n * sizeof(double complex));
+    double complex *out = (double complex *)malloc((size_t)m * sizeof(double complex));
+    int rc = TSR_OK;
+    if (!wk2 || !Awk2 || !out) rc = TSR_ENOMEM;
+    else {
+        for (int64_t k = 0; k < maxmn; k++) wk2[k] = cexp(-(I * M_PI * scale * (double)(k * k)) / (double)m);
+        for (int64_t k = 0; k < n; k++) Awk2[k] = cexp(-2.0 * I * M_PI * f1 / fs * (double)k) * wk2[k];
+        if (czt_bluestein(x, n, m, Awk2, wk2, out) != 0) rc = TSR_ENOMEM;
+        else {
+            double *o = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){m});
+            if (!o) rc = TSR_ENOMEM; else for (int64_t j = 0; j < m; j++) { o[2 * j] = creal(out[j]); o[2 * j + 1] = cimag(out[j]); }
+        }
+    }
+    free(x); free(wk2); free(Awk2); free(out);
+    return rc;
+}
+
 /* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
    1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
 static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -6236,6 +6352,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.freqresp", 2, "system[], w, n=10000", "w, H", r_freqresp, NULL, "Analog LTI frequency response of a (b, a) system at the given frequencies (scipy.signal.freqresp)."),
     ROUTINE("signal.dfreqresp", 2, "system[], w, n=10000, whole=False", "w, H", r_dfreqresp, NULL, "Discrete-time LTI frequency response of a (num, den, dt) system at the given frequencies (scipy.signal.dfreqresp)."),
     ROUTINE("signal.czt_points", 1, "m, w=None, a=1", "out", r_czt_points, NULL, "Points at which the chirp z-transform is sampled, default equally spaced on the unit circle (scipy.signal.czt_points)."),
+    ROUTINE("signal.czt", 1, "x, m=None, w=None, a=1", "out", r_czt, NULL, "Chirp z-transform: frequency response around a spiral in the Z plane (scipy.signal.czt)."),
+    ROUTINE("signal.zoom_fft", 1, "x, fn, m=None, fs=2, endpoint=False", "out", r_zoom_fft, NULL, "DFT of x only for frequencies in band fn (scipy.signal.zoom_fft)."),
     ROUTINE("signal.peak_prominences", 3, "x, peaks, wlen=-1", "prominences, left_bases, right_bases", r_peak_prominences, NULL, "Prominence and base indices of each peak in a signal (scipy.signal.peak_prominences)."),
     ROUTINE("signal.peak_widths", 4, "x, peaks, rel_height=0.5, prominence_data=None, wlen=None", "widths, width_heights, left_ips, right_ips", r_peak_widths, NULL, "Width of each peak at a relative height of its prominence (scipy.signal.peak_widths)."),
     ROUTINE("signal.resample_poly", 1, "x, up, down, axis=0, window='kaiser', padtype='constant', cval=None", "out", r_resample_poly, NULL, "Polyphase (up/down) resampling of a 1-D signal with the default kaiser FIR (scipy.signal.resample_poly)."),

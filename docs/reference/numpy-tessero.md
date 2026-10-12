@@ -1104,6 +1104,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
 | `scipy.signal.cspline1d` | `Tessero\Signal::cspline1d()` |
 | `scipy.signal.cspline1d_eval` | `Tessero\Signal::cspline1dEval()` |
+| `scipy.signal.czt` | `Tessero\Signal::czt()` |
 | `scipy.signal.czt_points` | `Tessero\Signal::cztPoints()` |
 | `scipy.signal.dbode` | `Tessero\Signal::dbode()` |
 | `scipy.signal.deconvolve` | `Tessero\Signal::deconvolve()` |
@@ -1195,6 +1196,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.vectorstrength` | `Tessero\Signal::vectorstrength()` |
 | `scipy.signal.welch` | `Tessero\Signal::welch()` |
 | `scipy.signal.wiener` | `Tessero\Signal::wiener()` |
+| `scipy.signal.zoom_fft` | `Tessero\Signal::zoomFft()` |
 | `scipy.signal.zpk2sos` | `Tessero\Signal::zpk2sos()` |
 | `scipy.signal.zpk2ss` | `Tessero\Signal::zpk2ss()` |
 | `scipy.signal.zpk2tf` | `Tessero\Signal::zpk2tf()` |
