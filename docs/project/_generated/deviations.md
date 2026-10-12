@@ -418,6 +418,16 @@
 | `signal.qspline1d` | every call | rtol 1e-09 |
 | `signal.cspline1d_eval` | every call | rtol 1e-09 |
 | `signal.qspline1d_eval` | every call | rtol 1e-09 |
+| `signal.sepfir2d` | every call | rtol 1e-09 |
+| `signal.sepfir2d` | call | rtol 1e-09 |
+| `signal.cspline2d` | every call | rtol 1e-07 |
+| `signal.cspline2d` | call | rtol 1e-07 |
+| `signal.qspline2d` | every call | rtol 1e-07 |
+| `signal.qspline2d` | call | rtol 1e-07 |
+| `signal.symiirorder1` | every call | rtol 1e-08 |
+| `signal.symiirorder1` | call | rtol 1e-08 |
+| `signal.symiirorder2` | every call | rtol 1e-07 |
+| `signal.symiirorder2` | call | rtol 1e-07 |
 | `signal.czt` | every call | rtol 1e-07 |
 | `signal.czt` | call | rtol 1e-07 |
 | `signal.zoom_fft` | every call | rtol 1e-07 |

@@ -4704,17 +4704,10 @@ static double bspl_quad(double x) { x = fabs(x); if (x < 0.5) return 0.75 - x * 
 
 /* cspline1d / qspline1d (lamb=0): spline coefficients via the symmetric exponential IIR recursion
    (scipy.signal._spline_filters._cubic_coeff/_quadratic_coeff). zi is the pole, scale 6 (cubic) / 8 (quad). */
-static int spline1d_coeff(const tsr_arg *args, int nargs, tsr_result *res, double zi, double scale, const char *name)
+/* 1-D symmetric exponential spline coefficient filter into out[K] (yp scratch len>=K). */
+static void spline1d_filter_buf(const double *s, int64_t K, double zi, double scale, double *out, double *yp)
 {
-    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("%s: signal must be a 1-D array", name); return TSR_EARG; }
-    if (nargs > 1 && args[1].kind == 1 && args[1].num != 0.0) { fn_set_error("%s: smoothing (lamb != 0) is not supported", name); return TSR_EARG; }
-    int64_t K; double *s = fn_arg_doubles(&args[0], &K); if (!s) return TSR_ENOMEM;
-    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){K});
-    if (!out) { fn_free_doubles(s, K); return TSR_ENOMEM; }
-    int rc = TSR_OK;
-    if (K == 1) { out[0] = zi / (zi - 1.0) * (s[0] + zi * s[0]); fn_free_doubles(s, K); return TSR_OK; }
-    double *yp = (double *)malloc((size_t)K * sizeof(double));
-    if (!yp) { fn_free_doubles(s, K); return TSR_ENOMEM; }
+    if (K == 1) { out[0] = zi / (zi - 1.0) * (s[0] + zi * s[0]); return; }
     double Y0 = 0.0, p = 1.0;
     for (int64_t k = 0; k < K; k++) { Y0 += p * s[k]; p *= zi; }
     yp[0] = s[0] + zi * Y0;
@@ -4722,12 +4715,58 @@ static int spline1d_coeff(const tsr_arg *args, int nargs, tsr_result *res, doubl
     out[K - 1] = zi / (zi - 1.0) * yp[K - 1];
     for (int64_t k = K - 2; k >= 0; k--) out[k] = zi * (out[k + 1] - yp[k]);
     for (int64_t k = 0; k < K; k++) out[k] *= scale;
+}
+
+static int spline1d_coeff(const tsr_arg *args, int nargs, tsr_result *res, double zi, double scale, const char *name)
+{
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("%s: signal must be a 1-D array", name); return TSR_EARG; }
+    if (nargs > 1 && args[1].kind == 1 && args[1].num != 0.0) { fn_set_error("%s: smoothing (lamb != 0) is not supported", name); return TSR_EARG; }
+    int64_t K; double *s = fn_arg_doubles(&args[0], &K); if (!s) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){K});
+    double *yp = (double *)malloc((size_t)(K > 0 ? K : 1) * sizeof(double));
+    int rc = TSR_OK;
+    if (!out || !yp) rc = TSR_ENOMEM; else spline1d_filter_buf(s, K, zi, scale, out, yp);
     free(yp); fn_free_doubles(s, K);
     return rc;
 }
 
 static int r_cspline1d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_coeff(a, n, r, -2.0 + sqrt(3.0), 6.0, "cspline1d"); }
 static int r_qspline1d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_coeff(a, n, r, -3.0 + 2.0 * sqrt(2.0), 8.0, "qspline1d"); }
+
+/* cspline2d / qspline2d (lamb=0): 2-D spline coefficients = the 1-D symmetric symiirorder1 filter
+   (c0=-6z1 cubic / -8z1 quad; truncated IC like scipy) applied separably along rows then columns. */
+static int symiir1_filter_buf(const double *x, int64_t N, double c0, double z1, double prec2, double *out, double *y);  /* defined in the symiir section */
+static int spline2d_coeff(const tsr_arg *args, int nargs, tsr_result *res, double z1, double c0, const char *name)
+{
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("%s: input must be a 2-D array", name); return TSR_EARG; }
+    if (nargs > 1 && args[1].kind == 1 && args[1].num != 0.0) { fn_set_error("%s: smoothing (lamb != 0) is not supported", name); return TSR_EARG; }
+    const int64_t R = args[0].arr.shape[0], C = args[0].arr.shape[1];
+    const double prec2 = 1e-6 * 1e-6;                        /* scipy cspline2d/qspline2d default precision */
+    int64_t nin; double *x = fn_arg_doubles(&args[0], &nin); if (!x) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){R, C});
+    int64_t mx = R > C ? R : C;
+    double *buf = (double *)malloc((size_t)mx * sizeof(double));
+    double *obuf = (double *)malloc((size_t)mx * sizeof(double));
+    double *yp = (double *)malloc((size_t)mx * sizeof(double));
+    int rc = TSR_OK;
+    if (!out || !buf || !obuf || !yp) rc = TSR_ENOMEM;
+    else {
+        for (int64_t r = 0; r < R && rc == TSR_OK; r++) {    /* rows (length C) */
+            if (symiir1_filter_buf(&x[r * C], C, c0, z1, prec2, obuf, yp) != 0) { fn_set_error("%s: Sum to find symmetric boundary conditions did not converge.", name); rc = TSR_EARG; break; }
+            for (int64_t c = 0; c < C; c++) out[r * C + c] = obuf[c];
+        }
+        for (int64_t c = 0; c < C && rc == TSR_OK; c++) {    /* columns (length R) */
+            for (int64_t r = 0; r < R; r++) buf[r] = out[r * C + c];
+            if (symiir1_filter_buf(buf, R, c0, z1, prec2, obuf, yp) != 0) { fn_set_error("%s: Sum to find symmetric boundary conditions did not converge.", name); rc = TSR_EARG; break; }
+            for (int64_t r = 0; r < R; r++) out[r * C + c] = obuf[r];
+        }
+    }
+    free(buf); free(obuf); free(yp); fn_free_doubles(x, nin);
+    return rc;
+}
+
+static int r_cspline2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; double z1 = -2.0 + sqrt(3.0); return spline2d_coeff(a, n, r, z1, -6.0 * z1, "cspline2d"); }
+static int r_qspline2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; double z1 = -3.0 + 2.0 * sqrt(2.0); return spline2d_coeff(a, n, r, z1, -8.0 * z1, "qspline2d"); }
 
 /* cspline1d_eval / qspline1d_eval: evaluate the spline at points newx, with mirror-symmetric edges
    (scipy.signal._spline_filters). ntaps = 4 (cubic) / 3 (quad); half = 2.0 (cubic) / 1.5 (quad). */
@@ -4764,6 +4803,156 @@ static int spline1d_eval(const tsr_arg *args, int nargs, tsr_result *res, int cu
 
 static int r_cspline1d_eval(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_eval(a, n, r, 1, "cspline1d_eval"); }
 static int r_qspline1d_eval(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)ctx; (void)nr; return spline1d_eval(a, n, r, 0, "qspline1d_eval"); }
+
+/* symiirorder1/2: symmetric (mirror-boundary) first/second-order IIR filtering (scipy.signal). The
+   initial conditions are the boundary OUTPUT values, not recursion states (per scipy _splinemodule). */
+static double symiir_prec(double p) { return (p <= 0.0 || p > 1.0) ? 1e-11 : p; }
+
+/* symiirorder1 filter into out[N] (y scratch len>=N); returns 0, or -1 if the IC sum did not converge
+   (|z1^k| stays above sqrt(prec2) for all k < N). */
+static int symiir1_filter_buf(const double *x, int64_t N, double c0, double z1, double prec2, double *out, double *y)
+{
+    double y0 = x[0], powz1 = 1.0, err; int64_t k = 0;
+    do { powz1 *= z1; y0 += powz1 * x[k]; err = powz1 * powz1; k++; } while (err > prec2 && k < N);
+    if (err > prec2) return -1;
+    y[0] = y0;
+    for (int64_t n = 1; n < N; n++) y[n] = x[n] + z1 * y[n - 1];
+    out[N - 1] = (-c0 / (z1 - 1.0)) * y[N - 1];
+    for (int64_t n = N - 2; n >= 0; n--) out[n] = z1 * out[n + 1] + c0 * y[n];
+    return 0;
+}
+
+static int r_symiirorder1(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("symiirorder1: signal must be a 1-D array"); return TSR_EARG; }
+    double c0 = (args[1].kind == 1) ? args[1].num : 0.0;
+    double z1 = (args[2].kind == 1) ? args[2].num : 0.0;
+    if (fabs(z1) >= 1.0) { fn_set_error("symiirorder1: |z1| must be < 1"); return TSR_EARG; }
+    double prec = symiir_prec((nargs > 3 && args[3].kind == 1) ? args[3].num : -1.0), prec2 = prec * prec;
+    int64_t N; double *x = fn_arg_doubles(&args[0], &N); if (!x) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N});
+    int rc = TSR_OK;
+    double *y = (double *)malloc((size_t)(N > 0 ? N : 1) * sizeof(double));
+    if (!out || !y) rc = TSR_ENOMEM;
+    else if (symiir1_filter_buf(x, N, c0, z1, prec2, out, y) != 0) { fn_set_error("symiirorder1: Sum to find symmetric boundary conditions did not converge."); rc = TSR_EARG; }
+    free(y); fn_free_doubles(x, N);
+    return rc;
+}
+
+/* hs(k): symiirorder2 backward steady-state weight (scipy _hs); k uses |k|. */
+static double sym2_hs(int64_t k, double r, double rsq, double omega, double cssq)
+{
+    if (k < 0) k = -k;
+    double rsupk = pow(r, (double)k);
+    if (omega == 0.0) {
+        double c0 = (1.0 + rsq) / pow(1.0 - rsq, 3.0) * cssq, gamma = (1.0 - rsq) / (1.0 + rsq);
+        return c0 * rsupk * (1.0 + gamma * (double)k);
+    }
+    if (omega == M_PI) {
+        double c0 = (1.0 + rsq) / pow(1.0 - rsq, 3.0) * cssq, gamma = (1.0 - rsq) / (1.0 + rsq) * (1.0 - 2.0 * (double)(k % 2));
+        return c0 * rsupk * (1.0 + gamma * (double)k);
+    }
+    double c0 = cssq * (1.0 + rsq) / (1.0 - rsq) / (1.0 - 2.0 * rsq * cos(2.0 * omega) + rsq * rsq);
+    double gamma = (1.0 - rsq) / (1.0 + rsq) / tan(omega);
+    return c0 * rsupk * (cos(omega * (double)k) + gamma * sin(omega * (double)k));
+}
+
+static int r_symiirorder2(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("symiirorder2: input must be a 1-D array"); return TSR_EARG; }
+    double r = (args[1].kind == 1) ? args[1].num : 0.0;
+    double omega = (args[2].kind == 1) ? args[2].num : 0.0;
+    if (r >= 1.0) { fn_set_error("symiirorder2: r must be < 1"); return TSR_EARG; }
+    double prec = symiir_prec((nargs > 3 && args[3].kind == 1) ? args[3].num : -1.0), prec2 = prec * prec;
+    int64_t N; double *x = fn_arg_doubles(&args[0], &N); if (!x) return TSR_ENOMEM;
+    const double rsq = r * r, a2 = 2.0 * r * cos(omega), a3 = -rsq, cs = 1.0 - 2.0 * r * cos(omega) + rsq;
+    const double cssq = cs * cs;
+    /* hc(k): causal step weights; hs(k): backward steady-state weights */
+#define HC(kk) ( (kk) < 0 ? 0.0 : \
+    (omega == 0.0 ? cs * pow(r, (double)(kk)) * ((double)(kk) + 1.0) : \
+    (omega == M_PI ? cs * pow(r, (double)(kk)) * ((double)(kk) + 1.0) * (1.0 - 2.0 * (double)((kk) % 2)) : \
+    cs * pow(r, (double)(kk)) * sin(omega * ((double)(kk) + 1.0)) / sin(omega))) )
+    int rc = TSR_OK;
+    double *y = (double *)malloc((size_t)(N > 0 ? N : 1) * sizeof(double));
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N});
+    if (!y || !out) { free(y); fn_free_doubles(x, N); return TSR_ENOMEM; }
+    int conv = 1;
+    double yf0 = HC(0) * x[0], d; int64_t k = 0;
+    do { d = HC(k + 1); yf0 += d * x[k]; k++; } while (d * d > prec2 && k < N);
+    if (d * d > prec2) conv = 0;
+    double yf1 = HC(0) * x[1] + HC(1) * x[0]; k = 0;
+    if (conv) { do { d = HC(k + 2); yf1 += d * x[k]; k++; } while (d * d > prec2 && k < N); if (d * d > prec2) conv = 0; }
+    /* hs(k) inline via a helper lambda-ish macro using k magnitude */
+    double yb0 = 0.0, yb1 = 0.0;
+    if (conv) {
+        k = 0;
+        do { double hk = sym2_hs(k, r, rsq, omega, cssq), hk1 = sym2_hs(k + 1, r, rsq, omega, cssq); d = hk + hk1; yb0 += d * x[N - 1 - k]; k++; } while (d * d > prec && k < N);
+        if (d * d > prec) conv = 0;
+    }
+    if (conv) {
+        k = 0;
+        do { double hkm = sym2_hs(k - 1, r, rsq, omega, cssq), hkp = sym2_hs(k + 2, r, rsq, omega, cssq); d = hkm + hkp; yb1 += d * x[N - 1 - k]; k++; } while (d * d > prec && k < N);
+        if (d * d > prec) conv = 0;
+    }
+    if (!conv) { fn_set_error("symiirorder2: Sum to find symmetric boundary conditions did not converge."); rc = TSR_EARG; }
+    else {
+        y[0] = yf0; if (N > 1) y[1] = yf1;
+        for (int64_t n = 2; n < N; n++) y[n] = cs * x[n] + a2 * y[n - 1] + a3 * y[n - 2];
+        out[N - 1] = yb0; if (N > 1) out[N - 2] = yb1;
+        for (int64_t n = N - 3; n >= 0; n--) out[n] = cs * y[n] + a2 * out[n + 1] + a3 * out[n + 2];
+    }
+#undef HC
+    free(y); fn_free_doubles(x, N);
+    return rc;
+}
+
+/* whole-sample symmetric reflection (abcd|dcba, period 2n): map any integer index into [0, n-1]. */
+static int64_t sep_reflect(int64_t i, int64_t n)
+{
+    if (n == 1) return 0;
+    int64_t p = 2 * n;
+    i %= p; if (i < 0) i += p;
+    if (i >= n) i = p - 1 - i;
+    return i;
+}
+
+/* sepfir2d(input, hrow, hcol): separable 2-D convolution (scipy.signal.sepfir2d) -- filter each row with
+   hrow then each column with hcol, with whole-sample symmetric edges. Filters must be odd length. */
+static int r_sepfir2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres; (void)nargs;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("sepfir2d: input must be a 2-D array"); return TSR_EARG; }
+    if (args[1].kind != 3 || args[1].arr.ndim != 1 || args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("sepfir2d: hrow and hcol must be 1-D arrays"); return TSR_EARG; }
+    const int64_t R = args[0].arr.shape[0], C = args[0].arr.shape[1];
+    int64_t kr, kc, nin;
+    double *hrow = fn_arg_doubles(&args[1], &kr); if (!hrow) return TSR_ENOMEM;
+    double *hcol = fn_arg_doubles(&args[2], &kc); if (!hcol) { fn_free_doubles(hrow, kr); return TSR_ENOMEM; }
+    if (kr % 2 == 0 || kc % 2 == 0) { fn_set_error("sepfir2d: hrow and hcol must be odd length"); fn_free_doubles(hrow, kr); fn_free_doubles(hcol, kc); return TSR_EARG; }
+    double *x = fn_arg_doubles(&args[0], &nin); if (!x) { fn_free_doubles(hrow, kr); fn_free_doubles(hcol, kc); return TSR_ENOMEM; }
+    double *tmp = (double *)malloc((size_t)(R * C) * sizeof(double));
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){R, C});
+    int rc = TSR_OK;
+    if (!tmp || !out) rc = TSR_ENOMEM;
+    else {
+        const int64_t cr = kr / 2, cc = kc / 2;
+        for (int64_t r = 0; r < R; r++)                      /* rows with hrow (axis 1, length C) */
+            for (int64_t i = 0; i < C; i++) {
+                double acc = 0.0;
+                for (int64_t j = 0; j < kr; j++) acc += hrow[j] * x[r * C + sep_reflect(i - j + cr, C)];
+                tmp[r * C + i] = acc;
+            }
+        for (int64_t col = 0; col < C; col++)                /* columns with hcol (axis 0, length R) */
+            for (int64_t i = 0; i < R; i++) {
+                double acc = 0.0;
+                for (int64_t j = 0; j < kc; j++) acc += hcol[j] * tmp[sep_reflect(i - j + cc, R) * C + col];
+                out[i * C + col] = acc;
+            }
+    }
+    free(tmp); fn_free_doubles(hrow, kr); fn_free_doubles(hcol, kc); fn_free_doubles(x, nin);
+    return rc;
+}
 
 /* ---- chirp z-transform (Bluestein): czt / zoom_fft ---- */
 /* smallest 2,3,5-smooth integer >= n (any nfft >= n+m-1 gives the same linear-convolution result, so this
@@ -6322,8 +6511,13 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.cheb1ap", 3, "N, rp", "z, p, k", r_cheb1ap, NULL, "Analog Chebyshev type I lowpass prototype (scipy.signal.cheb1ap)."),
     ROUTINE("signal.cheb2ap", 3, "N, rs", "z, p, k", r_cheb2ap, NULL, "Analog Chebyshev type II lowpass prototype (scipy.signal.cheb2ap)."),
     ROUTINE("signal.gauss_spline", 1, "x, n", "out", r_gauss_spline, NULL, "Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline)."),
+    ROUTINE("signal.sepfir2d", 1, "input, hrow, hcol", "out", r_sepfir2d, NULL, "Separable 2-D convolution with symmetric edges (scipy.signal.sepfir2d)."),
+    ROUTINE("signal.symiirorder1", 1, "signal, c0, z1, precision=-1.0", "out", r_symiirorder1, NULL, "Symmetric first-order IIR filtering with mirror boundaries (scipy.signal.symiirorder1)."),
+    ROUTINE("signal.symiirorder2", 1, "input, r, omega, precision=-1.0", "out", r_symiirorder2, NULL, "Symmetric second-order IIR filtering with mirror boundaries (scipy.signal.symiirorder2)."),
     ROUTINE("signal.cspline1d", 1, "signal, lamb=0.0", "out", r_cspline1d, NULL, "Cubic-spline coefficients of a 1-D signal, lamb=0 (scipy.signal.cspline1d)."),
     ROUTINE("signal.qspline1d", 1, "signal, lamb=0.0", "out", r_qspline1d, NULL, "Quadratic-spline coefficients of a 1-D signal (scipy.signal.qspline1d)."),
+    ROUTINE("signal.cspline2d", 1, "signal, lamb=0.0", "out", r_cspline2d, NULL, "Cubic-spline coefficients of a 2-D array, lamb=0 (scipy.signal.cspline2d)."),
+    ROUTINE("signal.qspline2d", 1, "signal, lamb=0.0", "out", r_qspline2d, NULL, "Quadratic-spline coefficients of a 2-D array, lamb=0 (scipy.signal.qspline2d)."),
     ROUTINE("signal.cspline1d_eval", 1, "cj, newx, dx=1.0, x0=0.0", "out", r_cspline1d_eval, NULL, "Evaluate a cubic spline at new points (scipy.signal.cspline1d_eval)."),
     ROUTINE("signal.qspline1d_eval", 1, "cj, newx, dx=1.0, x0=0.0", "out", r_qspline1d_eval, NULL, "Evaluate a quadratic spline at new points (scipy.signal.qspline1d_eval)."),
     ROUTINE("signal.vectorstrength", 2, "events, period", "strength, phase", r_vectorstrength, NULL, "Vector strength and mean phase of events over a period (scipy.signal.vectorstrength)."),

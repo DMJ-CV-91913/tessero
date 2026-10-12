@@ -51,6 +51,7 @@ final class Signal
     'csd' => 'csd',
     'cspline1d' => 'cspline1d',
     'cspline1d_eval' => 'cspline1dEval',
+    'cspline2d' => 'cspline2d',
     'czt' => 'czt',
     'czt_points' => 'cztPoints',
     'dbode' => 'dbode',
@@ -115,6 +116,7 @@ final class Signal
     'periodogram' => 'periodogram',
     'qspline1d' => 'qspline1d',
     'qspline1d_eval' => 'qspline1dEval',
+    'qspline2d' => 'qspline2d',
     'resample' => 'resample',
     'resample_poly' => 'resamplePoly',
     'residue' => 'residue',
@@ -122,6 +124,7 @@ final class Signal
     'savgol_coeffs' => 'savgolCoeffs',
     'savgol_filter' => 'savgolFilter',
     'sawtooth' => 'sawtooth',
+    'sepfir2d' => 'sepfir2d',
     'sos2tf' => 'sos2tf',
     'sos2zpk' => 'sos2zpk',
     'sosfilt' => 'sosfilt',
@@ -134,6 +137,8 @@ final class Signal
     'ss2zpk' => 'ss2zpk',
     'step' => 'step',
     'sweep_poly' => 'sweepPoly',
+    'symiirorder1' => 'symiirorder1',
+    'symiirorder2' => 'symiirorder2',
     'tf2sos' => 'tf2sos',
     'tf2ss' => 'tf2ss',
     'tf2zpk' => 'tf2zpk',
@@ -529,6 +534,16 @@ final class Signal
     public static function cspline1dEval(mixed $cj, mixed $newx, mixed $dx = 1.0, mixed $x0 = 0.0): mixed
     {
         return Registry::routine('signal.cspline1d_eval', [$cj, $newx, $dx, $x0]);
+    }
+
+    /**
+     * Cubic-spline coefficients of a 2-D array, lamb=0 (scipy.signal.cspline2d).
+     *
+     * scipy.signal.cspline2d
+     */
+    public static function cspline2d(mixed $signal, mixed $lamb = 0.0): mixed
+    {
+        return Registry::routine('signal.cspline2d', [$signal, $lamb]);
     }
 
     /**
@@ -1248,6 +1263,16 @@ final class Signal
     }
 
     /**
+     * Quadratic-spline coefficients of a 2-D array, lamb=0 (scipy.signal.qspline2d).
+     *
+     * scipy.signal.qspline2d
+     */
+    public static function qspline2d(mixed $signal, mixed $lamb = 0.0): mixed
+    {
+        return Registry::routine('signal.qspline2d', [$signal, $lamb]);
+    }
+
+    /**
      * Resample a real signal to num samples via the FFT (scipy.signal.resample; window=None).
      *
      * scipy.signal.resample
@@ -1319,6 +1344,16 @@ final class Signal
     public static function sawtooth(mixed $t, mixed $width = 1): mixed
     {
         return Registry::routine('signal.sawtooth', [$t, $width]);
+    }
+
+    /**
+     * Separable 2-D convolution with symmetric edges (scipy.signal.sepfir2d).
+     *
+     * scipy.signal.sepfir2d
+     */
+    public static function sepfir2d(mixed $input, mixed $hrow, mixed $hcol): mixed
+    {
+        return Registry::routine('signal.sepfir2d', [$input, $hrow, $hcol]);
     }
 
     /**
@@ -1453,6 +1488,26 @@ final class Signal
     public static function sweepPoly(mixed $t, mixed $poly, mixed $phi = 0): mixed
     {
         return Registry::routine('signal.sweep_poly', [$t, $poly, $phi]);
+    }
+
+    /**
+     * Symmetric first-order IIR filtering with mirror boundaries (scipy.signal.symiirorder1).
+     *
+     * scipy.signal.symiirorder1
+     */
+    public static function symiirorder1(mixed $signal, mixed $c0, mixed $z1, mixed $precision = -1.0): mixed
+    {
+        return Registry::routine('signal.symiirorder1', [$signal, $c0, $z1, $precision]);
+    }
+
+    /**
+     * Symmetric second-order IIR filtering with mirror boundaries (scipy.signal.symiirorder2).
+     *
+     * scipy.signal.symiirorder2
+     */
+    public static function symiirorder2(mixed $input, mixed $r, mixed $omega, mixed $precision = -1.0): mixed
+    {
+        return Registry::routine('signal.symiirorder2', [$input, $r, $omega, $precision]);
     }
 
     /**
