@@ -247,3 +247,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,"scipy.stats boxcox_normmax, yeojohnson_normmax",100.0,100.0,85.0,84.8,100.0,99.8,100.0,100.0,85.2,85.2
 2026-10-12,scipy.stats ppcc_max,100.0,100.0,85.1,84.9,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,"scipy.optimize check_grad, brute",100.0,100.0,85.2,85.0,100.0,99.8,100.0,100.0,85.5,85.5
+2026-10-12,scipy.spatial Rectangle,100.0,100.0,85.3,85.1,100.0,99.8,100.0,100.0,85.5,85.5
