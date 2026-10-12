@@ -11305,6 +11305,12 @@
                 "doc": "Alias of roots_legendre (scipy.special.p_roots)."
             },
             {
+                "name": "pbdnSeq",
+                "static": true,
+                "sig": "pbdnSeq(mixed $n, mixed $z): mixed",
+                "doc": "Complex parabolic cylinder Dn(z) and derivatives for a sequence of orders (scipy.special.pbdn_seq)."
+            },
+            {
                 "name": "pbdv",
                 "static": true,
                 "sig": "pbdv(mixed $v, mixed $x, ?array $out = null): array",
@@ -16466,6 +16472,12 @@
                 "name": "fresnelsZeros",
                 "static": true,
                 "sig": "fresnelsZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "pbdnSeq",
+                "static": true,
+                "sig": "pbdnSeq($n, $z)",
                 "doc": ""
             },
             {

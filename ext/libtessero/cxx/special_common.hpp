@@ -100,3 +100,15 @@ extern "C" void tsr_fcszo(int kf, int nt, double *out)
     xsf::fcszo(kf, nt, zo);
     for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
 }
+
+/* Complex parabolic cylinder functions D_n(z) and D_n'(z) for orders 0..n (scipy.special.pbdn_seq),
+   written interleaved into bOut / dOut. */
+extern "C" void tsr_cpbdn(int n, double zre, double zim, double *bOut, double *dOut)
+{
+    std::complex<double> cpb[300], cpd[300];
+    xsf::specfun::cpbdn(n, std::complex<double>(zre, zim), cpb, cpd);
+    for (int i = 0; i <= n; i++) {
+        bOut[2 * i] = cpb[i].real(); bOut[2 * i + 1] = cpb[i].imag();
+        dOut[2 * i] = cpd[i].real(); dOut[2 * i + 1] = cpd[i].imag();
+    }
+}

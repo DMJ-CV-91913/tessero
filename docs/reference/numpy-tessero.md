@@ -595,6 +595,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.obl_rad2_cv` | `Tessero\Special::oblRad2Cv()` |
 | `scipy.special.owens_t` | `Tessero\Special::owensT()` |
 | `scipy.special.p_roots` | `Tessero\Special::pRoots()` |
+| `scipy.special.pbdn_seq` | `Tessero\Special::pbdnSeq()` |
 | `scipy.special.pbdv` | `Tessero\Special::pbdv()` |
 | `scipy.special.pbdv_seq` | `Tessero\Special::pbdvSeq()` |
 | `scipy.special.pbvv` | `Tessero\Special::pbvv()` |
