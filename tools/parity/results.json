@@ -959,6 +959,7 @@
         "sparse.tril": "pass",
         "sparse.triu": "pass",
         "sparse.vstack": "pass",
+        "spatial.Rectangle": "pass",
         "spatial.cKDTree": "pass",
         "special.agm": "pass",
         "special.ai_zeros": "pass",
@@ -3204,7 +3205,8 @@
             "stats.yeojohnson_normmax": null,
             "stats.ppcc_max": null,
             "optimize.check_grad": null,
-            "optimize.brute": null
+            "optimize.brute": null,
+            "spatial.Rectangle": null
         },
         "ext": {
             "np.median": 0,
@@ -4807,7 +4809,8 @@
             "stats.yeojohnson_normmax": null,
             "stats.ppcc_max": null,
             "optimize.check_grad": null,
-            "optimize.brute": null
+            "optimize.brute": null,
+            "spatial.Rectangle": null
         }
     },
     "ext": {
@@ -5770,6 +5773,7 @@
         "sparse.tril": "pass",
         "sparse.triu": "pass",
         "sparse.vstack": "pass",
+        "spatial.Rectangle": "pass",
         "spatial.cKDTree": "pass",
         "special.agm": "pass",
         "special.ai_zeros": "pass",

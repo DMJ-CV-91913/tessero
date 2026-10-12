@@ -449,6 +449,8 @@ legacy:
     # distances and indices by the spatial.json fixtures.
     cKDTree: {ffi: [KD::query], ext: [KD::query], fixtures: [spatial.cKDTree]}
     KDTree: {ffi: [KD::query], ext: [KD::query], fixtures: [spatial.cKDTree]}
+    # pure-PHP hyperrectangle (Minkowski min/max distances to a point or rectangle, volume), both backends
+    Rectangle: {ffi: [RECT::volume], ext: [RECT::volume], fixtures: [spatial.Rectangle]}
   scipy.optimize:
     # the scalar/BFGS/Nelder-Mead solvers are pure PHP (they call the user's callable, no kernel), so the one
     # class serves both backends - unlike linprog/milp which are kernel-backed and need an Ext provider. They are

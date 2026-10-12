@@ -729,6 +729,33 @@ foreach ($files as $file) {
         }
         continue;
     }
+    if (isset($data['rectangle_cases'])) {                   // scipy.spatial.Rectangle: hyperrectangle geometry (pure-PHP)
+        $local = [];
+        foreach ($data['rectangle_cases'] as $c) {
+            $key = 'spatial.Rectangle';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $R = new \Tessero\Spatial\Rectangle($c['maxes'], $c['mins']);
+                $p = (float) ($c['p'] ?? 2.0);
+                $got = match ($c['fn']) {
+                    'volume' => $R->volume(),
+                    'min_distance_point' => $R->minDistancePoint(array_map('floatval', $c['x']), $p),
+                    'max_distance_point' => $R->maxDistancePoint(array_map('floatval', $c['x']), $p),
+                    'min_distance_rectangle' => $R->minDistanceRectangle(new \Tessero\Spatial\Rectangle($c['other']['maxes'], $c['other']['mins']), $p),
+                    'max_distance_rectangle' => $R->maxDistanceRectangle(new \Tessero\Spatial\Rectangle($c['other']['maxes'], $c['other']['mins']), $p),
+                };
+                $ok = abs($got - $c['expect']) <= 1e-9 * (1 + abs((float) $c['expect']));
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['statsfn_cases'])) {                     // scipy.stats optimiser-based helpers (pure-PHP Tessero\StatsFns)
         foreach ($data['statsfn_cases'] as $c) {
             $fn = $c['fn'];
