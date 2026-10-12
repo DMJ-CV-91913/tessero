@@ -839,6 +839,7 @@
         "signal.ss2zpk": "pass",
         "signal.step": "pass",
         "signal.sweep_poly": "pass",
+        "signal.tf2sos": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",
@@ -3216,7 +3217,8 @@
             "signal.argrelextrema": 0,
             "signal.choose_conv_method": 0,
             "signal.firls": 1.043871624984004,
-            "signal.zpk2sos": 0
+            "signal.zpk2sos": 0,
+            "signal.tf2sos": 0
         },
         "ext": {
             "np.median": 0,
@@ -4825,7 +4827,8 @@
             "signal.argrelextrema": 0,
             "signal.choose_conv_method": 0,
             "signal.firls": 1.043871624984004,
-            "signal.zpk2sos": 0
+            "signal.zpk2sos": 0,
+            "signal.tf2sos": 0
         }
     },
     "ext": {
@@ -5668,6 +5671,7 @@
         "signal.ss2zpk": "pass",
         "signal.step": "pass",
         "signal.sweep_poly": "pass",
+        "signal.tf2sos": "pass",
         "signal.tf2ss": "pass",
         "signal.tf2zpk": "pass",
         "signal.unique_roots": "pass",

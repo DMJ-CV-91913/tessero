@@ -3457,6 +3457,12 @@
                 "doc": "Frequency-swept cosine with a polynomial instantaneous frequency (scipy.signal.sweep_poly)."
             },
             {
+                "name": "tf2sos",
+                "static": true,
+                "sig": "tf2sos(mixed $b, mixed $a, mixed $pairing = null, mixed $analog = false): mixed",
+                "doc": "Second-order sections from transfer-function coefficients (scipy.signal.tf2sos, pairing='nearest')."
+            },
+            {
                 "name": "tf2ss",
                 "static": true,
                 "sig": "tf2ss(mixed $num, mixed $den): mixed",
@@ -19536,6 +19542,12 @@
                 "name": "zpk2sos",
                 "static": true,
                 "sig": "zpk2sos($z, $p, $k, $pairing = null, $analog = false)",
+                "doc": ""
+            },
+            {
+                "name": "tf2sos",
+                "static": true,
+                "sig": "tf2sos($b, $a, $pairing = null, $analog = false)",
                 "doc": ""
             },
             {
