@@ -102,6 +102,7 @@ def build():
     blocks['fresnelc_zeros'] = [call(sc.fresnelc_zeros, [nt]) for nt in (3, 5)]
     blocks['fresnels_zeros'] = [call(sc.fresnels_zeros, [nt]) for nt in (3, 5)]
     blocks['pbdn_seq'] = [call(sc.pbdn_seq, [n, z]) for n in (0, 1, 2, 3, 4) for z in (0.8, 1.5, 2.5)]
+    blocks['jnjnp_zeros'] = [call(sc.jnjnp_zeros, [nt]) for nt in (5, 10, 20)]
     blocks['multigammaln'] = [call(sc.multigammaln, [F(5, lo=2.0, hi=9.0), d]) for d in (1, 2, 3)] + [call(sc.multigammaln, [3.5, 2])]
     import numpy as _np
     blocks['factorial2'] = [call(sc.factorial2, [_np.arange(0, 12)])]
@@ -128,7 +129,7 @@ def main():
     GW_TOL = GW_TOL | {'modfresnelp', 'modfresnelm'}
     GW_TOL = GW_TOL | {'mathieu_even_coef', 'mathieu_odd_coef'}
     GW_TOL = GW_TOL | {'erf_zeros', 'fresnel_zeros', 'fresnelc_zeros', 'fresnels_zeros'}
-    GW_TOL = GW_TOL | {'pbdn_seq'}
+    GW_TOL = GW_TOL | {'pbdn_seq', 'jnjnp_zeros'}
     GW_TOL = GW_TOL | {'factorial2', 'factorialk', 'bernoulli', 'euler'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}

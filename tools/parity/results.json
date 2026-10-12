@@ -1120,6 +1120,7 @@
         "special.jacobi": "pass",
         "special.jn": "pass",
         "special.jn_zeros": "pass",
+        "special.jnjnp_zeros": "pass",
         "special.jnp_zeros": "pass",
         "special.jnyn_zeros": "pass",
         "special.js_roots": "pass",
@@ -3186,7 +3187,8 @@
             "special.fresnels_zeros": 0,
             "special.pbdn_seq": 0,
             "special.sph_harm_y_all": null,
-            "special.factorialk": 8.120488408686846e-16
+            "special.factorialk": 8.120488408686846e-16,
+            "special.jnjnp_zeros": 0
         },
         "ext": {
             "np.median": 0,
@@ -4780,7 +4782,8 @@
             "special.fresnels_zeros": 0,
             "special.pbdn_seq": 0,
             "special.sph_harm_y_all": null,
-            "special.factorialk": 8.120488408686846e-16
+            "special.factorialk": 8.120488408686846e-16,
+            "special.jnjnp_zeros": 0
         }
     },
     "ext": {
@@ -5904,6 +5907,7 @@
         "special.jacobi": "pass",
         "special.jn": "pass",
         "special.jn_zeros": "pass",
+        "special.jnjnp_zeros": "pass",
         "special.jnp_zeros": "pass",
         "special.jnyn_zeros": "pass",
         "special.js_roots": "pass",

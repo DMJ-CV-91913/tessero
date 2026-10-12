@@ -10819,6 +10819,12 @@
                 "doc": "First nt positive zeros of the Bessel function Jn (scipy.special.jn_zeros)."
             },
             {
+                "name": "jnjnpZeros",
+                "static": true,
+                "sig": "jnjnpZeros(mixed $nt): mixed",
+                "doc": "First nt zeros of Jn and Jn' by magnitude with their order/rank/type (scipy.special.jnjnp_zeros)."
+            },
+            {
                 "name": "jnpZeros",
                 "static": true,
                 "sig": "jnpZeros(mixed $n, mixed $nt): mixed",
@@ -16490,6 +16496,12 @@
                 "name": "pbdnSeq",
                 "static": true,
                 "sig": "pbdnSeq($n, $z)",
+                "doc": ""
+            },
+            {
+                "name": "jnjnpZeros",
+                "static": true,
+                "sig": "jnjnpZeros($nt)",
                 "doc": ""
             },
             {
