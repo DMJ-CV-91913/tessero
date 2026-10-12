@@ -651,6 +651,8 @@
         "optimize.brent": "pass",
         "optimize.brenth": "pass",
         "optimize.brentq": "pass",
+        "optimize.brute": "pass",
+        "optimize.check_grad": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
@@ -3200,7 +3202,9 @@
             "special.ellip_normal": 6.622245395824866e-15,
             "stats.boxcox_normmax": null,
             "stats.yeojohnson_normmax": null,
-            "stats.ppcc_max": null
+            "stats.ppcc_max": null,
+            "optimize.check_grad": null,
+            "optimize.brute": null
         },
         "ext": {
             "np.median": 0,
@@ -4801,7 +4805,9 @@
             "special.ellip_normal": 6.622245395824866e-15,
             "stats.boxcox_normmax": null,
             "stats.yeojohnson_normmax": null,
-            "stats.ppcc_max": null
+            "stats.ppcc_max": null,
+            "optimize.check_grad": null,
+            "optimize.brute": null
         }
     },
     "ext": {
@@ -5456,6 +5462,8 @@
         "optimize.brent": "pass",
         "optimize.brenth": "pass",
         "optimize.brentq": "pass",
+        "optimize.brute": "pass",
+        "optimize.check_grad": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
