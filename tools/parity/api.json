@@ -6799,6 +6799,41 @@
         ]
     },
     {
+        "class": "Tessero\\SpecialSeq",
+        "methods": [
+            {
+                "name": "legendreP",
+                "static": true,
+                "sig": "legendreP(int $n, float $x, int $diffN = 0): array",
+                "doc": "Legendre polynomial P_n(x) and its derivatives up to order $diffN (0, 1 or 2)."
+            },
+            {
+                "name": "legendrePAll",
+                "static": true,
+                "sig": "legendrePAll(int $n, float $x, int $diffN = 0): array",
+                "doc": "P_k(x) and derivatives for every degree k = 0..n."
+            },
+            {
+                "name": "lqn",
+                "static": true,
+                "sig": "lqn(int $n, float $x): array",
+                "doc": "Legendre function of the second kind Q_k(x) and its derivative for k = 0..n (|x| < 1)."
+            },
+            {
+                "name": "riccatiJn",
+                "static": true,
+                "sig": "riccatiJn(int $n, float $x): array",
+                "doc": "Riccati-Bessel function of the first kind psi_k(x) = x * j_k(x) and its derivative, k = 0..n."
+            },
+            {
+                "name": "riccatiYn",
+                "static": true,
+                "sig": "riccatiYn(int $n, float $x): array",
+                "doc": "Riccati-Bessel function of the second kind chi_k(x) = -x * y_k(x) and its derivative, k = 0..n."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
