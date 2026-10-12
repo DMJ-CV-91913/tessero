@@ -4295,6 +4295,127 @@ static int r_argrel(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return rc;
 }
 
+/* argrelextrema(data, comparator, axis=0, order=1, mode='clip') (1-D): indices where data[i] relates by
+   `comparator` to its `order` neighbours on each side; comparator is 'greater'/'less'/'greater_equal'/
+   'less_equal'; mode 'clip' clamps at the edges, 'wrap' wraps (scipy.signal.argrelextrema, returns the first
+   element of the index tuple). */
+static int r_argrelextrema(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("argrelextrema: data must be a 1-D array"); return TSR_EARG; }
+    if (args[1].kind != 2 || !args[1].str) { fn_set_error("argrelextrema: comparator must be a string"); return TSR_EARG; }
+    int cmp;
+    if (strcmp(args[1].str, "greater") == 0) cmp = 0;
+    else if (strcmp(args[1].str, "less") == 0) cmp = 1;
+    else if (strcmp(args[1].str, "greater_equal") == 0) cmp = 2;
+    else if (strcmp(args[1].str, "less_equal") == 0) cmp = 3;
+    else { fn_set_error("argrelextrema: comparator must be greater/less/greater_equal/less_equal"); return TSR_EARG; }
+    const int64_t order = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 1;
+    if (order < 1) { fn_set_error("argrelextrema: order must be an int >= 1"); return TSR_EARG; }
+    const int wrap = (nargs > 4 && args[4].kind == 2 && args[4].str && strcmp(args[4].str, "wrap") == 0);
+    int64_t n; double *a = fn_arg_doubles(&args[0], &n); if (!a) return TSR_ENOMEM;
+    int64_t *idx = (int64_t *)malloc(sizeof(int64_t) * (size_t)(n > 0 ? n : 1));
+    int rc = TSR_OK;
+    if (!idx) rc = TSR_ENOMEM;
+    else {
+        int64_t cnt = 0;
+        for (int64_t i = 0; i < n; i++) {
+            int ext = 1;
+            for (int64_t s = 1; s <= order && ext; s++) {
+                int64_t ip = i + s, im = i - s;
+                if (wrap) { ip = ((ip % n) + n) % n; im = ((im % n) + n) % n; }
+                else { if (ip > n - 1) ip = n - 1; if (im < 0) im = 0; }
+                const double hi = a[i];
+                int ok;
+                switch (cmp) {
+                    case 0: ok = (hi > a[ip]) && (hi > a[im]); break;
+                    case 1: ok = (hi < a[ip]) && (hi < a[im]); break;
+                    case 2: ok = (hi >= a[ip]) && (hi >= a[im]); break;
+                    default: ok = (hi <= a[ip]) && (hi <= a[im]); break;
+                }
+                if (!ok) ext = 0;
+            }
+            if (ext) idx[cnt++] = i;
+        }
+        int64_t *out = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, (int64_t[]){cnt});
+        if (!out) rc = TSR_ENOMEM; else memcpy(out, idx, sizeof(int64_t) * (size_t)cnt);
+    }
+    free(idx); fn_free_doubles(a, n);
+    return rc;
+}
+
+/* number of direct/fft ops for a convolution of these shapes+mode (scipy.signal._signaltools._conv_ops);
+   fft_ops and direct_ops returned through the pointers. */
+static void ccm_conv_ops(const int64_t *xs, const int64_t *hs, int32_t nd, const char *mode,
+                         double *fft_ops, double *direct_ops)
+{
+    int64_t out_shape[32], full_out[32];
+    double ps1 = 1.0, ps2 = 1.0, pout = 1.0, pfull = 1.0;
+    for (int32_t i = 0; i < nd; i++) {
+        int64_t n = xs[i], k = hs[i];
+        full_out[i] = n + k - 1;
+        if (strcmp(mode, "full") == 0) out_shape[i] = n + k - 1;
+        else if (strcmp(mode, "valid") == 0) out_shape[i] = llabs(n - k) + 1;
+        else out_shape[i] = n;                              /* same */
+        ps1 *= (double)n; ps2 *= (double)k; pout *= (double)out_shape[i]; pfull *= (double)full_out[i];
+    }
+    if (nd == 1) {
+        int64_t s1 = xs[0], s2 = hs[0];
+        if (strcmp(mode, "full") == 0) *direct_ops = (double)s1 * (double)s2;
+        else if (strcmp(mode, "valid") == 0) *direct_ops = (s2 >= s1) ? (double)(s2 - s1 + 1) * (double)s1 : (double)(s1 - s2 + 1) * (double)s2;
+        else *direct_ops = (s1 < s2) ? (double)s1 * (double)s2 : (double)s1 * (double)s2 - (double)(s2 / 2) * (double)((s2 + 1) / 2);
+    } else {
+        if (strcmp(mode, "same") == 0) *direct_ops = ps1 * ps2;
+        else *direct_ops = (ps1 < ps2 ? ps1 : ps2) * pout;
+    }
+    *fft_ops = 3.0 * pfull * log(pfull);
+}
+
+/* choose_conv_method(in1, in2, mode='full', measure=False): the faster of 'direct'/'fft' by SciPy's
+   operation-count heuristic (scipy.signal.choose_conv_method; measure=True timing is not supported). */
+static int r_choose_conv_method(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("choose_conv_method: in1 and in2 must be arrays"); return TSR_EARG; }
+    if (args[0].arr.ndim != args[1].arr.ndim) { fn_set_error("choose_conv_method: in1 and in2 must have the same dimensionality"); return TSR_EARG; }
+    const char *mode = (nargs > 2 && args[2].kind == 2 && args[2].str) ? args[2].str : "full";
+    if (strcmp(mode, "full") && strcmp(mode, "valid") && strcmp(mode, "same")) { fn_set_error("choose_conv_method: mode must be 'full', 'valid', or 'same'"); return TSR_EARG; }
+    const int32_t nd = args[0].arr.ndim;
+    const int dv = args[0].arr.dtype, dk = args[1].arr.dtype;   /* 0 f64 1 f32 2 i64 3 i32 4 u8 5 bool 6 c128 */
+    const int v_int = (dv == 2 || dv == 3 || dv == 4), k_int = (dk == 2 || dk == 3 || dk == 4);
+    const int v_bool = (dv == 5), k_bool = (dk == 5);
+    int64_t vn, kn; double *v = fn_arg_doubles(&args[0], &vn); if (!v) return TSR_ENOMEM;
+    double *k = fn_arg_doubles(&args[1], &kn); if (!k) { fn_free_doubles(v, vn); return TSR_ENOMEM; }
+    const char *method = "direct";
+    /* integer inputs: representing an integer product as a float can lose precision above 2^52 */
+    if (v_int || k_int) {
+        double mv = 0.0, mk = 0.0;
+        for (int64_t i = 0; i < vn; i++) { double x = fabs(v[i]); if (x > mv) mv = x; }
+        for (int64_t i = 0; i < kn; i++) { double x = fabs(k[i]); if (x > mk) mk = x; }
+        double maxval = floor(mv) * floor(mk) * (double)(vn < kn ? vn : kn);
+        if (maxval > 4503599627370495.0) { fn_free_doubles(v, vn); fn_free_doubles(k, kn); return fn_result_str(&res[0], "direct"); }
+    }
+    if (v_bool && k_bool) { fn_free_doubles(v, vn); fn_free_doubles(k, kn); return fn_result_str(&res[0], "direct"); }
+    /* numeric: compare the fft vs direct operation-count estimate */
+    double fft_ops, direct_ops;
+    ccm_conv_ops(args[0].arr.shape, args[1].arr.shape, nd, mode, &fft_ops, &direct_ops);
+    double offset = (nd == 1) ? -1e-3 : -1e-4;
+    double O_fft, O_direct, O_offset;
+    if (nd == 1) {
+        if (strcmp(mode, "valid") == 0) { O_fft = 1.89095737e-9; O_direct = 2.1364985e-10; O_offset = offset; }
+        else if (strcmp(mode, "full") == 0) { O_fft = 1.7649070e-9; O_direct = 2.1414831e-10; O_offset = offset; }
+        else { if (kn <= vn) { O_fft = 3.2646654e-9; O_direct = 2.8478277e-10; O_offset = offset; }
+               else { O_fft = 3.21635404e-9; O_direct = 1.1773253e-8; O_offset = -1e-5; } }
+    } else {
+        if (strcmp(mode, "valid") == 0) { O_fft = 1.85927e-9; O_direct = 2.11242e-8; O_offset = offset; }
+        else if (strcmp(mode, "full") == 0) { O_fft = 1.99817e-9; O_direct = 1.66174e-8; O_offset = offset; }
+        else { O_fft = 2.04735e-9; O_direct = 1.55367e-8; O_offset = offset; }
+    }
+    if (O_fft * fft_ops < O_direct * direct_ops + O_offset) method = "fft";
+    fn_free_doubles(v, vn); fn_free_doubles(k, kn);
+    return fn_result_str(&res[0], method);
+}
+
 /* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
    1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
 static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -5740,6 +5861,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.order_filter", 1, "a, domain, rank", "out", r_order_filter_sig, NULL, "Rank-order filter over a footprint (scipy.signal.order_filter)."),
     ROUTINE("signal.argrelmax", 1, "data, axis=0, order=1, mode='clip'", "out", r_argrel, &SIG_ARGREL_MAX, "Indices of relative maxima of a 1-D array (scipy.signal.argrelmax)."),
     ROUTINE("signal.argrelmin", 1, "data, axis=0, order=1, mode='clip'", "out", r_argrel, &SIG_ARGREL_MIN, "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."),
+    ROUTINE("signal.argrelextrema", 1, "data, comparator, axis=0, order=1, mode='clip'", "out", r_argrelextrema, NULL, "Indices of relative extrema of a 1-D array by a comparator (scipy.signal.argrelextrema)."),
+    ROUTINE("signal.choose_conv_method", 1, "in1, in2, mode='full', measure=False", "out", r_choose_conv_method, NULL, "Faster of 'direct'/'fft' convolution by SciPy's op-count heuristic (scipy.signal.choose_conv_method)."),
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),

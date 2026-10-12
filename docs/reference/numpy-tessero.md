@@ -1072,6 +1072,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | NumPy / SciPy | Tessero |
 |---|---|
 | `scipy.signal.abcd_normalize` | `Tessero\Signal::abcdNormalize()` |
+| `scipy.signal.argrelextrema` | `Tessero\Signal::argrelextrema()` |
 | `scipy.signal.argrelmax` | `Tessero\Signal::argrelmax()` |
 | `scipy.signal.argrelmin` | `Tessero\Signal::argrelmin()` |
 | `scipy.signal.band_stop_obj` | `Tessero\Signal::bandStopObj()` |
@@ -1092,6 +1093,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.check_COLA` | `Tessero\Signal::checkCOLA()` |
 | `scipy.signal.check_NOLA` | `Tessero\Signal::checkNOLA()` |
 | `scipy.signal.chirp` | `Tessero\Signal::chirp()` |
+| `scipy.signal.choose_conv_method` | `Tessero\Signal::chooseConvMethod()` |
 | `scipy.signal.coherence` | `Tessero\Signal::coherence()` |
 | `scipy.signal.cont2discrete` | `Tessero\Signal::cont2discrete()` |
 | `scipy.signal.convolve` | `Tessero\Signal::convolve()` |

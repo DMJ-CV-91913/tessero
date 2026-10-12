@@ -19,6 +19,7 @@ final class Signal
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'abcd_normalize' => 'abcdNormalize',
+    'argrelextrema' => 'argrelextrema',
     'argrelmax' => 'argrelmax',
     'argrelmin' => 'argrelmin',
     'band_stop_obj' => 'bandStopObj',
@@ -39,6 +40,7 @@ final class Signal
     'check_COLA' => 'checkCOLA',
     'check_NOLA' => 'checkNOLA',
     'chirp' => 'chirp',
+    'choose_conv_method' => 'chooseConvMethod',
     'coherence' => 'coherence',
     'cont2discrete' => 'cont2discrete',
     'convolve' => 'convolve',
@@ -164,6 +166,16 @@ final class Signal
     public static function abcdNormalize(mixed $A, mixed $B, mixed $C, mixed $D): mixed
     {
         return Registry::routine('signal.abcd_normalize', [$A, $B, $C, $D]);
+    }
+
+    /**
+     * Indices of relative extrema of a 1-D array by a comparator (scipy.signal.argrelextrema).
+     *
+     * scipy.signal.argrelextrema
+     */
+    public static function argrelextrema(mixed $data, mixed $comparator, mixed $axis = 0, mixed $order = 1, mixed $mode = 'clip'): mixed
+    {
+        return Registry::routine('signal.argrelextrema', [$data, $comparator, $axis, $order, $mode]);
     }
 
     /**
@@ -392,6 +404,16 @@ final class Signal
     public static function chirp(mixed $t, mixed $f0, mixed $t1, mixed $f1, mixed $method = 'linear', mixed $phi = 0, mixed $vertexZero = true): mixed
     {
         return Registry::routine('signal.chirp', [$t, $f0, $t1, $f1, $method, $phi, $vertexZero]);
+    }
+
+    /**
+     * Faster of 'direct'/'fft' convolution by SciPy's op-count heuristic (scipy.signal.choose_conv_method).
+     *
+     * scipy.signal.choose_conv_method
+     */
+    public static function chooseConvMethod(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $measure = false): mixed
+    {
+        return Registry::routine('signal.choose_conv_method', [$in1, $in2, $mode, $measure]);
     }
 
     /**
