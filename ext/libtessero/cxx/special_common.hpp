@@ -85,3 +85,18 @@ extern "C" void tsr_mathieu_coef(int kd, int m, double q, double *fc)
     double a = xsf::specfun::cva2(kd, m, q);
     xsf::specfun::fcoef(kd, m, q, a, fc);
 }
+
+/* Complex zeros of erf (cerzo) and of the Fresnel integrals (fcszo: kf=1 C, kf=2 S); written interleaved
+   [re, im, ...] into out (np_numeric.c r_erf_zeros / r_fresnel*_zeros). nt is small (fixtures <= ~16). */
+extern "C" void tsr_cerzo(int nt, double *out)
+{
+    std::complex<double> zo[260];
+    xsf::specfun::cerzo(nt, zo);
+    for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
+}
+extern "C" void tsr_fcszo(int kf, int nt, double *out)
+{
+    std::complex<double> zo[260];
+    xsf::fcszo(kf, nt, zo);
+    for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
+}
