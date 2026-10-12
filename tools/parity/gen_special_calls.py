@@ -81,6 +81,8 @@ def build():
               'berp_zeros': sc.berp_zeros, 'beip_zeros': sc.beip_zeros, 'kerp_zeros': sc.kerp_zeros, 'keip_zeros': sc.keip_zeros}
     for nm, rf in kz_fns.items():
         blocks[nm] = [call(rf, [nt]) for nt in (3, 6)]
+    blocks['kelvin_zeros'] = [call(sc.kelvin_zeros, [nt]) for nt in (3, 5)]
+    blocks['multigammaln'] = [call(sc.multigammaln, [F(5, lo=2.0, hi=9.0), d]) for d in (1, 2, 3)] + [call(sc.multigammaln, [3.5, 2])]
     return blocks
 
 
@@ -94,10 +96,11 @@ def main():
               'roots_genlaguerre', 'la_roots', 'roots_sh_legendre', 'ps_roots', 'roots_sh_jacobi', 'js_roots'}
     GW_TOL = GW_TOL | {'jn_zeros', 'yn_zeros', 'jnp_zeros', 'ynp_zeros'}
     GW_TOL = GW_TOL | {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros'}
+    GW_TOL = GW_TOL | {'kelvin_zeros'}
     for k, v in blocks.items():
         by_fn[k] = {'fn': k, 'cases': v}
         if k in GW_TOL:
-            kv = k in {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros'}
+            kv = k in {'ber_zeros', 'bei_zeros', 'ker_zeros', 'kei_zeros', 'berp_zeros', 'beip_zeros', 'kerp_zeros', 'keip_zeros', 'kelvin_zeros'}
             by_fn[k]['tol'] = {'rtol': 1e-7, 'atol': 1e-8} if kv else {'rtol': 1e-9, 'atol': 1e-11}
     data['calls'] = list(by_fn.values())
     fixture_env.require_pinned()

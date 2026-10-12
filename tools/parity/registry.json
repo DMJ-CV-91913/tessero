@@ -5150,6 +5150,11 @@
             "nin": 0,
             "nout": 4
         },
+        "special.kelvin_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 8
+        },
         "special.ker": {
             "kind": "ufunc",
             "nin": 1,
@@ -5308,6 +5313,11 @@
         "special.modstruve": {
             "kind": "ufunc",
             "nin": 2,
+            "nout": 1
+        },
+        "special.multigammaln": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.nbdtr": {

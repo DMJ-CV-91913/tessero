@@ -515,6 +515,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.keip` | `Tessero\Special::keip()` |
 | `scipy.special.keip_zeros` | `Tessero\Special::keipZeros()` |
 | `scipy.special.kelvin` | `Tessero\Special::kelvin()` |
+| `scipy.special.kelvin_zeros` | `Tessero\Special::kelvinZeros()` |
 | `scipy.special.ker` | `Tessero\Special::ker()` |
 | `scipy.special.ker_zeros` | `Tessero\Special::kerZeros()` |
 | `scipy.special.kerp` | `Tessero\Special::kerp()` |
@@ -547,6 +548,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.mathieu_modsem2` | `Tessero\Special::mathieuModsem2()` |
 | `scipy.special.mathieu_sem` | `Tessero\Special::mathieuSem()` |
 | `scipy.special.modstruve` | `Tessero\Special::modstruve()` |
+| `scipy.special.multigammaln` | `Tessero\Special::multigammaln()` |
 | `scipy.special.nbdtr` | `Tessero\Special::nbdtr()` |
 | `scipy.special.nbdtrc` | `Tessero\Special::nbdtrc()` |
 | `scipy.special.nbdtri` | `Tessero\Special::nbdtri()` |

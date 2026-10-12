@@ -1111,6 +1111,7 @@
         "special.keip": "pass",
         "special.keip_zeros": "pass",
         "special.kelvin": "pass",
+        "special.kelvin_zeros": "pass",
         "special.ker": "pass",
         "special.ker_zeros": "pass",
         "special.kerp": "pass",
@@ -1143,6 +1144,7 @@
         "special.mathieu_modsem2": "pass",
         "special.mathieu_sem": "pass",
         "special.modstruve": "pass",
+        "special.multigammaln": "pass",
         "special.nbdtr": "pass",
         "special.nbdtrc": "pass",
         "special.nbdtri": "pass",
@@ -3076,7 +3078,9 @@
             "special.berp_zeros": 1.829638197529655e-16,
             "special.beip_zeros": 2.1451025790983665e-16,
             "special.kerp_zeros": 1.0890278897916946e-12,
-            "special.keip_zeros": 5.13997692851924e-11
+            "special.keip_zeros": 5.13997692851924e-11,
+            "special.kelvin_zeros": 5.13997692851924e-11,
+            "special.multigammaln": 2.217240389195107e-16
         },
         "ext": {
             "np.median": 0,
@@ -4615,7 +4619,9 @@
             "special.berp_zeros": 1.829638197529655e-16,
             "special.beip_zeros": 2.1451025790983665e-16,
             "special.kerp_zeros": 1.0890278897916946e-12,
-            "special.keip_zeros": 5.13997692851924e-11
+            "special.keip_zeros": 5.13997692851924e-11,
+            "special.kelvin_zeros": 5.13997692851924e-11,
+            "special.multigammaln": 2.217240389195107e-16
         }
     },
     "ext": {
@@ -5730,6 +5736,7 @@
         "special.keip": "pass",
         "special.keip_zeros": "pass",
         "special.kelvin": "pass",
+        "special.kelvin_zeros": "pass",
         "special.ker": "pass",
         "special.ker_zeros": "pass",
         "special.kerp": "pass",
@@ -5762,6 +5769,7 @@
         "special.mathieu_modsem2": "pass",
         "special.mathieu_sem": "pass",
         "special.modstruve": "pass",
+        "special.multigammaln": "pass",
         "special.nbdtr": "pass",
         "special.nbdtrc": "pass",
         "special.nbdtri": "pass",

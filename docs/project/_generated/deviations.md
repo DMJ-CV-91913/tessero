@@ -631,6 +631,7 @@
 | `special.beip_zeros` | every call | rtol 1e-07 |
 | `special.kerp_zeros` | every call | rtol 1e-07 |
 | `special.keip_zeros` | every call | rtol 1e-07 |
+| `special.kelvin_zeros` | every call | rtol 1e-07 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |
