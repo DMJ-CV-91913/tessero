@@ -6439,6 +6439,24 @@
                 "doc": "scipy.optimize.fmin_bfgs: minimise with BFGS and return the minimiser xopt."
             },
             {
+                "name": "fminCg",
+                "static": true,
+                "sig": "fminCg(callable $fun, array $x0, ?callable $fprime = null): array",
+                "doc": "scipy.optimize.fmin_cg: nonlinear conjugate-gradient (Polak-Ribiere+) minimiser."
+            },
+            {
+                "name": "fminPowell",
+                "static": true,
+                "sig": "fminPowell(callable $func, array $x0, array $options = []): array",
+                "doc": "scipy.optimize.fmin_powell: derivative-free direction-set minimiser."
+            },
+            {
+                "name": "fminNcg",
+                "static": true,
+                "sig": "fminNcg(callable $f, array $x0, callable $fprime, ?callable $fhessp = null): array",
+                "doc": "scipy.optimize.fmin_ncg: truncated-Newton (Newton-CG) minimiser; fprime required, hessp optional."
+            },
+            {
                 "name": "checkGrad",
                 "static": true,
                 "sig": "checkGrad(callable $func, callable $grad, array $x0, float $epsilon = 1.4901161193847656E-8): float",

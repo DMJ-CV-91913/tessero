@@ -109,6 +109,24 @@ final class Minimize
         return self::minimize($fun, $x0, $fprime, 'BFGS')->x;
     }
 
+    /** scipy.optimize.fmin_cg: nonlinear conjugate-gradient (Polak-Ribiere+) minimiser. */
+    public static function fminCg(callable $fun, array $x0, ?callable $fprime = null): array
+    {
+        return self::minimize($fun, $x0, $fprime, 'CG')->x;
+    }
+
+    /** scipy.optimize.fmin_powell: derivative-free direction-set minimiser. */
+    public static function fminPowell(callable $func, array $x0, array $options = []): array
+    {
+        return self::minimize($func, $x0, null, 'Powell', null, $options)->x;
+    }
+
+    /** scipy.optimize.fmin_ncg: truncated-Newton (Newton-CG) minimiser; fprime required, hessp optional. */
+    public static function fminNcg(callable $f, array $x0, callable $fprime, ?callable $fhessp = null): array
+    {
+        return self::minimize($f, $x0, $fprime, 'Newton-CG', null, $fhessp !== null ? ['hessp' => $fhessp] : [])->x;
+    }
+
     /**
      * scipy.optimize.check_grad: the 2-norm of the difference between the analytic gradient and a
      * forward-difference approximation of it at x0 (absolute step epsilon, as in scipy).
@@ -216,7 +234,10 @@ final class Minimize
             'BFGS' => $self->bfgs($x0, $options),
             'L-BFGS-B', 'LBFGSB', 'L-BFGS' => $self->lbfgsb($x0, $bounds, $options),
             'NELDER-MEAD' => $self->nelderMead($x0, $options),
-            default => throw new TesseroException("minimize: unknown method '{$method}' (BFGS, L-BFGS-B, Nelder-Mead)."),
+            'CG' => $self->cg($x0, $options),
+            'POWELL' => $self->powell($x0, $options),
+            'NEWTON-CG', 'NEWTONCG' => $self->newtonCg($x0, $options),
+            default => throw new TesseroException("minimize: unknown method '{$method}' (BFGS, L-BFGS-B, Nelder-Mead, CG, Powell, Newton-CG)."),
         };
     }
 
@@ -667,12 +688,275 @@ final class Minimize
         return new OptimizeResult($x, $f, $warn === 0, $warn, $msg, $k, $this->nfev, $this->njev, $g, $H, 'BFGS');
     }
 
+    // ------------------------------------------------------------------ CG (Polak-Ribiere+)
+
+    private function cg(array $x, array $o): OptimizeResult
+    {
+        $n = count($x);
+        $gtol = (float) ($o['gtol'] ?? 1e-5);
+        $maxiter = (int) ($o['maxiter'] ?? 200 * $n);
+        $f = $this->f($x);
+        $gfk = $this->g($x, $f);
+        $oldOld = $f + self::norm2($gfk) / 2;
+        $pk = self::neg($gfk);
+        $k = 0;
+        $warn = 0;
+        $msg = 'Optimization terminated successfully.';
+        $gnorm = self::normInf($gfk);
+        $sigma3 = 0.01;
+        while ($gnorm > $gtol && $k < $maxiter) {
+            $deltak = self::dot($gfk, $gfk);
+            $pkLocal = $pk;
+            $xLocal = $x;
+            $gfkLocal = $gfk;
+            // scipy descent_condition: accept only if the NEXT PR+ direction is a sufficient descent direction
+            $descent = function (float $alpha, float $phival) use ($xLocal, $pkLocal, $gfkLocal, $deltak, $sigma3, $gtol): bool {
+                $gkp1 = $this->g(self::axpy($alpha, $pkLocal, $xLocal), $phival);
+                if (self::normInf($gkp1) <= $gtol) {
+                    return true;
+                }
+                $yk = self::sub($gkp1, $gfkLocal);
+                $beta = max(0.0, self::dot($yk, $gkp1) / $deltak);
+                $pkp1 = self::axpy($beta, $pkLocal, self::neg($gkp1));
+                return self::dot($gkp1, $pkp1) <= -$sigma3 * self::dot($gkp1, $gkp1);
+            };
+            $ls = $this->wolfe($x, $pk, $f, $oldOld, $gfk, 1e-4, 0.4, $descent);
+            if ($ls === null) {
+                $warn = 2;
+                $msg = 'Desired error not necessarily achieved due to precision loss.';
+                break;
+            }
+            [$alpha, $fNew, $gNew] = $ls;
+            $oldOld = $f;
+            $f = $fNew;
+            $x = self::axpy($alpha, $pk, $x);
+            $gNew ??= $this->g($x, $f);
+            $yk = self::sub($gNew, $gfk);
+            $beta = max(0.0, self::dot($yk, $gNew) / $deltak);
+            $pk = self::axpy($beta, $pk, self::neg($gNew));
+            $gfk = $gNew;
+            $k++;
+            $gnorm = self::normInf($gfk);
+            if (! is_finite($f)) {
+                $warn = 2;
+                $msg = 'Desired error not necessarily achieved due to precision loss.';
+                break;
+            }
+        }
+        if ($k >= $maxiter && $gnorm > $gtol) {
+            $warn = 1;
+            $msg = 'Maximum number of iterations has been exceeded.';
+        }
+
+        return new OptimizeResult($x, $f, $warn === 0, $warn, $msg, $k, $this->nfev, $this->njev, $gfk, null, 'CG');
+    }
+
+    // ------------------------------------------------------------------ Powell (direction set)
+
+    private function powell(array $x, array $o): OptimizeResult
+    {
+        $n = count($x);
+        $xtol = (float) ($o['xtol'] ?? 1e-4);
+        $ftol = (float) ($o['ftol'] ?? 1e-4);
+        $maxiter = (int) ($o['maxiter'] ?? 1000 * $n);
+        $maxfun = (int) ($o['maxfun'] ?? 1000 * $n);
+        $direc = self::identity($n);
+        $fval = $this->f($x);
+        $x1 = $x;
+        $it = 0;
+        $warn = 0;
+        $msg = 'Optimization terminated successfully.';
+        while (true) {
+            $fx = $fval;
+            $bigind = 0;
+            $delta = 0.0;
+            for ($i = 0; $i < $n; $i++) {
+                $direc1 = $direc[$i];
+                $fx2 = $fval;
+                [$fval, $x, $direc1] = $this->linesearchPowell($x, $direc1, $xtol * 100);
+                if (($fx2 - $fval) > $delta) {
+                    $delta = $fx2 - $fval;
+                    $bigind = $i;
+                }
+            }
+            $it++;
+            if (2.0 * ($fx - $fval) <= $ftol * (abs($fx) + abs($fval)) + 1e-20) {
+                break;
+            }
+            if ($this->nfev >= $maxfun) {
+                $warn = 1;
+                $msg = 'Maximum number of function evaluations has been exceeded.';
+                break;
+            }
+            if ($it >= $maxiter) {
+                $warn = 1;
+                $msg = 'Maximum number of iterations has been exceeded.';
+                break;
+            }
+            if (is_nan($fx) && is_nan($fval)) {
+                break;
+            }
+            $direc1 = self::sub($x, $x1);
+            $x1 = $x;
+            $x2 = self::axpy(1.0, $direc1, $x);
+            $fx2 = $this->f($x2);
+            if ($fx > $fx2) {
+                $t = 2.0 * ($fx + $fx2 - 2.0 * $fval);
+                $temp = $fx - $fval - $delta;
+                $t *= $temp * $temp;
+                $temp = $fx - $fx2;
+                $t -= $delta * $temp * $temp;
+                if ($t < 0.0) {
+                    [$fval, $x, $direc1] = $this->linesearchPowell($x, $direc1, $xtol * 100);
+                    if (self::anyNonzero($direc1)) {
+                        $direc[$bigind] = $direc[$n - 1];
+                        $direc[$n - 1] = $direc1;
+                    }
+                }
+            }
+        }
+
+        return new OptimizeResult($x, $fval, $warn === 0, $warn, $msg, $it, $this->nfev, 0, null, null, 'Powell');
+    }
+
+    /** @return array{0: float, 1: list<float>, 2: list<float>} [fret, p+xi, xi] */
+    private function linesearchPowell(array $p, array $xi, float $tol): array
+    {
+        if (! self::anyNonzero($xi)) {
+            return [$this->f($p), $p, $xi];
+        }
+        $myfunc = fn (float $a): float => $this->f(self::axpy($a, $xi, $p));
+        [$alphaMin, $fret] = self::brentScalar($myfunc, null, $tol, 500);
+        $xi = self::scale($alphaMin, $xi);
+
+        return [$fret, self::axpy(1.0, $xi, $p), $xi];
+    }
+
+    // ------------------------------------------------------------------ Newton-CG (truncated Newton)
+
+    private function newtonCg(array $x, array $o): OptimizeResult
+    {
+        $n = count($x);
+        $hessp = $o['hessp'] ?? null;
+        $xtol = (float) ($o['xtol'] ?? 1e-5);
+        $maxiter = (int) ($o['maxiter'] ?? 200 * $n);
+        $cgMax = 20 * $n;
+        $xtolEff = $n * $xtol;
+        $eps = 1.4901161193847656e-08;
+        $f64eps = 2.220446049250313e-16;
+        $updateL1 = PHP_FLOAT_MAX;
+        $f = $this->f($x);
+        $oldOld = null;
+        $k = 0;
+        $warn = 0;
+        $msg = 'Optimization terminated successfully.';
+        while ($updateL1 > $xtolEff) {
+            if ($k >= $maxiter) {
+                $warn = 1;
+                $msg = 'Maximum number of iterations has been exceeded.';
+                break;
+            }
+            $g0 = $this->g($x, $f);
+            $b = self::neg($g0);
+            $maggrad = self::l1($b);
+            $eta = min(0.5, sqrt($maggrad));
+            $termcond = $eta * $maggrad;
+            $xsupi = array_fill(0, $n, 0.0);
+            $ri = self::neg($b);
+            $psupi = self::neg($ri);
+            $i = 0;
+            $dri0 = self::dot($ri, $ri);
+            $cgConverged = false;
+            for ($j = 0; $j < $cgMax; $j++) {
+                if (self::l1($ri) <= $termcond) {
+                    $cgConverged = true;
+                    break;
+                }
+                if ($hessp !== null) {
+                    $Ap = array_map('floatval', array_values(($hessp)($x, $psupi)));
+                } else {
+                    $x1 = self::axpy($eps, $psupi, $x);
+                    $g1 = $this->g($x1, $this->f($x1));
+                    $Ap = [];
+                    for ($t = 0; $t < $n; $t++) {
+                        $Ap[$t] = ($g1[$t] - $g0[$t]) / $eps;
+                    }
+                }
+                $curv = self::dot($psupi, $Ap);
+                if ($curv >= 0 && $curv <= 3 * $f64eps) {
+                    $cgConverged = true;
+                    break;
+                }
+                if ($curv < 0) {
+                    if ($i > 0) {
+                        $cgConverged = true;
+                        break;
+                    }
+                    $xsupi = self::scale($dri0 / (-$curv), $b);
+                    $cgConverged = true;
+                    break;
+                }
+                $alphai = $dri0 / $curv;
+                $xsupi = self::axpy($alphai, $psupi, $xsupi);
+                $ri = self::axpy($alphai, $Ap, $ri);
+                $dri1 = self::dot($ri, $ri);
+                $betai = $dri1 / $dri0;
+                $psupi = self::axpy($betai, $psupi, self::neg($ri));
+                $i++;
+                $dri0 = $dri1;
+            }
+            if (! $cgConverged) {
+                $warn = 2;
+                $msg = 'Warning: CG iterations did not converge.';
+                break;
+            }
+            $pk = $xsupi;
+            $gfk = self::neg($b);
+            $ls = $this->wolfe($x, $pk, $f, $oldOld ?? ($f + self::norm2($gfk) / 2), $gfk, 1e-4, 0.9);
+            if ($ls === null) {
+                $warn = 2;
+                $msg = 'Line search failed.';
+                break;
+            }
+            [$alphak, $fNew] = $ls;
+            $oldOld = $f;
+            $f = $fNew;
+            $update = self::scale($alphak, $pk);
+            $x = self::axpy(1.0, $update, $x);
+            $k++;
+            $updateL1 = self::l1($update);
+        }
+
+        return new OptimizeResult($x, $f, $warn === 0, $warn, $msg, $k, $this->nfev, $this->njev, null, null, 'Newton-CG');
+    }
+
+    private static function l1(array $a): float
+    {
+        $s = 0.0;
+        foreach ($a as $v) {
+            $s += abs($v);
+        }
+
+        return $s;
+    }
+
+    private static function anyNonzero(array $a): bool
+    {
+        foreach ($a as $v) {
+            if ($v != 0.0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Strong-Wolfe line search (scipy.optimize._linesearch.scalar_search_wolfe2).
      *
      * @return array{0: float, 1: float, 2: list<float>|null}|null
      */
-    private function wolfe(array $x, array $p, float $phi0, float $oldPhi0, array $g0, float $c1 = 1e-4, float $c2 = 0.9): ?array
+    private function wolfe(array $x, array $p, float $phi0, float $oldPhi0, array $g0, float $c1 = 1e-4, float $c2 = 0.9, ?callable $extra = null): ?array
     {
         $derphi0 = self::dot($g0, $p);
         $gCache = [];
@@ -699,16 +983,16 @@ final class Minimize
                 break;
             }
             if ($phiA1 > $phi0 + $c1 * $alpha1 * $derphi0 || ($phiA1 >= $phiA0 && $i > 0)) {
-                $result = $this->zoom($alpha0, $alpha1, $phiA0, $phiA1, $derA0, $phi, $derphi, $phi0, $derphi0, $c1, $c2);
+                $result = $this->zoom($alpha0, $alpha1, $phiA0, $phiA1, $derA0, $phi, $derphi, $phi0, $derphi0, $c1, $c2, $extra);
                 break;
             }
             $derA1 = $derphi($alpha1, $phiA1);
-            if (abs($derA1) <= -$c2 * $derphi0) {
+            if (abs($derA1) <= -$c2 * $derphi0 && ($extra === null || $extra($alpha1, $phiA1))) {
                 $result = [$alpha1, $phiA1];
                 break;
             }
             if ($derA1 >= 0) {
-                $result = $this->zoom($alpha1, $alpha0, $phiA1, $phiA0, $derA1, $phi, $derphi, $phi0, $derphi0, $c1, $c2);
+                $result = $this->zoom($alpha1, $alpha0, $phiA1, $phiA0, $derA1, $phi, $derphi, $phi0, $derphi0, $c1, $c2, $extra);
                 break;
             }
             $alpha0 = $alpha1;
@@ -727,7 +1011,7 @@ final class Minimize
     }
 
     /** @return array{0: float, 1: float}|null */
-    private function zoom(float $aLo, float $aHi, float $phiLo, float $phiHi, float $derLo, callable $phi, callable $derphi, float $phi0, float $derphi0, float $c1, float $c2): ?array
+    private function zoom(float $aLo, float $aHi, float $phiLo, float $phiHi, float $derLo, callable $phi, callable $derphi, float $phi0, float $derphi0, float $c1, float $c2, ?callable $extra = null): ?array
     {
         $phiRec = $phi0;
         $aRec = 0.0;
@@ -752,7 +1036,7 @@ final class Minimize
                 $phiHi = $phiJ;
             } else {
                 $derJ = $derphi($aj, $phiJ);
-                if (abs($derJ) <= -$c2 * $derphi0) {
+                if (abs($derJ) <= -$c2 * $derphi0 && ($extra === null || $extra($aj, $phiJ))) {
                     return [$aj, $phiJ];
                 }
                 if ($derJ * ($aHi - $aLo) >= 0) {

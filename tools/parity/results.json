@@ -657,6 +657,9 @@
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
+        "optimize.fmin_cg": "pass",
+        "optimize.fmin_ncg": "pass",
+        "optimize.fmin_powell": "pass",
         "optimize.fminbound": "pass",
         "optimize.fsolve": "pass",
         "optimize.golden": "pass",
@@ -3260,7 +3263,10 @@
             "signal.iirfilter": 2,
             "signal.iirdesign": 3.239813119239026e-15,
             "signal.istft": 15.271609542680515,
-            "interpolate.NearestNDInterpolator": null
+            "interpolate.NearestNDInterpolator": null,
+            "optimize.fmin_cg": null,
+            "optimize.fmin_powell": null,
+            "optimize.fmin_ncg": null
         },
         "ext": {
             "np.median": 0,
@@ -4891,7 +4897,10 @@
             "signal.envelope": 1.858595094082527e-11,
             "signal.firwin_2d": 4.2834949689043285e-13,
             "signal.istft": 15.271609542680515,
-            "interpolate.NearestNDInterpolator": null
+            "interpolate.NearestNDInterpolator": null,
+            "optimize.fmin_cg": null,
+            "optimize.fmin_powell": null,
+            "optimize.fmin_ncg": null
         }
     },
     "ext": {
@@ -5552,6 +5561,9 @@
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
+        "optimize.fmin_cg": "pass",
+        "optimize.fmin_ncg": "pass",
+        "optimize.fmin_powell": "pass",
         "optimize.fminbound": "pass",
         "optimize.fsolve": "pass",
         "optimize.golden": "pass",
