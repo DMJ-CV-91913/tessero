@@ -252,3 +252,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,signal.windows get_window dual-namespace credit,100.0,100.0,85.4,85.2,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,signal argrelextrema + choose_conv_method,100.0,100.0,85.6,85.3,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,signal firls,100.0,100.0,85.6,85.4,100.0,99.8,100.0,100.0,85.5,85.5
+2026-10-12,signal zpk2sos,100.0,100.0,85.7,85.5,100.0,99.8,100.0,100.0,85.5,85.5

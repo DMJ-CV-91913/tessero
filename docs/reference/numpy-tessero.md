@@ -1190,6 +1190,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.vectorstrength` | `Tessero\Signal::vectorstrength()` |
 | `scipy.signal.welch` | `Tessero\Signal::welch()` |
 | `scipy.signal.wiener` | `Tessero\Signal::wiener()` |
+| `scipy.signal.zpk2sos` | `Tessero\Signal::zpk2sos()` |
 | `scipy.signal.zpk2ss` | `Tessero\Signal::zpk2ss()` |
 | `scipy.signal.zpk2tf` | `Tessero\Signal::zpk2tf()` |
 

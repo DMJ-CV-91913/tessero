@@ -184,6 +184,169 @@ static int r_zpk2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     return TSR_OK;
 }
 
+/* ---- zpk2sos (scipy.signal.zpk2sos, pairing='nearest', analog=False) ---- */
+#define ZS_TOL (100.0 * DBL_EPSILON)
+#define ZS_ISREAL(x) (cimag(x) == 0.0)
+
+static int zs_cmp_real(const void *a, const void *b)
+{
+    double ra = creal(*(const double complex *)a), rb = creal(*(const double complex *)b);
+    return (ra < rb) ? -1 : (ra > rb ? 1 : 0);
+}
+
+/* split `in` (n elems) into conjugate-pair representatives (positive imag, sorted by real then |imag|)
+   followed by reals (ascending), into out[] (capacity n); returns total count and sets *pnc to the number
+   of complex representatives. Returns -1 if a complex value has no matching conjugate (mirrors _cplxreal). */
+static int zs_cplxreal(const double complex *in, int n, double complex *out, int *pnc)
+{
+    *pnc = 0;
+    if (n == 0) return 0;
+    double complex *t = (double complex *)malloc((size_t)n * sizeof(double complex));
+    double complex *zp = (double complex *)malloc((size_t)n * sizeof(double complex));
+    double complex *zn = (double complex *)malloc((size_t)n * sizeof(double complex));
+    double complex *zr = (double complex *)malloc((size_t)n * sizeof(double complex));
+    if (!t || !zp || !zn || !zr) { free(t); free(zp); free(zn); free(zr); return -2; }
+    memcpy(t, in, (size_t)n * sizeof(double complex));
+    qsort(t, (size_t)n, sizeof(double complex), zs_cmp_real);
+    int np = 0, nn = 0, nr = 0;
+    for (int i = 0; i < n; i++) {
+        double complex x = t[i];
+        if (fabs(cimag(x)) <= ZS_TOL * cabs(x)) zr[nr++] = creal(x);
+        else if (cimag(x) > 0) zp[np++] = x;
+        else zn[nn++] = x;
+    }
+    free(t);
+    int ret = -1;
+    if (np == nn) {
+        int i = 0;                                            /* sort each equal-real run by |imag| asc */
+        while (i < np) {
+            int j = i + 1;
+            while (j < np && fabs(creal(zp[j]) - creal(zp[j - 1])) <= ZS_TOL * cabs(zp[j - 1])) j++;
+            for (int a = i + 1; a < j; a++) { double complex kv = zp[a]; int b = a - 1; while (b >= i && fabs(cimag(zp[b])) > fabs(cimag(kv))) { zp[b + 1] = zp[b]; b--; } zp[b + 1] = kv; }
+            for (int a = i + 1; a < j; a++) { double complex kv = zn[a]; int b = a - 1; while (b >= i && fabs(cimag(zn[b])) > fabs(cimag(kv))) { zn[b + 1] = zn[b]; b--; } zn[b + 1] = kv; }
+            i = j;
+        }
+        int ok = 1;
+        for (int k = 0; k < np; k++) if (cabs(zp[k] - conj(zn[k])) > ZS_TOL * cabs(zn[k])) { ok = 0; break; }
+        if (ok) {
+            int cnt = 0;
+            for (int k = 0; k < np; k++) out[cnt++] = (zp[k] + conj(zn[k])) / 2.0;
+            for (int k = 0; k < nr; k++) out[cnt++] = zr[k];
+            *pnc = np;
+            ret = cnt;
+        }
+    }
+    free(zp); free(zn); free(zr);
+    return ret;
+}
+
+static int zs_idx_worst(const double complex *p, int n)     /* argmin |1-|p||, ties -> lowest index */
+{
+    int best = 0; double bd = fabs(1.0 - cabs(p[0]));
+    for (int i = 1; i < n; i++) { double d = fabs(1.0 - cabs(p[i])); if (d < bd) { bd = d; best = i; } }
+    return best;
+}
+
+/* nearest index in fro[0..n) to `to` matching which (0 any, 1 real, 2 complex); ties -> lowest index. */
+static int zs_nearest(const double complex *fro, int n, double complex to, int which)
+{
+    int best = -1; double bd = 0.0;
+    for (int i = 0; i < n; i++) {
+        if (which == 1 && !ZS_ISREAL(fro[i])) continue;
+        if (which == 2 && ZS_ISREAL(fro[i])) continue;
+        double d = cabs(fro[i] - to);
+        if (best < 0 || d < bd) { bd = d; best = i; }
+    }
+    return best;
+}
+
+static void zs_del(double complex *a, int *n, int idx) { for (int i = idx; i < *n - 1; i++) a[i] = a[i + 1]; (*n)--; }
+static int zs_countreal(const double complex *a, int n) { int c = 0; for (int i = 0; i < n; i++) if (ZS_ISREAL(a[i])) c++; return c; }
+
+/* one second-order section from up to two zeros/poles (_single_zpksos): b=poly(zz), a=poly(pp), placed
+   right-aligned into row[0..5] (zeros in [0:3], poles in [3:6]). */
+static void zs_section(const double complex *zz, int nz, const double complex *pp, int np, double *row)
+{
+    double b[3], a[3];
+    zpk2tf_real(zz, nz, pp, np, 1.0, b, a);
+    for (int i = 0; i < 6; i++) row[i] = 0.0;
+    for (int i = 0; i <= nz; i++) row[2 - nz + i] = b[i];
+    for (int i = 0; i <= np; i++) row[5 - np + i] = a[i];
+}
+
+static int r_zpk2sos(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t nz0, np0;
+    double complex *zin = read_carr(&args[0], &nz0); if (!zin) return TSR_ENOMEM;
+    double complex *pin = read_carr(&args[1], &np0); if (!pin) { free(zin); return TSR_ENOMEM; }
+    const double k = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
+    if (nz0 == 0 && np0 == 0) {
+        free(zin); free(pin);
+        double *o = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){1, 6});
+        if (!o) return TSR_ENOMEM;
+        o[0] = k; o[1] = 0; o[2] = 0; o[3] = 1; o[4] = 0; o[5] = 0;
+        return TSR_OK;
+    }
+    int rc = TSR_OK;
+    int L = (int)(nz0 > np0 ? nz0 : np0);
+    int cap = L + (L % 2 == 1 ? 1 : 0);                      /* pad to equal, even length */
+    double complex *zpad = (double complex *)calloc((size_t)(cap ? cap : 1), sizeof(double complex));
+    double complex *ppad = (double complex *)calloc((size_t)(cap ? cap : 1), sizeof(double complex));
+    double complex *zc = (double complex *)malloc((size_t)(cap ? cap : 1) * sizeof(double complex));
+    double complex *pc = (double complex *)malloc((size_t)(cap ? cap : 1) * sizeof(double complex));
+    if (!zpad || !ppad || !zc || !pc) { rc = TSR_ENOMEM; goto done; }
+    for (int64_t i = 0; i < nz0; i++) zpad[i] = zin[i];
+    for (int64_t i = 0; i < np0; i++) ppad[i] = pin[i];
+    int nzc, npc;
+    int zn = zs_cplxreal(zpad, cap, zc, &nzc);
+    int pn = zs_cplxreal(ppad, cap, pc, &npc);
+    if (zn < 0 || pn < 0) { fn_set_error("zpk2sos: complex value has no matching conjugate"); rc = TSR_EARG; goto done; }
+    int n_sections = (cap + 1) / 2;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n_sections, 6});
+    if (!out) { rc = TSR_ENOMEM; goto done; }
+    for (int si = n_sections - 1; si >= 0; si--) {
+        int p1i = zs_idx_worst(pc, pn);
+        double complex p1 = pc[p1i]; zs_del(pc, &pn, p1i);
+        double *row = &out[si * 6];
+        double complex zz[2], pp[2];
+        if (ZS_ISREAL(p1) && zs_countreal(pc, pn) == 0) {
+            int z1i = zs_nearest(zc, zn, p1, 1);             /* last real pole: pair nearest real zero */
+            zz[1] = 0.0; pp[0] = p1; pp[1] = 0.0;
+            if (z1i >= 0) { zz[0] = zc[z1i]; zs_del(zc, &zn, z1i); }
+            else zz[0] = 0.0;
+            zs_section(zz, 2, pp, 2, row);                   /* [z1,0], [p1,0] */
+        } else if (pn + 1 == zn && !ZS_ISREAL(p1) && zs_countreal(pc, pn) == 1 && zs_countreal(zc, zn) == 1) {
+            int z1i = zs_nearest(zc, zn, p1, 2);             /* must pair with a complex zero */
+            double complex z1 = zc[z1i]; zs_del(zc, &zn, z1i);
+            zz[0] = z1; zz[1] = conj(z1); pp[0] = p1; pp[1] = conj(p1);
+            zs_section(zz, 2, pp, 2, row);
+        } else {
+            double complex p2;
+            if (ZS_ISREAL(p1)) {                             /* worst remaining real pole */
+                int bi = -1; double bd = 0.0;
+                for (int i = 0; i < pn; i++) if (ZS_ISREAL(pc[i])) { double d = fabs(1.0 - cabs(pc[i])); if (bi < 0 || d < bd) { bd = d; bi = i; } }
+                p2 = pc[bi]; zs_del(pc, &pn, bi);
+            } else p2 = conj(p1);
+            pp[0] = p1; pp[1] = p2;
+            if (zn > 0) {
+                int z1i = zs_nearest(zc, zn, p1, 0);
+                double complex z1 = zc[z1i]; zs_del(zc, &zn, z1i);
+                if (!ZS_ISREAL(z1)) { zz[0] = z1; zz[1] = conj(z1); zs_section(zz, 2, pp, 2, row); }
+                else if (zn > 0) {
+                    int z2i = zs_nearest(zc, zn, p1, 1);
+                    zz[0] = z1; zz[1] = zc[z2i]; zs_del(zc, &zn, z2i);
+                    zs_section(zz, 2, pp, 2, row);
+                } else { zz[0] = z1; zs_section(zz, 1, pp, 2, row); }
+            } else zs_section(zz, 0, pp, 2, row);            /* no zeros: b = [1] */
+        }
+    }
+    out[0] *= k; out[1] *= k; out[2] *= k;                   /* gain into the first section */
+done:
+    free(zin); free(pin); free(zpad); free(ppad); free(zc); free(pc);
+    return rc;
+}
+
 /* iirnotch / iirpeak: second-order notch/peak IIR design (scipy.signal, assuming a -3 dB bandwidth so the
    gb terms simplify to beta = tan(bw/2)). Writes b[3], a[3]. */
 static void sig_notch_peak(double w0, double Q, double fs, int peak, double *b, double *a)
@@ -5829,6 +5992,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.sosfiltfilt", 1, "sos, x, axis=-1, padtype='odd', padlen=None", "out", r_sosfiltfilt, NULL, "Zero-phase forward-backward SOS filtering with odd padding (scipy.signal.sosfiltfilt; 1-D)."),
     ROUTINE("signal.freqz", 2, "b, a=1, worN=512, whole=False", "w, h", r_freqz, NULL, "Frequency response of a digital filter (scipy.signal.freqz)."),
     ROUTINE("signal.zpk2tf", 2, "z, p, k", "b, a", r_zpk2tf, NULL, "Transfer-function (b, a) from zeros, poles and gain (scipy.signal.zpk2tf)."),
+    ROUTINE("signal.zpk2sos", 1, "z, p, k, pairing=None, analog=False", "out", r_zpk2sos, NULL, "Second-order sections from zeros, poles and gain (scipy.signal.zpk2sos, pairing='nearest')."),
     ROUTINE("signal.butter", 2, "N, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_butter, NULL, "Butterworth IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.butter)."),
     ROUTINE("signal.cheby1", 2, "N, rp, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_cheby1, NULL, "Chebyshev type I IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.cheby1)."),
     ROUTINE("signal.cheby2", 2, "N, rs, Wn, btype='low', analog=False, output='ba', fs=None", "b, a", r_cheby2, NULL, "Chebyshev type II IIR filter design, digital lowpass/highpass, output 'ba' (scipy.signal.cheby2)."),
