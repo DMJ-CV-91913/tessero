@@ -412,6 +412,8 @@
 | `signal.firls` | call | rtol 1e-07 |
 | `signal.zpk2sos` | every call | rtol 1e-07 |
 | `signal.zpk2sos` | call | rtol 1e-07 |
+| `signal.tf2sos` | every call | rtol 1e-06 |
+| `signal.tf2sos` | call | rtol 1e-06 |
 | `signal.residue` | every call | rtol 0 |
 | `signal.residue` | call | rtol 0 |
 | `signal.residuez` | every call | rtol 0 |

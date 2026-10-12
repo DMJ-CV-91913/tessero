@@ -521,6 +521,14 @@ z2s.append({'args': [F.enc(np.asarray([], complex)), F.enc(np.asarray([], comple
             'expect': F.enc_result(np.asarray(sg.zpk2sos([], [], 3.0), dtype=np.float64), []),
             'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
 
+# tf2sos (= zpk2sos(*tf2zpk(b,a))); modest orders where roots stay well-conditioned
+t2s = []
+for N in [2, 3, 4, 5, 6]:
+    for bb, aa in [sg.butter(N, 0.3), sg.cheby1(N, 1, 0.3), sg.ellip(N, 1, 40, 0.3)]:
+        t2s.append({'args': [F.enc(np.asarray(bb, float)), F.enc(np.asarray(aa, float))], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(sg.tf2sos(bb, aa), dtype=np.float64), []),
+                    'compare': 'tol', 'tol': {'rtol': 1e-6, 'atol': 1e-8}})
+
 # residue / residuez (real-root denominators, distinct magnitudes -> unambiguous pole order)
 rsd, rsz = [], []
 for (b, a) in [([1., 3., 3.], [1., 6., 11., 6.]), ([1., 0.], [1., 3., 2.]),
@@ -1019,6 +1027,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'choose_conv_method', 'cases': ccm},
                  {'fn': 'firls', 'cases': fls, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'zpk2sos', 'cases': z2s, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'tf2sos', 'cases': t2s, 'tol': {'rtol': 1e-6, 'atol': 1e-8}},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
                  {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},
