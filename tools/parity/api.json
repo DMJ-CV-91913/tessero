@@ -9801,10 +9801,22 @@
                 "doc": "Kelvin function bei."
             },
             {
+                "name": "beiZeros",
+                "static": true,
+                "sig": "beiZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin function bei (scipy.special.bei_zeros)."
+            },
+            {
                 "name": "beip",
                 "static": true,
                 "sig": "beip(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Derivative of the Kelvin function bei."
+            },
+            {
+                "name": "beipZeros",
+                "static": true,
+                "sig": "beipZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin derivative bei' (scipy.special.beip_zeros)."
             },
             {
                 "name": "ber",
@@ -9813,10 +9825,22 @@
                 "doc": "Kelvin function ber."
             },
             {
+                "name": "berZeros",
+                "static": true,
+                "sig": "berZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin function ber (scipy.special.ber_zeros)."
+            },
+            {
                 "name": "berp",
                 "static": true,
                 "sig": "berp(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Derivative of the Kelvin function ber."
+            },
+            {
+                "name": "berpZeros",
+                "static": true,
+                "sig": "berpZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin derivative ber' (scipy.special.berp_zeros)."
             },
             {
                 "name": "besselpoly",
@@ -10611,10 +10635,22 @@
                 "doc": "Kelvin function kei."
             },
             {
+                "name": "keiZeros",
+                "static": true,
+                "sig": "keiZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin function kei (scipy.special.kei_zeros)."
+            },
+            {
                 "name": "keip",
                 "static": true,
                 "sig": "keip(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Derivative of the Kelvin function kei."
+            },
+            {
+                "name": "keipZeros",
+                "static": true,
+                "sig": "keipZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin derivative kei' (scipy.special.keip_zeros)."
             },
             {
                 "name": "kelvin",
@@ -10629,10 +10665,22 @@
                 "doc": "Kelvin function ker."
             },
             {
+                "name": "kerZeros",
+                "static": true,
+                "sig": "kerZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin function ker (scipy.special.ker_zeros)."
+            },
+            {
                 "name": "kerp",
                 "static": true,
                 "sig": "kerp(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Derivative of the Kelvin function ker."
+            },
+            {
+                "name": "kerpZeros",
+                "static": true,
+                "sig": "kerpZeros(mixed $nt): mixed",
+                "doc": "First nt positive zeros of the Kelvin derivative ker' (scipy.special.kerp_zeros)."
             },
             {
                 "name": "klDiv",
@@ -15928,6 +15976,54 @@
                 "name": "ynpZeros",
                 "static": true,
                 "sig": "ynpZeros($n, $nt)",
+                "doc": ""
+            },
+            {
+                "name": "berZeros",
+                "static": true,
+                "sig": "berZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "beiZeros",
+                "static": true,
+                "sig": "beiZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "kerZeros",
+                "static": true,
+                "sig": "kerZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "keiZeros",
+                "static": true,
+                "sig": "keiZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "berpZeros",
+                "static": true,
+                "sig": "berpZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "beipZeros",
+                "static": true,
+                "sig": "beipZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "kerpZeros",
+                "static": true,
+                "sig": "kerpZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "keipZeros",
+                "static": true,
+                "sig": "keipZeros($nt)",
                 "doc": ""
             },
             {

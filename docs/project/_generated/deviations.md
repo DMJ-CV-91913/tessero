@@ -623,6 +623,14 @@
 | `special.yn_zeros` | every call | rtol 1e-09 |
 | `special.jnp_zeros` | every call | rtol 1e-09 |
 | `special.ynp_zeros` | every call | rtol 1e-09 |
+| `special.ber_zeros` | every call | rtol 1e-07 |
+| `special.bei_zeros` | every call | rtol 1e-07 |
+| `special.ker_zeros` | every call | rtol 1e-07 |
+| `special.kei_zeros` | every call | rtol 1e-07 |
+| `special.berp_zeros` | every call | rtol 1e-07 |
+| `special.beip_zeros` | every call | rtol 1e-07 |
+| `special.kerp_zeros` | every call | rtol 1e-07 |
+| `special.keip_zeros` | every call | rtol 1e-07 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |
