@@ -1059,8 +1059,132 @@ for (N, rp, rs) in [(2, 1.0, 40.0), (3, 0.5, 60.0), (4, 2.0, 50.0), (5, 1.0, 80.
     elp.append({'args': [F.enc(N), F.enc(rp), F.enc(rs)], 'kwargs': {},
                 'expect': F.enc_result((_sortc2(z), _sortc2(p), float(kk)), ['z', 'p', 'k']), 'compare': 'tol', 'tol': {'atol': 1e-9}})
 
+
+# ==== port_findpeaks ====
+
+fpk = []
+_rng_fp = np.random.default_rng(7)
+_fp_sigs = [
+    np.array([0, 2, 1, 2, 2, 2, 1, 3, 3, 1, 0, 5, 5, 5, 5, 0, 1, 2, 1], float),
+    np.sin(np.linspace(0, 12 * np.pi, 200)) + 0.3 * _rng_fp.standard_normal(200),
+    (np.sin(np.linspace(0, 8 * np.pi, 120)) * np.linspace(1, 3, 120)),
+]
+_fp_params = [
+    {}, {'height': 0.5}, {'height': (0.0, 2.0)}, {'threshold': 0.1}, {'distance': 5},
+    {'distance': 10}, {'prominence': 0.5}, {'prominence': (0.2, 2.0)}, {'width': 3},
+    {'width': (2, 20)}, {'plateau_size': 1}, {'plateau_size': (1, 4)},
+    {'prominence': 0.5, 'width': 3}, {'height': 0.0, 'distance': 8, 'prominence': 0.3},
+    {'prominence': 0.5, 'wlen': 20}, {'width': 4, 'rel_height': 0.9},
+]
+def _fp_args(x, pp):
+    return [F.enc(np.asarray(x, float)),
+            F.enc(pp['height']) if 'height' in pp else None,
+            F.enc(pp['threshold']) if 'threshold' in pp else None,
+            F.enc(pp['distance']) if 'distance' in pp else None,
+            F.enc(pp['prominence']) if 'prominence' in pp else None,
+            F.enc(pp['width']) if 'width' in pp else None,
+            F.enc(pp['wlen']) if 'wlen' in pp else None,
+            F.enc(pp.get('rel_height', 0.5)),
+            F.enc(pp['plateau_size']) if 'plateau_size' in pp else None]
+for _x in _fp_sigs:
+    for _pp in _fp_params:
+        _peaks, _ = sg.find_peaks(_x, **_pp)
+        fpk.append({'args': _fp_args(_x, _pp), 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(_peaks, dtype=np.int64), []), 'compare': 'tol'})
+
+
+# ==== port_minphase ====
+mph = []
+for _mh in [sg.firwin(15,0.3), sg.firwin(25,0.4), sg.firwin(51,0.25), sg.remez(25,[0,0.2,0.3,0.5],[1,0]), sg.remez(51,[0,0.2,0.3,0.5],[1,0])]:
+    for _hf in (True, False):
+        for _nf in (None, 2048):
+            mph.append({'args': [F.enc(np.asarray(_mh,float)), F.enc('homomorphic'), F.enc(int(_nf)) if _nf is not None else None, F.enc(bool(_hf))], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sg.minimum_phase(_mh, method='homomorphic', n_fft=_nf, half=_hf), dtype=np.float64), []), 'compare': 'tol', 'tol': {'rtol':1e-7,'atol':1e-9}})
+
+
+# ==== port_decimate ====
+dec = []
+_rng_dec = np.random.default_rng(99)
+for _dq in [2,3,4,5]:
+    for _dL in [80,150,200]:
+        _dx = np.cumsum(_rng_dec.standard_normal(_dL))
+        for _dzp in [True, False]:
+            dec.append({'args': [F.enc(np.asarray(_dx,float)), F.enc(int(_dq)), None, F.enc('iir'), F.enc(-1), F.enc(bool(_dzp))], 'kwargs': {}, 'expect': F.enc_result(np.asarray(sg.decimate(_dx,_dq,ftype='iir',zero_phase=_dzp), dtype=np.float64), []), 'compare': 'tol'})
+
+
+# ==== port_stft ====
+stftc = []
+_rng_stft = np.random.default_rng(71)
+_stft_specs = []
+for n in [60, 100, 201]:
+    for window in ['hann', 'hamming', 'boxcar', 'blackman']:
+        for nperseg in [16, 32]:
+            for noverlap in [None, nperseg * 3 // 4]:
+                for boundary in ['zeros', None, 'even', 'odd', 'constant']:
+                    for detrend in [False, 'constant']:
+                        for scaling in ['spectrum', 'psd']:
+                            for ret1 in [True, False]:
+                                _stft_specs.append((n, window, nperseg, noverlap, boundary, detrend, scaling, ret1))
+_sig_cache = {}
+def _sig(n):
+    if n not in _sig_cache:
+        _sig_cache[n] = _rng_stft.standard_normal(n)
+    return _sig_cache[n]
+for idx in range(0, len(_stft_specs), 13):      # stride-sample the grid
+    n, window, nperseg, noverlap, boundary, detrend, scaling, ret1 = _stft_specs[idx]
+    x = _sig(n)
+    fe, te, Ze = sg.stft(x, 1.0, window, nperseg, noverlap, nfft=None, detrend=detrend,
+                         return_onesided=ret1, boundary=boundary, padded=True, scaling=scaling)
+    args = [F.enc(np.asarray(x, float)), F.enc(1.0), F.enc(window), F.enc(int(nperseg)),
+            F.enc(int(noverlap)) if noverlap is not None else None, None,
+            F.enc(detrend) if detrend else F.enc(False), F.enc(bool(ret1)),
+            F.enc(boundary) if boundary is not None else None, F.enc(True), None, F.enc(scaling)]
+    stftc.append({'args': args, 'kwargs': {},
+                  'expect': F.enc_result((np.asarray(fe, float), np.asarray(te, float), np.asarray(Ze, complex)), ['f', 't', 'Zxx']),
+                  'compare': 'tol', 'tol': {'rtol': 1e-9, 'atol': 1e-11}})
+_xw = _rng_stft.standard_normal(90); _w = np.hanning(24)
+fe, te, Ze = sg.stft(_xw, 1.0, _w, 24, 12, padded=False)
+stftc.append({'args': [F.enc(np.asarray(_xw, float)), F.enc(1.0), F.enc(np.asarray(_w, float)), F.enc(24),
+                       F.enc(12), None, F.enc(False), F.enc(True), F.enc('zeros'), F.enc(False), None, F.enc('spectrum')],
+              'kwargs': {}, 'expect': F.enc_result((np.asarray(fe, float), np.asarray(te, float), np.asarray(Ze, complex)), ['f', 't', 'Zxx']),
+              'compare': 'tol', 'tol': {'rtol': 1e-9, 'atol': 1e-11}})
+
+# ==== port_iirfilter ====
+iirf = []
+_iir_specs = [
+    ('butter', None, None),
+    ('cheby1', 1.0, None),
+    ('cheby2', None, 40.0),
+    ('ellip', 1.0, 40.0),
+    ('bessel', None, None),
+]
+for ft, rp, rs in _iir_specs:
+    for N in [2, 3, 4, 5, 6]:
+        for bt, Wn in [('low', 0.3), ('high', 0.4), ('band', [0.2, 0.5]), ('stop', [0.25, 0.6])]:
+            for analog in [False, True]:
+                aWn = Wn if not analog else ([w * 10 for w in Wn] if isinstance(Wn, list) else Wn * 10)
+                kw = {}
+                if rp is not None: kw['rp'] = rp
+                if rs is not None: kw['rs'] = rs
+                try:
+                    b, a = sg.iirfilter(N, aWn, btype=bt, analog=analog, ftype=ft, output='ba', **kw)
+                except Exception:
+                    continue
+                args = [F.enc(N),
+                        F.enc(np.asarray(aWn, float)) if isinstance(aWn, list) else F.enc(float(aWn)),
+                        F.enc(float(rp)) if rp is not None else None,
+                        F.enc(float(rs)) if rs is not None else None,
+                        F.enc(bt), F.enc(bool(analog)), F.enc(ft), F.enc('ba'), None]
+                iirf.append({'args': args, 'kwargs': {},
+                             'expect': F.enc_result((np.asarray(b, float), np.asarray(a, float)), ['b', 'a']),
+                             'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-7}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
+                 {'fn': 'find_peaks', 'cases': fpk},
+                 {'fn': 'minimum_phase', 'cases': mph, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'decimate', 'cases': dec, 'tol': {'rtol': 1e-7, 'atol': 1e-8}},
+                 {'fn': 'stft', 'cases': stftc, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'iirfilter', 'cases': iirf, 'tol': {'rtol': 1e-7, 'atol': 1e-7}},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
                  {'fn': 'correlate', 'cases': corr},
                  {'fn': 'savgol_coeffs', 'cases': sgc}, {'fn': 'savgol_filter', 'cases': sgf},

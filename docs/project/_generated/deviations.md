@@ -334,6 +334,13 @@
 | `scipyfft.fht` | call | rtol 1e-09 |
 | `scipyfft.ifht` | call | rtol 1e-09 |
 | `scipyfft.fhtoffset` | call | rtol 1e-10 |
+| `signal.minimum_phase` | every call | rtol 1e-07 |
+| `signal.minimum_phase` | call | rtol 1e-07 |
+| `signal.decimate` | every call | rtol 1e-07 |
+| `signal.stft` | every call | rtol 1e-09 |
+| `signal.stft` | call | rtol 1e-09 |
+| `signal.iirfilter` | every call | rtol 1e-07 |
+| `signal.iirfilter` | call | rtol 1e-07 |
 | `signal.freqz` | every call | rtol 0 |
 | `signal.zpk2tf` | every call | rtol 0 |
 | `signal.butter` | every call | rtol 0 |

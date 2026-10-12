@@ -3013,6 +3013,12 @@
                 "doc": "Bode magnitude (dB) and phase (deg) of a discrete system (scipy.signal.dbode)."
             },
             {
+                "name": "decimate",
+                "static": true,
+                "sig": "decimate(mixed $x, mixed $q, mixed $n = null, mixed $ftype = 'iir', mixed $axis = -1, mixed $zeroPhase = true): mixed",
+                "doc": "Downsample a 1-D signal after an anti-aliasing filter (scipy.signal.decimate)."
+            },
+            {
                 "name": "deconvolve",
                 "static": true,
                 "sig": "deconvolve(mixed $signal, mixed $divisor): mixed",
@@ -3077,6 +3083,12 @@
                 "static": true,
                 "sig": "filtfilt(mixed $b, mixed $a, mixed $x, mixed $axis = -1, mixed $padtype = 'odd', mixed $padlen = null, mixed $method = 'pad', mixed $irlen = null): mixed",
                 "doc": "Zero-phase forward-backward IIR filtering with odd padding (scipy.signal.filtfilt; 1-D)."
+            },
+            {
+                "name": "findPeaks",
+                "static": true,
+                "sig": "findPeaks(mixed $x, mixed $height = null, mixed $threshold = null, mixed $distance = null, mixed $prominence = null, mixed $width = null, mixed $wlen = null, mixed $relHeight = 0.5, mixed $plateauSize = null): mixed",
+                "doc": "Indices of local maxima satisfying the given criteria (scipy.signal.find_peaks; peak indices)."
             },
             {
                 "name": "findfreqs",
@@ -3185,6 +3197,12 @@
                 "static": true,
                 "sig": "iircomb(mixed $w0, mixed $Q, mixed $ftype = 'notch', mixed $fs = 2.0, mixed $passZero = false): mixed",
                 "doc": "Notching or peaking digital comb filter (scipy.signal.iircomb)."
+            },
+            {
+                "name": "iirfilter",
+                "static": true,
+                "sig": "iirfilter(mixed $N, mixed $Wn, mixed $rp = null, mixed $rs = null, mixed $btype = 'band', mixed $analog = false, mixed $ftype = 'butter', mixed $output = 'ba', mixed $fs = null): mixed",
+                "doc": "IIR filter design from order and critical frequencies, output ba (scipy.signal.iirfilter)."
             },
             {
                 "name": "iirnotch",
@@ -3329,6 +3347,12 @@
                 "static": true,
                 "sig": "medfilt2d(mixed $input, mixed $kernelSize = 3): mixed",
                 "doc": "Zero-padded 2-D median filter (scipy.signal.medfilt2d)."
+            },
+            {
+                "name": "minimumPhase",
+                "static": true,
+                "sig": "minimumPhase(mixed $h, mixed $method = 'homomorphic', mixed $nFft = null, mixed $half = true): mixed",
+                "doc": "Minimum-phase FIR from a linear-phase filter (scipy.signal.minimum_phase)."
             },
             {
                 "name": "normalize",
@@ -3497,6 +3521,12 @@
                 "static": true,
                 "sig": "step(mixed $A, mixed $B, mixed $C, mixed $D, mixed $T): mixed",
                 "doc": "Step response of a continuous-time state-space system (scipy.signal.step)."
+            },
+            {
+                "name": "stft",
+                "static": true,
+                "sig": "stft(mixed $x, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = 256, mixed $noverlap = null, mixed $nfft = null, mixed $detrend = false, mixed $returnOnesided = true, mixed $boundary = 'zeros', mixed $padded = true, mixed $axis = -1, mixed $scaling = 'spectrum'): mixed",
+                "doc": "Short-time Fourier transform (scipy.signal.stft, 1-D)."
             },
             {
                 "name": "sweepPoly",
@@ -19550,6 +19580,36 @@
     {
         "class": "Tessero\\Ext\\Signal",
         "methods": [
+            {
+                "name": "findPeaks",
+                "static": true,
+                "sig": "findPeaks($x, $height = null, $threshold = null, $distance = null, $prominence = null, $width = null, $wlen = null, $relHeight = 0.5, $plateauSize = null)",
+                "doc": ""
+            },
+            {
+                "name": "minimumPhase",
+                "static": true,
+                "sig": "minimumPhase($h, $method = 'homomorphic', $nFft = null, $half = true)",
+                "doc": ""
+            },
+            {
+                "name": "decimate",
+                "static": true,
+                "sig": "decimate($x, $q, $n = null, $ftype = 'iir', $axis = -1, $zeroPhase = true)",
+                "doc": ""
+            },
+            {
+                "name": "stft",
+                "static": true,
+                "sig": "stft($x, $fs = 1.0, $window = 'hann', $nperseg = 256, $noverlap = null, $nfft = null, $detrend = false, $returnOnesided = true, $boundary = 'zeros', $padded = true, $axis = -1, $scaling = 'spectrum')",
+                "doc": ""
+            },
+            {
+                "name": "iirfilter",
+                "static": true,
+                "sig": "iirfilter($N, $Wn, $rp = null, $rs = null, $btype = 'band', $analog = false, $ftype = 'butter', $output = 'ba', $fs = null)",
+                "doc": ""
+            },
             {
                 "name": "convolve",
                 "static": true,

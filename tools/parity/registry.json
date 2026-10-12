@@ -3415,6 +3415,11 @@
             "nin": 0,
             "nout": 3
         },
+        "signal.decimate": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.deconvolve": {
             "kind": "routine",
             "nin": 0,
@@ -3466,6 +3471,11 @@
             "nout": 1
         },
         "signal.filtfilt": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.find_peaks": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -3556,6 +3566,11 @@
             "nout": 1
         },
         "signal.iircomb": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.iirfilter": {
             "kind": "routine",
             "nin": 0,
             "nout": 2
@@ -3676,6 +3691,11 @@
             "nout": 1
         },
         "signal.medfilt2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.minimum_phase": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -3819,6 +3839,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 2
+        },
+        "signal.stft": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
         },
         "signal.sweep_poly": {
             "kind": "routine",
