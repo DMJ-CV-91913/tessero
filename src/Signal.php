@@ -51,6 +51,7 @@ final class Signal
     'csd' => 'csd',
     'cspline1d' => 'cspline1d',
     'cspline1d_eval' => 'cspline1dEval',
+    'czt' => 'czt',
     'czt_points' => 'cztPoints',
     'dbode' => 'dbode',
     'deconvolve' => 'deconvolve',
@@ -142,6 +143,7 @@ final class Signal
     'vectorstrength' => 'vectorstrength',
     'welch' => 'welch',
     'wiener' => 'wiener',
+    'zoom_fft' => 'zoomFft',
     'zpk2sos' => 'zpk2sos',
     'zpk2ss' => 'zpk2ss',
     'zpk2tf' => 'zpk2tf',
@@ -527,6 +529,16 @@ final class Signal
     public static function cspline1dEval(mixed $cj, mixed $newx, mixed $dx = 1.0, mixed $x0 = 0.0): mixed
     {
         return Registry::routine('signal.cspline1d_eval', [$cj, $newx, $dx, $x0]);
+    }
+
+    /**
+     * Chirp z-transform: frequency response around a spiral in the Z plane (scipy.signal.czt).
+     *
+     * scipy.signal.czt
+     */
+    public static function czt(mixed $x, mixed $m = null, mixed $w = null, mixed $a = 1): mixed
+    {
+        return Registry::routine('signal.czt', [$x, $m, $w, $a]);
     }
 
     /**
@@ -1541,6 +1553,16 @@ final class Signal
     public static function wiener(mixed $im, mixed $mysize = 3, mixed $noise = null): mixed
     {
         return Registry::routine('signal.wiener', [$im, $mysize, $noise]);
+    }
+
+    /**
+     * DFT of x only for frequencies in band fn (scipy.signal.zoom_fft).
+     *
+     * scipy.signal.zoom_fft
+     */
+    public static function zoomFft(mixed $x, mixed $fn, mixed $m = null, mixed $fs = 2, mixed $endpoint = false): mixed
+    {
+        return Registry::routine('signal.zoom_fft', [$x, $fn, $m, $fs, $endpoint]);
     }
 
     /**

@@ -539,6 +539,37 @@ for K in [1, 2, 5, 8, 13, 20, 50]:
             qspe.append({'args': [F.enc(np.asarray(qj, float)), F.enc(np.asarray(newx, float)), F.enc(dx), F.enc(x0)], 'kwargs': {},
                          'expect': F.enc_result(np.asarray(sg.qspline1d_eval(qj, newx, dx=dx, x0=x0), dtype=np.float64), []), 'compare': 'tol'})
 
+# czt (chirp z-transform, Bluestein) + zoom_fft; complex w/a passed as 1-element complex arrays
+czt_c, zfft = [], []
+_rng_cz = np.random.default_rng(31)
+def _czt_case(x, m, w, a):
+    args = [F.enc(np.asarray(x)),
+            F.enc(int(m)) if m is not None else None,
+            F.enc(np.asarray([w], complex)) if w is not None else None,
+            F.enc(np.asarray([a], complex)) if a is not None else None]
+    exp = sg.czt(x, m, w, a if a is not None else 1 + 0j)
+    return {'args': args, 'kwargs': {}, 'expect': F.enc_result(np.asarray(exp, complex), []),
+            'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}}
+def _zfft_case(x, fn, m, fs, ep):
+    args = [F.enc(np.asarray(x, float)),
+            F.enc(np.asarray(fn, float)) if np.size(fn) > 1 else F.enc(float(fn)),
+            F.enc(int(m)) if m is not None else None, F.enc(float(fs)), F.enc(bool(ep))]
+    exp = sg.zoom_fft(x, fn, m, fs=fs, endpoint=ep)
+    return {'args': args, 'kwargs': {}, 'expect': F.enc_result(np.asarray(exp, complex), []),
+            'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}}
+for n in [4, 7, 8, 16]:
+    xr = _rng_cz.standard_normal(n)
+    xc = _rng_cz.standard_normal(n) + 1j * _rng_cz.standard_normal(n)
+    for m in [None, n + 5, max(3, n - 2)]:
+        czt_c.append(_czt_case(xr, m, None, None))
+        czt_c.append(_czt_case(xc, m, None, None))
+    czt_c.append(_czt_case(xr, n, np.exp(-1j * np.pi / n), 0.95 * np.exp(0.08j)))
+    czt_c.append(_czt_case(xc, 8, np.exp(-1j * 2 * np.pi / 16), 0.9 * np.exp(0.1j)))
+    zfft.append(_zfft_case(xr, [0.1, 0.3], None, 2, False))
+    zfft.append(_zfft_case(xr, 0.5, n + 4, 2, False))
+    zfft.append(_zfft_case(xr, [0.2, 0.8], 10, 2, True))
+    zfft.append(_zfft_case(xr, [1.0, 3.0], 12, 8.0, False))
+
 # tf2sos (= zpk2sos(*tf2zpk(b,a))); modest orders where roots stay well-conditioned
 t2s = []
 for N in [2, 3, 4, 5, 6]:
@@ -1050,6 +1081,8 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'qspline1d', 'cases': qsp, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
                  {'fn': 'cspline1d_eval', 'cases': cspe, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
                  {'fn': 'qspline1d_eval', 'cases': qspe, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'czt', 'cases': czt_c, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'zoom_fft', 'cases': zfft, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
                  {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},

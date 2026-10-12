@@ -418,6 +418,10 @@
 | `signal.qspline1d` | every call | rtol 1e-09 |
 | `signal.cspline1d_eval` | every call | rtol 1e-09 |
 | `signal.qspline1d_eval` | every call | rtol 1e-09 |
+| `signal.czt` | every call | rtol 1e-07 |
+| `signal.czt` | call | rtol 1e-07 |
+| `signal.zoom_fft` | every call | rtol 1e-07 |
+| `signal.zoom_fft` | call | rtol 1e-07 |
 | `signal.residue` | every call | rtol 0 |
 | `signal.residue` | call | rtol 0 |
 | `signal.residuez` | every call | rtol 0 |
