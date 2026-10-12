@@ -10659,6 +10659,12 @@
                 "doc": "Kelvin functions as complex pairs (scipy.special.kelvin)."
             },
             {
+                "name": "kelvinZeros",
+                "static": true,
+                "sig": "kelvinZeros(mixed $nt): mixed",
+                "doc": "First nt zeros of all eight Kelvin functions (scipy.special.kelvin_zeros)."
+            },
+            {
                 "name": "ker",
                 "static": true,
                 "sig": "ker(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10849,6 +10855,12 @@
                 "static": true,
                 "sig": "modstruve(mixed $v, mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Modified Struve function."
+            },
+            {
+                "name": "multigammaln",
+                "static": true,
+                "sig": "multigammaln(mixed $a, mixed $d): mixed",
+                "doc": "Log of the multivariate gamma function (scipy.special.multigammaln)."
             },
             {
                 "name": "nbdtr",
@@ -16024,6 +16036,18 @@
                 "name": "keipZeros",
                 "static": true,
                 "sig": "keipZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "kelvinZeros",
+                "static": true,
+                "sig": "kelvinZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "multigammaln",
+                "static": true,
+                "sig": "multigammaln($a, $d)",
                 "doc": ""
             },
             {

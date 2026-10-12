@@ -171,6 +171,7 @@ final class Special
     'keip' => 'keip',
     'keip_zeros' => 'keipZeros',
     'kelvin' => 'kelvin',
+    'kelvin_zeros' => 'kelvinZeros',
     'ker' => 'ker',
     'ker_zeros' => 'kerZeros',
     'kerp' => 'kerp',
@@ -203,6 +204,7 @@ final class Special
     'mathieu_modsem2' => 'mathieuModsem2',
     'mathieu_sem' => 'mathieuSem',
     'modstruve' => 'modstruve',
+    'multigammaln' => 'multigammaln',
     'nbdtr' => 'nbdtr',
     'nbdtrc' => 'nbdtrc',
     'nbdtri' => 'nbdtri',
@@ -1893,6 +1895,18 @@ final class Special
     }
 
     /**
+     * First nt zeros of all eight Kelvin functions (scipy.special.kelvin_zeros).
+     *
+     * scipy.special.kelvin_zeros
+     *
+     * @return mixed one array, or an array keyed by ber, bei, ker, kei, berp, beip, kerp, keip when several results are requested
+     */
+    public static function kelvinZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.kelvin_zeros', [$nt]);
+    }
+
+    /**
      * Kelvin function ker.
      *
      * scipy.special.ker
@@ -2226,6 +2240,16 @@ final class Special
     public static function modstruve(mixed $v, mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.modstruve', [$v, $x], $out);
+    }
+
+    /**
+     * Log of the multivariate gamma function (scipy.special.multigammaln).
+     *
+     * scipy.special.multigammaln
+     */
+    public static function multigammaln(mixed $a, mixed $d): mixed
+    {
+        return Registry::routine('special.multigammaln', [$a, $d]);
     }
 
     /**
