@@ -756,6 +756,26 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['nearestnd_cases'])) {                   // scipy.interpolate.NearestNDInterpolator (pure-PHP)
+        $local = [];
+        foreach ($data['nearestnd_cases'] as $c) {
+            $key = 'interpolate.NearestNDInterpolator';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $nn = new \Tessero\Interpolate\NearestNDInterpolator($c['points'], $c['values'], (bool) ($c['rescale'] ?? false));
+                $got = $nn->query($c['query']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-9);  // gather -> effectively exact
+                if (! $ok) { $msg = 'values did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['statsfn_cases'])) {                     // scipy.stats optimiser-based helpers (pure-PHP Tessero\StatsFns)
         foreach ($data['statsfn_cases'] as $c) {
             $fn = $c['fn'];

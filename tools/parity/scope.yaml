@@ -540,3 +540,7 @@ legacy:
     # get_window is defined in scipy.signal.windows and re-exported as scipy.signal.get_window; the same
     # Tessero Signal::getWindow dispatcher (verified by the signal.get_window fixtures) covers both names.
     get_window: {ffi: [SIG::getWindow], ext: [XSIG::getWindow], fixtures: [signal.get_window]}
+  scipy.interpolate:
+    # NearestNDInterpolator is pure-PHP over Tessero\Spatial\KDTree; verified by the interpolate_nn.json
+    # fixtures (construct + query, exact gather of the nearest data point's value).
+    NearestNDInterpolator: {ffi: [NND::query], ext: [NND::query], fixtures: [interpolate.NearestNDInterpolator]}
