@@ -65,6 +65,7 @@ final class Signal
     'ellip' => 'ellip',
     'ellipap' => 'ellipap',
     'ellipord' => 'ellipord',
+    'envelope' => 'envelope',
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
     'find_peaks' => 'findPeaks',
@@ -72,6 +73,7 @@ final class Signal
     'firls' => 'firls',
     'firwin' => 'firwin',
     'firwin2' => 'firwin2',
+    'firwin_2d' => 'firwin2d',
     'freqresp' => 'freqresp',
     'freqs' => 'freqs',
     'freqs_zpk' => 'freqsZpk',
@@ -86,12 +88,14 @@ final class Signal
     'hilbert' => 'hilbert',
     'hilbert2' => 'hilbert2',
     'iircomb' => 'iircomb',
+    'iirdesign' => 'iirdesign',
     'iirfilter' => 'iirfilter',
     'iirnotch' => 'iirnotch',
     'iirpeak' => 'iirpeak',
     'impulse' => 'impulse',
     'invres' => 'invres',
     'invresz' => 'invresz',
+    'istft' => 'istft',
     'kaiser_atten' => 'kaiserAtten',
     'kaiser_beta' => 'kaiserBeta',
     'kaiserord' => 'kaiserord',
@@ -700,6 +704,16 @@ final class Signal
     }
 
     /**
+     * Analytic-signal envelope and residual (scipy.signal.envelope; bp_in split into bp_lo, bp_hi).
+     *
+     * scipy.signal.envelope
+     */
+    public static function envelope(mixed $z, mixed $bpLo = 1, mixed $bpHi = null, mixed $nOut = null, mixed $squared = false, mixed $residual = 'lowpass'): mixed
+    {
+        return Registry::routine('signal.envelope', [$z, $bpLo, $bpHi, $nOut, $squared, $residual]);
+    }
+
+    /**
      * N-D convolution of two arrays, modes full/same/valid (scipy.signal.fftconvolve; real).
      *
      * scipy.signal.fftconvolve
@@ -767,6 +781,16 @@ final class Signal
     public static function firwin2(mixed $numtaps, mixed $freq, mixed $gain, mixed $nfreqs = null, mixed $window = 'hamming', mixed $antisymmetric = false, mixed $fs = null): mixed
     {
         return Registry::routine('signal.firwin2', [$numtaps, $freq, $gain, $nfreqs, $window, $antisymmetric, $fs]);
+    }
+
+    /**
+     * 2-D FIR filter design by the window method (scipy.signal.firwin_2d).
+     *
+     * scipy.signal.firwin_2d
+     */
+    public static function firwin2d(mixed $hsize, mixed $window, mixed $fc = null, mixed $fs = 2, mixed $circular = false, mixed $passZero = true, mixed $scale = true): mixed
+    {
+        return Registry::routine('signal.firwin_2d', [$hsize, $window, $fc, $fs, $circular, $passZero, $scale]);
     }
 
     /**
@@ -928,6 +952,18 @@ final class Signal
     }
 
     /**
+     * Complete IIR filter design by order selection, output ba (scipy.signal.iirdesign).
+     *
+     * scipy.signal.iirdesign
+     *
+     * @return mixed one array, or an array keyed by b, a when several results are requested
+     */
+    public static function iirdesign(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $ftype = 'ellip', mixed $output = 'ba', mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.iirdesign', [$wp, $ws, $gpass, $gstop, $analog, $ftype, $output, $fs]);
+    }
+
+    /**
      * IIR filter design from order and critical frequencies, output ba (scipy.signal.iirfilter).
      *
      * scipy.signal.iirfilter
@@ -997,6 +1033,18 @@ final class Signal
     public static function invresz(mixed $r, mixed $p, mixed $k, mixed $tol = 1e-3, mixed $rtype = 'avg'): mixed
     {
         return Registry::routine('signal.invresz', [$r, $p, $k, $tol, $rtype]);
+    }
+
+    /**
+     * Inverse short-time Fourier transform (scipy.signal.istft, legacy, default axes).
+     *
+     * scipy.signal.istft
+     *
+     * @return mixed one array, or an array keyed by t, x when several results are requested
+     */
+    public static function istft(mixed $Zxx, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $inputOnesided = true, mixed $boundary = true, mixed $timeAxis = -1, mixed $freqAxis = -2, mixed $scaling = 'spectrum'): mixed
+    {
+        return Registry::routine('signal.istft', [$Zxx, $fs, $window, $nperseg, $noverlap, $nfft, $inputOnesided, $boundary, $timeAxis, $freqAxis, $scaling]);
     }
 
     /**
