@@ -4067,6 +4067,86 @@ static int r_yn_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int
 static int r_jnp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 2); }
 static int r_ynp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 3); }
 
+/* scipy.special.jnyn_zeros(n, nt): the first nt zeros of Jn, Jn', Yn, Yn' as a 4-tuple. */
+static int r_jnyn_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nu = roots_argi(args, na, 0), nt = roots_argi(args, na, 1);
+    if (nt < 1) { fn_set_error("jnyn_zeros: nt must be >= 1"); return TSR_EARG; }
+    const int kinds[4] = {0, 2, 1, 3};   /* Jn, Jn', Yn, Yn' */
+    for (int o = 0; o < 4; o++) {
+        double *out = (double *)fn_result_array(&r[o], TSR_F64, 1, (int64_t[]){nt});
+        if (!out) return TSR_ENOMEM;
+        int rc = bessel_zeros(kinds[o], (double)nu, nt, out);
+        if (rc != TSR_OK) return rc;
+    }
+    return TSR_OK;
+}
+
+void tsr_special_airy(const void *, const double *, double *);
+
+/* The fsel-th Airy component (0 = Ai, 1 = Ai', 2 = Bi, 3 = Bi') at x. */
+static double ai_eval(int fsel, double x) { double in[1] = {x}, o[4]; tsr_special_airy(NULL, in, o); return o[fsel]; }
+
+/* First nt zeros (all on the negative axis, scanned descending) of the fsel-th Airy component. */
+static int airy_scan(int fsel, int64_t nt, double *out)
+{
+    const double h = 0.05;
+    double x = -1e-6, pf = ai_eval(fsel, x);
+    int64_t got = 0;
+    while (got < nt && x > -1.0e3) {
+        double x2 = x - h, f2 = ai_eval(fsel, x2);
+        if (pf == 0.0) { pf = f2; x = x2; continue; }
+        if ((pf < 0.0) != (f2 < 0.0)) {
+            double a = x, b = x2;
+            for (int it = 0; it < 200 && (a - b) > 1e-15; it++) {
+                double m = 0.5 * (a + b), fm = ai_eval(fsel, m);
+                if (fm == 0.0) { a = b = m; break; }
+                double fa = ai_eval(fsel, a);
+                if ((fa < 0.0) != (fm < 0.0)) b = m; else a = m;
+            }
+            out[got++] = 0.5 * (a + b);
+        }
+        pf = f2; x = x2;
+    }
+    return got == nt ? TSR_OK : TSR_EARG;
+}
+
+/* scipy.special.ai_zeros(nt) -> (a, ap, ai, aip): a = zeros of Ai, ap = zeros of Ai',
+   ai = Ai at ap, aip = Ai' at a (scipy's crossed value convention). */
+static int r_ai_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(args, na, 0);
+    if (nt < 1) { fn_set_error("ai_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *a = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){nt});
+    double *ap = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){nt});
+    double *ai = (double *)fn_result_array(&r[2], TSR_F64, 1, (int64_t[]){nt});
+    double *aip = (double *)fn_result_array(&r[3], TSR_F64, 1, (int64_t[]){nt});
+    if (!a || !ap || !ai || !aip) return TSR_ENOMEM;
+    int rc = airy_scan(0, nt, a); if (rc != TSR_OK) return rc;
+    rc = airy_scan(1, nt, ap); if (rc != TSR_OK) return rc;
+    for (int64_t i = 0; i < nt; i++) { ai[i] = ai_eval(0, ap[i]); aip[i] = ai_eval(1, a[i]); }
+    return TSR_OK;
+}
+
+/* scipy.special.bi_zeros(nt) -> (b, bp, bi, bip): same crossed convention for Bi, Bi'. */
+static int r_bi_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(args, na, 0);
+    if (nt < 1) { fn_set_error("bi_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *b = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){nt});
+    double *bp = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){nt});
+    double *bi = (double *)fn_result_array(&r[2], TSR_F64, 1, (int64_t[]){nt});
+    double *bip = (double *)fn_result_array(&r[3], TSR_F64, 1, (int64_t[]){nt});
+    if (!b || !bp || !bi || !bip) return TSR_ENOMEM;
+    int rc = airy_scan(2, nt, b); if (rc != TSR_OK) return rc;
+    rc = airy_scan(3, nt, bp); if (rc != TSR_OK) return rc;
+    for (int64_t i = 0; i < nt; i++) { bi[i] = ai_eval(2, bp[i]); bip[i] = ai_eval(3, b[i]); }
+    return TSR_OK;
+}
+
 static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
@@ -4598,6 +4678,9 @@ static const fn_def DEFS[] = {
     ROUTINE("special.kerp_zeros", 1, "nt", "zeros", r_kerp_zeros, NULL, "First nt positive zeros of the Kelvin derivative ker' (scipy.special.kerp_zeros)."),
     ROUTINE("special.keip_zeros", 1, "nt", "zeros", r_keip_zeros, NULL, "First nt positive zeros of the Kelvin derivative kei' (scipy.special.keip_zeros)."),
     ROUTINE("special.kelvin_zeros", 8, "nt", "ber, bei, ker, kei, berp, beip, kerp, keip", r_kelvin_zeros, NULL, "First nt zeros of all eight Kelvin functions (scipy.special.kelvin_zeros)."),
+    ROUTINE("special.jnyn_zeros", 4, "n, nt", "jn, jnp, yn, ynp", r_jnyn_zeros, NULL, "First nt zeros of Jn, Jn', Yn, Yn' (scipy.special.jnyn_zeros)."),
+    ROUTINE("special.ai_zeros", 4, "nt", "a, ap, ai, aip", r_ai_zeros, NULL, "First nt zeros of Ai and Ai' with the associated values (scipy.special.ai_zeros)."),
+    ROUTINE("special.bi_zeros", 4, "nt", "b, bp, bi, bip", r_bi_zeros, NULL, "First nt zeros of Bi and Bi' with the associated values (scipy.special.bi_zeros)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
     ROUTINE("special.bernoulli", 1, "n", "out", r_bernoulli, NULL, "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."),

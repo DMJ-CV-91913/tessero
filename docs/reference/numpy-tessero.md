@@ -363,6 +363,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | NumPy / SciPy | Tessero |
 |---|---|
 | `scipy.special.agm` | `Tessero\Special::agm()` |
+| `scipy.special.ai_zeros` | `Tessero\Special::aiZeros()` |
 | `scipy.special.airy` | `Tessero\Special::airy()` |
 | `scipy.special.airye` | `Tessero\Special::airye()` |
 | `scipy.special.assoc_laguerre` | `Tessero\Special::assocLaguerre()` |
@@ -387,6 +388,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.betainccinv` | `Tessero\Special::betainccinv()` |
 | `scipy.special.betaincinv` | `Tessero\Special::betaincinv()` |
 | `scipy.special.betaln` | `Tessero\Special::betaln()` |
+| `scipy.special.bi_zeros` | `Tessero\Special::biZeros()` |
 | `scipy.special.binom` | `Tessero\Special::binom()` |
 | `scipy.special.boxcox` | `Tessero\Special::boxcox()` |
 | `scipy.special.boxcox1p` | `Tessero\Special::boxcox1p()` |
@@ -507,6 +509,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.jn` | `Tessero\Special::jn()` |
 | `scipy.special.jn_zeros` | `Tessero\Special::jnZeros()` |
 | `scipy.special.jnp_zeros` | `Tessero\Special::jnpZeros()` |
+| `scipy.special.jnyn_zeros` | `Tessero\Special::jnynZeros()` |
 | `scipy.special.js_roots` | `Tessero\Special::jsRoots()` |
 | `scipy.special.jv` | `Tessero\Special::jv()` |
 | `scipy.special.jve` | `Tessero\Special::jve()` |

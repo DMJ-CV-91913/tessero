@@ -19,6 +19,7 @@ final class Special
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
     'agm' => 'agm',
+    'ai_zeros' => 'aiZeros',
     'airy' => 'airy',
     'airye' => 'airye',
     'assoc_laguerre' => 'assocLaguerre',
@@ -43,6 +44,7 @@ final class Special
     'betainccinv' => 'betainccinv',
     'betaincinv' => 'betaincinv',
     'betaln' => 'betaln',
+    'bi_zeros' => 'biZeros',
     'binom' => 'binom',
     'boxcox' => 'boxcox',
     'boxcox1p' => 'boxcox1p',
@@ -163,6 +165,7 @@ final class Special
     'jn' => 'jn',
     'jn_zeros' => 'jnZeros',
     'jnp_zeros' => 'jnpZeros',
+    'jnyn_zeros' => 'jnynZeros',
     'js_roots' => 'jsRoots',
     'jv' => 'jv',
     'jve' => 'jve',
@@ -345,6 +348,18 @@ final class Special
     public static function agm(mixed $a, mixed $b, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.agm', [$a, $b], $out);
+    }
+
+    /**
+     * First nt zeros of Ai and Ai' with the associated values (scipy.special.ai_zeros).
+     *
+     * scipy.special.ai_zeros
+     *
+     * @return mixed one array, or an array keyed by a, ap, ai, aip when several results are requested
+     */
+    public static function aiZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.ai_zeros', [$nt]);
     }
 
     /**
@@ -589,6 +604,18 @@ final class Special
     public static function betaln(mixed $a, mixed $b, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.betaln', [$a, $b], $out);
+    }
+
+    /**
+     * First nt zeros of Bi and Bi' with the associated values (scipy.special.bi_zeros).
+     *
+     * scipy.special.bi_zeros
+     *
+     * @return mixed one array, or an array keyed by b, bp, bi, bip when several results are requested
+     */
+    public static function biZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.bi_zeros', [$nt]);
     }
 
     /**
@@ -1813,6 +1840,18 @@ final class Special
     public static function jnpZeros(mixed $n, mixed $nt): mixed
     {
         return Registry::routine('special.jnp_zeros', [$n, $nt]);
+    }
+
+    /**
+     * First nt zeros of Jn, Jn', Yn, Yn' (scipy.special.jnyn_zeros).
+     *
+     * scipy.special.jnyn_zeros
+     *
+     * @return mixed one array, or an array keyed by jn, jnp, yn, ynp when several results are requested
+     */
+    public static function jnynZeros(mixed $n, mixed $nt): mixed
+    {
+        return Registry::routine('special.jnyn_zeros', [$n, $nt]);
     }
 
     /**
