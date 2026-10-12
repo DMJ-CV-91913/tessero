@@ -10285,6 +10285,12 @@
                 "doc": "Returns the error function of complex argument."
             },
             {
+                "name": "erfZeros",
+                "static": true,
+                "sig": "erfZeros(mixed $nt): mixed",
+                "doc": "First nt complex zeros of erf (scipy.special.erf_zeros)."
+            },
+            {
                 "name": "erfc",
                 "static": true,
                 "sig": "erfc(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10499,6 +10505,24 @@
                 "static": true,
                 "sig": "fresnel(mixed $z, ?array $out = null): array",
                 "doc": "Fresnel integrals."
+            },
+            {
+                "name": "fresnelZeros",
+                "static": true,
+                "sig": "fresnelZeros(mixed $nt): mixed",
+                "doc": "First nt complex zeros of the Fresnel sine and cosine integrals (scipy.special.fresnel_zeros)."
+            },
+            {
+                "name": "fresnelcZeros",
+                "static": true,
+                "sig": "fresnelcZeros(mixed $nt): mixed",
+                "doc": "First nt complex zeros of the Fresnel cosine integral (scipy.special.fresnelc_zeros)."
+            },
+            {
+                "name": "fresnelsZeros",
+                "static": true,
+                "sig": "fresnelsZeros(mixed $nt): mixed",
+                "doc": "First nt complex zeros of the Fresnel sine integral (scipy.special.fresnels_zeros)."
             },
             {
                 "name": "gamma",
@@ -16418,6 +16442,30 @@
                 "name": "mathieuOddCoef",
                 "static": true,
                 "sig": "mathieuOddCoef($m, $q)",
+                "doc": ""
+            },
+            {
+                "name": "erfZeros",
+                "static": true,
+                "sig": "erfZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "fresnelZeros",
+                "static": true,
+                "sig": "fresnelZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "fresnelcZeros",
+                "static": true,
+                "sig": "fresnelcZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "fresnelsZeros",
+                "static": true,
+                "sig": "fresnelsZeros($nt)",
                 "doc": ""
             },
             {

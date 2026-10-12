@@ -425,6 +425,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.elliprj` | `Tessero\Special::elliprj()` |
 | `scipy.special.entr` | `Tessero\Special::entr()` |
 | `scipy.special.erf` | `Tessero\Special::erf()` |
+| `scipy.special.erf_zeros` | `Tessero\Special::erfZeros()` |
 | `scipy.special.erfc` | `Tessero\Special::erfc()` |
 | `scipy.special.erfcinv` | `Tessero\Special::erfcinv()` |
 | `scipy.special.erfcx` | `Tessero\Special::erfcx()` |
@@ -461,6 +462,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.fdtri` | `Tessero\Special::fdtri()` |
 | `scipy.special.fdtridfd` | `Tessero\Special::fdtridfd()` |
 | `scipy.special.fresnel` | `Tessero\Special::fresnel()` |
+| `scipy.special.fresnel_zeros` | `Tessero\Special::fresnelZeros()` |
+| `scipy.special.fresnelc_zeros` | `Tessero\Special::fresnelcZeros()` |
+| `scipy.special.fresnels_zeros` | `Tessero\Special::fresnelsZeros()` |
 | `scipy.special.gamma` | `Tessero\Special::gamma()` |
 | `scipy.special.gammainc` | `Tessero\Special::gammainc()` |
 | `scipy.special.gammaincc` | `Tessero\Special::gammaincc()` |

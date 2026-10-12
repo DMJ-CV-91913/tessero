@@ -4293,6 +4293,55 @@ static int mathieu_coef_run(const tsr_arg *a, int na, tsr_result *r, int odd)
 static int r_mathieu_even_coef(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return mathieu_coef_run(a, n, r, 0); }
 static int r_mathieu_odd_coef(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return mathieu_coef_run(a, n, r, 1); }
 
+void tsr_cerzo(int, double *);
+void tsr_fcszo(int, int, double *);
+
+/* scipy.special.erf_zeros(nt): the first nt complex zeros of erf in the first quadrant. */
+static int r_erf_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(a, na, 0);
+    if (nt < 1) { fn_set_error("erf_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *out = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
+    if (!out) return TSR_ENOMEM;
+    tsr_cerzo((int)nt, out);
+    return TSR_OK;
+}
+/* scipy.special.fresnelc_zeros/fresnels_zeros(nt): complex zeros of the cosine (kf=1) / sine (kf=2)
+   Fresnel integrals; fresnel_zeros(nt) returns both as (S, C). */
+static int r_fresnelc_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(a, na, 0);
+    if (nt < 1) { fn_set_error("fresnelc_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *out = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
+    if (!out) return TSR_ENOMEM;
+    tsr_fcszo(1, (int)nt, out);
+    return TSR_OK;
+}
+static int r_fresnels_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(a, na, 0);
+    if (nt < 1) { fn_set_error("fresnels_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *out = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
+    if (!out) return TSR_ENOMEM;
+    tsr_fcszo(2, (int)nt, out);
+    return TSR_OK;
+}
+static int r_fresnel_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
+{
+    (void)c; (void)nr;
+    int64_t nt = roots_argi(a, na, 0);
+    if (nt < 1) { fn_set_error("fresnel_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *s = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
+    double *cc = (double *)fn_result_array(&r[1], TSR_C128, 1, (int64_t[]){nt});
+    if (!s || !cc) return TSR_ENOMEM;
+    tsr_fcszo(2, (int)nt, s);
+    tsr_fcszo(1, (int)nt, cc);
+    return TSR_OK;
+}
+
 static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
@@ -4839,6 +4888,10 @@ static const fn_def DEFS[] = {
     ROUTINE("special.modfresnelm", 2, "x", "fm, km", r_modfresnelm, NULL, "Modified Fresnel negative integrals F-(x) and K-(x) (scipy.special.modfresnelm)."),
     ROUTINE("special.mathieu_even_coef", 1, "m, q", "Ak", r_mathieu_even_coef, NULL, "Fourier coefficients of the even Mathieu function ce_m (scipy.special.mathieu_even_coef)."),
     ROUTINE("special.mathieu_odd_coef", 1, "m, q", "Bk", r_mathieu_odd_coef, NULL, "Fourier coefficients of the odd Mathieu function se_m (scipy.special.mathieu_odd_coef)."),
+    ROUTINE("special.erf_zeros", 1, "nt", "zeros", r_erf_zeros, NULL, "First nt complex zeros of erf (scipy.special.erf_zeros)."),
+    ROUTINE("special.fresnel_zeros", 2, "nt", "zfs, zfc", r_fresnel_zeros, NULL, "First nt complex zeros of the Fresnel sine and cosine integrals (scipy.special.fresnel_zeros)."),
+    ROUTINE("special.fresnelc_zeros", 1, "nt", "zeros", r_fresnelc_zeros, NULL, "First nt complex zeros of the Fresnel cosine integral (scipy.special.fresnelc_zeros)."),
+    ROUTINE("special.fresnels_zeros", 1, "nt", "zeros", r_fresnels_zeros, NULL, "First nt complex zeros of the Fresnel sine integral (scipy.special.fresnels_zeros)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
     ROUTINE("special.bernoulli", 1, "n", "out", r_bernoulli, NULL, "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."),
