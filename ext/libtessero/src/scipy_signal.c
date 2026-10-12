@@ -4416,6 +4416,83 @@ static int r_choose_conv_method(const void *ctx, const tsr_arg *args, int nargs,
     return fn_result_str(&res[0], method);
 }
 
+static double firls_sinc(double x) { if (x == 0.0) return 1.0; double px = M_PI * x; return sin(px) / px; }
+
+/* firls(numtaps, bands, desired, weight=None, fs=None): least-squares linear-phase FIR design
+   (scipy.signal.firls). numtaps must be odd. Assembles the normal equations Q a = b, where
+   Q = Toeplitz(q[:M+1]) + Hankel(q[:M+1], q[M:]) and q(k)/b(k) are the weighted per-band sinc integrals,
+   solves with LAPACKE_dgesv, then mirrors a into symmetric (linear-phase) taps. */
+static int r_firls(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("firls: numtaps must be an integer"); return TSR_EARG; }
+    const int64_t numtaps = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    if (numtaps < 1 || numtaps % 2 == 0) { fn_set_error("firls: numtaps must be odd and >= 1"); return TSR_EARG; }
+    if (args[1].kind != 3 || args[2].kind != 3) { fn_set_error("firls: bands and desired must be arrays"); return TSR_EARG; }
+    double nyq = 1.0;
+    if (nargs > 4 && args[4].kind == 1) { double fs = args[4].num; if (fs <= 0.0) { fn_set_error("firls: fs must be positive"); return TSR_EARG; } nyq = 0.5 * fs; }
+    int64_t nb, nd; double *bands = fn_arg_doubles(&args[1], &nb); if (!bands) return TSR_ENOMEM;
+    double *desired = fn_arg_doubles(&args[2], &nd); if (!desired) { fn_free_doubles(bands, nb); return TSR_ENOMEM; }
+    if (nb % 2 != 0 || nd != nb) { fn_set_error("firls: bands must be frequency pairs and desired the same size"); fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); return TSR_EARG; }
+    const int64_t npairs = nb / 2;
+    double *weight = NULL; int64_t nw = 0; int own_w = 0;
+    if (nargs > 3 && args[3].kind == 3) { weight = fn_arg_doubles(&args[3], &nw); own_w = 1; if (!weight) { fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); return TSR_ENOMEM; } }
+    if (weight && nw != npairs) { fn_set_error("firls: weight must have one entry per band pair"); fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); if (own_w) fn_free_doubles(weight, nw); return TSR_EARG; }
+    for (int64_t i = 0; i < nb; i++) bands[i] /= nyq;
+    const int64_t M = (numtaps - 1) / 2, n = M + 1;
+    double *q = (double *)calloc((size_t)numtaps, sizeof(double));
+    double *Q = (double *)malloc((size_t)n * (size_t)n * sizeof(double));
+    double *b = (double *)calloc((size_t)n, sizeof(double));
+    lapack_int *ipiv = (lapack_int *)malloc((size_t)n * sizeof(lapack_int));
+    int rc = TSR_OK;
+    if (!q || !Q || !b || !ipiv) rc = TSR_ENOMEM;
+    else {
+        for (int64_t k = 0; k < numtaps; k++) {
+            double s = 0.0;
+            for (int64_t p = 0; p < npairs; p++) {
+                double f1 = bands[2 * p], f2 = bands[2 * p + 1], w = weight ? weight[p] : 1.0;
+                s += w * (firls_sinc((double)k * f2) * f2 - firls_sinc((double)k * f1) * f1);
+            }
+            q[k] = s;
+        }
+        for (int64_t i = 0; i < n; i++)
+            for (int64_t j = 0; j < n; j++) Q[i * n + j] = q[llabs(i - j)] + q[i + j];
+        for (int64_t k = 0; k < n; k++) {
+            double s = 0.0;
+            for (int64_t p = 0; p < npairs; p++) {
+                double f1 = bands[2 * p], f2 = bands[2 * p + 1], w = weight ? weight[p] : 1.0;
+                double d1 = desired[2 * p], d2 = desired[2 * p + 1];
+                double m = (f2 != f1) ? (d2 - d1) / (f2 - f1) : 0.0;
+                double c = d1 - f1 * m, v1, v2;
+                if (k == 0) {
+                    v2 = f2 * (m * f2 + c) - m * f2 * f2 / 2.0;
+                    v1 = f1 * (m * f1 + c) - m * f1 * f1 / 2.0;
+                } else {
+                    double kk = (double)k, pk2 = (M_PI * kk) * (M_PI * kk);
+                    v2 = f2 * (m * f2 + c) * firls_sinc(kk * f2) + m * cos(kk * M_PI * f2) / pk2;
+                    v1 = f1 * (m * f1 + c) * firls_sinc(kk * f1) + m * cos(kk * M_PI * f1) / pk2;
+                }
+                s += w * (v2 - v1);
+            }
+            b[k] = s;
+        }
+        lapack_int info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, (lapack_int)n, 1, Q, (lapack_int)n, ipiv, b, 1);
+        if (info != 0) { fn_set_error("firls: singular normal-equations matrix"); rc = TSR_EARG; }
+        else {
+            double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){numtaps});
+            if (!out) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < M; i++) out[i] = b[M - i];
+                out[M] = 2.0 * b[0];
+                for (int64_t i = M + 1; i <= 2 * M; i++) out[i] = b[i - M];
+            }
+        }
+    }
+    free(q); free(Q); free(b); free(ipiv);
+    fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); if (own_w) fn_free_doubles(weight, nw);
+    return rc;
+}
+
 /* gauss_spline(x, n): Gaussian approximation to the B-spline basis of order n (scipy.signal.gauss_spline).
    1/sqrt(2*pi*s) * exp(-x^2/(2s)) with s = (n+1)/12. */
 static int r_gauss_spline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -5863,6 +5940,7 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.argrelmin", 1, "data, axis=0, order=1, mode='clip'", "out", r_argrel, &SIG_ARGREL_MIN, "Indices of relative minima of a 1-D array (scipy.signal.argrelmin)."),
     ROUTINE("signal.argrelextrema", 1, "data, comparator, axis=0, order=1, mode='clip'", "out", r_argrelextrema, NULL, "Indices of relative extrema of a 1-D array by a comparator (scipy.signal.argrelextrema)."),
     ROUTINE("signal.choose_conv_method", 1, "in1, in2, mode='full', measure=False", "out", r_choose_conv_method, NULL, "Faster of 'direct'/'fft' convolution by SciPy's op-count heuristic (scipy.signal.choose_conv_method)."),
+    ROUTINE("signal.firls", 1, "numtaps, bands, desired, weight=None, fs=None", "out", r_firls, NULL, "Least-squares linear-phase FIR filter design (scipy.signal.firls)."),
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),

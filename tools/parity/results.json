@@ -773,6 +773,7 @@
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
         "signal.findfreqs": "pass",
+        "signal.firls": "pass",
         "signal.firwin": "pass",
         "signal.firwin2": "pass",
         "signal.freqresp": "pass",
@@ -3212,7 +3213,8 @@
             "spatial.Rectangle": null,
             "windows.dpss": 8.50815985283948,
             "signal.argrelextrema": 0,
-            "signal.choose_conv_method": 0
+            "signal.choose_conv_method": 0,
+            "signal.firls": 1.043871624984004
         },
         "ext": {
             "np.median": 0,
@@ -4819,7 +4821,8 @@
             "spatial.Rectangle": null,
             "windows.dpss": 8.50815985283948,
             "signal.argrelextrema": 0,
-            "signal.choose_conv_method": 0
+            "signal.choose_conv_method": 0,
+            "signal.firls": 1.043871624984004
         }
     },
     "ext": {
@@ -5596,6 +5599,7 @@
         "signal.fftconvolve": "pass",
         "signal.filtfilt": "pass",
         "signal.findfreqs": "pass",
+        "signal.firls": "pass",
         "signal.firwin": "pass",
         "signal.firwin2": "pass",
         "signal.freqresp": "pass",
