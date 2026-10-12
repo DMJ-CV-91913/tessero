@@ -6851,6 +6851,23 @@
         ]
     },
     {
+        "class": "Tessero\\Interpolate\\NearestNDInterpolator",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $points, array $values, bool $rescale = false)",
+                "doc": "building the tree, as SciPy's rescale=True does"
+            },
+            {
+                "name": "query",
+                "static": false,
+                "sig": "query(array $xi): array",
+                "doc": "Nearest-neighbour value(s) at the query point(s)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Datetime\\Datetime",
         "methods": [
             {
