@@ -3061,6 +3061,12 @@
                 "doc": "Logarithmically spaced frequency array for an analog response (scipy.signal.findfreqs)."
             },
             {
+                "name": "firls",
+                "static": true,
+                "sig": "firls(mixed $numtaps, mixed $bands, mixed $desired, mixed $weight = null, mixed $fs = null): mixed",
+                "doc": "Least-squares linear-phase FIR filter design (scipy.signal.firls)."
+            },
+            {
                 "name": "firwin",
                 "static": true,
                 "sig": "firwin(mixed $numtaps, mixed $cutoff, mixed $window = 'hamming', mixed $passZero = true, mixed $scale = true, mixed $fs = null): mixed",
@@ -20034,6 +20040,12 @@
                 "name": "chooseConvMethod",
                 "static": true,
                 "sig": "chooseConvMethod($in1, $in2, $mode = 'full', $measure = false)",
+                "doc": ""
+            },
+            {
+                "name": "firls",
+                "static": true,
+                "sig": "firls($numtaps, $bands, $desired, $weight = null, $fs = null)",
                 "doc": ""
             },
             {

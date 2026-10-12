@@ -1116,6 +1116,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |
 | `scipy.signal.findfreqs` | `Tessero\Signal::findfreqs()` |
+| `scipy.signal.firls` | `Tessero\Signal::firls()` |
 | `scipy.signal.firwin` | `Tessero\Signal::firwin()` |
 | `scipy.signal.firwin2` | `Tessero\Signal::firwin2()` |
 | `scipy.signal.freqresp` | `Tessero\Signal::freqresp()` |

@@ -478,6 +478,29 @@ for a, b in _ccm_cases:
         ccm.append({'args': [F.enc(a), F.enc(b), F.enc(mode)], 'kwargs': {},
                     'expect': {'s': sg.choose_conv_method(a, b, mode=mode)}, 'compare': 'tol'})
 
+# firls: least-squares linear-phase FIR design (numtaps odd); normal-equations solve
+fls = []
+_fls_cases = [
+    (5,  [0, 0.5, 0.6, 1.0], [1, 1, 0, 0], None, None),
+    (11, [0, 0.3, 0.4, 1.0], [1, 1, 0, 0], None, None),
+    (31, [0, 0.2, 0.3, 0.7, 0.8, 1.0], [0, 0, 1, 1, 0, 0], None, None),      # bandpass
+    (21, [0, 0.4, 0.5, 1.0], [1, 1, 0, 0], [1, 2], None),                    # weighted
+    (15, [0, 0.25, 0.35, 0.65, 0.75, 1.0], [1, 1, 0.5, 0.5, 0, 0], [1, 3, 2], None),
+    (9,  [0, 1000, 1200, 4000], [1, 1, 0, 0], None, 8000),                   # fs given
+    (25, [0, 0.1, 0.2, 0.4, 0.5, 1.0], [0, 1, 1, 1, 0, 0], None, None),      # sloped desired
+    (35, [0, 0.3, 0.5, 1.0], [1, 0, 0, 0], None, None),                      # ramp band
+]
+for nt, bd, des, w, fsv in _fls_cases:
+    kw = {}
+    if w is not None: kw['weight'] = w
+    if fsv is not None: kw['fs'] = fsv
+    args = [F.enc(nt), F.enc(np.asarray(bd, float)), F.enc(np.asarray(des, float)),
+            F.enc(np.asarray(w, float)) if w is not None else None,
+            F.enc(float(fsv)) if fsv is not None else None]
+    fls.append({'args': args, 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.firls(nt, bd, des, **kw), dtype=np.float64), []),
+                'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
+
 # residue / residuez (real-root denominators, distinct magnitudes -> unambiguous pole order)
 rsd, rsz = [], []
 for (b, a) in [([1., 3., 3.], [1., 6., 11., 6.]), ([1., 0.], [1., 3., 2.]),
@@ -974,6 +997,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'argrelmin', 'cases': armin},
                  {'fn': 'argrelextrema', 'cases': arext},
                  {'fn': 'choose_conv_method', 'cases': ccm},
+                 {'fn': 'firls', 'cases': fls, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},
                  {'fn': 'residuez', 'cases': rsz, 'tol': {'atol': 1e-9}},
                  {'fn': 'lp2lp', 'cases': lplp, 'tol': {'atol': 1e-12}},

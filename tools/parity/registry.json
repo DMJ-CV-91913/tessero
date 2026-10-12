@@ -3455,6 +3455,11 @@
             "nin": 0,
             "nout": 1
         },
+        "signal.firls": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.firwin": {
             "kind": "routine",
             "nin": 0,
