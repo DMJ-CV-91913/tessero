@@ -2977,6 +2977,18 @@
                 "doc": "Cross power spectral density by Welch's method (scipy.signal.csd)."
             },
             {
+                "name": "cspline1d",
+                "static": true,
+                "sig": "cspline1d(mixed $signal, mixed $lamb = 0.0): mixed",
+                "doc": "Cubic-spline coefficients of a 1-D signal, lamb=0 (scipy.signal.cspline1d)."
+            },
+            {
+                "name": "cspline1dEval",
+                "static": true,
+                "sig": "cspline1dEval(mixed $cj, mixed $newx, mixed $dx = 1.0, mixed $x0 = 0.0): mixed",
+                "doc": "Evaluate a cubic spline at new points (scipy.signal.cspline1d_eval)."
+            },
+            {
                 "name": "cztPoints",
                 "static": true,
                 "sig": "cztPoints(mixed $m, mixed $w = null, mixed $a = 1): mixed",
@@ -3341,6 +3353,18 @@
                 "static": true,
                 "sig": "periodogram(mixed $x, mixed $fs = 1.0, mixed $window = 'boxcar', mixed $nfft = null, mixed $detrend = 'constant', mixed $returnOnesided = true, mixed $scaling = 'density'): mixed",
                 "doc": "Power spectral density estimate from a single segment (scipy.signal.periodogram)."
+            },
+            {
+                "name": "qspline1d",
+                "static": true,
+                "sig": "qspline1d(mixed $signal, mixed $lamb = 0.0): mixed",
+                "doc": "Quadratic-spline coefficients of a 1-D signal (scipy.signal.qspline1d)."
+            },
+            {
+                "name": "qspline1dEval",
+                "static": true,
+                "sig": "qspline1dEval(mixed $cj, mixed $newx, mixed $dx = 1.0, mixed $x0 = 0.0): mixed",
+                "doc": "Evaluate a quadratic spline at new points (scipy.signal.qspline1d_eval)."
             },
             {
                 "name": "resample",
@@ -20016,6 +20040,30 @@
                 "name": "gaussSpline",
                 "static": true,
                 "sig": "gaussSpline($x, $n)",
+                "doc": ""
+            },
+            {
+                "name": "cspline1d",
+                "static": true,
+                "sig": "cspline1d($signal, $lamb = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "qspline1d",
+                "static": true,
+                "sig": "qspline1d($signal, $lamb = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "cspline1dEval",
+                "static": true,
+                "sig": "cspline1dEval($cj, $newx, $dx = 1.0, $x0 = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "qspline1dEval",
+                "static": true,
+                "sig": "qspline1dEval($cj, $newx, $dx = 1.0, $x0 = 0.0)",
                 "doc": ""
             },
             {

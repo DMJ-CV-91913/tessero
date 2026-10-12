@@ -759,6 +759,8 @@
         "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.cspline1d": "pass",
+        "signal.cspline1d_eval": "pass",
         "signal.czt_points": "pass",
         "signal.dbode": "pass",
         "signal.deconvolve": "pass",
@@ -820,6 +822,8 @@
         "signal.peak_prominences": "pass",
         "signal.peak_widths": "pass",
         "signal.periodogram": "pass",
+        "signal.qspline1d": "pass",
+        "signal.qspline1d_eval": "pass",
         "signal.resample": "pass",
         "signal.resample_poly": "pass",
         "signal.residue": "pass",
@@ -3218,7 +3222,11 @@
             "signal.choose_conv_method": 0,
             "signal.firls": 1.043871624984004,
             "signal.zpk2sos": 0,
-            "signal.tf2sos": 0
+            "signal.tf2sos": 0,
+            "signal.cspline1d": 6.603026413110088e-16,
+            "signal.qspline1d": 5.88649808666883e-16,
+            "signal.cspline1d_eval": 1.0185445721295501e-13,
+            "signal.qspline1d_eval": 1.1911238085415404e-15
         },
         "ext": {
             "np.median": 0,
@@ -4828,7 +4836,11 @@
             "signal.choose_conv_method": 0,
             "signal.firls": 1.043871624984004,
             "signal.zpk2sos": 0,
-            "signal.tf2sos": 0
+            "signal.tf2sos": 0,
+            "signal.cspline1d": 6.603026413110088e-16,
+            "signal.qspline1d": 5.88649808666883e-16,
+            "signal.cspline1d_eval": 1.0185445721295501e-13,
+            "signal.qspline1d_eval": 1.1911238085415404e-15
         }
     },
     "ext": {
@@ -5591,6 +5603,8 @@
         "signal.correlate2d": "pass",
         "signal.correlation_lags": "pass",
         "signal.csd": "pass",
+        "signal.cspline1d": "pass",
+        "signal.cspline1d_eval": "pass",
         "signal.czt_points": "pass",
         "signal.dbode": "pass",
         "signal.deconvolve": "pass",
@@ -5652,6 +5666,8 @@
         "signal.peak_prominences": "pass",
         "signal.peak_widths": "pass",
         "signal.periodogram": "pass",
+        "signal.qspline1d": "pass",
+        "signal.qspline1d_eval": "pass",
         "signal.resample": "pass",
         "signal.resample_poly": "pass",
         "signal.residue": "pass",
