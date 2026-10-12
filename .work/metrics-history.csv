@@ -249,3 +249,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,"scipy.optimize check_grad, brute",100.0,100.0,85.2,85.0,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,scipy.spatial Rectangle,100.0,100.0,85.3,85.1,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,signal.windows dpss,100.0,100.0,85.3,85.1,100.0,99.8,100.0,100.0,85.5,85.5
+2026-10-12,signal.windows get_window dual-namespace credit,100.0,100.0,85.4,85.2,100.0,99.8,100.0,100.0,85.5,85.5

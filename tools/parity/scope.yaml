@@ -536,3 +536,7 @@ legacy:
     rfftfreq: {ffi: [F::rfftfreq], ext: [XF::rfftfreq], fixtures: [fft.rfftfreq]}
     fftshift: {ffi: [F::fftshift], ext: [XF::fftshift], fixtures: [fft.fftshift]}
     ifftshift: {ffi: [F::ifftshift], ext: [XF::ifftshift], fixtures: [fft.ifftshift]}
+  scipy.signal.windows:
+    # get_window is defined in scipy.signal.windows and re-exported as scipy.signal.get_window; the same
+    # Tessero Signal::getWindow dispatcher (verified by the signal.get_window fixtures) covers both names.
+    get_window: {ffi: [SIG::getWindow], ext: [XSIG::getWindow], fixtures: [signal.get_window]}

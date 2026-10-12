@@ -24,6 +24,7 @@ ALIAS = {
     "AO": "Tessero\\ArrayOps", "OP": "Tessero\\OrthoPoly", "SQ": "Tessero\\SpecialSeq", "SF": "Tessero\\StatsFns", "RECT": "Tessero\\Spatial\\Rectangle",
     "XN": "Tessero\\Ext\\NDArray", "XM": "Tessero\\Ext\\Math", "XE": "Tessero\\Ext\\Engine",
     "XR": "Tessero\\Ext\\Random\\Generator", "XF": "Tessero\\Ext\\Fft\\Fft", "DT": "Tessero\\Datetime\\Datetime",
+    "SIG": "Tessero\\Signal", "XSIG": "Tessero\\Ext\\Signal",
 }
 BACKENDS = ('ffi', 'ext')
 
