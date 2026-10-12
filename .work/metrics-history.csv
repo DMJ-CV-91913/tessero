@@ -256,3 +256,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,signal tf2sos,100.0,100.0,85.8,85.6,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,signal cspline1d/qspline1d + evals,100.0,100.0,86.0,85.8,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,signal czt + zoom_fft,100.0,100.0,86.2,86.0,100.0,99.8,100.0,100.0,85.5,85.5
+2026-10-12,"signal cluster: sepfir2d, symiirorder1/2, cspline2d, qspline2d",100.0,100.0,86.5,86.3,100.0,99.8,100.0,100.0,85.5,85.5

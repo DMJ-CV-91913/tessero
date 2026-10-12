@@ -2989,6 +2989,12 @@
                 "doc": "Evaluate a cubic spline at new points (scipy.signal.cspline1d_eval)."
             },
             {
+                "name": "cspline2d",
+                "static": true,
+                "sig": "cspline2d(mixed $signal, mixed $lamb = 0.0): mixed",
+                "doc": "Cubic-spline coefficients of a 2-D array, lamb=0 (scipy.signal.cspline2d)."
+            },
+            {
                 "name": "czt",
                 "static": true,
                 "sig": "czt(mixed $x, mixed $m = null, mixed $w = null, mixed $a = 1): mixed",
@@ -3373,6 +3379,12 @@
                 "doc": "Evaluate a quadratic spline at new points (scipy.signal.qspline1d_eval)."
             },
             {
+                "name": "qspline2d",
+                "static": true,
+                "sig": "qspline2d(mixed $signal, mixed $lamb = 0.0): mixed",
+                "doc": "Quadratic-spline coefficients of a 2-D array, lamb=0 (scipy.signal.qspline2d)."
+            },
+            {
                 "name": "resample",
                 "static": true,
                 "sig": "resample(mixed $x, mixed $num, mixed $t = null, mixed $axis = 0, mixed $window = null, mixed $domain = 'time'): mixed",
@@ -3413,6 +3425,12 @@
                 "static": true,
                 "sig": "sawtooth(mixed $t, mixed $width = 1): mixed",
                 "doc": "Sawtooth/triangle wave of period 2pi with the given rising width (scipy.signal.sawtooth)."
+            },
+            {
+                "name": "sepfir2d",
+                "static": true,
+                "sig": "sepfir2d(mixed $input, mixed $hrow, mixed $hcol): mixed",
+                "doc": "Separable 2-D convolution with symmetric edges (scipy.signal.sepfir2d)."
             },
             {
                 "name": "sos2tf",
@@ -3485,6 +3503,18 @@
                 "static": true,
                 "sig": "sweepPoly(mixed $t, mixed $poly, mixed $phi = 0): mixed",
                 "doc": "Frequency-swept cosine with a polynomial instantaneous frequency (scipy.signal.sweep_poly)."
+            },
+            {
+                "name": "symiirorder1",
+                "static": true,
+                "sig": "symiirorder1(mixed $signal, mixed $c0, mixed $z1, mixed $precision = -1.0): mixed",
+                "doc": "Symmetric first-order IIR filtering with mirror boundaries (scipy.signal.symiirorder1)."
+            },
+            {
+                "name": "symiirorder2",
+                "static": true,
+                "sig": "symiirorder2(mixed $input, mixed $r, mixed $omega, mixed $precision = -1.0): mixed",
+                "doc": "Symmetric second-order IIR filtering with mirror boundaries (scipy.signal.symiirorder2)."
             },
             {
                 "name": "tf2sos",
@@ -20055,6 +20085,24 @@
                 "doc": ""
             },
             {
+                "name": "sepfir2d",
+                "static": true,
+                "sig": "sepfir2d($input, $hrow, $hcol)",
+                "doc": ""
+            },
+            {
+                "name": "symiirorder1",
+                "static": true,
+                "sig": "symiirorder1($signal, $c0, $z1, $precision = -1.0)",
+                "doc": ""
+            },
+            {
+                "name": "symiirorder2",
+                "static": true,
+                "sig": "symiirorder2($input, $r, $omega, $precision = -1.0)",
+                "doc": ""
+            },
+            {
                 "name": "cspline1d",
                 "static": true,
                 "sig": "cspline1d($signal, $lamb = 0.0)",
@@ -20064,6 +20112,18 @@
                 "name": "qspline1d",
                 "static": true,
                 "sig": "qspline1d($signal, $lamb = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "cspline2d",
+                "static": true,
+                "sig": "cspline2d($signal, $lamb = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "qspline2d",
+                "static": true,
+                "sig": "qspline2d($signal, $lamb = 0.0)",
                 "doc": ""
             },
             {

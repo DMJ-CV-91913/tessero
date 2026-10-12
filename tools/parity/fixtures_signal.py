@@ -539,6 +539,50 @@ for K in [1, 2, 5, 8, 13, 20, 50]:
             qspe.append({'args': [F.enc(np.asarray(qj, float)), F.enc(np.asarray(newx, float)), F.enc(dx), F.enc(x0)], 'kwargs': {},
                          'expect': F.enc_result(np.asarray(sg.qspline1d_eval(qj, newx, dx=dx, x0=x0), dtype=np.float64), []), 'compare': 'tol'})
 
+# sepfir2d: separable 2-D convolution with symmetric edges (odd-length filters)
+sf2 = []
+_rng_sf = np.random.default_rng(41)
+for (R, C) in [(5, 5), (8, 6), (16, 16), (3, 10), (10, 3), (13, 9)]:
+    img = _rng_sf.standard_normal((R, C))
+    for kr, kc in [(3, 3), (5, 3), (5, 5), (7, 5)]:
+        if kr > C or kc > R:                    # scipy's sepfir2d is unstable when a filter exceeds its axis
+            continue
+        hrow = _rng_sf.standard_normal(kr)      # asymmetric filters prove it's convolution
+        hcol = _rng_sf.standard_normal(kc)
+        sf2.append({'args': [F.enc(np.asarray(img, float)), F.enc(np.asarray(hrow, float)), F.enc(np.asarray(hcol, float))], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(sg.sepfir2d(img, hrow, hcol), dtype=np.float64), []),
+                    'compare': 'tol', 'tol': {'rtol': 1e-9, 'atol': 1e-11}})
+
+# cspline2d / qspline2d (lamb=0): separable 2-D spline coefficients. Sizes large enough that scipy's
+# per-axis IC sum converges (cubic root 0.268 needs dim >= ~18; quad 0.17 fewer).
+csp2, qsp2 = [], []
+_rng_sp2 = np.random.default_rng(42)
+for (R, C) in [(24, 24), (32, 24), (40, 28)]:
+    img = _rng_sp2.standard_normal((R, C))
+    csp2.append({'args': [F.enc(np.asarray(img, float))], 'kwargs': {},
+                 'expect': F.enc_result(np.asarray(sg.cspline2d(img), dtype=np.float64), []),
+                 'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
+    qsp2.append({'args': [F.enc(np.asarray(img, float))], 'kwargs': {},
+                 'expect': F.enc_result(np.asarray(sg.qspline2d(img), dtype=np.float64), []),
+                 'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
+
+# symiirorder1 / symiirorder2: symmetric (mirror-boundary) IIR filtering.
+# K must be large enough that scipy's IC sum converges (|z1|^K < default precision ~1e-11).
+sy1, sy2 = [], []
+_rng_sy = np.random.default_rng(43)
+for K in [64, 120]:
+    sv = _rng_sy.standard_normal(K)
+    for c0, z1 in [(1.0, 0.25), (3.7, 0.25), (1.0, 0.5), (1.0, -0.6)]:
+        sy1.append({'args': [F.enc(np.asarray(sv, float)), F.enc(float(c0)), F.enc(float(z1))], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(sg.symiirorder1(sv, c0, z1), dtype=np.float64), []),
+                    'compare': 'tol', 'tol': {'rtol': 1e-8, 'atol': 1e-10}})
+for K in [120, 200]:
+    sv = _rng_sy.standard_normal(K)
+    for rr, om in [(0.5, 0.3), (0.8, np.pi / 4), (0.5, 0.0), (0.7, np.pi), (0.6, 1.5)]:
+        sy2.append({'args': [F.enc(np.asarray(sv, float)), F.enc(float(rr)), F.enc(float(om))], 'kwargs': {},
+                    'expect': F.enc_result(np.asarray(sg.symiirorder2(sv, rr, om), dtype=np.float64), []),
+                    'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
+
 # czt (chirp z-transform, Bluestein) + zoom_fft; complex w/a passed as 1-element complex arrays
 czt_c, zfft = [], []
 _rng_cz = np.random.default_rng(31)
@@ -1081,6 +1125,11 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'qspline1d', 'cases': qsp, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
                  {'fn': 'cspline1d_eval', 'cases': cspe, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
                  {'fn': 'qspline1d_eval', 'cases': qspe, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'sepfir2d', 'cases': sf2, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'cspline2d', 'cases': csp2, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'qspline2d', 'cases': qsp2, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'symiirorder1', 'cases': sy1, 'tol': {'rtol': 1e-8, 'atol': 1e-10}},
+                 {'fn': 'symiirorder2', 'cases': sy2, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'czt', 'cases': czt_c, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'zoom_fft', 'cases': zfft, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'residue', 'cases': rsd, 'tol': {'atol': 1e-9}},

@@ -1104,6 +1104,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.csd` | `Tessero\Signal::csd()` |
 | `scipy.signal.cspline1d` | `Tessero\Signal::cspline1d()` |
 | `scipy.signal.cspline1d_eval` | `Tessero\Signal::cspline1dEval()` |
+| `scipy.signal.cspline2d` | `Tessero\Signal::cspline2d()` |
 | `scipy.signal.czt` | `Tessero\Signal::czt()` |
 | `scipy.signal.czt_points` | `Tessero\Signal::cztPoints()` |
 | `scipy.signal.dbode` | `Tessero\Signal::dbode()` |
@@ -1168,6 +1169,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.periodogram` | `Tessero\Signal::periodogram()` |
 | `scipy.signal.qspline1d` | `Tessero\Signal::qspline1d()` |
 | `scipy.signal.qspline1d_eval` | `Tessero\Signal::qspline1dEval()` |
+| `scipy.signal.qspline2d` | `Tessero\Signal::qspline2d()` |
 | `scipy.signal.resample` | `Tessero\Signal::resample()` |
 | `scipy.signal.resample_poly` | `Tessero\Signal::resamplePoly()` |
 | `scipy.signal.residue` | `Tessero\Signal::residue()` |
@@ -1175,6 +1177,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.savgol_coeffs` | `Tessero\Signal::savgolCoeffs()` |
 | `scipy.signal.savgol_filter` | `Tessero\Signal::savgolFilter()` |
 | `scipy.signal.sawtooth` | `Tessero\Signal::sawtooth()` |
+| `scipy.signal.sepfir2d` | `Tessero\Signal::sepfir2d()` |
 | `scipy.signal.sos2tf` | `Tessero\Signal::sos2tf()` |
 | `scipy.signal.sos2zpk` | `Tessero\Signal::sos2zpk()` |
 | `scipy.signal.sosfilt` | `Tessero\Signal::sosfilt()` |
@@ -1187,6 +1190,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.ss2zpk` | `Tessero\Signal::ss2zpk()` |
 | `scipy.signal.step` | `Tessero\Signal::step()` |
 | `scipy.signal.sweep_poly` | `Tessero\Signal::sweepPoly()` |
+| `scipy.signal.symiirorder1` | `Tessero\Signal::symiirorder1()` |
+| `scipy.signal.symiirorder2` | `Tessero\Signal::symiirorder2()` |
 | `scipy.signal.tf2sos` | `Tessero\Signal::tf2sos()` |
 | `scipy.signal.tf2ss` | `Tessero\Signal::tf2ss()` |
 | `scipy.signal.tf2zpk` | `Tessero\Signal::tf2zpk()` |
