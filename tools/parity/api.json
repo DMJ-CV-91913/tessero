@@ -10395,6 +10395,18 @@
                 "doc": "Inverse of `gdtr` vs x."
             },
             {
+                "name": "h1vp",
+                "static": true,
+                "sig": "h1vp(mixed $v, mixed $z, mixed $n = 1): mixed",
+                "doc": "First derivative of the Hankel function of the first kind (scipy.special.h1vp)."
+            },
+            {
+                "name": "h2vp",
+                "static": true,
+                "sig": "h2vp(mixed $v, mixed $z, mixed $n = 1): mixed",
+                "doc": "First derivative of the Hankel function of the second kind (scipy.special.h2vp)."
+            },
+            {
                 "name": "hRoots",
                 "static": true,
                 "sig": "hRoots(mixed $n, mixed $mu = false): mixed",
@@ -16186,6 +16198,18 @@
                 "name": "hankel2e",
                 "static": true,
                 "sig": "hankel2e($v, $z)",
+                "doc": ""
+            },
+            {
+                "name": "h1vp",
+                "static": true,
+                "sig": "h1vp($v, $z, $n = 1)",
+                "doc": ""
+            },
+            {
+                "name": "h2vp",
+                "static": true,
+                "sig": "h2vp($v, $z, $n = 1)",
                 "doc": ""
             },
             {
