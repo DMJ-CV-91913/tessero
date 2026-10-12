@@ -386,6 +386,25 @@ legacy:
     erfc: {ffi: [M::erfc], ext: [XM::erfc], tests: math}
     gamma: {ffi: [M::gamma], ext: [XM::gamma], tests: math}
     gammaln: {ffi: [M::lgamma], ext: [XM::lgamma], tests: math}
+    # orthogonal-polynomial factories: pure-PHP Tessero\OrthoPoly builds each family's power-basis
+    # coefficients from its three-term recurrence (matching scipy's orthopoly1d.c to machine precision)
+    # -> one class, both backends; verified by the special_orthopoly.json orthopoly_cases (coefficients
+    # + evaluation at in-domain points) in run-tests.php.
+    legendre: {ffi: [OP::legendre], ext: [OP::legendre], fixtures: [special.legendre]}
+    chebyt: {ffi: [OP::chebyt], ext: [OP::chebyt], fixtures: [special.chebyt]}
+    chebyu: {ffi: [OP::chebyu], ext: [OP::chebyu], fixtures: [special.chebyu]}
+    chebyc: {ffi: [OP::chebyc], ext: [OP::chebyc], fixtures: [special.chebyc]}
+    chebys: {ffi: [OP::chebys], ext: [OP::chebys], fixtures: [special.chebys]}
+    hermite: {ffi: [OP::hermite], ext: [OP::hermite], fixtures: [special.hermite]}
+    hermitenorm: {ffi: [OP::hermitenorm], ext: [OP::hermitenorm], fixtures: [special.hermitenorm]}
+    laguerre: {ffi: [OP::laguerre], ext: [OP::laguerre], fixtures: [special.laguerre]}
+    genlaguerre: {ffi: [OP::genlaguerre], ext: [OP::genlaguerre], fixtures: [special.genlaguerre]}
+    gegenbauer: {ffi: [OP::gegenbauer], ext: [OP::gegenbauer], fixtures: [special.gegenbauer]}
+    jacobi: {ffi: [OP::jacobi], ext: [OP::jacobi], fixtures: [special.jacobi]}
+    sh_legendre: {ffi: [OP::shLegendre], ext: [OP::shLegendre], fixtures: [special.sh_legendre]}
+    sh_chebyt: {ffi: [OP::shChebyt], ext: [OP::shChebyt], fixtures: [special.sh_chebyt]}
+    sh_chebyu: {ffi: [OP::shChebyu], ext: [OP::shChebyu], fixtures: [special.sh_chebyu]}
+    sh_jacobi: {ffi: [OP::shJacobi], ext: [OP::shJacobi], fixtures: [special.sh_jacobi]}
   # scipy.linalg is fully on both backends via the kernel registry (slinalg.*), verified by
   # tests/fixtures/parity/slinalg.json and classified from the registry (scope.py PREFIX slinalg -> scipy.linalg):
   # solve, inv, det, svdvals, lstsq, pinv, norm, eigvalsh, svd, eigh, qr, cholesky, solve_triangular, lu, eigvals,
