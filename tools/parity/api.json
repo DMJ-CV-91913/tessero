@@ -9913,6 +9913,12 @@
                 "doc": "Compute the arithmetic-geometric mean of `a` and `b`."
             },
             {
+                "name": "aiZeros",
+                "static": true,
+                "sig": "aiZeros(mixed $nt): mixed",
+                "doc": "First nt zeros of Ai and Ai' with the associated values (scipy.special.ai_zeros)."
+            },
+            {
                 "name": "airy",
                 "static": true,
                 "sig": "airy(mixed $z, ?array $out = null): array",
@@ -10055,6 +10061,12 @@
                 "static": true,
                 "sig": "betaln(mixed $a, mixed $b, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Natural logarithm of absolute value of beta function."
+            },
+            {
+                "name": "biZeros",
+                "static": true,
+                "sig": "biZeros(mixed $nt): mixed",
+                "doc": "First nt zeros of Bi and Bi' with the associated values (scipy.special.bi_zeros)."
             },
             {
                 "name": "binom",
@@ -10775,6 +10787,12 @@
                 "static": true,
                 "sig": "jnpZeros(mixed $n, mixed $nt): mixed",
                 "doc": "First nt positive zeros of the Bessel derivative Jn' (scipy.special.jnp_zeros)."
+            },
+            {
+                "name": "jnynZeros",
+                "static": true,
+                "sig": "jnynZeros(mixed $n, mixed $nt): mixed",
+                "doc": "First nt zeros of Jn, Jn', Yn, Yn' (scipy.special.jnyn_zeros)."
             },
             {
                 "name": "jsRoots",
@@ -16238,6 +16256,24 @@
                 "name": "kelvinZeros",
                 "static": true,
                 "sig": "kelvinZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "jnynZeros",
+                "static": true,
+                "sig": "jnynZeros($n, $nt)",
+                "doc": ""
+            },
+            {
+                "name": "aiZeros",
+                "static": true,
+                "sig": "aiZeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "biZeros",
+                "static": true,
+                "sig": "biZeros($nt)",
                 "doc": ""
             },
             {

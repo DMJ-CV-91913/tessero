@@ -635,6 +635,9 @@
 | `special.factorial2` | every call | rtol 1e-09 |
 | `special.bernoulli` | every call | rtol 1e-09 |
 | `special.euler` | every call | rtol 1e-09 |
+| `special.jnyn_zeros` | every call | rtol 1e-09 |
+| `special.ai_zeros` | every call | rtol 1e-09 |
+| `special.bi_zeros` | every call | rtol 1e-09 |
 | `special.wofz` | every call | rtol 1e-11 |
 | `special.hankel1` | every call | rtol 1e-11 |
 | `special.hankel2` | every call | rtol 1e-11 |
