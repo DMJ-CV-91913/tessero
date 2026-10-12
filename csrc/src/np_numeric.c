@@ -4217,6 +4217,32 @@ static int r_lmbda(const void *c, const tsr_arg *a, int na, tsr_result *r, int n
     return TSR_OK;
 }
 
+/* scipy.special.y0_zeros/y1_zeros/y1p_zeros: the first nt zeros of Y0 / Y1 / Y1' together with an
+   associated value, returned as complex128 (the zeros are real; scipy wraps them in complex). The
+   value column is Y1 at the zeros of Y0 (= -Y0'), Y1' at the zeros of Y1, and Y1 at the zeros of Y1'. */
+static int yzero_run(tsr_result *r, int bzkind, double nu, int valkind, int64_t nt)
+{
+    if (nt < 1) { fn_set_error("y*_zeros: nt must be >= 1"); return TSR_EARG; }
+    double *tmp = (double *)malloc((size_t)nt * sizeof(double));
+    if (!tmp) return TSR_ENOMEM;
+    int rc = bessel_zeros(bzkind, nu, nt, tmp);
+    if (rc != TSR_OK) { free(tmp); return rc; }
+    double *z = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
+    double *val = (double *)fn_result_array(&r[1], TSR_C128, 1, (int64_t[]){nt});
+    if (!z || !val) { free(tmp); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < nt; i++) {
+        double in[2] = {1.0, tmp[i]}, o[1];
+        if (valkind == 0) tsr_special_yv(NULL, in, o); else tsr_special_yvp(NULL, in, o);
+        z[2 * i] = tmp[i]; z[2 * i + 1] = 0.0;
+        val[2 * i] = o[0]; val[2 * i + 1] = 0.0;
+    }
+    free(tmp);
+    return TSR_OK;
+}
+static int r_y0_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 1, 0.0, 0, roots_argi(a, n, 0)); }
+static int r_y1_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 1, 1.0, 1, roots_argi(a, n, 0)); }
+static int r_y1p_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 3, 1.0, 0, roots_argi(a, n, 0)); }
+
 static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
@@ -4756,6 +4782,9 @@ static const fn_def DEFS[] = {
     ROUTINE("special.pbdv_seq", 2, "v, x", "dv, dp", r_pbdv_seq, NULL, "Parabolic cylinder Dv(x) and derivatives for a sequence of orders (scipy.special.pbdv_seq)."),
     ROUTINE("special.pbvv_seq", 2, "v, x", "vv, vp", r_pbvv_seq, NULL, "Parabolic cylinder Vv(x) and derivatives for a sequence of orders (scipy.special.pbvv_seq)."),
     ROUTINE("special.lmbda", 2, "v, x", "vl, dl", r_lmbda, NULL, "Lambda function L_v(x) and its derivative for a sequence of orders (scipy.special.lmbda)."),
+    ROUTINE("special.y0_zeros", 2, "nt", "z0n, y0pz0n", r_y0_zeros, NULL, "First nt zeros of Y0 and the value of Y0' there (scipy.special.y0_zeros)."),
+    ROUTINE("special.y1_zeros", 2, "nt", "z1n, y1pz1n", r_y1_zeros, NULL, "First nt zeros of Y1 and the value of Y1' there (scipy.special.y1_zeros)."),
+    ROUTINE("special.y1p_zeros", 2, "nt", "z1pn, y1z1pn", r_y1p_zeros, NULL, "First nt zeros of Y1' and the value of Y1 there (scipy.special.y1p_zeros)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
     ROUTINE("special.bernoulli", 1, "n", "out", r_bernoulli, NULL, "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."),

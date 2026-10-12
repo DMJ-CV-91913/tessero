@@ -11707,10 +11707,28 @@
                 "doc": "Bessel function of the second kind of order 0."
             },
             {
+                "name": "y0Zeros",
+                "static": true,
+                "sig": "y0Zeros(mixed $nt): mixed",
+                "doc": "First nt zeros of Y0 and the value of Y0' there (scipy.special.y0_zeros)."
+            },
+            {
                 "name": "y1",
                 "static": true,
                 "sig": "y1(mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Bessel function of the second kind of order 1."
+            },
+            {
+                "name": "y1Zeros",
+                "static": true,
+                "sig": "y1Zeros(mixed $nt): mixed",
+                "doc": "First nt zeros of Y1 and the value of Y1' there (scipy.special.y1_zeros)."
+            },
+            {
+                "name": "y1pZeros",
+                "static": true,
+                "sig": "y1pZeros(mixed $nt): mixed",
+                "doc": "First nt zeros of Y1' and the value of Y1 there (scipy.special.y1p_zeros)."
             },
             {
                 "name": "yn",
@@ -16334,6 +16352,24 @@
                 "name": "lmbda",
                 "static": true,
                 "sig": "lmbda($v, $x)",
+                "doc": ""
+            },
+            {
+                "name": "y0Zeros",
+                "static": true,
+                "sig": "y0Zeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "y1Zeros",
+                "static": true,
+                "sig": "y1Zeros($nt)",
+                "doc": ""
+            },
+            {
+                "name": "y1pZeros",
+                "static": true,
+                "sig": "y1pZeros($nt)",
                 "doc": ""
             },
             {
