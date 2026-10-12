@@ -377,6 +377,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.beip_zeros` | `Tessero\Special::beipZeros()` |
 | `scipy.special.ber` | `Tessero\Special::ber()` |
 | `scipy.special.ber_zeros` | `Tessero\Special::berZeros()` |
+| `scipy.special.bernoulli` | `Tessero\Special::bernoulli()` |
 | `scipy.special.berp` | `Tessero\Special::berp()` |
 | `scipy.special.berp_zeros` | `Tessero\Special::berpZeros()` |
 | `scipy.special.besselpoly` | `Tessero\Special::besselpoly()` |
@@ -427,6 +428,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.erfcx` | `Tessero\Special::erfcx()` |
 | `scipy.special.erfi` | `Tessero\Special::erfi()` |
 | `scipy.special.erfinv` | `Tessero\Special::erfinv()` |
+| `scipy.special.euler` | `Tessero\Special::euler()` |
 | `scipy.special.eval_chebyc` | `Tessero\Special::evalChebyc()` |
 | `scipy.special.eval_chebys` | `Tessero\Special::evalChebys()` |
 | `scipy.special.eval_chebyt` | `Tessero\Special::evalChebyt()` |
@@ -451,6 +453,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.expn` | `Tessero\Special::expn()` |
 | `scipy.special.exprel` | `Tessero\Special::exprel()` |
 | `scipy.special.factorial` | `Tessero\Special::factorial()` |
+| `scipy.special.factorial2` | `Tessero\Special::factorial2()` |
 | `scipy.special.fdtr` | `Tessero\Special::fdtr()` |
 | `scipy.special.fdtrc` | `Tessero\Special::fdtrc()` |
 | `scipy.special.fdtri` | `Tessero\Special::fdtri()` |
