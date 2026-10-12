@@ -81,6 +81,10 @@ def main():
                          call('hankel1', [np.array([0.0, 1.0, 2.0, 0.5, 1.5]), zh])]
     blocks['hankel2'] = [call('hankel2', [1.0, zh]), call('hankel2', [0.0, zh]), call('hankel2', [2.5, zh]),
                          call('hankel2', [np.array([0.0, 1.0, 2.0, 0.5, 1.5]), zh])]
+    blocks['h1vp'] = [call('h1vp', [1.0, zh]), call('h1vp', [0.0, zh]), call('h1vp', [2.5, zh]),
+                      call('h1vp', [np.array([0.0, 1.0, 2.0, 0.5, 1.5]), zh])]
+    blocks['h2vp'] = [call('h2vp', [1.0, zh]), call('h2vp', [0.0, zh]), call('h2vp', [2.5, zh]),
+                      call('h2vp', [np.array([0.0, 1.0, 2.0, 0.5, 1.5]), zh])]
     zl = np.array([1 + 1j, 2 + 0j, 0.5 - 0.5j, 3 + 2j, 10 + 0j, 0.1 + 0.1j])
     blocks['lambertw'] = [call('lambertw', [zl]), call('lambertw', [zl], {'k': 1}),
                           call('lambertw', [zl], {'k': -1}), call('lambertw', [np.array([1 + 0j, 2.7182818 + 0j])])]

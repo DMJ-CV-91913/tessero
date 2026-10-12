@@ -127,6 +127,8 @@ final class Special
     'gdtria' => 'gdtria',
     'gdtrib' => 'gdtrib',
     'gdtrix' => 'gdtrix',
+    'h1vp' => 'h1vp',
+    'h2vp' => 'h2vp',
     'h_roots' => 'hRoots',
     'hankel1' => 'hankel1',
     'hankel1e' => 'hankel1e',
@@ -1435,6 +1437,26 @@ final class Special
     public static function gdtrix(mixed $a, mixed $b, mixed $p, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.gdtrix', [$a, $b, $p], $out);
+    }
+
+    /**
+     * First derivative of the Hankel function of the first kind (scipy.special.h1vp).
+     *
+     * scipy.special.h1vp
+     */
+    public static function h1vp(mixed $v, mixed $z, mixed $n = 1): mixed
+    {
+        return Registry::routine('special.h1vp', [$v, $z, $n]);
+    }
+
+    /**
+     * First derivative of the Hankel function of the second kind (scipy.special.h2vp).
+     *
+     * scipy.special.h2vp
+     */
+    public static function h2vp(mixed $v, mixed $z, mixed $n = 1): mixed
+    {
+        return Registry::routine('special.h2vp', [$v, $z, $n]);
     }
 
     /**

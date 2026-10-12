@@ -4930,6 +4930,16 @@
             "nin": 3,
             "nout": 1
         },
+        "special.h1vp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.h2vp": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.h_roots": {
             "kind": "routine",
             "nin": 0,
