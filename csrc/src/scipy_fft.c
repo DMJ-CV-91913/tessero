@@ -53,6 +53,126 @@ static int fft_run(const tsr_arg *args, int nargs, tsr_result *res, int which, i
     return TSR_OK;
 }
 
+/* ---- FFTLog fast Hankel transform (scipy.fft.fht / ifht / fhtoffset) ---- */
+int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);
+int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);
+void tsr_special_poch(const void *, const double *, double *);
+void tsr_loggamma_cpx(const double *in, double *out);
+
+/* u_m = (kr)^{-i 2m pi/(n dlnr)} 2^q Gamma((mu+1+q+..)/2)/Gamma((mu+1-q-..)/2); see Hamilton (2000). */
+static void fht_coeff(int64_t n, double dln, double mu, double lnkr, double q, int inverse, double *u)
+{
+    const double LN2 = 0.69314718055994530942;
+    const int64_t h = n / 2 + 1;
+    const double xp = (mu + 1.0 + q) / 2.0, xm = (mu + 1.0 - q) / 2.0;
+    for (int64_t m = 0; m < h; m++) {
+        const double y = M_PI * (double)m / ((double)n * dln);
+        double in2[2], vo[2], uo[2];
+        in2[0] = xm; in2[1] = y; tsr_loggamma_cpx(in2, vo);
+        in2[0] = xp; in2[1] = y; tsr_loggamma_cpx(in2, uo);
+        const double re = uo[0] - vo[0] + LN2 * q;
+        const double im = uo[1] + vo[1] + 2.0 * (LN2 - lnkr) * y;
+        const double er = exp(re);
+        u[2 * m] = er * cos(im);
+        u[2 * m + 1] = er * sin(im);
+    }
+    if (n % 2 == 0) u[2 * (h - 1) + 1] = 0.0;
+    if (!isfinite(u[0]) || !isfinite(u[1])) {
+        double pin[2] = { xm, xp - xm }, po[1];
+        tsr_special_poch(NULL, pin, po);
+        u[0] = pow(2.0, q) * po[0];
+        u[1] = 0.0;
+    }
+    if (isinf(u[0]) && !inverse) { u[0] = 0.0; u[1] = 0.0; }
+    else if (u[0] == 0.0 && u[1] == 0.0 && inverse) { u[0] = INFINITY; u[1] = 0.0; }
+}
+
+static int fht_q_rows(int64_t n, int64_t rows, const double *a, const double *u, int inverse, double *out)
+{
+    const int64_t h = n / 2 + 1;
+    double *A = (double *)tsr_alloc(2 * h * (int64_t)sizeof(double));
+    if (!A) return TSR_ENOMEM;
+    for (int64_t r = 0; r < rows; r++) {
+        if (tsr_rfft(n, 1, a + r * n, A) != TSR_OK) { tsr_free(A, 2 * h * (int64_t)sizeof(double)); return TSR_EARG; }
+        for (int64_t m = 0; m < h; m++) {
+            const double Ar = A[2 * m], Ai = A[2 * m + 1], ur = u[2 * m], ui = u[2 * m + 1];
+            if (!inverse) { A[2 * m] = Ar * ur - Ai * ui; A[2 * m + 1] = Ar * ui + Ai * ur; }
+            else { const double d = ur * ur + ui * ui; A[2 * m] = (Ar * ur - Ai * ui) / d; A[2 * m + 1] = (Ar * ui + Ai * ur) / d; }
+        }
+        double *orow = out + r * n;
+        if (tsr_irfft(n, 1, A, orow) != TSR_OK) { tsr_free(A, 2 * h * (int64_t)sizeof(double)); return TSR_EARG; }
+        for (int64_t i = 0; i < n / 2; i++) { const double t = orow[i]; orow[i] = orow[n - 1 - i]; orow[n - 1 - i] = t; }
+    }
+    tsr_free(A, 2 * h * (int64_t)sizeof(double));
+    return TSR_OK;
+}
+
+static double fht_scalar(const tsr_arg *args, int nargs, int i, double def)
+{
+    if (nargs > i && args[i].kind == 1) return args[i].flags & 1 ? (double)args[i].ival : args[i].num;
+    return def;
+}
+
+static int fht_run(const tsr_arg *args, int nargs, tsr_result *res, int inverse)
+{
+    if (nargs < 3 || args[0].kind != 3) { fn_set_error("fht: a must be an array, with dln and mu"); return TSR_EARG; }
+    const tsr_array *A = &args[0].arr;
+    const int64_t n = A->shape[A->ndim - 1];
+    if (n < 1) { fn_set_error("fht: last axis must be non-empty"); return TSR_EARG; }
+    int64_t na;
+    double *a = fn_arg_doubles(&args[0], &na);
+    if (!a) return TSR_ENOMEM;
+    const int64_t rows = na / n;
+    const double dln = fht_scalar(args, nargs, 1, 0.0), mu = fht_scalar(args, nargs, 2, 0.0);
+    const double offset = fht_scalar(args, nargs, 3, 0.0), bias = fht_scalar(args, nargs, 4, 0.0);
+    double *u = (double *)tsr_alloc(2 * (n / 2 + 1) * (int64_t)sizeof(double));
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, A->ndim, A->shape);
+    int rc = TSR_OK;
+    if (!u || !out) { rc = TSR_ENOMEM; goto done; }
+    if (bias != 0.0) {                                   /* input bias */
+        const double jc = (double)(n - 1) / 2.0;
+        for (int64_t r = 0; r < rows; r++)
+            for (int64_t j = 0; j < n; j++) {
+                const double e = inverse ? exp(bias * (((double)j - jc) * dln + offset)) : exp(-bias * ((double)j - jc) * dln);
+                a[r * n + j] *= e;
+            }
+    }
+    fht_coeff(n, dln, mu, offset, bias, inverse, u);
+    rc = fht_q_rows(n, rows, a, u, inverse, out);
+    if (rc == TSR_OK && bias != 0.0) {                   /* output bias */
+        const double jc = (double)(n - 1) / 2.0;
+        for (int64_t r = 0; r < rows; r++)
+            for (int64_t j = 0; j < n; j++) {
+                const double e = inverse ? exp(bias * ((double)j - jc) * dln) : exp(-bias * (((double)j - jc) * dln + offset));
+                out[r * n + j] *= e;
+            }
+    }
+done:
+    if (u) tsr_free(u, 2 * (n / 2 + 1) * (int64_t)sizeof(double));
+    fn_free_doubles(a, na);
+    return rc;
+}
+
+static int r_fht(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return fht_run(args, nargs, res, 0); }
+static int r_ifht(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{ (void)ctx; (void)nres; return fht_run(args, nargs, res, 1); }
+
+static int r_fhtoffset(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const double dln = fht_scalar(args, nargs, 0, 0.0), mu = fht_scalar(args, nargs, 1, 0.0);
+    const double initial = fht_scalar(args, nargs, 2, 0.0), bias = fht_scalar(args, nargs, 3, 0.0);
+    const double LN2 = 0.69314718055994530942, q = bias, lnkr = initial;
+    const double xp = (mu + 1.0 + q) / 2.0, xm = (mu + 1.0 - q) / 2.0, y = M_PI / (2.0 * dln);
+    double in2[2], zp[2], zm[2];
+    in2[0] = xp; in2[1] = y; tsr_loggamma_cpx(in2, zp);
+    in2[0] = xm; in2[1] = y; tsr_loggamma_cpx(in2, zm);
+    const double arg = (LN2 - lnkr) / dln + (zp[1] + zm[1]) / M_PI;
+    fn_result_num(&res[0], lnkr + (arg - round(arg)) * dln);
+    return TSR_OK;
+}
+
 static int r_dct(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return fft_run(args, nargs, res, 0, 0); }
 static int r_idct(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -107,6 +227,9 @@ static int r_idstn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 
 static const fn_def DEFS[] = {
     ROUTINE("scipyfft.dct", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_dct, NULL, "Discrete cosine transform, types 2/3, norm='backward' (scipy.fft.dct)."),
+    ROUTINE("scipyfft.fht", 3, "a, dln, mu, offset=0, bias=0", "A", r_fht, NULL, "Fast Hankel transform via the FFTLog algorithm (scipy.fft.fht)."),
+    ROUTINE("scipyfft.ifht", 3, "A, dln, mu, offset=0, bias=0", "a", r_ifht, NULL, "Inverse fast Hankel transform (scipy.fft.ifht)."),
+    ROUTINE("scipyfft.fhtoffset", 2, "dln, mu, initial=0, bias=0", "offset", r_fhtoffset, NULL, "Optimal low-ringing offset for fht (scipy.fft.fhtoffset)."),
     ROUTINE("scipyfft.idct", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_idct, NULL, "Inverse discrete cosine transform, types 2/3, norm='backward' (scipy.fft.idct)."),
     ROUTINE("scipyfft.dst", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_dst, NULL, "Discrete sine transform, types 2/3, norm='backward' (scipy.fft.dst)."),
     ROUTINE("scipyfft.idst", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_idst, NULL, "Inverse discrete sine transform, types 2/3, norm='backward' (scipy.fft.idst)."),

@@ -3195,6 +3195,16 @@
             "nin": 0,
             "nout": 1
         },
+        "scipyfft.fht": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "scipyfft.fhtoffset": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "scipyfft.idct": {
             "kind": "routine",
             "nin": 0,
@@ -3214,6 +3224,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "scipyfft.ifht": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
         },
         "signal.abcd_normalize": {
             "kind": "routine",

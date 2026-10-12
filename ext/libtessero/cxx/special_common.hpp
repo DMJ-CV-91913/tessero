@@ -50,3 +50,12 @@ inline double fellint_RJ(double x, double y, double z, double p) { double r; ell
     } catch (...) {                                                                       \
         for (int k_ = 0; k_ < (NOUT); k_++) o[k_] = std::numeric_limits<double>::quiet_NaN(); \
     }
+
+
+/* Complex loggamma for the FFTLog fast Hankel transforms (scipy_fft.c r_fht/r_ifht/r_fhtoffset). */
+extern "C" void tsr_loggamma_cpx(const double *in, double *out)
+{
+    std::complex<double> z = xsf::loggamma(std::complex<double>(in[0], in[1]));
+    out[0] = z.real();
+    out[1] = z.imag();
+}

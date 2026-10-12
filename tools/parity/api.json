@@ -5803,6 +5803,18 @@
                 "doc": "n-D discrete sine transform over a 2-D array, types 2/3 (scipy.fft.dstn)."
             },
             {
+                "name": "fht",
+                "static": true,
+                "sig": "fht(mixed $a, mixed $dln, mixed $mu, mixed $offset = 0, mixed $bias = 0): mixed",
+                "doc": "Fast Hankel transform via the FFTLog algorithm (scipy.fft.fht)."
+            },
+            {
+                "name": "fhtoffset",
+                "static": true,
+                "sig": "fhtoffset(mixed $dln, mixed $mu, mixed $initial = 0, mixed $bias = 0): mixed",
+                "doc": "Optimal low-ringing offset for fht (scipy.fft.fhtoffset)."
+            },
+            {
                 "name": "idct",
                 "static": true,
                 "sig": "idct(mixed $x, mixed $type = 2, mixed $n = null, mixed $axis = -1, mixed $norm = null): mixed",
@@ -5825,6 +5837,12 @@
                 "static": true,
                 "sig": "idstn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed",
                 "doc": "n-D inverse discrete sine transform over a 2-D array (scipy.fft.idstn)."
+            },
+            {
+                "name": "ifht",
+                "static": true,
+                "sig": "ifht(mixed $A, mixed $dln, mixed $mu, mixed $offset = 0, mixed $bias = 0): mixed",
+                "doc": "Inverse fast Hankel transform (scipy.fft.ifht)."
             }
         ],
         "constants": [
@@ -21390,6 +21408,24 @@
                 "name": "dct",
                 "static": true,
                 "sig": "dct($x, $type = 2, $n = null, $axis = -1, $norm = null)",
+                "doc": ""
+            },
+            {
+                "name": "fht",
+                "static": true,
+                "sig": "fht($a, $dln, $mu, $offset = 0, $bias = 0)",
+                "doc": ""
+            },
+            {
+                "name": "ifht",
+                "static": true,
+                "sig": "ifht($A, $dln, $mu, $offset = 0, $bias = 0)",
+                "doc": ""
+            },
+            {
+                "name": "fhtoffset",
+                "static": true,
+                "sig": "fhtoffset($dln, $mu, $initial = 0, $bias = 0)",
                 "doc": ""
             },
             {

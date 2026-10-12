@@ -18,11 +18,11 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 43 (100.0 %) | 43 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1173 (78.8 %)** | **1170 (78.6 %)** | 78.8 % / 78.6 % | 99.7 % |
+| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1176 (79.0 %)** | **1173 (78.8 %)** | 79.0 % / 78.8 % | 99.7 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 249 (74.1 %) | 249 (74.1 %) | 74.1 % / 74.1 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 251 (84.5 %) | 251 (84.5 %) | 84.5 % / 84.5 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 90 (97.8 %) | 90 (97.8 %) | 97.8 % / 97.8 % | 100.0 % |
-| &nbsp;&nbsp;scipy.fft | 41 | 6 (14.6 %) | 35 | 32 (91.4 %) | 32 (91.4 %) | 91.4 % / 91.4 % | 100.0 % |
+| &nbsp;&nbsp;scipy.fft | 41 | 6 (14.6 %) | 35 | 35 (100.0 %) | 35 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.optimize | 71 | 5 (7.0 %) | 66 | 32 (48.5 %) | 31 (47.0 %) | 48.5 % / 47.0 % | 96.9 % |
 | &nbsp;&nbsp;scipy.integrate | 33 | 5 (15.2 %) | 28 | 7 (25.0 %) | 7 (25.0 %) | 25.0 % / 25.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.interpolate | 56 | 2 (3.6 %) | 54 | 29 (53.7 %) | 29 (53.7 %) | 53.7 % / 53.7 % | 100.0 % |
@@ -38,7 +38,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 163 (100.0 %) | 163 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 
-The kernel function registry holds 1410 functions; their fixtures pass on the FFI backend for 1407 and on the extension for 1407.
+The kernel function registry holds 1413 functions; their fixtures pass on the FFI backend for 1410 and on the extension for 1410.
 Registry functions without a recorded fixture run: np.cumulativeSimpson, np.cumulativeTrapezoid, special.logSoftmax.
 
 Exclusions by category (definitions in `tools/parity/scope.yaml`):
