@@ -251,6 +251,7 @@ final class Special
     'obl_rad2_cv' => 'oblRad2Cv',
     'owens_t' => 'owensT',
     'p_roots' => 'pRoots',
+    'pbdn_seq' => 'pbdnSeq',
     'pbdv' => 'pbdv',
     'pbdv_seq' => 'pbdvSeq',
     'pbvv' => 'pbvv',
@@ -2762,6 +2763,18 @@ final class Special
     public static function pRoots(mixed $n, mixed $mu = false): mixed
     {
         return Registry::routine('special.p_roots', [$n, $mu]);
+    }
+
+    /**
+     * Complex parabolic cylinder Dn(z) and derivatives for a sequence of orders (scipy.special.pbdn_seq).
+     *
+     * scipy.special.pbdn_seq
+     *
+     * @return mixed one array, or an array keyed by pb, pd when several results are requested
+     */
+    public static function pbdnSeq(mixed $n, mixed $z): mixed
+    {
+        return Registry::routine('special.pbdn_seq', [$n, $z]);
     }
 
     /**
