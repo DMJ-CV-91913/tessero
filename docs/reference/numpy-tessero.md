@@ -496,6 +496,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.j1` | `Tessero\Special::j1()` |
 | `scipy.special.j_roots` | `Tessero\Special::jRoots()` |
 | `scipy.special.jn` | `Tessero\Special::jn()` |
+| `scipy.special.jn_zeros` | `Tessero\Special::jnZeros()` |
+| `scipy.special.jnp_zeros` | `Tessero\Special::jnpZeros()` |
 | `scipy.special.js_roots` | `Tessero\Special::jsRoots()` |
 | `scipy.special.jv` | `Tessero\Special::jv()` |
 | `scipy.special.jve` | `Tessero\Special::jve()` |
@@ -639,6 +641,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.y0` | `Tessero\Special::y0()` |
 | `scipy.special.y1` | `Tessero\Special::y1()` |
 | `scipy.special.yn` | `Tessero\Special::yn()` |
+| `scipy.special.yn_zeros` | `Tessero\Special::ynZeros()` |
+| `scipy.special.ynp_zeros` | `Tessero\Special::ynpZeros()` |
 | `scipy.special.yv` | `Tessero\Special::yv()` |
 | `scipy.special.yve` | `Tessero\Special::yve()` |
 | `scipy.special.yvp` | `Tessero\Special::yvp()` |

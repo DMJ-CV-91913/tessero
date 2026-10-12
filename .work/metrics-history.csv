@@ -224,3 +224,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,scipy.fft fht/ifht/fhtoffset (FFTLog) -- module closed,100.0,100.0,79.0,78.8,100.0,99.7,74.1,74.1,84.5,84.5
 2026-10-12,scipy.special Gauss-Chebyshev roots (chebyt/u/c/s + sh + aliases) + log_softmax credit-fix,100.0,100.0,79.5,79.3,100.0,99.7,76.2,76.2,84.5,84.5
 2026-10-12,scipy.special roots_legendre/hermite/laguerre/hermitenorm/jacobi/gegenbauer/genlaguerre/sh_* + aliases (Golub-Welsch) -- all roots_* closed,100.0,100.0,80.1,79.9,100.0,99.7,78.9,78.9,84.5,84.5
+2026-10-12,scipy.special jn/yn/jnp/ynp_zeros (robust Bessel-zero bracketing),100.0,100.0,80.4,80.2,100.0,99.7,80.1,80.1,84.5,84.5

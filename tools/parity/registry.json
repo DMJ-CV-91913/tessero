@@ -5055,6 +5055,16 @@
             "nin": 2,
             "nout": 1
         },
+        "special.jn_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.jnp_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "special.js_roots": {
             "kind": "routine",
             "nin": 0,
@@ -5768,6 +5778,16 @@
         "special.yn": {
             "kind": "ufunc",
             "nin": 2,
+            "nout": 1
+        },
+        "special.yn_zeros": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "special.ynp_zeros": {
+            "kind": "routine",
+            "nin": 0,
             "nout": 1
         },
         "special.yv": {
