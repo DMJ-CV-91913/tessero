@@ -662,7 +662,10 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.xlog1py` | `Tessero\Special::xlog1py()` |
 | `scipy.special.xlogy` | `Tessero\Special::xlogy()` |
 | `scipy.special.y0` | `Tessero\Special::y0()` |
+| `scipy.special.y0_zeros` | `Tessero\Special::y0Zeros()` |
 | `scipy.special.y1` | `Tessero\Special::y1()` |
+| `scipy.special.y1_zeros` | `Tessero\Special::y1Zeros()` |
+| `scipy.special.y1p_zeros` | `Tessero\Special::y1pZeros()` |
 | `scipy.special.yn` | `Tessero\Special::yn()` |
 | `scipy.special.yn_zeros` | `Tessero\Special::ynZeros()` |
 | `scipy.special.ynp_zeros` | `Tessero\Special::ynpZeros()` |

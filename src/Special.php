@@ -318,7 +318,10 @@ final class Special
     'xlog1py' => 'xlog1py',
     'xlogy' => 'xlogy',
     'y0' => 'y0',
+    'y0_zeros' => 'y0Zeros',
     'y1' => 'y1',
+    'y1_zeros' => 'y1Zeros',
+    'y1p_zeros' => 'y1pZeros',
     'yn' => 'yn',
     'yn_zeros' => 'ynZeros',
     'ynp_zeros' => 'ynpZeros',
@@ -3486,6 +3489,18 @@ final class Special
     }
 
     /**
+     * First nt zeros of Y0 and the value of Y0' there (scipy.special.y0_zeros).
+     *
+     * scipy.special.y0_zeros
+     *
+     * @return mixed one array, or an array keyed by z0n, y0pz0n when several results are requested
+     */
+    public static function y0Zeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.y0_zeros', [$nt]);
+    }
+
+    /**
      * Bessel function of the second kind of order 1.
      *
      * scipy.special.y1
@@ -3493,6 +3508,30 @@ final class Special
     public static function y1(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.y1', [$x], $out);
+    }
+
+    /**
+     * First nt zeros of Y1 and the value of Y1' there (scipy.special.y1_zeros).
+     *
+     * scipy.special.y1_zeros
+     *
+     * @return mixed one array, or an array keyed by z1n, y1pz1n when several results are requested
+     */
+    public static function y1Zeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.y1_zeros', [$nt]);
+    }
+
+    /**
+     * First nt zeros of Y1' and the value of Y1 there (scipy.special.y1p_zeros).
+     *
+     * scipy.special.y1p_zeros
+     *
+     * @return mixed one array, or an array keyed by z1pn, y1z1pn when several results are requested
+     */
+    public static function y1pZeros(mixed $nt): mixed
+    {
+        return Registry::routine('special.y1p_zeros', [$nt]);
     }
 
     /**
