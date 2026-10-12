@@ -21,7 +21,7 @@ ALIAS = {
     "Min": "Tessero\\Optimize\\Minimize", "Root": "Tessero\\Optimize\\Root", "LS": "Tessero\\Optimize\\LeastSquares",
     "LP": "Tessero\\Optimize\\LinearProgramming", "ASG": "Tessero\\Optimize\\Assignment", "Const": "Tessero\\Constants", "Npy": "Tessero\\Io\\Npy", "Int": "Tessero\\Integrate\\Quad", "KD": "Tessero\\Spatial\\KDTree",
     "NpC": "Tessero\\Np", "XNpC": "Tessero\\Ext\\Np",
-    "AO": "Tessero\\ArrayOps",
+    "AO": "Tessero\\ArrayOps", "OP": "Tessero\\OrthoPoly",
     "XN": "Tessero\\Ext\\NDArray", "XM": "Tessero\\Ext\\Math", "XE": "Tessero\\Ext\\Engine",
     "XR": "Tessero\\Ext\\Random\\Generator", "XF": "Tessero\\Ext\\Fft\\Fft", "DT": "Tessero\\Datetime\\Datetime",
 }

@@ -6704,6 +6704,101 @@
         ]
     },
     {
+        "class": "Tessero\\OrthoPoly",
+        "methods": [
+            {
+                "name": "legendre",
+                "static": true,
+                "sig": "legendre(int $n): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "chebyt",
+                "static": true,
+                "sig": "chebyt(int $n): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "chebyu",
+                "static": true,
+                "sig": "chebyu(int $n): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "chebyc",
+                "static": true,
+                "sig": "chebyc(int $n): Tessero\\OrthoPoly1d",
+                "doc": "Chebyshev polynomial of the first kind on [-2, 2]: C_n(x) = 2 T_n(x/2)."
+            },
+            {
+                "name": "chebys",
+                "static": true,
+                "sig": "chebys(int $n): Tessero\\OrthoPoly1d",
+                "doc": "Chebyshev polynomial of the second kind on [-2, 2]: S_n(x) = U_n(x/2)."
+            },
+            {
+                "name": "hermite",
+                "static": true,
+                "sig": "hermite(int $n): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "hermitenorm",
+                "static": true,
+                "sig": "hermitenorm(int $n): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "laguerre",
+                "static": true,
+                "sig": "laguerre(int $n): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "genlaguerre",
+                "static": true,
+                "sig": "genlaguerre(int $n, float $alpha): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "gegenbauer",
+                "static": true,
+                "sig": "gegenbauer(int $n, float $alpha): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "jacobi",
+                "static": true,
+                "sig": "jacobi(int $n, float $alpha, float $beta): Tessero\\OrthoPoly1d",
+                "doc": ""
+            },
+            {
+                "name": "shLegendre",
+                "static": true,
+                "sig": "shLegendre(int $n): Tessero\\OrthoPoly1d",
+                "doc": "Shifted Legendre polynomial on [0, 1]: P*_n(x) = P_n(2x - 1)."
+            },
+            {
+                "name": "shChebyt",
+                "static": true,
+                "sig": "shChebyt(int $n): Tessero\\OrthoPoly1d",
+                "doc": "Shifted Chebyshev polynomial of the first kind on [0, 1]."
+            },
+            {
+                "name": "shChebyu",
+                "static": true,
+                "sig": "shChebyu(int $n): Tessero\\OrthoPoly1d",
+                "doc": "Shifted Chebyshev polynomial of the second kind on [0, 1]."
+            },
+            {
+                "name": "shJacobi",
+                "static": true,
+                "sig": "shJacobi(int $n, float $p, float $q): Tessero\\OrthoPoly1d",
+                "doc": "Shifted Jacobi polynomial (standard form, monic) on [0, 1]."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {

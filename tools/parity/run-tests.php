@@ -719,6 +719,44 @@ foreach ($files as $file) {
         }
         continue;
     }
+    if (isset($data['orthopoly_cases'])) {                   // scipy.special polynomial factories -> OrthoPoly1d callables
+        foreach ($data['orthopoly_cases'] as $c) {
+            $fn = $c['fn'];
+            $key = "special.{$fn}";
+            $a = $c['args'];
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $p = match ($fn) {
+                    'legendre' => \Tessero\OrthoPoly::legendre((int) $a[0]),
+                    'chebyt' => \Tessero\OrthoPoly::chebyt((int) $a[0]),
+                    'chebyu' => \Tessero\OrthoPoly::chebyu((int) $a[0]),
+                    'chebyc' => \Tessero\OrthoPoly::chebyc((int) $a[0]),
+                    'chebys' => \Tessero\OrthoPoly::chebys((int) $a[0]),
+                    'hermite' => \Tessero\OrthoPoly::hermite((int) $a[0]),
+                    'hermitenorm' => \Tessero\OrthoPoly::hermitenorm((int) $a[0]),
+                    'laguerre' => \Tessero\OrthoPoly::laguerre((int) $a[0]),
+                    'genlaguerre' => \Tessero\OrthoPoly::genlaguerre((int) $a[0], (float) $a[1]),
+                    'gegenbauer' => \Tessero\OrthoPoly::gegenbauer((int) $a[0], (float) $a[1]),
+                    'jacobi' => \Tessero\OrthoPoly::jacobi((int) $a[0], (float) $a[1], (float) $a[2]),
+                    'sh_legendre' => \Tessero\OrthoPoly::shLegendre((int) $a[0]),
+                    'sh_chebyt' => \Tessero\OrthoPoly::shChebyt((int) $a[0]),
+                    'sh_chebyu' => \Tessero\OrthoPoly::shChebyu((int) $a[0]),
+                    'sh_jacobi' => \Tessero\OrthoPoly::shJacobi((int) $a[0], (float) $a[1], (float) $a[2]),
+                };
+                $ok = vecClose($p->c, array_map('floatval', $c['c']), $rtol)
+                    && vecClose($p($c['xs']), array_map('floatval', $c['ys']), $rtol);
+                if (! $ok) { $msg = 'coefficients or evaluation did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
     if ($module === 'constants') {                           // scipy.constants: scalar constants + helper functions
         $allok = true;
         foreach ($data['values'] as $name => $v) {
