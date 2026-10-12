@@ -389,6 +389,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.btdtrib` | `Tessero\Special::btdtrib()` |
 | `scipy.special.c_roots` | `Tessero\Special::cRoots()` |
 | `scipy.special.cbrt` | `Tessero\Special::cbrt()` |
+| `scipy.special.cg_roots` | `Tessero\Special::cgRoots()` |
 | `scipy.special.chdtr` | `Tessero\Special::chdtr()` |
 | `scipy.special.chdtrc` | `Tessero\Special::chdtrc()` |
 | `scipy.special.chdtri` | `Tessero\Special::chdtri()` |
@@ -463,10 +464,12 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.gdtria` | `Tessero\Special::gdtria()` |
 | `scipy.special.gdtrib` | `Tessero\Special::gdtrib()` |
 | `scipy.special.gdtrix` | `Tessero\Special::gdtrix()` |
+| `scipy.special.h_roots` | `Tessero\Special::hRoots()` |
 | `scipy.special.hankel1` | `Tessero\Special::hankel1()` |
 | `scipy.special.hankel1e` | `Tessero\Special::hankel1e()` |
 | `scipy.special.hankel2` | `Tessero\Special::hankel2()` |
 | `scipy.special.hankel2e` | `Tessero\Special::hankel2e()` |
+| `scipy.special.he_roots` | `Tessero\Special::heRoots()` |
 | `scipy.special.huber` | `Tessero\Special::huber()` |
 | `scipy.special.hyp0f1` | `Tessero\Special::hyp0f1()` |
 | `scipy.special.hyp1f1` | `Tessero\Special::hyp1f1()` |
@@ -491,7 +494,9 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.ivp` | `Tessero\Special::ivp()` |
 | `scipy.special.j0` | `Tessero\Special::j0()` |
 | `scipy.special.j1` | `Tessero\Special::j1()` |
+| `scipy.special.j_roots` | `Tessero\Special::jRoots()` |
 | `scipy.special.jn` | `Tessero\Special::jn()` |
+| `scipy.special.js_roots` | `Tessero\Special::jsRoots()` |
 | `scipy.special.jv` | `Tessero\Special::jv()` |
 | `scipy.special.jve` | `Tessero\Special::jve()` |
 | `scipy.special.jvp` | `Tessero\Special::jvp()` |
@@ -511,6 +516,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.kv` | `Tessero\Special::kv()` |
 | `scipy.special.kve` | `Tessero\Special::kve()` |
 | `scipy.special.kvp` | `Tessero\Special::kvp()` |
+| `scipy.special.l_roots` | `Tessero\Special::lRoots()` |
+| `scipy.special.la_roots` | `Tessero\Special::laRoots()` |
 | `scipy.special.lambertw` | `Tessero\Special::lambertw()` |
 | `scipy.special.log1p` | `Tessero\Special::log1p()` |
 | `scipy.special.log_expit` | `Tessero\Special::logExpit()` |
@@ -557,6 +564,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.obl_rad2` | `Tessero\Special::oblRad2()` |
 | `scipy.special.obl_rad2_cv` | `Tessero\Special::oblRad2Cv()` |
 | `scipy.special.owens_t` | `Tessero\Special::owensT()` |
+| `scipy.special.p_roots` | `Tessero\Special::pRoots()` |
 | `scipy.special.pbdv` | `Tessero\Special::pbdv()` |
 | `scipy.special.pbvv` | `Tessero\Special::pbvv()` |
 | `scipy.special.pbwa` | `Tessero\Special::pbwa()` |
@@ -575,6 +583,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.pro_rad1_cv` | `Tessero\Special::proRad1Cv()` |
 | `scipy.special.pro_rad2` | `Tessero\Special::proRad2()` |
 | `scipy.special.pro_rad2_cv` | `Tessero\Special::proRad2Cv()` |
+| `scipy.special.ps_roots` | `Tessero\Special::psRoots()` |
 | `scipy.special.pseudo_huber` | `Tessero\Special::pseudoHuber()` |
 | `scipy.special.psi` | `Tessero\Special::psi()` |
 | `scipy.special.radian` | `Tessero\Special::radian()` |
@@ -584,8 +593,17 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.roots_chebys` | `Tessero\Special::rootsChebys()` |
 | `scipy.special.roots_chebyt` | `Tessero\Special::rootsChebyt()` |
 | `scipy.special.roots_chebyu` | `Tessero\Special::rootsChebyu()` |
+| `scipy.special.roots_gegenbauer` | `Tessero\Special::rootsGegenbauer()` |
+| `scipy.special.roots_genlaguerre` | `Tessero\Special::rootsGenlaguerre()` |
+| `scipy.special.roots_hermite` | `Tessero\Special::rootsHermite()` |
+| `scipy.special.roots_hermitenorm` | `Tessero\Special::rootsHermitenorm()` |
+| `scipy.special.roots_jacobi` | `Tessero\Special::rootsJacobi()` |
+| `scipy.special.roots_laguerre` | `Tessero\Special::rootsLaguerre()` |
+| `scipy.special.roots_legendre` | `Tessero\Special::rootsLegendre()` |
 | `scipy.special.roots_sh_chebyt` | `Tessero\Special::rootsShChebyt()` |
 | `scipy.special.roots_sh_chebyu` | `Tessero\Special::rootsShChebyu()` |
+| `scipy.special.roots_sh_jacobi` | `Tessero\Special::rootsShJacobi()` |
+| `scipy.special.roots_sh_legendre` | `Tessero\Special::rootsShLegendre()` |
 | `scipy.special.round` | `Tessero\Special::round()` |
 | `scipy.special.s_roots` | `Tessero\Special::sRoots()` |
 | `scipy.special.shichi` | `Tessero\Special::shichi()` |

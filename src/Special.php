@@ -45,6 +45,7 @@ final class Special
     'btdtrib' => 'btdtrib',
     'c_roots' => 'cRoots',
     'cbrt' => 'cbrt',
+    'cg_roots' => 'cgRoots',
     'chdtr' => 'chdtr',
     'chdtrc' => 'chdtrc',
     'chdtri' => 'chdtri',
@@ -119,10 +120,12 @@ final class Special
     'gdtria' => 'gdtria',
     'gdtrib' => 'gdtrib',
     'gdtrix' => 'gdtrix',
+    'h_roots' => 'hRoots',
     'hankel1' => 'hankel1',
     'hankel1e' => 'hankel1e',
     'hankel2' => 'hankel2',
     'hankel2e' => 'hankel2e',
+    'he_roots' => 'heRoots',
     'huber' => 'huber',
     'hyp0f1' => 'hyp0f1',
     'hyp1f1' => 'hyp1f1',
@@ -147,7 +150,9 @@ final class Special
     'ivp' => 'ivp',
     'j0' => 'j0',
     'j1' => 'j1',
+    'j_roots' => 'jRoots',
     'jn' => 'jn',
+    'js_roots' => 'jsRoots',
     'jv' => 'jv',
     'jve' => 'jve',
     'jvp' => 'jvp',
@@ -167,6 +172,8 @@ final class Special
     'kv' => 'kv',
     'kve' => 'kve',
     'kvp' => 'kvp',
+    'l_roots' => 'lRoots',
+    'la_roots' => 'laRoots',
     'lambertw' => 'lambertw',
     'log1p' => 'log1p',
     'log_expit' => 'logExpit',
@@ -213,6 +220,7 @@ final class Special
     'obl_rad2' => 'oblRad2',
     'obl_rad2_cv' => 'oblRad2Cv',
     'owens_t' => 'owensT',
+    'p_roots' => 'pRoots',
     'pbdv' => 'pbdv',
     'pbvv' => 'pbvv',
     'pbwa' => 'pbwa',
@@ -231,6 +239,7 @@ final class Special
     'pro_rad1_cv' => 'proRad1Cv',
     'pro_rad2' => 'proRad2',
     'pro_rad2_cv' => 'proRad2Cv',
+    'ps_roots' => 'psRoots',
     'pseudo_huber' => 'pseudoHuber',
     'psi' => 'psi',
     'radian' => 'radian',
@@ -240,8 +249,17 @@ final class Special
     'roots_chebys' => 'rootsChebys',
     'roots_chebyt' => 'rootsChebyt',
     'roots_chebyu' => 'rootsChebyu',
+    'roots_gegenbauer' => 'rootsGegenbauer',
+    'roots_genlaguerre' => 'rootsGenlaguerre',
+    'roots_hermite' => 'rootsHermite',
+    'roots_hermitenorm' => 'rootsHermitenorm',
+    'roots_jacobi' => 'rootsJacobi',
+    'roots_laguerre' => 'rootsLaguerre',
+    'roots_legendre' => 'rootsLegendre',
     'roots_sh_chebyt' => 'rootsShChebyt',
     'roots_sh_chebyu' => 'rootsShChebyu',
+    'roots_sh_jacobi' => 'rootsShJacobi',
+    'roots_sh_legendre' => 'rootsShLegendre',
     'round' => 'round',
     's_roots' => 'sRoots',
     'shichi' => 'shichi',
@@ -574,6 +592,18 @@ final class Special
     public static function cbrt(mixed $x, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.cbrt', [$x], $out);
+    }
+
+    /**
+     * Alias of roots_gegenbauer (scipy.special.cg_roots).
+     *
+     * scipy.special.cg_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function cgRoots(mixed $n, mixed $alpha, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.cg_roots', [$n, $alpha, $mu]);
     }
 
     /**
@@ -1321,6 +1351,18 @@ final class Special
     }
 
     /**
+     * Alias of roots_hermite (scipy.special.h_roots).
+     *
+     * scipy.special.h_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function hRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.h_roots', [$n, $mu]);
+    }
+
+    /**
      * Hankel function of the first kind (scipy.special.hankel1).
      *
      * scipy.special.hankel1
@@ -1358,6 +1400,18 @@ final class Special
     public static function hankel2e(mixed $v, mixed $z): mixed
     {
         return Registry::routine('special.hankel2e', [$v, $z]);
+    }
+
+    /**
+     * Alias of roots_hermitenorm (scipy.special.he_roots).
+     *
+     * scipy.special.he_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function heRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.he_roots', [$n, $mu]);
     }
 
     /**
@@ -1611,6 +1665,18 @@ final class Special
     }
 
     /**
+     * Alias of roots_jacobi (scipy.special.j_roots).
+     *
+     * scipy.special.j_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function jRoots(mixed $n, mixed $alpha, mixed $beta, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.j_roots', [$n, $alpha, $beta, $mu]);
+    }
+
+    /**
      * Bessel function of the first kind of real order and complex argument (alias of jv).
      *
      * scipy.special.jn
@@ -1618,6 +1684,18 @@ final class Special
     public static function jn(mixed $n, mixed $z, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.jn', [$n, $z], $out);
+    }
+
+    /**
+     * Alias of roots_sh_jacobi (scipy.special.js_roots).
+     *
+     * scipy.special.js_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function jsRoots(mixed $n, mixed $p1, mixed $q1, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.js_roots', [$n, $p1, $q1, $mu]);
     }
 
     /**
@@ -1810,6 +1888,30 @@ final class Special
     public static function kvp(mixed $v, mixed $z, ?NDArray $out = null): NDArray|float
     {
         return Registry::ufunc('special.kvp', [$v, $z], $out);
+    }
+
+    /**
+     * Alias of roots_laguerre (scipy.special.l_roots).
+     *
+     * scipy.special.l_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function lRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.l_roots', [$n, $mu]);
+    }
+
+    /**
+     * Alias of roots_genlaguerre (scipy.special.la_roots).
+     *
+     * scipy.special.la_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function laRoots(mixed $n, mixed $alpha, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.la_roots', [$n, $alpha, $mu]);
     }
 
     /**
@@ -2297,6 +2399,18 @@ final class Special
     }
 
     /**
+     * Alias of roots_legendre (scipy.special.p_roots).
+     *
+     * scipy.special.p_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function pRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.p_roots', [$n, $mu]);
+    }
+
+    /**
      * Parabolic cylinder function D.
      *
      * scipy.special.pbdv
@@ -2495,6 +2609,18 @@ final class Special
     }
 
     /**
+     * Alias of roots_sh_legendre (scipy.special.ps_roots).
+     *
+     * scipy.special.ps_roots
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function psRoots(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.ps_roots', [$n, $mu]);
+    }
+
+    /**
      * Pseudo-Huber loss function.
      *
      * scipy.special.pseudo_huber
@@ -2593,6 +2719,90 @@ final class Special
     }
 
     /**
+     * Gauss-Gegenbauer quadrature (scipy.special.roots_gegenbauer).
+     *
+     * scipy.special.roots_gegenbauer
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsGegenbauer(mixed $n, mixed $alpha, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_gegenbauer', [$n, $alpha, $mu]);
+    }
+
+    /**
+     * generalized Gauss-Laguerre quadrature (scipy.special.roots_genlaguerre).
+     *
+     * scipy.special.roots_genlaguerre
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsGenlaguerre(mixed $n, mixed $alpha, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_genlaguerre', [$n, $alpha, $mu]);
+    }
+
+    /**
+     * Gauss-Hermite (physicists) quadrature (scipy.special.roots_hermite).
+     *
+     * scipy.special.roots_hermite
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsHermite(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_hermite', [$n, $mu]);
+    }
+
+    /**
+     * Gauss-Hermite (probabilists) quadrature (scipy.special.roots_hermitenorm).
+     *
+     * scipy.special.roots_hermitenorm
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsHermitenorm(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_hermitenorm', [$n, $mu]);
+    }
+
+    /**
+     * Gauss-Jacobi quadrature (scipy.special.roots_jacobi).
+     *
+     * scipy.special.roots_jacobi
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsJacobi(mixed $n, mixed $alpha, mixed $beta, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_jacobi', [$n, $alpha, $beta, $mu]);
+    }
+
+    /**
+     * Gauss-Laguerre quadrature (scipy.special.roots_laguerre).
+     *
+     * scipy.special.roots_laguerre
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsLaguerre(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_laguerre', [$n, $mu]);
+    }
+
+    /**
+     * Gauss-Legendre quadrature (scipy.special.roots_legendre).
+     *
+     * scipy.special.roots_legendre
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsLegendre(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_legendre', [$n, $mu]);
+    }
+
+    /**
      * Shifted Gauss-Chebyshev 1st-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyt).
      *
      * scipy.special.roots_sh_chebyt
@@ -2614,6 +2824,30 @@ final class Special
     public static function rootsShChebyu(mixed $n, mixed $mu = false): mixed
     {
         return Registry::routine('special.roots_sh_chebyu', [$n, $mu]);
+    }
+
+    /**
+     * shifted Gauss-Jacobi on [0, 1] quadrature (scipy.special.roots_sh_jacobi).
+     *
+     * scipy.special.roots_sh_jacobi
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsShJacobi(mixed $n, mixed $p1, mixed $q1, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_sh_jacobi', [$n, $p1, $q1, $mu]);
+    }
+
+    /**
+     * shifted Gauss-Legendre on [0, 1] quadrature (scipy.special.roots_sh_legendre).
+     *
+     * scipy.special.roots_sh_legendre
+     *
+     * @return mixed one array, or an array keyed by x, w when several results are requested
+     */
+    public static function rootsShLegendre(mixed $n, mixed $mu = false): mixed
+    {
+        return Registry::routine('special.roots_sh_legendre', [$n, $mu]);
     }
 
     /**

@@ -9903,6 +9903,12 @@
                 "doc": "Element-wise cube root of `x`."
             },
             {
+                "name": "cgRoots",
+                "static": true,
+                "sig": "cgRoots(mixed $n, mixed $alpha, mixed $mu = false): mixed",
+                "doc": "Alias of roots_gegenbauer (scipy.special.cg_roots)."
+            },
+            {
                 "name": "chdtr",
                 "static": true,
                 "sig": "chdtr(mixed $v, mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -10347,6 +10353,12 @@
                 "doc": "Inverse of `gdtr` vs x."
             },
             {
+                "name": "hRoots",
+                "static": true,
+                "sig": "hRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_hermite (scipy.special.h_roots)."
+            },
+            {
                 "name": "hankel1",
                 "static": true,
                 "sig": "hankel1(mixed $v, mixed $z): mixed",
@@ -10369,6 +10381,12 @@
                 "static": true,
                 "sig": "hankel2e(mixed $v, mixed $z): mixed",
                 "doc": "Exponentially scaled Hankel function of the second kind (scipy.special.hankel2e)."
+            },
+            {
+                "name": "heRoots",
+                "static": true,
+                "sig": "heRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_hermitenorm (scipy.special.he_roots)."
             },
             {
                 "name": "huber",
@@ -10515,10 +10533,22 @@
                 "doc": "Bessel function of the first kind of order 1."
             },
             {
+                "name": "jRoots",
+                "static": true,
+                "sig": "jRoots(mixed $n, mixed $alpha, mixed $beta, mixed $mu = false): mixed",
+                "doc": "Alias of roots_jacobi (scipy.special.j_roots)."
+            },
+            {
                 "name": "jn",
                 "static": true,
                 "sig": "jn(mixed $n, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "Bessel function of the first kind of real order and complex argument (alias of jv)."
+            },
+            {
+                "name": "jsRoots",
+                "static": true,
+                "sig": "jsRoots(mixed $n, mixed $p1, mixed $q1, mixed $mu = false): mixed",
+                "doc": "Alias of roots_sh_jacobi (scipy.special.js_roots)."
             },
             {
                 "name": "jv",
@@ -10633,6 +10663,18 @@
                 "static": true,
                 "sig": "kvp(mixed $v, mixed $z, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
                 "doc": "First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1)."
+            },
+            {
+                "name": "lRoots",
+                "static": true,
+                "sig": "lRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_laguerre (scipy.special.l_roots)."
+            },
+            {
+                "name": "laRoots",
+                "static": true,
+                "sig": "laRoots(mixed $n, mixed $alpha, mixed $mu = false): mixed",
+                "doc": "Alias of roots_genlaguerre (scipy.special.la_roots)."
             },
             {
                 "name": "lambertw",
@@ -10911,6 +10953,12 @@
                 "doc": "Owen's T Function."
             },
             {
+                "name": "pRoots",
+                "static": true,
+                "sig": "pRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_legendre (scipy.special.p_roots)."
+            },
+            {
                 "name": "pbdv",
                 "static": true,
                 "sig": "pbdv(mixed $v, mixed $x, ?array $out = null): array",
@@ -11019,6 +11067,12 @@
                 "doc": "Prolate spheroidal radial function pro_rad2 for precomputed characteristic value."
             },
             {
+                "name": "psRoots",
+                "static": true,
+                "sig": "psRoots(mixed $n, mixed $mu = false): mixed",
+                "doc": "Alias of roots_sh_legendre (scipy.special.ps_roots)."
+            },
+            {
                 "name": "pseudoHuber",
                 "static": true,
                 "sig": "pseudoHuber(mixed $delta, mixed $r, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -11073,6 +11127,48 @@
                 "doc": "Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu)."
             },
             {
+                "name": "rootsGegenbauer",
+                "static": true,
+                "sig": "rootsGegenbauer(mixed $n, mixed $alpha, mixed $mu = false): mixed",
+                "doc": "Gauss-Gegenbauer quadrature (scipy.special.roots_gegenbauer)."
+            },
+            {
+                "name": "rootsGenlaguerre",
+                "static": true,
+                "sig": "rootsGenlaguerre(mixed $n, mixed $alpha, mixed $mu = false): mixed",
+                "doc": "generalized Gauss-Laguerre quadrature (scipy.special.roots_genlaguerre)."
+            },
+            {
+                "name": "rootsHermite",
+                "static": true,
+                "sig": "rootsHermite(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Hermite (physicists) quadrature (scipy.special.roots_hermite)."
+            },
+            {
+                "name": "rootsHermitenorm",
+                "static": true,
+                "sig": "rootsHermitenorm(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Hermite (probabilists) quadrature (scipy.special.roots_hermitenorm)."
+            },
+            {
+                "name": "rootsJacobi",
+                "static": true,
+                "sig": "rootsJacobi(mixed $n, mixed $alpha, mixed $beta, mixed $mu = false): mixed",
+                "doc": "Gauss-Jacobi quadrature (scipy.special.roots_jacobi)."
+            },
+            {
+                "name": "rootsLaguerre",
+                "static": true,
+                "sig": "rootsLaguerre(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Laguerre quadrature (scipy.special.roots_laguerre)."
+            },
+            {
+                "name": "rootsLegendre",
+                "static": true,
+                "sig": "rootsLegendre(mixed $n, mixed $mu = false): mixed",
+                "doc": "Gauss-Legendre quadrature (scipy.special.roots_legendre)."
+            },
+            {
                 "name": "rootsShChebyt",
                 "static": true,
                 "sig": "rootsShChebyt(mixed $n, mixed $mu = false): mixed",
@@ -11083,6 +11179,18 @@
                 "static": true,
                 "sig": "rootsShChebyu(mixed $n, mixed $mu = false): mixed",
                 "doc": "Shifted Gauss-Chebyshev 2nd-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyu)."
+            },
+            {
+                "name": "rootsShJacobi",
+                "static": true,
+                "sig": "rootsShJacobi(mixed $n, mixed $p1, mixed $q1, mixed $mu = false): mixed",
+                "doc": "shifted Gauss-Jacobi on [0, 1] quadrature (scipy.special.roots_sh_jacobi)."
+            },
+            {
+                "name": "rootsShLegendre",
+                "static": true,
+                "sig": "rootsShLegendre(mixed $n, mixed $mu = false): mixed",
+                "doc": "shifted Gauss-Legendre on [0, 1] quadrature (scipy.special.roots_sh_legendre)."
             },
             {
                 "name": "round",
@@ -15892,6 +16000,114 @@
                 "name": "kelvin",
                 "static": true,
                 "sig": "kelvin($x)",
+                "doc": ""
+            },
+            {
+                "name": "rootsLegendre",
+                "static": true,
+                "sig": "rootsLegendre($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "pRoots",
+                "static": true,
+                "sig": "pRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsHermite",
+                "static": true,
+                "sig": "rootsHermite($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "hRoots",
+                "static": true,
+                "sig": "hRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsLaguerre",
+                "static": true,
+                "sig": "rootsLaguerre($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "lRoots",
+                "static": true,
+                "sig": "lRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsHermitenorm",
+                "static": true,
+                "sig": "rootsHermitenorm($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "heRoots",
+                "static": true,
+                "sig": "heRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsJacobi",
+                "static": true,
+                "sig": "rootsJacobi($n, $alpha, $beta, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "jRoots",
+                "static": true,
+                "sig": "jRoots($n, $alpha, $beta, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsGegenbauer",
+                "static": true,
+                "sig": "rootsGegenbauer($n, $alpha, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "cgRoots",
+                "static": true,
+                "sig": "cgRoots($n, $alpha, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsGenlaguerre",
+                "static": true,
+                "sig": "rootsGenlaguerre($n, $alpha, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "laRoots",
+                "static": true,
+                "sig": "laRoots($n, $alpha, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsShLegendre",
+                "static": true,
+                "sig": "rootsShLegendre($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "psRoots",
+                "static": true,
+                "sig": "psRoots($n, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "rootsShJacobi",
+                "static": true,
+                "sig": "rootsShJacobi($n, $p1, $q1, $mu = false)",
+                "doc": ""
+            },
+            {
+                "name": "jsRoots",
+                "static": true,
+                "sig": "jsRoots($n, $p1, $q1, $mu = false)",
                 "doc": ""
             }
         ]
