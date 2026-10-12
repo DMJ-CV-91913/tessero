@@ -3984,6 +3984,30 @@ static int r_factorial2(const void *c, const tsr_arg *args, int nargs, tsr_resul
     return TSR_OK;
 }
 
+/* scipy.special.factorialk(n, k): the order-k multifactorial, element-wise over non-negative integer n
+   with scalar integer k >= 1 (exact=False / extend='zero'). The closed form for n = m*k + r (r = n % k) is
+   k^((n-r)/k) * gamma(n/k + 1) / gamma(r/k + 1) * max(r, 1); n < 0 gives 0. */
+static int r_factorialk(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)c; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("factorialk: n must be an array"); return TSR_ETYPE; }
+    int64_t k = (nargs > 1 && args[1].kind == 1) ? (args[1].flags & 1 ? args[1].ival : (int64_t)args[1].num) : 0;
+    if (k < 1) { fn_set_error("factorialk: k must be a positive integer"); return TSR_EARG; }
+    int64_t na; double *n = fn_arg_doubles(&args[0], &na);
+    if (!n) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, args[0].arr.ndim, args[0].arr.shape);
+    if (!out) { fn_free_doubles(n, na); return TSR_ENOMEM; }
+    const double kd = (double)k;
+    for (int64_t i = 0; i < na; i++) {
+        double v = n[i];
+        if (v < 0.0) { out[i] = 0.0; continue; }
+        double rr = (double)(((int64_t)v) % k);
+        out[i] = pow(kd, (v - rr) / kd) * tgamma(v / kd + 1.0) / tgamma(rr / kd + 1.0) * fmax(rr, 1.0);
+    }
+    fn_free_doubles(n, na);
+    return TSR_OK;
+}
+
 /* scipy.special.bernoulli(n): B_0..B_n via B_m = -1/(m+1) sum_{k<m} C(m+1,k) B_k. */
 static int r_bernoulli(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -4914,6 +4938,7 @@ static const fn_def DEFS[] = {
     ROUTINE("special.pbdn_seq", 2, "n, z", "pb, pd", r_pbdn_seq, NULL, "Complex parabolic cylinder Dn(z) and derivatives for a sequence of orders (scipy.special.pbdn_seq)."),
     ROUTINE("special.multigammaln", 1, "a, d", "res", r_multigammaln, NULL, "Log of the multivariate gamma function (scipy.special.multigammaln)."),
     ROUTINE("special.factorial2", 1, "n", "out", r_factorial2, NULL, "Double factorial n!! (scipy.special.factorial2, exact=False)."),
+    ROUTINE("special.factorialk", 1, "n, k", "out", r_factorialk, NULL, "Order-k multifactorial (scipy.special.factorialk, exact=False)."),
     ROUTINE("special.bernoulli", 1, "n", "out", r_bernoulli, NULL, "The first n+1 Bernoulli numbers (scipy.special.bernoulli)."),
     ROUTINE("special.euler", 1, "n", "out", r_euler, NULL, "The first n+1 Euler numbers (scipy.special.euler)."),
     ROUTINE("special.roots_chebyt", 2, "n, mu=False", "x, w", r_roots_chebyt, NULL, "Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt)."),

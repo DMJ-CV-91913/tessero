@@ -241,3 +241,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,scipy.special erf_zeros + fresnel zeros,100.0,100.0,84.4,84.2,100.0,99.8,97.9,97.9,84.5,84.5
 2026-10-12,scipy.special pbdn_seq,100.0,100.0,84.5,84.3,100.0,99.8,98.2,98.2,84.5,84.5
 2026-10-12,scipy.special sph_harm_y_all,100.0,100.0,84.5,84.3,100.0,99.8,98.5,98.5,84.5,84.5
+2026-10-12,scipy.special factorialk,100.0,100.0,84.6,84.4,100.0,99.8,98.8,98.8,84.5,84.5

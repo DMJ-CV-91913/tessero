@@ -10483,6 +10483,12 @@
                 "doc": "Double factorial n!! (scipy.special.factorial2, exact=False)."
             },
             {
+                "name": "factorialk",
+                "static": true,
+                "sig": "factorialk(mixed $n, mixed $k): mixed",
+                "doc": "Order-k multifactorial (scipy.special.factorialk, exact=False)."
+            },
+            {
                 "name": "fdtr",
                 "static": true,
                 "sig": "fdtr(mixed $dfn, mixed $dfd, mixed $x, ?Tessero\\NDArray $out = null): Tessero\\NDArray|float",
@@ -16496,6 +16502,12 @@
                 "name": "factorial2",
                 "static": true,
                 "sig": "factorial2($n)",
+                "doc": ""
+            },
+            {
+                "name": "factorialk",
+                "static": true,
+                "sig": "factorialk($n, $k)",
                 "doc": ""
             },
             {

@@ -1059,6 +1059,7 @@
         "special.exprel": "pass",
         "special.factorial": "pass",
         "special.factorial2": "pass",
+        "special.factorialk": "pass",
         "special.fdtr": "pass",
         "special.fdtrc": "pass",
         "special.fdtri": "pass",
@@ -3184,7 +3185,8 @@
             "special.fresnelc_zeros": 0,
             "special.fresnels_zeros": 0,
             "special.pbdn_seq": 0,
-            "special.sph_harm_y_all": null
+            "special.sph_harm_y_all": null,
+            "special.factorialk": 8.120488408686846e-16
         },
         "ext": {
             "np.median": 0,
@@ -4777,7 +4779,8 @@
             "special.fresnelc_zeros": 0,
             "special.fresnels_zeros": 0,
             "special.pbdn_seq": 0,
-            "special.sph_harm_y_all": null
+            "special.sph_harm_y_all": null,
+            "special.factorialk": 8.120488408686846e-16
         }
     },
     "ext": {
@@ -5840,6 +5843,7 @@
         "special.exprel": "pass",
         "special.factorial": "pass",
         "special.factorial2": "pass",
+        "special.factorialk": "pass",
         "special.fdtr": "pass",
         "special.fdtrc": "pass",
         "special.fdtri": "pass",
