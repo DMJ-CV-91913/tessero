@@ -452,6 +452,11 @@ legacy:
     convert_temperature: {ffi: [Const::convertTemperature], ext: [Const::convertTemperature], fixtures: [constants.convert_temperature]}
     lambda2nu: {ffi: [Const::lambda2nu], ext: [Const::lambda2nu], fixtures: [constants.lambda2nu]}
     nu2lambda: {ffi: [Const::nu2lambda], ext: [Const::nu2lambda], fixtures: [constants.nu2lambda]}
+    value: {ffi: [Const::value], ext: [Const::value], fixtures: [constants.value]}
+    unit: {ffi: [Const::unit], ext: [Const::unit], fixtures: [constants.unit]}
+    precision: {ffi: [Const::precision], ext: [Const::precision], fixtures: [constants.precision]}
+    find: {ffi: [Const::find], ext: [Const::find], fixtures: [constants.find]}
+    physical_constants: {ffi: [Const::physicalConstants], ext: [Const::physicalConstants], fixtures: [constants.physical_constants]}
   scipy.sparse:
     csr_matrix: {ffi: [S::fromDense, S::fromTriplets], tests: sparse}
     identity: {ffi: [S::identity], tests: sparse}

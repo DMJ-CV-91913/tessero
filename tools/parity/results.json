@@ -5,8 +5,13 @@
         "cluster.vq": "pass",
         "cluster.whiten": "pass",
         "constants.convert_temperature": "pass",
+        "constants.find": "pass",
         "constants.lambda2nu": "pass",
         "constants.nu2lambda": "pass",
+        "constants.physical_constants": "pass",
+        "constants.precision": "pass",
+        "constants.unit": "pass",
+        "constants.value": "pass",
         "constants.values": "pass",
         "csgraph.bellman_ford": "pass",
         "csgraph.breadth_first_order": "pass",
@@ -2976,7 +2981,12 @@
             "np.histogramdd": 2.328805302192041e-16,
             "np.block": null,
             "random.bytes": 0,
-            "random.multivariate_normal": 3.2046834124527546e-14
+            "random.multivariate_normal": 3.2046834124527546e-14,
+            "constants.value": null,
+            "constants.precision": null,
+            "constants.unit": null,
+            "constants.find": null,
+            "constants.physical_constants": null
         },
         "ext": {
             "np.median": 0,
@@ -4465,7 +4475,12 @@
             "np.histogramdd": 2.328805302192041e-16,
             "np.block": null,
             "random.bytes": 0,
-            "random.multivariate_normal": 3.2046834124527546e-14
+            "random.multivariate_normal": 3.2046834124527546e-14,
+            "constants.value": null,
+            "constants.precision": null,
+            "constants.unit": null,
+            "constants.find": null,
+            "constants.physical_constants": null
         }
     },
     "ext": {
@@ -4474,8 +4489,13 @@
         "cluster.vq": "pass",
         "cluster.whiten": "pass",
         "constants.convert_temperature": "pass",
+        "constants.find": "pass",
         "constants.lambda2nu": "pass",
         "constants.nu2lambda": "pass",
+        "constants.physical_constants": "pass",
+        "constants.precision": "pass",
+        "constants.unit": "pass",
+        "constants.value": "pass",
         "constants.values": "pass",
         "csgraph.bellman_ford": "pass",
         "csgraph.breadth_first_order": "pass",
