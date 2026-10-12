@@ -63,6 +63,7 @@ final class Signal
     'fftconvolve' => 'fftconvolve',
     'filtfilt' => 'filtfilt',
     'findfreqs' => 'findfreqs',
+    'firls' => 'firls',
     'firwin' => 'firwin',
     'firwin2' => 'firwin2',
     'freqresp' => 'freqresp',
@@ -658,6 +659,16 @@ final class Signal
     public static function findfreqs(mixed $num, mixed $den, mixed $N, mixed $kind = 'ba'): mixed
     {
         return Registry::routine('signal.findfreqs', [$num, $den, $N, $kind]);
+    }
+
+    /**
+     * Least-squares linear-phase FIR filter design (scipy.signal.firls).
+     *
+     * scipy.signal.firls
+     */
+    public static function firls(mixed $numtaps, mixed $bands, mixed $desired, mixed $weight = null, mixed $fs = null): mixed
+    {
+        return Registry::routine('signal.firls', [$numtaps, $bands, $desired, $weight, $fs]);
     }
 
     /**

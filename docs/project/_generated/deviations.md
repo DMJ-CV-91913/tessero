@@ -408,6 +408,8 @@
 | `signal.cheb2ord` | call | rtol 0 |
 | `signal.ellipord` | every call | rtol 0 |
 | `signal.ellipord` | call | rtol 0 |
+| `signal.firls` | every call | rtol 1e-07 |
+| `signal.firls` | call | rtol 1e-07 |
 | `signal.residue` | every call | rtol 0 |
 | `signal.residue` | call | rtol 0 |
 | `signal.residuez` | every call | rtol 0 |
