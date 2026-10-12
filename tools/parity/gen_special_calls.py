@@ -51,6 +51,16 @@ def build():
             for ax in range(-x.ndim, x.ndim):
                 cases.append(call(f, [x], {'axis': ax}))
         blocks[name] = cases
+    roots_fns = {
+        'roots_chebyt': sc.roots_chebyt, 't_roots': sc.t_roots,
+        'roots_chebyu': sc.roots_chebyu, 'u_roots': sc.u_roots,
+        'roots_chebyc': sc.roots_chebyc, 'c_roots': sc.c_roots,
+        'roots_chebys': sc.roots_chebys, 's_roots': sc.s_roots,
+        'roots_sh_chebyt': sc.roots_sh_chebyt, 'ts_roots': sc.ts_roots,
+        'roots_sh_chebyu': sc.roots_sh_chebyu, 'us_roots': sc.us_roots,
+    }
+    for nm, rf in roots_fns.items():
+        blocks[nm] = [call(rf, [k]) for k in (1, 2, 3, 5, 8)]
     return blocks
 
 
