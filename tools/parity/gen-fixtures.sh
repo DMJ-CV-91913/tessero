@@ -13,13 +13,14 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize io integrate spatial datetime random stats desc corr tests tests2 legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize io integrate spatial datetime random stats desc corr tests tests2 legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
         special) python3 fixtures.py ;;
         special_complex) python3 fixtures_special_complex.py ;;
         special_orthopoly) python3 fixtures_special_orthopoly.py ;;
+        special_seq) python3 fixtures_special_seq.py ;;
         np)      python3 fixtures_np.py ;;
         shape)   python3 fixtures_np_shape.py ;;
         numeric) python3 fixtures_np_numeric.py ;;

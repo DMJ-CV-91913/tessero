@@ -719,6 +719,33 @@ foreach ($files as $file) {
         }
         continue;
     }
+    if (isset($data['specseq_cases'])) {                     // scipy.special sequence/derivative families (pure-PHP Tessero\SpecialSeq)
+        foreach ($data['specseq_cases'] as $c) {
+            $fn = $c['fn'];
+            $key = "special.{$fn}";
+            $a = $c['args'];
+            $rtol = (float) ($c['rtol'] ?? 1e-8);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $r = match ($fn) {
+                    'legendre_p' => \Tessero\SpecialSeq::legendreP((int) $a[0], (float) $a[1], (int) ($a[2] ?? 0)),
+                    'legendre_p_all' => \Tessero\SpecialSeq::legendrePAll((int) $a[0], (float) $a[1], (int) ($a[2] ?? 0)),
+                    'lqn' => \Tessero\SpecialSeq::lqn((int) $a[0], (float) $a[1]),
+                    'riccati_jn' => \Tessero\SpecialSeq::riccatiJn((int) $a[0], (float) $a[1]),
+                    'riccati_yn' => \Tessero\SpecialSeq::riccatiYn((int) $a[0], (float) $a[1]),
+                };
+                $ok = vecClose(flattenNums($r), array_map('floatval', $c['expect']), $rtol);
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
     if (isset($data['orthopoly_cases'])) {                   // scipy.special polynomial factories -> OrthoPoly1d callables
         foreach ($data['orthopoly_cases'] as $c) {
             $fn = $c['fn'];
