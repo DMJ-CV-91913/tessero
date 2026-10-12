@@ -471,6 +471,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.special.gdtria` | `Tessero\Special::gdtria()` |
 | `scipy.special.gdtrib` | `Tessero\Special::gdtrib()` |
 | `scipy.special.gdtrix` | `Tessero\Special::gdtrix()` |
+| `scipy.special.h1vp` | `Tessero\Special::h1vp()` |
+| `scipy.special.h2vp` | `Tessero\Special::h2vp()` |
 | `scipy.special.h_roots` | `Tessero\Special::hRoots()` |
 | `scipy.special.hankel1` | `Tessero\Special::hankel1()` |
 | `scipy.special.hankel1e` | `Tessero\Special::hankel1e()` |

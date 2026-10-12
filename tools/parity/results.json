@@ -1067,6 +1067,8 @@
         "special.gdtria": "pass",
         "special.gdtrib": "pass",
         "special.gdtrix": "pass",
+        "special.h1vp": "pass",
+        "special.h2vp": "pass",
         "special.h_roots": "pass",
         "special.hankel1": "pass",
         "special.hankel1e": "pass",
@@ -3086,7 +3088,9 @@
             "special.multigammaln": 2.217240389195107e-16,
             "special.factorial2": 8.421247238638223e-16,
             "special.bernoulli": 1.7217477443794664e-12,
-            "special.euler": 1.1521478377994762e-15
+            "special.euler": 1.1521478377994762e-15,
+            "special.h1vp": 0,
+            "special.h2vp": 0
         },
         "ext": {
             "np.median": 0,
@@ -4630,7 +4634,9 @@
             "special.multigammaln": 2.217240389195107e-16,
             "special.factorial2": 8.421247238638223e-16,
             "special.bernoulli": 1.7217477443794664e-12,
-            "special.euler": 1.1521478377994762e-15
+            "special.euler": 1.1521478377994762e-15,
+            "special.h1vp": 0,
+            "special.h2vp": 0
         }
     },
     "ext": {
@@ -5701,6 +5707,8 @@
         "special.gdtria": "pass",
         "special.gdtrib": "pass",
         "special.gdtrix": "pass",
+        "special.h1vp": "pass",
+        "special.h2vp": "pass",
         "special.h_roots": "pass",
         "special.hankel1": "pass",
         "special.hankel1e": "pass",

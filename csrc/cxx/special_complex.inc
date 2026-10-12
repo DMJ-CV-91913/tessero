@@ -145,6 +145,50 @@ extern "C" int tsr_scplx_hankel(const void *ctx, const tsr_arg *args, int nargs,
 }
 static const int TSR_SCPLX_HANKEL2 = 2, TSR_SCPLX_HANKEL1E = 3, TSR_SCPLX_HANKEL2E = 4;
 
+/* h1vp / h2vp (v, z, n=1): first derivative of the Hankel function, H_v'(z) = 0.5*(H_{v-1}(z) - H_{v+1}(z)).
+   ctx: 2 = second kind. */
+extern "C" int tsr_scplx_hvp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    using namespace tsr_scplx;
+    (void)nargs; (void)nres;
+    const int kind = ctx ? *(const int *)ctx : 1;
+    argarr v, z;
+    int rc = as_arr(&args[0], &v);
+    if (rc < 0) return rc;
+    if ((rc = as_arr(&args[1], &z)) < 0) return rc;
+    int32_t nd;
+    int64_t sh[MAXD];
+    if (tsr_broadcast_shape(v.a.ndim, v.a.shape, z.a.ndim, z.a.shape, &nd, sh) != 0) {
+        fn_set_error("h1vp: operands could not be broadcast together");
+        return TSR_ESHAPE;
+    }
+    int64_t vst[MAXD], zst[MAXD];
+    if (tsr_broadcast_strides(&v.a, nd, sh, vst) != 0 || tsr_broadcast_strides(&z.a, nd, sh, zst) != 0) {
+        fn_set_error("h1vp: operands could not be broadcast together");
+        return TSR_ESHAPE;
+    }
+    double *out = (double *)fn_result_array(&res[0], TSR_C128, nd, sh);
+    if (!out) return TSR_ENOMEM;
+    const int64_t n = tsr_shape_size(nd, sh);
+    int64_t ix[MAXD] = {0};
+    for (int64_t q = 0; q < n; q++) {
+        int64_t vo = v.a.offset, zo = z.a.offset;
+        for (int d = 0; d < nd; d++) { vo += ix[d] * vst[d]; zo += ix[d] * zst[d]; }
+        double zre, zim;
+        rd_cplx(&z.a, zo, &zre, &zim);
+        const double vv = rd_real(&v.a, vo);
+        const cplx zc(zre, zim);
+        cplx h = (kind == 2)
+            ? 0.5 * (xsf::cyl_hankel_2(vv - 1.0, zc) - xsf::cyl_hankel_2(vv + 1.0, zc))
+            : 0.5 * (xsf::cyl_hankel_1(vv - 1.0, zc) - xsf::cyl_hankel_1(vv + 1.0, zc));
+        out[2 * q] = h.real();
+        out[2 * q + 1] = h.imag();
+        for (int d = nd - 1; d >= 0; d--) { if (++ix[d] < sh[d]) break; ix[d] = 0; }
+    }
+    return TSR_OK;
+}
+static const int TSR_SCPLX_HVP2 = 2;
+
 /* sph_harm_y(n, m, theta, phi): spherical harmonic, complex, 4-way broadcast (n, m integer) */
 extern "C" int tsr_scplx_sph_harm_y(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -233,6 +277,8 @@ static const fn_def TSR_SCPLX_DEFS[] = {
     ROUTINE("special.hankel2", 1, "v, z", "out", tsr_scplx_hankel, &TSR_SCPLX_HANKEL2, "Hankel function of the second kind (scipy.special.hankel2)."),
     ROUTINE("special.hankel1e", 1, "v, z", "out", tsr_scplx_hankel, &TSR_SCPLX_HANKEL1E, "Exponentially scaled Hankel function of the first kind (scipy.special.hankel1e)."),
     ROUTINE("special.hankel2e", 1, "v, z", "out", tsr_scplx_hankel, &TSR_SCPLX_HANKEL2E, "Exponentially scaled Hankel function of the second kind (scipy.special.hankel2e)."),
+    ROUTINE("special.h1vp", 1, "v, z, n=1", "out", tsr_scplx_hvp, NULL, "First derivative of the Hankel function of the first kind (scipy.special.h1vp)."),
+    ROUTINE("special.h2vp", 1, "v, z, n=1", "out", tsr_scplx_hvp, &TSR_SCPLX_HVP2, "First derivative of the Hankel function of the second kind (scipy.special.h2vp)."),
     ROUTINE("special.lambertw", 1, "z, k=0, tol=1e-8", "out", tsr_scplx_lambertw, NULL, "Lambert W function, branch k (scipy.special.lambertw)."),
     ROUTINE("special.sph_harm_y", 1, "n, m, theta, phi", "out", tsr_scplx_sph_harm_y, NULL, "Spherical harmonic Y_n^m (scipy.special.sph_harm_y)."),
     ROUTINE("special.kelvin", 4, "x", "Be, Ke, Bep, Kep", tsr_scplx_kelvin, NULL, "Kelvin functions as complex pairs (scipy.special.kelvin)."),
