@@ -3465,6 +3465,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.envelope": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "signal.fftconvolve": {
             "kind": "routine",
             "nin": 0,
@@ -3496,6 +3501,11 @@
             "nout": 1
         },
         "signal.firwin2": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.firwin_2d": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -3570,6 +3580,11 @@
             "nin": 0,
             "nout": 2
         },
+        "signal.iirdesign": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "signal.iirfilter": {
             "kind": "routine",
             "nin": 0,
@@ -3596,6 +3611,11 @@
             "nout": 2
         },
         "signal.invresz": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
+        "signal.istft": {
             "kind": "routine",
             "nin": 0,
             "nout": 2

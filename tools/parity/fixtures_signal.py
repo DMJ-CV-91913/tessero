@@ -1178,6 +1178,83 @@ for ft, rp, rs in _iir_specs:
                              'expect': F.enc_result((np.asarray(b, float), np.asarray(a, float)), ['b', 'a']),
                              'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-7}})
 
+# ==== port_iirdesign (output='ba'; iirfilter handles all btypes) ====
+iid = []
+for ft in ['butter', 'cheby1', 'cheby2', 'ellip']:
+    for wp, ws in [(0.2, 0.3), (0.3, 0.2), (0.15, 0.25), (0.4, 0.3)]:   # lowpass/highpass only (ord routines are scalar-wp)
+        wpa, wsa = np.asarray(wp, float), np.asarray(ws, float)
+        try:
+            b, a = sg.iirdesign(wp, ws, 1, 40, ftype=ft, output='ba')
+        except Exception:
+            continue
+        iid.append({'args': [F.enc(wpa) if wpa.ndim else F.enc(float(wp)),
+                             F.enc(wsa) if wsa.ndim else F.enc(float(ws)),
+                             F.enc(1.0), F.enc(40.0), F.enc(False), F.enc(ft), F.enc('ba'), None], 'kwargs': {},
+                    'expect': F.enc_result((np.asarray(b, float), np.asarray(a, float)), ['b', 'a']),
+                    'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-7}})
+
+# ==== port_envelope (bp_in split into two scalar args bp_lo, bp_hi; None encodes as kind-0) ====
+env = []
+_rng_env = np.random.default_rng(55)
+_en = 64
+_et = np.arange(_en)
+_ex1 = np.cos(2 * np.pi * 5 * _et / _en) * np.exp(-((_et - 32) ** 2) / 200.0)
+_ex2 = _rng_env.standard_normal(_en)
+_ex3 = np.cos(2 * np.pi * 7 * _et / _en) + 0.3 * np.cos(2 * np.pi * 2 * _et / _en) + 0.5
+_exc = _ex1 + 1j * np.roll(_ex1, 3)
+_env_grid = [
+    (_ex1, dict()), (_ex1, dict(squared=True)), (_ex3, dict(bp_in=(3, 10))),
+    (_ex2, dict(residual='all')), (_ex3, dict(bp_in=(2, None), residual=None)),
+    (_ex1, dict(n_out=40)), (_ex1, dict(n_out=100)), (_ex3, dict(bp_in=(-5, 10))),
+    (_ex3, dict(bp_in=(0, 8))), (_ex3, dict(bp_in=(3, 12), n_out=40)),
+    (_exc, dict(bp_in=(None, None), residual=None)), (_exc, dict(bp_in=(2, 12))),
+    (_exc, dict(bp_in=(2, 12), n_out=100)), (_exc, dict(bp_in=(-8, 10))),
+]
+for _x, _kw in _env_grid:
+    _bp = _kw.get('bp_in', (1, None))
+    _args = [F.enc(np.asarray(_x)),
+             F.enc(int(_bp[0])) if _bp[0] is not None else None,
+             F.enc(int(_bp[1])) if _bp[1] is not None else None]
+    _kwargs = {}
+    if 'n_out' in _kw: _kwargs['n_out'] = F.enc(int(_kw['n_out']))
+    if 'squared' in _kw: _kwargs['squared'] = F.enc(bool(_kw['squared']))
+    if 'residual' in _kw: _kwargs['residual'] = F.enc(_kw['residual'])
+    _ref = sg.envelope(_x, **_kw)
+    _iscx = np.iscomplexobj(np.asarray(_ref))
+    env.append({'args': _args, 'kwargs': _kwargs,
+                'expect': F.enc_result(np.asarray(_ref, dtype=complex if _iscx else float), []),
+                'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
+
+# ==== port_firwin2d (windows boxcar/hann/hamming only) ====
+fw2d = []
+for hs, win, fc, fs in [((5, 5), ['hamming', 'hamming'], 0.1, 2), ((7, 5), ['hann', 'hamming'], 0.2, 2),
+                        ((8, 8), ['hamming', 'hamming'], 0.2, 1), ((11, 11), ['boxcar', 'boxcar'], 0.3, 2),
+                        ((9, 7), ['hann', 'hann'], 0.25, 2)]:
+    fw2d.append({'args': [F.enc(list(hs)), F.enc(win), F.enc(float(fc)), F.enc(float(fs)), F.enc(False)], 'kwargs': {},
+                 'expect': F.enc_result(np.asarray(sg.firwin_2d(hs, win, fc=fc, fs=fs), dtype=np.float64), []),
+                 'compare': 'tol', 'tol': {'rtol': 1e-9, 'atol': 1e-11}})
+for hs, win, fc, fs in [((5, 5), 'hamming', 0.1, 2), ((9, 9), 'hann', 0.15, 2), ((21, 21), 'hamming', 0.1, 2),
+                        ((16, 12), 'hamming', 0.12, 2)]:
+    fw2d.append({'args': [F.enc(list(hs)), F.enc(win), F.enc(float(fc)), F.enc(float(fs)), F.enc(True)], 'kwargs': {},
+                 'expect': F.enc_result(np.asarray(sg.firwin_2d(hs, win, fc=fc, fs=fs, circular=True), dtype=np.float64), []),
+                 'compare': 'tol', 'tol': {'rtol': 1e-9, 'atol': 1e-11}})
+
+# ==== port_istft (round-trip stft -> istft; default axes) ====
+istf = []
+_rng_is = np.random.default_rng(77)
+for N in [128, 200]:
+    _sig = _rng_is.standard_normal(N)
+    for nperseg, noverlap in [(64, 32), (64, 48), (32, 16)]:
+        for window in ['hann', 'hamming']:
+            for boundary in [True, False]:
+                bd = 'zeros' if boundary else None
+                _f, _tt, _Z = sg.stft(_sig, fs=1.0, window=window, nperseg=nperseg, noverlap=noverlap, boundary=bd, padded=True)
+                _te, _xe = sg.istft(_Z, fs=1.0, window=window, nperseg=nperseg, noverlap=noverlap, boundary=boundary, scaling='spectrum')
+                istf.append({'args': [F.enc(np.asarray(_Z, complex)), F.enc(1.0), F.enc(window),
+                                      F.enc(int(nperseg)), F.enc(int(noverlap)), None, F.enc(True), F.enc(bool(boundary))], 'kwargs': {},
+                             'expect': F.enc_result((np.asarray(_te, float), np.asarray(_xe, float)), ['t', 'x']),
+                             'compare': 'tol', 'tol': {'rtol': 1e-8, 'atol': 1e-10}})
+
 out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'convolve', 'cases': convs}, {'fn': 'lfilter', 'cases': lfs},
                  {'fn': 'find_peaks', 'cases': fpk},
@@ -1185,6 +1262,10 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'decimate', 'cases': dec, 'tol': {'rtol': 1e-7, 'atol': 1e-8}},
                  {'fn': 'stft', 'cases': stftc, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
                  {'fn': 'iirfilter', 'cases': iirf, 'tol': {'rtol': 1e-7, 'atol': 1e-7}},
+                 {'fn': 'iirdesign', 'cases': iid, 'tol': {'rtol': 1e-7, 'atol': 1e-7}},
+                 {'fn': 'envelope', 'cases': env, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'firwin_2d', 'cases': fw2d, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},
+                 {'fn': 'istft', 'cases': istf, 'tol': {'rtol': 1e-8, 'atol': 1e-10}},
                  {'fn': 'fftconvolve', 'cases': fftc}, {'fn': 'oaconvolve', 'cases': oac},
                  {'fn': 'correlate', 'cases': corr},
                  {'fn': 'savgol_coeffs', 'cases': sgc}, {'fn': 'savgol_filter', 'cases': sgf},

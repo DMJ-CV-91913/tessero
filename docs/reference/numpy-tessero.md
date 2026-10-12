@@ -1118,6 +1118,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.ellip` | `Tessero\Signal::ellip()` |
 | `scipy.signal.ellipap` | `Tessero\Signal::ellipap()` |
 | `scipy.signal.ellipord` | `Tessero\Signal::ellipord()` |
+| `scipy.signal.envelope` | `Tessero\Signal::envelope()` |
 | `scipy.signal.fftconvolve` | `Tessero\Signal::fftconvolve()` |
 | `scipy.signal.filtfilt` | `Tessero\Signal::filtfilt()` |
 | `scipy.signal.find_peaks` | `Tessero\Signal::findPeaks()` |
@@ -1125,6 +1126,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.firls` | `Tessero\Signal::firls()` |
 | `scipy.signal.firwin` | `Tessero\Signal::firwin()` |
 | `scipy.signal.firwin2` | `Tessero\Signal::firwin2()` |
+| `scipy.signal.firwin_2d` | `Tessero\Signal::firwin2d()` |
 | `scipy.signal.freqresp` | `Tessero\Signal::freqresp()` |
 | `scipy.signal.freqs` | `Tessero\Signal::freqs()` |
 | `scipy.signal.freqs_zpk` | `Tessero\Signal::freqsZpk()` |
@@ -1139,12 +1141,14 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.hilbert` | `Tessero\Signal::hilbert()` |
 | `scipy.signal.hilbert2` | `Tessero\Signal::hilbert2()` |
 | `scipy.signal.iircomb` | `Tessero\Signal::iircomb()` |
+| `scipy.signal.iirdesign` | `Tessero\Signal::iirdesign()` |
 | `scipy.signal.iirfilter` | `Tessero\Signal::iirfilter()` |
 | `scipy.signal.iirnotch` | `Tessero\Signal::iirnotch()` |
 | `scipy.signal.iirpeak` | `Tessero\Signal::iirpeak()` |
 | `scipy.signal.impulse` | `Tessero\Signal::impulse()` |
 | `scipy.signal.invres` | `Tessero\Signal::invres()` |
 | `scipy.signal.invresz` | `Tessero\Signal::invresz()` |
+| `scipy.signal.istft` | `Tessero\Signal::istft()` |
 | `scipy.signal.kaiser_atten` | `Tessero\Signal::kaiserAtten()` |
 | `scipy.signal.kaiser_beta` | `Tessero\Signal::kaiserBeta()` |
 | `scipy.signal.kaiserord` | `Tessero\Signal::kaiserord()` |

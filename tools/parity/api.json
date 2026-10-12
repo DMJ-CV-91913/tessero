@@ -3073,6 +3073,12 @@
                 "doc": "Elliptic filter order selection, lowpass/highpass (scipy.signal.ellipord)."
             },
             {
+                "name": "envelope",
+                "static": true,
+                "sig": "envelope(mixed $z, mixed $bpLo = 1, mixed $bpHi = null, mixed $nOut = null, mixed $squared = false, mixed $residual = 'lowpass'): mixed",
+                "doc": "Analytic-signal envelope and residual (scipy.signal.envelope; bp_in split into bp_lo, bp_hi)."
+            },
+            {
                 "name": "fftconvolve",
                 "static": true,
                 "sig": "fftconvolve(mixed $in1, mixed $in2, mixed $mode = 'full', mixed $axes = null): mixed",
@@ -3113,6 +3119,12 @@
                 "static": true,
                 "sig": "firwin2(mixed $numtaps, mixed $freq, mixed $gain, mixed $nfreqs = null, mixed $window = 'hamming', mixed $antisymmetric = false, mixed $fs = null): mixed",
                 "doc": "FIR filter design by frequency sampling (scipy.signal.firwin2)."
+            },
+            {
+                "name": "firwin2d",
+                "static": true,
+                "sig": "firwin2d(mixed $hsize, mixed $window, mixed $fc = null, mixed $fs = 2, mixed $circular = false, mixed $passZero = true, mixed $scale = true): mixed",
+                "doc": "2-D FIR filter design by the window method (scipy.signal.firwin_2d)."
             },
             {
                 "name": "freqresp",
@@ -3199,6 +3211,12 @@
                 "doc": "Notching or peaking digital comb filter (scipy.signal.iircomb)."
             },
             {
+                "name": "iirdesign",
+                "static": true,
+                "sig": "iirdesign(mixed $wp, mixed $ws, mixed $gpass, mixed $gstop, mixed $analog = false, mixed $ftype = 'ellip', mixed $output = 'ba', mixed $fs = null): mixed",
+                "doc": "Complete IIR filter design by order selection, output ba (scipy.signal.iirdesign)."
+            },
+            {
                 "name": "iirfilter",
                 "static": true,
                 "sig": "iirfilter(mixed $N, mixed $Wn, mixed $rp = null, mixed $rs = null, mixed $btype = 'band', mixed $analog = false, mixed $ftype = 'butter', mixed $output = 'ba', mixed $fs = null): mixed",
@@ -3233,6 +3251,12 @@
                 "static": true,
                 "sig": "invresz(mixed $r, mixed $p, mixed $k, mixed $tol = 0.001, mixed $rtype = 'avg'): mixed",
                 "doc": "Transfer function (b, a) from a partial-fraction expansion, negative powers of z (scipy.signal.invresz)."
+            },
+            {
+                "name": "istft",
+                "static": true,
+                "sig": "istft(mixed $Zxx, mixed $fs = 1.0, mixed $window = 'hann', mixed $nperseg = null, mixed $noverlap = null, mixed $nfft = null, mixed $inputOnesided = true, mixed $boundary = true, mixed $timeAxis = -1, mixed $freqAxis = -2, mixed $scaling = 'spectrum'): mixed",
+                "doc": "Inverse short-time Fourier transform (scipy.signal.istft, legacy, default axes)."
             },
             {
                 "name": "kaiserAtten",
@@ -19608,6 +19632,30 @@
                 "name": "iirfilter",
                 "static": true,
                 "sig": "iirfilter($N, $Wn, $rp = null, $rs = null, $btype = 'band', $analog = false, $ftype = 'butter', $output = 'ba', $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "iirdesign",
+                "static": true,
+                "sig": "iirdesign($wp, $ws, $gpass, $gstop, $analog = false, $ftype = 'ellip', $output = 'ba', $fs = null)",
+                "doc": ""
+            },
+            {
+                "name": "envelope",
+                "static": true,
+                "sig": "envelope($z, $bpLo = 1, $bpHi = null, $nOut = null, $squared = false, $residual = 'lowpass')",
+                "doc": ""
+            },
+            {
+                "name": "firwin2d",
+                "static": true,
+                "sig": "firwin2d($hsize, $window, $fc = null, $fs = 2, $circular = false, $passZero = true, $scale = true)",
+                "doc": ""
+            },
+            {
+                "name": "istft",
+                "static": true,
+                "sig": "istft($Zxx, $fs = 1.0, $window = 'hann', $nperseg = null, $noverlap = null, $nfft = null, $inputOnesided = true, $boundary = true, $timeAxis = -1, $freqAxis = -2, $scaling = 'spectrum')",
                 "doc": ""
             },
             {
