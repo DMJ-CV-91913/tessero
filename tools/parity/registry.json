@@ -395,6 +395,11 @@
             "nin": 0,
             "nout": 1
         },
+        "hierarchy.optimal_leaf_ordering": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "hierarchy.single": {
             "kind": "routine",
             "nin": 0,
@@ -4445,7 +4450,17 @@
             "nin": 0,
             "nout": 1
         },
+        "sparse.block_array": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "sparse.block_diag": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.bmat": {
             "kind": "routine",
             "nin": 0,
             "nout": 4
@@ -4535,7 +4550,17 @@
             "nin": 0,
             "nout": 4
         },
+        "sparse.permute_dims": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
         "sparse.spdiags": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 4
+        },
+        "sparse.swapaxes": {
             "kind": "routine",
             "nin": 0,
             "nout": 4
@@ -6185,12 +6210,37 @@
             "nin": 1,
             "nout": 1
         },
+        "splinalg.bicg": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.bicgstab": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.cg": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.cgs": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "splinalg.expm": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
         "splinalg.expm_multiply": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.gmres": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -6205,12 +6255,27 @@
             "nin": 0,
             "nout": 2
         },
+        "splinalg.lsqr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "splinalg.matrix_power": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
+        "splinalg.minres": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "splinalg.norm": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.onenormest": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

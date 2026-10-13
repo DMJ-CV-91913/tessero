@@ -18,7 +18,9 @@ final class Sparse
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'block_array' => 'blockArray',
     'block_diag' => 'blockDiag',
+    'bmat' => 'bmat',
     'coo_array' => 'cooArray',
     'coo_matrix' => 'cooMatrix',
     'csc_array' => 'cscArray',
@@ -36,7 +38,9 @@ final class Sparse
     'identity' => 'identity',
     'kron' => 'kron',
     'kronsum' => 'kronsum',
+    'permute_dims' => 'permuteDims',
     'spdiags' => 'spdiags',
+    'swapaxes' => 'swapaxes',
     'tril' => 'tril',
     'triu' => 'triu',
     'vstack' => 'vstack',
@@ -59,6 +63,18 @@ final class Sparse
     }
 
     /**
+     * Assemble a 2-D grid of blocks, as CSR (scipy.sparse.block_array).
+     *
+     * scipy.sparse.block_array
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function blockArray(mixed $blocks, mixed $nrows, mixed $ncols): mixed
+    {
+        return Registry::routine('sparse.block_array', [$blocks, $nrows, $ncols]);
+    }
+
+    /**
      * Block-diagonal assembly of blocks, as CSR (scipy.sparse.block_diag).
      *
      * scipy.sparse.block_diag: the positional arguments are numpy's *blocks.
@@ -66,6 +82,18 @@ final class Sparse
     public static function blockDiag(mixed ...$blocks): mixed
     {
         return Registry::routineVariadic('sparse.block_diag', $blocks);
+    }
+
+    /**
+     * Assemble a 2-D grid of blocks, as CSR (scipy.sparse.bmat).
+     *
+     * scipy.sparse.bmat
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function bmat(mixed $blocks, mixed $nrows, mixed $ncols): mixed
+    {
+        return Registry::routine('sparse.bmat', [$blocks, $nrows, $ncols]);
     }
 
     /**
@@ -271,6 +299,18 @@ final class Sparse
     }
 
     /**
+     * Permute the axes of a 2-D sparse matrix (transpose), as CSR (scipy.sparse.permute_dims).
+     *
+     * scipy.sparse.permute_dims
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function permuteDims(mixed $A, mixed $axes = null): mixed
+    {
+        return Registry::routine('sparse.permute_dims', [$A, $axes]);
+    }
+
+    /**
      * Sparse matrix from diagonals, as CSR (scipy.sparse.spdiags).
      *
      * scipy.sparse.spdiags
@@ -280,6 +320,18 @@ final class Sparse
     public static function spdiags(mixed $data, mixed $diags, mixed $m, mixed $n): mixed
     {
         return Registry::routine('sparse.spdiags', [$data, $diags, $m, $n]);
+    }
+
+    /**
+     * Swap two axes of a 2-D sparse matrix (transpose), as CSR (scipy.sparse.swapaxes).
+     *
+     * scipy.sparse.swapaxes
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape when several results are requested
+     */
+    public static function swapaxes(mixed $A, mixed $axis1 = 0, mixed $axis2 = 1): mixed
+    {
+        return Registry::routine('sparse.swapaxes', [$A, $axis1, $axis2]);
     }
 
     /**

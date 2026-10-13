@@ -121,6 +121,46 @@ for (m, n, offs) in [(5, 5, [-1, 0, 2]), (4, 6, [0, 1]), (6, 4, [-2, 0]), (5, 5,
 calls.append({'fn': 'diags', 'cases': dg})
 calls.append({'fn': 'diags_array', 'cases': dg})
 
+# ===== APPEND to tools/parity/fixtures_sparse.py, before the final out=/json.dump block =====
+# (uses the module-level `dense`, `rng`, `F`, `csr_dict`, and `calls` already defined there)
+
+# bmat / block_array: 2-D grid of dense blocks (None allowed), passed as a row-major flat sequence of
+# length nrows*ncols plus the grid dimensions. The sequence is encoded with {'list': [...]} so run-tests
+# decodeValue() rebuilds it as a PHP list (reaching the routine's `blocks[]` seq slot); a None block is a
+# JSON null, which decodeValue passes through unchanged (-> tsr_arg kind 0 in the kernel).
+def _bmat_case(nr, nc, blocks):
+    import scipy.sparse as _sp
+    grid = [[blocks[i * nc + j] for j in range(nc)] for i in range(nr)]
+    R = _sp.bmat(grid)
+    seq = {'list': [None if b is None else F.enc(b) for b in blocks]}
+    return {'args': [seq, F.enc(nr), F.enc(nc)], 'kwargs': {}, 'expect': {'dict': csr_dict(R)}, 'compare': 'tol'}
+
+_bm = [
+    _bmat_case(2, 2, [dense(2, 2), dense(2, 3), dense(1, 2), dense(1, 3)]),
+    _bmat_case(2, 2, [dense(2, 2), None, None, dense(2, 2)]),
+    _bmat_case(3, 1, [dense(2, 3), dense(1, 3), dense(4, 3)]),
+    _bmat_case(2, 2, [dense(2, 2), None, dense(3, 2), dense(3, 1)]),
+    _bmat_case(2, 3, [dense(2, 2), dense(2, 1), dense(2, 3), None, dense(1, 1), None]),
+    _bmat_case(2, 2, [None, dense(2, 3), dense(1, 2), None]),
+    _bmat_case(3, 2, [dense(1, 2), dense(1, 2), None, dense(2, 2), dense(1, 2), None]),
+    _bmat_case(2, 2, [dense(3, 2), dense(3, 3), dense(2, 2), dense(2, 3)]),
+]
+calls.append({'fn': 'bmat', 'cases': _bm})
+calls.append({'fn': 'block_array', 'cases': _bm})
+
+# permute_dims(A, axes) / swapaxes(A, axis1, axis2) on 2-D sparse: transpose (axes=(0,1) is identity).
+import scipy.sparse as _sp2
+_pm, _sw = [], []
+for A in (dense(3, 4), dense(4, 3), dense(2, 5), dense(5, 2), np.diag([1., 2., 3.]), dense(1, 4), dense(4, 1), dense(3, 3), dense(6, 2)):
+    sA = _sp2.csr_array(A)
+    _pm.append({'args': [F.enc(A), None], 'kwargs': {}, 'expect': {'dict': csr_dict(_sp2.permute_dims(sA))}, 'compare': 'tol'})
+    _pm.append({'args': [F.enc(A), {'list': [F.enc(1), F.enc(0)]}], 'kwargs': {}, 'expect': {'dict': csr_dict(_sp2.permute_dims(sA, (1, 0)))}, 'compare': 'tol'})
+    _pm.append({'args': [F.enc(A), {'list': [F.enc(0), F.enc(1)]}], 'kwargs': {}, 'expect': {'dict': csr_dict(_sp2.permute_dims(sA, (0, 1)))}, 'compare': 'tol'})
+    _sw.append({'args': [F.enc(A), F.enc(0), F.enc(1)], 'kwargs': {}, 'expect': {'dict': csr_dict(_sp2.swapaxes(sA, 0, 1))}, 'compare': 'tol'})
+    _sw.append({'args': [F.enc(A), F.enc(0), F.enc(0)], 'kwargs': {}, 'expect': {'dict': csr_dict(_sp2.swapaxes(sA, 0, 0))}, 'compare': 'tol'})
+calls.append({'fn': 'permute_dims', 'cases': _pm})
+calls.append({'fn': 'swapaxes', 'cases': _sw})
+
 out = {'module': 'sparse', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

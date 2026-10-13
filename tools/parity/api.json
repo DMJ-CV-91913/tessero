@@ -5883,6 +5883,12 @@
                 "doc": "Number of original observations in a linkage matrix (scipy.cluster.hierarchy.num_obs_linkage)."
             },
             {
+                "name": "optimalLeafOrdering",
+                "static": true,
+                "sig": "optimalLeafOrdering(mixed $Z, mixed $y, mixed $metric = 'euclidean'): mixed",
+                "doc": "Reorder a linkage to minimise distances between adjacent leaves (scipy.cluster.hierarchy.optimal_leaf_ordering)."
+            },
+            {
                 "name": "single",
                 "static": true,
                 "sig": "single(mixed $y): mixed",
@@ -5921,6 +5927,30 @@
                 "doc": "Call a function by its SciPy/NumPy name: SparseLinalg::apply('log_ndtr', $x)."
             },
             {
+                "name": "bicg",
+                "static": true,
+                "sig": "bicg(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null): mixed",
+                "doc": "BiConjugate Gradient for a general square system (scipy.sparse.linalg.bicg)."
+            },
+            {
+                "name": "bicgstab",
+                "static": true,
+                "sig": "bicgstab(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null): mixed",
+                "doc": "BiCGSTAB for a general square system (scipy.sparse.linalg.bicgstab)."
+            },
+            {
+                "name": "cg",
+                "static": true,
+                "sig": "cg(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null): mixed",
+                "doc": "Conjugate gradients for a symmetric positive-definite system (scipy.sparse.linalg.cg)."
+            },
+            {
+                "name": "cgs",
+                "static": true,
+                "sig": "cgs(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null): mixed",
+                "doc": "Conjugate Gradient Squared for a general square system (scipy.sparse.linalg.cgs)."
+            },
+            {
                 "name": "expm",
                 "static": true,
                 "sig": "expm(mixed $A): mixed",
@@ -5931,6 +5961,12 @@
                 "static": true,
                 "sig": "expmMultiply(mixed $A, mixed $B, mixed $start = null, mixed $stop = null, mixed $num = null, mixed $endpoint = null): mixed",
                 "doc": "Action of the matrix exponential, expm(A) @ B (scipy.sparse.linalg.expm_multiply)."
+            },
+            {
+                "name": "gmres",
+                "static": true,
+                "sig": "gmres(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $restart = null): mixed",
+                "doc": "Restarted GMRES for a general square system (scipy.sparse.linalg.gmres)."
             },
             {
                 "name": "inv",
@@ -5945,16 +5981,34 @@
                 "doc": "Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular)."
             },
             {
+                "name": "lsqr",
+                "static": true,
+                "sig": "lsqr(mixed $A, mixed $b, mixed $atol = 1.0E-8, mixed $btol = 1.0E-8, mixed $maxiter = null): mixed",
+                "doc": "LSQR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsqr)."
+            },
+            {
                 "name": "matrixPower",
                 "static": true,
                 "sig": "matrixPower(mixed $A, mixed $power): mixed",
                 "doc": "Integer matrix power of a square sparse matrix (scipy.sparse.linalg.matrix_power)."
             },
             {
+                "name": "minres",
+                "static": true,
+                "sig": "minres(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null): mixed",
+                "doc": "MINRES for a symmetric (possibly indefinite) system (scipy.sparse.linalg.minres)."
+            },
+            {
                 "name": "norm",
                 "static": true,
                 "sig": "norm(mixed $x, mixed $ord = null, mixed $axis = null): mixed",
                 "doc": "Norm of a sparse matrix (scipy.sparse.linalg.norm)."
+            },
+            {
+                "name": "onenormest",
+                "static": true,
+                "sig": "onenormest(mixed $A, mixed $t = 2, mixed $itmax = 5): mixed",
+                "doc": "Estimate of the matrix 1-norm (scipy.sparse.linalg.onenormest)."
             },
             {
                 "name": "spbandwidth",
@@ -23628,6 +23682,12 @@
                 "static": true,
                 "sig": "isIsomorphic($T1, $T2)",
                 "doc": ""
+            },
+            {
+                "name": "optimalLeafOrdering",
+                "static": true,
+                "sig": "optimalLeafOrdering($Z, $y, $metric = 'euclidean')",
+                "doc": ""
             }
         ]
     },
@@ -23686,6 +23746,54 @@
                 "name": "expmMultiply",
                 "static": true,
                 "sig": "expmMultiply($A, $B, $start = null, $stop = null, $num = null, $endpoint = null)",
+                "doc": ""
+            },
+            {
+                "name": "cg",
+                "static": true,
+                "sig": "cg($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null)",
+                "doc": ""
+            },
+            {
+                "name": "bicgstab",
+                "static": true,
+                "sig": "bicgstab($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null)",
+                "doc": ""
+            },
+            {
+                "name": "bicg",
+                "static": true,
+                "sig": "bicg($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null)",
+                "doc": ""
+            },
+            {
+                "name": "cgs",
+                "static": true,
+                "sig": "cgs($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null)",
+                "doc": ""
+            },
+            {
+                "name": "gmres",
+                "static": true,
+                "sig": "gmres($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null, $restart = null)",
+                "doc": ""
+            },
+            {
+                "name": "minres",
+                "static": true,
+                "sig": "minres($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null)",
+                "doc": ""
+            },
+            {
+                "name": "lsqr",
+                "static": true,
+                "sig": "lsqr($A, $b, $atol = 1.0E-8, $btol = 1.0E-8, $maxiter = null)",
+                "doc": ""
+            },
+            {
+                "name": "onenormest",
+                "static": true,
+                "sig": "onenormest($A, $t = 2, $itmax = 5)",
                 "doc": ""
             }
         ]

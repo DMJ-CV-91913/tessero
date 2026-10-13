@@ -18,12 +18,20 @@ final class SparseLinalg
 {
     /** SciPy/NumPy name => method name */
     public const FUNCTIONS = [
+    'bicg' => 'bicg',
+    'bicgstab' => 'bicgstab',
+    'cg' => 'cg',
+    'cgs' => 'cgs',
     'expm' => 'expm',
     'expm_multiply' => 'expmMultiply',
+    'gmres' => 'gmres',
     'inv' => 'inv',
     'is_sptriangular' => 'isSptriangular',
+    'lsqr' => 'lsqr',
     'matrix_power' => 'matrixPower',
+    'minres' => 'minres',
     'norm' => 'norm',
+    'onenormest' => 'onenormest',
     'spbandwidth' => 'spbandwidth',
     'spsolve' => 'spsolve',
     'spsolve_triangular' => 'spsolveTriangular',
@@ -46,6 +54,46 @@ final class SparseLinalg
     }
 
     /**
+     * BiConjugate Gradient for a general square system (scipy.sparse.linalg.bicg).
+     *
+     * scipy.splinalg.bicg
+     */
+    public static function bicg(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null): mixed
+    {
+        return Registry::routine('splinalg.bicg', [$A, $b, $x0, $rtol, $atol, $maxiter]);
+    }
+
+    /**
+     * BiCGSTAB for a general square system (scipy.sparse.linalg.bicgstab).
+     *
+     * scipy.splinalg.bicgstab
+     */
+    public static function bicgstab(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null): mixed
+    {
+        return Registry::routine('splinalg.bicgstab', [$A, $b, $x0, $rtol, $atol, $maxiter]);
+    }
+
+    /**
+     * Conjugate gradients for a symmetric positive-definite system (scipy.sparse.linalg.cg).
+     *
+     * scipy.splinalg.cg
+     */
+    public static function cg(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null): mixed
+    {
+        return Registry::routine('splinalg.cg', [$A, $b, $x0, $rtol, $atol, $maxiter]);
+    }
+
+    /**
+     * Conjugate Gradient Squared for a general square system (scipy.sparse.linalg.cgs).
+     *
+     * scipy.splinalg.cgs
+     */
+    public static function cgs(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null): mixed
+    {
+        return Registry::routine('splinalg.cgs', [$A, $b, $x0, $rtol, $atol, $maxiter]);
+    }
+
+    /**
      * Matrix exponential of a sparse matrix (scipy.sparse.linalg.expm).
      *
      * scipy.splinalg.expm
@@ -63,6 +111,16 @@ final class SparseLinalg
     public static function expmMultiply(mixed $A, mixed $B, mixed $start = null, mixed $stop = null, mixed $num = null, mixed $endpoint = null): mixed
     {
         return Registry::routine('splinalg.expm_multiply', [$A, $B, $start, $stop, $num, $endpoint]);
+    }
+
+    /**
+     * Restarted GMRES for a general square system (scipy.sparse.linalg.gmres).
+     *
+     * scipy.splinalg.gmres
+     */
+    public static function gmres(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $restart = null): mixed
+    {
+        return Registry::routine('splinalg.gmres', [$A, $b, $x0, $rtol, $atol, $maxiter, $restart]);
     }
 
     /**
@@ -88,6 +146,16 @@ final class SparseLinalg
     }
 
     /**
+     * LSQR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsqr).
+     *
+     * scipy.splinalg.lsqr
+     */
+    public static function lsqr(mixed $A, mixed $b, mixed $atol = 1e-8, mixed $btol = 1e-8, mixed $maxiter = null): mixed
+    {
+        return Registry::routine('splinalg.lsqr', [$A, $b, $atol, $btol, $maxiter]);
+    }
+
+    /**
      * Integer matrix power of a square sparse matrix (scipy.sparse.linalg.matrix_power).
      *
      * scipy.splinalg.matrix_power
@@ -98,6 +166,16 @@ final class SparseLinalg
     }
 
     /**
+     * MINRES for a symmetric (possibly indefinite) system (scipy.sparse.linalg.minres).
+     *
+     * scipy.splinalg.minres
+     */
+    public static function minres(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null): mixed
+    {
+        return Registry::routine('splinalg.minres', [$A, $b, $x0, $rtol, $atol, $maxiter]);
+    }
+
+    /**
      * Norm of a sparse matrix (scipy.sparse.linalg.norm).
      *
      * scipy.splinalg.norm
@@ -105,6 +183,16 @@ final class SparseLinalg
     public static function norm(mixed $x, mixed $ord = null, mixed $axis = null): mixed
     {
         return Registry::routine('splinalg.norm', [$x, $ord, $axis]);
+    }
+
+    /**
+     * Estimate of the matrix 1-norm (scipy.sparse.linalg.onenormest).
+     *
+     * scipy.splinalg.onenormest
+     */
+    public static function onenormest(mixed $A, mixed $t = 2, mixed $itmax = 5): mixed
+    {
+        return Registry::routine('splinalg.onenormest', [$A, $t, $itmax]);
     }
 
     /**

@@ -77,8 +77,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1522,
-  "ffi": 1522
+  "ext": 1535,
+  "ffi": 1535
  },
  "groups": {
   "NumPy core": {
@@ -98,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1340,
+   "both": 1353,
    "excluded": 74,
-   "impl_ext": 1340,
-   "impl_ffi": 1342,
+   "impl_ext": 1353,
+   "impl_ffi": 1353,
    "in_scope": 1488,
-   "m2_ext": 90.1,
-   "m2_ffi": 90.2,
+   "m2_ext": 90.9,
+   "m2_ffi": 90.9,
    "m3": 4.7,
-   "m4_ext": 90.1,
-   "m4_ffi": 90.2,
-   "m5": 99.9,
+   "m4_ext": 90.9,
+   "m4_ffi": 90.9,
+   "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1340,
-   "verified_ffi": 1342
+   "verified_ext": 1353,
+   "verified_ffi": 1353
   }
  },
  "modules": {
@@ -324,20 +324,20 @@
    "verified_ffi": 43
   },
   "scipy.cluster.hierarchy": {
-   "both": 26,
+   "both": 27,
    "excluded": 5,
-   "impl_ext": 26,
-   "impl_ffi": 26,
+   "impl_ext": 27,
+   "impl_ffi": 27,
    "in_scope": 27,
-   "m2_ext": 96.3,
-   "m2_ffi": 96.3,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 15.6,
-   "m4_ext": 96.3,
-   "m4_ffi": 96.3,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 32,
-   "verified_ext": 26,
-   "verified_ffi": 26
+   "verified_ext": 27,
+   "verified_ffi": 27
   },
   "scipy.cluster.vq": {
    "both": 4,
@@ -500,20 +500,20 @@
    "verified_ffi": 26
   },
   "scipy.sparse": {
-   "both": 22,
+   "both": 26,
    "excluded": 15,
-   "impl_ext": 22,
-   "impl_ffi": 22,
+   "impl_ext": 26,
+   "impl_ffi": 26,
    "in_scope": 38,
-   "m2_ext": 57.9,
-   "m2_ffi": 57.9,
+   "m2_ext": 68.4,
+   "m2_ffi": 68.4,
    "m3": 28.3,
-   "m4_ext": 57.9,
-   "m4_ffi": 57.9,
+   "m4_ext": 68.4,
+   "m4_ffi": 68.4,
    "m5": 100.0,
    "symbols": 53,
-   "verified_ext": 22,
-   "verified_ffi": 22
+   "verified_ext": 26,
+   "verified_ffi": 26
   },
   "scipy.sparse.csgraph": {
    "both": 22,
@@ -532,20 +532,20 @@
    "verified_ffi": 22
   },
   "scipy.sparse.linalg": {
-   "both": 9,
+   "both": 17,
    "excluded": 11,
-   "impl_ext": 9,
-   "impl_ffi": 11,
+   "impl_ext": 17,
+   "impl_ffi": 17,
    "in_scope": 27,
-   "m2_ext": 33.3,
-   "m2_ffi": 40.7,
+   "m2_ext": 63.0,
+   "m2_ffi": 63.0,
    "m3": 28.9,
-   "m4_ext": 33.3,
-   "m4_ffi": 40.7,
-   "m5": 81.8,
+   "m4_ext": 63.0,
+   "m4_ffi": 63.0,
+   "m5": 100.0,
    "symbols": 38,
-   "verified_ext": 9,
-   "verified_ffi": 11
+   "verified_ext": 17,
+   "verified_ffi": 17
   },
   "scipy.spatial": {
    "both": 10,
@@ -613,7 +613,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1524,
+ "registry_functions": 1537,
  "registry_untested": [
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid"
@@ -622,9 +622,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40092,
-   "covered_ext": 40092,
-   "covered_ffi": 40098,
+   "covered_both": 40101,
+   "covered_ext": 40101,
+   "covered_ffi": 40101,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -654,9 +654,9 @@
      "n": 50
     }
    },
-   "u_both": 99.8,
-   "u_ext": 99.8,
-   "u_ffi": 99.8
+   "u_both": 99.9,
+   "u_ext": 99.9,
+   "u_ffi": 99.9
   },
   "corpus_files": 3374,
   "corpus_packages": 18,
@@ -701,16 +701,16 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2294,
-    "covered_ext": 2294,
-    "covered_ffi": 2300,
+    "covered_both": 2303,
+    "covered_ext": 2303,
+    "covered_ffi": 2303,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,
     "top": {
      "100": {
-      "both": 96,
-      "ext": 96,
+      "both": 97,
+      "ext": 97,
       "ffi": 97,
       "n": 100
      },
@@ -721,9 +721,9 @@
       "n": 25
      },
      "250": {
-      "both": 234,
-      "ext": 234,
-      "ffi": 235,
+      "both": 237,
+      "ext": 237,
+      "ffi": 237,
       "n": 250
      },
      "50": {
@@ -733,9 +733,9 @@
       "n": 50
      }
     },
-    "u_both": 97.1,
-    "u_ext": 97.1,
-    "u_ffi": 97.4
+    "u_both": 97.5,
+    "u_ext": 97.5,
+    "u_ffi": 97.5
    }
   },
   "total_calls": 42551,
