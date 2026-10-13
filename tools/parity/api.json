@@ -7421,6 +7421,66 @@
         ]
     },
     {
+        "class": "Tessero\\Interpolate\\MakeSmoothingSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, ?array $w = null, ?float $lam = null)",
+                "doc": ""
+            },
+            {
+                "name": "gcv",
+                "static": false,
+                "sig": "gcv(float $lam, array $X, array $XtWX, array $wE, array $XtE, array $y): float",
+                "doc": "Generalised cross-validation objective at smoothing parameter lam (SciPy's _gcv)."
+            },
+            {
+                "name": "query",
+                "static": false,
+                "sig": "query(array $xq): array",
+                "doc": "Evaluate the smoothing spline at the query point(s) (de Boor, via Tessero\\Interpolate::BSpline)."
+            },
+            {
+                "name": "tck",
+                "static": false,
+                "sig": "tck(): array",
+                "doc": "The clamped (t, c, k) triple, mirroring the BSpline returned by scipy.interpolate.make_smoothing_spline."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\LinearNDInterpolator",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $points, array $values, float $fillValue = NAN, bool $rescale = false)",
+                "doc": "before triangulating, as SciPy's rescale=True does"
+            },
+            {
+                "name": "query",
+                "static": false,
+                "sig": "query(array $xi): array",
+                "doc": "Piecewise-linear value(s) at the query point(s). Points outside the convex hull yield the fill value (NaN by default), scalar or broadcast across all components for vector-valued data."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\DifferentialEvolution",
+        "methods": [
+            {
+                "name": "solve",
+                "static": true,
+                "sig": "solve(callable $func, array $bounds, array|int|null $seed = null, string $strategy = 'best1bin', int $maxiter = 1000, int $popsize = 15, float $tol = 0.01, array|float $mutation = [], float $recombination = 0.7, float $atol = 0.0, bool $polish = false): Tessero\\Optimize\\OptimizeResult",
+                "doc": "Minimise $func over box $bounds with differential evolution (best1bin)."
+            }
+        ],
+        "constants": [
+            "MACHEPS"
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
