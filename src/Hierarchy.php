@@ -40,6 +40,7 @@ final class Hierarchy
     'maxinconsts' => 'maxinconsts',
     'median' => 'median',
     'num_obs_linkage' => 'numObsLinkage',
+    'optimal_leaf_ordering' => 'optimalLeafOrdering',
     'single' => 'single',
     'to_mlab_linkage' => 'toMlabLinkage',
     'ward' => 'ward',
@@ -282,6 +283,16 @@ final class Hierarchy
     public static function numObsLinkage(mixed $Z): mixed
     {
         return Registry::routine('hierarchy.num_obs_linkage', [$Z]);
+    }
+
+    /**
+     * Reorder a linkage to minimise distances between adjacent leaves (scipy.cluster.hierarchy.optimal_leaf_ordering).
+     *
+     * scipy.hierarchy.optimal_leaf_ordering
+     */
+    public static function optimalLeafOrdering(mixed $Z, mixed $y, mixed $metric = 'euclidean'): mixed
+    {
+        return Registry::routine('hierarchy.optimal_leaf_ordering', [$Z, $y, $metric]);
     }
 
     /**

@@ -10,7 +10,7 @@ import numpy as np
 from scipy.cluster.hierarchy import (linkage, single, complete, average, weighted, ward, centroid, median,
     num_obs_linkage, is_valid_linkage, is_monotonic, is_valid_im, correspond, maxdists, inconsistent,
     maxinconsts, maxRstat, leaves_list, cophenet, to_mlab_linkage, from_mlab_linkage, fcluster, fclusterdata,
-    leaders, cut_tree, is_isomorphic)
+    leaders, cut_tree, is_isomorphic, optimal_leaf_ordering)
 from scipy.spatial.distance import pdist
 import fixtures_np as F
 
@@ -165,6 +165,21 @@ for (n, f, meth) in ((12, 2, 'ward'), (15, 3, 'average'), (10, 2, 'single')):
     cut_c.append(int_arr_case([F.enc(Zf), None, F.enc(np.asarray(hts, float))],
                               np.asarray(cut_tree(Z, height=hts), dtype=np.int64)))
 
+olo_c = []
+# optimal_leaf_ordering: condensed-distance input over every ZSET pair; output is the reordered (m,4) linkage.
+for (Z, y) in ZSET:
+    Zf = np.asarray(Z, float)
+    Zo = np.asarray(optimal_leaf_ordering(Z, y, metric='euclidean'), float)
+    olo_c.append({'args': [F.enc(Zf), F.enc(np.asarray(y, float))], 'kwargs': {},
+                  'expect': F.enc_result(Zo, []), 'compare': 'tol', 'tol': TOL})
+# observation-matrix input (euclidean pdist formed internally), a few sizes/methods.
+for (n, f, meth) in ((7, 3, 'average'), (9, 2, 'complete'), (11, 4, 'single')):
+    X = obs(n, f); y = pdist(X); Z = linkage(y, method=meth)
+    Zf = np.asarray(Z, float)
+    Zo = np.asarray(optimal_leaf_ordering(Z, X, metric='euclidean'), float)
+    olo_c.append({'args': [F.enc(Zf), F.enc(X)], 'kwargs': {},
+                  'expect': F.enc_result(Zo, []), 'compare': 'tol', 'tol': TOL})
+
 calls += [
     {'fn': 'fcluster', 'cases': fcl_c}, {'fn': 'fclusterdata', 'cases': fcld_c},
     {'fn': 'leaders', 'cases': lead_c}, {'fn': 'cut_tree', 'cases': cut_c}, {'fn': 'is_isomorphic', 'cases': iso_c},
@@ -174,7 +189,7 @@ calls += [
     {'fn': 'inconsistent', 'cases': incon_c}, {'fn': 'maxinconsts', 'cases': maxinc_c},
     {'fn': 'maxRstat', 'cases': maxr_c}, {'fn': 'leaves_list', 'cases': leaves_c},
     {'fn': 'cophenet', 'cases': coph_c}, {'fn': 'to_mlab_linkage', 'cases': tomlab_c},
-    {'fn': 'from_mlab_linkage', 'cases': frommlab_c},
+    {'fn': 'from_mlab_linkage', 'cases': frommlab_c}, {'fn': 'optimal_leaf_ordering', 'cases': olo_c},
 ]
 
 out = {'module': 'hierarchy', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
