@@ -120,6 +120,7 @@
         "hierarchy.weighted": "pass",
         "integrate.fixed_quad": "pass",
         "integrate.quad": "pass",
+        "integrate.quad_vec": "pass",
         "integrate.tanhsinh": "pass",
         "interpolate.Akima1DInterpolator": "pass",
         "interpolate.BPoly": "pass",
@@ -3306,7 +3307,8 @@
             "stats.boschloo_exact": null,
             "stats.logrank": null,
             "integrate.tanhsinh": null,
-            "integrate.fixed_quad": null
+            "integrate.fixed_quad": null,
+            "integrate.quad_vec": null
         },
         "ext": {
             "np.median": 0,
@@ -4960,7 +4962,8 @@
             "stats.boschloo_exact": null,
             "stats.logrank": null,
             "integrate.fixed_quad": null,
-            "integrate.tanhsinh": null
+            "integrate.tanhsinh": null,
+            "integrate.quad_vec": null
         }
     },
     "ext": {
@@ -5084,6 +5087,7 @@
         "hierarchy.weighted": "pass",
         "integrate.fixed_quad": "pass",
         "integrate.quad": "pass",
+        "integrate.quad_vec": "pass",
         "integrate.tanhsinh": "pass",
         "interpolate.Akima1DInterpolator": "pass",
         "interpolate.BPoly": "pass",
