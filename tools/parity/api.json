@@ -6869,6 +6869,17 @@
         ]
     },
     {
+        "class": "Tessero\\Spatial\\Hausdorff",
+        "methods": [
+            {
+                "name": "directed",
+                "static": true,
+                "sig": "directed(array $u, array $v): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Interpolate\\NearestNDInterpolator",
         "methods": [
             {
