@@ -29,6 +29,9 @@ for g in "${groups[@]}"; do
         stats_normal) python3 fixtures_normal.py ;;
         stats_uniform) python3 fixtures_uniform.py ;;
         ndimage_valindices) python3 fixtures_valindices.py ;;
+        ndimage_labcomp)   python3 fixtures_labcomp.py ;;
+        ndimage_vecfilter) python3 fixtures_vecfilter.py ;;
+        statsmvs)          python3 fixtures_statsmvs.py ;;
         ndimage_geomxform) python3 fixtures_geomxform.py ;;
         ndimage_genfilter) python3 fixtures_genfilter.py ;;
         ndimage_genfilter1d) python3 fixtures_genfilter1d.py ;;

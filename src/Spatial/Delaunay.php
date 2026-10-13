@@ -286,4 +286,18 @@ final class Delaunay
 
         return $out;
     }
+    /**
+     * scipy.spatial.tsearch(tri, xi): the simplex containing each query point, or -1 outside
+     * the hull. Identical to (new Delaunay($tri->points))->findSimplex($xi); provided as a
+     * free-function-style static so callers can mirror scipy's module-level tsearch.
+     *
+     * @param Delaunay|list<list<float>> $tri a Delaunay triangulation (or its input points)
+     * @param list<list<float>> $xi query points
+     * @return list<int>
+     */
+    public static function tsearch(Delaunay|array $tri, array $xi): array
+    {
+        $d = $tri instanceof Delaunay ? $tri : new Delaunay($tri);
+        return $d->findSimplex($xi);
+    }
 }
