@@ -432,6 +432,10 @@ legacy:
     # adaptive Gauss-Kronrod quadrature is pure PHP (calls the user's callable, no kernel) -> one class, both
     # backends; verified against scipy's integral value by the integrate.json solver fixtures.
     quad: {ffi: [Int::quad], ext: [Int::quad], fixtures: [integrate.quad]}
+    # fixed_quad: fixed-order Gauss-Legendre (native roots_legendre + affine map); rides the callable solver_cases harness
+    fixed_quad: {ffi: [Int::fixedQuad], ext: [Int::fixedQuad], fixtures: [integrate.fixed_quad]}
+    # tanhsinh: double-exponential quadrature (finite scalar) over a PHP callable, struct result (.integral); pure-PHP
+    tanhsinh: {ffi: [TanhS::tanhsinh], ext: [TanhS::tanhsinh], fixtures: [integrate.tanhsinh]}
     # scipy.integrate.trapezoid is numpy.trapezoid re-exported: credit the already-verified np.trapezoid routine
     trapezoid: {ffi: [NpC::trapezoid], ext: [XNpC::trapezoid], fixtures: [np.trapezoid]}
     # cumulative_trapezoid: the running trapezoid integral, implemented alongside trapezoid as an np.* routine

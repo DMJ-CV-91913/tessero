@@ -92,4 +92,34 @@ final class Quad
         }
         return [$integral, $abserr];
     }
+
+    /**
+     * Fixed-order Gauss-Legendre quadrature of $func over [$a, $b] (scipy.integrate.fixed_quad).
+     *
+     * Uses the native n-point Gauss-Legendre rule (nodes/weights from Tessero\Special::rootsLegendre),
+     * affinely mapped from [-1, 1] to [$a, $b]. Returns the fixed-order estimate and null (scipy returns
+     * (val, None) -- the order-n value, NOT a converged/adaptive integral).
+     *
+     * @param callable(float): float $func  integrand evaluated at each mapped node
+     * @return array{0: float, 1: null}  [value, null]
+     */
+    public static function fixedQuad(callable $func, float $a, float $b, int $n = 5): array
+    {
+        $rl = \Tessero\Special::rootsLegendre($n);           // [x => nodes, w => weights] on [-1, 1]
+        $x = $rl["x"];
+        $w = $rl["w"];
+        $x = \is_object($x) ? $x->toArray() : (array) $x;
+        $w = \is_object($w) ? $w->toArray() : (array) $w;
+
+        $half = 0.5 * ($b - $a);
+        $mid = 0.5 * ($b + $a);
+        $sum = 0.0;
+        foreach ($x as $i => $xi) {
+            $y = $half * (float) $xi + $mid;                 // map node from [-1,1] to [a,b]
+            $sum += (float) $w[$i] * (float) $func($y);
+        }
+
+        return [$half * $sum, null];
+    }
+
 }

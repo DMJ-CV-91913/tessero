@@ -6801,12 +6801,32 @@
                 "static": true,
                 "sig": "quad(callable $f, float $a, float $b, float $epsabs = 1.49E-8, float $epsrel = 1.49E-8, int $limit = 50): array",
                 "doc": "Integrate $f over [$a, $b]."
+            },
+            {
+                "name": "fixedQuad",
+                "static": true,
+                "sig": "fixedQuad(callable $func, float $a, float $b, int $n = 5): array",
+                "doc": "Fixed-order Gauss-Legendre quadrature of $func over [$a, $b] (scipy.integrate.fixed_quad)."
             }
         ],
         "constants": [
             "XGK",
             "WGK",
             "WG"
+        ]
+    },
+    {
+        "class": "Tessero\\Integrate\\Tanhsinh",
+        "methods": [
+            {
+                "name": "tanhsinh",
+                "static": true,
+                "sig": "tanhsinh(callable $f, float $a, float $b, int $maxlevel = 10, int $minlevel = 2, float $atol = 0.0, ?float $rtol = null): array",
+                "doc": "Integrate $f over the finite interval [$a, $b]."
+            }
+        ],
+        "constants": [
+            "N_BASE_STEPS"
         ]
     },
     {
