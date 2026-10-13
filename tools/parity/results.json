@@ -1375,6 +1375,7 @@
         "stats.ansari": "pass",
         "stats.arcsine": "pass",
         "stats.argus": "pass",
+        "stats.barnard_exact": "pass",
         "stats.bartlett": "pass",
         "stats.bernoulli": "pass",
         "stats.beta": "pass",
@@ -1387,6 +1388,7 @@
         "stats.binom": "pass",
         "stats.binomtest": "pass",
         "stats.boltzmann": "pass",
+        "stats.boschloo_exact": "pass",
         "stats.boxcox": "pass",
         "stats.boxcox_llf": "pass",
         "stats.boxcox_normmax": "pass",
@@ -1504,6 +1506,7 @@
         "stats.logistic": "pass",
         "stats.loglaplace": "pass",
         "stats.lognorm": "pass",
+        "stats.logrank": "pass",
         "stats.logser": "pass",
         "stats.loguniform": "pass",
         "stats.lomax": "pass",
@@ -3296,7 +3299,10 @@
             "stats.Normal": null,
             "interpolate.make_smoothing_spline": null,
             "interpolate.LinearNDInterpolator": null,
-            "optimize.differential_evolution": null
+            "optimize.differential_evolution": null,
+            "stats.barnard_exact": null,
+            "stats.boschloo_exact": null,
+            "stats.logrank": null
         },
         "ext": {
             "np.median": 0,
@@ -4945,7 +4951,10 @@
             "stats.Normal": null,
             "interpolate.make_smoothing_spline": null,
             "interpolate.LinearNDInterpolator": null,
-            "optimize.differential_evolution": null
+            "optimize.differential_evolution": null,
+            "stats.barnard_exact": null,
+            "stats.boschloo_exact": null,
+            "stats.logrank": null
         }
     },
     "ext": {
@@ -6324,6 +6333,7 @@
         "stats.ansari": "pass",
         "stats.arcsine": "pass",
         "stats.argus": "pass",
+        "stats.barnard_exact": "pass",
         "stats.bartlett": "pass",
         "stats.bernoulli": "pass",
         "stats.beta": "pass",
@@ -6336,6 +6346,7 @@
         "stats.binom": "pass",
         "stats.binomtest": "pass",
         "stats.boltzmann": "pass",
+        "stats.boschloo_exact": "pass",
         "stats.boxcox": "pass",
         "stats.boxcox_llf": "pass",
         "stats.boxcox_normmax": "pass",
@@ -6453,6 +6464,7 @@
         "stats.logistic": "pass",
         "stats.loglaplace": "pass",
         "stats.lognorm": "pass",
+        "stats.logrank": "pass",
         "stats.logser": "pass",
         "stats.loguniform": "pass",
         "stats.lomax": "pass",

@@ -7481,6 +7481,39 @@
         ]
     },
     {
+        "class": "Tessero\\StatsBarnard",
+        "methods": [
+            {
+                "name": "barnardExact",
+                "static": true,
+                "sig": "barnardExact(array $table, string $alternative = 'two-sided', bool $pooled = true, int $n = 32): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Boschloo",
+        "methods": [
+            {
+                "name": "boschlooExact",
+                "static": true,
+                "sig": "boschlooExact(array $table, string $alternative = 'two-sided', int $n = 32): array",
+                "doc": "scipy.stats.boschloo_exact(table, alternative='two-sided', n=32)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\LogRank",
+        "methods": [
+            {
+                "name": "logrank",
+                "static": true,
+                "sig": "logrank(array $xUncensored, array $xRight = [], array $yUncensored = [], array $yRight = [], string $alternative = 'two-sided'): array",
+                "doc": "scipy.stats.logrank(x, y, alternative)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
