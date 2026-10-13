@@ -7225,6 +7225,203 @@
         ]
     },
     {
+        "class": "Tessero\\Interpolate\\MakeSplrep",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, int $k = 3, float $s = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "evaluate",
+                "static": false,
+                "sig": "evaluate(array $xq): array",
+                "doc": "Evaluate the spline at the query point(s)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\MakeSplprep",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, int $k = 3, float $s = 0.0)",
+                "doc": "set of points (x[0][i], x[1][i], ...) for i in 0..m-1"
+            },
+            {
+                "name": "parameters",
+                "static": false,
+                "sig": "parameters(): array",
+                "doc": "The chord-length parameter values (scipy's returned `u`). @return list<float>"
+            },
+            {
+                "name": "evaluate",
+                "static": false,
+                "sig": "evaluate(array $uq): array",
+                "doc": "Evaluate the parametric curve at parameter value(s) uq, returning one coordinate list per component."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\GenerateKnots",
+        "methods": [
+            {
+                "name": "knots",
+                "static": true,
+                "sig": "knots(array $x, int $k = 3, float $s = 0.0): array",
+                "doc": "Return the not-a-knot knot vector (the single vector generate_knots(x, y, k=k, s=0) yields)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\ApproximateTaylorPolynomial",
+        "methods": [
+            {
+                "name": "compute",
+                "static": true,
+                "sig": "compute(callable $f, float $x, int $degree, float $scale, ?int $order = null): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\Rbf",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $coords, array $d, string $function = 'multiquadric', ?float $epsilon = null, float $smooth = 0.0)",
+                "doc": "coordinate of site i. For 1-D data pass a single array: [[x0,x1,...]]"
+            },
+            {
+                "name": "evaluate",
+                "static": false,
+                "sig": "evaluate(array $coords): array",
+                "doc": "Evaluate the interpolant at query sites (dim-major, same convention as the constructor)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Spatial\\Voronoi",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $points)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Spatial\\Transform\\Rotation",
+        "methods": [
+            {
+                "name": "single",
+                "static": false,
+                "sig": "single(): bool",
+                "doc": ""
+            },
+            {
+                "name": "count",
+                "static": false,
+                "sig": "count(): int",
+                "doc": ""
+            },
+            {
+                "name": "fromQuat",
+                "static": true,
+                "sig": "fromQuat(array $quat): self",
+                "doc": ""
+            },
+            {
+                "name": "fromMatrix",
+                "static": true,
+                "sig": "fromMatrix(array $matrix): self",
+                "doc": ""
+            },
+            {
+                "name": "fromRotvec",
+                "static": true,
+                "sig": "fromRotvec(array $rotvec, bool $degrees = false): self",
+                "doc": ""
+            },
+            {
+                "name": "fromMrp",
+                "static": true,
+                "sig": "fromMrp(array $mrp): self",
+                "doc": ""
+            },
+            {
+                "name": "fromEuler",
+                "static": true,
+                "sig": "fromEuler(string $seq, array|float $angles, bool $degrees = false): self",
+                "doc": ""
+            },
+            {
+                "name": "identity",
+                "static": true,
+                "sig": "identity(?int $num = null): self",
+                "doc": ""
+            },
+            {
+                "name": "asQuat",
+                "static": false,
+                "sig": "asQuat(): array",
+                "doc": ""
+            },
+            {
+                "name": "asMatrix",
+                "static": false,
+                "sig": "asMatrix(): array",
+                "doc": ""
+            },
+            {
+                "name": "asRotvec",
+                "static": false,
+                "sig": "asRotvec(bool $degrees = false): array",
+                "doc": ""
+            },
+            {
+                "name": "asMrp",
+                "static": false,
+                "sig": "asMrp(): array",
+                "doc": ""
+            },
+            {
+                "name": "asEuler",
+                "static": false,
+                "sig": "asEuler(string $seq, bool $degrees = false): array",
+                "doc": ""
+            },
+            {
+                "name": "inv",
+                "static": false,
+                "sig": "inv(): self",
+                "doc": ""
+            },
+            {
+                "name": "magnitude",
+                "static": false,
+                "sig": "magnitude(): array|float",
+                "doc": ""
+            },
+            {
+                "name": "apply",
+                "static": false,
+                "sig": "apply(array $vectors, bool $inverse = false): array",
+                "doc": ""
+            },
+            {
+                "name": "compose",
+                "static": false,
+                "sig": "compose(self $other): self",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Datetime\\Datetime",
         "methods": [
             {
