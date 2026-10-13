@@ -1,0 +1,205 @@
+{
+  "permtest_cases": [
+    {
+      "fn": "permutation_test",
+      "stat": "mean_diff",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0
+        ],
+        [
+          4.0,
+          5.0
+        ]
+      ],
+      "permutation_type": "independent",
+      "alternative": "two-sided",
+      "expect": {
+        "statistic": -2.5,
+        "pvalue": 0.2
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "mean_diff",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0
+        ],
+        [
+          4.0,
+          5.0
+        ]
+      ],
+      "permutation_type": "independent",
+      "alternative": "less",
+      "expect": {
+        "statistic": -2.5,
+        "pvalue": 0.1
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "mean_diff",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0
+        ],
+        [
+          4.0,
+          5.0
+        ]
+      ],
+      "permutation_type": "independent",
+      "alternative": "greater",
+      "expect": {
+        "statistic": -2.5,
+        "pvalue": 1.0
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "sum_first",
+      "data": [
+        [
+          1.0,
+          2.0
+        ],
+        [
+          3.0,
+          4.0
+        ],
+        [
+          5.0,
+          6.0
+        ]
+      ],
+      "permutation_type": "independent",
+      "alternative": "two-sided",
+      "expect": {
+        "statistic": 3.0,
+        "pvalue": 0.13333333333333333
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "pearson",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0
+        ],
+        [
+          2.0,
+          1.0,
+          4.0,
+          3.0
+        ]
+      ],
+      "permutation_type": "pairings",
+      "alternative": "two-sided",
+      "expect": {
+        "statistic": 0.6,
+        "pvalue": 0.4166666666666667
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "pearson",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0
+        ],
+        [
+          2.0,
+          1.0,
+          4.0,
+          3.0
+        ]
+      ],
+      "permutation_type": "pairings",
+      "alternative": "greater",
+      "expect": {
+        "statistic": 0.6,
+        "pvalue": 0.20833333333333334
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "mean_paired",
+      "data": [
+        [
+          0.5,
+          -1.2,
+          2.3,
+          -0.7,
+          1.1
+        ]
+      ],
+      "permutation_type": "samples",
+      "alternative": "two-sided",
+      "expect": {
+        "statistic": 0.4,
+        "pvalue": 0.625
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "mean_paired",
+      "data": [
+        [
+          0.5,
+          -1.2,
+          2.3,
+          -0.7,
+          1.1
+        ]
+      ],
+      "permutation_type": "samples",
+      "alternative": "less",
+      "expect": {
+        "statistic": 0.4,
+        "pvalue": 0.71875
+      },
+      "rtol": 1e-12
+    },
+    {
+      "fn": "permutation_test",
+      "stat": "mean_paired",
+      "data": [
+        [
+          0.5,
+          -1.2,
+          2.3,
+          -0.7,
+          1.1
+        ]
+      ],
+      "permutation_type": "samples",
+      "alternative": "greater",
+      "expect": {
+        "statistic": 0.4,
+        "pvalue": 0.3125
+      },
+      "rtol": 1e-12
+    }
+  ]
+}

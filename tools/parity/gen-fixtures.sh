@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal barnard boschloo logrank ndimage_valindices spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize qap de io integrate integrate_tanhsinh integrate_quadvec spatial datetime random stats desc corr tests tests2 legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal stats_uniform barnard boschloo logrank permtest ndimage_valindices ndimage_geomxform ndimage_genfilter ndimage_genfilter1d ndimage_genlaplace ndimage_gengradmag spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize qap de da bh linesearch io integrate integrate_tanhsinh integrate_quadvec integrate_solveivp spatial datetime random stats desc corr tests tests2 legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
@@ -25,8 +25,15 @@ for g in "${groups[@]}"; do
         barnard) python3 fixtures_barnard.py > ../../tests/fixtures/parity/stats_barnard.json ;;
         boschloo) python3 fixtures_boschloo.py ;;
         logrank) python3 fixtures_logrank.py ;;
+        permtest) python3 fixtures_permtest.py ;;
         stats_normal) python3 fixtures_normal.py ;;
+        stats_uniform) python3 fixtures_uniform.py ;;
         ndimage_valindices) python3 fixtures_valindices.py ;;
+        ndimage_geomxform) python3 fixtures_geomxform.py ;;
+        ndimage_genfilter) python3 fixtures_genfilter.py ;;
+        ndimage_genfilter1d) python3 fixtures_genfilter1d.py ;;
+        ndimage_genlaplace) python3 fixtures_genlaplace.py ;;
+        ndimage_gengradmag) python3 fixtures_gengradmag.py ;;
         spatial_rect) python3 fixtures_spatial_rect.py ;;
         spatial_hausdorff) python3 fixtures_spatial_hausdorff.py ;;
         interpolate_nn) python3 fixtures_interpolate_nn.py ;;
@@ -58,12 +65,16 @@ for g in "${groups[@]}"; do
         optimize) python3 fixtures_optimize.py ;;
         qap) python3 fixtures_qap.py ;;
         de) python3 fixtures_de.py ;;
+        da) python3 fixtures_da.py ;;
+        bh) python3 fixtures_bh.py ;;
+        linesearch) python3 fixtures_linesearch.py ;;
         interpolate_mss) python3 fixtures_mss.py ;;
         interpolate_linearnd) python3 fixtures_linearnd.py ;;
         io) python3 fixtures_io.py ;;
         integrate) python3 fixtures_integrate.py ;;
         integrate_tanhsinh) python3 fixtures_tanhsinh.py ;;
         integrate_quadvec) python3 fixtures_quadvec.py ;;
+        integrate_solveivp) python3 fixtures_solveivp.py ;;
         spatial) python3 fixtures_spatial.py ;;
         datetime) python3 fixtures_datetime.py ;;
         random)  python3 fixtures_random.py ;;
