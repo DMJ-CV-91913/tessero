@@ -278,3 +278,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-13,"pure-PHP wave 1: ndimage labeled_comprehension+vectorized_filter (ndimage 100%), stats poisson_binom+bayes_mvs+mvsdist, spatial tsearch (both backends)",100.0,100.0,91.3,91.3,100.0,100.0,100.0,100.0,89.2,89.2
 2026-10-13,optimize value classes: Bounds/LinearConstraint/NonlinearConstraint/RootResults (both backends),100.0,100.0,91.6,91.6,100.0,100.0,100.0,100.0,89.2,89.2
 2026-10-13,interpolate splrep/splprep/generate_knots/approximate_taylor_polynomial/Rbf + spatial Voronoi + spatial.transform Rotation (both backends),100.0,100.0,92.1,92.1,100.0,100.0,100.0,100.0,89.2,89.2
+2026-10-13,integrate: dblquad + tplquad + nquad + nsum (both backends),100.0,100.0,92.4,92.4,100.0,100.0,100.0,100.0,89.2,89.2

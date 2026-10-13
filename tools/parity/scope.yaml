@@ -440,6 +440,10 @@ legacy:
     # quad_vec: vector-valued adaptive GK quadrature (batched max-heap bisection) over a PHP callable; pure-PHP
     quad_vec: {ffi: [QVec::quadVec], ext: [QVec::quadVec], fixtures: [integrate.quad_vec]}
     solve_ivp: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    dblquad: {ffi: [NQ::dblquad], ext: [NQ::dblquad], fixtures: [integrate.dblquad]}
+    tplquad: {ffi: [NQ::tplquad], ext: [NQ::tplquad], fixtures: [integrate.tplquad]}
+    nquad: {ffi: [NQ::nquad], ext: [NQ::nquad], fixtures: [integrate.nquad]}
+    nsum: {ffi: [NS::nsum], ext: [NS::nsum], fixtures: [integrate.nsum]}
     # scipy.integrate.trapezoid is numpy.trapezoid re-exported: credit the already-verified np.trapezoid routine
     trapezoid: {ffi: [NpC::trapezoid], ext: [XNpC::trapezoid], fixtures: [np.trapezoid]}
     # cumulative_trapezoid: the running trapezoid integral, implemented alongside trapezoid as an np.* routine

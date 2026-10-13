@@ -8155,6 +8155,40 @@
         ]
     },
     {
+        "class": "Tessero\\Integrate\\NestedQuad",
+        "methods": [
+            {
+                "name": "dblquad",
+                "static": true,
+                "sig": "dblquad(callable $func, float $a, float $b, callable $gfun, callable $hfun, float $epsabs = 1.49E-8, float $epsrel = 1.49E-8): array",
+                "doc": "Double integral of $func(y, x) with the inner variable y over [$gfun($x), $hfun($x)] and the outer variable x over [$a, $b] (scipy.integrate.dblquad signature and argument order)."
+            },
+            {
+                "name": "tplquad",
+                "static": true,
+                "sig": "tplquad(callable $func, float $a, float $b, callable $gfun, callable $hfun, callable $qfun, callable $rfun, float $epsabs = 1.49E-8, float $epsrel = 1.49E-8): array",
+                "doc": "Triple integral of $func(z, y, x): z over [$qfun($x,$y), $rfun($x,$y)], y over [$gfun($x), $hfun($x)], x over [$a, $b] (scipy.integrate.tplquad signature and argument order)."
+            },
+            {
+                "name": "nquad",
+                "static": true,
+                "sig": "nquad(callable $func, array $ranges, float $epsabs = 1.49E-8, float $epsrel = 1.49E-8): array",
+                "doc": "Integration over multiple variables (scipy.integrate.nquad) with fixed rectangular limits."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Integrate\\Nsum",
+        "methods": [
+            {
+                "name": "nsum",
+                "static": true,
+                "sig": "nsum(callable $f, float $a, ?float $b = null, float $step = 1.0): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Integrate\\SolveIvp",
         "methods": [
             {
