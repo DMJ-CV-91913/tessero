@@ -1101,7 +1101,7 @@ $checked = 0;
 $t0 = microtime(true);
 foreach ($files as $file) {
     $data = json_decode((string) file_get_contents($file), true, 64, JSON_THROW_ON_ERROR);
-    $module = $data['module'];
+    $module = $data['module'] ?? '';
     if (isset($data['block_cases'])) {                       // numpy.block: nested-list assembly (pure-PHP Tessero\ArrayOps)
         foreach ($data['block_cases'] as $c) {
             $checked++;
