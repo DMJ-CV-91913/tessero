@@ -1119,6 +1119,85 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['statfn2_cases'])) {                     // scipy.stats 2x2-table exact tests (pure-PHP Tessero\StatsBarnard)
+        foreach ($data['statfn2_cases'] as $c) {
+            $fn = $c['fn'];
+            $key = "stats.{$fn}";
+            $rtol = (float) ($c['rtol'] ?? 1e-7);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = match ($fn) {
+                    'barnard_exact' => \Tessero\StatsBarnard::barnardExact($c['table'], $c['alternative'] ?? 'two-sided', (bool) ($c['pooled'] ?? true), (int) ($c['n'] ?? 32)),
+                };
+                $expStat = $c['expect']['statistic'];
+                $expStat = $expStat === null ? NAN : (float) $expStat;
+                $expP = (float) $c['expect']['pvalue'];
+                $okStat = (is_nan($expStat) && is_nan($got['statistic'])) || abs($got['statistic'] - $expStat) <= $rtol * (1 + abs($expStat));
+                $okP = abs($got['pvalue'] - $expP) <= $rtol * (1 + abs($expP));
+                $ok = $okStat && $okP;
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['boschloo_cases'])) {                    // scipy.stats.boschloo_exact (pure-PHP Tessero\Boschloo)
+        foreach ($data['boschloo_cases'] as $c) {
+            $key = 'stats.boschloo_exact';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $atol = (float) ($c['atol'] ?? 1e-11);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = \Tessero\Boschloo::boschlooExact($c['table'], $c['alternative'] ?? 'two-sided', (int) ($c['n'] ?? 32));
+                $cmp = static function ($exp, float $val) use ($rtol, $atol): bool {
+                    if ($exp === 'nan' || (is_float($exp) && is_nan($exp))) { return is_nan($val); }
+                    $e = (float) $exp;
+                    return abs($val - $e) <= $atol + $rtol * abs($e);
+                };
+                $ok = $cmp($c['expect']['statistic'], (float) $got['statistic']) && $cmp($c['expect']['pvalue'], (float) $got['pvalue']);
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['logrank_cases'])) {                    // scipy.stats.logrank (pure-PHP Tessero\LogRank)
+        foreach ($data['logrank_cases'] as $c) {
+            $key = 'stats.logrank';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = \Tessero\LogRank::logrank(
+                    array_map('floatval', $c['x_uncensored']),
+                    array_map('floatval', $c['x_right']),
+                    array_map('floatval', $c['y_uncensored']),
+                    array_map('floatval', $c['y_right']),
+                    (string) ($c['alternative'] ?? 'two-sided')
+                );
+                $es = abs($got['statistic'] - (float) $c['expect']['statistic']);
+                $ep = abs($got['pvalue'] - (float) $c['expect']['pvalue']);
+                $ok = $es <= $rtol * (1 + abs((float) $c['expect']['statistic'])) && $ep <= $rtol * (1 + abs((float) $c['expect']['pvalue']));
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
     if (isset($data['statsfn_cases'])) {                     // scipy.stats optimiser-based helpers (pure-PHP Tessero\StatsFns)
         foreach ($data['statsfn_cases'] as $c) {
             $fn = $c['fn'];
