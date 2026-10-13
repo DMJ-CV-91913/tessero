@@ -422,6 +422,8 @@ function makeObjective(array $spec): callable
         'gauss' => static fn (float $x): float => exp(-$x * $x),
         'sinx' => static fn (float $x): float => sin($x),
         'lorentz' => static fn (float $x): float => 1.0 / (1.0 + $x * $x),
+        'invsqrt' => static fn (float $x): float => 1.0 / sqrt($x),
+        'logx' => static fn (float $x): float => log($x),
         'rosen' => static function (array $x): float { $s = 0.0; for ($i = 0, $n = count($x); $i < $n - 1; $i++) { $s += 100.0 * ($x[$i + 1] - $x[$i] ** 2) ** 2 + (1.0 - $x[$i]) ** 2; } return $s; },
         // vector residuals for leastsq (data embedded in the spec)
         'linresid' => static function (array $p) use ($spec): array { $r = []; foreach ($spec['x'] as $i => $xi) { $r[] = $p[0] * $xi + $p[1] - $spec['y'][$i]; } return $r; },
@@ -551,6 +553,12 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
             } elseif ($fn === 'quad') {
                 $r = \Tessero\Integrate\Quad::quad($obj, (float) $c['a'], (float) $c['b']);
                 $ok = abs($r[0] - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+            } elseif ($fn === 'fixed_quad') {
+                $r = \Tessero\Integrate\Quad::fixedQuad($obj, (float) $c['a'], (float) $c['b'], (int) $c['n']);
+                $ok = abs($r[0] - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+            } elseif ($fn === 'tanhsinh') {
+                $r = \Tessero\Integrate\Tanhsinh::tanhsinh($obj, (float) $c['a'], (float) $c['b']);
+                $ok = abs($r['integral'] - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
             } elseif ($fn === 'leastsq') {
                 $r = \Tessero\Optimize\LeastSquares::solve($obj, array_map('floatval', $c['x0']));
                 $ok = vecClose($r['x'], $c['expect'], $rtol);
@@ -767,6 +775,13 @@ foreach ($files as $file) {
     }
     if (isset($data['solver_cases'])) {                      // scipy.optimize / scipy.integrate: callable objectives
         foreach (runSolverCases($data['solver_cases'], $module, $checked, $failures) as $k => $s) {
+            $results[$backend][$k] = $s;
+            $results['max_rel'][$backend][$k] = null;
+        }
+        continue;
+    }
+    if (isset($data['tanhsinh_cases'])) {                    // scipy.integrate.tanhsinh: callable + struct result
+        foreach (runSolverCases($data['tanhsinh_cases'], $module, $checked, $failures) as $k => $s) {
             $results[$backend][$k] = $s;
             $results['max_rel'][$backend][$k] = null;
         }

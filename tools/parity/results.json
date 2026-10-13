@@ -118,7 +118,9 @@
         "hierarchy.to_mlab_linkage": "pass",
         "hierarchy.ward": "pass",
         "hierarchy.weighted": "pass",
+        "integrate.fixed_quad": "pass",
         "integrate.quad": "pass",
+        "integrate.tanhsinh": "pass",
         "interpolate.Akima1DInterpolator": "pass",
         "interpolate.BPoly": "pass",
         "interpolate.BSpline": "pass",
@@ -3302,7 +3304,9 @@
             "optimize.differential_evolution": null,
             "stats.barnard_exact": null,
             "stats.boschloo_exact": null,
-            "stats.logrank": null
+            "stats.logrank": null,
+            "integrate.tanhsinh": null,
+            "integrate.fixed_quad": null
         },
         "ext": {
             "np.median": 0,
@@ -4954,7 +4958,9 @@
             "optimize.differential_evolution": null,
             "stats.barnard_exact": null,
             "stats.boschloo_exact": null,
-            "stats.logrank": null
+            "stats.logrank": null,
+            "integrate.fixed_quad": null,
+            "integrate.tanhsinh": null
         }
     },
     "ext": {
@@ -5076,7 +5082,9 @@
         "hierarchy.to_mlab_linkage": "pass",
         "hierarchy.ward": "pass",
         "hierarchy.weighted": "pass",
+        "integrate.fixed_quad": "pass",
         "integrate.quad": "pass",
+        "integrate.tanhsinh": "pass",
         "interpolate.Akima1DInterpolator": "pass",
         "interpolate.BPoly": "pass",
         "interpolate.BSpline": "pass",
