@@ -674,6 +674,10 @@
         "npoly.polyvander3d": "pass",
         "npoly.polyx": "pass",
         "npoly.polyzero": "pass",
+        "optimize.Bounds": "pass",
+        "optimize.LinearConstraint": "pass",
+        "optimize.NonlinearConstraint": "pass",
+        "optimize.RootResults": "pass",
         "optimize.approx_fprime": "pass",
         "optimize.basinhopping": "pass",
         "optimize.bisect": "pass",
@@ -3387,7 +3391,11 @@
             "hierarchy.optimal_leaf_ordering": 0,
             "ndimage.labeled_comprehension": null,
             "ndimage.vectorized_filter": null,
-            "stats.bayes_mvs": null
+            "stats.bayes_mvs": null,
+            "optimize.Bounds": null,
+            "optimize.LinearConstraint": null,
+            "optimize.NonlinearConstraint": null,
+            "optimize.RootResults": null
         },
         "ext": {
             "np.median": 0,
@@ -5081,7 +5089,11 @@
             "hierarchy.optimal_leaf_ordering": 0,
             "ndimage.labeled_comprehension": null,
             "ndimage.vectorized_filter": null,
-            "stats.bayes_mvs": null
+            "stats.bayes_mvs": null,
+            "optimize.Bounds": null,
+            "optimize.LinearConstraint": null,
+            "optimize.NonlinearConstraint": null,
+            "optimize.RootResults": null
         }
     },
     "ext": {
@@ -5759,6 +5771,10 @@
         "npoly.polyvander3d": "pass",
         "npoly.polyx": "pass",
         "npoly.polyzero": "pass",
+        "optimize.Bounds": "pass",
+        "optimize.LinearConstraint": "pass",
+        "optimize.NonlinearConstraint": "pass",
+        "optimize.RootResults": "pass",
         "optimize.approx_fprime": "pass",
         "optimize.basinhopping": "pass",
         "optimize.bisect": "pass",
