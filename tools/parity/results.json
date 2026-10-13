@@ -249,6 +249,7 @@
         "ndimage.sum_labels": "pass",
         "ndimage.uniform_filter": "pass",
         "ndimage.uniform_filter1d": "pass",
+        "ndimage.value_indices": "pass",
         "ndimage.variance": "pass",
         "ndimage.white_tophat": "pass",
         "ndimage.zoom": "pass",
@@ -1362,6 +1363,7 @@
         "splinalg.spbandwidth": "pass",
         "splinalg.spsolve": "pass",
         "splinalg.spsolve_triangular": "pass",
+        "stats.Normal": "pass",
         "stats.alexandergovern": "pass",
         "stats.alpha": "pass",
         "stats.anderson": "pass",
@@ -3286,7 +3288,9 @@
             "spatial.ConvexHull": null,
             "spatial.Delaunay": null,
             "optimize.curve_fit": null,
-            "optimize.quadratic_assignment": null
+            "optimize.quadratic_assignment": null,
+            "ndimage.value_indices": null,
+            "stats.Normal": null
         },
         "ext": {
             "np.median": 0,
@@ -4930,7 +4934,9 @@
             "spatial.Delaunay": null,
             "interpolate.bisplev": null,
             "optimize.curve_fit": null,
-            "optimize.quadratic_assignment": null
+            "optimize.quadratic_assignment": null,
+            "ndimage.value_indices": null,
+            "stats.Normal": null
         }
     },
     "ext": {
@@ -5183,6 +5189,7 @@
         "ndimage.sum_labels": "pass",
         "ndimage.uniform_filter": "pass",
         "ndimage.uniform_filter1d": "pass",
+        "ndimage.value_indices": "pass",
         "ndimage.variance": "pass",
         "ndimage.white_tophat": "pass",
         "ndimage.zoom": "pass",
@@ -6296,6 +6303,7 @@
         "splinalg.spbandwidth": "pass",
         "splinalg.spsolve": "pass",
         "splinalg.spsolve_triangular": "pass",
+        "stats.Normal": "pass",
         "stats.alexandergovern": "pass",
         "stats.alpha": "pass",
         "stats.anderson": "pass",
