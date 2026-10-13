@@ -23,18 +23,23 @@ final class Csgraph
     'breadth_first_tree' => 'breadthFirstTree',
     'connected_components' => 'connectedComponents',
     'construct_dist_matrix' => 'constructDistMatrix',
+    'csgraph_from_dense' => 'csgraphFromDense',
+    'csgraph_to_dense' => 'csgraphToDense',
     'depth_first_order' => 'depthFirstOrder',
     'depth_first_tree' => 'depthFirstTree',
     'dijkstra' => 'dijkstra',
     'floyd_warshall' => 'floydWarshall',
     'johnson' => 'johnson',
     'laplacian' => 'laplacian',
+    'maximum_bipartite_matching' => 'maximumBipartiteMatching',
     'maximum_flow' => 'maximumFlow',
     'min_weight_full_bipartite_matching' => 'minWeightFullBipartiteMatching',
     'minimum_spanning_tree' => 'minimumSpanningTree',
     'reconstruct_path' => 'reconstructPath',
+    'reverse_cuthill_mckee' => 'reverseCuthillMckee',
     'shortest_path' => 'shortestPath',
     'structural_rank' => 'structuralRank',
+    'yen' => 'yen',
     ];
 
     private function __construct()
@@ -108,6 +113,28 @@ final class Csgraph
     }
 
     /**
+     * CSR triple (indptr, indices, data) from a dense adjacency matrix (scipy.sparse.csgraph.csgraph_from_dense).
+     *
+     * scipy.sparse.csgraph.csgraph_from_dense
+     *
+     * @return mixed one array, or an array keyed by indptr, indices, data when several results are requested
+     */
+    public static function csgraphFromDense(mixed $graph, mixed $nullValue = 0, mixed $nanNull = true, mixed $infinityNull = true): mixed
+    {
+        return Registry::routine('csgraph.csgraph_from_dense', [$graph, $nullValue, $nanNull, $infinityNull]);
+    }
+
+    /**
+     * Dense adjacency matrix from a CSR triple (scipy.sparse.csgraph.csgraph_to_dense; CSR passed as data/indices/indptr/n_nodes).
+     *
+     * scipy.sparse.csgraph.csgraph_to_dense
+     */
+    public static function csgraphToDense(mixed $data, mixed $indices, mixed $indptr, mixed $nNodes, mixed $nullValue = 0): mixed
+    {
+        return Registry::routine('csgraph.csgraph_to_dense', [$data, $indices, $indptr, $nNodes, $nullValue]);
+    }
+
+    /**
      * Depth-first traversal order and predecessors (scipy.sparse.csgraph.depth_first_order).
      *
      * scipy.sparse.csgraph.depth_first_order
@@ -170,6 +197,16 @@ final class Csgraph
     }
 
     /**
+     * Maximum bipartite matching of a sparse bipartite graph (scipy.sparse.csgraph.maximum_bipartite_matching).
+     *
+     * scipy.sparse.csgraph.maximum_bipartite_matching
+     */
+    public static function maximumBipartiteMatching(mixed $graph, mixed $permType = 'row'): mixed
+    {
+        return Registry::routine('csgraph.maximum_bipartite_matching', [$graph, $permType]);
+    }
+
+    /**
      * Maximum single-source single-sink flow on a dense integer capacity matrix via Dinic's algorithm (scipy.sparse.csgraph.maximum_flow).
      *
      * scipy.sparse.csgraph.maximum_flow
@@ -214,6 +251,16 @@ final class Csgraph
     }
 
     /**
+     * Reverse Cuthill-McKee ordering of a sparse symmetric matrix (scipy.sparse.csgraph.reverse_cuthill_mckee).
+     *
+     * scipy.sparse.csgraph.reverse_cuthill_mckee
+     */
+    public static function reverseCuthillMckee(mixed $graph, mixed $symmetricMode = false): mixed
+    {
+        return Registry::routine('csgraph.reverse_cuthill_mckee', [$graph, $symmetricMode]);
+    }
+
+    /**
      * All-pairs shortest path distance matrix (scipy.sparse.csgraph.shortest_path; dense, indices=None).
      *
      * scipy.sparse.csgraph.shortest_path
@@ -231,5 +278,15 @@ final class Csgraph
     public static function structuralRank(mixed $graph): mixed
     {
         return Registry::routine('csgraph.structural_rank', [$graph]);
+    }
+
+    /**
+     * K shortest loopless paths' distances via Yen's algorithm (scipy.sparse.csgraph.yen).
+     *
+     * scipy.sparse.csgraph.yen
+     */
+    public static function yen(mixed $csgraph, mixed $source, mixed $sink, mixed $K, mixed $directed = true): mixed
+    {
+        return Registry::routine('csgraph.yen', [$csgraph, $source, $sink, $K, $directed]);
     }
 }

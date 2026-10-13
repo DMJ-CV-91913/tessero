@@ -82,6 +82,7 @@ final class Ndimage
     'uniform_filter' => 'uniformFilter',
     'uniform_filter1d' => 'uniformFilter1d',
     'variance' => 'variance',
+    'watershed_ift' => 'watershedIft',
     'white_tophat' => 'whiteTophat',
     'zoom' => 'zoom',
     ];
@@ -744,6 +745,16 @@ final class Ndimage
     public static function variance(mixed $input, mixed $labels = null, mixed $index = null): mixed
     {
         return Registry::routine('ndimage.variance', [$input, $labels, $index]);
+    }
+
+    /**
+     * Image-forest-transform watershed from markers (scipy.ndimage.watershed_ift).
+     *
+     * scipy.ndimage.watershed_ift
+     */
+    public static function watershedIft(mixed $input, mixed $markers, mixed $structure = null): mixed
+    {
+        return Registry::routine('ndimage.watershed_ift', [$input, $markers, $structure]);
     }
 
     /**

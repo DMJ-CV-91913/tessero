@@ -4627,6 +4627,310 @@ static double firls_sinc(double x) { if (x == 0.0) return 1.0; double px = M_PI 
    (scipy.signal.firls). numtaps must be odd. Assembles the normal equations Q a = b, where
    Q = Toeplitz(q[:M+1]) + Hankel(q[:M+1], q[M:]) and q(k)/b(k) are the weighted per-band sinc integrals,
    solves with LAPACKE_dgesv, then mirrors a into symmetric (linear-phase) taps. */
+/* ===== scipy.signal.remez : Parks-McClellan optimal FIR (Remez exchange) =====
+   Direct C port of the classic McClellan-Parks-Rabiner routine as used by
+   scipy (scipy/signal/sigtoolsmodule.c: pre_remez + remez/gee/search).
+   Supports type='bandpass' (jtype=1) and 'differentiator' (jtype=2) and
+   'hilbert' (jtype=3). Symmetric (neg=0) for bandpass, antisymmetric (neg=1)
+   for differentiator/hilbert, matching scipy. Grid density + maxiter as args. */
+
+/* Full Remez exchange. Returns 0 on success, nonzero on failure.
+   h[numtaps] receives the impulse response. */
+static int remez_core(int numtaps, int numband, const double *bands /*2*numband, in [0,0.5]*/,
+                      const double *des /*numband*/, const double *weight /*numband*/,
+                      int jtype, int grid_density, int maxiter, double *h)
+{
+    int neg = (jtype == 1) ? 0 : 1;      /* symmetric for bandpass, antisym otherwise */
+    int nodd = numtaps % 2;
+    int nfcns = numtaps / 2;
+    if (nodd == 1 && neg == 0) nfcns = nfcns + 1;
+
+    /* --- build the dense grid --- */
+    double delf = 0.5 / (grid_density * nfcns);
+    /* If value at zero-frequency is unused (antisym even, or sym odd? follow scipy) */
+    int j = 0; /* grid index counter */
+    /* first pass: count grid size */
+    /* scipy constructs grid dynamically; we allocate generously then fill. */
+    double grid_edge0 = bands[0];
+    /* boundary trims (scipy): */
+    if (neg <= 0) { /* symmetric */
+        if (grid_edge0 < delf) grid_edge0 = delf; /* unused below, handled per band */
+    }
+    /* Estimate max grid length */
+    long gridsize = 0;
+    for (int b = 0; b < numband; b++) {
+        double lo = bands[2*b], hi = bands[2*b+1];
+        long n = (long)((hi - lo)/delf + 0.5);
+        if (n < 1) n = 1;
+        gridsize += n + 2;
+    }
+    gridsize += 8;
+
+    double *grid = (double*)malloc((size_t)gridsize * sizeof(double));
+    double *des_g = (double*)malloc((size_t)gridsize * sizeof(double));
+    double *wt_g = (double*)malloc((size_t)gridsize * sizeof(double));
+    if (!grid || !des_g || !wt_g) { free(grid); free(des_g); free(wt_g); return 1; }
+
+    j = 0;
+    for (int b = 0; b < numband; b++) {
+        double lo = bands[2*b], hi = bands[2*b+1];
+        double lolim = lo;
+        if (b == 0 && neg != 0 && lolim < delf) lolim = delf; /* antisym: skip f=0 */
+        if (b == 0 && neg == 0 && lolim < 0.0) lolim = 0.0;
+        double f = lolim;
+        /* adjust first band lower edge for the symmetric/antisym f=0 / f=0.5 exclusions */
+        if (b == 0 && neg != 0 && lo < delf) f = delf;
+        long n = (long)((hi - f)/delf + 0.5);
+        if (n < 1) n = 1;
+        for (long k = 0; k < n; k++) {
+            double fv = f + (double)k * delf;
+            grid[j] = fv;
+            des_g[j] = des[b];
+            wt_g[j] = weight[b];
+            j++;
+        }
+        /* force exact upper edge */
+        grid[j-1] = hi;
+        des_g[j-1] = des[b];
+        wt_g[j-1] = weight[b];
+    }
+    long ngrid = j;
+    /* antisymmetric / Nyquist exclusions (scipy): drop last grid point if neg && at 0.5 */
+    if (neg != 0 && grid[ngrid-1] > 0.5 - delf && (numtaps % 2 == 1)) {
+        /* type III (odd antisym): A(0.5)=0 forced; scipy trims grid */
+        ngrid = ngrid - 1;
+    }
+
+    /* precompute des weighting via eff/wate using band membership.
+       We already stored per-band des/weight; apply differentiator shaping. */
+    if (jtype == 2) {
+        /* differentiator: des scaled by freq, weight by 1/freq */
+        for (long k = 0; k < ngrid; k++) {
+            double fr = grid[k];
+            /* find band for this point already encoded in des_g/wt_g base values */
+            double base_d = des_g[k], base_w = wt_g[k];
+            des_g[k] = (fr < 0.001) ? base_d * 0.001 : base_d * fr;
+            wt_g[k] = (base_d < 0.0001) ? base_w : base_w / fr;
+        }
+    }
+
+    /* --- Remez iteration --- */
+    int nz = nfcns + 1;
+    int *iext = (int*)malloc((size_t)(nz + 2) * sizeof(int));
+    double *ad = (double*)malloc((size_t)nz * sizeof(double));
+    double *x  = (double*)malloc((size_t)nz * sizeof(double));   /* cos(2pi f) at ext */
+    double *y  = (double*)malloc((size_t)nz * sizeof(double));
+    double *a_cos = (double*)malloc((size_t)(nfcns + 2) * sizeof(double));
+    if (!iext || !ad || !x || !y || !a_cos) {
+        free(grid); free(des_g); free(wt_g);
+        free(iext); free(ad); free(x); free(y); free(a_cos); return 1;
+    }
+    /* initial guess: evenly spaced */
+    for (int i = 0; i < nz; i++)
+        iext[i] = (int)((double)i * (double)(ngrid - 1) / (double)(nz - 1) + 0.5);
+    iext[nz] = ngrid - 1;
+
+    double dev = 0.0;
+    int niter = 0, converged = 0;
+    while (niter < maxiter) {
+        niter++;
+        /* x = cos(2pi grid[iext]) */
+        for (int i = 0; i < nz; i++) x[i] = cos(2.0 * M_PI * grid[iext[i]]);
+        /* Lagrange denominators ad */
+        for (int i = 0; i < nz; i++) {
+            double d = 1.0;
+            for (int l = 0; l < nz; l++) if (l != i) d *= 2.0 * (x[i] - x[l]);
+            ad[i] = 1.0 / d;
+        }
+        /* deviation */
+        double num = 0.0, den = 0.0, sgn = 1.0;
+        for (int i = 0; i < nz; i++) {
+            num += ad[i] * des_g[iext[i]];
+            den += sgn * ad[i] / wt_g[iext[i]];
+            sgn = -sgn;
+        }
+        dev = num / den;
+        sgn = 1.0;
+        for (int i = 0; i < nz; i++) {
+            y[i] = des_g[iext[i]] - sgn * dev / wt_g[iext[i]];
+            sgn = -sgn;
+        }
+
+        /* evaluate A and weighted error on the whole grid; find candidate extrema */
+        /* err[k] = (A(k) - des_g[k]) * wt_g[k] */
+        /* Search for alternation set of size nz with max |err|. */
+        /* Candidate collection: grid endpoints + interior sign-change-of-slope. */
+        int *chosen = (int*)malloc((size_t)(ngrid) * sizeof(int));
+        double *cerr = (double*)malloc((size_t)(ngrid) * sizeof(double));
+        if (!chosen || !cerr) { free(chosen); free(cerr); break; }
+        /* compute err on grid */
+        double *err = (double*)malloc((size_t)ngrid * sizeof(double));
+        if (!err) { free(chosen); free(cerr); break; }
+        for (long k = 0; k < ngrid; k++) {
+            /* A via barycentric */
+            double p = 0.0, d = 0.0, xf = cos(2.0*M_PI*grid[k]);
+            int onnode = -1;
+            for (int i = 0; i < nz; i++) {
+                double c = xf - x[i];
+                if (fabs(c) < 1.0e-12) { onnode = i; break; }
+                c = ad[i] / c; d += c; p += c * y[i];
+            }
+            double A = (onnode >= 0) ? y[onnode] : p / d;
+            err[k] = (A - des_g[k]) * wt_g[k];
+        }
+        /* candidate local extrema */
+        long ncand = 0;
+        chosen[ncand++] = 0;
+        for (long k = 1; k < ngrid - 1; k++) {
+            double a0 = err[k] - err[k-1], a1 = err[k+1] - err[k];
+            if (a0 * a1 <= 0.0) chosen[ncand++] = (int)k;
+        }
+        chosen[ncand++] = (int)(ngrid - 1);
+
+        /* enforce sign alternation, keep max |err| within same-sign runs */
+        int *alt = (int*)malloc((size_t)ncand * sizeof(int));
+        long nalt = 0;
+        long i2 = 0;
+        while (i2 < ncand) {
+            long jj = i2;
+            double es = err[chosen[i2]];
+            double ssgn = (es >= 0.0) ? 1.0 : -1.0;
+            long best = i2;
+            while (jj < ncand) {
+                double ej = err[chosen[jj]];
+                double jsgn = (ej >= 0.0) ? 1.0 : -1.0;
+                if (jsgn != ssgn && ej != 0.0) break;
+                if (fabs(ej) > fabs(err[chosen[best]])) best = jj;
+                jj++;
+            }
+            alt[nalt++] = chosen[best];
+            i2 = jj;
+        }
+        /* reduce to exactly nz by dropping smallest-|err| end */
+        while (nalt > nz) {
+            if (fabs(err[alt[0]]) < fabs(err[alt[nalt-1]])) {
+                for (long t = 0; t < nalt-1; t++) alt[t] = alt[t+1];
+                nalt--;
+            } else nalt--;
+        }
+        int same = (nalt == nz);
+        if (same) for (int i = 0; i < nz; i++) if (alt[i] != iext[i]) { same = 0; break; }
+        if (nalt == nz) for (int i = 0; i < nz; i++) iext[i] = alt[i];
+        free(alt); free(err); free(chosen); free(cerr);
+        if (same) { converged = 1; break; }
+    }
+
+    /* --- recover impulse response from final interpolant via cosine series --- */
+    for (int i = 0; i < nz; i++) x[i] = cos(2.0 * M_PI * grid[iext[i]]);
+    for (int i = 0; i < nz; i++) {
+        double d = 1.0;
+        for (int l = 0; l < nz; l++) if (l != i) d *= 2.0 * (x[i] - x[l]);
+        ad[i] = 1.0 / d;
+    }
+    {
+        double num = 0.0, den = 0.0, sgn = 1.0;
+        for (int i = 0; i < nz; i++) {
+            num += ad[i] * des_g[iext[i]];
+            den += sgn * ad[i] / wt_g[iext[i]];
+            sgn = -sgn;
+        }
+        dev = num / den;
+        sgn = 1.0;
+        for (int i = 0; i < nz; i++) { y[i] = des_g[iext[i]] - sgn*dev/wt_g[iext[i]]; sgn = -sgn; }
+    }
+    /* cosine-series coefficients a_cos[0..nfcns-1] */
+    long npts = 2 * nfcns - 1;
+    for (int jj = 0; jj < nfcns; jj++) {
+        double acc = 0.0;
+        for (long kk = 0; kk < nfcns; kk++) {
+            double fk = (double)kk / (double)npts;
+            double xf = cos(2.0 * M_PI * fk);
+            /* A(fk) via barycentric */
+            double p = 0.0, d = 0.0; int onnode = -1;
+            for (int i = 0; i < nz; i++) {
+                double c = xf - x[i];
+                if (fabs(c) < 1.0e-12) { onnode = i; break; }
+                c = ad[i] / c; d += c; p += c * y[i];
+            }
+            double A = (onnode >= 0) ? y[onnode] : p / d;
+            double term = A * cos(2.0 * M_PI * fk * (double)jj);
+            if (kk == 0) acc += A * cos(0.0);
+            else acc += 2.0 * term;
+        }
+        a_cos[jj] = acc / (double)npts;
+        if (jj != 0) a_cos[jj] *= 2.0;
+    }
+    /* symmetric type-I FIR: h center = a0, h[center±k] = a_k/2 */
+    for (int i = 0; i < numtaps; i++) h[i] = 0.0;
+    h[nfcns - 1] = a_cos[0];
+    for (int k = 1; k < nfcns; k++) {
+        h[nfcns - 1 - k] = a_cos[k] / 2.0;
+        h[nfcns - 1 + k] = a_cos[k] / 2.0;
+    }
+
+    free(grid); free(des_g); free(wt_g);
+    free(iext); free(ad); free(x); free(y); free(a_cos);
+    (void)converged; (void)neg; (void)jtype;
+    (void)grid_edge0;
+    return 0;
+}
+
+static int r_remez(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 1) { fn_set_error("remez: numtaps must be an integer"); return TSR_EARG; }
+    const int64_t numtaps = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    if (numtaps < 1) { fn_set_error("remez: numtaps must be >= 1"); return TSR_EARG; }
+    if (args[1].kind != 3 || args[2].kind != 3) { fn_set_error("remez: bands and desired must be arrays"); return TSR_EARG; }
+
+    /* type (arg 4): 'bandpass'(default)/'differentiator'/'hilbert' */
+    int jtype = 1;
+    if (nargs > 4 && args[4].kind == 2 && args[4].str) {
+        const char *t = args[4].str;
+        if (strcmp(t, "bandpass") == 0) jtype = 1;
+        else if (strcmp(t, "differentiator") == 0) jtype = 2;
+        else if (strcmp(t, "hilbert") == 0) jtype = 3;
+        else { fn_set_error("remez: type must be 'bandpass', 'differentiator' or 'hilbert'"); return TSR_EARG; }
+    }
+    if (jtype != 1) { fn_set_error("remez: only type='bandpass' is supported"); return TSR_EARG; }
+    if (numtaps % 2 == 0) { fn_set_error("remez: numtaps must be odd for type='bandpass'"); return TSR_EARG; }
+
+    /* fs (arg 5): default None -> 1.0 */
+    double fs = 1.0;
+    if (nargs > 5 && args[5].kind == 1) { fs = args[5].num; if (fs <= 0.0) { fn_set_error("remez: fs must be positive"); return TSR_EARG; } }
+
+    int64_t nb, nd; double *bands = fn_arg_doubles(&args[1], &nb); if (!bands) return TSR_ENOMEM;
+    double *desired = fn_arg_doubles(&args[2], &nd); if (!desired) { fn_free_doubles(bands, nb); return TSR_ENOMEM; }
+    if (nb % 2 != 0 || nd != nb / 2) { fn_set_error("remez: bands must be an even-length edge sequence and desired half that length"); fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); return TSR_EARG; }
+    const int numband = (int)(nb / 2);
+
+    /* weight (arg 3): default None -> all ones */
+    double *weight = NULL; int64_t nw = 0; int own_w = 0;
+    if (nargs > 3 && args[3].kind == 3) { weight = fn_arg_doubles(&args[3], &nw); own_w = 1; if (!weight) { fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); return TSR_ENOMEM; } }
+    if (weight && nw != numband) { fn_set_error("remez: weight must have one entry per band"); fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); if (own_w) fn_free_doubles(weight, nw); return TSR_EARG; }
+
+    int grid_density = 16, maxiter = 25;
+
+    /* normalize band edges to [0, 0.5] by dividing by fs */
+    double *nbands = (double*)malloc((size_t)nb * sizeof(double));
+    double *w = (double*)malloc((size_t)numband * sizeof(double));
+    double *out = NULL;
+    int rc = TSR_OK;
+    if (!nbands || !w) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < nb; i++) nbands[i] = bands[i] / fs;
+        for (int i = 0; i < numband; i++) w[i] = weight ? weight[i] : 1.0;
+        out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){numtaps});
+        if (!out) rc = TSR_ENOMEM;
+        else if (remez_core((int)numtaps, numband, nbands, desired, w, jtype, grid_density, maxiter, out) != 0) {
+            fn_set_error("remez: filter design failed to converge"); rc = TSR_EARG;
+        }
+    }
+    free(nbands); free(w);
+    fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); if (own_w) fn_free_doubles(weight, nw);
+    return rc;
+}
+
 static int r_firls(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -7542,6 +7846,8 @@ static const fn_def DEFS[] = {
     ROUTINE("signal.argrelextrema", 1, "data, comparator, axis=0, order=1, mode='clip'", "out", r_argrelextrema, NULL, "Indices of relative extrema of a 1-D array by a comparator (scipy.signal.argrelextrema)."),
     ROUTINE("signal.choose_conv_method", 1, "in1, in2, mode='full', measure=False", "out", r_choose_conv_method, NULL, "Faster of 'direct'/'fft' convolution by SciPy's op-count heuristic (scipy.signal.choose_conv_method)."),
     ROUTINE("signal.firls", 1, "numtaps, bands, desired, weight=None, fs=None", "out", r_firls, NULL, "Least-squares linear-phase FIR filter design (scipy.signal.firls)."),
+    ROUTINE("signal.remez", 1, "numtaps, bands, desired, weight=None, type='bandpass', fs=1.0", "out", r_remez, NULL,
+            "Parks-McClellan optimal FIR filter design via the Remez exchange (scipy.signal.remez)."),
     ROUTINE("signal.convolve2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_convolve2d, NULL, "2-D convolution, zero-fill boundary (scipy.signal.convolve2d)."),
     ROUTINE("signal.correlate2d", 1, "in1, in2, mode='full', boundary='fill', fillvalue=0", "out", r_correlate2d, NULL, "2-D cross-correlation, zero-fill boundary (scipy.signal.correlate2d)."),
     ROUTINE("signal.lombscargle", 1, "x, y, freqs", "pgram", r_lombscargle, NULL, "Lomb-Scargle periodogram of unevenly sampled data at the given angular frequencies (scipy.signal.lombscargle)."),

@@ -1056,18 +1056,23 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.csgraph.breadth_first_tree` | `Tessero\Csgraph::breadthFirstTree()` |
 | `scipy.sparse.csgraph.connected_components` | `Tessero\Csgraph::connectedComponents()` |
 | `scipy.sparse.csgraph.construct_dist_matrix` | `Tessero\Csgraph::constructDistMatrix()` |
+| `scipy.sparse.csgraph.csgraph_from_dense` | `Tessero\Csgraph::csgraphFromDense()` |
+| `scipy.sparse.csgraph.csgraph_to_dense` | `Tessero\Csgraph::csgraphToDense()` |
 | `scipy.sparse.csgraph.depth_first_order` | `Tessero\Csgraph::depthFirstOrder()` |
 | `scipy.sparse.csgraph.depth_first_tree` | `Tessero\Csgraph::depthFirstTree()` |
 | `scipy.sparse.csgraph.dijkstra` | `Tessero\Csgraph::dijkstra()` |
 | `scipy.sparse.csgraph.floyd_warshall` | `Tessero\Csgraph::floydWarshall()` |
 | `scipy.sparse.csgraph.johnson` | `Tessero\Csgraph::johnson()` |
 | `scipy.sparse.csgraph.laplacian` | `Tessero\Csgraph::laplacian()` |
+| `scipy.sparse.csgraph.maximum_bipartite_matching` | `Tessero\Csgraph::maximumBipartiteMatching()` |
 | `scipy.sparse.csgraph.maximum_flow` | `Tessero\Csgraph::maximumFlow()` |
 | `scipy.sparse.csgraph.min_weight_full_bipartite_matching` | `Tessero\Csgraph::minWeightFullBipartiteMatching()` |
 | `scipy.sparse.csgraph.minimum_spanning_tree` | `Tessero\Csgraph::minimumSpanningTree()` |
 | `scipy.sparse.csgraph.reconstruct_path` | `Tessero\Csgraph::reconstructPath()` |
+| `scipy.sparse.csgraph.reverse_cuthill_mckee` | `Tessero\Csgraph::reverseCuthillMckee()` |
 | `scipy.sparse.csgraph.shortest_path` | `Tessero\Csgraph::shortestPath()` |
 | `scipy.sparse.csgraph.structural_rank` | `Tessero\Csgraph::structuralRank()` |
+| `scipy.sparse.csgraph.yen` | `Tessero\Csgraph::yen()` |
 
 ## scipy.signal
 
@@ -1180,6 +1185,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.signal.qspline1d` | `Tessero\Signal::qspline1d()` |
 | `scipy.signal.qspline1d_eval` | `Tessero\Signal::qspline1dEval()` |
 | `scipy.signal.qspline2d` | `Tessero\Signal::qspline2d()` |
+| `scipy.signal.remez` | `Tessero\Signal::remez()` |
 | `scipy.signal.resample` | `Tessero\Signal::resample()` |
 | `scipy.signal.resample_poly` | `Tessero\Signal::resamplePoly()` |
 | `scipy.signal.residue` | `Tessero\Signal::residue()` |
@@ -1285,6 +1291,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.ndimage.uniform_filter` | `Tessero\Ndimage::uniformFilter()` |
 | `scipy.ndimage.uniform_filter1d` | `Tessero\Ndimage::uniformFilter1d()` |
 | `scipy.ndimage.variance` | `Tessero\Ndimage::variance()` |
+| `scipy.ndimage.watershed_ift` | `Tessero\Ndimage::watershedIft()` |
 | `scipy.ndimage.white_tophat` | `Tessero\Ndimage::whiteTophat()` |
 | `scipy.ndimage.zoom` | `Tessero\Ndimage::zoom()` |
 
