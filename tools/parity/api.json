@@ -7383,6 +7383,56 @@
         ]
     },
     {
+        "class": "Tessero\\Ndimage\\GeometricTransform",
+        "methods": [
+            {
+                "name": "apply",
+                "static": true,
+                "sig": "apply(mixed $input, callable $mapping, ?array $outputShape = null, int $order = 3, string $mode = 'constant', float $cval = 0.0, bool $prefilter = true): mixed",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\NdimageGeneric",
+        "methods": [
+            {
+                "name": "genericFilter",
+                "static": true,
+                "sig": "genericFilter(array $input, callable $function, array|int|null $size = null, ?array $footprint = null, string $mode = 'reflect', float $cval = 0.0, array|int $origin = 0): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Ndimage\\GenericFilter1d",
+        "methods": [
+            {
+                "name": "apply",
+                "static": true,
+                "sig": "apply(array $input, callable $function, int $filterSize, int $axis = -1, string $mode = 'reflect', float $cval = 0.0, int $origin = 0): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\NdimageFns",
+        "methods": [
+            {
+                "name": "genericGradientMagnitude",
+                "static": true,
+                "sig": "genericGradientMagnitude(object $input, callable $derivative, string $mode = 'reflect', float $cval = 0.0): object",
+                "doc": "scipy.ndimage.generic_gradient_magnitude."
+            },
+            {
+                "name": "genericLaplace",
+                "static": true,
+                "sig": "genericLaplace(object $input, callable $derivative2, string $mode = 'reflect', float $cval = 0.0): object",
+                "doc": "scipy.ndimage.generic_laplace."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Stats\\Normal",
         "methods": [
             {
@@ -7514,6 +7564,137 @@
         ]
     },
     {
+        "class": "Tessero\\Stats\\Uniform",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $a = 0.0, mixed $b = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "Complementary CDF \u2014 the survival function (scipy ccdf == legacy sf)."
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "log of the complementary CDF (scipy logccdf == legacy logsf)."
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse CDF \u2014 the quantile / percent-point function (scipy icdf == legacy ppf)."
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse complementary CDF (scipy iccdf == legacy isf)."
+            },
+            {
+                "name": "ilogcdf",
+                "static": false,
+                "sig": "ilogcdf(mixed $y): Tessero\\NDArray|float",
+                "doc": "Inverse of logcdf: icdf(exp(y))."
+            },
+            {
+                "name": "ilogccdf",
+                "static": false,
+                "sig": "ilogccdf(mixed $y): Tessero\\NDArray|float",
+                "doc": "Inverse of logccdf: iccdf(exp(y))."
+            },
+            {
+                "name": "mean",
+                "static": false,
+                "sig": "mean(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "variance",
+                "static": false,
+                "sig": "variance(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "standard_deviation",
+                "static": false,
+                "sig": "standard_deviation(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "skewness",
+                "static": false,
+                "sig": "skewness(): Tessero\\NDArray|float",
+                "doc": "The skewness \u2014 0 for every uniform."
+            },
+            {
+                "name": "kurtosis",
+                "static": false,
+                "sig": "kurtosis(): Tessero\\NDArray|float",
+                "doc": "The Pearson (NON-excess) kurtosis: the RV API returns the full fourth standardized moment, which is the legacy excess kurtosis (stats('k') = -1.2) plus 3 (= 1.8 for every uniform)."
+            },
+            {
+                "name": "entropy",
+                "static": false,
+                "sig": "entropy(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "mode",
+                "static": false,
+                "sig": "mode(): Tessero\\NDArray|float",
+                "doc": "The mode \u2014 any point in [a, b]; scipy returns the interval midpoint (a + b) / 2."
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            },
+            {
+                "name": "moment",
+                "static": false,
+                "sig": "moment(int $order, string $kind = 'raw'): Tessero\\NDArray|float",
+                "doc": "The raw ('raw' \u2014 non-central), 'central' or 'standardized' moment of the given order."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Interpolate\\MakeSmoothingSpline",
         "methods": [
             {
@@ -7571,6 +7752,89 @@
         ],
         "constants": [
             "MACHEPS"
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\DualAnnealing",
+        "methods": [
+            {
+                "name": "minimize",
+                "static": true,
+                "sig": "minimize(callable $func, array $bounds, int $maxiter = 1000, float $initialTemp = 5230.0, float $restartTempRatio = 2.0E-5, float $visit = 2.62, float $accept = -5.0, float $maxfun = 10000000.0, array|int|null $rng = null, bool $noLocalSearch = true): array",
+                "doc": ""
+            }
+        ],
+        "constants": [
+            "TAIL_LIMIT",
+            "MIN_VISIT_BOUND"
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\BasinHopping",
+        "methods": [
+            {
+                "name": "solve",
+                "static": true,
+                "sig": "solve(callable $func, array $x0, array|int|null $seed = null, int $niter = 100, float $T = 1.0, float $stepsize = 0.5, string $method = 'L-BFGS-B'): Tessero\\Optimize\\OptimizeResult",
+                "doc": "Minimise $func by basin-hopping."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\LineSearch",
+        "methods": [
+            {
+                "name": "approxFprime",
+                "static": true,
+                "sig": "approxFprime(callable $f, array $xk, array|float $epsilon = 1.4901161193847656E-8, ?float $f0 = null): array",
+                "doc": "scipy.optimize.approx_fprime(xk, f, epsilon=sqrt(eps))."
+            },
+            {
+                "name": "lineSearch",
+                "static": true,
+                "sig": "lineSearch(callable $f, callable $fprime, array $xk, array $pk, ?array $gfk = null, ?float $oldFval = null, ?float $oldOldFval = null, float $c1 = 0.0001, float $c2 = 0.9, ?float $amax = null, ?callable $extraCondition = null, int $maxiter = 10): array",
+                "doc": "scipy.optimize.line_search -> [alpha, fc, gc, new_fval, old_fval, new_slope]."
+            },
+            {
+                "name": "scalarSearchWolfe2",
+                "static": true,
+                "sig": "scalarSearchWolfe2(callable $phi, callable $derphi, ?float $phi0 = null, ?float $oldPhi0 = null, ?float $derphi0 = null, float $c1 = 0.0001, float $c2 = 0.9, ?float $amax = null, ?callable $extraCondition = null, int $maxiter = 10): array",
+                "doc": "scipy.optimize._linesearch.scalar_search_wolfe2."
+            }
+        ],
+        "constants": [
+            "EPS",
+            "DEFAULT_EPS"
+        ]
+    },
+    {
+        "class": "Tessero\\Integrate\\SolveIvp",
+        "methods": [
+            {
+                "name": "solve",
+                "static": true,
+                "sig": "solve(callable $fun, array $tSpan, array|float $y0, array $tEval, string $method = 'RK45', float $rtol = 0.001, float $atol = 1.0E-6): array",
+                "doc": ""
+            }
+        ],
+        "constants": [
+            "SAFETY",
+            "MIN_FACTOR",
+            "MAX_FACTOR"
+        ]
+    },
+    {
+        "class": "Tessero\\PermutationTest",
+        "methods": [
+            {
+                "name": "permutationTest",
+                "static": true,
+                "sig": "permutationTest(array $data, callable $statistic, string $permutationType = 'independent', string $alternative = 'two-sided'): array",
+                "doc": ""
+            }
+        ],
+        "constants": [
+            "EPS"
         ]
     },
     {
