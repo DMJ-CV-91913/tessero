@@ -465,7 +465,117 @@ static int r_min_weight_full_bipartite_matching(const void *ctx, const tsr_arg *
     return TSR_OK;
 }
 
+static int csg_dinic_bfs(const int64_t *cap, int64_t n, int64_t s, int64_t t, int64_t *level, int64_t *q)
+{
+    for (int64_t i = 0; i < n; i++) level[i] = -1;
+    int64_t head = 0, tail = 0;
+    level[s] = 0; q[tail++] = s;
+    while (head < tail) {
+        const int64_t u = q[head++];
+        const int64_t *row = cap + u * n;
+        for (int64_t v = 0; v < n; v++)
+            if (row[v] > 0 && level[v] < 0) { level[v] = level[u] + 1; q[tail++] = v; }
+    }
+    return level[t] >= 0;
+}
+
+/* Dinic blocking-flow DFS, iterative (an explicit stack avoids any recursion depth concern on
+ * large n). `it[u]` is the current-arc pointer for u (reset each phase). Returns the flow pushed
+ * along one augmenting path in the level graph, 0 when none remains. `pathu`/`pathcap` are scratch
+ * of length n+1 holding the current partial path (nodes and the residual of the arc entering them).*/
+static int64_t csg_dinic_push(int64_t *cap, int64_t n, int64_t s, int64_t t,
+                              const int64_t *level, int64_t *it, int64_t *pathu, int64_t *pathcap)
+{
+    int64_t depth = 0;
+    pathu[0] = s; pathcap[0] = INT64_MAX;                 /* source has no entering arc */
+    while (depth >= 0) {
+        const int64_t u = pathu[depth];
+        if (u == t) {                                     /* found an augmenting path: push bottleneck */
+            int64_t f = INT64_MAX;
+            for (int64_t k = 1; k <= depth; k++) if (pathcap[k] < f) f = pathcap[k];
+            for (int64_t k = 1; k <= depth; k++) {
+                const int64_t a = pathu[k - 1], b = pathu[k];
+                cap[a * n + b] -= f; cap[b * n + a] += f;
+            }
+            return f;
+        }
+        int64_t advanced = 0;
+        const int64_t *row = cap + u * n;
+        for (int64_t v = it[u]; v < n; v++) {
+            if (row[v] > 0 && level[v] == level[u] + 1) {
+                it[u] = v;                                /* remember where we are for this u */
+                pathu[depth + 1] = v;
+                pathcap[depth + 1] = row[v];
+                depth++;
+                advanced = 1;
+                break;
+            }
+        }
+        if (!advanced) {                                  /* dead end: retreat, disable u this phase */
+            it[u] = n;
+            depth--;
+            if (depth >= 0) it[pathu[depth]]++;           /* don't revisit the arc into u */
+        }
+    }
+    return 0;
+}
+
+/* maximum_flow(csgraph, source, sink, method='dinic'): Dinic max-flow on a dense INTEGER capacity
+ * matrix. Returns {flow_value (int), flow (n-by-n int32, antisymmetric net flow)}. */
+static int r_maximum_flow(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) {
+        fn_set_error("maximum_flow: the graph must be a square 2-D capacity matrix");
+        return TSR_EARG;
+    }
+    if (nargs < 3) { fn_set_error("maximum_flow: source and sink are required"); return TSR_EARG; }
+    const int64_t n = args[0].arr.shape[0];
+    const int64_t s = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    const int64_t t = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    if (s < 0 || s >= n || t < 0 || t >= n) { fn_set_error("maximum_flow: source/sink out of range"); return TSR_EARG; }
+
+    int64_t tot; double *A = fn_arg_doubles(&args[0], &tot);
+    if (!A) return TSR_ENOMEM;
+
+    int64_t *cap = (int64_t *)malloc((size_t)(n * n) * sizeof(int64_t));
+    int64_t *orig = (int64_t *)malloc((size_t)(n * n) * sizeof(int64_t));
+    int64_t *level = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int64_t *q = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int64_t *it = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    int64_t *pu = (int64_t *)malloc((size_t)(n + 1) * sizeof(int64_t));
+    int64_t *pc = (int64_t *)malloc((size_t)(n + 1) * sizeof(int64_t));
+    int32_t *flow = (int32_t *)fn_result_array(&res[1], TSR_I32, 2, (int64_t[]){n, n});
+    if (!cap || !orig || !level || !q || !it || !pu || !pc || !flow) {
+        free(cap); free(orig); free(level); free(q); free(it); free(pu); free(pc);
+        fn_free_doubles(A, tot); return TSR_ENOMEM;
+    }
+
+    /* integer capacities; residual (cap) starts as a copy of the original (orig). Capacities on the
+     * reverse arcs begin at 0 and grow as flow is pushed -- this is what makes `used` antisymmetric. */
+    for (int64_t i = 0; i < n * n; i++) { int64_t c = (int64_t)A[i]; orig[i] = c; cap[i] = c; }
+    fn_free_doubles(A, tot);
+
+    int64_t flow_value = 0;
+    if (s != t) {
+        while (csg_dinic_bfs(cap, n, s, t, level, q)) {
+            for (int64_t i = 0; i < n; i++) it[i] = 0;
+            int64_t f;
+            while ((f = csg_dinic_push(cap, n, s, t, level, it, pu, pc)) > 0) flow_value += f;
+        }
+    }
+
+    /* net flow F[i][j] = orig[i][j] - cap[i][j] (consumed residual). Already antisymmetric:
+     * forward arc loses capacity (positive), its reverse gains the same (negative). */
+    for (int64_t i = 0; i < n * n; i++) flow[i] = (int32_t)(orig[i] - cap[i]);
+
+    fn_result_int(&res[0], flow_value);
+    free(cap); free(orig); free(level); free(q); free(it); free(pu); free(pc);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
+    ROUTINE("csgraph.maximum_flow", 2, "csgraph, source, sink, method='dinic'", "flow_value, flow", r_maximum_flow, NULL, "Maximum single-source single-sink flow on a dense integer capacity matrix via Dinic's algorithm (scipy.sparse.csgraph.maximum_flow)."),
     ROUTINE("csgraph.connected_components", 2, "csgraph, directed=True, connection='weak'", "n_components, labels", r_connected_components, NULL, "Connected components of a graph, weak connectivity (scipy.sparse.csgraph.connected_components)."),
     ROUTINE("csgraph.shortest_path", 1, "csgraph, method='auto', directed=True, return_predecessors=False, unweighted=False, overwrite=False, indices=None", "dist_matrix", r_shortest_path, NULL, "All-pairs shortest path distance matrix (scipy.sparse.csgraph.shortest_path; dense, indices=None)."),
     ROUTINE("csgraph.dijkstra", 1, "csgraph, directed=True, indices=None, return_predecessors=False, unweighted=False", "dist_matrix", r_dijkstra, NULL, "Dijkstra all-pairs shortest paths, non-negative weights (scipy.sparse.csgraph.dijkstra; indices=None)."),

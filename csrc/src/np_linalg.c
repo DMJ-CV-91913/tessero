@@ -3107,6 +3107,36 @@ static int r_expm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 { (void)ctx; (void)nres; return matfun_impl(args, nargs, res, exp, "expm"); }
 static int r_tanm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return matfun_impl(args, nargs, res, tan, "tanm"); }
+
+static int r_funm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    /* func name: default "exp" (matches the facade default). scipy.linalg.funm
+       requires a callable; here we accept the subset mappable to libm scalars. */
+    const char *fname = "exp";
+    if (nargs > 1 && args[1].kind == 2 && args[1].str)
+        fname = args[1].str;
+
+    double (*f)(double) = NULL;
+    if      (!strcmp(fname, "exp"))  f = exp;
+    else if (!strcmp(fname, "sqrt")) f = sqrt;
+    else if (!strcmp(fname, "log"))  f = log;
+    else if (!strcmp(fname, "sin"))  f = sin;
+    else if (!strcmp(fname, "cos"))  f = cos;
+    else if (!strcmp(fname, "sinh")) f = sinh;
+    else if (!strcmp(fname, "cosh")) f = cosh;
+    else if (!strcmp(fname, "tanh")) f = tanh;
+    else if (!strcmp(fname, "tan"))  f = tan;
+    else {
+        fn_set_error("funm: unsupported func name '%s' (expected one of "
+                     "exp, sqrt, log, sin, cos, sinh, cosh, tanh, tan)", fname);
+        return TSR_EARG;
+    }
+    /* matfun_impl applies f via the real Schur method + Parlett recurrence and
+       enforces the real, distinct-spectrum domain (sqrt/log additionally need a
+       positive spectrum, which f = sqrt/log encode by returning NaN otherwise). */
+    return matfun_impl(args, nargs, res, f, "funm");
+}
 /* matrix sign function: sign(A) via the Schur-Parlett method with f(x) = sign(x) (scipy.linalg.signm). For a
    real matrix with a real, well-separated spectrum this is the value scipy's funm-based signm returns. */
 static double sl_signfun(double x) { return x > 0.0 ? 1.0 : (x < 0.0 ? -1.0 : 0.0); }
@@ -4239,6 +4269,7 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.tanhm", 1, "a", "out", r_tanhm, NULL, "Matrix hyperbolic tangent via the Schur-Parlett method (scipy.linalg.tanhm; real spectrum)."),
     ROUTINE("slinalg.expm", 1, "a", "out", r_expm, NULL, "Matrix exponential via the Schur-Parlett method (scipy.linalg.expm; real spectrum)."),
     ROUTINE("slinalg.tanm", 1, "a", "out", r_tanm, NULL, "Matrix tangent via the Schur-Parlett method (scipy.linalg.tanm; real spectrum)."),
+    ROUTINE("slinalg.funm", 2, "a, func='exp'", "out", r_funm, NULL, "Matrix function f(A) by name via the Schur-Parlett method; func one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.linalg.funm; real spectrum)."),
     ROUTINE("slinalg.fractional_matrix_power", 1, "a, t", "out", r_fractional_matrix_power, NULL, "Fractional matrix power a^t via the Schur-Parlett method (scipy.linalg.fractional_matrix_power; positive real spectrum)."),
     ROUTINE("slinalg.eigvals", 1, "a", "out", r_eigvals, &ALWAYS_COMPLEX, "Eigenvalues of a general matrix, complex, sorted (scipy.linalg.eigvals)."),
     ROUTINE("slinalg.eig", 2, "a", "eigenvalues, eigenvectors", r_eig, &ALWAYS_COMPLEX, "Eigenvalues and right eigenvectors of a general matrix, complex (scipy.linalg.eig)."),

@@ -353,6 +353,29 @@ def main():
     for _mf in ('sinm', 'cosm', 'sinhm', 'coshm', 'tanhm', 'expm'):
         blocks[_mf] = [call(_mf, [sym(n)]) for n in (2, 3, 4)]
     blocks['tanm'] = [call('tanm', [0.3 * sym(n)]) for n in (2, 3, 4)]   # small eigenvalues, away from pi/2
+
+    # funm(A, func): matrix function by NAME via Schur-Parlett (kernel dispatches
+    # the name onto matfun_impl). scipy takes a callable; Tessero arg is the name
+    # string. Real, distinct-spectrum 2x2 only (sqrt/log need positive spectrum).
+    _FUNM_R = {'exp': np.exp, 'sin': np.sin, 'cos': np.cos,
+               'sinh': np.sinh, 'cosh': np.cosh, 'tanh': np.tanh}
+    _FUNM_POS = {'sqrt': np.sqrt, 'log': np.log}
+    _pos = [np.array([[6., 2.], [1., 5.]]),
+            np.array([[4., 1.], [0., 3.]]),
+            np.array([[2., 0.5], [0.5, 3.]])]
+    _gen = _pos + [np.array([[1., 2.], [0., -2.]]),
+                   np.array([[0.3, 0.1], [0.0, -0.4]])]
+    _tanA = [np.array([[0.3, 0.1], [0.0, -0.4]]),
+             np.array([[0.5, 0.2], [0.0, 0.9]])]
+
+    def _funm(nm, f, A):
+        return {'args': [enc(A), enc(nm)], 'kwargs': {},
+                'expect': enc_one(sla.funm(A, f, disp=False)[0])}
+
+    fm = [_funm(nm, f, A) for nm, f in _FUNM_R.items() for A in _gen]
+    fm += [_funm('tan', np.tan, A) for A in _tanA]
+    fm += [_funm(nm, f, A) for nm, f in _FUNM_POS.items() for A in _pos]
+    blocks['funm'] = fm
     blocks['fractional_matrix_power'] = [call('fractional_matrix_power', [spd(n), t]) for n in (2, 3) for t in (0.5, 0.3, 2.0)]
     st = []
     for n in (2, 3, 5):

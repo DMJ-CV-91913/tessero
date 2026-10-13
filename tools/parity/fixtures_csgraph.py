@@ -165,6 +165,35 @@ for n in (4, 5, 6):
                   'expect': F.enc_result((np.asarray(ri, dtype=np.int64), np.asarray(ci, dtype=np.int64)), ['row_ind', 'col_ind']), 'compare': 'tol'})
 calls.append({'fn': 'min_weight_full_bipartite_matching', 'cases': mwm_c})
 
+# maximum_flow: Dinic max-flow on dense integer capacity matrices. The .flow matrix is NON-UNIQUE,
+# so the fixture stores only the (unique) flow_value and the parity harness validates .flow
+# semantically (compare='maxflow'); capacity + source/sink are carried in args. Host-independent.
+from scipy.sparse.csgraph import maximum_flow as _maxflow
+_mf_cases = [
+    (np.array([[0, 16, 13, 0, 0, 0], [0, 0, 10, 12, 0, 0], [0, 4, 0, 0, 14, 0],
+               [0, 0, 9, 0, 0, 20], [0, 0, 0, 7, 0, 4], [0, 0, 0, 0, 0, 0]], np.int32), 0, 5),
+    (np.array([[0, 5, 0, 5, 0], [0, 0, 4, 0, 0], [0, 0, 0, 0, 4],
+               [0, 0, 3, 0, 2], [0, 0, 0, 0, 0]], np.int32), 0, 4),
+    (np.array([[0, 3, 0, 0], [0, 0, 2, 0], [0, 0, 0, 2], [0, 0, 0, 0]], np.int32), 0, 3),
+    (np.array([[0, 0, 0], [0, 0, 5], [0, 0, 0]], np.int32), 0, 2),
+    (np.array([[0, 7, 0, 0], [0, 0, 5, 2], [3, 0, 0, 6], [0, 0, 0, 0]], np.int32), 0, 3),
+]
+_mf_rng = np.random.default_rng(20261012)
+for _ in range(8):
+    _n = int(_mf_rng.integers(4, 9))
+    _A = np.zeros((_n, _n), np.int32)
+    for _i in range(_n):
+        for _j in range(_n):
+            if _i != _j and _mf_rng.uniform() < 0.45:
+                _A[_i, _j] = int(_mf_rng.integers(0, 12))
+    _mf_cases.append((_A, 0, _n - 1))
+mf_c = []
+for _A, _s, _t in _mf_cases:
+    _r = _maxflow(sp.csr_array(_A), _s, _t)
+    mf_c.append({'args': [{'shape': list(_A.shape), 'dtype': 'int64', 'data': [int(x) for x in _A.ravel()]}, _s, _t],
+                 'kwargs': {}, 'expect': {'flow_value': int(_r.flow_value)}, 'compare': 'maxflow'})
+calls.append({'fn': 'maximum_flow', 'cases': mf_c})
+
 out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
