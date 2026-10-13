@@ -7370,6 +7370,11 @@
             "nin": 0,
             "nout": 3
         },
+        "stats.tukey_hsd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
+        },
         "stats.tukeylambda": {
             "kind": "dist",
             "nin": null,
@@ -7414,6 +7419,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "stats.wasserstein_distance_nd": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 2
         },
         "stats.weibull_max": {
             "kind": "dist",

@@ -605,6 +605,21 @@ def main():
             wc.append({'args': [F.enc(df), F.enc(scale), F.enc(Xw)], 'kwargs': {},
                        'expect': {'dict': {'pdf': F.enc_result_one(dist.pdf(Xw)), 'logpdf': F.enc_result_one(dist.logpdf(Xw))}}, 'compare': 'tol'})
         B[fn] = wc
+    # ---- wasserstein_distance_nd (N-D optimal transport)
+    wnd = []
+    wnd.append(call("wasserstein_distance_nd", [[[0, 2, 3], [1, 2, 5]], [[3, 2, 3], [4, 2, 5]]]))
+    wnd.append(call("wasserstein_distance_nd",
+                    [[[0, 2.75], [2, 209.3], [0, 0]], [[0.2, 0.322], [4.5, 25.1808]], [0.4, 5.2, 0.114], [0.8, 1.5]]))
+    wnd.append(call("wasserstein_distance_nd", [data((4, 2)), data((3, 2))]))
+    wnd.append(call("wasserstein_distance_nd", [data((5, 3)), data((5, 3))]))
+    wu, wv = data((3, 2), lo=0, hi=5), data((4, 2), lo=0, hi=5)
+    wnd.append(call("wasserstein_distance_nd", [wu, wv, data(3, lo=0.1, hi=2), data(4, lo=0.1, hi=2)]))
+    wnd.append(call("wasserstein_distance_nd", [data((2, 4)), data((2, 4))]))
+    wnd.append(call("wasserstein_distance_nd", [data((6, 2)), data((2, 2)), data(6, lo=0.1, hi=3), data(2, lo=0.1, hi=3)]))
+    wnd.append(call("wasserstein_distance_nd", [[[1.0], [2.0], [3.0]], [[2.0], [4.0]]]))
+    wnd.append(call("wasserstein_distance_nd", [data((4, 5)), data((3, 5)), data(4, lo=0.1, hi=2), data(3, lo=0.1, hi=2)]))
+    B["wasserstein_distance_nd"] = wnd
+
     write('desc', B)
 
 
