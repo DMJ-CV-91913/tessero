@@ -267,3 +267,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-13,optimize curve_fit (ffi->both) + quadratic_assignment,100.0,100.0,88.0,87.8,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-13,stats.Normal + ndimage.value_indices,100.0,100.0,88.1,88.0,100.0,99.8,100.0,100.0,85.9,85.9
 2026-10-13,interpolate make_smoothing_spline + LinearNDInterpolator + optimize differential_evolution,100.0,100.0,88.3,88.2,100.0,99.8,100.0,100.0,85.9,85.9
+2026-10-13,stats barnard_exact + boschloo_exact + logrank,100.0,100.0,88.5,88.4,100.0,99.8,100.0,100.0,86.9,86.9
