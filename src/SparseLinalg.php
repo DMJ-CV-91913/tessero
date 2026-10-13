@@ -27,14 +27,17 @@ final class SparseLinalg
     'gmres' => 'gmres',
     'inv' => 'inv',
     'is_sptriangular' => 'isSptriangular',
+    'lsmr' => 'lsmr',
     'lsqr' => 'lsqr',
     'matrix_power' => 'matrixPower',
     'minres' => 'minres',
     'norm' => 'norm',
     'onenormest' => 'onenormest',
+    'qmr' => 'qmr',
     'spbandwidth' => 'spbandwidth',
     'spsolve' => 'spsolve',
     'spsolve_triangular' => 'spsolveTriangular',
+    'tfqmr' => 'tfqmr',
     ];
 
     private function __construct()
@@ -146,6 +149,16 @@ final class SparseLinalg
     }
 
     /**
+     * LSMR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsmr).
+     *
+     * scipy.splinalg.lsmr
+     */
+    public static function lsmr(mixed $A, mixed $b, mixed $damp = 0.0, mixed $atol = 1e-6, mixed $btol = 1e-6, mixed $conlim = 1e8, mixed $maxiter = null): mixed
+    {
+        return Registry::routine('splinalg.lsmr', [$A, $b, $damp, $atol, $btol, $conlim, $maxiter]);
+    }
+
+    /**
      * LSQR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsqr).
      *
      * scipy.splinalg.lsqr
@@ -196,6 +209,16 @@ final class SparseLinalg
     }
 
     /**
+     * Quasi-minimal residual for a general square system (scipy.sparse.linalg.qmr).
+     *
+     * scipy.splinalg.qmr
+     */
+    public static function qmr(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $M1 = null, mixed $M2 = null): mixed
+    {
+        return Registry::routine('splinalg.qmr', [$A, $b, $x0, $rtol, $atol, $maxiter, $M1, $M2]);
+    }
+
+    /**
      * Lower and upper bandwidth of a sparse matrix (scipy.sparse.linalg.spbandwidth).
      *
      * scipy.splinalg.spbandwidth
@@ -225,5 +248,15 @@ final class SparseLinalg
     public static function spsolveTriangular(mixed $A, mixed $b, mixed $lower = true, mixed $overwriteA = false, mixed $overwriteB = false, mixed $unitDiagonal = false): mixed
     {
         return Registry::routine('splinalg.spsolve_triangular', [$A, $b, $lower, $overwriteA, $overwriteB, $unitDiagonal]);
+    }
+
+    /**
+     * Transpose-free QMR for a general square system (scipy.sparse.linalg.tfqmr).
+     *
+     * scipy.splinalg.tfqmr
+     */
+    public static function tfqmr(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $M = null): mixed
+    {
+        return Registry::routine('splinalg.tfqmr', [$A, $b, $x0, $rtol, $atol, $maxiter, $M]);
     }
 }

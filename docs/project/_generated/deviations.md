@@ -724,6 +724,9 @@
 | `splinalg.spsolve` | call | rtol 1e-09 |
 | `splinalg.spsolve_triangular` | call | rtol 1e-09 |
 | `splinalg.norm` | call | rtol 1e-09 |
+| `splinalg.qmr` | call | rtol 1e-07 |
+| `splinalg.tfqmr` | call | rtol 1e-07 |
+| `splinalg.lsmr` | call | rtol 1e-06 |
 | `splinalg.cg` | call | rtol 1e-07 |
 | `splinalg.bicgstab` | call | rtol 1e-07 |
 | `splinalg.bicg` | call | rtol 1e-07 |
