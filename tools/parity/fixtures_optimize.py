@@ -3,6 +3,7 @@
 named function the runner rebuilds in PHP (poly / cos(x)-x / Rosenbrock), so a callable need not be serialised.
 These are backend-neutral iterative algorithms (no BLAS), host-independent; no pinned environment required."""
 import json, math, os
+import fixtures_optimize_classes as _oc
 import numpy as np
 import scipy.optimize as so
 
@@ -196,6 +197,7 @@ cases.append({'fn': 'curve_fit', 'obj': {'kind': 'linresid', 'x': _lx, 'y': _ly}
               'pcov': [[float(v) for v in row] for row in _cf_lin[1]],
               'rtol': 1e-6, 'rtol_pcov': 1e-4})
 # ===== end curve_fit cases =====
+cases += _oc.cases()
 out = {'module': 'optimize', 'scipy': __import__('scipy').__version__, 'solver_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

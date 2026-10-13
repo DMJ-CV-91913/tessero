@@ -489,6 +489,10 @@ legacy:
     leastsq: {ffi: [LS::solve], ext: [LS::solve], fixtures: [optimize.leastsq]}
     nnls: {ffi: [LS::nnls], ext: [LS::nnls], fixtures: [optimize.nnls]}
     isotonic_regression: {ffi: [LS::isotonicRegression], ext: [LS::isotonicRegression], fixtures: [optimize.isotonic_regression]}
+    Bounds: {ffi: [BND::__construct], ext: [BND::__construct], fixtures: [optimize.Bounds]}
+    LinearConstraint: {ffi: [LC2::__construct], ext: [LC2::__construct], fixtures: [optimize.LinearConstraint]}
+    NonlinearConstraint: {ffi: [NLC::__construct], ext: [NLC::__construct], fixtures: [optimize.NonlinearConstraint]}
+    RootResults: {ffi: [RR::__construct], ext: [RR::__construct], fixtures: [optimize.RootResults]}
     least_squares: {ffi: [LS::leastSquares], ext: [LS::leastSquares], fixtures: [optimize.least_squares]}
     lsq_linear: {ffi: [LS::lsqLinear], ext: [LS::lsqLinear], fixtures: [optimize.lsq_linear]}
     linear_sum_assignment: {ffi: [ASG::linearSumAssignment], ext: [ASG::linearSumAssignment], fixtures: [optimize.linear_sum_assignment]}

@@ -6770,6 +6770,62 @@
         ]
     },
     {
+        "class": "Tessero\\Optimize\\Bounds",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array|int|float $lb = -INF, array|int|float $ub = INF, array|bool $keep_feasible = false)",
+                "doc": ""
+            },
+            {
+                "name": "resolved",
+                "static": false,
+                "sig": "resolved(int $n): array",
+                "doc": "Broadcast lb/ub to length n, matching how scipy applies Bounds to an n-vector."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\LinearConstraint",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $A, array|int|float $lb = -INF, array|int|float $ub = INF, array|bool $keep_feasible = false)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\NonlinearConstraint",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $fun, array|int|float $lb, array|int|float $ub, mixed $jac = '2-point', mixed $hess = null, array|bool $keep_feasible = false, float $finite_diff_rel_step = NAN)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\RootResults",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(float $root, int $iterations, int $function_calls, bool $converged, string $flag, string $method = '')",
+                "doc": ""
+            },
+            {
+                "name": "jsonSerialize",
+                "static": false,
+                "sig": "jsonSerialize(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Optimize\\QuadraticAssignment",
         "methods": [
             {

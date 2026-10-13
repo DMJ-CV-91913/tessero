@@ -1003,6 +1003,22 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                     $ok = $alpha !== null && abs($alpha - (float) $c['alpha']) <= $rtol * (1 + abs((float) $c['alpha'])) && (int) $fcnt === (int) $c['fc'] && (int) $gcnt === (int) $c['gc'] && abs($newf - (float) $c['new_fval']) <= $rtol * (1 + abs((float) $c['new_fval']));
                     if ($ok && $c['new_slope'] !== null) { $ok = vecClose($slope, $c['new_slope'], $rtol); }
                 }
+            } elseif ($fn === 'Bounds') {
+                $b = new \Tessero\Optimize\Bounds($c['ctor']['lb'], $c['ctor']['ub']);
+                if (isset($c['n'])) { [$lb, $ub] = $b->resolved((int) $c['n']); }
+                else { $lb = is_array($b->lb) ? $b->lb : [$b->lb]; $ub = is_array($b->ub) ? $b->ub : [$b->ub]; }
+                $ok = vecClose($lb, $c['lb'], $rtol) && vecClose($ub, $c['ub'], $rtol);
+            } elseif ($fn === 'LinearConstraint') {
+                $lc = new \Tessero\Optimize\LinearConstraint($c['ctor']['A'], $c['ctor']['lb'], $c['ctor']['ub']);
+                $lb = is_array($lc->lb) ? $lc->lb : [$lc->lb]; $ub = is_array($lc->ub) ? $lc->ub : [$lc->ub];
+                $ok = vecClose(array_merge(...$lc->A), array_merge(...$c['A']), $rtol) && vecClose($lb, $c['lb'], $rtol) && vecClose($ub, $c['ub'], $rtol);
+            } elseif ($fn === 'NonlinearConstraint') {
+                $nlc = new \Tessero\Optimize\NonlinearConstraint(static fn (array $x): array => $x, $c['ctor']['lb'], $c['ctor']['ub']);
+                $ok = abs((float) $nlc->lb - (float) $c['lb']) <= $rtol && abs((float) $nlc->ub - (float) $c['ub']) <= $rtol;
+            } elseif ($fn === 'RootResults') {
+                $r = \Tessero\Optimize\Root::rootScalar(static fn (float $x): float => $x * $x - 2.0, $c['ctor']['method'], array_map('floatval', $c['ctor']['bracket']), null);
+                $rr = new \Tessero\Optimize\RootResults((float) $r['root'], 0, 0, (bool) $r['converged'], (string) $r['flag'], $c['ctor']['method']);
+                $ok = abs($rr->root - (float) $c['root']) <= $rtol * (1 + abs((float) $c['root'])) && $rr->converged === (bool) $c['converged'];
             }
         } catch (\Throwable $e) {
             $msg = $e->getMessage();
