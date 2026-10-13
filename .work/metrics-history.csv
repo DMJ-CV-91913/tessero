@@ -261,3 +261,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-12,"signal: envelope, firwin_2d, istft, iirdesign",100.0,100.0,87.1,86.9,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,interpolate NearestNDInterpolator (pure-PHP),100.0,100.0,87.2,87.0,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-12,optimize CG + Powell + Newton-CG,100.0,100.0,87.4,87.2,100.0,99.8,100.0,100.0,85.5,85.5
+2026-10-13,spatial.distance directed_hausdorff,100.0,100.0,87.4,87.2,100.0,99.8,100.0,100.0,85.5,85.5

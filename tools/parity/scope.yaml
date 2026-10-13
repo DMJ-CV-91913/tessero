@@ -451,6 +451,10 @@ legacy:
     KDTree: {ffi: [KD::query], ext: [KD::query], fixtures: [spatial.cKDTree]}
     # pure-PHP hyperrectangle (Minkowski min/max distances to a point or rectangle, volume), both backends
     Rectangle: {ffi: [RECT::volume], ext: [RECT::volume], fixtures: [spatial.Rectangle]}
+  scipy.spatial.distance:
+    # pure-PHP directed Hausdorff distance (Taha-Hanbury early-break); distance verified both backends
+    # (the returned index pair is RNG-dependent in scipy and is not asserted).
+    directed_hausdorff: {ffi: [HAUS::directed], ext: [HAUS::directed], fixtures: [spatial.directed_hausdorff]}
   scipy.optimize:
     # the scalar/BFGS/Nelder-Mead solvers are pure PHP (they call the user's callable, no kernel), so the one
     # class serves both backends - unlike linprog/milp which are kernel-backed and need an Ext provider. They are
