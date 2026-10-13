@@ -297,6 +297,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.linalg.fiedler` | `Tessero\ScipyLinalg::fiedler()` |
 | `scipy.linalg.fiedler_companion` | `Tessero\ScipyLinalg::fiedlerCompanion()` |
 | `scipy.linalg.fractional_matrix_power` | `Tessero\ScipyLinalg::fractionalMatrixPower()` |
+| `scipy.linalg.funm` | `Tessero\ScipyLinalg::funm()` |
 | `scipy.linalg.hadamard` | `Tessero\ScipyLinalg::hadamard()` |
 | `scipy.linalg.hankel` | `Tessero\ScipyLinalg::hankel()` |
 | `scipy.linalg.helmert` | `Tessero\ScipyLinalg::helmert()` |
@@ -1061,6 +1062,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.csgraph.floyd_warshall` | `Tessero\Csgraph::floydWarshall()` |
 | `scipy.sparse.csgraph.johnson` | `Tessero\Csgraph::johnson()` |
 | `scipy.sparse.csgraph.laplacian` | `Tessero\Csgraph::laplacian()` |
+| `scipy.sparse.csgraph.maximum_flow` | `Tessero\Csgraph::maximumFlow()` |
 | `scipy.sparse.csgraph.min_weight_full_bipartite_matching` | `Tessero\Csgraph::minWeightFullBipartiteMatching()` |
 | `scipy.sparse.csgraph.minimum_spanning_tree` | `Tessero\Csgraph::minimumSpanningTree()` |
 | `scipy.sparse.csgraph.reconstruct_path` | `Tessero\Csgraph::reconstructPath()` |

@@ -49,6 +49,7 @@ final class ScipyLinalg
     'fiedler' => 'fiedler',
     'fiedler_companion' => 'fiedlerCompanion',
     'fractional_matrix_power' => 'fractionalMatrixPower',
+    'funm' => 'funm',
     'hadamard' => 'hadamard',
     'hankel' => 'hankel',
     'helmert' => 'helmert',
@@ -453,6 +454,16 @@ final class ScipyLinalg
     public static function fractionalMatrixPower(mixed $a, mixed $t): mixed
     {
         return Registry::routine('slinalg.fractional_matrix_power', [$a, $t]);
+    }
+
+    /**
+     * Matrix function f(A) by name via the Schur-Parlett method; func one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.linalg.funm; real spectrum).
+     *
+     * scipy.linalg.funm
+     */
+    public static function funm(mixed $a, mixed $func = 'exp'): mixed
+    {
+        return Registry::routine('slinalg.funm', [$a, $func]);
     }
 
     /**

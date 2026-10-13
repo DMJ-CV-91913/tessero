@@ -363,6 +363,93 @@ function comparePartition(string $method, array $case, mixed $got, string $array
     return null;
 }
 
+/**
+ * maximum_flow: flow value unique (checked exactly); .flow NON-UNIQUE, validated semantically
+ * (integer, antisymmetric, capacity bound, conservation) against the capacity matrix from args[0].
+ */
+function compareMaxflow(array $case, mixed $got): ?string
+{
+    $wantFv = $case['expect']['flow_value'] ?? $case['expect'];   // integer, exact
+    if (! is_array($got) || ! array_key_exists('flow_value', $got) || ! array_key_exists('flow', $got)) {
+        return 'expected a {flow_value, flow} result, got ' . get_debug_type($got);
+    }
+    $fv = $got['flow_value'];
+    if (! is_int($fv) || $fv !== (int) $wantFv) {
+        return sprintf('flow_value got %s want %d', var_export($fv, true), (int) $wantFv);
+    }
+    $flow = $got['flow'];
+    if (! is_object($flow)) {
+        return 'flow must be a matrix, got ' . get_debug_type($flow);
+    }
+
+    // capacity matrix, recomputed from args[0] (the original capacities), like comparePartition.
+    $a = $case['args'][0];
+    $cap = array_map(static fn ($x) => is_string($x) ? dec($x) : $x, $a['data']);
+    $shape = $a['shape'];
+    $n = $shape[0];
+    if (count($shape) !== 2 || $shape[0] !== $shape[1]) {
+        return 'capacity must be a square matrix';
+    }
+    $s = (int) $case['args'][1];
+    $t = (int) $case['args'][2];
+
+    if ($flow->shape() !== [$n, $n]) {
+        return 'flow shape ' . implode(',', $flow->shape()) . " != {$n},{$n}";
+    }
+    $F = $flow->toList();                                         // row-major, length n*n
+    $at = static fn (array $m, int $i, int $j) => $m[$i * $n + $j];
+
+    // all integer
+    foreach ($F as $v) {
+        if (((float) $v) !== floor((float) $v)) {
+            return 'flow has a non-integer entry';
+        }
+    }
+    // antisymmetry: F[i][j] == -F[j][i]
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = 0; $j < $n; $j++) {
+            if ((int) $at($F, $i, $j) !== -(int) $at($F, $j, $i)) {
+                return "flow not antisymmetric at {$i},{$j}";
+            }
+        }
+    }
+    // capacity bound on positive (forward) flow: 0 <= F[i][j] <= cap[i][j]
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = 0; $j < $n; $j++) {
+            $f = (int) $at($F, $i, $j);
+            if ($f > 0 && $f > (int) $at($cap, $i, $j)) {
+                return "flow {$f} exceeds capacity " . (int) $at($cap, $i, $j) . " at {$i},{$j}";
+            }
+        }
+    }
+    // conservation: every node except source/sink has zero net out-flow (sum of its row of F)
+    for ($u = 0; $u < $n; $u++) {
+        if ($u === $s || $u === $t) {
+            continue;
+        }
+        $net = 0;
+        for ($j = 0; $j < $n; $j++) {
+            $net += (int) $at($F, $u, $j);
+        }
+        if ($net !== 0) {
+            return "conservation broken at node {$u}: net {$net}";
+        }
+    }
+    // source net out = +flow_value, sink net out = -flow_value
+    $src = 0; $snk = 0;
+    for ($j = 0; $j < $n; $j++) {
+        $src += (int) $at($F, $s, $j);
+        $snk += (int) $at($F, $t, $j);
+    }
+    if ($src !== $fv) {
+        return "source net {$src} != flow_value {$fv}";
+    }
+    if ($snk !== -$fv) {
+        return "sink net {$snk} != -flow_value {$fv}";
+    }
+    return null;
+}
+
 function runCall(string|object $class, string $method, array $case, string $arrayClass, float $rtol, float $atol, float &$worst): ?string
 {
     $args = array_map(static fn ($v) => decodeValue($v, $arrayClass), $case['args']);
@@ -399,6 +486,9 @@ function runCall(string|object $class, string $method, array $case, string $arra
     }
     if (($case['compare'] ?? 'tol') === 'partition') {
         return comparePartition($method, $case, $got, $arrayClass);
+    }
+    if (($case['compare'] ?? 'tol') === 'maxflow') {
+        return compareMaxflow($case, $got);
     }
     if (($case['compare'] ?? 'tol') === 'sorted' && is_object($got) && is_array($want) && isset($want['data'])) {
         $key = static fn ($x): float => is_nan((float) $x) ? INF : (float) $x;

@@ -24,6 +24,7 @@
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
         "csgraph.laplacian": "pass",
+        "csgraph.maximum_flow": "pass",
         "csgraph.min_weight_full_bipartite_matching": "pass",
         "csgraph.minimum_spanning_tree": "pass",
         "csgraph.reconstruct_path": "pass",
@@ -920,6 +921,7 @@
         "slinalg.fiedler": "pass",
         "slinalg.fiedler_companion": "pass",
         "slinalg.fractional_matrix_power": "pass",
+        "slinalg.funm": "pass",
         "slinalg.hadamard": "pass",
         "slinalg.hankel": "pass",
         "slinalg.helmert": "pass",
@@ -3308,7 +3310,9 @@
             "stats.logrank": null,
             "integrate.tanhsinh": null,
             "integrate.fixed_quad": null,
-            "integrate.quad_vec": null
+            "integrate.quad_vec": null,
+            "slinalg.funm": 2.7468168720141543e-13,
+            "csgraph.maximum_flow": 0
         },
         "ext": {
             "np.median": 0,
@@ -4963,7 +4967,9 @@
             "stats.logrank": null,
             "integrate.fixed_quad": null,
             "integrate.tanhsinh": null,
-            "integrate.quad_vec": null
+            "integrate.quad_vec": null,
+            "slinalg.funm": 2.7468168720141543e-13,
+            "csgraph.maximum_flow": 0
         }
     },
     "ext": {
@@ -4991,6 +4997,7 @@
         "csgraph.floyd_warshall": "pass",
         "csgraph.johnson": "pass",
         "csgraph.laplacian": "pass",
+        "csgraph.maximum_flow": "pass",
         "csgraph.min_weight_full_bipartite_matching": "pass",
         "csgraph.minimum_spanning_tree": "pass",
         "csgraph.reconstruct_path": "pass",
@@ -5887,6 +5894,7 @@
         "slinalg.fiedler": "pass",
         "slinalg.fiedler_companion": "pass",
         "slinalg.fractional_matrix_power": "pass",
+        "slinalg.funm": "pass",
         "slinalg.hadamard": "pass",
         "slinalg.hankel": "pass",
         "slinalg.helmert": "pass",

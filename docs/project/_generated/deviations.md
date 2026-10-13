@@ -618,6 +618,7 @@
 | `slinalg.tanhm` | every call | rtol 1e-09 |
 | `slinalg.expm` | every call | rtol 1e-09 |
 | `slinalg.tanm` | every call | rtol 1e-09 |
+| `slinalg.funm` | every call | rtol 1e-09 |
 | `slinalg.fractional_matrix_power` | every call | rtol 1e-09 |
 | `slinalg.solve_triangular` | every call | rtol 1e-09 |
 | `slinalg.lu` | every call | rtol 1e-09 |

@@ -2005,6 +2005,12 @@
                 "doc": "Fractional matrix power a^t via the Schur-Parlett method (scipy.linalg.fractional_matrix_power; positive real spectrum)."
             },
             {
+                "name": "funm",
+                "static": true,
+                "sig": "funm(mixed $a, mixed $func = 'exp'): mixed",
+                "doc": "Matrix function f(A) by name via the Schur-Parlett method; func one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.linalg.funm; real spectrum)."
+            },
+            {
                 "name": "hadamard",
                 "static": true,
                 "sig": "hadamard(mixed $n): mixed",
@@ -4301,6 +4307,12 @@
                 "static": true,
                 "sig": "laplacian(mixed $csgraph, mixed $normed = false): mixed",
                 "doc": "Graph Laplacian, plain or symmetric-normalized (scipy.sparse.csgraph.laplacian)."
+            },
+            {
+                "name": "maximumFlow",
+                "static": true,
+                "sig": "maximumFlow(mixed $csgraph, mixed $source, mixed $sink, mixed $method = 'dinic'): mixed",
+                "doc": "Maximum single-source single-sink flow on a dense integer capacity matrix via Dinic's algorithm (scipy.sparse.csgraph.maximum_flow)."
             },
             {
                 "name": "minWeightFullBipartiteMatching",
@@ -20021,6 +20033,12 @@
                 "doc": ""
             },
             {
+                "name": "funm",
+                "static": true,
+                "sig": "funm($a, $func = 'exp')",
+                "doc": ""
+            },
+            {
                 "name": "fractionalMatrixPower",
                 "static": true,
                 "sig": "fractionalMatrixPower($a, $t)",
@@ -21653,6 +21671,12 @@
     {
         "class": "Tessero\\Ext\\Csgraph",
         "methods": [
+            {
+                "name": "maximumFlow",
+                "static": true,
+                "sig": "maximumFlow($csgraph, $source, $sink, $method = 'dinic')",
+                "doc": ""
+            },
             {
                 "name": "connectedComponents",
                 "static": true,
