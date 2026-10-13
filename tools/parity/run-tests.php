@@ -435,6 +435,20 @@ function makeObjective(array $spec): callable
     };
 }
 
+/** Rebuild a quad_vec integrand (scalar kinds return float; vector kinds 'xpow'/'osc' return list<float>). */
+function makeIntegrand(array $spec): callable
+{
+    return match ($spec['kind']) {
+        'poly' => static function (float $x) use ($spec): float { $s = 0.0; $p = 1.0; foreach ($spec['c'] as $ck) { $s += $ck * $p; $p *= $x; } return $s; },
+        'gauss' => static fn (float $x): float => exp(-$x * $x),
+        'sinx' => static fn (float $x): float => sin($x),
+        'lorentz' => static fn (float $x): float => 1.0 / (1.0 + $x * $x),
+        'xpow' => static function (float $x) use ($spec): array { $o = []; foreach ($spec['alpha'] as $al) { $o[] = $x ** (float) $al; } return $o; },
+        'osc' => static function (float $x) use ($spec): array { $o = []; for ($i = 1, $k = (int) $spec['k']; $i <= $k; $i++) { $o[] = sin($i * $x); } return $o; },
+        default => throw new \RuntimeException("unknown integrand '{$spec['kind']}'"),
+    };
+}
+
 /** Structural equality for datetime fixtures: ints/bools/strings exact, floats within a small tolerance. */
 function dtEqual(mixed $got, mixed $want): bool
 {
@@ -785,6 +799,36 @@ foreach ($files as $file) {
             $results[$backend][$k] = $s;
             $results['max_rel'][$backend][$k] = null;
         }
+        continue;
+    }
+    if (isset($data['quadvec_cases'])) {                     // scipy.integrate.quad_vec (callable, vector-valued; gk21 bit-exact, gk15 allclose)
+        $local = [];
+        foreach ($data['quadvec_cases'] as $c) {
+            $key = 'integrate.quad_vec';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $f = makeIntegrand($c['obj']);
+                $q = $c['quadrature'] ?? null;
+                [$res, ] = \Tessero\Integrate\QuadVec::quadVec($f, (float) $c['a'], (float) $c['b'], 1e-200, 1e-8, (string) ($c['norm'] ?? '2'), $q);
+                $got = flattenNums($res);
+                $want = array_map('floatval', $c['expect']);
+                if (count($got) !== count($want)) {
+                    $msg = 'length mismatch';
+                } elseif (($q ?? 'gk15') === 'gk21') {
+                    $ok = true;
+                    foreach ($want as $i => $w) { if (abs($got[$i] - $w) > 1e-14 + 1e-13 * abs($w)) { $ok = false; $msg = "gk21 off at [$i]"; break; } }
+                } else {
+                    $ok = true;
+                    foreach ($want as $i => $w) { if (abs($got[$i] - $w) > 1e-11 + 1e-9 * abs($w)) { $ok = false; $msg = "gk15 off at [$i]"; break; } }
+                }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
     if (isset($data['rectangle_cases'])) {                   // scipy.spatial.Rectangle: hyperrectangle geometry (pure-PHP)
