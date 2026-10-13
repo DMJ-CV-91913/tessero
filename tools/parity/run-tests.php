@@ -812,6 +812,75 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['valindices_cases'])) {                  // scipy.ndimage.value_indices (pure-PHP Tessero\ValueIndices)
+        foreach ($data['valindices_cases'] as $c) {
+            $key = 'ndimage.value_indices';
+            $checked++;
+            $w = 0.0;
+            try {
+                $input = decodeValue($c['input'], $arrayClass);
+                $ignore = $c['ignore_value'] === null ? null : (int) $c['ignore_value'];
+                $got = \Tessero\ValueIndices::valueIndices($input, $ignore);
+                $p = compareValue($c['expect'], $got, 1e-12, 0.0, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['rvdist_cases'])) {                      // scipy.stats.Normal (pure-PHP Tessero\Stats\Normal facade over Stats::norm)
+        $local = [];
+        foreach ($data['rvdist_cases'] as $c) {
+            $key = $c['dist'] === 'normal' ? 'stats.Normal' : ('stats.' . ucfirst($c['dist']));
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $rv = new \Tessero\Stats\Normal($c['params'][0], $c['params'][1]);
+                $arg = $c['arg'];
+                $got = match ($c['method']) {
+                    'pdf' => $rv->pdf($arg), 'logpdf' => $rv->logpdf($arg),
+                    'cdf' => $rv->cdf($arg), 'logcdf' => $rv->logcdf($arg),
+                    'ccdf' => $rv->ccdf($arg), 'logccdf' => $rv->logccdf($arg),
+                    'icdf' => $rv->icdf($arg), 'iccdf' => $rv->iccdf($arg),
+                    'ilogcdf' => $rv->ilogcdf($arg), 'ilogccdf' => $rv->ilogccdf($arg),
+                    'mean' => $rv->mean(), 'median' => $rv->median(),
+                    'variance' => $rv->variance(), 'standard_deviation' => $rv->standard_deviation(),
+                    'skewness' => $rv->skewness(), 'kurtosis' => $rv->kurtosis(),
+                    'entropy' => $rv->entropy(), 'mode' => $rv->mode(),
+                    'support' => $rv->support(),
+                    'moment' => $rv->moment((int) $arg[0], (string) $arg[1]),
+                    default => throw new \RuntimeException("unknown rvdist method {$c['method']}"),
+                };
+                $wf = []; $we = [$c['expect']]; array_walk_recursive($we, static function ($x) use (&$wf) { $wf[] = dec($x); });
+                $g = $got;
+                if (is_array($g)) {
+                    $gf = []; foreach ($g as $e) { $gf[] = (is_object($e) && method_exists($e, 'item')) ? (float) $e->item() : (float) $e; }
+                } elseif (is_object($g) && method_exists($g, 'toArray')) {
+                    $gf = []; $ga = [$g->toArray()]; array_walk_recursive($ga, static function ($x) use (&$gf) { $gf[] = (float) $x; });
+                } else {
+                    $gf = [(float) $g];
+                }
+                $ok = count($gf) === count($wf);
+                foreach ($wf as $i => $want) {
+                    if (! $ok) { break; }
+                    $gi = $gf[$i] ?? NAN;
+                    if (is_nan($want)) { $ok = is_nan($gi); }
+                    elseif (is_infinite($want)) { $ok = $gi === $want; }
+                    else { $ok = abs($gi - $want) <= 1e-12 * (1 + abs($want)); }
+                }
+                if (! $ok) { $msg = "{$c['method']} did not match scipy.stats.Normal"; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['nearestnd_cases'])) {                   // scipy.interpolate.NearestNDInterpolator (pure-PHP)
         $local = [];
         foreach ($data['nearestnd_cases'] as $c) {
