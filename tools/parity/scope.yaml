@@ -484,6 +484,8 @@ legacy:
     least_squares: {ffi: [LS::leastSquares], ext: [LS::leastSquares], fixtures: [optimize.least_squares]}
     lsq_linear: {ffi: [LS::lsqLinear], ext: [LS::lsqLinear], fixtures: [optimize.lsq_linear]}
     linear_sum_assignment: {ffi: [ASG::linearSumAssignment], ext: [ASG::linearSumAssignment], fixtures: [optimize.linear_sum_assignment]}
+    # quadratic_assignment(A,B,method='faq') pure-PHP FAQ (Frank-Wolfe, deterministic) reusing linearSumAssignment
+    quadratic_assignment: {ffi: [QAP::faq], ext: [QAP::faq], fixtures: [optimize.quadratic_assignment]}
     rosen: {ffi: [Min::rosen], ext: [Min::rosen], fixtures: [optimize.rosen]}
     rosen_der: {ffi: [Min::rosenDer], ext: [Min::rosenDer], fixtures: [optimize.rosen_der]}
     rosen_hess: {ffi: [Min::rosenHess], ext: [Min::rosenHess], fixtures: [optimize.rosen_hess]}
@@ -494,7 +496,7 @@ legacy:
     fmin_cg: {ffi: [Min::fminCg], ext: [Min::fminCg], fixtures: [optimize.fmin_cg]}
     fmin_powell: {ffi: [Min::fminPowell], ext: [Min::fminPowell], fixtures: [optimize.fmin_powell]}
     fmin_ncg: {ffi: [Min::fminNcg], ext: [Min::fminNcg], fixtures: [optimize.fmin_ncg]}
-    curve_fit: {ffi: [LS::curveFit], tests: solvers}
+    curve_fit: {ffi: [LS::curveFit], ext: [LS::curveFit], fixtures: [optimize.curve_fit]}
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
     approx_fprime: {ffi: [Min::approxGrad], ext: [Min::approxGrad], tests: solvers}

@@ -659,6 +659,7 @@
         "optimize.brentq": "pass",
         "optimize.brute": "pass",
         "optimize.check_grad": "pass",
+        "optimize.curve_fit": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
@@ -677,6 +678,7 @@
         "optimize.minimize_scalar": "pass",
         "optimize.newton": "pass",
         "optimize.nnls": "pass",
+        "optimize.quadratic_assignment": "pass",
         "optimize.ridder": "pass",
         "optimize.root": "pass",
         "optimize.root_scalar": "pass",
@@ -3282,7 +3284,9 @@
             "interpolate.LSQUnivariateSpline": null,
             "interpolate.RectBivariateSpline": null,
             "spatial.ConvexHull": null,
-            "spatial.Delaunay": null
+            "spatial.Delaunay": null,
+            "optimize.curve_fit": null,
+            "optimize.quadratic_assignment": null
         },
         "ext": {
             "np.median": 0,
@@ -4924,7 +4928,9 @@
             "interpolate.RectBivariateSpline": null,
             "spatial.ConvexHull": null,
             "spatial.Delaunay": null,
-            "interpolate.bisplev": null
+            "interpolate.bisplev": null,
+            "optimize.curve_fit": null,
+            "optimize.quadratic_assignment": null
         }
     },
     "ext": {
@@ -5587,6 +5593,7 @@
         "optimize.brentq": "pass",
         "optimize.brute": "pass",
         "optimize.check_grad": "pass",
+        "optimize.curve_fit": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
@@ -5605,6 +5612,7 @@
         "optimize.minimize_scalar": "pass",
         "optimize.newton": "pass",
         "optimize.nnls": "pass",
+        "optimize.quadratic_assignment": "pass",
         "optimize.ridder": "pass",
         "optimize.root": "pass",
         "optimize.root_scalar": "pass",

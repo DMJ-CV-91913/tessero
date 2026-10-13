@@ -555,6 +555,20 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
             } elseif ($fn === 'least_squares') {
                 $r = \Tessero\Optimize\LeastSquares::leastSquares($obj, array_map('floatval', $c['x0']));
                 $ok = vecClose($r->x, $c['expect'], $rtol);
+            } elseif ($fn === 'curve_fit') {
+                $model = match ($c['obj']['kind']) {
+                    'expresid' => static fn (float $x, float $a, float $b, float $cc): float => $a * exp($b * $x) + $cc,
+                    'linresid' => static fn (float $x, float $a, float $b): float => $a * $x + $b,
+                    default => throw new \RuntimeException("curve_fit: unknown model '{$c['obj']['kind']}'"),
+                };
+                $xd = array_map('floatval', $c['obj']['x']);
+                $yd = array_map('floatval', $c['obj']['y']);
+                $sigma = isset($c['sigma']) ? array_map('floatval', $c['sigma']) : null;
+                [$popt, $pcov] = \Tessero\Optimize\LeastSquares::curveFit($model, $xd, $yd, array_map('floatval', $c['p0']), $sigma, (bool) ($c['absolute_sigma'] ?? false));
+                $okPopt = vecClose($popt, $c['popt'], $rtol);
+                $rtolPcov = (float) ($c['rtol_pcov'] ?? 1e-4);
+                $okPcov = vecClose(array_merge(...$pcov), array_merge(...$c['pcov']), $rtolPcov);
+                $ok = $okPopt && $okPcov;
             } elseif ($fn === 'nnls') {
                 $r = \Tessero\Optimize\LeastSquares::nnls($c['A'], $c['b']);
                 $ok = vecClose($r[0], $c['expect'], $rtol);
@@ -579,6 +593,11 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
             } elseif ($fn === 'linear_sum_assignment') {
                 [$ri, $ci] = \Tessero\Optimize\Assignment::linearSumAssignment($c['cost'], (bool) ($c['maximize'] ?? false));
                 $ok = array_map('intval', $ri) === array_map('intval', $c['expect_row']) && array_map('intval', $ci) === array_map('intval', $c['expect_col']);
+            } elseif ($fn === 'quadratic_assignment') {
+                $r = \Tessero\Optimize\QuadraticAssignment::faq($c['A'], $c['B'], (bool) ($c['maximize'] ?? false), (int) ($c['maxiter'] ?? 30), (float) ($c['tol'] ?? 0.03));
+                $colOk = array_map('intval', $r['col_ind']) === array_map('intval', $c['expect_col']);
+                $funOk = abs($r['fun'] - (float) $c['fun']) <= $rtol * (1 + abs((float) $c['fun']));
+                $ok = $colOk && $funOk;
             } elseif ($fn === 'rosen') {
                 $got = \Tessero\Optimize\Minimize::rosen(array_map('floatval', $c['x']));
                 $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
