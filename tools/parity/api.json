@@ -5981,6 +5981,12 @@
                 "doc": "Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular)."
             },
             {
+                "name": "lsmr",
+                "static": true,
+                "sig": "lsmr(mixed $A, mixed $b, mixed $damp = 0.0, mixed $atol = 1.0E-6, mixed $btol = 1.0E-6, mixed $conlim = 100000000.0, mixed $maxiter = null): mixed",
+                "doc": "LSMR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsmr)."
+            },
+            {
                 "name": "lsqr",
                 "static": true,
                 "sig": "lsqr(mixed $A, mixed $b, mixed $atol = 1.0E-8, mixed $btol = 1.0E-8, mixed $maxiter = null): mixed",
@@ -6011,6 +6017,12 @@
                 "doc": "Estimate of the matrix 1-norm (scipy.sparse.linalg.onenormest)."
             },
             {
+                "name": "qmr",
+                "static": true,
+                "sig": "qmr(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $M1 = null, mixed $M2 = null): mixed",
+                "doc": "Quasi-minimal residual for a general square system (scipy.sparse.linalg.qmr)."
+            },
+            {
                 "name": "spbandwidth",
                 "static": true,
                 "sig": "spbandwidth(mixed $A): mixed",
@@ -6027,6 +6039,12 @@
                 "static": true,
                 "sig": "spsolveTriangular(mixed $A, mixed $b, mixed $lower = true, mixed $overwriteA = false, mixed $overwriteB = false, mixed $unitDiagonal = false): mixed",
                 "doc": "Solve a triangular sparse system (scipy.sparse.linalg.spsolve_triangular)."
+            },
+            {
+                "name": "tfqmr",
+                "static": true,
+                "sig": "tfqmr(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $M = null): mixed",
+                "doc": "Transpose-free QMR for a general square system (scipy.sparse.linalg.tfqmr)."
             }
         ],
         "constants": [
@@ -24121,6 +24139,24 @@
                 "name": "onenormest",
                 "static": true,
                 "sig": "onenormest($A, $t = 2, $itmax = 5)",
+                "doc": ""
+            },
+            {
+                "name": "qmr",
+                "static": true,
+                "sig": "qmr($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null, $M1 = null, $M2 = null)",
+                "doc": ""
+            },
+            {
+                "name": "tfqmr",
+                "static": true,
+                "sig": "tfqmr($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null, $M = null)",
+                "doc": ""
+            },
+            {
+                "name": "lsmr",
+                "static": true,
+                "sig": "lsmr($A, $b, $damp = 0.0, $atol = 1.0E-6, $btol = 1.0E-6, $conlim = 100000000.0, $maxiter = null)",
                 "doc": ""
             }
         ]

@@ -66,7 +66,17 @@ for n in (6, 8, 10):
     one_c.append({'args': [F.enc(A)], 'kwargs': {},
                   'expect': F.enc_result(float(val), []), 'compare': 'tol', 'tol': {'atol': 1e-12, 'rtol': 1e-12}})
 
+
+lsmr_c = []
+for (m, n) in ((10, 6), (12, 8), (9, 5)):
+    A = rng.normal(size=(m, n)); b = rng.normal(size=m)
+    x = np.linalg.lstsq(A, b, rcond=None)[0]
+    lsmr_c.append({'args': [F.enc(A), F.enc(b)], 'kwargs': {},
+                   'expect': F.enc_result(np.asarray(x, float), []), 'compare': 'tol',
+                   'tol': {'atol': 1e-6, 'rtol': 1e-6}})
+
 out = {'module': 'splinalg', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': [
+    {'fn': 'qmr', 'cases': gen_c}, {'fn': 'tfqmr', 'cases': gen_c}, {'fn': 'lsmr', 'cases': lsmr_c},
     {'fn': 'cg', 'cases': spd_c},
     {'fn': 'bicgstab', 'cases': gen_c},
     {'fn': 'bicg', 'cases': gen_c},

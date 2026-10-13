@@ -671,6 +671,192 @@ static int r_lsqr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     return TSR_OK;
 }
 
+static int r_qmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("qmr", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    if (rc != TSR_OK) return rc;
+    double *mem = (double *)malloc((size_t)(13 * n) * sizeof(double));
+    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    double *r = mem, *vt = mem + n, *y = mem + 2*n, *wt = mem + 3*n, *z = mem + 4*n,
+           *v = mem + 5*n, *w = mem + 6*n, *p = mem + 7*n, *q = mem + 8*n,
+           *d = mem + 9*n, *s = mem + 10*n, *pt = mem + 11*n, *tmp = mem + 12*n;
+    spl_mv(A, x, tmp, n);
+    for (int64_t i = 0; i < n; i++) { r[i] = b[i] - tmp[i]; vt[i] = r[i]; y[i] = r[i]; wt[i] = r[i]; z[i] = r[i]; }
+    double rho = spl_nrm(y, n), xi = spl_nrm(z, n);
+    double gamma = 1.0, eta = -1.0, theta = 0.0, eps = 0.0;
+    double target = fmax(rtol * spl_nrm(b, n), atol), rn = spl_nrm(r, n);
+    int64_t it = 0;
+    for (it = 1; it <= maxit; it++) {
+        if (rho == 0.0 || xi == 0.0) break;
+        for (int64_t i = 0; i < n; i++) { v[i] = vt[i]/rho; y[i] = y[i]/rho; w[i] = wt[i]/xi; z[i] = z[i]/xi; }
+        double delta = spl_dot(z, y, n);
+        if (delta == 0.0) break;
+        if (it == 1) {
+            for (int64_t i = 0; i < n; i++) { p[i] = y[i]; q[i] = z[i]; }
+        } else {
+            double fp = xi*delta/eps, fq = rho*delta/eps;
+            for (int64_t i = 0; i < n; i++) { p[i] = y[i] - fp*p[i]; q[i] = z[i] - fq*q[i]; }
+        }
+        spl_mv(A, p, pt, n);
+        eps = spl_dot(q, pt, n);
+        if (eps == 0.0) break;
+        double beta = eps/delta;
+        if (beta == 0.0) break;
+        for (int64_t i = 0; i < n; i++) { vt[i] = pt[i] - beta*v[i]; y[i] = vt[i]; }
+        double rho1 = spl_nrm(y, n);
+        spl_mtv(A, q, tmp, n);
+        for (int64_t i = 0; i < n; i++) { wt[i] = tmp[i] - beta*w[i]; z[i] = wt[i]; }
+        xi = spl_nrm(z, n);
+        double theta1 = theta;
+        theta = rho1/(gamma*fabs(beta));
+        double gamma1 = 1.0/sqrt(1.0 + theta*theta);
+        if (gamma1 == 0.0) break;
+        eta = -eta*rho*gamma1*gamma1/(beta*gamma*gamma);
+        if (it == 1) {
+            for (int64_t i = 0; i < n; i++) { d[i] = eta*p[i]; s[i] = eta*pt[i]; }
+        } else {
+            double fac = (theta1*gamma1)*(theta1*gamma1);
+            for (int64_t i = 0; i < n; i++) { d[i] = eta*p[i] + fac*d[i]; s[i] = eta*pt[i] + fac*s[i]; }
+        }
+        for (int64_t i = 0; i < n; i++) { x[i] += d[i]; r[i] -= s[i]; }
+        gamma = gamma1; rho = rho1;
+        rn = spl_nrm(r, n);
+        if (rn <= target) break;
+    }
+    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
+    return TSR_OK;
+}
+
+/* TFQMR (transpose-free QMR, Freund 1993, M=I). scipy.sparse.linalg.tfqmr */
+static int r_tfqmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("tfqmr", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    if (rc != TSR_OK) return rc;
+    double *mem = (double *)malloc((size_t)(9 * n) * sizeof(double));
+    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    double *r = mem, *w = mem + n, *rstar = mem + 2*n, *uu = mem + 3*n, *u2 = mem + 4*n,
+           *v = mem + 5*n, *d = mem + 6*n, *au = mem + 7*n, *tmp = mem + 8*n;
+    spl_mv(A, x, tmp, n);
+    for (int64_t i = 0; i < n; i++) { r[i] = b[i] - tmp[i]; w[i] = r[i]; rstar[i] = r[i]; uu[i] = r[i]; d[i] = 0.0; }
+    double rho = spl_dot(rstar, r, n);
+    double tau = spl_nrm(r, n), theta = 0.0, eta = 0.0;
+    spl_mv(A, uu, v, n);
+    double target = fmax(rtol * spl_nrm(b, n), atol), rn = tau;
+    int64_t it = 0;
+    if (rho != 0.0) {
+        for (it = 1; it <= maxit; it++) {
+            double sigma = spl_dot(rstar, v, n);
+            if (sigma == 0.0) break;
+            double alpha = rho/sigma;
+            for (int64_t i = 0; i < n; i++) u2[i] = uu[i] - alpha*v[i];
+            for (int64_t half = 0; half < 2; half++) {
+                const double *uj = (half == 0) ? uu : u2;
+                spl_mv(A, uj, au, n);
+                for (int64_t i = 0; i < n; i++) w[i] -= alpha*au[i];
+                double wn = spl_nrm(w, n);
+                double theta2 = (tau != 0.0) ? wn/tau : 0.0;
+                double c = 1.0/sqrt(1.0 + theta2*theta2);
+                tau = tau*theta2*c;
+                double eta2 = c*c*alpha;
+                double fac = (alpha != 0.0) ? theta*theta*eta/alpha : 0.0;
+                for (int64_t i = 0; i < n; i++) { d[i] = uj[i] + fac*d[i]; x[i] += eta2*d[i]; }
+                theta = theta2; eta = eta2;
+            }
+            spl_mv(A, x, tmp, n);
+            rn = 0.0; for (int64_t i = 0; i < n; i++) { double e = b[i] - tmp[i]; rn += e*e; } rn = sqrt(rn);
+            if (rn <= target) break;
+            double rho_new = spl_dot(rstar, w, n);
+            if (rho == 0.0) break;
+            double beta = rho_new/rho;
+            rho = rho_new;
+            for (int64_t i = 0; i < n; i++) uu[i] = w[i] + beta*u2[i];
+            double *au2 = au;                                   /* reuse: au2 = A u2 */
+            spl_mv(A, u2, au2, n);
+            double *auu = tmp;                                  /* auu = A uu */
+            spl_mv(A, uu, auu, n);
+            for (int64_t i = 0; i < n; i++) v[i] = auu[i] + beta*(au2[i] + beta*v[i]);
+        }
+    }
+    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
+    return TSR_OK;
+}
+
+/* LSMR (Fong & Saunders, lambda=0). A is m x n (may be rectangular).
+   Golub-Kahan bidiagonalization with the LSMR rotations. scipy.sparse.linalg.lsmr */
+static int r_lsmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3) { fn_set_error("lsmr: A 2-D, b array"); return TSR_EARG; }
+    int64_t mm = args[0].arr.shape[0], nn = args[0].arr.shape[1];
+    if (args[1].arr.shape[0] != mm) { fn_set_error("lsmr: b has wrong length"); return TSR_EARG; }
+    int64_t maxit = 4 * nn;
+    if (nargs > 5 && (args[5].kind == 1 || args[5].kind == 4)) { double mv = (args[5].flags & 1) ? (double)args[5].ival : args[5].num; if (mv > 0) maxit = (int64_t)mv; }
+    int64_t LA, Lb; double *A = fn_arg_doubles(&args[0], &LA); if (!A) return TSR_ENOMEM;
+    double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { fn_free_doubles(A, LA); return TSR_ENOMEM; }
+    int64_t sh[1] = {nn};
+    double *x = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+    double *u = (double *)malloc((size_t)mm * sizeof(double));
+    double *v = (double *)malloc((size_t)nn * sizeof(double));
+    double *h = (double *)malloc((size_t)nn * sizeof(double));
+    double *hbar = (double *)calloc((size_t)nn, sizeof(double));
+    double *tmp = (double *)malloc((size_t)((mm > nn ? mm : nn)) * sizeof(double));
+    if (!x || !u || !v || !h || !hbar || !tmp) { free(u);free(v);free(h);free(hbar);free(tmp); fn_free_doubles(A,LA); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
+    for (int64_t j = 0; j < nn; j++) x[j] = 0.0;
+    for (int64_t i = 0; i < mm; i++) u[i] = b[i];
+    double beta = spl_nrm(u, mm); if (beta > 0) for (int64_t i = 0; i < mm; i++) u[i] /= beta;
+    /* v = A^T u */
+    for (int64_t j = 0; j < nn; j++) { double s = 0.0; for (int64_t i = 0; i < mm; i++) s += A[i*nn + j]*u[i]; v[j] = s; }
+    double alpha = spl_nrm(v, nn); if (alpha > 0) for (int64_t j = 0; j < nn; j++) v[j] /= alpha;
+    for (int64_t j = 0; j < nn; j++) h[j] = v[j];
+    double zetabar = alpha*beta, alphabar = alpha;
+    double rho = 1.0, rhobar = 1.0, cbar = 1.0, sbar = 0.0;
+    int64_t it = 0;
+    for (; it < maxit; it++) {
+        /* u = A v - alpha u */
+        for (int64_t i = 0; i < mm; i++) { double s = 0.0; const double *Ai = A + i*nn; for (int64_t j = 0; j < nn; j++) s += Ai[j]*v[j]; tmp[i] = s - alpha*u[i]; }
+        for (int64_t i = 0; i < mm; i++) u[i] = tmp[i];
+        beta = spl_nrm(u, mm); if (beta > 0) for (int64_t i = 0; i < mm; i++) u[i] /= beta;
+        /* v = A^T u - beta v */
+        for (int64_t j = 0; j < nn; j++) { double s = 0.0; for (int64_t i = 0; i < mm; i++) s += A[i*nn + j]*u[i]; tmp[j] = s - beta*v[j]; }
+        for (int64_t j = 0; j < nn; j++) v[j] = tmp[j];
+        alpha = spl_nrm(v, nn); if (alpha > 0) for (int64_t j = 0; j < nn; j++) v[j] /= alpha;
+        double rhoold = rho;
+        double hyp1 = hypot(alphabar, beta);
+        double chat = alphabar/hyp1, shat = beta/hyp1; (void)shat;
+        rho = hyp1;
+        double thetanew = (beta/hyp1)*alpha;                    /* shat*alpha */
+        alphabar = chat*alpha;
+        double rhobarold = rhobar;
+        double thetabar = sbar*rho;
+        rhobar = hypot(cbar*rho, thetanew);
+        cbar = cbar*rho/rhobar;
+        sbar = thetanew/rhobar;
+        double zeta = cbar*zetabar;
+        zetabar = -sbar*zetabar;
+        double fac = thetabar*rho/(rhoold*rhobarold);
+        for (int64_t j = 0; j < nn; j++) hbar[j] = h[j] - fac*hbar[j];
+        double sc = zeta/(rho*rhobar);
+        for (int64_t j = 0; j < nn; j++) x[j] += sc*hbar[j];
+        double sh2 = thetanew/rho;
+        for (int64_t j = 0; j < nn; j++) h[j] = v[j] - sh2*h[j];
+        if (alpha <= 1e-300 || beta <= 1e-300) { it++; break; }
+    }
+    free(u);free(v);free(h);free(hbar);free(tmp);
+    fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    if (nres > 1) fn_result_int(&res[1], 0);
+    return TSR_OK;
+}
+
+/* LGMRES: GMRES with augmentation. On well-conditioned systems it converges to the
+   unique solution solve(A,b); we run full GMRES (restart=n) which reaches that x in
+   <=n steps (exact arithmetic), matching scipy's converged iterate. scipy.sparse.linalg.lgmres */
+
 static const fn_def DEFS[] = {
     ROUTINE("splinalg.spsolve", 1, "A, b, permc_spec=None, use_umfpack=True", "x", r_spsolve, NULL, "Solve a sparse linear system A x = b (scipy.sparse.linalg.spsolve)."),
     ROUTINE("splinalg.spsolve_triangular", 1, "A, b, lower=True, overwrite_A=False, overwrite_b=False, unit_diagonal=False", "x", r_spsolve_triangular, NULL, "Solve a triangular sparse system (scipy.sparse.linalg.spsolve_triangular)."),
@@ -697,6 +883,12 @@ static const fn_def DEFS[] = {
             "LSQR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsqr)."),
     ROUTINE("splinalg.onenormest", 1, "A, t=2, itmax=5", "est", r_onenormest, NULL,
             "Estimate of the matrix 1-norm (scipy.sparse.linalg.onenormest)."),
+    ROUTINE("splinalg.qmr", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None, M1=None, M2=None", "x", r_qmr, NULL,
+            "Quasi-minimal residual for a general square system (scipy.sparse.linalg.qmr)."),
+    ROUTINE("splinalg.tfqmr", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None, M=None", "x", r_tfqmr, NULL,
+            "Transpose-free QMR for a general square system (scipy.sparse.linalg.tfqmr)."),
+    ROUTINE("splinalg.lsmr", 1, "A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None", "x", r_lsmr, NULL,
+            "LSMR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsmr)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_LINALG_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

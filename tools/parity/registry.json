@@ -6255,6 +6255,11 @@
             "nin": 0,
             "nout": 2
         },
+        "splinalg.lsmr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "splinalg.lsqr": {
             "kind": "routine",
             "nin": 0,
@@ -6280,6 +6285,11 @@
             "nin": 0,
             "nout": 1
         },
+        "splinalg.qmr": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "splinalg.spbandwidth": {
             "kind": "routine",
             "nin": 0,
@@ -6291,6 +6301,11 @@
             "nout": 1
         },
         "splinalg.spsolve_triangular": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.tfqmr": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
