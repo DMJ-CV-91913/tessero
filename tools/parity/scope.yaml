@@ -502,7 +502,15 @@ legacy:
     approx_fprime: {ffi: [Min::approxGrad], ext: [Min::approxGrad], tests: solvers}
     check_grad: {ffi: [Min::checkGrad], ext: [Min::checkGrad], fixtures: [optimize.check_grad]}
     brute: {ffi: [Min::brute], ext: [Min::brute], fixtures: [optimize.brute]}
+  scipy.ndimage:
+    # distinct-value index map: pure-PHP Tessero\ValueIndices returns nonzero(input==v) per value
+    # (integer input, sorted keys); verified both backends by ndimage_valindices.json valindices_cases.
+    value_indices: {ffi: [VI::valueIndices], ext: [VI::valueIndices], fixtures: [ndimage.value_indices]}
   scipy.stats:
+    # scipy.stats.Normal (new 1.15 random-variable class): pure-PHP Tessero\Stats\Normal facade over the
+    # kernel-backed normal distribution (Stats::norm -> Distribution), one class both backends; verified by
+    # stats_normal.json rvdist_cases (every method, scalar + array).
+    Normal: {ffi: [NORM::pdf], ext: [NORM::pdf], fixtures: [stats.Normal]}
     # optimiser-based transform-parameter selectors: pure-PHP Tessero\StatsFns drives the scipy-matched
     # Brent / bounded minimisers over the Box-Cox / Yeo-Johnson objectives; verified both backends by the
     # stats_opt.json statsfn_cases.

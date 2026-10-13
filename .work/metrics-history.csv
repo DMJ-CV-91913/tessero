@@ -265,3 +265,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-13,interpolate griddata nearest,100.0,100.0,87.5,87.3,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-13,interpolate bisplev/IUS/LSQ/RectBivariate + spatial ConvexHull/Delaunay,100.0,100.0,87.9,87.7,100.0,99.8,100.0,100.0,85.5,85.5
 2026-10-13,optimize curve_fit (ffi->both) + quadratic_assignment,100.0,100.0,88.0,87.8,100.0,99.8,100.0,100.0,85.5,85.5
+2026-10-13,stats.Normal + ndimage.value_indices,100.0,100.0,88.1,88.0,100.0,99.8,100.0,100.0,85.9,85.9

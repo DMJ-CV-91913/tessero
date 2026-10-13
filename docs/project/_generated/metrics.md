@@ -18,9 +18,9 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 43 (100.0 %) | 43 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1309 (88.0 %)** | **1307 (87.8 %)** | 88.0 % / 87.8 % | 99.8 % |
+| **SciPy** | 1562 | 74 (4.7 %) | 1488 | **1311 (88.1 %)** | **1309 (88.0 %)** | 88.1 % / 88.0 % | 99.8 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 336 (100.0 %) | 336 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 254 (85.5 %) | 254 (85.5 %) | 85.5 % / 85.5 % | 100.0 % |
+| &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 255 (85.9 %) | 255 (85.9 %) | 85.9 % / 85.9 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 90 (97.8 %) | 90 (97.8 %) | 97.8 % / 97.8 % | 100.0 % |
 | &nbsp;&nbsp;scipy.fft | 41 | 6 (14.6 %) | 35 | 35 (100.0 %) | 35 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.optimize | 71 | 5 (7.0 %) | 66 | 38 (57.6 %) | 38 (57.6 %) | 57.6 % / 57.6 % | 100.0 % |
@@ -35,7 +35,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.spatial.distance | 27 | 0 (0.0 %) | 27 | 27 (100.0 %) | 27 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.cluster.vq | 4 | 0 (0.0 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.cluster.hierarchy | 32 | 5 (15.6 %) | 27 | 26 (96.3 %) | 26 (96.3 %) | 96.3 % / 96.3 % | 100.0 % |
-| &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 66 (88.0 %) | 66 (88.0 %) | 88.0 % / 88.0 % | 100.0 % |
+| &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 67 (89.3 %) | 67 (89.3 %) | 89.3 % / 89.3 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 163 (100.0 %) | 163 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 
 The kernel function registry holds 1513 functions; their fixtures pass on the FFI backend for 1511 and on the extension for 1511.

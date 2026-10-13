@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize qap io integrate spatial datetime random stats desc corr tests tests2 legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal ndimage_valindices spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize qap io integrate spatial datetime random stats desc corr tests tests2 legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
@@ -22,6 +22,8 @@ for g in "${groups[@]}"; do
         special_orthopoly) python3 fixtures_special_orthopoly.py ;;
         special_seq) python3 fixtures_special_seq.py ;;
         stats_opt) python3 fixtures_stats_opt.py ;;
+        stats_normal) python3 fixtures_normal.py ;;
+        ndimage_valindices) python3 fixtures_valindices.py ;;
         spatial_rect) python3 fixtures_spatial_rect.py ;;
         spatial_hausdorff) python3 fixtures_spatial_hausdorff.py ;;
         interpolate_nn) python3 fixtures_interpolate_nn.py ;;
