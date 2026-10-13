@@ -2062,8 +2062,129 @@ static int r_spline_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_
     return rc;
 }
 
+/* ---- watershed_ift(input, markers, structure=None): image forest transform watershed ----
+ * Faithful port of scipy ni_measure.c NI_WatershedIFT (hierarchical FIFO, |pval-vval| cost,
+ * max with path cost, object markers to front / background markers to back of each bucket,
+ * and scipy stale-head queue semantics). n-D. Input taken as non-negative integers (uint8/uint16
+ * in scipy); markers and the output are integer labels (I32). Default structure is the rank-1
+ * (face-connected) element. */
+static int r_watershed(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("watershed_ift: input must be an array"); return TSR_EARG; }
+    if (nargs < 2 || args[1].kind != 3) { fn_set_error("watershed_ift: markers must be an array"); return TSR_EARG; }
+    const int32_t ndim = args[0].arr.ndim;
+    if (ndim < 1 || ndim > 7) { fn_set_error("watershed_ift: 1..7 dimensions"); return TSR_EARG; }
+    if (args[1].arr.ndim != ndim) { fn_set_error("watershed_ift: markers rank must match input"); return TSR_EARG; }
+    int64_t size = 1;
+    for (int d = 0; d < ndim; d++) {
+        if (args[1].arr.shape[d] != args[0].arr.shape[d]) { fn_set_error("watershed_ift: markers shape must match input"); return TSR_EARG; }
+        size *= args[0].arr.shape[d];
+    }
+    const int64_t *shape = args[0].arr.shape;
+    /* C-order element strides */
+    int64_t stride[7];
+    stride[ndim - 1] = 1;
+    for (int d = ndim - 2; d >= 0; d--) stride[d] = shape[d + 1] * stride[d + 1];
+    /* neighbour offsets from the structure (default rank-1), scanned in C order, centre skipped */
+    int64_t nst[512]; int nneigh = 0;
+    if (nargs > 2 && args[2].kind == 3) {
+        const int32_t snd = args[2].arr.ndim;
+        if (snd != ndim) { fn_set_error("watershed_ift: structure rank must match input"); return TSR_EARG; }
+        int64_t ssz = 1; for (int d = 0; d < snd; d++) ssz *= args[2].arr.shape[d];
+        int64_t ts; double *st = fn_arg_doubles(&args[2], &ts); if (!st) return TSR_ENOMEM;
+        int64_t coord[7]; for (int d = 0; d < ndim; d++) coord[d] = -1;
+        for (int64_t kk = 0; kk < ssz; kk++) {
+            if (st[kk] != 0.0) {
+                int64_t off = 0; for (int d = 0; d < ndim; d++) off += coord[d] * stride[d];
+                if (off != 0 && nneigh < 512) nst[nneigh++] = off;
+            }
+            for (int d = ndim - 1; d >= 0; d--) { if (coord[d] < 1) { coord[d]++; break; } else coord[d] = -1; }
+        }
+        fn_free_doubles(st, ts);
+    } else {
+        /* default: rank-1 (face-connected) structure, scanned in C order like scipy generate_binary_structure */
+        int64_t ssz = 1; for (int d = 0; d < ndim; d++) ssz *= 3;
+        int64_t coord[7]; for (int d = 0; d < ndim; d++) coord[d] = -1;
+        for (int64_t kk = 0; kk < ssz; kk++) {
+            int64_t manh = 0; for (int d = 0; d < ndim; d++) manh += coord[d] < 0 ? -coord[d] : coord[d];
+            if (manh <= 1) {
+                int64_t off = 0; for (int d = 0; d < ndim; d++) off += coord[d] * stride[d];
+                if (off != 0 && nneigh < 512) nst[nneigh++] = off;
+            }
+            for (int d = ndim - 1; d >= 0; d--) { if (coord[d] < 1) { coord[d]++; break; } else coord[d] = -1; }
+        }
+    }
+    int64_t ti, tm; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
+    double *mk = fn_arg_doubles(&args[1], &tm); if (!mk) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+    int32_t *lab = (int32_t *)fn_result_array(&res[0], TSR_I32, ndim, shape);
+    if (!lab) { fn_free_doubles(in, ti); fn_free_doubles(mk, tm); return TSR_ENOMEM; }
+    int64_t maxval = 0;
+    for (int64_t j = 0; j < size; j++) { int64_t v = (int64_t)in[j]; if (v > maxval) maxval = v; }
+    int32_t *iin = (int32_t *)malloc(sizeof(int32_t) * (size_t)(size > 0 ? size : 1));
+    int64_t *cost = (int64_t *)malloc(sizeof(int64_t) * (size_t)(size > 0 ? size : 1));
+    int64_t *nxt = (int64_t *)malloc(sizeof(int64_t) * (size_t)(size > 0 ? size : 1));
+    int64_t *prv = (int64_t *)malloc(sizeof(int64_t) * (size_t)(size > 0 ? size : 1));
+    unsigned char *done = (unsigned char *)calloc((size_t)(size > 0 ? size : 1), 1);
+    int64_t *first = (int64_t *)malloc(sizeof(int64_t) * (size_t)(maxval + 1));
+    int64_t *last  = (int64_t *)malloc(sizeof(int64_t) * (size_t)(maxval + 1));
+    if (!iin || !cost || !nxt || !prv || !done || !first || !last) {
+        free(iin); free(cost); free(nxt); free(prv); free(done); free(first); free(last);
+        fn_free_doubles(in, ti); fn_free_doubles(mk, tm); return TSR_ENOMEM;
+    }
+    for (int64_t b = 0; b <= maxval; b++) { first[b] = -1; last[b] = -1; }
+    for (int64_t j = 0; j < size; j++) { iin[j] = (int32_t)in[j]; lab[j] = (int32_t)mk[j]; cost[j] = maxval + 1; nxt[j] = -1; prv[j] = -1; }
+    fn_free_doubles(in, ti); fn_free_doubles(mk, tm);
+    /* seed: every nonzero marker into bucket 0, object (>0) to front, background (<0) to back */
+    for (int64_t j = 0; j < size; j++) {
+        int32_t L = lab[j];
+        if (L != 0) {
+            cost[j] = 0;
+            if (first[0] == -1) { first[0] = j; last[0] = j; nxt[j] = -1; prv[j] = -1; }
+            else if (L > 0) { prv[j] = -1; nxt[j] = first[0]; prv[first[0]] = j; first[0] = j; }
+            else { nxt[j] = -1; prv[j] = last[0]; nxt[last[0]] = j; last[0] = j; }
+        }
+    }
+    for (int64_t b = 0; b <= maxval; b++) {
+        while (first[b] != -1) {
+            int64_t v = first[b];
+            first[b] = nxt[v];
+            if (first[b] != -1) prv[first[b]] = -1;
+            prv[v] = -1; nxt[v] = -1;
+            done[v] = 1;
+            int64_t vval = iin[v], vcost = cost[v]; int32_t vlab = lab[v];
+            for (int h = 0; h < nneigh; h++) {
+                int64_t p = v + nst[h];
+                if (p < 0 || p >= size) continue;
+                /* bounds across the n-D coordinate (reject wrap-around on any axis) */
+                int outside = 0; int64_t idx = p;
+                for (int d = 0; d < ndim; d++) { int64_t cc = idx / stride[d]; if (cc < 0 || cc >= shape[d]) { outside = 1; break; } idx -= cc * stride[d]; }
+                if (outside || done[p]) continue;
+                int64_t wvp = iin[p] - vval; if (wvp < 0) wvp = -wvp;
+                int64_t pcost = cost[p];
+                int64_t mx = vcost > wvp ? vcost : wvp;
+                if (mx < pcost) {
+                    cost[p] = mx; lab[p] = vlab;
+                    if (nxt[p] != -1 || prv[p] != -1) {           /* remove from its current queue (scipy: only when linked) */
+                        int64_t pr = prv[p], nx = nxt[p];
+                        if (first[pcost] == p) first[pcost] = nx;
+                        if (last[pcost] == p) last[pcost] = pr;
+                        if (pr != -1) nxt[pr] = nx;
+                        if (nx != -1) prv[nx] = pr;
+                    }
+                    if (vlab < 0) { prv[p] = last[mx]; nxt[p] = -1; if (last[mx] != -1) nxt[last[mx]] = p; last[mx] = p; if (first[mx] == -1) first[mx] = p; }
+                    else { nxt[p] = first[mx]; prv[p] = -1; if (first[mx] != -1) prv[first[mx]] = p; first[mx] = p; if (last[mx] == -1) last[mx] = p; }
+                }
+            }
+        }
+    }
+    free(iin); free(cost); free(nxt); free(prv); free(done); free(first); free(last);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("ndimage.generate_binary_structure", 1, "rank, connectivity", "out", r_gbs, NULL, "Boolean structuring element for binary morphology (scipy.ndimage.generate_binary_structure)."),
+    ROUTINE("ndimage.watershed_ift", 1, "input, markers, structure=None", "out", r_watershed, NULL, "Image-forest-transform watershed from markers (scipy.ndimage.watershed_ift)."),
     ROUTINE("ndimage.gaussian_filter", 1, "input, sigma, order=0, mode='reflect', cval=0.0, truncate=4.0, radius=None", "out", r_gaussian_filter, NULL, "Multidimensional Gaussian filter, order 0 (scipy.ndimage.gaussian_filter)."),
     ROUTINE("ndimage.uniform_filter", 1, "input, size=3, mode='reflect', cval=0.0, origin=0", "out", r_uniform_filter, NULL, "Multidimensional uniform (box) filter (scipy.ndimage.uniform_filter)."),
     ROUTINE("ndimage.correlate1d", 1, "input, weights, axis=-1, mode='reflect', cval=0.0, origin=0", "out", r_correlate1d, NULL, "1-D correlation along an axis with boundary handling (scipy.ndimage.correlate1d)."),

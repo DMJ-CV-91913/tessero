@@ -450,6 +450,116 @@ function compareMaxflow(array $case, mixed $got): ?string
     return null;
 }
 
+/**
+ * reverse_cuthill_mckee: the RCM permutation is non-unique (degree ties); the fitted
+ * permutation is validated to be a valid permutation achieving scipy's permuted bandwidth.
+ */
+function compareRcmBandwidth(array $case, mixed $got): ?string
+{
+    $wantBw = (int) $case['expect'];                             // scipy's permuted bandwidth, exact
+    if (! is_object($got)) {
+        return 'expected a node_array, got ' . get_debug_type($got);
+    }
+    // adjacency recomputed from args[0] (the original dense matrix), like comparePartition/compareMaxflow.
+    $a = $case['args'][0];
+    $A = array_map(static fn ($x) => is_string($x) ? dec($x) : $x, $a['data']);
+    $shape = $a['shape'];
+    if (count($shape) !== 2 || $shape[0] !== $shape[1]) {
+        return 'graph must be a square matrix';
+    }
+    $n = (int) $shape[0];
+    if ($got->shape() !== [$n]) {
+        return 'perm shape ' . implode(',', $got->shape()) . " != {$n}";
+    }
+    $perm = array_map('intval', $got->toList());
+    // valid permutation of 0..n-1
+    $seen = $perm;
+    sort($seen);
+    if ($seen !== range(0, $n - 1)) {
+        return 'result is not a valid permutation of 0..' . ($n - 1);
+    }
+    // pos[old node] = new position
+    $pos = array_fill(0, $n, 0);
+    foreach ($perm as $newpos => $old) {
+        $pos[$old] = $newpos;
+    }
+    $at = static fn (array $m, int $i, int $j) => $m[$i * $n + $j];
+    $bw = 0;
+    for ($i = 0; $i < $n; $i++) {
+        for ($j = 0; $j < $n; $j++) {
+            if ($i !== $j && ((float) $at($A, $i, $j) !== 0.0 || (float) $at($A, $j, $i) !== 0.0)) {
+                $d = abs($pos[$i] - $pos[$j]);
+                if ($d > $bw) { $bw = $d; }
+            }
+        }
+    }
+    if ($bw !== $wantBw) {
+        return "permuted bandwidth {$bw} != scipy {$wantBw}";
+    }
+
+    return null;
+}
+
+/**
+ * maximum_bipartite_matching: the matching is non-unique; validated semantically against the
+ * biadjacency from args[0] (valid structural edges, no row/col reused) with scipy's matching size.
+ */
+function compareBipartiteMatch(array $case, mixed $got): ?string
+{
+    $wantSize = (int) ($case['expect']['size'] ?? $case['expect']);
+    if (! is_object($got)) {
+        return 'expected a matching array, got ' . get_debug_type($got);
+    }
+    // biadjacency structure recomputed from args[0] (rows x columns), like compareMaxflow.
+    $a = $case['args'][0];
+    $shape = $a['shape'];
+    if (count($shape) !== 2) {
+        return 'graph must be a 2-D biadjacency';
+    }
+    [$m, $n] = [(int) $shape[0], (int) $shape[1]];
+    $data = array_map(static fn ($x) => is_string($x) ? dec($x) : $x, $a['data']);
+    $edge = static fn (int $i, int $j): bool => ((float) $data[$i * $n + $j]) !== 0.0;
+
+    $out = $got->toList();
+    // perm_type='row' (the default): one entry per COLUMN; entry j = row matched to col j, or -1.
+    // perm_type='column': one entry per ROW; entry i = column matched to row i, or -1.
+    $len = count($out);
+    if ($len !== $n && $len !== $m) {
+        return "matching length {$len} is neither n_columns {$n} nor n_rows {$m}";
+    }
+    $byColumn = ($len === $n);                 // length n => row-perm (indexed by column)
+    $usedRow = [];
+    $usedCol = [];
+    $size = 0;
+    foreach ($out as $k => $v) {
+        $v = (int) $v;
+        if ($v === -1) {
+            continue;
+        }
+        // (row, col) pair depending on orientation
+        [$row, $col] = $byColumn ? [$v, (int) $k] : [(int) $k, $v];
+        if ($row < 0 || $row >= $m || $col < 0 || $col >= $n) {
+            return "matched index out of range at {$k}";
+        }
+        if (! $edge($row, $col)) {
+            return "matched pair ({$row},{$col}) is not a structural edge";
+        }
+        if (isset($usedRow[$row])) {
+            return "row {$row} matched twice";
+        }
+        if (isset($usedCol[$col])) {
+            return "column {$col} matched twice";
+        }
+        $usedRow[$row] = true;
+        $usedCol[$col] = true;
+        $size++;
+    }
+    if ($size !== $wantSize) {
+        return "matching size {$size} != expected {$wantSize}";
+    }
+    return null;
+}
+
 function runCall(string|object $class, string $method, array $case, string $arrayClass, float $rtol, float $atol, float &$worst): ?string
 {
     $args = array_map(static fn ($v) => decodeValue($v, $arrayClass), $case['args']);
@@ -489,6 +599,12 @@ function runCall(string|object $class, string $method, array $case, string $arra
     }
     if (($case['compare'] ?? 'tol') === 'maxflow') {
         return compareMaxflow($case, $got);
+    }
+    if (($case['compare'] ?? 'tol') === 'rcm_bandwidth') {
+        return compareRcmBandwidth($case, $got);
+    }
+    if (($case['compare'] ?? 'tol') === 'bipartite_match') {
+        return compareBipartiteMatch($case, $got);
     }
     if (($case['compare'] ?? 'tol') === 'sorted' && is_object($got) && is_array($want) && isset($want['data'])) {
         $key = static fn ($x): float => is_nan((float) $x) ? INF : (float) $x;

@@ -45,6 +45,16 @@
             "nin": 0,
             "nout": 1
         },
+        "csgraph.csgraph_from_dense": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "csgraph.csgraph_to_dense": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "csgraph.depth_first_order": {
             "kind": "routine",
             "nin": 0,
@@ -75,6 +85,11 @@
             "nin": 0,
             "nout": 1
         },
+        "csgraph.maximum_bipartite_matching": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "csgraph.maximum_flow": {
             "kind": "routine",
             "nin": 0,
@@ -95,12 +110,22 @@
             "nin": 0,
             "nout": 1
         },
+        "csgraph.reverse_cuthill_mckee": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "csgraph.shortest_path": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
         "csgraph.structural_rank": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "csgraph.yen": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -1006,6 +1031,11 @@
             "nout": 1
         },
         "ndimage.variance": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "ndimage.watershed_ift": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -3766,6 +3796,11 @@
             "nout": 1
         },
         "signal.qspline2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "signal.remez": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

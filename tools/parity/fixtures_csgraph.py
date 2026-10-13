@@ -194,6 +194,199 @@ for _A, _s, _t in _mf_cases:
                  'kwargs': {}, 'expect': {'flow_value': int(_r.flow_value)}, 'compare': 'maxflow'})
 calls.append({'fn': 'maximum_flow', 'cases': mf_c})
 
+
+# ---- reverse_cuthill_mckee (RCM reordering; dense symmetric adjacency, 0 = no edge) --------------
+# The RCM permutation is NON-UNIQUE under degree ties, so the fixture stores only scipy's permuted
+# BANDWIDTH (int) and the parity harness validates the returned permutation semantically
+# (compare='rcm_bandwidth'): it must be a valid permutation AND achieve the same bandwidth as scipy.
+# Pure integer graph traversal -> host-independent (no pinned env needed). The adjacency is carried
+# in args[0]; symmetric_mode=True is passed so the pattern is treated symmetric.
+from scipy.sparse.csgraph import reverse_cuthill_mckee as _rcm
+
+
+def _sym_adj(n, p, seed):
+    _r = np.random.default_rng(seed)
+    M = (_r.uniform(0, 1, (n, n)) < p).astype(float)
+    M = np.triu(M, 1)
+    return M + M.T
+
+
+def _bandwidth(A, perm):
+    n = A.shape[0]
+    pos = np.empty(n, dtype=int)
+    pos[np.asarray(perm, dtype=int)] = np.arange(n)
+    bw = 0
+    for i in range(n):
+        for j in range(n):
+            if i != j and (A[i, j] != 0.0 or A[j, i] != 0.0):
+                bw = max(bw, abs(int(pos[i]) - int(pos[j])))
+    return bw
+
+
+_rcm_path = np.diag(np.ones(9), 1); _rcm_path = _rcm_path + _rcm_path.T
+_rcm_ring = _rcm_path.copy(); _rcm_ring[0, 9] = _rcm_ring[9, 0] = 1.0
+_rcm_block = np.zeros((11, 11))
+_b1 = _sym_adj(5, 0.5, 6); _rcm_block[:5, :5] = _b1
+_b2 = _sym_adj(5, 0.5, 7); _rcm_block[6:11, 6:11] = _b2
+_rcm_mats = [
+    ('path10', _rcm_path),
+    ('ring10', _rcm_ring),
+    ('full7', np.ones((7, 7)) - np.eye(7)),
+    ('sym8', _sym_adj(8, 0.25, 1)),
+    ('sym10', _sym_adj(10, 0.15, 2)),
+    ('sym12', _sym_adj(12, 0.30, 3)),
+    ('sym15', _sym_adj(15, 0.20, 4)),
+    ('sym20', _sym_adj(20, 0.12, 5)),
+    ('disconnected11', _rcm_block),
+    ('empty6', np.zeros((6, 6))),
+]
+rcm_c = []
+for _name, _A in _rcm_mats:
+    _perm = np.asarray(_rcm(sp.csr_array(_A), symmetric_mode=True))
+    _bw = _bandwidth(_A, _perm)
+    rcm_c.append({'args': [F.enc(_A), F.enc(True)], 'kwargs': {},
+                  'expect': int(_bw), 'compare': 'rcm_bandwidth'})
+calls.append({'fn': 'reverse_cuthill_mckee', 'cases': rcm_c})
+
+# maximum_bipartite_matching: maximum-cardinality matching of an m x n bipartite biadjacency.
+# scipy ignores weights (structure only); the matching itself is NON-UNIQUE so the fixture stores
+# only its (unique) cardinality and the harness validates the returned matching semantically
+# (compare='bipartite_match'): a valid matching of the expected size against the pattern in args[0].
+# perm_type='row' output has one entry per COLUMN (entry j = row matched to col j, or -1). Host-independent.
+from scipy.sparse.csgraph import maximum_bipartite_matching as _mbm
+_mbm_cases = [
+    np.array([[1,0,1],[0,1,0],[1,1,0]], np.int64),
+    np.array([[1,1,0,0],[0,1,1,0],[0,0,1,1]], np.int64),
+    np.array([[1,0],[1,0],[0,1],[0,1]], np.int64),
+    np.array([[0,0,0],[0,0,0]], np.int64),
+    np.eye(5, dtype=np.int64),
+    np.array([[1,1,0,0,0],[1,1,0,0,0],[0,1,1,0,0],[0,0,1,1,0],[0,0,0,1,1]], np.int64),  # chain, needs re-augmentation
+    np.array([[1,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0]], np.int64),                      # re-augmentation stress
+    np.array([[0,5,0,2],[7,0,0,0],[0,3,9,0]], np.int64),                                # weighted -> structure only
+]
+_mbm_rng = np.random.default_rng(20261012)
+for _ in range(6):
+    _m = int(_mbm_rng.integers(3, 8)); _n = int(_mbm_rng.integers(3, 8))
+    _mbm_cases.append((_mbm_rng.uniform(size=(_m, _n)) < 0.4).astype(np.int64))
+mbm_c = []
+for _A in _mbm_cases:
+    _r = _mbm(sp.csr_array(_A), perm_type='row')
+    _sz = int(np.sum(_r != -1))
+    mbm_c.append({'args': [{'shape': list(_A.shape), 'dtype': 'int64', 'data': [int(x) for x in _A.ravel()]}],
+                  'kwargs': {}, 'expect': {'size': _sz}, 'compare': 'bipartite_match'})
+calls.append({'fn': 'maximum_bipartite_matching', 'cases': mbm_c})
+
+# yen: K loopless shortest-path DISTANCES between source and sink (Yen's algorithm) on a dense adjacency
+# matrix (0 = no edge). SciPy returns ONLY the paths actually found (length min(#paths, K), NOT inf-padded);
+# distances are unique even when paths tie, so the sorted distance array is host-independent. Pure graph
+# arithmetic -> compare='tol' on the distance array. Positional args: (csgraph, source, sink, K, directed).
+from scipy.sparse.csgraph import yen as _yen
+yen_c = []
+
+
+def _yen_case(A, s, t, K, directed):
+    r = np.asarray(_yen(sp.csr_array(np.asarray(A, float)), s, t, K, directed=directed), float)
+    return {'args': [F.enc(np.asarray(A, float)), F.enc(int(s)), F.enc(int(t)), F.enc(int(K)), F.enc(bool(directed))],
+            'kwargs': {}, 'expect': F.enc_result(r, []), 'compare': 'tol'}
+
+
+_yen_explicit = [
+    (np.array([[0,3,2,0,0],[0,0,0,4,0],[0,1,0,2,0],[0,0,0,0,2],[0,0,0,0,0]], float), 0, 4, 3, True),
+    (np.array([[0,1,0,3],[0,0,1,0],[0,0,0,1],[0,0,0,0]], float), 0, 3, 5, True),        # only 2 paths -> len 2
+    (np.array([[0,1,0,3],[0,0,1,0],[0,0,0,1],[0,0,0,0]], float), 0, 3, 1, True),        # K=1
+    (np.array([[0,7,9,0,0,14],[7,0,10,15,0,0],[9,10,0,11,0,2],
+               [0,15,11,0,6,0],[0,0,0,6,0,9],[14,0,2,0,9,0]], float), 0, 4, 4, False),  # undirected classic
+    (np.array([[0,7,9,0,0,14],[7,0,10,15,0,0],[9,10,0,11,0,2],
+               [0,15,11,0,6,0],[0,0,0,6,0,9],[14,0,2,0,9,0]], float), 0, 3, 3, False),
+]
+
+_yen_rng = np.random.default_rng(20261012)
+
+
+def _yen_rand(n, p, lo=1, hi=9):
+    A = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            if i != j and _yen_rng.uniform() < p:
+                A[i, j] = int(_yen_rng.integers(lo, hi + 1))
+    return A
+
+
+_yen_rand_specs = [(6, 0.5, 0, 5, 3, True), (7, 0.45, 0, 6, 4, True), (8, 0.4, 0, 7, 5, True),
+                   (6, 0.6, 1, 4, 2, True), (7, 0.5, 0, 3, 6, False), (9, 0.35, 0, 8, 3, True),
+                   (5, 0.7, 0, 4, 10, True), (7, 0.55, 0, 6, 4, False)]
+for _n, _p, _s, _t, _K, _d in _yen_rand_specs:
+    _yen_explicit.append((_yen_rand(_n, _p), _s, _t, _K, _d))
+
+for _A, _s, _t, _K, _d in _yen_explicit:
+    yen_c.append(_yen_case(_A, _s, _t, _K, _d))
+calls.append({'fn': 'yen', 'cases': yen_c})
+
+
+# ---- dense <-> CSR converters --------------------------------------------------------
+from scipy.sparse.csgraph import csgraph_to_dense as _todense, csgraph_from_dense as _fromdense
+_cg = np.random.default_rng(20261013)
+
+
+def _to_dense_case(A, null_value):
+    M = sp.csr_array(A)
+    M.sort_indices()
+    n = int(A.shape[0])
+    exp = _todense(M, null_value=null_value)
+    return {'args': [F.enc(np.asarray(M.data, float)), F.enc(np.asarray(M.indices, np.int64)),
+                     F.enc(np.asarray(M.indptr, np.int64)), n, F.enc(float(null_value))],
+            'kwargs': {}, 'expect': F.enc_result(np.asarray(exp, float), []), 'compare': 'tol'}
+
+
+_td_mats = [
+    np.array([[0, 1, 2, 0], [0, 0, 0, 1], [0, 0, 0, 3], [0, 0, 0, 0]], float),
+    np.array([[0, 0, 0], [2, 0, 0], [0, 5, 0]], float),
+    np.zeros((4, 4), float),
+]
+for _ in range(5):
+    _n = int(_cg.integers(3, 7))
+    _td_mats.append(_cg.integers(0, 4, size=(_n, _n)).astype(float))
+_td_nvs = [0.0, 0.0, 0.0, -1.0, 99.0, 0.0, 0.0, 0.0]
+_td_c = [_to_dense_case(_A, _td_nvs[_i]) for _i, _A in enumerate(_td_mats)]
+# explicit duplicate-min (repeated (0,1) entry: min of 5 and 3 wins)
+_dd = sp.csr_array((np.array([5.0, 3.0, 7.0]), np.array([1, 1, 2]), np.array([0, 2, 3, 3])), shape=(3, 3))
+_dexp = _todense(_dd, null_value=0.0)
+_td_c.append({'args': [F.enc(np.array([5.0, 3.0, 7.0])), F.enc(np.array([1, 1, 2], np.int64)),
+                     F.enc(np.array([0, 2, 3, 3], np.int64)), 3, F.enc(0.0)], 'kwargs': {},
+                     'expect': F.enc_result(np.asarray(_dexp, float), []), 'compare': 'tol'})
+calls.append({'fn': 'csgraph_to_dense', 'cases': _td_c})
+
+
+def _from_dense_case(A, null_value, nan_null, infinity_null):
+    M = _fromdense(A, null_value=null_value, nan_null=nan_null, infinity_null=infinity_null).tocsr()
+    M.sort_indices()
+    kw = {}
+    if null_value != 0.0:
+        kw['null_value'] = F.enc(null_value)
+    if not nan_null:
+        kw['nan_null'] = F.enc(False)
+    if not infinity_null:
+        kw['infinity_null'] = F.enc(False)
+    return {'args': [F.enc(np.asarray(A, float))], 'kwargs': kw,
+            'expect': {'dict': {'indptr': F.enc(np.asarray(M.indptr, np.int64)),
+                               'indices': F.enc(np.asarray(M.indices, np.int64)),
+                               'data': F.enc(np.asarray(M.data, float))}}, 'compare': 'tol'}
+
+
+_Ainf = np.array([[1, 0, np.nan], [np.inf, 2, 0], [-np.inf, 0, 3]], float)
+_fd_c = [
+    _from_dense_case(np.array([[0, 1, 2, 0], [0, 0, 0, 1], [0, 0, 0, 3], [0, 0, 0, 0]], float), 0.0, True, True),
+    _from_dense_case(np.array([[0, 5], [7, 0]], float), 0.0, True, True),
+    _from_dense_case(_Ainf, 0.0, True, True),
+    _from_dense_case(_Ainf, 0.0, False, False),
+    _from_dense_case(_Ainf, 0.0, True, False),
+    _from_dense_case(np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], float), 1.0, True, True),
+]
+for _ in range(3):
+    _n = int(_cg.integers(3, 6))
+    _fd_c.append(_from_dense_case(_cg.integers(0, 3, size=(_n, _n)).astype(float), 0.0, True, True))
+calls.append({'fn': 'csgraph_from_dense', 'cases': _fd_c})
+
 out = {'module': 'csgraph', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
