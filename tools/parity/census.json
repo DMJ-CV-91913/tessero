@@ -10827,6 +10827,26 @@
 "name": "yule"
 },
 {
+"kind": "class",
+"module": "scipy.spatial.transform",
+"name": "RigidTransform"
+},
+{
+"kind": "class",
+"module": "scipy.spatial.transform",
+"name": "Rotation"
+},
+{
+"kind": "class",
+"module": "scipy.spatial.transform",
+"name": "RotationSpline"
+},
+{
+"kind": "class",
+"module": "scipy.spatial.transform",
+"name": "Slerp"
+},
+{
 "kind": "function",
 "module": "scipy.cluster.vq",
 "name": "kmeans"

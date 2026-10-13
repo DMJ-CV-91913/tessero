@@ -90,6 +90,7 @@ phases:
   scipy.sparse.csgraph: 10
   scipy.spatial: 10
   scipy.spatial.distance: 10
+  scipy.spatial.transform: 10
   scipy.cluster.vq: 10
   scipy.cluster.hierarchy: 10
   scipy.ndimage: 10
@@ -463,6 +464,10 @@ legacy:
     # pure-PHP 2-D Delaunay (Bowyer-Watson); simplex SET + find_simplex + transform, general-position, both backends
     Delaunay: {ffi: [DEL::findSimplex], ext: [DEL::findSimplex], fixtures: [spatial.Delaunay]}
     tsearch: {ffi: [DEL::tsearch], ext: [DEL::tsearch], fixtures: [spatial.Delaunay]}
+    Voronoi: {ffi: [VOR::__construct], ext: [VOR::__construct], fixtures: [spatial.Voronoi]}
+  scipy.spatial.transform:
+    # pure-PHP Rotation: all representation conversions validated through the rotation matrix.
+    Rotation: {ffi: [ROT::fromQuat], ext: [ROT::fromQuat], fixtures: [spatial.transform.Rotation]}
   scipy.spatial.distance:
     # pure-PHP directed Hausdorff distance (Taha-Hanbury early-break); distance verified both backends
     # (the returned index pair is RNG-dependent in scipy and is not asserted).
@@ -613,3 +618,10 @@ legacy:
     LSQUnivariateSpline: {ffi: [LSQS::__construct], ext: [LSQS::__construct], fixtures: [interpolate.LSQUnivariateSpline]}
     # RectBivariateSpline(x,y,z,kx,ky,s=0): tensor-product interpolating spline (two 1-D solves + NdBSpline eval)
     RectBivariateSpline: {ffi: [RBS::__construct], ext: [RBS::__construct], fixtures: [interpolate.RectBivariateSpline]}
+    make_splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
+    splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
+    make_splprep: {ffi: [MSP::evaluate], ext: [MSP::evaluate], fixtures: [interpolate.splprep]}
+    splprep: {ffi: [MSP::evaluate], ext: [MSP::evaluate], fixtures: [interpolate.splprep]}
+    generate_knots: {ffi: [GKN::knots], ext: [GKN::knots], fixtures: [interpolate.generate_knots]}
+    approximate_taylor_polynomial: {ffi: [ATP::compute], ext: [ATP::compute], fixtures: [interpolate.approximate_taylor_polynomial]}
+    Rbf: {ffi: [RBF::evaluate], ext: [RBF::evaluate], fixtures: [interpolate.Rbf]}
