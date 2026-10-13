@@ -135,6 +135,7 @@
         "interpolate.RBFInterpolator": "pass",
         "interpolate.RegularGridInterpolator": "pass",
         "interpolate.barycentric_interpolate": "pass",
+        "interpolate.griddata": "pass",
         "interpolate.insert": "pass",
         "interpolate.interp1d": "pass",
         "interpolate.interpn": "pass",
@@ -3268,7 +3269,8 @@
             "optimize.fmin_cg": null,
             "optimize.fmin_powell": null,
             "optimize.fmin_ncg": null,
-            "spatial.directed_hausdorff": null
+            "spatial.directed_hausdorff": null,
+            "interpolate.griddata": null
         },
         "ext": {
             "np.median": 0,
@@ -4903,7 +4905,8 @@
             "optimize.fmin_cg": null,
             "optimize.fmin_powell": null,
             "optimize.fmin_ncg": null,
-            "spatial.directed_hausdorff": null
+            "spatial.directed_hausdorff": null,
+            "interpolate.griddata": null
         }
     },
     "ext": {
@@ -5042,6 +5045,7 @@
         "interpolate.RBFInterpolator": "pass",
         "interpolate.RegularGridInterpolator": "pass",
         "interpolate.barycentric_interpolate": "pass",
+        "interpolate.griddata": "pass",
         "interpolate.insert": "pass",
         "interpolate.interp1d": "pass",
         "interpolate.interpn": "pass",
