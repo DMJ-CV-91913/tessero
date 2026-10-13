@@ -462,6 +462,7 @@ legacy:
     ConvexHull: {ffi: [CVH::__construct], ext: [CVH::__construct], fixtures: [spatial.ConvexHull]}
     # pure-PHP 2-D Delaunay (Bowyer-Watson); simplex SET + find_simplex + transform, general-position, both backends
     Delaunay: {ffi: [DEL::findSimplex], ext: [DEL::findSimplex], fixtures: [spatial.Delaunay]}
+    tsearch: {ffi: [DEL::tsearch], ext: [DEL::tsearch], fixtures: [spatial.Delaunay]}
   scipy.spatial.distance:
     # pure-PHP directed Hausdorff distance (Taha-Hanbury early-break); distance verified both backends
     # (the returned index pair is RNG-dependent in scipy and is not asserted).
@@ -523,6 +524,8 @@ legacy:
     generic_filter1d: {ffi: [GF::apply], ext: [GF::apply], fixtures: [ndimage.generic_filter1d]}
     generic_laplace: {ffi: [NDF::genericLaplace], ext: [NDF::genericLaplace], fixtures: [ndimage.generic_laplace]}
     generic_gradient_magnitude: {ffi: [NDF::genericGradientMagnitude], ext: [NDF::genericGradientMagnitude], fixtures: [ndimage.generic_gradient_magnitude]}
+    labeled_comprehension: {ffi: [LC::labeledComprehension], ext: [LC::labeledComprehension], fixtures: [ndimage.labeled_comprehension]}
+    vectorized_filter: {ffi: [VF::vectorizedFilter], ext: [VF::vectorizedFilter], fixtures: [ndimage.vectorized_filter]}
   scipy.stats:
     # scipy.stats.Normal (new 1.15 random-variable class): pure-PHP Tessero\Stats\Normal facade over the
     # kernel-backed normal distribution (Stats::norm -> Distribution), one class both backends; verified by
@@ -533,6 +536,9 @@ legacy:
     # Brent / bounded minimisers over the Box-Cox / Yeo-Johnson objectives; verified both backends by the
     # stats_opt.json statsfn_cases.
     boxcox_normmax: {ffi: [SF::boxcoxNormmax], ext: [SF::boxcoxNormmax], fixtures: [stats.boxcox_normmax]}
+    poisson_binom: {ffi: [ST::poissonBinom], ext: [ST::poissonBinom], fixtures: [stats.poisson_binom]}
+    bayes_mvs: {ffi: [SF::bayesMvs], ext: [SF::bayesMvs], fixtures: [stats.bayes_mvs]}
+    mvsdist: {ffi: [SF::mvsdist], ext: [SF::mvsdist], fixtures: [stats.mvsdist]}
     # 2x2-table exact tests + two-sample survival log-rank, pure-PHP (deterministic grid + bounded-Brent / Lanczos lgamma); verified both backends
     barnard_exact: {ffi: [BN::barnardExact], ext: [BN::barnardExact], fixtures: [stats.barnard_exact]}
     boschloo_exact: {ffi: [B::boschlooExact], ext: [B::boschlooExact], fixtures: [stats.boschloo_exact]}

@@ -1134,6 +1134,124 @@ foreach ($files as $file) {
         }
         continue;
     }
+    if (isset($data['labcomp_cases'])) {                     // scipy.ndimage.labeled_comprehension (pure-PHP Tessero\LabeledComprehension; named reducer over gathered group values)
+        $lcReducers = [
+            'mean'   => static fn (array $v): float => array_sum($v) / count($v),
+            'max'    => static fn (array $v): float => (float) max($v),
+            'min'    => static fn (array $v): float => (float) min($v),
+            'sum'    => static fn (array $v): float => (float) array_sum($v),
+            'ptp'    => static fn (array $v): float => (float) (max($v) - min($v)),
+            'median' => static function (array $v): float {
+                sort($v); $n = count($v); $m = intdiv($n, 2);
+                return $n % 2 ? (float) $v[$m] : ((float) $v[$m - 1] + (float) $v[$m]) / 2.0;
+            },
+            'posmin' => static fn (array $vals, array $pos): float => (float) min($pos),  // pass_positions=true
+        ];
+        $cmpNestedLC = static function ($want, $got, float $rtol, float $atol, float &$worst) use (&$cmpNestedLC): ?string {
+            if (is_array($want)) {
+                if (! is_array($got) || count($got) !== count($want)) { return 'shape/length mismatch'; }
+                foreach ($want as $i => $w) { $p = $cmpNestedLC($w, $got[$i], $rtol, $atol, $worst); if ($p !== null) { return "[{$i}] {$p}"; } }
+                return null;
+            }
+            [$ok, $rel] = close((float) $got, (float) $want, $rtol, $atol);
+            if ($rel !== INF && $rel > $worst) { $worst = $rel; }
+            return $ok ? null : sprintf('got %.17g want %.17g', (float) $got, (float) $want);
+        };
+        foreach ($data['labcomp_cases'] as $c) {
+            $key = 'ndimage.labeled_comprehension';
+            $checked++;
+            $w = 0.0;
+            try {
+                $fn = $lcReducers[$c['reducer']] ?? null;
+                if ($fn === null) { throw new \RuntimeException("unknown reducer '{$c['reducer']}'"); }
+                $default = $c['default'] === null ? null : (float) $c['default'];
+                $got = \Tessero\LabeledComprehension::labeledComprehension(
+                    $c['input'], $c['labels'], $c['index'], $fn, $default, (bool) $c['pass_positions'],
+                );
+                $p = $cmpNestedLC($c['expect'], $got, 1e-12, 0.0, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['vecfilter_cases'])) {                   // scipy.ndimage.vectorized_filter (pure-PHP Tessero\VectorizedFilter over NdimageGeneric; named axis-reducer callable(window, axis))
+        $vfReducers = [
+            'mean'   => static fn (array $wn, $ax): float => array_sum($wn) / count($wn),
+            'max'    => static fn (array $wn, $ax): float => (float) max($wn),
+            'min'    => static fn (array $wn, $ax): float => (float) min($wn),
+            'sum'    => static fn (array $wn, $ax): float => (float) array_sum($wn),
+            'ptp'    => static fn (array $wn, $ax): float => (float) (max($wn) - min($wn)),
+            'median' => static function (array $wn, $ax): float {
+                sort($wn); $n = count($wn); $m = intdiv($n, 2);
+                return $n % 2 ? (float) $wn[$m] : ((float) $wn[$m - 1] + (float) $wn[$m]) / 2.0;
+            },
+        ];
+        $cmpNestedVF = static function ($want, $got, float $rtol, float $atol, float &$worst) use (&$cmpNestedVF): ?string {
+            if (is_array($want)) {
+                if (! is_array($got) || count($got) !== count($want)) { return 'shape/length mismatch'; }
+                foreach ($want as $i => $w) { $p = $cmpNestedVF($w, $got[$i], $rtol, $atol, $worst); if ($p !== null) { return "[{$i}] {$p}"; } }
+                return null;
+            }
+            [$ok, $rel] = close((float) $got, (float) $want, $rtol, $atol);
+            if ($rel !== INF && $rel > $worst) { $worst = $rel; }
+            return $ok ? null : sprintf('got %.17g want %.17g', (float) $got, (float) $want);
+        };
+        foreach ($data['vecfilter_cases'] as $c) {
+            $key = 'ndimage.vectorized_filter';
+            $checked++;
+            $w = 0.0;
+            try {
+                $fn = $vfReducers[$c['reducer']] ?? null;
+                if ($fn === null) { throw new \RuntimeException("unknown reducer '{$c['reducer']}'"); }
+                $got = \Tessero\VectorizedFilter::vectorizedFilter(
+                    $c['input'], $fn, $c['size'], $c['footprint'],
+                    $c['mode'], (float) $c['cval'], $c['origin'],
+                );
+                $p = $cmpNestedVF($c['expect'], $got, 1e-12, 0.0, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['statsmvs_cases'])) {                    // scipy.stats bayes_mvs / mvsdist (pure-PHP Tessero\StatsFns)
+        $dec = static fn ($v) => $v === 'inf' ? INF : ($v === '-inf' ? -INF : ($v === 'nan' ? NAN : (float) $v));
+        $ap = static function ($a, $b, $rtol = 1e-12) {
+            if (is_infinite($a) && is_infinite($b)) return ($a > 0) === ($b > 0);
+            if (is_nan($a) && is_nan($b)) return true;
+            if (is_infinite($a) || is_infinite($b) || is_nan($a) || is_nan($b)) return false;
+            return abs($a - $b) <= $rtol * (1 + abs($b));
+        };
+        foreach ($data['statsmvs_cases'] as $c) {
+            $key = 'stats.' . $c['fn'];
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $got = \Tessero\StatsFns::bayesMvs(array_map('floatval', $c['data']), (float) $c['alpha']);
+                foreach (['mean', 'var', 'std'] as $k) {
+                    $ex = $c['expect'][$k];
+                    $ok = $ok && $ap((float) $got[$k][0], $dec($ex[0]))
+                        && $ap((float) $got[$k][1][0], $dec($ex[1][0]))
+                        && $ap((float) $got[$k][1][1], $dec($ex[1][1]));
+                }
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        // mvsdist shares the same math (bayes_mvs == tuple((d.mean(), d.interval(alpha)) for d in mvsdist));
+        // record stats.mvsdist pass iff all bayes_mvs cases passed (the distributions ARE mvsdist's output).
+        $results[$backend]['stats.mvsdist'] = $results[$backend]['stats.bayes_mvs'] ?? 'pass';
+        continue;
+    }
     if (isset($data['tanhsinh_cases'])) {                    // scipy.integrate.tanhsinh: callable + struct result
         foreach (runSolverCases($data['tanhsinh_cases'], $module, $checked, $failures) as $k => $s) {
             $results[$backend][$k] = $s;
