@@ -125,11 +125,15 @@
         "hierarchy.to_mlab_linkage": "pass",
         "hierarchy.ward": "pass",
         "hierarchy.weighted": "pass",
+        "integrate.dblquad": "pass",
         "integrate.fixed_quad": "pass",
+        "integrate.nquad": "pass",
+        "integrate.nsum": "pass",
         "integrate.quad": "pass",
         "integrate.quad_vec": "pass",
         "integrate.solve_ivp": "pass",
         "integrate.tanhsinh": "pass",
+        "integrate.tplquad": "pass",
         "interpolate.Akima1DInterpolator": "pass",
         "interpolate.BPoly": "pass",
         "interpolate.BSpline": "pass",
@@ -3409,7 +3413,11 @@
             "interpolate.approximate_taylor_polynomial": null,
             "interpolate.Rbf": null,
             "spatial.Voronoi": null,
-            "spatial.transform.Rotation": null
+            "spatial.transform.Rotation": null,
+            "integrate.dblquad": null,
+            "integrate.tplquad": null,
+            "integrate.nquad": null,
+            "integrate.nsum": null
         },
         "ext": {
             "np.median": 0,
@@ -5114,7 +5122,11 @@
             "interpolate.approximate_taylor_polynomial": null,
             "interpolate.Rbf": null,
             "spatial.Voronoi": null,
-            "spatial.transform.Rotation": null
+            "spatial.transform.Rotation": null,
+            "integrate.dblquad": null,
+            "integrate.tplquad": null,
+            "integrate.nquad": null,
+            "integrate.nsum": null
         }
     },
     "ext": {
@@ -5243,11 +5255,15 @@
         "hierarchy.to_mlab_linkage": "pass",
         "hierarchy.ward": "pass",
         "hierarchy.weighted": "pass",
+        "integrate.dblquad": "pass",
         "integrate.fixed_quad": "pass",
+        "integrate.nquad": "pass",
+        "integrate.nsum": "pass",
         "integrate.quad": "pass",
         "integrate.quad_vec": "pass",
         "integrate.solve_ivp": "pass",
         "integrate.tanhsinh": "pass",
+        "integrate.tplquad": "pass",
         "interpolate.Akima1DInterpolator": "pass",
         "interpolate.BPoly": "pass",
         "interpolate.BSpline": "pass",
