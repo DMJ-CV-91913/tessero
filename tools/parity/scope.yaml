@@ -438,6 +438,7 @@ legacy:
     tanhsinh: {ffi: [TanhS::tanhsinh], ext: [TanhS::tanhsinh], fixtures: [integrate.tanhsinh]}
     # quad_vec: vector-valued adaptive GK quadrature (batched max-heap bisection) over a PHP callable; pure-PHP
     quad_vec: {ffi: [QVec::quadVec], ext: [QVec::quadVec], fixtures: [integrate.quad_vec]}
+    solve_ivp: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     # scipy.integrate.trapezoid is numpy.trapezoid re-exported: credit the already-verified np.trapezoid routine
     trapezoid: {ffi: [NpC::trapezoid], ext: [XNpC::trapezoid], fixtures: [np.trapezoid]}
     # cumulative_trapezoid: the running trapezoid integral, implemented alongside trapezoid as an np.* routine
@@ -494,6 +495,8 @@ legacy:
     quadratic_assignment: {ffi: [QAP::faq], ext: [QAP::faq], fixtures: [optimize.quadratic_assignment]}
     # differential_evolution(func,bounds): best1bin/polish=False over the bit-exact PCG64 Generator; loose x (rtol 1e-4) on convex problems
     differential_evolution: {ffi: [DE::solve], ext: [DE::solve], fixtures: [optimize.differential_evolution]}
+    dual_annealing: {ffi: [DA::minimize], ext: [DA::minimize], fixtures: [optimize.dual_annealing]}
+    basinhopping: {ffi: [BH::solve], ext: [BH::solve], fixtures: [optimize.basinhopping]}
     rosen: {ffi: [Min::rosen], ext: [Min::rosen], fixtures: [optimize.rosen]}
     rosen_der: {ffi: [Min::rosenDer], ext: [Min::rosenDer], fixtures: [optimize.rosen_der]}
     rosen_hess: {ffi: [Min::rosenHess], ext: [Min::rosenHess], fixtures: [optimize.rosen_hess]}
@@ -507,18 +510,25 @@ legacy:
     curve_fit: {ffi: [LS::curveFit], ext: [LS::curveFit], fixtures: [optimize.curve_fit]}
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
-    approx_fprime: {ffi: [Min::approxGrad], ext: [Min::approxGrad], tests: solvers}
+    approx_fprime: {ffi: [LSRCH::approxFprime], ext: [LSRCH::approxFprime], fixtures: [optimize.approx_fprime]}
+    line_search: {ffi: [LSRCH::lineSearch], ext: [LSRCH::lineSearch], fixtures: [optimize.line_search]}
     check_grad: {ffi: [Min::checkGrad], ext: [Min::checkGrad], fixtures: [optimize.check_grad]}
     brute: {ffi: [Min::brute], ext: [Min::brute], fixtures: [optimize.brute]}
   scipy.ndimage:
     # distinct-value index map: pure-PHP Tessero\ValueIndices returns nonzero(input==v) per value
     # (integer input, sorted keys); verified both backends by ndimage_valindices.json valindices_cases.
     value_indices: {ffi: [VI::valueIndices], ext: [VI::valueIndices], fixtures: [ndimage.value_indices]}
+    geometric_transform: {ffi: [GXF::apply], ext: [GXF::apply], fixtures: [ndimage.geometric_transform]}
+    generic_filter: {ffi: [NDG::genericFilter], ext: [NDG::genericFilter], fixtures: [ndimage.generic_filter]}
+    generic_filter1d: {ffi: [GF::apply], ext: [GF::apply], fixtures: [ndimage.generic_filter1d]}
+    generic_laplace: {ffi: [NDF::genericLaplace], ext: [NDF::genericLaplace], fixtures: [ndimage.generic_laplace]}
+    generic_gradient_magnitude: {ffi: [NDF::genericGradientMagnitude], ext: [NDF::genericGradientMagnitude], fixtures: [ndimage.generic_gradient_magnitude]}
   scipy.stats:
     # scipy.stats.Normal (new 1.15 random-variable class): pure-PHP Tessero\Stats\Normal facade over the
     # kernel-backed normal distribution (Stats::norm -> Distribution), one class both backends; verified by
     # stats_normal.json rvdist_cases (every method, scalar + array).
     Normal: {ffi: [NORM::pdf], ext: [NORM::pdf], fixtures: [stats.Normal]}
+    Uniform: {ffi: [UNIF::pdf], ext: [UNIF::pdf], fixtures: [stats.Uniform]}
     # optimiser-based transform-parameter selectors: pure-PHP Tessero\StatsFns drives the scipy-matched
     # Brent / bounded minimisers over the Box-Cox / Yeo-Johnson objectives; verified both backends by the
     # stats_opt.json statsfn_cases.
@@ -527,6 +537,7 @@ legacy:
     barnard_exact: {ffi: [BN::barnardExact], ext: [BN::barnardExact], fixtures: [stats.barnard_exact]}
     boschloo_exact: {ffi: [B::boschlooExact], ext: [B::boschlooExact], fixtures: [stats.boschloo_exact]}
     logrank: {ffi: [LR::logrank], ext: [LR::logrank], fixtures: [stats.logrank]}
+    permutation_test: {ffi: [PT::permutationTest], ext: [PT::permutationTest], fixtures: [stats.permutation_test]}
     yeojohnson_normmax: {ffi: [SF::yeojohnsonNormmax], ext: [SF::yeojohnsonNormmax], fixtures: [stats.yeojohnson_normmax]}
     ppcc_max: {ffi: [SF::ppccMax], ext: [SF::ppccMax], fixtures: [stats.ppcc_max]}
   scipy.constants:

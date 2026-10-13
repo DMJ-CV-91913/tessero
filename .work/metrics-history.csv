@@ -272,3 +272,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-13,integrate quad_vec,100.0,100.0,88.7,88.6,100.0,99.8,100.0,100.0,86.9,86.9
 2026-10-13,funm + maximum_flow (kernel-C: closes scipy.linalg; csgraph max-flow),100.0,100.0,88.8,88.7,100.0,99.8,100.0,100.0,86.9,86.9
 2026-10-13,kernel-C batch: rcm/mbm/yen/csgraph_to_dense/csgraph_from_dense + signal.remez + ndimage.watershed_ift (both backends),100.0,100.0,89.3,89.2,100.0,99.8,100.0,100.0,86.9,86.9
+2026-10-13,pure-PHP batch: ndimage callable family (geometric_transform/generic_filter/generic_filter1d/generic_laplace/generic_gradient_magnitude) + stats.Uniform + optimize dual_annealing/basinhopping/approx_fprime/line_search + integrate.solve_ivp + stats.permutation_test (both backends),100.0,100.0,90.1,89.9,100.0,99.9,100.0,100.0,87.5,87.5

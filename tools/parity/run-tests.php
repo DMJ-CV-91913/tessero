@@ -637,6 +637,15 @@ function makeObjective(array $spec): callable
         'vecsys' => static fn (array $x): array => [$x[0] - 0.5 * cos($x[1]) - 0.5, $x[1] - 0.5 * sin($x[0]) - 0.3],
         'sphere' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v; } return $s; },
         'shifted_quadratic' => static function (array $x) use ($spec): float { $s = 0.0; foreach ($x as $i => $v) { $d = $v - $spec['shift'][$i]; $s += $d * $d; } return $s; },
+        'rastrigin' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v - 10.0 * cos(2.0 * M_PI * $v); } return $s + 10.0 * count($x); },
+        'ackley' => static function (array $x): float { $n = count($x); $s1 = 0.0; $s2 = 0.0; foreach ($x as $v) { $s1 += $v * $v; $s2 += cos(2.0 * M_PI * $v); } return -20.0 * exp(-0.2 * sqrt($s1 / $n)) - exp($s2 / $n) + 20.0 + M_E; },
+        'booth' => static fn (array $x): float => ($x[0] + 2 * $x[1] - 7) ** 2 + (2 * $x[0] + $x[1] - 5) ** 2,
+        'matyas' => static fn (array $x): float => 0.26 * ($x[0] ** 2 + $x[1] ** 2) - 0.48 * $x[0] * $x[1],
+        'vquad' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v; } return $s; },
+        'wquad' => static fn (array $x): float => $x[0] ** 2 + 3.0 * $x[1] ** 2,
+        'shift3' => static fn (array $x): float => ($x[0] - 1.0) ** 2 + ($x[1] - 2.5) ** 2 + ($x[2] + 0.3) ** 2,
+        'expsum' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += exp(0.5 * $v) + $v ** 2; } return $s; },
+        'trig' => static fn (array $x): float => sin($x[0]) * cos($x[1]) + 0.5 * ($x[0] ** 2 + $x[1] ** 2),
         default => throw new \RuntimeException("unknown objective '{$spec['kind']}'"),
     };
 }
@@ -712,6 +721,109 @@ function vecClose(array $got, array $want, float $rtol): bool
  * @param list<array<string, mixed>> $cases
  * @return array<string, string>
  */
+function makeStencil(array $spec): callable
+{
+    return match ($spec['kind']) {
+        'mavg' => static function (array $inbuf, int $outlen): array {   // moving average, window = filter_size
+            $size = count($inbuf) - $outlen + 1;
+            $out = [];
+            for ($i = 0; $i < $outlen; $i++) {
+                $s = 0.0;
+                for ($j = 0; $j < $size; $j++) { $s += $inbuf[$i + $j]; }
+                $out[] = $s / $size;
+            }
+            return $out;
+        },
+        'fdiff' => static function (array $inbuf, int $outlen): array {   // forward difference (filter_size=2)
+            $out = [];
+            for ($i = 0; $i < $outlen; $i++) { $out[] = $inbuf[$i + 1] - $inbuf[$i]; }
+            return $out;
+        },
+        'wstencil' => static function (array $inbuf, int $outlen) use ($spec): array {  // fixed weighted stencil
+            $w = $spec['weights'];
+            $size = count($w);
+            $out = [];
+            for ($i = 0; $i < $outlen; $i++) {
+                $s = 0.0;
+                for ($j = 0; $j < $size; $j++) { $s += $inbuf[$i + $j] * $w[$j]; }
+                $out[] = $s;
+            }
+            return $out;
+        },
+        default => throw new \RuntimeException("unknown stencil '{$spec['kind']}'"),
+    };
+}
+
+/** Analytic gradient for the line_search fixtures (named kind, matches makeObjective). */
+function makeGradient(array $spec): callable
+{
+    return match ($spec['kind']) {
+        'vquad' => static fn (array $x): array => array_map(static fn ($v) => 2.0 * $v, $x),
+        'wquad' => static fn (array $x): array => [2.0 * $x[0], 6.0 * $x[1]],
+        'rosen' => static fn (array $x): array => \Tessero\Optimize\Minimize::rosenDer($x),
+        'shift3' => static fn (array $x): array => [2.0 * ($x[0] - 1.0), 2.0 * ($x[1] - 2.5), 2.0 * ($x[2] + 0.3)],
+        'expsum' => static fn (array $x): array => array_map(static fn ($v) => 0.5 * exp(0.5 * $v) + 2.0 * $v, $x),
+        'trig' => static fn (array $x): array => [cos($x[0]) * cos($x[1]) + $x[0], -sin($x[0]) * sin($x[1]) + $x[1]],
+        default => throw new \RuntimeException("makeGradient: unknown kind '{$spec['kind']}'"),
+    };
+}
+
+/** Rebuild a named ODE right-hand side (scipy.integrate.solve_ivp fixtures) as a PHP callable f(t, y). */
+function makeOdeSystem(string $kind, array $p): callable
+{
+    return match ($kind) {
+        'exp_decay' => static function (float $t, array $y) use ($p): array {
+            $k = (float) $p['k']; $o = [];
+            foreach ($y as $yi) { $o[] = -$k * $yi; }
+            return $o;
+        },
+        'harmonic' => static function (float $t, array $y) use ($p): array {
+            $w = (float) $p['w'];
+            return [$y[1], -$w * $w * $y[0]];
+        },
+        'lotka' => static function (float $t, array $y) use ($p): array {
+            $a = (float) $p['a']; $b = (float) $p['b']; $c = (float) $p['c']; $d = (float) $p['d'];
+            return [$a * $y[0] - $b * $y[0] * $y[1], -$c * $y[1] + $d * $y[0] * $y[1]];
+        },
+        'linear2x2' => static function (float $t, array $y) use ($p): array {
+            $M = $p['M'];
+            return [$M[0][0] * $y[0] + $M[0][1] * $y[1], $M[1][0] * $y[0] + $M[1][1] * $y[1]];
+        },
+        'logistic' => static function (float $t, array $y) use ($p): array {
+            $r = (float) $p['r']; $K = (float) $p['K']; $o = [];
+            foreach ($y as $yi) { $o[] = $r * $yi * (1.0 - $yi / $K); }
+            return $o;
+        },
+        'vanderpol' => static function (float $t, array $y) use ($p): array {
+            $mu = (float) $p['mu'];
+            return [$y[1], $mu * (1.0 - $y[0] * $y[0]) * $y[1] - $y[0]];
+        },
+        default => throw new \RuntimeException("solve_ivp: unknown ODE system: " . $kind),
+    };
+}
+
+/** Rebuild a named permutation_test statistic (scipy.stats.permutation_test fixtures) as a callable. */
+function makePermStatistic(string $kind): callable
+{
+    return match ($kind) {
+        'mean_diff'   => static fn (array $a, array $b): float => array_sum($a) / count($a) - array_sum($b) / count($b),
+        'sum_first'   => static fn (array ...$ss): float => array_sum($ss[0]),
+        'mean_paired' => static fn (array $d): float => array_sum($d) / count($d),
+        'pearson'     => static function (array $a, array $b): float {
+            $n = count($a);
+            $ma = array_sum($a) / $n;
+            $mb = array_sum($b) / $n;
+            $num = 0.0; $ssx = 0.0; $ssy = 0.0;
+            for ($i = 0; $i < $n; $i++) {
+                $da = $a[$i] - $ma; $db = $b[$i] - $mb;
+                $num += $da * $db; $ssx += $da * $da; $ssy += $db * $db;
+            }
+            return $num / sqrt($ssx * $ssy);
+        },
+        default       => throw new \RuntimeException("unknown perm statistic '{$kind}'"),
+    };
+}
+
 function runSolverCases(array $cases, string $module, int &$checked, int &$failures): array
 {
     $status = [];
@@ -869,6 +981,28 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $g = is_array($got) ? $got : [$got];
                 $exp = is_array($c['expect']) ? $c['expect'] : [$c['expect']];
                 $ok = vecClose($g, $exp, $rtol);
+            } elseif ($fn === 'dual_annealing') {
+                $bounds = array_map(static fn ($b): array => [(float) $b[0], (float) $b[1]], $c['bounds']);
+                $r = \Tessero\Optimize\DualAnnealing::minimize($obj, $bounds, (int) $c['maxiter'], rng: $c['seed'] ?? null, noLocalSearch: true);
+                $okX = vecClose($r['x'], $c['expect'], $rtol);
+                $okF = abs($r['fun'] - (float) $c['expect_fun']) <= $rtol * (1 + abs((float) $c['expect_fun']));
+                $okN = (int) $r['nfev'] === (int) $c['expect_nfev'] && (int) $r['nit'] === (int) $c['expect_nit'];
+                $ok = $okX && $okF && $okN;
+            } elseif ($fn === 'basinhopping') {
+                $got = \Tessero\Optimize\BasinHopping::solve($obj, array_map('floatval', $c['x0']), $c['seed'] ?? null, (int) $c['niter'])->x;
+                $ok = vecClose($got, $c['expect'], $rtol);
+            } elseif ($fn === 'approx_fprime') {
+                $g = \Tessero\Optimize\LineSearch::approxFprime($obj, array_map('floatval', $c['x']));
+                $ok = vecClose($g, $c['expect'], $rtol);
+            } elseif ($fn === 'line_search') {
+                $grad = makeGradient($c['obj']);
+                [$alpha, $fcnt, $gcnt, $newf, $oldf, $slope] = \Tessero\Optimize\LineSearch::lineSearch($obj, $grad, array_map('floatval', $c['xk']), array_map('floatval', $c['pk']));
+                if ($c['alpha'] === null) {
+                    $ok = $alpha === null;
+                } else {
+                    $ok = $alpha !== null && abs($alpha - (float) $c['alpha']) <= $rtol * (1 + abs((float) $c['alpha'])) && (int) $fcnt === (int) $c['fc'] && (int) $gcnt === (int) $c['gc'] && abs($newf - (float) $c['new_fval']) <= $rtol * (1 + abs((float) $c['new_fval']));
+                    if ($ok && $c['new_slope'] !== null) { $ok = vecClose($slope, $c['new_slope'], $rtol); }
+                }
             }
         } catch (\Throwable $e) {
             $msg = $e->getMessage();
@@ -1102,6 +1236,269 @@ foreach ($files as $file) {
         }
         continue;
     }
+    if (isset($data['geomxform_cases'])) {                   // scipy.ndimage.geometric_transform (pure-PHP Tessero\Ndimage\GeometricTransform: named coord mapping -> map_coordinates)
+        foreach ($data['geomxform_cases'] as $c) {
+            $key = 'ndimage.geometric_transform';
+            $checked++;
+            $w = 0.0;
+            try {
+                $input = decodeValue($c['input'], $arrayClass);
+                $kind = (string) $c['kind'];
+                $params = $c['params'];
+                // Rebuild the named mapping callable in PHP (mirrors fixtures_geomxform.py py_mapping):
+                // a Python callable cannot cross into PHP, so the fixture records a named 'kind' + params
+                // and both sides construct the identical mapping(output_coord)->input_coord.
+                $mapping = match ($kind) {
+                    'shift' => (static function () use ($params): callable {
+                        $s = array_map('floatval', $params['shift']);
+                        return static function (array $o) use ($s): array {
+                            $r = [];
+                            foreach ($o as $i => $oi) { $r[] = $oi - $s[$i]; }
+                            return $r;
+                        };
+                    })(),
+                    'scale' => (static function () use ($params): callable {
+                        $a = array_map('floatval', $params['scale']);
+                        return static function (array $o) use ($a): array {
+                            $r = [];
+                            foreach ($o as $i => $oi) { $r[] = $oi / $a[$i]; }
+                            return $r;
+                        };
+                    })(),
+                    'affine' => (static function () use ($params): callable {
+                        $m = $params['matrix'];
+                        $b = array_map('floatval', $params['offset']);
+                        $n = count($b);
+                        return static function (array $o) use ($m, $b, $n): array {
+                            $r = [];
+                            for ($i = 0; $i < $n; $i++) {
+                                $acc = 0.0;
+                                for ($j = 0; $j < $n; $j++) { $acc += ((float) $m[$i][$j]) * $o[$j]; }
+                                $r[] = $acc + $b[$i];
+                            }
+                            return $r;
+                        };
+                    })(),
+                    'swap' => static fn (array $o): array => [$o[1], $o[0]],
+                    default => throw new \RuntimeException("unknown geomxform mapping kind '{$kind}'"),
+                };
+                $outShape = isset($c['output_shape']) ? array_map('intval', $c['output_shape']) : null;
+                $got = \Tessero\Ndimage\GeometricTransform::apply(
+                    $input, $mapping, $outShape, (int) $c['order'], (string) $c['mode'], (float) $c['cval'], true
+                );
+                $p = compareValue($c['expect'], $got, 1e-9, 1e-9, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = $w;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['genfilter_cases'])) {                   // scipy.ndimage.generic_filter (pure-PHP Tessero\NdimageGeneric; named reducer -> PHP callable over the flat C-order window)
+        // named window reducers (all order-insensitive, so window gather order is immaterial)
+        $reducers = [
+            'mean'   => static fn (array $w): float => array_sum($w) / count($w),
+            'max'    => static fn (array $w): float => (float) max($w),
+            'min'    => static fn (array $w): float => (float) min($w),
+            'sum'    => static fn (array $w): float => (float) array_sum($w),
+            'ptp'    => static fn (array $w): float => (float) (max($w) - min($w)),
+            'median' => static function (array $w): float {
+                sort($w);
+                $n = count($w);
+                $m = intdiv($n, 2);
+                return $n % 2 ? (float) $w[$m] : ((float) $w[$m - 1] + (float) $w[$m]) / 2.0;
+            },
+        ];
+        // recursive nested-list comparator (facade returns plain PHP arrays, not NDArray)
+        $cmpNested = static function ($want, $got, float $rtol, float $atol, float &$worst) use (&$cmpNested): ?string {
+            if (is_array($want)) {
+                if (! is_array($got) || count($got) !== count($want)) {
+                    return 'shape/length mismatch';
+                }
+                foreach ($want as $i => $w) {
+                    $p = $cmpNested($w, $got[$i], $rtol, $atol, $worst);
+                    if ($p !== null) {
+                        return "[{$i}] {$p}";
+                    }
+                }
+                return null;
+            }
+            [$ok, $rel] = close((float) $got, (float) $want, $rtol, $atol);
+            if ($rel !== INF && $rel > $worst) {
+                $worst = $rel;
+            }
+            return $ok ? null : sprintf('got %.17g want %.17g', (float) $got, (float) $want);
+        };
+        foreach ($data['genfilter_cases'] as $c) {
+            $key = 'ndimage.generic_filter';
+            $checked++;
+            $w = 0.0;
+            try {
+                $fn = $reducers[$c['reducer']] ?? null;
+                if ($fn === null) {
+                    throw new \RuntimeException("unknown reducer '{$c['reducer']}'");
+                }
+                $size = $c['size'];
+                $footprint = $c['footprint'];
+                $origin = $c['origin'];
+                $got = \Tessero\NdimageGeneric::genericFilter(
+                    $c['input'], $fn, $size, $footprint,
+                    $c['mode'], (float) $c['cval'], $origin,
+                );
+                $p = $cmpNested($c['expect'], $got, 1e-12, 0.0, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['genfilter1d_cases'])) {                 // scipy.ndimage.generic_filter1d (pure-PHP Tessero\Ndimage\GenericFilter1d; callable line-op)
+        foreach ($data['genfilter1d_cases'] as $c) {
+            $key = 'ndimage.generic_filter1d';
+            $checked++;
+            $w = 0.0;
+            try {
+                $dec = decodeValue($c['input'], $arrayClass);
+                $input = (is_object($dec) && method_exists($dec, 'toArray')) ? $dec->toArray() : $dec;
+                $fn = makeStencil($c['stencil']);
+                $got = \Tessero\Ndimage\GenericFilter1d::apply(
+                    $input, $fn, (int) $c['filter_size'], (int) $c['axis'],
+                    (string) $c['mode'], (float) $c['cval'], (int) $c['origin']
+                );
+                $p = compareValue($c['expect'], $arrayClass::array($got), 1e-12, 0.0, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['genlaplace_cases'])) {                 // scipy.ndimage.generic_laplace (pure-PHP Tessero\NdimageFns; callable derivative2 rebuilt from named kind)
+        foreach ($data['genlaplace_cases'] as $c) {
+            $key = 'ndimage.generic_laplace';
+            $checked++;
+            $w = 0.0;
+            try {
+                $input = decodeValue($c['input'], $arrayClass);
+                // Rebuild the derivative2 callable from its named kind.
+                $d2 = $c['derivative2'];
+                if (($d2['kind'] ?? null) !== 'correlate1d') {
+                    throw new \RuntimeException("unknown derivative2 kind '" . ($d2['kind'] ?? '') . "'");
+                }
+                $weights = array_map('floatval', $d2['weights']);
+                $ndimageClass = $backend === 'ext' ? 'Tessero\\Ext\\Ndimage' : \Tessero\Ndimage::class;
+                $derivative2 = static function ($in, int $axis, string $mode, float $cval) use ($weights, $ndimageClass) {
+                    return $ndimageClass::correlate1d($in, $weights, $axis, $mode, $cval);
+                };
+                $got = \Tessero\NdimageFns::genericLaplace($input, $derivative2, (string) $c['mode'], (float) $c['cval']);
+                $p = compareValue($c['expect'], $got, 1e-12, 1e-12, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = $w;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['gengradmag_cases'])) {                  // scipy.ndimage.generic_gradient_magnitude (pure-PHP Tessero\NdimageFns over native Ndimage::correlate1d)
+        $ndimageClass = $backend === 'ext' ? 'Tessero\\Ext\\Ndimage' : \Tessero\Ndimage::class;
+        foreach ($data['gengradmag_cases'] as $c) {
+            $key = 'ndimage.generic_gradient_magnitude';
+            $checked++;
+            $w = 0.0;
+            try {
+                $input   = decodeValue($c['input'], $arrayClass);
+                $weights = $c['weights'];                     // odd-length float kernel
+                $mode    = (string) $c['mode'];
+                $cval    = (float) $c['cval'];
+                // Canonical derivative: ndimage.correlate1d(input, weights, axis, mode, cval) on the active backend.
+                $deriv = static function ($in, $ax, $m, $cv) use ($ndimageClass, $weights) {
+                    return $ndimageClass::correlate1d($in, $weights, $ax, $m, $cv);
+                };
+                $got = \Tessero\NdimageFns::genericGradientMagnitude($input, $deriv, $mode, $cval);
+                $p = compareValue($c['expect'], $got, 1e-10, 0.0, $w);
+            } catch (\Throwable $e) {
+                $p = 'threw ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['solveivp_cases'])) {               // scipy.integrate.solve_ivp (callable RHS; RK45/RK23; pure-PHP)
+        $local = [];
+        foreach ($data['solveivp_cases'] as $c) {
+            $key = 'integrate.solve_ivp';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $fun = makeOdeSystem($c['kind'], $c['params']);
+                $res = \Tessero\Integrate\SolveIvp::solve(
+                    $fun,
+                    [(float) $c['t_span'][0], (float) $c['t_span'][1]],
+                    array_map('floatval', $c['y0']),
+                    array_map('floatval', $c['t_eval']),
+                    (string) $c['method'],
+                    (float) $c['rtol'],
+                    (float) $c['atol']
+                );
+                $got = $res['y']; $exp = $c['expect'];
+                $ok = count($got) === count($exp);
+                if ($ok) {
+                    foreach ($exp as $i => $row) {
+                        foreach ($row as $j => $w) {
+                            $g = (float) $got[$i][$j];
+                            if (abs($g - (float) $w) > 1e-9 + 1e-6 * abs((float) $w)) { $ok = false; $msg = 'off at row ' . $i . ' col ' . $j; break 2; }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['permtest_cases'])) {               // scipy.stats.permutation_test (pure-PHP Tessero\PermutationTest, exact path)
+        foreach ($data['permtest_cases'] as $c) {
+            $key = 'stats.permutation_test';
+            $rtol = (float) ($c['rtol'] ?? 1e-12);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $stat = makePermStatistic($c['stat']);
+                $got = \Tessero\PermutationTest::permutationTest(
+                    array_map(static fn ($ss) => array_map('floatval', $ss), $c['data']),
+                    $stat,
+                    (string) ($c['permutation_type'] ?? 'independent'),
+                    (string) ($c['alternative'] ?? 'two-sided')
+                );
+                $es = (float) $c['expect']['statistic'];
+                $ep = (float) $c['expect']['pvalue'];
+                $oks = abs($got['statistic'] - $es) <= $rtol * (1 + abs($es));
+                $okp = abs($got['pvalue'] - $ep) <= $rtol * (1 + abs($ep));
+                $ok = $oks && $okp;
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
     if (isset($data['rvdist_cases'])) {                      // scipy.stats.Normal (pure-PHP Tessero\Stats\Normal facade over Stats::norm)
         $local = [];
         foreach ($data['rvdist_cases'] as $c) {
@@ -1109,7 +1506,10 @@ foreach ($files as $file) {
             $checked++;
             $ok = false; $msg = '';
             try {
-                $rv = new \Tessero\Stats\Normal($c['params'][0], $c['params'][1]);
+                $rv = match ($c['dist']) {
+                    'uniform' => new \Tessero\Stats\Uniform($c['params'][0], $c['params'][1]),
+                    default   => new \Tessero\Stats\Normal($c['params'][0], $c['params'][1]),
+                };
                 $arg = $c['arg'];
                 $got = match ($c['method']) {
                     'pdf' => $rv->pdf($arg), 'logpdf' => $rv->logpdf($arg),
