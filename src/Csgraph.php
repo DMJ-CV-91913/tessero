@@ -29,6 +29,7 @@ final class Csgraph
     'floyd_warshall' => 'floydWarshall',
     'johnson' => 'johnson',
     'laplacian' => 'laplacian',
+    'maximum_flow' => 'maximumFlow',
     'min_weight_full_bipartite_matching' => 'minWeightFullBipartiteMatching',
     'minimum_spanning_tree' => 'minimumSpanningTree',
     'reconstruct_path' => 'reconstructPath',
@@ -166,6 +167,18 @@ final class Csgraph
     public static function laplacian(mixed $csgraph, mixed $normed = false): mixed
     {
         return Registry::routine('csgraph.laplacian', [$csgraph, $normed]);
+    }
+
+    /**
+     * Maximum single-source single-sink flow on a dense integer capacity matrix via Dinic's algorithm (scipy.sparse.csgraph.maximum_flow).
+     *
+     * scipy.sparse.csgraph.maximum_flow
+     *
+     * @return mixed one array, or an array keyed by flow_value, flow when several results are requested
+     */
+    public static function maximumFlow(mixed $csgraph, mixed $source, mixed $sink, mixed $method = 'dinic'): mixed
+    {
+        return Registry::routine('csgraph.maximum_flow', [$csgraph, $source, $sink, $method]);
     }
 
     /**
