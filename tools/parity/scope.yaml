@@ -451,6 +451,10 @@ legacy:
     KDTree: {ffi: [KD::query], ext: [KD::query], fixtures: [spatial.cKDTree]}
     # pure-PHP hyperrectangle (Minkowski min/max distances to a point or rectangle, volume), both backends
     Rectangle: {ffi: [RECT::volume], ext: [RECT::volume], fixtures: [spatial.Rectangle]}
+    # pure-PHP 2-D convex hull (Andrew's monotone chain); vertex SET + perimeter(.area) + polygon area(.volume), both backends
+    ConvexHull: {ffi: [CVH::__construct], ext: [CVH::__construct], fixtures: [spatial.ConvexHull]}
+    # pure-PHP 2-D Delaunay (Bowyer-Watson); simplex SET + find_simplex + transform, general-position, both backends
+    Delaunay: {ffi: [DEL::findSimplex], ext: [DEL::findSimplex], fixtures: [spatial.Delaunay]}
   scipy.spatial.distance:
     # pure-PHP directed Hausdorff distance (Taha-Hanbury early-break); distance verified both backends
     # (the returned index pair is RNG-dependent in scipy and is not asserted).
@@ -554,3 +558,11 @@ legacy:
     # griddata(method='nearest'), ndim>=2, delegates to NearestNDInterpolator (a gather); linear/cubic need
     # Delaunay (not available) and 1-D nearest routes through interp1d in scipy -- both out of scope here.
     griddata: {ffi: [NND::query], ext: [NND::query], fixtures: [interpolate.griddata]}
+    # bisplev(x,y,tck): bivariate FITPACK spline eval via the tensor-de-Boor kernel interpolate.NdBSpline (dx=dy=0)
+    bisplev: {ffi: [BSPL::eval], ext: [BSPL::eval], fixtures: [interpolate.bisplev]}
+    # InterpolatedUnivariateSpline(x,y,k): s=0 interpolating spline over interpolate.make_interp_spline (k=1,3)
+    InterpolatedUnivariateSpline: {ffi: [IUS::evaluate], ext: [IUS::evaluate], fixtures: [interpolate.InterpolatedUnivariateSpline]}
+    # LSQUnivariateSpline(x,y,t_interior,k): augments knots then make_lsq_spline (k=1..7)
+    LSQUnivariateSpline: {ffi: [LSQS::__construct], ext: [LSQS::__construct], fixtures: [interpolate.LSQUnivariateSpline]}
+    # RectBivariateSpline(x,y,z,kx,ky,s=0): tensor-product interpolating spline (two 1-D solves + NdBSpline eval)
+    RectBivariateSpline: {ffi: [RBS::__construct], ext: [RBS::__construct], fixtures: [interpolate.RectBivariateSpline]}

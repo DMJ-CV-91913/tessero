@@ -98,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1299,
+   "both": 1305,
    "excluded": 74,
-   "impl_ext": 1299,
-   "impl_ffi": 1302,
+   "impl_ext": 1305,
+   "impl_ffi": 1308,
    "in_scope": 1488,
-   "m2_ext": 87.3,
-   "m2_ffi": 87.5,
+   "m2_ext": 87.7,
+   "m2_ffi": 87.9,
    "m3": 4.7,
-   "m4_ext": 87.3,
-   "m4_ffi": 87.5,
+   "m4_ext": 87.7,
+   "m4_ffi": 87.9,
    "m5": 99.8,
    "symbols": 1562,
-   "verified_ext": 1299,
-   "verified_ffi": 1302
+   "verified_ext": 1305,
+   "verified_ffi": 1308
   }
  },
  "modules": {
@@ -404,20 +404,20 @@
    "verified_ffi": 7
   },
   "scipy.interpolate": {
-   "both": 31,
+   "both": 35,
    "excluded": 2,
-   "impl_ext": 31,
-   "impl_ffi": 31,
+   "impl_ext": 35,
+   "impl_ffi": 35,
    "in_scope": 54,
-   "m2_ext": 57.4,
-   "m2_ffi": 57.4,
+   "m2_ext": 64.8,
+   "m2_ffi": 64.8,
    "m3": 3.6,
-   "m4_ext": 57.4,
-   "m4_ffi": 57.4,
+   "m4_ext": 64.8,
+   "m4_ffi": 64.8,
    "m5": 100.0,
    "symbols": 56,
-   "verified_ext": 31,
-   "verified_ffi": 31
+   "verified_ext": 35,
+   "verified_ffi": 35
   },
   "scipy.linalg": {
    "both": 90,
@@ -548,20 +548,20 @@
    "verified_ffi": 11
   },
   "scipy.spatial": {
-   "both": 8,
+   "both": 10,
    "excluded": 3,
-   "impl_ext": 8,
-   "impl_ffi": 8,
+   "impl_ext": 10,
+   "impl_ffi": 10,
    "in_scope": 15,
-   "m2_ext": 53.3,
-   "m2_ffi": 53.3,
+   "m2_ext": 66.7,
+   "m2_ffi": 66.7,
    "m3": 16.7,
-   "m4_ext": 53.3,
-   "m4_ffi": 53.3,
+   "m4_ext": 66.7,
+   "m4_ffi": 66.7,
    "m5": 100.0,
    "symbols": 18,
-   "verified_ext": 8,
-   "verified_ffi": 8
+   "verified_ext": 10,
+   "verified_ffi": 10
   },
   "scipy.spatial.distance": {
    "both": 27,
@@ -622,9 +622,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40061,
-   "covered_ext": 40061,
-   "covered_ffi": 40069,
+   "covered_both": 40080,
+   "covered_ext": 40080,
+   "covered_ffi": 40088,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -701,17 +701,17 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2263,
-    "covered_ext": 2263,
-    "covered_ffi": 2271,
+    "covered_both": 2282,
+    "covered_ext": 2282,
+    "covered_ffi": 2290,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,
     "top": {
      "100": {
-      "both": 95,
-      "ext": 95,
-      "ffi": 96,
+      "both": 96,
+      "ext": 96,
+      "ffi": 97,
       "n": 100
      },
      "25": {
@@ -721,9 +721,9 @@
       "n": 25
      },
      "250": {
-      "both": 224,
-      "ext": 224,
-      "ffi": 226,
+      "both": 229,
+      "ext": 229,
+      "ffi": 231,
       "n": 250
      },
      "50": {
@@ -733,9 +733,9 @@
       "n": 50
      }
     },
-    "u_both": 95.8,
-    "u_ext": 95.8,
-    "u_ffi": 96.1
+    "u_both": 96.6,
+    "u_ext": 96.6,
+    "u_ffi": 97.0
    }
   },
   "total_calls": 42551,

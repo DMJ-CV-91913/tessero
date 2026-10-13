@@ -6880,6 +6880,114 @@
         ]
     },
     {
+        "class": "Tessero\\Spatial\\ConvexHull",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $points)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Spatial\\Delaunay",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $points)",
+                "doc": ""
+            },
+            {
+                "name": "barycentric",
+                "static": false,
+                "sig": "barycentric(int $simplex, array $x): array",
+                "doc": "Barycentric coordinates of a point with respect to a given simplex (length ndim+1, summing to 1)."
+            },
+            {
+                "name": "findSimplex",
+                "static": false,
+                "sig": "findSimplex(array $queryPoints, float $tol = 1.0E-12): array",
+                "doc": "For each query point, the index of the containing simplex (into ->simplices), or -1 when the point is outside the convex hull. Brute-force barycentric sign scan; a point is inside simplex s iff all barycentric coordinates are >= -tol."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\Bisplev",
+        "methods": [
+            {
+                "name": "eval",
+                "static": true,
+                "sig": "eval(array $x, array $y, array $tck, int $dx = 0, int $dy = 0): array",
+                "doc": "FITPACK representation (tx, ty, c, kx, ky); c is the flat coefficient array of length ncx*ncy"
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\InterpolatedUnivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, int $k = 3)",
+                "doc": ""
+            },
+            {
+                "name": "evaluate",
+                "static": false,
+                "sig": "evaluate(array $xq): array",
+                "doc": "Evaluate the interpolating spline at the query point(s)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\LSQUnivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, array $t, int $k = 3)",
+                "doc": ""
+            },
+            {
+                "name": "query",
+                "static": false,
+                "sig": "query(array $xnew): array",
+                "doc": "Evaluate the least-squares spline at the query point(s)."
+            },
+            {
+                "name": "knots",
+                "static": false,
+                "sig": "knots(): array",
+                "doc": "The full (clamped) knot vector used for the fit; mirrors sp.get_knots() augmented ends."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\RectBivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, array $z, int $kx = 3, int $ky = 3, float $s = 0.0)",
+                "doc": ""
+            },
+            {
+                "name": "getCoeffs",
+                "static": false,
+                "sig": "getCoeffs(): array",
+                "doc": ""
+            },
+            {
+                "name": "getKnots",
+                "static": false,
+                "sig": "getKnots(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Interpolate\\NearestNDInterpolator",
         "methods": [
             {
