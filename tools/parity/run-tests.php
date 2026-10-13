@@ -560,6 +560,55 @@ function compareBipartiteMatch(array $case, mixed $got): ?string
     return null;
 }
 
+/** scipy.integrate.dblquad/tplquad/nquad named integrands + limits (the PHP runner rebuilds them). */
+function makeIntegrand2(string $kind): callable {   // func(y, x)
+    return match ($kind) {
+        'xy' => fn ($y, $x) => $x * $y,
+        'gauss2d' => fn ($y, $x) => exp(-($x * $x + $y * $y)),
+        'triangle' => fn ($y, $x) => 1.0,
+        'affinef' => fn ($y, $x) => $x + $y,
+        'sincos' => fn ($y, $x) => sin($x) * cos($y),
+        default => throw new \RuntimeException("integrand2 {$kind}"),
+    };
+}
+function makeIntegrand3(string $kind): callable {   // func(z, y, x)
+    return match ($kind) {
+        'unitcube' => fn ($z, $y, $x) => 1.0,
+        'xyzcube' => fn ($z, $y, $x) => $x * $y * $z,
+        'simplex' => fn ($z, $y, $x) => 1.0,
+        default => throw new \RuntimeException("integrand3 {$kind}"),
+    };
+}
+function makeFixedIntegrand(string $kind): callable {   // nquad func(...x)
+    return match ($kind) {
+        'xy' => fn (...$a) => $a[0] * $a[1],
+        'xyz' => fn (...$a) => $a[0] + $a[1] + $a[2],
+        'gauss2' => fn (...$a) => exp(-($a[0] * $a[0] + $a[1] * $a[1])),
+        default => throw new \RuntimeException("fixedintegrand {$kind}"),
+    };
+}
+function makeLimit1(array $spec): callable {    // g(x)
+    if (isset($spec['const'])) { return fn ($x) => (float) $spec['const']; }
+    if (isset($spec['affine'])) { return fn ($x) => $spec['affine'][0] + $spec['affine'][1] * $x; }
+    if (isset($spec['affine_x'])) { return fn ($x) => $spec['affine_x'][0] + $spec['affine_x'][1] * $x; }
+    throw new \RuntimeException('limit1');
+}
+function makeLimit2(array $spec): callable {    // q(x, y)
+    if (isset($spec['const'])) { return fn ($x, $y) => (float) $spec['const']; }
+    if (isset($spec['affine_xy'])) { return fn ($x, $y) => $spec['affine_xy'][0] + $spec['affine_xy'][1] * $x + $spec['affine_xy'][2] * $y; }
+    throw new \RuntimeException('limit2');
+}
+function makeTerm(string $kind, array $p): callable {   // scipy.integrate.nsum term f(i)
+    return match ($kind) {
+        'inv_pow' => fn ($i) => 1.0 / ($i ** $p['p']),
+        'geom' => fn ($i) => $p['r'] ** $i,
+        'linear' => fn ($i) => $p['m'] * $i + $p['c'],
+        'expneg' => fn ($i) => exp(-$p['rate'] * $i),
+        default => throw new \RuntimeException("term {$kind}"),
+    };
+}
+
+
 function runCall(string|object $class, string $method, array $case, string $arrayClass, float $rtol, float $atol, float &$worst): ?string
 {
     $args = array_map(static fn ($v) => decodeValue($v, $arrayClass), $case['args']);
@@ -1613,6 +1662,49 @@ foreach ($files as $file) {
             if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
         }
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['nestedquad_cases'])) {               // scipy.integrate.dblquad/tplquad/nquad (nested GK, pure-PHP)
+        $local = [];
+        foreach ($data['nestedquad_cases'] as $c) {
+            $key = 'integrate.' . $c['fn'];
+            $rtol = (float) $c['rtol'];
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                if ($c['fn'] === 'dblquad') {
+                    [$v] = \Tessero\Integrate\NestedQuad::dblquad(makeIntegrand2($c['kind']), (float) $c['a'], (float) $c['b'], makeLimit1($c['glo']), makeLimit1($c['ghi']));
+                } elseif ($c['fn'] === 'tplquad') {
+                    [$v] = \Tessero\Integrate\NestedQuad::tplquad(makeIntegrand3($c['kind']), (float) $c['a'], (float) $c['b'], makeLimit1($c['glo']), makeLimit1($c['ghi']), makeLimit2($c['qlo']), makeLimit2($c['qhi']));
+                } else {
+                    $ranges = array_map(static fn ($r) => [(float) $r[0], (float) $r[1]], $c['ranges']);
+                    [$v] = \Tessero\Integrate\NestedQuad::nquad(makeFixedIntegrand($c['kind']), $ranges);
+                }
+                $ok = abs($v - (float) $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+                if (! $ok) { $msg = 'got ' . $v . ' want ' . $c['expect']; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['nsum_cases'])) {                     // scipy.integrate.nsum (finite, pure-PHP)
+        $local = [];
+        foreach ($data['nsum_cases'] as $c) {
+            $key = 'integrate.nsum';
+            $rtol = (float) $c['rtol'];
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $r = \Tessero\Integrate\Nsum::nsum(makeTerm($c['kind'], $c['params'] ?? []), (float) $c['a'], (float) $c['b'], (float) $c['step']);
+                $ok = abs($r['sum'] - (float) $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+                if (! $ok) { $msg = 'got ' . $r['sum'] . ' want ' . $c['expect']; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
     if (isset($data['permtest_cases'])) {               // scipy.stats.permutation_test (pure-PHP Tessero\PermutationTest, exact path)

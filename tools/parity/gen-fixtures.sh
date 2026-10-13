@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal stats_uniform barnard boschloo logrank permtest ndimage_valindices ndimage_geomxform ndimage_genfilter ndimage_genfilter1d ndimage_genlaplace ndimage_gengradmag spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_splrep interpolate_splprep interpolate_generate_knots interpolate_atp interpolate_rbf spatial_voronoi spatial_transform interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg splinalg_iter scipyfft optimize qap de da bh linesearch io integrate integrate_tanhsinh integrate_quadvec integrate_solveivp spatial datetime random stats desc corr tests tests2 legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal stats_uniform barnard boschloo logrank permtest ndimage_valindices ndimage_geomxform ndimage_genfilter ndimage_genfilter1d ndimage_genlaplace ndimage_gengradmag spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_splrep interpolate_splprep interpolate_generate_knots interpolate_atp interpolate_rbf spatial_voronoi spatial_transform interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg splinalg_iter scipyfft optimize qap de da bh linesearch io integrate integrate_tanhsinh integrate_quadvec integrate_solveivp integrate_nestedquad integrate_nsum spatial datetime random stats desc corr tests tests2 legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
@@ -93,6 +93,8 @@ for g in "${groups[@]}"; do
         stats=*) python3 fixtures_stats.py $(echo "${g#stats=}" | tr , " ") ;;
         desc|corr|tests|tests2) python3 "fixtures_stats_$g.py" ;;
         legacy)  python3 ../../tests/fixtures/generate_parity.py && python3 ../../tests/fixtures/generate_ufunc.py ;;   # suites older than the registry
+        integrate_nestedquad) python3 fixtures_nestedquad.py ;;
+        integrate_nsum) python3 fixtures_nsum.py ;;
         *) echo "unknown group: $g" >&2; exit 2 ;;
     esac
     echo "== $g: $((SECONDS - t))s"
