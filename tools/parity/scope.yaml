@@ -551,3 +551,6 @@ legacy:
     # NearestNDInterpolator is pure-PHP over Tessero\Spatial\KDTree; verified by the interpolate_nn.json
     # fixtures (construct + query, exact gather of the nearest data point's value).
     NearestNDInterpolator: {ffi: [NND::query], ext: [NND::query], fixtures: [interpolate.NearestNDInterpolator]}
+    # griddata(method='nearest'), ndim>=2, delegates to NearestNDInterpolator (a gather); linear/cubic need
+    # Delaunay (not available) and 1-D nearest routes through interp1d in scipy -- both out of scope here.
+    griddata: {ffi: [NND::query], ext: [NND::query], fixtures: [interpolate.griddata]}
