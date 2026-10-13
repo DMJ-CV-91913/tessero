@@ -400,6 +400,101 @@ static int r_sp_block_diag(const void *ctx, const tsr_arg *args, int nargs, tsr_
     return rc;
 }
 
+/* ===== APPEND to csrc/src/scipy_sparse.c, just before the DEFS[] table ===== */
+
+/* bmat / block_array(blocks, nrows, ncols): 2-D grid of dense blocks (None allowed), row-major flat sequence
+   of length nrows*ncols, assembled like numpy.block, as CSR. None entries are zero blocks whose row height
+   comes from another present block in the same grid-row and column width from the same grid-column. */
+static int r_sp_bmat(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const tsr_arg *items; int64_t k;
+    if (a[0].kind == 5) { items = a[0].items; k = a[0].count; }
+    else { fn_set_error("sparse.bmat: blocks must be a sequence"); return TSR_EARG; }
+    const int64_t nr = sp_int(a, nargs, 1, 0), nc = sp_int(a, nargs, 2, 0);
+    if (nr < 1 || nc < 1 || k != nr * nc) { fn_set_error("sparse.bmat: blocks length must equal nrows*ncols"); return TSR_EARG; }
+    int64_t *rh = (int64_t *)malloc((size_t)nr * sizeof(int64_t));
+    int64_t *cw = (int64_t *)malloc((size_t)nc * sizeof(int64_t));
+    if (!rh || !cw) { free(rh); free(cw); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < nr; i++) rh[i] = -1;
+    for (int64_t j = 0; j < nc; j++) cw[j] = -1;
+    /* infer row heights / column widths from present (non-None) blocks */
+    for (int64_t i = 0; i < nr; i++) for (int64_t j = 0; j < nc; j++) {
+        const tsr_arg *b = &items[i * nc + j];
+        if (b->kind == 0) continue;                         /* None */
+        if (b->kind != 3 || b->arr.ndim != 2) { free(rh); free(cw); fn_set_error("sparse.bmat: each block must be a 2-D array or None"); return TSR_EARG; }
+        const int64_t br = b->arr.shape[0], bc = b->arr.shape[1];
+        if (rh[i] < 0) rh[i] = br; else if (rh[i] != br) { free(rh); free(cw); fn_set_error("sparse.bmat: inconsistent block row heights"); return TSR_EARG; }
+        if (cw[j] < 0) cw[j] = bc; else if (cw[j] != bc) { free(rh); free(cw); fn_set_error("sparse.bmat: inconsistent block column widths"); return TSR_EARG; }
+    }
+    for (int64_t i = 0; i < nr; i++) if (rh[i] < 0) { free(rh); free(cw); fn_set_error("sparse.bmat: a grid row has no present block"); return TSR_EARG; }
+    for (int64_t j = 0; j < nc; j++) if (cw[j] < 0) { free(rh); free(cw); fn_set_error("sparse.bmat: a grid column has no present block"); return TSR_EARG; }
+    int64_t R = 0, C = 0, *roff = (int64_t *)malloc((size_t)nr * sizeof(int64_t)), *coff = (int64_t *)malloc((size_t)nc * sizeof(int64_t));
+    if (!roff || !coff) { free(rh); free(cw); free(roff); free(coff); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < nr; i++) { roff[i] = R; R += rh[i]; }
+    for (int64_t j = 0; j < nc; j++) { coff[j] = C; C += cw[j]; }
+    double *Dn = (double *)calloc((size_t)(R * C > 0 ? R * C : 1), sizeof(double));
+    if (!Dn) { free(rh); free(cw); free(roff); free(coff); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    for (int64_t i = 0; i < nr && rc == TSR_OK; i++) for (int64_t j = 0; j < nc && rc == TSR_OK; j++) {
+        const tsr_arg *b = &items[i * nc + j];
+        if (b->kind == 0) continue;
+        int64_t nb; double *bb = fn_arg_doubles(b, &nb);
+        if (!bb) { rc = TSR_ENOMEM; break; }
+        const int64_t br = b->arr.shape[0], bc = b->arr.shape[1];
+        for (int64_t r = 0; r < br; r++) for (int64_t c = 0; c < bc; c++) Dn[(roff[i] + r) * C + coff[j] + c] = bb[r * bc + c];
+        fn_free_doubles(bb, nb);
+    }
+    if (rc == TSR_OK) rc = emit_csr(res, Dn, R, C);
+    free(Dn); free(rh); free(cw); free(roff); free(coff);
+    return rc;
+}
+
+/* permute_dims / swapaxes on a 2-D sparse matrix: transpose (the only non-trivial 2-D permutation), as CSR.
+   permute_dims(A, axes): axes is a 2-int sequence or None (reverse = transpose); (0,1) is identity.
+   swapaxes(A, axis1, axis2): transpose when the two axes differ, identity otherwise. */
+static int sp_transpose_or_copy(const tsr_arg *a, tsr_result *res, int transpose)
+{
+    if (a[0].kind != 3 || a[0].arr.ndim != 2) { fn_set_error("sparse: input must be a 2-D array"); return TSR_EARG; }
+    const int64_t m = a[0].arr.shape[0], n = a[0].arr.shape[1];
+    int64_t la; double *A = fn_arg_doubles(&a[0], &la);
+    if (!A) return TSR_ENOMEM;
+    int rc;
+    if (transpose) {
+        double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
+        if (!D) { fn_free_doubles(A, la); return TSR_ENOMEM; }
+        for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) D[j * m + i] = A[i * n + j];
+        rc = emit_csr(res, D, n, m);
+        free(D);
+    } else {
+        rc = emit_csr(res, A, m, n);
+    }
+    fn_free_doubles(A, la);
+    return rc;
+}
+static int r_sp_permute_dims(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int transpose = 1;                                        /* axes=None -> reverse axes -> transpose */
+    if (nargs > 1 && a[1].kind == 3 && a[1].arr.ndim == 1) {
+        int64_t lo; double *ax = fn_arg_doubles(&a[1], &lo);
+        if (!ax) return TSR_ENOMEM;
+        if (lo >= 2 && (int64_t)ax[0] == 0 && (int64_t)ax[1] == 1) transpose = 0;   /* (0,1) identity */
+        fn_free_doubles(ax, lo);
+    } else if (nargs > 1 && a[1].kind == 5 && a[1].count >= 2) {
+        int64_t a0 = (a[1].items[0].flags & 1) ? a[1].items[0].ival : (int64_t)a[1].items[0].num;
+        int64_t a1 = (a[1].items[1].flags & 1) ? a[1].items[1].ival : (int64_t)a[1].items[1].num;
+        if (a0 == 0 && a1 == 1) transpose = 0;
+    }
+    return sp_transpose_or_copy(a, res, transpose);
+}
+static int r_sp_swapaxes(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    int64_t ax1 = sp_int(a, nargs, 1, 0), ax2 = sp_int(a, nargs, 2, 1);
+    return sp_transpose_or_copy(a, res, ax1 != ax2);
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("sparse.hstack", 4, "*blocks", "data, indices, indptr, shape", r_hstack, NULL, "Stack sparse blocks horizontally, as CSR storage (scipy.sparse.hstack)."),
     ROUTINE("sparse.vstack", 4, "*blocks", "data, indices, indptr, shape", r_vstack, NULL, "Stack sparse blocks vertically, as CSR storage (scipy.sparse.vstack)."),
@@ -423,6 +518,10 @@ static const fn_def DEFS[] = {
     ROUTINE("sparse.block_diag", 4, "*blocks", "data, indices, indptr, shape", r_sp_block_diag, NULL, "Block-diagonal assembly of blocks, as CSR (scipy.sparse.block_diag)."),
     ROUTINE("sparse.diags", 4, "diagonals[], offsets=0, shape=None", "data, indices, indptr, shape", r_sp_diags, NULL, "Sparse matrix from diagonals, as CSR (scipy.sparse.diags)."),
     ROUTINE("sparse.diags_array", 4, "diagonals[], offsets=0, shape=None", "data, indices, indptr, shape", r_sp_diags, NULL, "Sparse matrix from diagonals, as CSR (scipy.sparse.diags_array)."),
+    ROUTINE("sparse.bmat", 4, "blocks[], nrows, ncols", "data, indices, indptr, shape", r_sp_bmat, NULL, "Assemble a 2-D grid of blocks, as CSR (scipy.sparse.bmat)."),
+    ROUTINE("sparse.block_array", 4, "blocks[], nrows, ncols", "data, indices, indptr, shape", r_sp_bmat, NULL, "Assemble a 2-D grid of blocks, as CSR (scipy.sparse.block_array)."),
+    ROUTINE("sparse.permute_dims", 4, "A, axes=None", "data, indices, indptr, shape", r_sp_permute_dims, NULL, "Permute the axes of a 2-D sparse matrix (transpose), as CSR (scipy.sparse.permute_dims)."),
+    ROUTINE("sparse.swapaxes", 4, "A, axis1=0, axis2=1", "data, indices, indptr, shape", r_sp_swapaxes, NULL, "Swap two axes of a 2-D sparse matrix (transpose), as CSR (scipy.sparse.swapaxes)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

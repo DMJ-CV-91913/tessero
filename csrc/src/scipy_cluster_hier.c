@@ -682,6 +682,198 @@ static int r_is_isomorphic(const void *ctx, const tsr_arg *args, int nargs, tsr_
     return TSR_OK;
 }
 
+/* ------------------------------------------------------------------ optimal_leaf_ordering */
+
+/* dual-swap and the exact scikit-learn simultaneous quicksort scipy uses, so the (u, w) / (m, k)
+   tie-breaking matches scipy's _optimal_leaf_ordering bit for bit. Operates on d[0..size), ix[0..size). */
+static void olo_dual_swap(float *d, int *ix, int i, int j)
+{
+    float dt = d[i]; d[i] = d[j]; d[j] = dt;
+    int it = ix[i]; ix[i] = ix[j]; ix[j] = it;
+}
+static void olo_simsort(float *d, int *ix, int size)
+{
+    if (size <= 1) return;
+    if (size == 2) { if (d[0] > d[1]) olo_dual_swap(d, ix, 0, 1); return; }
+    if (size == 3) {
+        if (d[0] > d[1]) olo_dual_swap(d, ix, 0, 1);
+        if (d[1] > d[2]) { olo_dual_swap(d, ix, 1, 2); if (d[0] > d[1]) olo_dual_swap(d, ix, 0, 1); }
+        return;
+    }
+    int pivot_idx = size / 2, i, store_idx;
+    if (d[0] > d[size - 1]) olo_dual_swap(d, ix, 0, size - 1);
+    if (d[size - 1] > d[pivot_idx]) {
+        olo_dual_swap(d, ix, size - 1, pivot_idx);
+        if (d[0] > d[size - 1]) olo_dual_swap(d, ix, 0, size - 1);
+    }
+    float pivot_val = d[size - 1];
+    store_idx = 0;
+    for (i = 0; i < size - 1; i++) if (d[i] < pivot_val) { olo_dual_swap(d, ix, i, store_idx); store_idx++; }
+    olo_dual_swap(d, ix, store_idx, size - 1);
+    pivot_idx = store_idx;
+    if (pivot_idx > 1) olo_simsort(d, ix, pivot_idx);
+    if (pivot_idx + 2 < size) olo_simsort(d + pivot_idx + 1, ix + pivot_idx + 1, size - pivot_idx - 1);
+}
+
+#define OLO_BIG 1073741824.0f
+
+/* optimal_leaf_ordering(Z, y, metric='euclidean'): reorder the linkage Z to minimise the sum of distances
+   between adjacent leaves (Bar-Joseph). y is condensed distances (1-D), or a 2-D observation matrix
+   (euclidean pdist is formed). Returns a copy of Z with children of some rows swapped; heights/sizes kept. */
+static int r_optimal_leaf_ordering(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || !is_Z(&args[0])) { fn_set_error("optimal_leaf_ordering: Z must be (m, 4)"); return TSR_EARG; }
+    if (nargs > 2 && args[2].kind == 2 && strcmp(args[2].str, "euclidean"))
+        { fn_set_error("optimal_leaf_ordering: only metric='euclidean' is supported"); return TSR_EARG; }
+    int64_t m = args[0].arr.shape[0], n = m + 1, zl; double *Z = fn_arg_doubles(&args[0], &zl);
+    if (!Z) return TSR_ENOMEM;
+
+    /* full n-by-n distance matrix D (double) from y */
+    double *D = (double *)malloc((size_t)(n * n) * sizeof(double));
+    if (!D) { fn_free_doubles(Z, zl); return TSR_ENOMEM; }
+    int rc = TSR_OK;
+    if (args[1].kind == 3 && args[1].arr.ndim == 2) {
+        int64_t nn = args[1].arr.shape[0], dim = args[1].arr.shape[1], yl; double *Y = fn_arg_doubles(&args[1], &yl);
+        if (!Y) { free(D); fn_free_doubles(Z, zl); return TSR_ENOMEM; }
+        if (nn != n) { fn_set_error("optimal_leaf_ordering: observation count does not match Z"); free(D); fn_free_doubles(Y, yl); fn_free_doubles(Z, zl); return TSR_EARG; }
+        for (int64_t i = 0; i < n; i++) { D[i * n + i] = 0.0;
+            for (int64_t j = i + 1; j < n; j++) { double s = 0.0;
+                for (int64_t c = 0; c < dim; c++) { double df = Y[i * dim + c] - Y[j * dim + c]; s += df * df; }
+                double d = sqrt(s); D[i * n + j] = D[j * n + i] = d; } }
+        fn_free_doubles(Y, yl);
+    } else if (args[1].kind == 3 && args[1].arr.ndim == 1) {
+        int64_t yl; double *Y = fn_arg_doubles(&args[1], &yl);
+        if (!Y) { free(D); fn_free_doubles(Z, zl); return TSR_ENOMEM; }
+        int64_t nc = n * (n - 1) / 2;
+        if (args[1].arr.shape[0] != nc) { fn_set_error("optimal_leaf_ordering: condensed distance length does not match Z"); free(D); fn_free_doubles(Y, yl); fn_free_doubles(Z, zl); return TSR_EARG; }
+        int64_t p = 0;
+        for (int64_t i = 0; i < n; i++) { D[i * n + i] = 0.0;
+            for (int64_t j = i + 1; j < n; j++) { double d = Y[p++]; D[i * n + j] = D[j * n + i] = d; } }
+        fn_free_doubles(Y, yl);
+    } else { fn_set_error("optimal_leaf_ordering: y must be a condensed distance vector or an observation matrix"); free(D); fn_free_doubles(Z, zl); return TSR_EARG; }
+
+    /* sorted_leaves = leaves_list(Z) (left-first pre-order); map original leaf -> sorted position */
+    int64_t *sl = (int64_t *)malloc((size_t)n * sizeof(int64_t));
+    int64_t *stack = (int64_t *)malloc((size_t)(2 * n) * sizeof(int64_t));
+    int *o2s = (int *)malloc((size_t)n * sizeof(int));
+    int *szl = NULL, *cr = NULL, *ss = NULL, *must_swap = NULL, *midx = NULL, *kidx = NULL;
+    float *sD = NULL, *M = NULL, *mvals = NULL, *kvals = NULL;
+    if (!sl || !stack || !o2s) { rc = TSR_ENOMEM; goto done; }
+    { int64_t sp = 0, oi = 0; stack[sp++] = n + m - 1;
+      while (sp > 0) { int64_t nd = stack[--sp];
+        if (nd < n) sl[oi++] = nd;
+        else { int64_t i = nd - n; stack[sp++] = (int64_t)Z[i * 4 + 1]; stack[sp++] = (int64_t)Z[i * 4 + 0]; } }
+      for (int64_t s = 0; s < n; s++) o2s[sl[s]] = (int)s; }
+
+    /* sorted_Z: children relabelled to sorted leaf positions; sorted_D permuted by sorted_leaves (float32) */
+    szl = (int *)malloc((size_t)(m * 2) * sizeof(int));                 /* [v_l, v_r] per row */
+    sD = (float *)malloc((size_t)(n * n) * sizeof(float));
+    cr = (int *)malloc((size_t)((2 * n - 1) * 2) * sizeof(int));        /* cluster_ranges */
+    if (!szl || !sD || !cr) { rc = TSR_ENOMEM; goto done; }
+    for (int64_t i = 0; i < m; i++) {
+        int64_t vl = (int64_t)Z[i * 4 + 0], vr = (int64_t)Z[i * 4 + 1];
+        szl[i * 2 + 0] = (int)(vl < n ? o2s[vl] : vl);
+        szl[i * 2 + 1] = (int)(vr < n ? o2s[vr] : vr);
+    }
+    for (int64_t a = 0; a < n; a++) for (int64_t b = 0; b < n; b++) sD[a * n + b] = (float)D[sl[a] * n + sl[b]];
+    for (int64_t i = 0; i < n; i++) { cr[i * 2 + 0] = (int)i; cr[i * 2 + 1] = (int)i + 1; }
+    for (int64_t li = 0; li < m; li++) { int64_t v = li + n; cr[v * 2 + 0] = cr[szl[li * 2 + 0] * 2 + 0]; cr[v * 2 + 1] = cr[szl[li * 2 + 1] * 2 + 1]; }
+
+    /* identify_swaps: Bar-Joseph DP over the sorted tree, with M in float32 */
+    M = (float *)calloc((size_t)(n * n), sizeof(float));
+    ss = (int *)calloc((size_t)(n * n * 2), sizeof(int));               /* swap_status */
+    must_swap = (int *)calloc((size_t)m, sizeof(int));
+    mvals = (float *)malloc((size_t)n * sizeof(float));
+    midx = (int *)malloc((size_t)n * sizeof(int));
+    kvals = (float *)malloc((size_t)n * sizeof(float));
+    kidx = (int *)malloc((size_t)n * sizeof(int));
+    if (!M || !ss || !must_swap || !mvals || !midx || !kvals || !kidx) { rc = TSR_ENOMEM; goto done; }
+
+    for (int64_t i = 0; i < m; i++) {
+        int vl = szl[i * 2 + 0], vr = szl[i * 2 + 1];
+        int vlmin = cr[vl * 2 + 0], vlmax = cr[vl * 2 + 1], vrmin = cr[vr * 2 + 0], vrmax = cr[vr * 2 + 1];
+        int u_cl[2], m_cl[2], w_cl[2], k_cl[2], tot_u, tot_w;
+        if (vl < n) { tot_u = 1; u_cl[0] = vl; m_cl[0] = vl; }
+        else { tot_u = 2; u_cl[0] = szl[(vl - n) * 2 + 0]; m_cl[0] = szl[(vl - n) * 2 + 1];
+               u_cl[1] = szl[(vl - n) * 2 + 1]; m_cl[1] = szl[(vl - n) * 2 + 0]; }
+        if (vr < n) { tot_w = 1; w_cl[0] = vr; k_cl[0] = vr; }
+        else { tot_w = 2; w_cl[0] = szl[(vr - n) * 2 + 1]; w_cl[1] = szl[(vr - n) * 2 + 0];
+               k_cl[0] = szl[(vr - n) * 2 + 0]; k_cl[1] = szl[(vr - n) * 2 + 1]; }
+        for (int sL = 0; sL < tot_u; sL++) for (int sR = 0; sR < tot_w; sR++) {
+            int umin = cr[u_cl[sL] * 2], umax = cr[u_cl[sL] * 2 + 1];
+            int mmin = cr[m_cl[sL] * 2], mmax = cr[m_cl[sL] * 2 + 1];
+            int wmin = cr[w_cl[sR] * 2], wmax = cr[w_cl[sR] * 2 + 1];
+            int kmin = cr[k_cl[sR] * 2], kmax = cr[k_cl[sR] * 2 + 1];
+            float min_km = OLO_BIG;
+            for (int mm = mmin; mm < mmax; mm++) for (int kk = kmin; kk < kmax; kk++)
+                if (sD[mm * n + kk] < min_km) min_km = sD[mm * n + kk];
+            for (int u = umin; u < umax; u++) {
+                int mc = mmax - mmin;
+                for (int t = 0; t < mc; t++) { mvals[t] = M[(mmin + t) * n + u]; midx[t] = mmin + t; }
+                olo_simsort(mvals, midx, mc);
+                for (int w = wmin; w < wmax; w++) {
+                    int kc = kmax - kmin;
+                    for (int t = 0; t < kc; t++) { kvals[t] = M[(kmin + t) * n + w]; kidx[t] = kmin + t; }
+                    olo_simsort(kvals, kidx, kc);
+                    float cur = OLO_BIG;
+                    for (int mi = 0; mi < mc; mi++) {
+                        int mm = midx[mi];
+                        if (M[u * n + mm] + M[w * n + kidx[0]] + min_km >= cur) break;
+                        for (int ki = 0; ki < kc; ki++) {
+                            int kk = kidx[ki];
+                            if (M[u * n + mm] + M[w * n + kk] + min_km >= cur) break;
+                            float cm = M[u * n + mm] + M[w * n + kk] + sD[mm * n + kk];
+                            if (cm < cur) cur = cm;
+                        }
+                    }
+                    M[u * n + w] = cur; M[w * n + u] = cur;
+                    ss[(u * n + w) * 2 + 0] = sL; ss[(w * n + u) * 2 + 0] = sL;
+                    ss[(u * n + w) * 2 + 1] = sR; ss[(w * n + u) * 2 + 1] = sR;
+                }
+            }
+        }
+        float cur = OLO_BIG; int bu = 0, bw = 0;
+        for (int u = vlmin; u < vlmax; u++) for (int w = vrmin; w < vrmax; w++)
+            if (M[u * n + w] < cur) { cur = M[u * n + w]; bu = u; bw = w; }
+        if (vl >= n) must_swap[vl - n] = ss[(bu * n + bw) * 2 + 0];
+        if (vr >= n) must_swap[vr - n] = ss[(bu * n + bw) * 2 + 1];
+    }
+
+    /* propagate swaps to descendants (XOR with every swapped ancestor), then emit the reordered Z.
+       A row's final swap is must_swap[i] XOR the XOR of must_swap over all its ancestor rows; processing
+       rows from the root downward lets each parent fold its own final swap into its internal children. */
+    {
+        char *fs = (char *)calloc((size_t)m, 1);                            /* final_swap per row */
+        if (!fs) { rc = TSR_ENOMEM; goto done; }
+        for (int64_t i = 0; i < m; i++) fs[i] = (char)must_swap[i];
+        for (int64_t i = m - 1; i >= 0; i--) {
+            if (!fs[i]) continue;
+            int vl = szl[i * 2 + 0], vr = szl[i * 2 + 1];
+            if (vl >= n) fs[vl - n] ^= 1;
+            if (vr >= n) fs[vr - n] ^= 1;
+        }
+        int64_t sh[2] = {m, 4};
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+        if (!out) { free(fs); rc = TSR_ENOMEM; goto done; }
+        for (int64_t i = 0; i < m; i++) {
+            double il = Z[i * 4 + 0], ir = Z[i * 4 + 1];
+            out[i * 4 + 0] = fs[i] ? ir : il;
+            out[i * 4 + 1] = fs[i] ? il : ir;
+            out[i * 4 + 2] = Z[i * 4 + 2];
+            out[i * 4 + 3] = Z[i * 4 + 3];
+        }
+        free(fs);
+    }
+
+done:
+    free(M); free(ss); free(must_swap); free(mvals); free(midx); free(kvals); free(kidx);
+    free(szl); free(sD); free(cr);
+    free(sl); free(stack); free(o2s); free(D); fn_free_doubles(Z, zl);
+    return rc;
+}
+
+
 static const fn_def DEFS[] = {
     ROUTINE("hierarchy.linkage", 1, "y, method='single'", "Z", r_linkage, NULL, "Agglomerative hierarchical clustering linkage matrix (scipy.cluster.hierarchy.linkage)."),
     ROUTINE("hierarchy.single", 1, "y", "Z", r_single, NULL, "Single/nearest-point linkage (scipy.cluster.hierarchy.single)."),
@@ -709,6 +901,7 @@ static const fn_def DEFS[] = {
     ROUTINE("hierarchy.leaders", 2, "Z, T", "L, M", r_leaders, NULL, "Root (leader) nodes of the flat clusters in T (scipy.cluster.hierarchy.leaders)."),
     ROUTINE("hierarchy.cut_tree", 1, "Z, n_clusters=None, height=None", "groups", r_cut_tree, NULL, "Group membership at each requested cut of the dendrogram (scipy.cluster.hierarchy.cut_tree)."),
     ROUTINE("hierarchy.is_isomorphic", 2, "T1, T2", "iso", r_is_isomorphic, NULL, "Whether two flat-cluster labellings are isomorphic (scipy.cluster.hierarchy.is_isomorphic)."),
+    ROUTINE("hierarchy.optimal_leaf_ordering", 2, "Z, y, metric='euclidean'", "Z", r_optimal_leaf_ordering, NULL, "Reorder a linkage to minimise distances between adjacent leaves (scipy.cluster.hierarchy.optimal_leaf_ordering)."),
 };
 
 const fn_table TSR_SCIPY_HIERARCHY_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
