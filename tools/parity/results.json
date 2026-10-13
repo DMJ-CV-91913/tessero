@@ -239,6 +239,7 @@
         "ndimage.histogram": "pass",
         "ndimage.iterate_structure": "pass",
         "ndimage.label": "pass",
+        "ndimage.labeled_comprehension": "pass",
         "ndimage.laplace": "pass",
         "ndimage.map_coordinates": "pass",
         "ndimage.maximum": "pass",
@@ -269,6 +270,7 @@
         "ndimage.uniform_filter1d": "pass",
         "ndimage.value_indices": "pass",
         "ndimage.variance": "pass",
+        "ndimage.vectorized_filter": "pass",
         "ndimage.watershed_ift": "pass",
         "ndimage.white_tophat": "pass",
         "ndimage.zoom": "pass",
@@ -1413,6 +1415,7 @@
         "stats.argus": "pass",
         "stats.barnard_exact": "pass",
         "stats.bartlett": "pass",
+        "stats.bayes_mvs": "pass",
         "stats.bernoulli": "pass",
         "stats.beta": "pass",
         "stats.betabinom": "pass",
@@ -1560,6 +1563,7 @@
         "stats.multivariate_hypergeom": "pass",
         "stats.multivariate_normal": "pass",
         "stats.multivariate_t": "pass",
+        "stats.mvsdist": "pass",
         "stats.nakagami": "pass",
         "stats.nbinom": "pass",
         "stats.ncf": "pass",
@@ -3380,7 +3384,10 @@
             "sparse.block_array": 0,
             "sparse.permute_dims": 0,
             "sparse.swapaxes": 0,
-            "hierarchy.optimal_leaf_ordering": 0
+            "hierarchy.optimal_leaf_ordering": 0,
+            "ndimage.labeled_comprehension": null,
+            "ndimage.vectorized_filter": null,
+            "stats.bayes_mvs": null
         },
         "ext": {
             "np.median": 0,
@@ -5071,7 +5078,10 @@
             "sparse.block_array": 0,
             "sparse.permute_dims": 0,
             "sparse.swapaxes": 0,
-            "hierarchy.optimal_leaf_ordering": 0
+            "hierarchy.optimal_leaf_ordering": 0,
+            "ndimage.labeled_comprehension": null,
+            "ndimage.vectorized_filter": null,
+            "stats.bayes_mvs": null
         }
     },
     "ext": {
@@ -5314,6 +5324,7 @@
         "ndimage.histogram": "pass",
         "ndimage.iterate_structure": "pass",
         "ndimage.label": "pass",
+        "ndimage.labeled_comprehension": "pass",
         "ndimage.laplace": "pass",
         "ndimage.map_coordinates": "pass",
         "ndimage.maximum": "pass",
@@ -5344,6 +5355,7 @@
         "ndimage.uniform_filter1d": "pass",
         "ndimage.value_indices": "pass",
         "ndimage.variance": "pass",
+        "ndimage.vectorized_filter": "pass",
         "ndimage.watershed_ift": "pass",
         "ndimage.white_tophat": "pass",
         "ndimage.zoom": "pass",
@@ -6488,6 +6500,7 @@
         "stats.argus": "pass",
         "stats.barnard_exact": "pass",
         "stats.bartlett": "pass",
+        "stats.bayes_mvs": "pass",
         "stats.bernoulli": "pass",
         "stats.beta": "pass",
         "stats.betabinom": "pass",
@@ -6635,6 +6648,7 @@
         "stats.multivariate_hypergeom": "pass",
         "stats.multivariate_normal": "pass",
         "stats.multivariate_t": "pass",
+        "stats.mvsdist": "pass",
         "stats.nakagami": "pass",
         "stats.nbinom": "pass",
         "stats.ncf": "pass",

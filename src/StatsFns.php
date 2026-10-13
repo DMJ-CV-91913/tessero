@@ -225,4 +225,69 @@ final class StatsFns
         return -((((($c[0] * $q + $c[1]) * $q + $c[2]) * $q + $c[3]) * $q + $c[4]) * $q + $c[5]) /
                 (((($d[0] * $q + $d[1]) * $q + $d[2]) * $q + $d[3]) * $q + 1.0);
     }
+    /**
+     * scipy.stats.bayes_mvs: Bayesian (center, (lower, upper)) estimates for the mean, variance and
+     * standard deviation of 1-D data under Jeffreys' prior.
+     *
+     * Deterministic closed form (SciPy builds Student-t / inverse-gamma / generalised-gamma "frozen"
+     * distributions from the sample and reads their mean and symmetric central interval), so the
+     * pure-PHP reimplementation reuses Tessero's scipy-matched distribution facades on both backends.
+     *
+     * @param list<float> $data at least two data points (flattened by SciPy)
+     * @return array{mean: array{0: float, 1: array{0: float, 1: float}}, var: array{0: float, 1: array{0: float, 1: float}}, std: array{0: float, 1: array{0: float, 1: float}}}
+     */
+    public static function bayesMvs(array $data, float $alpha = 0.90): array
+    {
+        if (! ($alpha > 0.0 && $alpha < 1.0)) {
+            throw new TesseroException("bayes_mvs: 0 < alpha < 1 is required, but alpha={$alpha} was given.");
+        }
+        [$mdist, $vdist, $sdist] = self::mvsdist($data);
+        return [
+            'mean' => [self::distMean($mdist), $mdist->interval($alpha)],
+            'var' => [self::distMean($vdist), $vdist->interval($alpha)],
+            'std' => [self::distMean($sdist), $sdist->interval($alpha)],
+        ];
+    }
+
+    /**
+     * scipy.stats.mvsdist: the three "frozen" distributions (mean, variance, standard deviation) whose
+     * mean() and interval() reproduce {@see bayesMvs}. Returns them in the order (mean, var, std).
+     *
+     * @param list<float> $data at least two data points
+     * @return array{0: \Tessero\Stats\Distribution, 1: \Tessero\Stats\Distribution, 2: \Tessero\Stats\Distribution}
+     */
+    public static function mvsdist(array $data): array
+    {
+        $x = array_map('floatval', array_values($data));
+        $n = count($x);
+        if ($n < 2) {
+            throw new TesseroException('mvsdist: need at least 2 data-points.');
+        }
+        $xbar = 0.0;
+        foreach ($x as $v) { $xbar += $v; }
+        $xbar /= $n;
+        $c = 0.0;
+        foreach ($x as $v) { $c += ($v - $xbar) * ($v - $xbar); }
+        $c /= $n;   // population variance (ddof=0), matching numpy x.var()
+        if ($n > 1000) {   // gaussian approximations for large n (matches SciPy)
+            $mdist = Stats::norm($xbar, sqrt($c / $n));
+            $sdist = Stats::norm(sqrt($c), sqrt($c / (2.0 * $n)));
+            $vdist = Stats::norm($c, sqrt(2.0 / $n) * $c);
+        } else {
+            $nm1 = $n - 1;
+            $fac = $n * $c / 2.0;
+            $val = $nm1 / 2.0;
+            $mdist = Stats::t($nm1, $xbar, sqrt($c / $nm1));
+            $sdist = Stats::gengamma($val, -2, 0, sqrt($fac));
+            $vdist = Stats::invgamma($val, 0, $fac);
+        }
+        return [$mdist, $vdist, $sdist];
+    }
+
+    /** Distribution mean as a PHP float (preserving SciPy's +inf for undefined moments). */
+    private static function distMean(\Tessero\Stats\Distribution $d): float
+    {
+        $m = $d->mean();
+        return $m instanceof \Tessero\NDArray ? (float) $m->toArray() : (float) $m;
+    }
 }

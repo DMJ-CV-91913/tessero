@@ -7068,6 +7068,12 @@
                 "static": false,
                 "sig": "findSimplex(array $queryPoints, float $tol = 1.0E-12): array",
                 "doc": "For each query point, the index of the containing simplex (into ->simplices), or -1 when the point is outside the convex hull. Brute-force barycentric sign scan; a point is inside simplex s iff all barycentric coordinates are >= -tol."
+            },
+            {
+                "name": "tsearch",
+                "static": true,
+                "sig": "tsearch(Tessero\\Spatial\\Delaunay|array $tri, array $xi): array",
+                "doc": "scipy.spatial.tsearch(tri, xi): the simplex containing each query point, or -1 outside the hull. Identical to (new Delaunay($tri->points))->findSimplex($xi); provided as a free-function-style static so callers can mirror scipy's module-level tsearch."
             }
         ]
     },
@@ -7422,6 +7428,18 @@
                 "static": true,
                 "sig": "ppccMax(array $x): float",
                 "doc": "scipy.stats.ppcc_max: the shape parameter (Tukey-lambda) maximising the probability-plot correlation coefficient for x."
+            },
+            {
+                "name": "bayesMvs",
+                "static": true,
+                "sig": "bayesMvs(array $data, float $alpha = 0.9): array",
+                "doc": "scipy.stats.bayes_mvs: Bayesian (center, (lower, upper)) estimates for the mean, variance and standard deviation of 1-D data under Jeffreys' prior."
+            },
+            {
+                "name": "mvsdist",
+                "static": true,
+                "sig": "mvsdist(array $data): array",
+                "doc": "scipy.stats.mvsdist: the three \"frozen\" distributions (mean, variance, standard deviation) whose mean() and interval() reproduce {@see bayesMvs}. Returns them in the order (mean, var, std)."
             }
         ]
     },
@@ -7454,6 +7472,28 @@
                 "name": "genericFilter",
                 "static": true,
                 "sig": "genericFilter(array $input, callable $function, array|int|null $size = null, ?array $footprint = null, string $mode = 'reflect', float $cval = 0.0, array|int $origin = 0): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\LabeledComprehension",
+        "methods": [
+            {
+                "name": "labeledComprehension",
+                "static": true,
+                "sig": "labeledComprehension(array $input, ?array $labels, array|int|null $index, callable $func, int|float|null $default = null, bool $passPositions = false): array|float",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\VectorizedFilter",
+        "methods": [
+            {
+                "name": "vectorizedFilter",
+                "static": true,
+                "sig": "vectorizedFilter(array $input, callable $function, array|int|null $size = null, ?array $footprint = null, string $mode = 'reflect', ?float $cval = null, array|int|null $origin = null): array",
                 "doc": ""
             }
         ]
