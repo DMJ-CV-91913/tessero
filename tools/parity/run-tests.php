@@ -620,6 +620,17 @@ function runCall(string|object $class, string $method, array $case, string $arra
 }
 
 /** Rebuild a named objective (used by the scipy.optimize solver fixtures) as a PHP callable. */
+function makeTaylorFunc(string $kind): callable {
+    return match ($kind) {
+        'sinx'    => static fn (float $z): float => sin($z),
+        'expx'    => static fn (float $z): float => exp($z),
+        'cos2x'   => static fn (float $z): float => cos(2.0 * $z),
+        'lorentz' => static fn (float $z): float => 1.0 / (1.0 + $z * $z),
+        'gauss'   => static fn (float $z): float => exp(-$z * $z),
+        default   => throw new \RuntimeException("unknown taylor func '{$kind}'"),
+    };
+}
+
 function makeObjective(array $spec): callable
 {
     return match ($spec['kind']) {
@@ -1831,6 +1842,202 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['splrep_cases'])) {                      // scipy.interpolate.make_splrep / splrep (s=0; pure-PHP over interpolate.make_interp_spline)
+        $local = [];
+        foreach ($data['splrep_cases'] as $c) {
+            $key = 'interpolate.splrep';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\MakeSplrep($c['x'], $c['y'], (int) $c['k'], 0.0);
+                $got = $sp->evaluate($c['query']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-7);
+                if (! $ok) { $msg = 'values did not match scipy (k=' . $c['k'] . ')'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['splprep_cases'])) {                     // scipy.interpolate.make_splprep / splprep (s=0; per-component make_interp_spline)
+        $local = [];
+        foreach ($data['splprep_cases'] as $c) {
+            $key = 'interpolate.splprep';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\MakeSplprep($c['x'], (int) $c['k'], 0.0);
+                $uOk = vecClose(flattenNums($sp->parameters()), flattenNums($c['u']), 1e-9);
+                $got = $sp->evaluate($c['uq']);
+                $ok = $uOk && vecClose(flattenNums($got), flattenNums($c['expect']), 1e-7);
+                if (! $ok) { $msg = 'u or values did not match scipy (k=' . $c['k'] . ')'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['genknots_cases'])) {                    // scipy.interpolate.generate_knots (s=0; pure-PHP not-a-knot)
+        $local = [];
+        foreach ($data['genknots_cases'] as $c) {
+            $key = 'interpolate.generate_knots';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = \Tessero\Interpolate\GenerateKnots::knots($c['x'], (int) $c['k'], 0.0);
+                $exp = flattenNums($c['expect']);
+                $ok = (count($got) === count($exp)) && vecClose(flattenNums($got), $exp, 0.0);
+                if (! $ok) { $msg = 'knot vector did not match scipy (k=' . $c['k'] . ')'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['atp_cases'])) {                         // scipy.interpolate.approximate_taylor_polynomial (pure-PHP)
+        $local = [];
+        foreach ($data['atp_cases'] as $c) {
+            $key = 'interpolate.approximate_taylor_polynomial';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $f = makeTaylorFunc($c['kind']);
+                $order = ($c['order'] === null) ? null : (int) $c['order'];
+                $got = \Tessero\Interpolate\ApproximateTaylorPolynomial::compute(
+                    $f, (float) $c['x'], (int) $c['degree'], (float) $c['scale'], $order);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-8);
+                if (! $ok) { $msg = 'coeffs did not match scipy (' . $c['kind'] . ')'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['rbf_cases'])) {                         // scipy.interpolate.Rbf (pure-PHP dense RBF solve over Linalg::solve)
+        $local = [];
+        foreach ($data['rbf_cases'] as $c) {
+            $key = 'interpolate.Rbf';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $rbf = new \Tessero\Interpolate\Rbf(
+                    $c['coords'], $c['d'], (string) $c['function'], null, (float) $c['smooth']);
+                $got = $rbf->evaluate($c['qcoords']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-6);
+                if (! $ok) { $msg = 'values did not match scipy (' . $c['function'] . ')'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+  if (isset($data['voronoi_cases'])) {
+      $local = [];
+      foreach ($data['voronoi_cases'] as $c) {
+          $key = 'spatial.Voronoi';
+          $checked++;
+          $ok = false; $msg = '';
+          try {
+              $v = new \Tessero\Spatial\Voronoi($c['points']);
+              // vertices as a rounded SET
+              $got = []; foreach ($v->vertices as $p) { $got[] = sprintf('%.6f,%.6f', $p[0], $p[1]); }
+              $exp = []; foreach ($c['vertices'] as $p) { $exp[] = sprintf('%.6f,%.6f', $p[0], $p[1]); }
+              sort($got); sort($exp);
+              $vOk = $got === $exp;
+              // ridge_points as a SET of sorted index pairs
+              $gr = []; foreach ($v->ridgePoints as $e) { $a = min($e); $b = max($e); $gr[] = "$a,$b"; }
+              $er = []; foreach ($c['ridge_points'] as $e) { $er[] = $e[0] . ',' . $e[1]; }
+              sort($gr); sort($er);
+              $rOk = $gr === $er;
+              $ok = $vOk && $rOk;
+              if (! $ok) { $msg = $vOk ? 'ridge_points set did not match scipy' : 'vertex set did not match scipy'; }
+          } catch (\Throwable $e) { $msg = $e->getMessage(); }
+          $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+          if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+      }
+      foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+      continue;
+  }
+  if (isset($data['transform_cases'])) {
+      $local = [];
+      $use = '\\Tessero\\Spatial\\Transform\\Rotation';
+      $close = static function (array $a, array $b, float $tol = 1e-7): bool {
+          $fa = flattenNums($a); $fb = flattenNums($b);
+          if (count($fa) !== count($fb)) return false;
+          foreach ($fa as $i => $x) { if (abs($x - $fb[$i]) > $tol + $tol * abs($fb[$i])) return false; }
+          return true;
+      };
+      $angClose = static function (array $a, array $b, float $tol = 1e-7): bool {
+          $fa = flattenNums($a); $fb = flattenNums($b);
+          if (count($fa) !== count($fb)) return false;
+          foreach ($fa as $i => $x) {
+              $d = fmod($x - $fb[$i], 2 * M_PI);
+              if ($d > M_PI) $d -= 2 * M_PI; if ($d < -M_PI) $d += 2 * M_PI;
+              if (abs($d) > $tol) return false;
+          }
+          return true;
+      };
+      foreach ($data['transform_cases'] as $c) {
+          $key = 'spatial.transform.Rotation';
+          $checked++;
+          $ok = true; $msg = '';
+          try {
+              $src = $c['src'];
+              if ($src === 'quat') {
+                  $r = $use::fromQuat($c['quat']);
+                  $ok = $close($r->asMatrix(), $c['matrix'], 1e-9)
+                      && $close($r->asRotvec(), $c['rotvec'])
+                      && $close($r->asRotvec(true), $c['rotvec_deg'])
+                      && $close($r->asMrp(), $c['mrp'])
+                      && $close($r->asEuler('xyz'), $c['euler_xyz'])
+                      && $close($r->asEuler('ZYX'), $c['euler_ZYX'])
+                      && $close($r->asEuler('zxz'), $c['euler_zxz'])
+                      && $close($r->asEuler('XYZ'), $c['euler_XYZ'])
+                      && $close((array) $r->magnitude(), $c['magnitude'], 1e-9)
+                      && $close($r->apply($c['apply_vec']), $c['apply'], 1e-9)
+                      && $close($r->apply($c['apply_vec'], true), $c['apply_inv'], 1e-9);
+              } elseif ($src === 'euler' || $src === 'euler_deg' || $src === 'euler_single') {
+                  $deg = $src === 'euler_deg';
+                  $r = $use::fromEuler($c['order'], $c['angles'], $deg);
+                  $ok = $close($r->asMatrix(), $c['matrix'], 1e-9);
+                  if ($ok && isset($c['euler_back'])) {
+                      // from_euler(as_euler(.)) must reproduce the matrix (covers gimbal lock).
+                      // euler VALUES are compared as angles mod 2*pi (+pi == -pi at the singularity)
+                      // via angClose(); the matrix roundtrip is the authoritative invariant.
+                      $r2 = $use::fromEuler($c['order'], $r->asEuler($c['order']));
+                      $ok = $close($r2->asMatrix(), $c['matrix'], 1e-7)
+                          && $angClose($r->asEuler($c['order']), $c['euler_back']);
+                  }
+              } elseif ($src === 'rotvec') {
+                  $ok = $close($use::fromRotvec($c['rotvec'])->asMatrix(), $c['matrix'], 1e-9);
+              } elseif ($src === 'mrp') {
+                  $ok = $close($use::fromMrp($c['mrp'])->asMatrix(), $c['matrix'], 1e-9);
+              } elseif ($src === 'identity') {
+                  $ok = $close($use::identity()->asMatrix(), $c['matrix'], 1e-12);
+              }
+              if (! $ok) { $msg = "case {$src} did not match scipy"; }
+          } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+          $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+          if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+      }
+      foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+      continue;
+  }
     if (isset($data['delaunay_cases'])) {                   // scipy.spatial.Delaunay (2-D, pure-PHP): simplex SET + find_simplex
         $local = [];
         foreach ($data['delaunay_cases'] as $c) {
