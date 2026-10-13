@@ -501,6 +501,32 @@ for nt, bd, des, w, fsv in _fls_cases:
                 'expect': F.enc_result(np.asarray(sg.firls(nt, bd, des, **kw), dtype=np.float64), []),
                 'compare': 'tol', 'tol': {'rtol': 1e-7, 'atol': 1e-9}})
 
+
+# remez: Parks-McClellan optimal FIR design via the Remez exchange (type='bandpass')
+rmz = []
+_rmz_cases = [
+    (25, [0, 0.2, 0.3, 0.5], [1, 0], None, None),                      # lowpass
+    (51, [0, 0.2, 0.3, 0.5], [1, 0], None, None),                      # lowpass longer
+    (35, [0, 0.15, 0.25, 0.5], [0, 1], None, None),                    # highpass
+    (41, [0, 0.1, 0.15, 0.3, 0.35, 0.5], [0, 1, 0], None, None),       # bandpass
+    (31, [0, 0.2, 0.3, 0.5], [1, 0], [1, 10], None),                   # weighted lowpass
+    (45, [0, 0.1, 0.2, 0.5], [1, 0], [1, 5], None),                    # weighted
+    (21, [0, 1000, 1500, 4000], [1, 0], None, 8000),                   # fs given lowpass
+    (41, [0, 0.1, 0.15, 0.3, 0.35, 0.5], [0, 1, 0], [1, 2, 1], None),  # weighted bandpass
+    (15, [0, 0.3, 0.4, 0.5], [1, 0], None, None),                      # short lowpass
+]
+for nt, bd, des, wv, fsv in _rmz_cases:
+    kw = {}
+    if wv is not None: kw['weight'] = wv
+    if fsv is not None: kw['fs'] = fsv
+    args = [F.enc(nt), F.enc(np.asarray(bd, float)), F.enc(np.asarray(des, float)),
+            F.enc(np.asarray(wv, float)) if wv is not None else None,
+            None,                                                      # type='bandpass' (default)
+            F.enc(float(fsv)) if fsv is not None else None]
+    rmz.append({'args': args, 'kwargs': {},
+                'expect': F.enc_result(np.asarray(sg.remez(nt, bd, des, **kw), dtype=np.float64), []),
+                'compare': 'tol', 'tol': {'rtol': 1e-6, 'atol': 1e-8}})
+
 # zpk2sos (pairing='nearest', digital): second-order sections from zeros/poles/gain
 z2s = []
 _z2s_designs = []
@@ -1324,6 +1350,7 @@ out = {'module': 'signal', 'scipy': __import__('scipy').__version__, 'env': F.fi
                  {'fn': 'argrelextrema', 'cases': arext},
                  {'fn': 'choose_conv_method', 'cases': ccm},
                  {'fn': 'firls', 'cases': fls, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
+                 {'fn': 'remez', 'cases': rmz, 'tol': {'rtol': 1e-6, 'atol': 1e-8}},
                  {'fn': 'zpk2sos', 'cases': z2s, 'tol': {'rtol': 1e-7, 'atol': 1e-9}},
                  {'fn': 'tf2sos', 'cases': t2s, 'tol': {'rtol': 1e-6, 'atol': 1e-8}},
                  {'fn': 'cspline1d', 'cases': csp, 'tol': {'rtol': 1e-9, 'atol': 1e-11}},

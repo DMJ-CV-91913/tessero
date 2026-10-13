@@ -258,8 +258,48 @@ com = meas_coord('center_of_mass')
 maxp = meas_coord('maximum_position')
 minp = meas_coord('minimum_position')
 
+# watershed_ift fixtures block: INSERT into tools/parity/fixtures_ndimage.py before final out={...}
+def _ws(inp, markers, structure=None):
+    kw = {} if structure is None else {"structure": structure}
+    r = nd.watershed_ift(inp, markers, **kw)
+    kk = {} if structure is None else {"structure": F.enc(structure)}
+    return {"args": [F.enc(inp), F.enc(markers)], "kwargs": kk,
+            "expect": F.enc(np.asarray(r)), "compare": "tol"}
+_ws_rng = np.random.default_rng(20261013)
+wsift = []
+_w_in = np.array([[0,0,0,0,0,0,0],[0,1,1,1,1,1,0],[0,1,0,0,0,1,0],[0,1,0,0,0,1,0],[0,1,0,0,0,1,0],[0,1,1,1,1,1,0],[0,0,0,0,0,0,0]], np.uint8)
+_w_mk = np.zeros((7,7), np.int32); _w_mk[0,0] = -1; _w_mk[3,3] = 5
+wsift.append(_ws(_w_in, _w_mk))
+wsift.append(_ws(_w_in, _w_mk, structure=nd.generate_binary_structure(2,2).astype(np.int32)))
+for _t in range(6):
+    _r = int(_ws_rng.integers(5,8)); _c = int(_ws_rng.integers(5,8))
+    _inp = _ws_rng.integers(0,6,(_r,_c)).astype(np.uint8)
+    _mk = np.zeros((_r,_c), np.int32)
+    for _k in range(int(_ws_rng.integers(2,4))):
+        _mk[int(_ws_rng.integers(0,_r)), int(_ws_rng.integers(0,_c))] = int(_ws_rng.choice([1,2,3]))
+    _st = None if _ws_rng.random() < 0.5 else nd.generate_binary_structure(2,2).astype(np.int32)
+    wsift.append(_ws(_inp, _mk, structure=_st))
+for _t in range(4):
+    _r = int(_ws_rng.integers(5,8)); _c = int(_ws_rng.integers(5,8))
+    _inp = _ws_rng.integers(0,6,(_r,_c)).astype(np.uint8)
+    _mk = np.zeros((_r,_c), np.int32)
+    _mk[int(_ws_rng.integers(0,_r)), int(_ws_rng.integers(0,_c))] = 2
+    _mk[int(_ws_rng.integers(0,_r)), int(_ws_rng.integers(0,_c))] = 3
+    _mk[int(_ws_rng.integers(0,_r)), int(_ws_rng.integers(0,_c))] = -1
+    _st = None if _ws_rng.random() < 0.5 else nd.generate_binary_structure(2,2).astype(np.int32)
+    wsift.append(_ws(_inp, _mk, structure=_st))
+_u16 = _ws_rng.integers(0,400,(6,6)).astype(np.uint16)
+_u16mk = np.zeros((6,6), np.int32); _u16mk[0,0]=1; _u16mk[5,5]=2; _u16mk[0,5]=3
+wsift.append(_ws(_u16, _u16mk))
+_3d = _ws_rng.integers(0,5,(4,4,4)).astype(np.uint8)
+_3dmk = np.zeros((4,4,4), np.int32); _3dmk[0,0,0]=1; _3dmk[3,3,3]=2
+wsift.append(_ws(_3d, _3dmk))
+_3dmk2 = _3dmk.copy(); _3dmk2[1,2,1] = -1
+wsift.append(_ws(_3d, _3dmk2))
+
 out = {'module': 'ndimage', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
-       'calls': [{'fn': 'generate_binary_structure', 'cases': gbs}, {'fn': 'label', 'cases': lab}, {'fn': 'convolve', 'cases': conv},
+       'calls': [{'fn': 'watershed_ift', 'cases': wsift},
+                 {'fn': 'generate_binary_structure', 'cases': gbs}, {'fn': 'label', 'cases': lab}, {'fn': 'convolve', 'cases': conv},
                  {'fn': 'correlate', 'cases': cor}, {'fn': 'sum', 'cases': msm},
                  {'fn': 'binary_dilation', 'cases': dil}, {'fn': 'binary_erosion', 'cases': ero}, {'fn': 'maximum_filter', 'cases': mxf + maxf},
                  {'fn': 'binary_opening', 'cases': bop}, {'fn': 'binary_closing', 'cases': bcl},

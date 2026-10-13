@@ -125,6 +125,7 @@ final class Signal
     'qspline1d' => 'qspline1d',
     'qspline1d_eval' => 'qspline1dEval',
     'qspline2d' => 'qspline2d',
+    'remez' => 'remez',
     'resample' => 'resample',
     'resample_poly' => 'resamplePoly',
     'residue' => 'residue',
@@ -1365,6 +1366,16 @@ final class Signal
     public static function qspline2d(mixed $signal, mixed $lamb = 0.0): mixed
     {
         return Registry::routine('signal.qspline2d', [$signal, $lamb]);
+    }
+
+    /**
+     * Parks-McClellan optimal FIR filter design via the Remez exchange (scipy.signal.remez).
+     *
+     * scipy.signal.remez
+     */
+    public static function remez(mixed $numtaps, mixed $bands, mixed $desired, mixed $weight = null, mixed $type = 'bandpass', mixed $fs = 1.0): mixed
+    {
+        return Registry::routine('signal.remez', [$numtaps, $bands, $desired, $weight, $type, $fs]);
     }
 
     /**

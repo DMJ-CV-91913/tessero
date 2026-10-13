@@ -3439,6 +3439,12 @@
                 "doc": "Quadratic-spline coefficients of a 2-D array, lamb=0 (scipy.signal.qspline2d)."
             },
             {
+                "name": "remez",
+                "static": true,
+                "sig": "remez(mixed $numtaps, mixed $bands, mixed $desired, mixed $weight = null, mixed $type = 'bandpass', mixed $fs = 1.0): mixed",
+                "doc": "Parks-McClellan optimal FIR filter design via the Remez exchange (scipy.signal.remez)."
+            },
+            {
                 "name": "resample",
                 "static": true,
                 "sig": "resample(mixed $x, mixed $num, mixed $t = null, mixed $axis = 0, mixed $window = null, mixed $domain = 'time'): mixed",
@@ -4217,6 +4223,12 @@
                 "doc": "Variance of array values over labeled regions (scipy.ndimage.variance)."
             },
             {
+                "name": "watershedIft",
+                "static": true,
+                "sig": "watershedIft(mixed $input, mixed $markers, mixed $structure = null): mixed",
+                "doc": "Image-forest-transform watershed from markers (scipy.ndimage.watershed_ift)."
+            },
+            {
                 "name": "whiteTophat",
                 "static": true,
                 "sig": "whiteTophat(mixed $input, mixed $size = null, mixed $mode = 'reflect', mixed $cval = 0.0, mixed $origin = 0): mixed",
@@ -4273,6 +4285,18 @@
                 "doc": "Distance matrix from a predecessor tree (scipy.sparse.csgraph.construct_dist_matrix)."
             },
             {
+                "name": "csgraphFromDense",
+                "static": true,
+                "sig": "csgraphFromDense(mixed $graph, mixed $nullValue = 0, mixed $nanNull = true, mixed $infinityNull = true): mixed",
+                "doc": "CSR triple (indptr, indices, data) from a dense adjacency matrix (scipy.sparse.csgraph.csgraph_from_dense)."
+            },
+            {
+                "name": "csgraphToDense",
+                "static": true,
+                "sig": "csgraphToDense(mixed $data, mixed $indices, mixed $indptr, mixed $nNodes, mixed $nullValue = 0): mixed",
+                "doc": "Dense adjacency matrix from a CSR triple (scipy.sparse.csgraph.csgraph_to_dense; CSR passed as data/indices/indptr/n_nodes)."
+            },
+            {
                 "name": "depthFirstOrder",
                 "static": true,
                 "sig": "depthFirstOrder(mixed $csgraph, mixed $iStart, mixed $directed = true, mixed $returnPredecessors = true): mixed",
@@ -4309,6 +4333,12 @@
                 "doc": "Graph Laplacian, plain or symmetric-normalized (scipy.sparse.csgraph.laplacian)."
             },
             {
+                "name": "maximumBipartiteMatching",
+                "static": true,
+                "sig": "maximumBipartiteMatching(mixed $graph, mixed $permType = 'row'): mixed",
+                "doc": "Maximum bipartite matching of a sparse bipartite graph (scipy.sparse.csgraph.maximum_bipartite_matching)."
+            },
+            {
                 "name": "maximumFlow",
                 "static": true,
                 "sig": "maximumFlow(mixed $csgraph, mixed $source, mixed $sink, mixed $method = 'dinic'): mixed",
@@ -4333,6 +4363,12 @@
                 "doc": "Reconstruct the tree of a shortest-path predecessor list, returned dense (scipy.sparse.csgraph.reconstruct_path)."
             },
             {
+                "name": "reverseCuthillMckee",
+                "static": true,
+                "sig": "reverseCuthillMckee(mixed $graph, mixed $symmetricMode = false): mixed",
+                "doc": "Reverse Cuthill-McKee ordering of a sparse symmetric matrix (scipy.sparse.csgraph.reverse_cuthill_mckee)."
+            },
+            {
                 "name": "shortestPath",
                 "static": true,
                 "sig": "shortestPath(mixed $csgraph, mixed $method = 'auto', mixed $directed = true, mixed $returnPredecessors = false, mixed $unweighted = false, mixed $overwrite = false, mixed $indices = null): mixed",
@@ -4343,6 +4379,12 @@
                 "static": true,
                 "sig": "structuralRank(mixed $graph): mixed",
                 "doc": "Structural rank of a graph's sparsity pattern (scipy.sparse.csgraph.structural_rank)."
+            },
+            {
+                "name": "yen",
+                "static": true,
+                "sig": "yen(mixed $csgraph, mixed $source, mixed $sink, mixed $K, mixed $directed = true): mixed",
+                "doc": "K shortest loopless paths' distances via Yen's algorithm (scipy.sparse.csgraph.yen)."
             }
         ],
         "constants": [
@@ -20758,6 +20800,12 @@
                 "doc": ""
             },
             {
+                "name": "remez",
+                "static": true,
+                "sig": "remez($numtaps, $bands, $desired, $weight = null, $type = 'bandpass', $fs = 1.0)",
+                "doc": ""
+            },
+            {
                 "name": "convolve2d",
                 "static": true,
                 "sig": "convolve2d($in1, $in2, $mode = 'full', $boundary = 'fill', $fillvalue = 0)",
@@ -21277,6 +21325,12 @@
                 "doc": ""
             },
             {
+                "name": "watershedIft",
+                "static": true,
+                "sig": "watershedIft($input, $markers, $structure = null)",
+                "doc": ""
+            },
+            {
                 "name": "gaussianFilter",
                 "static": true,
                 "sig": "gaussianFilter($input, $sigma, $order = 0, $mode = 'reflect', $cval = 0.0, $truncate = 4.0, $radius = null)",
@@ -21675,6 +21729,36 @@
                 "name": "maximumFlow",
                 "static": true,
                 "sig": "maximumFlow($csgraph, $source, $sink, $method = 'dinic')",
+                "doc": ""
+            },
+            {
+                "name": "reverseCuthillMckee",
+                "static": true,
+                "sig": "reverseCuthillMckee($graph, $symmetricMode = false)",
+                "doc": ""
+            },
+            {
+                "name": "maximumBipartiteMatching",
+                "static": true,
+                "sig": "maximumBipartiteMatching($graph, $permType = 'row')",
+                "doc": ""
+            },
+            {
+                "name": "yen",
+                "static": true,
+                "sig": "yen($csgraph, $source, $sink, $K, $directed = true)",
+                "doc": ""
+            },
+            {
+                "name": "csgraphToDense",
+                "static": true,
+                "sig": "csgraphToDense($data, $indices, $indptr, $nNodes, $nullValue = 0)",
+                "doc": ""
+            },
+            {
+                "name": "csgraphFromDense",
+                "static": true,
+                "sig": "csgraphFromDense($graph, $nullValue = 0, $nanNull = true, $infinityNull = true)",
                 "doc": ""
             },
             {
