@@ -774,6 +774,25 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['hausdorff_cases'])) {                   // scipy.spatial.distance.directed_hausdorff (pure-PHP, distance only)
+        $local = [];
+        foreach ($data['hausdorff_cases'] as $c) {
+            $key = 'spatial.directed_hausdorff';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = \Tessero\Spatial\Hausdorff::directed($c['u'], $c['v']);
+                $ok = abs($got[0] - (float) $c['expect']) <= 1e-9 * (1 + abs((float) $c['expect']));  // distance exact; index pair is RNG-dependent, not asserted
+                if (! $ok) { $msg = 'distance did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['nearestnd_cases'])) {                   // scipy.interpolate.NearestNDInterpolator (pure-PHP)
         $local = [];
         foreach ($data['nearestnd_cases'] as $c) {
