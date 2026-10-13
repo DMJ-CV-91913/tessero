@@ -427,6 +427,8 @@ function makeObjective(array $spec): callable
         'linresid' => static function (array $p) use ($spec): array { $r = []; foreach ($spec['x'] as $i => $xi) { $r[] = $p[0] * $xi + $p[1] - $spec['y'][$i]; } return $r; },
         'expresid' => static function (array $p) use ($spec): array { $r = []; foreach ($spec['x'] as $i => $xi) { $r[] = $p[0] * exp($p[1] * $xi) + $p[2] - $spec['y'][$i]; } return $r; },
         'vecsys' => static fn (array $x): array => [$x[0] - 0.5 * cos($x[1]) - 0.5, $x[1] - 0.5 * sin($x[0]) - 0.3],
+        'sphere' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v; } return $s; },
+        'shifted_quadratic' => static function (array $x) use ($spec): float { $s = 0.0; foreach ($x as $i => $v) { $d = $v - $spec['shift'][$i]; $s += $d * $d; } return $s; },
         default => throw new \RuntimeException("unknown objective '{$spec['kind']}'"),
     };
 }
@@ -598,6 +600,10 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $colOk = array_map('intval', $r['col_ind']) === array_map('intval', $c['expect_col']);
                 $funOk = abs($r['fun'] - (float) $c['fun']) <= $rtol * (1 + abs((float) $c['fun']));
                 $ok = $colOk && $funOk;
+            } elseif ($fn === 'differential_evolution') {
+                $bounds = array_map(static fn ($b): array => [(float) $b[0], (float) $b[1]], $c['bounds']);
+                $got = \Tessero\Optimize\DifferentialEvolution::solve($obj, $bounds, $c['seed'] ?? null)->x;
+                $ok = vecClose($got, $c['expect'], $rtol);
             } elseif ($fn === 'rosen') {
                 $got = \Tessero\Optimize\Minimize::rosen(array_map('floatval', $c['x']));
                 $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
@@ -1051,6 +1057,61 @@ foreach ($files as $file) {
                 if (! $ok) { $msg = $setOk ? 'find_simplex did not match scipy' : 'simplex set did not match scipy'; }
             } catch (\Throwable $e) {
                 $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['mss_cases'])) {                         // scipy.interpolate.make_smoothing_spline (pure-PHP; banded solve_banded/cholesky_banded + fminbound GCV)
+        $local = [];
+        foreach ($data['mss_cases'] as $c) {
+            $key = 'interpolate.make_smoothing_spline';
+            $checked++;
+            $ok = false; $msg = '';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            try {
+                $wt = array_key_exists('w', $c) && $c['w'] !== null ? $c['w'] : null;
+                $lam = array_key_exists('lam', $c) && $c['lam'] !== null ? (float) $c['lam'] : null;
+                $sp = new \Tessero\Interpolate\MakeSmoothingSpline($c['x'], $c['y'], $wt, $lam);
+                $got = $sp($c['query']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), $rtol);
+                if (! $ok) { $msg = 'values did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['linearnd_cases'])) {                   // scipy.interpolate.LinearNDInterpolator (pure-PHP, 2-D barycentric over inlined Bowyer-Watson Delaunay)
+        $local = [];
+        $decodeNan = static fn ($v): float => (is_string($v) && strtolower($v) === 'nan') ? NAN : (float) $v;
+        foreach ($data['linearnd_cases'] as $c) {
+            $key = 'interpolate.LinearNDInterpolator';
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $interp = new \Tessero\Interpolate\LinearNDInterpolator($c['points'], $c['values'], NAN, (bool) ($c['rescale'] ?? false));
+                $got = flattenNums($interp->query($c['query']));
+                $exp = flattenNums($c['expect']);
+                if (count($got) !== count($exp)) {
+                    $ok = false; $msg = 'length mismatch';
+                } else {
+                    foreach ($exp as $i => $ev) {
+                        $e = $decodeNan($ev); $g = (float) $got[$i];
+                        if (is_nan($e) || is_nan($g)) {
+                            if (is_nan($e) !== is_nan($g)) { $ok = false; $msg = 'NaN-outside-hull mismatch'; break; }
+                        } elseif (abs($g - $e) > 1e-9 * (1 + abs($e))) {
+                            $ok = false; $msg = 'values did not match scipy'; break;
+                        }
+                    }
+                }
+            } catch (\Throwable $ex) {
+                $ok = false; $msg = $ex->getMessage();
             }
             $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
             if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
