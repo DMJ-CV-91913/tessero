@@ -6830,6 +6830,25 @@
         ]
     },
     {
+        "class": "Tessero\\Integrate\\QuadVec",
+        "methods": [
+            {
+                "name": "quadVec",
+                "static": true,
+                "sig": "quadVec(callable $f, float $a, float $b, float $epsabs = 1.0E-200, float $epsrel = 1.0E-8, string $norm = '2', ?string $quadrature = null): array",
+                "doc": "Integrate $f over [$a, $b]."
+            }
+        ],
+        "constants": [
+            "GK21_X",
+            "GK21_W",
+            "GK21_V",
+            "GK15_X",
+            "GK15_W",
+            "GK15_V"
+        ]
+    },
+    {
         "class": "Tessero\\Spatial\\KDTree",
         "methods": [
             {

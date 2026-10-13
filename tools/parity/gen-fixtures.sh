@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal barnard boschloo logrank ndimage_valindices spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize qap de io integrate integrate_tanhsinh spatial datetime random stats desc corr tests tests2 legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal barnard boschloo logrank ndimage_valindices spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize qap de io integrate integrate_tanhsinh integrate_quadvec spatial datetime random stats desc corr tests tests2 legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
@@ -63,6 +63,7 @@ for g in "${groups[@]}"; do
         io) python3 fixtures_io.py ;;
         integrate) python3 fixtures_integrate.py ;;
         integrate_tanhsinh) python3 fixtures_tanhsinh.py ;;
+        integrate_quadvec) python3 fixtures_quadvec.py ;;
         spatial) python3 fixtures_spatial.py ;;
         datetime) python3 fixtures_datetime.py ;;
         random)  python3 fixtures_random.py ;;
