@@ -98,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1305,
+   "both": 1307,
    "excluded": 74,
-   "impl_ext": 1305,
-   "impl_ffi": 1308,
+   "impl_ext": 1307,
+   "impl_ffi": 1309,
    "in_scope": 1488,
-   "m2_ext": 87.7,
-   "m2_ffi": 87.9,
+   "m2_ext": 87.8,
+   "m2_ffi": 88.0,
    "m3": 4.7,
-   "m4_ext": 87.7,
-   "m4_ffi": 87.9,
+   "m4_ext": 87.8,
+   "m4_ffi": 88.0,
    "m5": 99.8,
    "symbols": 1562,
-   "verified_ext": 1305,
-   "verified_ffi": 1308
+   "verified_ext": 1307,
+   "verified_ffi": 1309
   }
  },
  "modules": {
@@ -452,20 +452,20 @@
    "verified_ffi": 66
   },
   "scipy.optimize": {
-   "both": 36,
+   "both": 38,
    "excluded": 5,
-   "impl_ext": 36,
-   "impl_ffi": 37,
+   "impl_ext": 38,
+   "impl_ffi": 38,
    "in_scope": 66,
-   "m2_ext": 54.5,
-   "m2_ffi": 56.1,
+   "m2_ext": 57.6,
+   "m2_ffi": 57.6,
    "m3": 7.0,
-   "m4_ext": 54.5,
-   "m4_ffi": 56.1,
-   "m5": 97.3,
+   "m4_ext": 57.6,
+   "m4_ffi": 57.6,
+   "m5": 100.0,
    "symbols": 71,
-   "verified_ext": 36,
-   "verified_ffi": 37
+   "verified_ext": 38,
+   "verified_ffi": 38
   },
   "scipy.signal": {
    "both": 143,
@@ -622,8 +622,8 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40080,
-   "covered_ext": 40080,
+   "covered_both": 40082,
+   "covered_ext": 40082,
    "covered_ffi": 40088,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
@@ -701,8 +701,8 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2282,
-    "covered_ext": 2282,
+    "covered_both": 2284,
+    "covered_ext": 2284,
     "covered_ffi": 2290,
     "excluded_calls": 386,
     "excluded_share": 14.0,
@@ -721,8 +721,8 @@
       "n": 25
      },
      "250": {
-      "both": 229,
-      "ext": 229,
+      "both": 230,
+      "ext": 230,
       "ffi": 231,
       "n": 250
      },
@@ -733,8 +733,8 @@
       "n": 50
      }
     },
-    "u_both": 96.6,
-    "u_ext": 96.6,
+    "u_both": 96.7,
+    "u_ext": 96.7,
     "u_ffi": 97.0
    }
   },

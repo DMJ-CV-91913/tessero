@@ -158,6 +158,44 @@ for _r in ([(-2.0, 2.0), (-2.0, 2.0)], [(-1.5, 2.5), (-1.5, 2.5), (-1.5, 2.5)]):
     cases.append({'fn': 'brute', 'obj': {'kind': 'rosen'}, 'ranges': [list(r) for r in _r], 'Ns': 20,
                   'expect': list(map(float, _b)), 'rtol': 1e-9})
 
+# ===== curve_fit cases — ADD to tools/parity/fixtures_optimize.py =====
+# Place AFTER the existing least_squares block (after line ~79), BEFORE the
+# `out = {...}` assembly line (~161). Reuses the obj.kind named-model pattern
+# (expresid / linresid) already used by the leastsq/least_squares cases; the
+# runner's curve_fit arm rebuilds the MODEL f(x,*p) from obj.kind inline
+# (a*exp(b*x)+c for expresid, a*x+b for linresid) -- no model is serialised.
+#
+# Reuses the already-defined data arrays _ex,_ey (3-param exp) and _lx,_ly
+# (2-param linear) from the leastsq block above. pcov compared rtol 1e-4,
+# popt rtol 1e-6. An absolute_sigma=True case is included so pcov is a
+# genuine nonzero matrix (the relative-sigma exp pcov collapses to ~0 on the
+# noise-free exp data, which would not exercise the covariance path).
+
+_cf_exp  = so.curve_fit(lambda x, a, b, c: a * np.exp(b * x) + c, np.array(_ex), np.array(_ey), p0=[1.0, 0.3, 0.5])
+_cf_expA = so.curve_fit(lambda x, a, b, c: a * np.exp(b * x) + c, np.array(_ex), np.array(_ey), p0=[1.0, 0.3, 0.5], absolute_sigma=True)
+_cf_lin  = so.curve_fit(lambda x, a, b: a * x + b, np.array(_lx), np.array(_ly), p0=[0.0, 0.0])
+
+# a*exp(b*x)+c  (3-param, relative sigma -- popt is the real check, pcov ~0)
+cases.append({'fn': 'curve_fit', 'obj': {'kind': 'expresid', 'x': _ex, 'y': _ey}, 'p0': [1.0, 0.3, 0.5],
+              'absolute_sigma': False,
+              'popt': [float(v) for v in _cf_exp[0]],
+              'pcov': [[float(v) for v in row] for row in _cf_exp[1]],
+              'rtol': 1e-6, 'rtol_pcov': 1e-4})
+
+# a*exp(b*x)+c  (3-param, absolute_sigma=True -- nonzero pcov genuinely checked)
+cases.append({'fn': 'curve_fit', 'obj': {'kind': 'expresid', 'x': _ex, 'y': _ey}, 'p0': [1.0, 0.3, 0.5],
+              'absolute_sigma': True,
+              'popt': [float(v) for v in _cf_expA[0]],
+              'pcov': [[float(v) for v in row] for row in _cf_expA[1]],
+              'rtol': 1e-6, 'rtol_pcov': 1e-4})
+
+# a*x+b  (2-param model, relative sigma -- real (noisy) data, nonzero pcov)
+cases.append({'fn': 'curve_fit', 'obj': {'kind': 'linresid', 'x': _lx, 'y': _ly}, 'p0': [0.0, 0.0],
+              'absolute_sigma': False,
+              'popt': [float(v) for v in _cf_lin[0]],
+              'pcov': [[float(v) for v in row] for row in _cf_lin[1]],
+              'rtol': 1e-6, 'rtol_pcov': 1e-4})
+# ===== end curve_fit cases =====
 out = {'module': 'optimize', 'scipy': __import__('scipy').__version__, 'solver_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

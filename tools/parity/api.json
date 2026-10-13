@@ -6662,6 +6662,17 @@
         ]
     },
     {
+        "class": "Tessero\\Optimize\\QuadraticAssignment",
+        "methods": [
+            {
+                "name": "faq",
+                "static": true,
+                "sig": "faq(array $A, array $B, bool $maximize = false, int $maxiter = 30, float $tol = 0.03): array",
+                "doc": "Solve the quadratic assignment problem approximately by FAQ (P0 = 'barycenter', no RNG)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Mdp\\MarkovDecisionProcess",
         "methods": [
             {
