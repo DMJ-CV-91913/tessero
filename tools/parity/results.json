@@ -129,6 +129,7 @@
         "interpolate.InterpolatedUnivariateSpline": "pass",
         "interpolate.KroghInterpolator": "pass",
         "interpolate.LSQUnivariateSpline": "pass",
+        "interpolate.LinearNDInterpolator": "pass",
         "interpolate.NdBSpline": "pass",
         "interpolate.NdPPoly": "pass",
         "interpolate.NearestNDInterpolator": "pass",
@@ -147,6 +148,7 @@
         "interpolate.lagrange": "pass",
         "interpolate.make_interp_spline": "pass",
         "interpolate.make_lsq_spline": "pass",
+        "interpolate.make_smoothing_spline": "pass",
         "interpolate.pade": "pass",
         "interpolate.pchip_interpolate": "pass",
         "interpolate.spalde": "pass",
@@ -661,6 +663,7 @@
         "optimize.brute": "pass",
         "optimize.check_grad": "pass",
         "optimize.curve_fit": "pass",
+        "optimize.differential_evolution": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
@@ -3290,7 +3293,10 @@
             "optimize.curve_fit": null,
             "optimize.quadratic_assignment": null,
             "ndimage.value_indices": null,
-            "stats.Normal": null
+            "stats.Normal": null,
+            "interpolate.make_smoothing_spline": null,
+            "interpolate.LinearNDInterpolator": null,
+            "optimize.differential_evolution": null
         },
         "ext": {
             "np.median": 0,
@@ -4936,7 +4942,10 @@
             "optimize.curve_fit": null,
             "optimize.quadratic_assignment": null,
             "ndimage.value_indices": null,
-            "stats.Normal": null
+            "stats.Normal": null,
+            "interpolate.make_smoothing_spline": null,
+            "interpolate.LinearNDInterpolator": null,
+            "optimize.differential_evolution": null
         }
     },
     "ext": {
@@ -5069,6 +5078,7 @@
         "interpolate.InterpolatedUnivariateSpline": "pass",
         "interpolate.KroghInterpolator": "pass",
         "interpolate.LSQUnivariateSpline": "pass",
+        "interpolate.LinearNDInterpolator": "pass",
         "interpolate.NdBSpline": "pass",
         "interpolate.NdPPoly": "pass",
         "interpolate.NearestNDInterpolator": "pass",
@@ -5087,6 +5097,7 @@
         "interpolate.lagrange": "pass",
         "interpolate.make_interp_spline": "pass",
         "interpolate.make_lsq_spline": "pass",
+        "interpolate.make_smoothing_spline": "pass",
         "interpolate.pade": "pass",
         "interpolate.pchip_interpolate": "pass",
         "interpolate.spalde": "pass",
@@ -5601,6 +5612,7 @@
         "optimize.brute": "pass",
         "optimize.check_grad": "pass",
         "optimize.curve_fit": "pass",
+        "optimize.differential_evolution": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",

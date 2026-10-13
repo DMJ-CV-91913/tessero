@@ -486,6 +486,8 @@ legacy:
     linear_sum_assignment: {ffi: [ASG::linearSumAssignment], ext: [ASG::linearSumAssignment], fixtures: [optimize.linear_sum_assignment]}
     # quadratic_assignment(A,B,method='faq') pure-PHP FAQ (Frank-Wolfe, deterministic) reusing linearSumAssignment
     quadratic_assignment: {ffi: [QAP::faq], ext: [QAP::faq], fixtures: [optimize.quadratic_assignment]}
+    # differential_evolution(func,bounds): best1bin/polish=False over the bit-exact PCG64 Generator; loose x (rtol 1e-4) on convex problems
+    differential_evolution: {ffi: [DE::solve], ext: [DE::solve], fixtures: [optimize.differential_evolution]}
     rosen: {ffi: [Min::rosen], ext: [Min::rosen], fixtures: [optimize.rosen]}
     rosen_der: {ffi: [Min::rosenDer], ext: [Min::rosenDer], fixtures: [optimize.rosen_der]}
     rosen_hess: {ffi: [Min::rosenHess], ext: [Min::rosenHess], fixtures: [optimize.rosen_hess]}
@@ -568,6 +570,10 @@ legacy:
     # griddata(method='nearest'), ndim>=2, delegates to NearestNDInterpolator (a gather); linear/cubic need
     # Delaunay (not available) and 1-D nearest routes through interp1d in scipy -- both out of scope here.
     griddata: {ffi: [NND::query], ext: [NND::query], fixtures: [interpolate.griddata]}
+    # make_smoothing_spline(x,y,w,lam): penalised natural cubic spline (banded solve_banded/cholesky_banded + fminbound GCV); lam-given bit-exact, GCV ~1e-5
+    make_smoothing_spline: {ffi: [MSS::__construct], ext: [MSS::__construct], fixtures: [interpolate.make_smoothing_spline]}
+    # LinearNDInterpolator (2-D, value-only, general position): inlined Bowyer-Watson Delaunay + barycentric-linear, NaN outside hull
+    LinearNDInterpolator: {ffi: [LND::query], ext: [LND::query], fixtures: [interpolate.LinearNDInterpolator]}
     # bisplev(x,y,tck): bivariate FITPACK spline eval via the tensor-de-Boor kernel interpolate.NdBSpline (dx=dy=0)
     bisplev: {ffi: [BSPL::eval], ext: [BSPL::eval], fixtures: [interpolate.bisplev]}
     # InterpolatedUnivariateSpline(x,y,k): s=0 interpolating spline over interpolate.make_interp_spline (k=1,3)
