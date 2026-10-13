@@ -833,6 +833,143 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['bisplev_cases'])) {                    // scipy.interpolate.bisplev (pure-PHP Tessero\Interpolate\Bisplev over the NdBSpline tensor-de-Boor kernel)
+        $local = [];
+        foreach ($data['bisplev_cases'] as $c) {
+            $key = 'interpolate.bisplev';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $tck = [$c['tx'], $c['ty'], $c['c'], (int) $c['kx'], (int) $c['ky']];
+                $got = \Tessero\Interpolate\Bisplev::eval($c['x'], $c['y'], $tck);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-9);
+                if (! $ok) { $msg = 'values did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['ius_cases'])) {                         // scipy.interpolate.InterpolatedUnivariateSpline (pure-PHP over interpolate.make_interp_spline)
+        $local = [];
+        foreach ($data['ius_cases'] as $c) {
+            $key = 'interpolate.InterpolatedUnivariateSpline';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\InterpolatedUnivariateSpline($c['x'], $c['y'], (int) $c['k']);
+                $got = $sp->evaluate($c['query']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-7);
+                if (! $ok) { $msg = 'values did not match scipy (k=' . $c['k'] . ')'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['lsq_cases'])) {                         // scipy.interpolate.LSQUnivariateSpline (pure-PHP over interpolate.make_lsq_spline)
+        $local = [];
+        foreach ($data['lsq_cases'] as $c) {
+            $key = 'interpolate.LSQUnivariateSpline';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\LSQUnivariateSpline($c['x'], $c['y'], $c['t'], (int) $c['k']);
+                $got = $sp($c['query']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-8);
+                if (! $ok) { $msg = 'values did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['rbs_cases'])) {                         // scipy.interpolate.RectBivariateSpline(s=0) (pure-PHP)
+        $local = [];
+        foreach ($data['rbs_cases'] as $c) {
+            $key = 'interpolate.RectBivariateSpline';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $r = new \Tessero\Interpolate\RectBivariateSpline(
+                    $c['x'], $c['y'], $c['z'], (int) $c['kx'], (int) $c['ky'], 0.0);
+                $got = $r($c['xq'], $c['yq']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-9);
+                if (! $ok) { $msg = 'values did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['hull_cases'])) {                        // scipy.spatial.ConvexHull (2-D, Andrew's monotone chain, pure-PHP)
+        $local = [];
+        foreach ($data['hull_cases'] as $c) {
+            $key = 'spatial.ConvexHull';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $H = new \Tessero\Spatial\ConvexHull($c['points']);
+                $got = $H->vertices; sort($got);
+                $exp = array_map('intval', $c['expect']);
+                $setOk = ($got === $exp);
+                $okArea = abs($H->area - (float) $c['area']) <= 1e-9 * (1 + abs((float) $c['area']));
+                $okVol  = abs($H->volume - (float) $c['volume']) <= 1e-9 * (1 + abs((float) $c['volume']));
+                $ok = $setOk && $okArea && $okVol;
+                if (! $ok) { $msg = 'hull vertices/area/volume did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['delaunay_cases'])) {                   // scipy.spatial.Delaunay (2-D, pure-PHP): simplex SET + find_simplex
+        $local = [];
+        foreach ($data['delaunay_cases'] as $c) {
+            $key = 'spatial.Delaunay';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $d = new \Tessero\Spatial\Delaunay($c['points']);
+                $sortTri = static function (array $t): string { sort($t); return implode(',', $t); };
+                $got = []; foreach ($d->simplices as $t) { $got[] = $sortTri($t); }
+                $exp = []; foreach ($c['simplices'] as $t) { $exp[] = $sortTri($t); }
+                sort($got); sort($exp);
+                $setOk = $got === $exp;
+                $fsOk = true;
+                $gotFS = $d->findSimplex($c['query']);
+                foreach ($gotFS as $qi => $gs) {
+                    $es = (int) $c['find_simplex'][$qi];
+                    $gk = $gs < 0 ? '-1' : $sortTri($d->simplices[$gs]);
+                    $ek = $es < 0 ? '-1' : $sortTri($c['simplices'][$es]);
+                    if ($gk !== $ek) { $fsOk = false; break; }
+                }
+                $ok = $setOk && $fsOk;
+                if (! $ok) { $msg = $setOk ? 'find_simplex did not match scipy' : 'simplex set did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['statsfn_cases'])) {                     // scipy.stats optimiser-based helpers (pure-PHP Tessero\StatsFns)
         foreach ($data['statsfn_cases'] as $c) {
             $fn = $c['fn'];

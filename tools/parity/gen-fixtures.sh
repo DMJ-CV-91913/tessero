@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt spatial_rect spatial_hausdorff interpolate_nn interpolate_griddata np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize io integrate spatial datetime random stats desc corr tests tests2 legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg scipyfft optimize io integrate spatial datetime random stats desc corr tests tests2 legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
@@ -26,6 +26,12 @@ for g in "${groups[@]}"; do
         spatial_hausdorff) python3 fixtures_spatial_hausdorff.py ;;
         interpolate_nn) python3 fixtures_interpolate_nn.py ;;
         interpolate_griddata) python3 fixtures_interpolate_griddata.py ;;
+        interpolate_bisplev) python3 fixtures_bisplev.py ;;
+        interpolate_ius) python3 fixtures_ius.py ;;
+        interpolate_lsq) python3 fixtures_interpolate_lsq.py ;;
+        interpolate_rbs) python3 fixtures_rbs.py ;;
+        spatial_hull) python3 fixtures_hull.py ;;
+        spatial_delaunay) python3 fixtures_delaunay.py ;;
         np)      python3 fixtures_np.py ;;
         shape)   python3 fixtures_np_shape.py ;;
         numeric) python3 fixtures_np_numeric.py ;;

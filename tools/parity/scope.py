@@ -21,7 +21,7 @@ ALIAS = {
     "Min": "Tessero\\Optimize\\Minimize", "Root": "Tessero\\Optimize\\Root", "LS": "Tessero\\Optimize\\LeastSquares",
     "LP": "Tessero\\Optimize\\LinearProgramming", "ASG": "Tessero\\Optimize\\Assignment", "Const": "Tessero\\Constants", "Npy": "Tessero\\Io\\Npy", "Int": "Tessero\\Integrate\\Quad", "KD": "Tessero\\Spatial\\KDTree",
     "NpC": "Tessero\\Np", "XNpC": "Tessero\\Ext\\Np",
-    "AO": "Tessero\\ArrayOps", "OP": "Tessero\\OrthoPoly", "SQ": "Tessero\\SpecialSeq", "SF": "Tessero\\StatsFns", "RECT": "Tessero\\Spatial\\Rectangle", "HAUS": "Tessero\\Spatial\\Hausdorff", "NND": "Tessero\\Interpolate\\NearestNDInterpolator",
+    "AO": "Tessero\\ArrayOps", "OP": "Tessero\\OrthoPoly", "SQ": "Tessero\\SpecialSeq", "SF": "Tessero\\StatsFns", "RECT": "Tessero\\Spatial\\Rectangle", "HAUS": "Tessero\\Spatial\\Hausdorff", "NND": "Tessero\\Interpolate\\NearestNDInterpolator", "CVH": "Tessero\\Spatial\\ConvexHull", "DEL": "Tessero\\Spatial\\Delaunay", "BSPL": "Tessero\\Interpolate\\Bisplev", "IUS": "Tessero\\Interpolate\\InterpolatedUnivariateSpline", "LSQS": "Tessero\\Interpolate\\LSQUnivariateSpline", "RBS": "Tessero\\Interpolate\\RectBivariateSpline",
     "XN": "Tessero\\Ext\\NDArray", "XM": "Tessero\\Ext\\Math", "XE": "Tessero\\Ext\\Engine",
     "XR": "Tessero\\Ext\\Random\\Generator", "XF": "Tessero\\Ext\\Fft\\Fft", "DT": "Tessero\\Datetime\\Datetime",
     "SIG": "Tessero\\Signal", "XSIG": "Tessero\\Ext\\Signal",
