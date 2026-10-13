@@ -14246,6 +14246,12 @@
                 "doc": "T-test on two related samples (scipy.stats.ttest_rel)."
             },
             {
+                "name": "tukeyHsd",
+                "static": true,
+                "sig": "tukeyHsd(mixed $sample1, mixed $sample2 = null, mixed $sample3 = null, mixed $sample4 = null, mixed $sample5 = null, mixed $sample6 = null, mixed $sample7 = null, mixed $sample8 = null, mixed $sample9 = null, mixed $sample10 = null, mixed $sample11 = null, mixed $sample12 = null, mixed $equalVar = true): mixed",
+                "doc": "Tukey HSD pairwise comparison of means (scipy.stats.tukey_hsd)."
+            },
+            {
                 "name": "tukeylambda",
                 "static": true,
                 "sig": "tukeylambda(mixed $lam, mixed $loc = 0, mixed $scale = 1): Tessero\\Stats\\Distribution",
@@ -14298,6 +14304,12 @@
                 "static": true,
                 "sig": "wassersteinDistance(mixed $uValues, mixed $vValues, mixed $uWeights = null, mixed $vWeights = null): mixed",
                 "doc": "First Wasserstein distance between two 1-D distributions (scipy.stats.wasserstein_distance)."
+            },
+            {
+                "name": "wassersteinDistanceNd",
+                "static": true,
+                "sig": "wassersteinDistanceNd(mixed $uValues, mixed $vValues, mixed $uWeights = null, mixed $vWeights = null): mixed",
+                "doc": "Wasserstein-1 distance between two N-D discrete distributions (scipy.stats.wasserstein_distance_nd)."
             },
             {
                 "name": "weibullMax",
@@ -18189,6 +18201,12 @@
                 "doc": ""
             },
             {
+                "name": "wassersteinDistanceNd",
+                "static": true,
+                "sig": "wassersteinDistanceNd($uValues, $vValues, $uWeights = null, $vWeights = null)",
+                "doc": ""
+            },
+            {
                 "name": "pearsonr",
                 "static": true,
                 "sig": "pearsonr($x, $y, $axis = 0, $alternative = 'two-sided')",
@@ -18366,6 +18384,12 @@
                 "name": "friedmanchisquare",
                 "static": true,
                 "sig": "friedmanchisquare($sample1, $sample2 = null, $sample3 = null, $sample4 = null, $sample5 = null, $sample6 = null, $sample7 = null, $sample8 = null, $sample9 = null, $sample10 = null, $sample11 = null, $sample12 = null, $axis = 0, $nanPolicy = 'propagate', $keepdims = false)",
+                "doc": ""
+            },
+            {
+                "name": "tukeyHsd",
+                "static": true,
+                "sig": "tukeyHsd($sample1, $sample2 = null, $sample3 = null, $sample4 = null, $sample5 = null, $sample6 = null, $sample7 = null, $sample8 = null, $sample9 = null, $sample10 = null, $sample11 = null, $sample12 = null, $equalVar = true)",
                 "doc": ""
             },
             {

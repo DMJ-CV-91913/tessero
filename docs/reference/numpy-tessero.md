@@ -922,6 +922,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.ttest_ind` | `Tessero\Stats::ttestInd()` |
 | `scipy.stats.ttest_ind_from_stats` | `Tessero\Stats::ttestIndFromStats()` |
 | `scipy.stats.ttest_rel` | `Tessero\Stats::ttestRel()` |
+| `scipy.stats.tukey_hsd` | `Tessero\Stats::tukeyHsd()` |
 | `scipy.stats.tukeylambda` | `Tessero\Stats::tukeylambda()` |
 | `scipy.stats.tvar` | `Tessero\Stats::tvar()` |
 | `scipy.stats.uniform` | `Tessero\Stats::uniform()` |
@@ -931,6 +932,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.stats.vonmises_line` | `Tessero\Stats::vonmisesLine()` |
 | `scipy.stats.wald` | `Tessero\Stats::wald()` |
 | `scipy.stats.wasserstein_distance` | `Tessero\Stats::wassersteinDistance()` |
+| `scipy.stats.wasserstein_distance_nd` | `Tessero\Stats::wassersteinDistanceNd()` |
 | `scipy.stats.weibull_max` | `Tessero\Stats::weibullMax()` |
 | `scipy.stats.weibull_min` | `Tessero\Stats::weibullMin()` |
 | `scipy.stats.weightedtau` | `Tessero\Stats::weightedtau()` |

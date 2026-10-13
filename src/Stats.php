@@ -248,6 +248,7 @@ final class Stats
     'ttest_ind' => 'ttestInd',
     'ttest_ind_from_stats' => 'ttestIndFromStats',
     'ttest_rel' => 'ttestRel',
+    'tukey_hsd' => 'tukeyHsd',
     'tukeylambda' => 'tukeylambda',
     'tvar' => 'tvar',
     'uniform' => 'uniform',
@@ -257,6 +258,7 @@ final class Stats
     'vonmises_line' => 'vonmisesLine',
     'wald' => 'wald',
     'wasserstein_distance' => 'wassersteinDistance',
+    'wasserstein_distance_nd' => 'wassersteinDistanceNd',
     'weibull_max' => 'weibullMax',
     'weibull_min' => 'weibullMin',
     'weightedtau' => 'weightedtau',
@@ -2693,6 +2695,18 @@ final class Stats
     }
 
     /**
+     * Tukey HSD pairwise comparison of means (scipy.stats.tukey_hsd).
+     *
+     * scipy.stats.tukey_hsd
+     *
+     * @return mixed one array, or an array keyed by statistic, pvalue when several results are requested
+     */
+    public static function tukeyHsd(mixed $sample1, mixed $sample2 = null, mixed $sample3 = null, mixed $sample4 = null, mixed $sample5 = null, mixed $sample6 = null, mixed $sample7 = null, mixed $sample8 = null, mixed $sample9 = null, mixed $sample10 = null, mixed $sample11 = null, mixed $sample12 = null, mixed $equalVar = true): mixed
+    {
+        return Registry::routine('stats.tukey_hsd', [$sample1, $sample2, $sample3, $sample4, $sample5, $sample6, $sample7, $sample8, $sample9, $sample10, $sample11, $sample12, $equalVar]);
+    }
+
+    /**
      * A Tukey-Lamdba continuous random variable.
      *
      * scipy.stats.tukeylambda (frozen)
@@ -2780,6 +2794,16 @@ final class Stats
     public static function wassersteinDistance(mixed $uValues, mixed $vValues, mixed $uWeights = null, mixed $vWeights = null): mixed
     {
         return Registry::routine('stats.wasserstein_distance', [$uValues, $vValues, $uWeights, $vWeights]);
+    }
+
+    /**
+     * Wasserstein-1 distance between two N-D discrete distributions (scipy.stats.wasserstein_distance_nd).
+     *
+     * scipy.stats.wasserstein_distance_nd
+     */
+    public static function wassersteinDistanceNd(mixed $uValues, mixed $vValues, mixed $uWeights = null, mixed $vWeights = null): mixed
+    {
+        return Registry::routine('stats.wasserstein_distance_nd', [$uValues, $vValues, $uWeights, $vWeights]);
     }
 
     /**

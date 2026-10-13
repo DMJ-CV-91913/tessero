@@ -18,6 +18,11 @@
 
 extern "C" void tsr_special_iv(const void *, const double *, double *);   /* modified Bessel I_v (for vonmises_fisher) */
 extern "C" int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
+extern "C" int tsr_linprog(int64_t n, const double *c,
+                int64_t m_ub, const double *A_ub, const double *b_ub,
+                int64_t m_eq, const double *A_eq, const double *b_eq,
+                const double *lb, const double *ub, int64_t maxiter, double tol,
+                double *x, double *fun, double *duals_ub, double *duals_eq, double *reduced, int64_t *nit);
 
 #include <algorithm>
 #include <cmath>
@@ -2408,6 +2413,70 @@ static int r_invwishart(const void *ctx, const tsr_arg *a, int n, tsr_result *re
     {NAME, FN_GUFUNC, NIN, NOUT, ARGS, OUTS, PARAMS, DOC, NULL, NULL, 0, CORE, SCR, {C0, C1, 0, 0}, OUTINT, 0, NULL, \
      AXIS, 0, NIN, CTX, AXR, FN_NO_RANDOM}
 
+/* ================================================================ wasserstein_distance_nd */
+
+
+static int wnd_dist(const tsr_arg *a, int nargs, int kv, int kw, Arr &V, vector<double> &w, bool &has_w, int64_t &m, int64_t &dim)
+{
+    if (!get_arr(a, nargs, kv, V) || V.ndim != 2) { fn_set_error("wasserstein_distance_nd: values must be 2-D"); return TSR_EARG; }
+    m = V.shape[0]; dim = V.shape[1];
+    if (m == 0) { fn_set_error("Distribution cannot be empty."); return TSR_EARG; }
+    has_w = !is_null(a, nargs, kw);
+    if (has_w) {
+        Arr W;
+        if (!get_arr(a, nargs, kw, W) || W.size() != m) {
+            fn_set_error("Value and weight array-likes for the same empirical distribution must be of the same size.");
+            return TSR_EARG;
+        }
+        for (double xv : W.v) if (xv < 0) { fn_set_error("All weights must be non-negative."); return TSR_EARG; }
+        const double s = tsr_psum(W.v.data(), (int64_t)W.v.size());
+        if (!(0 < s && s < INF)) { fn_set_error("Weight array-like sum must be positive and finite. Set as None for an equal distribution of weight."); return TSR_EARG; }
+        w = W.v;
+    }
+    return TSR_OK;
+}
+
+static int r_wasserstein_nd(const void *, const tsr_arg *a, int nargs, tsr_result *res, int)
+{
+    Arr U, V;
+    vector<double> uw, vw;
+    bool hu, hv;
+    int64_t m, nu_dim, n, nv_dim;
+    if (wnd_dist(a, nargs, 0, 2, U, uw, hu, m, nu_dim) != TSR_OK) return TSR_EARG;
+    if (wnd_dist(a, nargs, 1, 3, V, vw, hv, n, nv_dim) != TSR_OK) return TSR_EARG;
+    if (nu_dim != nv_dim) { fn_set_error("Invalid input values. If two-dimensional, u_values and v_values must have the same number of columns."); return TSR_EARG; }
+    const int64_t d = nu_dim;
+    bool ui = false, vi = false;
+    for (double x : U.v) if (std::isinf(x)) { ui = true; break; }
+    for (double x : V.v) if (std::isinf(x)) { vi = true; break; }
+    if (ui ^ vi) { fn_result_num(&res[0], INF); return TSR_OK; }
+    if (ui && vi) { fn_result_num(&res[0], NaN); return TSR_OK; }
+    vector<double> pu(m), pv(n);
+    if (hu) { const double s = tsr_psum(uw.data(), m); for (int64_t i = 0; i < m; i++) pu[i] = uw[i] / s; }
+    else for (int64_t i = 0; i < m; i++) pu[i] = 1.0 / (double)m;
+    if (hv) { const double s = tsr_psum(vw.data(), n); for (int64_t j = 0; j < n; j++) pv[j] = vw[j] / s; }
+    else for (int64_t j = 0; j < n; j++) pv[j] = 1.0 / (double)n;
+    const int64_t nvar = m * n;
+    vector<double> cost(nvar);
+    for (int64_t i = 0; i < m; i++)
+        for (int64_t j = 0; j < n; j++) {
+            double acc = 0.0;
+            for (int64_t k = 0; k < d; k++) { const double diff = U.v[i * d + k] - V.v[j * d + k]; acc += diff * diff; }
+            cost[i * n + j] = std::sqrt(acc);
+        }
+    const int64_t meq = m + n - 1;
+    vector<double> A(meq * nvar, 0.0), b(meq);
+    for (int64_t i = 0; i < m; i++) { for (int64_t j = 0; j < n; j++) A[i * nvar + i * n + j] = 1.0; b[i] = pu[i]; }
+    for (int64_t j = 0; j < n - 1; j++) { for (int64_t i = 0; i < m; i++) A[(m + j) * nvar + i * n + j] = 1.0; b[m + j] = pv[j]; }
+    vector<double> xsol(nvar);
+    double fun = NaN;
+    int st = tsr_linprog(nvar, cost.data(), 0, nullptr, nullptr, meq, A.data(), b.data(), nullptr, nullptr, 0, 1e-12,
+                         xsol.data(), &fun, nullptr, nullptr, nullptr, nullptr);
+    if (st != 0) { fn_set_error("wasserstein_distance_nd: LP did not converge"); return TSR_EARG; }
+    fn_result_num(&res[0], fun);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     GU("stats.gmean", 2, 1, "a, weights?", "gmean", NANPOL, c_pmean, NULL, CORE_SCALAR, 0, 0, "0", &K_G, 0,
        "Weighted geometric mean along an axis (scipy.stats.gmean; dtype is not supported)."),
@@ -2540,6 +2609,8 @@ static const fn_def DEFS[] = {
             "Energy distance between two 1-D distributions (scipy.stats.energy_distance)."),
     ROUTINE("stats.wasserstein_distance", 1, "u_values, v_values, u_weights=None, v_weights=None", "distance", r_cdf_distance, &P1,
             "First Wasserstein distance between two 1-D distributions (scipy.stats.wasserstein_distance)."),
+    ROUTINE("stats.wasserstein_distance_nd", 2, "u_values, v_values, u_weights=None, v_weights=None", "distance", r_wasserstein_nd, NULL,
+            "Wasserstein-1 distance between two N-D discrete distributions (scipy.stats.wasserstein_distance_nd)."),
 };
 
 extern "C" const fn_table TSR_STATS_FN_DESC_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
