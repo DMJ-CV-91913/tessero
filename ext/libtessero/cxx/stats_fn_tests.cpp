@@ -2513,6 +2513,69 @@ int f_jarque_bera(const void *, const tsr_arg *a, int n, tsr_result *r, int nr) 
 #define SAMPLES12 "sample1, sample2=None, sample3=None, sample4=None, sample5=None, sample6=None, sample7=None, " \
                   "sample8=None, sample9=None, sample10=None, sample11=None, sample12=None"
 
+/* ================================================================ tukey_hsd */
+/* scipy.stats.tukey_hsd(*samples, equal_var=True): returns the mean-difference statistic matrix
+   and the studentized-range p-value matrix. statistic[i][j] = mean(i) - mean(j);
+   pvalue[i][j] is studentized_range.sf(|statistic|/stand_err, k, df). */
+int r_tukey_hsd(const void *, const tsr_arg *args, int nargs, tsr_result *res, int)
+{
+    return guarded([&] {
+        enum { TK_MAX = 12 };
+        vector<Arr> g = var_samples(args, nargs, TK_MAX);
+        const int k = (int)g.size();
+        if (k < 2) fail("There must be more than 1 treatment.");
+        const bool equal_var = arg_bool(args, nargs, TK_MAX, true);
+        for (auto &a : g) if (a.size() < 2) fail("Tukey HSD requires two or more treatments.");
+        vector<double> means(k), vars(k), ns(k);
+        double nobs = 0.0;
+        for (int i = 0; i < k; i++) {
+            const int64_t ni = g[i].size();
+            ns[i] = (double)ni;
+            nobs += (double)ni;
+            double s = 0.0; for (double x : g[i].v) s += x;
+            const double mu = s / (double)ni;
+            means[i] = mu;
+            double v = 0.0; for (double x : g[i].v) { const double dd = x - mu; v += dd * dd; }
+            vars[i] = v / (double)(ni - 1);
+        }
+        vector<double> se(k * k), df(k * k);
+        if (equal_var) {
+            double num = 0.0;
+            for (int i = 0; i < k; i++) num += vars[i] * (ns[i] - 1.0);
+            const double mse = num / (nobs - (double)k);
+            bool allsame = true;
+            for (int i = 1; i < k; i++) if (ns[i] != ns[0]) allsame = false;
+            const double dfv = nobs - (double)k;
+            for (int i = 0; i < k; i++) for (int j = 0; j < k; j++) {
+                const double normalize = allsame ? (2.0 / ns[0]) : (1.0 / ns[i] + 1.0 / ns[j]);
+                se[i * k + j] = std::sqrt(normalize * mse / 2.0);
+                df[i * k + j] = dfv;
+            }
+        } else {
+            for (int i = 0; i < k; i++) for (int j = 0; j < k; j++) {
+                const double si2ni = vars[i] / ns[i], sj2nj = vars[j] / ns[j];
+                se[i * k + j] = std::sqrt(si2ni + sj2nj) / std::sqrt(2.0);
+                const double nim1 = ns[i] - 1.0, njm1 = ns[j] - 1.0;
+                df[i * k + j] = (si2ni + sj2nj) * (si2ni + sj2nj) / (si2ni * si2ni / nim1 + sj2nj * sj2nj / njm1);
+            }
+        }
+        const tsd::Dist *srd = tsd::find("studentized_range");
+        if (!srd) fail("tukey_hsd: studentized_range distribution unavailable");
+        const int64_t sh[2] = {k, k};
+        double *stat = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+        double *pv = (double *)fn_result_array(&res[1], TSR_F64, 2, sh);
+        if (!stat || !pv) return TSR_ENOMEM;
+        for (int i = 0; i < k; i++) for (int j = 0; j < k; j++) {
+            const int o = i * k + j;
+            const double md = means[i] - means[j];
+            const double t = std::fabs(md) / se[o];
+            stat[o] = md;
+            pv[o] = tsd::call(srd, DM_SF, t, {(double)k, df[o], 0.0, 1.0});
+        }
+        return TSR_OK;
+    });
+}
+
 const fn_def DEFS[] = {
     ROUTINE("stats.ttest_1samp", 3, "a, popmean, axis=0, nan_policy='propagate', alternative='two-sided', keepdims=False",
             "statistic, pvalue, df", f_ttest_1samp, NULL,
@@ -2549,6 +2612,8 @@ const fn_def DEFS[] = {
             "Kruskal-Wallis H-test for independent samples (scipy.stats.kruskal)."),
     ROUTINE("stats.friedmanchisquare", 2, SAMPLES12 ", axis=0, nan_policy='propagate', keepdims=False", "statistic, pvalue",
             f_friedmanchisquare, NULL, "Friedman test for repeated samples (scipy.stats.friedmanchisquare)."),
+    ROUTINE("stats.tukey_hsd", 2, SAMPLES12 ", equal_var=True", "statistic, pvalue",
+            r_tukey_hsd, NULL, "Tukey HSD pairwise comparison of means (scipy.stats.tukey_hsd)."),
     ROUTINE("stats.f_oneway", 2, SAMPLES12 ", axis=0, equal_var=True, nan_policy='propagate', keepdims=False", "statistic, pvalue",
             f_f_oneway, NULL, "One-way ANOVA; Welch's ANOVA with equal_var=False (scipy.stats.f_oneway)."),
     ROUTINE("stats.levene", 2, SAMPLES12 ", center='median', proportiontocut=0.05, axis=0, nan_policy='propagate', keepdims=False",

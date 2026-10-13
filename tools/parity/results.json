@@ -1625,6 +1625,7 @@
         "stats.ttest_ind": "pass",
         "stats.ttest_ind_from_stats": "pass",
         "stats.ttest_rel": "pass",
+        "stats.tukey_hsd": "pass",
         "stats.tukeylambda": "pass",
         "stats.tvar": "pass",
         "stats.uniform": "pass",
@@ -1634,6 +1635,7 @@
         "stats.vonmises_line": "pass",
         "stats.wald": "pass",
         "stats.wasserstein_distance": "pass",
+        "stats.wasserstein_distance_nd": "pass",
         "stats.weibull_max": "pass",
         "stats.weibull_min": "pass",
         "stats.weightedtau": "pass",
@@ -2186,9 +2188,9 @@
             "stats.wilcoxon": 0,
             "stats.kruskal": 0,
             "stats.friedmanchisquare": 0,
-            "stats.brunnermunzel": 4.2641401470841386e-16,
+            "stats.brunnermunzel": 0,
             "stats.ranksums": 0,
-            "stats.f_oneway": 1.023378391472262e-15,
+            "stats.f_oneway": 8.304496204776642e-16,
             "stats.levene": 3.755611682519677e-15,
             "stats.fligner": 0,
             "stats.bartlett": 0,
@@ -3350,7 +3352,9 @@
             "optimize.approx_fprime": null,
             "optimize.line_search": null,
             "stats.permutation_test": null,
-            "stats.Uniform": null
+            "stats.Uniform": null,
+            "stats.tukey_hsd": 0,
+            "stats.wasserstein_distance_nd": 2.2202444969260839e-16
         },
         "ext": {
             "np.median": 0,
@@ -3862,9 +3866,9 @@
             "stats.wilcoxon": 0,
             "stats.kruskal": 0,
             "stats.friedmanchisquare": 0,
-            "stats.brunnermunzel": 4.2641401470841386e-16,
+            "stats.brunnermunzel": 0,
             "stats.ranksums": 0,
-            "stats.f_oneway": 1.023378391472262e-15,
+            "stats.f_oneway": 8.304496204776642e-16,
             "stats.levene": 3.755611682519677e-15,
             "stats.fligner": 0,
             "stats.bartlett": 0,
@@ -5026,7 +5030,9 @@
             "optimize.approx_fprime": null,
             "optimize.line_search": null,
             "stats.permutation_test": null,
-            "stats.Uniform": null
+            "stats.Uniform": null,
+            "stats.tukey_hsd": 0,
+            "stats.wasserstein_distance_nd": 2.2202444969260839e-16
         }
     },
     "ext": {
@@ -6655,6 +6661,7 @@
         "stats.ttest_ind": "pass",
         "stats.ttest_ind_from_stats": "pass",
         "stats.ttest_rel": "pass",
+        "stats.tukey_hsd": "pass",
         "stats.tukeylambda": "pass",
         "stats.tvar": "pass",
         "stats.uniform": "pass",
@@ -6664,6 +6671,7 @@
         "stats.vonmises_line": "pass",
         "stats.wald": "pass",
         "stats.wasserstein_distance": "pass",
+        "stats.wasserstein_distance_nd": "pass",
         "stats.weibull_max": "pass",
         "stats.weibull_min": "pass",
         "stats.weightedtau": "pass",

@@ -387,6 +387,22 @@ def variances():
     c.append(call('median_test', [nanify(data((10,)), 0.3), data((8,))], {'nan_policy': 'raise'}, MT))
     c.append(call('median_test', [data((3, 2)), data((4,))], {}, MT))
     B['median_test'] = c
+    # ---- tukey_hsd (pairwise comparison of means via the studentized range)
+    c = []
+    g0 = [24.5, 23.5, 26.4, 27.1, 29.9]
+    g1 = [28.4, 34.2, 29.5, 32.2, 30.1]
+    g2 = [26.1, 28.3, 24.3, 26.2, 27.8]
+    for ev in (True, False):
+        c.append(call("tukey_hsd", [g0, g1, g2], {"equal_var": ev}, SP))
+        c.append(call("tukey_hsd", [data((6,)), data((5,)) + 1, data((7,)) - 1], {"equal_var": ev}, SP))
+        c.append(call("tukey_hsd", [data((5,)), data((5,)) * 2], {"equal_var": ev}, SP))
+        c.append(call("tukey_hsd", [data((4,)), data((6,)) + 0.5, data((5,)) - 0.5, data((7,)) * 1.5], {"equal_var": ev}, SP))
+        c.append(call("tukey_hsd", [data((8,), ints=True), data((6,), ints=True), data((9,), ints=True)], {"equal_var": ev}, SP))
+    c.append(call("tukey_hsd", [g0, g1, g2], {}, SP))
+    c.append(call("tukey_hsd", [g0], {}, SP))
+    c.append(call("tukey_hsd", [[1.0], [2.0, 3.0]], {}, SP))
+    B["tukey_hsd"] = c
+
     return B
 
 
