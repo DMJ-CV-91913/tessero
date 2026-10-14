@@ -1469,6 +1469,7 @@
         "special.yvp": "pass",
         "special.zeta": "pass",
         "special.zetac": "pass",
+        "splinalg.SuperLU": "pass",
         "splinalg.bicg": "pass",
         "splinalg.bicgstab": "pass",
         "splinalg.cg": "pass",
@@ -1477,6 +1478,7 @@
         "splinalg.eigsh": "pass",
         "splinalg.expm": "pass",
         "splinalg.expm_multiply": "pass",
+        "splinalg.factorized": "pass",
         "splinalg.funm_multiply_krylov": "pass",
         "splinalg.gcrotmk": "pass",
         "splinalg.gmres": "pass",
@@ -1492,6 +1494,7 @@
         "splinalg.onenormest": "pass",
         "splinalg.qmr": "pass",
         "splinalg.spbandwidth": "pass",
+        "splinalg.splu": "pass",
         "splinalg.spsolve": "pass",
         "splinalg.spsolve_triangular": "pass",
         "splinalg.svds": "pass",
@@ -3630,7 +3633,10 @@
             "stats.goodness_of_fit": null,
             "stats.make_distribution": null,
             "stats.power": null,
-            "stats.random_correlation": 0.13781380429500922
+            "stats.random_correlation": 0.13781380429500922,
+            "splinalg.splu": null,
+            "splinalg.factorized": null,
+            "splinalg.SuperLU": null
         },
         "ext": {
             "np.median": 0,
@@ -5445,7 +5451,10 @@
             "stats.goodness_of_fit": null,
             "stats.make_distribution": null,
             "stats.power": null,
-            "stats.random_correlation": 0.13781380429500922
+            "stats.random_correlation": 0.13781380429500922,
+            "splinalg.splu": null,
+            "splinalg.factorized": null,
+            "splinalg.SuperLU": null
         }
     },
     "ext": {
@@ -6918,6 +6927,7 @@
         "special.yvp": "pass",
         "special.zeta": "pass",
         "special.zetac": "pass",
+        "splinalg.SuperLU": "pass",
         "splinalg.bicg": "pass",
         "splinalg.bicgstab": "pass",
         "splinalg.cg": "pass",
@@ -6926,6 +6936,7 @@
         "splinalg.eigsh": "pass",
         "splinalg.expm": "pass",
         "splinalg.expm_multiply": "pass",
+        "splinalg.factorized": "pass",
         "splinalg.funm_multiply_krylov": "pass",
         "splinalg.gcrotmk": "pass",
         "splinalg.gmres": "pass",
@@ -6941,6 +6952,7 @@
         "splinalg.onenormest": "pass",
         "splinalg.qmr": "pass",
         "splinalg.spbandwidth": "pass",
+        "splinalg.splu": "pass",
         "splinalg.spsolve": "pass",
         "splinalg.spsolve_triangular": "pass",
         "splinalg.svds": "pass",
