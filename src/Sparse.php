@@ -21,6 +21,8 @@ final class Sparse
     'block_array' => 'blockArray',
     'block_diag' => 'blockDiag',
     'bmat' => 'bmat',
+    'bsr_array' => 'bsrArray',
+    'bsr_matrix' => 'bsrMatrix',
     'coo_array' => 'cooArray',
     'coo_matrix' => 'cooMatrix',
     'csc_array' => 'cscArray',
@@ -31,6 +33,8 @@ final class Sparse
     'dia_matrix' => 'diaMatrix',
     'diags' => 'diags',
     'diags_array' => 'diagsArray',
+    'dok_array' => 'dokArray',
+    'dok_matrix' => 'dokMatrix',
     'eye' => 'eye',
     'eye_array' => 'eyeArray',
     'find' => 'find',
@@ -38,6 +42,8 @@ final class Sparse
     'identity' => 'identity',
     'kron' => 'kron',
     'kronsum' => 'kronsum',
+    'lil_array' => 'lilArray',
+    'lil_matrix' => 'lilMatrix',
     'permute_dims' => 'permuteDims',
     'spdiags' => 'spdiags',
     'swapaxes' => 'swapaxes',
@@ -94,6 +100,30 @@ final class Sparse
     public static function bmat(mixed $blocks, mixed $nrows, mixed $ncols): mixed
     {
         return Registry::routine('sparse.bmat', [$blocks, $nrows, $ncols]);
+    }
+
+    /**
+     * Block sparse row storage of a dense matrix (scipy.sparse.bsr_array).
+     *
+     * scipy.sparse.bsr_array
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape, blocksize when several results are requested
+     */
+    public static function bsrArray(mixed $A, mixed $R = 1, mixed $C = 1): mixed
+    {
+        return Registry::routine('sparse.bsr_array', [$A, $R, $C]);
+    }
+
+    /**
+     * Block sparse row storage of a dense matrix (scipy.sparse.bsr_matrix).
+     *
+     * scipy.sparse.bsr_matrix
+     *
+     * @return mixed one array, or an array keyed by data, indices, indptr, shape, blocksize when several results are requested
+     */
+    public static function bsrMatrix(mixed $A, mixed $R = 1, mixed $C = 1): mixed
+    {
+        return Registry::routine('sparse.bsr_matrix', [$A, $R, $C]);
     }
 
     /**
@@ -217,6 +247,30 @@ final class Sparse
     }
 
     /**
+     * Dictionary-of-keys storage of a dense matrix (scipy.sparse.dok_array).
+     *
+     * scipy.sparse.dok_array
+     *
+     * @return mixed one array, or an array keyed by data, row, col, shape when several results are requested
+     */
+    public static function dokArray(mixed $A): mixed
+    {
+        return Registry::routine('sparse.dok_array', [$A]);
+    }
+
+    /**
+     * Dictionary-of-keys storage of a dense matrix (scipy.sparse.dok_matrix).
+     *
+     * scipy.sparse.dok_matrix
+     *
+     * @return mixed one array, or an array keyed by data, row, col, shape when several results are requested
+     */
+    public static function dokMatrix(mixed $A): mixed
+    {
+        return Registry::routine('sparse.dok_matrix', [$A]);
+    }
+
+    /**
      * Sparse matrix with ones on a diagonal, as CSR (scipy.sparse.eye).
      *
      * scipy.sparse.eye
@@ -296,6 +350,30 @@ final class Sparse
     public static function kronsum(mixed $A, mixed $B): mixed
     {
         return Registry::routine('sparse.kronsum', [$A, $B]);
+    }
+
+    /**
+     * List-of-lists row storage of a dense matrix (scipy.sparse.lil_array).
+     *
+     * scipy.sparse.lil_array
+     *
+     * @return mixed one array, or an array keyed by data, rows, indptr, shape when several results are requested
+     */
+    public static function lilArray(mixed $A): mixed
+    {
+        return Registry::routine('sparse.lil_array', [$A]);
+    }
+
+    /**
+     * List-of-lists row storage of a dense matrix (scipy.sparse.lil_matrix).
+     *
+     * scipy.sparse.lil_matrix
+     *
+     * @return mixed one array, or an array keyed by data, rows, indptr, shape when several results are requested
+     */
+    public static function lilMatrix(mixed $A): mixed
+    {
+        return Registry::routine('sparse.lil_matrix', [$A]);
     }
 
     /**
