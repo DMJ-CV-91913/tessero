@@ -6265,12 +6265,27 @@
             "nin": 0,
             "nout": 1
         },
+        "splinalg.eigs": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.eigsh": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "splinalg.expm": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
         "splinalg.expm_multiply": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.funm_multiply_krylov": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
@@ -6289,6 +6304,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 2
+        },
+        "splinalg.lobpcg": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
         },
         "splinalg.lsmr": {
             "kind": "routine",
@@ -6336,6 +6356,11 @@
             "nout": 1
         },
         "splinalg.spsolve_triangular": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "splinalg.svds": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

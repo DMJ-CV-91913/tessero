@@ -9,9 +9,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <lapacke.h>
 
 extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
-extern int sl_expm(const double *A, int64_t n, double *out);                /* np_linalg.c (Pade scaling-squaring) */
+extern int sl_expm(const double *A, int64_t n, double *out);
+extern int sl_funm_byname(const char *fname, const double *A, int64_t n, double *out);                /* np_linalg.c (Pade scaling-squaring) */
 
 /* C = A * B, all n-by-n row-major; C must be distinct from A and B. */
 static void spl_mm(double *C, const double *A, const double *B, int64_t n)
@@ -857,6 +859,437 @@ static int r_lsmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
    unique solution solve(A,b); we run full GMRES (restart=n) which reaches that x in
    <=n steps (exact arithmetic), matching scipy's converged iterate. scipy.sparse.linalg.lgmres */
 
+
+/* ===== pkg6_eigfix: eigsh / eigs / svds (values-only dense LAPACK) ===== */
+/* ============================================================================
+ * scipy.sparse.linalg : eigsh / eigs / svds  (values-only, dense LAPACK)
+ * ----------------------------------------------------------------------------
+ * ARPACK (which SciPy uses for these) is not bitwise-reproducible across builds,
+ * so these routines reproduce the RESULT VALUES via dense LAPACK on the (dense)
+ * operator and apply SciPy's k / which selection:
+ *   - eigsh (symmetric):  LAPACKE_dsyevd  -> real eigenvalues -> select k ->
+ *                         returned ascending (float64 [k]).
+ *   - eigs  (general):    LAPACKE_dgeev   -> complex eigenvalues -> select k ->
+ *                         returned as a (k,2) float64 array of (real, |imag|),
+ *                         sorted by (real, |imag|). The SIGN of the imaginary
+ *                         part of a conjugate-pair member that straddles the
+ *                         k-th selection boundary is NOT unique (ARPACK may
+ *                         return either partner), so only |imag| is compared.
+ *   - svds:               LAPACKE_dgesdd(N) -> singular values -> top-k ->
+ *                         returned ascending (float64 [k]). which=LM only
+ *                         (which=SM shift-invert diverges in ARPACK).
+ * EIGEN/SINGULAR VECTORS ARE OUT OF SCOPE: they are sign/rotation non-unique.
+ * Only the eigenvalues / singular values are returned (nout = 1).
+ * Matrix arguments arrive dense (the generators build them from a dense array).
+ * ========================================================================== */
+
+/* --- (A) add near the other extern decls / includes at the top of the file --- */
+/* NOTE: scipy_sparse_linalg.c does not currently include <lapacke.h>; add it. */
+
+/* qsort comparator: ascending doubles */
+static int eig_cmp_asc(const void *pa, const void *pb)
+{
+    double a = *(const double *)pa, b = *(const double *)pb;
+    return (a < b) ? -1 : (a > b) ? 1 : 0;
+}
+/* qsort comparator: (real, |imag|) pairs ascending */
+static int eig_cmp_ri(const void *pa, const void *pb)
+{
+    const double *a = (const double *)pa, *b = (const double *)pb;
+    if (a[0] < b[0]) return -1;
+    if (a[0] > b[0]) return 1;
+    if (a[1] < b[1]) return -1;
+    if (a[1] > b[1]) return 1;
+    return 0;
+}
+
+/* read an integer-valued scalar argument (k) */
+static int eig_arg_int(const tsr_arg *a, int64_t *out)
+{
+    if (a->kind != 1) return 0;
+    *out = (a->flags & 1) ? a->ival : (int64_t)a->num;
+    return 1;
+}
+
+/* partial-select helper for eigsh: pick k indices from ascending w[0..n-1] per which,
+   write the k selected eigenvalues into sel[] (unsorted), return 0/-1. */
+static int eigsh_select(const double *w, int64_t n, int64_t k, const char *which, double *sel)
+{
+    /* w is ascending. */
+    if (!strcmp(which, "LA")) {                 /* k largest algebraic */
+        for (int64_t i = 0; i < k; i++) sel[i] = w[n - k + i];
+    } else if (!strcmp(which, "SA")) {          /* k smallest algebraic */
+        for (int64_t i = 0; i < k; i++) sel[i] = w[i];
+    } else if (!strcmp(which, "BE")) {          /* k from both ends: ceil(k/2) hi, floor(k/2) lo */
+        int64_t nhi = (k + 1) / 2, nlo = k / 2, p = 0;
+        for (int64_t i = 0; i < nlo; i++) sel[p++] = w[i];
+        for (int64_t i = 0; i < nhi; i++) sel[p++] = w[n - nhi + i];
+    } else if (!strcmp(which, "LM") || !strcmp(which, "SM")) {
+        /* order indices by |w| ; pick last/first k */
+        int64_t *idx = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+        if (!idx) return -1;
+        for (int64_t i = 0; i < n; i++) idx[i] = i;
+        /* insertion sort idx by |w| ascending */
+        for (int64_t i = 1; i < n; i++) {
+            int64_t o = idx[i]; double key = fabs(w[o]); int64_t p = i - 1;
+            while (p >= 0 && fabs(w[idx[p]]) > key) { idx[p + 1] = idx[p]; p--; }
+            idx[p + 1] = o;
+        }
+        int lm = !strcmp(which, "LM");
+        for (int64_t i = 0; i < k; i++) sel[i] = w[lm ? idx[n - k + i] : idx[i]];
+        free(idx);
+    } else {
+        return -2;  /* unsupported which */
+    }
+    return 0;
+}
+
+/* eigsh(A, k=6, which=LM, ...): k eigenvalues of a symmetric A, returned ascending. */
+static int r_eigsh(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 1 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("eigsh: A must be a 2-D array"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n) { fn_set_error("eigsh: A must be square"); return TSR_EARG; }
+    int64_t k = 6;
+    if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
+    const char *which = "LM";
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) which = args[2].str;
+    if (k < 1 || k >= n) { fn_set_error("eigsh: need 0 < k < n"); return TSR_EARG; }
+
+    int64_t La; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
+    double *w = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
+    double *sel = (double *)malloc((size_t)k * sizeof(double));
+    int rc = TSR_OK;
+    if (!w || !sel) rc = TSR_ENOMEM;
+    else {
+        lapack_int info = LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'N', 'L', (lapack_int)n, A, (lapack_int)n, w);
+        if (info != 0) { fn_set_error("eigsh: the eigensolver failed to converge"); rc = TSR_EARG; }
+        else {
+            int s = eigsh_select(w, n, k, which, sel);
+            if (s == -1) rc = TSR_ENOMEM;
+            else if (s == -2) { fn_set_error("eigsh: unsupported which (use LM/SM/LA/SA/BE)"); rc = TSR_EARG; }
+            else {
+                qsort(sel, (size_t)k, sizeof(double), eig_cmp_asc);
+                int64_t sh[1] = {k};
+                double *o = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+                if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < k; i++) o[i] = sel[i];
+            }
+        }
+    }
+    free(w); free(sel); fn_free_doubles(A, La);
+    return rc;
+}
+
+/* eigs(A, k=6, which=LM, ...): k eigenvalues of a general A, returned as a (k,2)
+   array of (real, |imag|) sorted by (real, |imag|). */
+static int r_eigs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 1 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("eigs: A must be a 2-D array"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n) { fn_set_error("eigs: A must be square"); return TSR_EARG; }
+    int64_t k = 6;
+    if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
+    const char *which = "LM";
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) which = args[2].str;
+    if (k < 1 || k >= n - 1) { fn_set_error("eigs: need 0 < k < n-1"); return TSR_EARG; }
+
+    int64_t La; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
+    double *wr = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
+    double *wi = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
+    int64_t *idx = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    double *sel = (double *)malloc((size_t)(2 * k) * sizeof(double));
+    int rc = TSR_OK;
+    if (!wr || !wi || !idx || !sel) rc = TSR_ENOMEM;
+    else {
+        double d = 0.0;
+        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, A, (lapack_int)n, wr, wi, &d, 1, &d, 1);
+        if (info != 0) { fn_set_error("eigs: the QR algorithm failed to converge"); rc = TSR_EARG; }
+        else {
+            for (int64_t i = 0; i < n; i++) idx[i] = i;
+            /* key(which) for each eigenvalue; insertion sort idx by key ascending, then take top/bottom k */
+            double *key = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
+            int bottom = 0; /* SR picks smallest k */
+            if (!key) rc = TSR_ENOMEM;
+            else {
+                if (!strcmp(which, "LM"))      for (int64_t i = 0; i < n; i++) key[i] = hypot(wr[i], wi[i]);
+                else if (!strcmp(which, "LR")) for (int64_t i = 0; i < n; i++) key[i] = wr[i];
+                else if (!strcmp(which, "SR")) { for (int64_t i = 0; i < n; i++) key[i] = wr[i]; bottom = 1; }
+                else if (!strcmp(which, "LI")) for (int64_t i = 0; i < n; i++) key[i] = fabs(wi[i]);
+                else { fn_set_error("eigs: unsupported which (use LM/LR/SR/LI)"); rc = TSR_EARG; }
+                if (rc == TSR_OK) {
+                    for (int64_t i = 1; i < n; i++) {
+                        int64_t o = idx[i]; double kk = key[o]; int64_t p = i - 1;
+                        while (p >= 0 && key[idx[p]] > kk) { idx[p + 1] = idx[p]; p--; }
+                        idx[p + 1] = o;
+                    }
+                    /* select k indices */
+                    for (int64_t i = 0; i < k; i++) {
+                        int64_t src = bottom ? idx[i] : idx[n - k + i];
+                        sel[2 * i] = wr[src]; sel[2 * i + 1] = fabs(wi[src]);
+                    }
+                    qsort(sel, (size_t)k, 2 * sizeof(double), eig_cmp_ri);
+                    int64_t sh[2] = {k, 2};
+                    double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
+                    if (!out) rc = TSR_ENOMEM; else for (int64_t i = 0; i < 2 * k; i++) out[i] = sel[i];
+                }
+            }
+            free(key);
+        }
+    }
+    free(wr); free(wi); free(idx); free(sel); fn_free_doubles(A, La);
+    return rc;
+}
+
+/* svds(A, k=6, which=LM, ...): top-k singular values of A, returned ascending. */
+static int r_svds(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 1 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("svds: A must be a 2-D array"); return TSR_EARG; }
+    int64_t m = args[0].arr.shape[0], n = args[0].arr.shape[1];
+    int64_t k = 6;
+    if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
+    const char *which = "LM";
+    if (nargs > 2 && args[2].kind == 2 && args[2].str) which = args[2].str;
+    if (strcmp(which, "LM")) { fn_set_error("svds: only which=LM is supported (SM shift-invert is not reproducible)"); return TSR_EARG; }
+    int64_t mn = m < n ? m : n;
+    if (k < 1 || k >= mn) { fn_set_error("svds: need 0 < k < min(M,N)"); return TSR_EARG; }
+
+    int64_t La; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
+    double *s = (double *)malloc((size_t)(mn > 0 ? mn : 1) * sizeof(double));
+    double *superb = (double *)malloc((size_t)(mn > 1 ? mn - 1 : 1) * sizeof(double));
+    int rc = TSR_OK;
+    if (!s || !superb) rc = TSR_ENOMEM;
+    else {
+        double dummy = 0.0;
+        /* dgesdd with jobz='N' mishandles non-square row-major (bad ldvt -> "Wrong parameter 11").
+           Use dgesvd with jobu='N',jobvt='N': singular values only, no U/VT referenced. */
+        lapack_int info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)m, (lapack_int)n,
+                                         A, (lapack_int)n, s, &dummy, 1, &dummy, 1, superb);
+        if (info != 0) { fn_set_error("svds: the SVD failed to converge"); rc = TSR_EARG; }
+        else {
+            /* dgesdd returns s descending; top-k are s[0..k-1]; return ascending */
+            int64_t sh[1] = {k};
+            double *o = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+            if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < k; i++) o[i] = s[k - 1 - i];
+        }
+    }
+    free(s); free(superb); fn_free_doubles(A, La);
+    return rc;
+}
+
+
+/* ===== pkg6_lobpcg: lobpcg + funm_multiply_krylov ===== */
+/* =========================================================================== *
+ * lobpcg + funm_multiply_krylov  (the last two scipy.sparse.linalg symbols).
+ * Both run their dense algorithm on the dense operator A, like the Krylov family
+ * above. They reuse the spl_* helpers, LAPACK (dsyevd / dgeqrf+dorgqr via
+ * <lapacke.h>) and the shared matfun engine sl_funm_byname (np_linalg.c).
+ * =========================================================================== */
+
+/* Column-span orthonormalization via QR (A is n x c, row-major with leading
+   dimension c, overwritten with the orthonormal Q in its first q = min(n,c)
+   columns; q is returned in *pkeep). An n x c block has at most min(n,c)
+   orthonormal columns, so DORGQR must never be asked for more than that (asking
+   for c > n columns is an illegal DORGQR argument). Returns 0 on success. */
+static int spl_qr_orth(double *Acm, int64_t n, int64_t c, int64_t *pkeep)
+{
+    int64_t q = c < n ? c : n;                 /* columns of Q we can actually form */
+    double *tau = (double *)malloc(sizeof(double) * (size_t)(q > 0 ? q : 1));
+    if (!tau) return -1;
+    lapack_int info = LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, (lapack_int)n, (lapack_int)c, Acm, (lapack_int)c, tau);
+    if (info == 0) info = LAPACKE_dorgqr(LAPACK_ROW_MAJOR, (lapack_int)n, (lapack_int)q, (lapack_int)q, Acm, (lapack_int)c, tau);
+    free(tau);
+    *pkeep = q;
+    return info == 0 ? 0 : -1;
+}
+
+/* lobpcg(A, X, ...): the k smallest (largest=False) or largest eigenvalues of the
+   symmetric matrix A via the LOBPCG iteration (B = M = I). Eigenvectors are not
+   unique, so this ROUTINE returns the EIGENVALUES only (ascending), compared to the
+   dense reference (np.linalg.eigvalsh slice) in the fixtures. scipy.sparse.linalg.lobpcg */
+static int r_lobpcg(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) {
+        fn_set_error("lobpcg: A must be a 2-D array and X a 2-D initial guess"); return TSR_EARG;
+    }
+    int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n) { fn_set_error("lobpcg: A must be square"); return TSR_EARG; }
+    if (args[1].arr.shape[0] != n) { fn_set_error("lobpcg: X has the wrong number of rows"); return TSR_EARG; }
+    int64_t k = args[1].arr.shape[1];
+    if (k < 1 || k > n) { fn_set_error("lobpcg: the block size must satisfy 1 <= k <= n"); return TSR_EARG; }
+    /* signature: (A, X, B=None, M=None, Y=None, tol=None, maxiter=None, largest=True, ...) */
+    int largest = 1;
+    int64_t maxiter = 200;
+    double tol = 1e-12;
+    if (nargs > 5 && (args[5].kind == 1 || args[5].kind == 4)) { double tv = (args[5].flags & 1) ? (double)args[5].ival : args[5].num; if (tv > 0) tol = tv; }
+    if (nargs > 6 && (args[6].kind == 1 || args[6].kind == 4)) { double mv = (args[6].flags & 1) ? (double)args[6].ival : args[6].num; if (mv > 0) maxiter = (int64_t)mv; }
+    if (nargs > 7 && (args[7].kind == 1 || args[7].kind == 4)) largest = (args[7].num != 0.0);
+
+    int64_t LA, LX; double *A = fn_arg_doubles(&args[0], &LA); if (!A) return TSR_ENOMEM;
+    double *X = fn_arg_doubles(&args[1], &LX); if (!X) { fn_free_doubles(A, LA); return TSR_ENOMEM; }
+
+    int rc = TSR_OK;
+    const int64_t m3 = 3 * k;                 /* max subspace width [X | R | P] */
+    double *Xc  = (double *)malloc(sizeof(double) * (size_t)(n * k));
+    double *AX  = (double *)malloc(sizeof(double) * (size_t)(n * k));
+    double *Pm  = (double *)calloc((size_t)(n * k), sizeof(double));
+    double *lam = (double *)malloc(sizeof(double) * (size_t)k);
+    double *S   = (double *)malloc(sizeof(double) * (size_t)(n * m3));
+    double *AS  = (double *)malloc(sizeof(double) * (size_t)(n * m3));
+    double *Gp  = (double *)malloc(sizeof(double) * (size_t)(m3 * m3));
+    double *w   = (double *)malloc(sizeof(double) * (size_t)m3);
+    double *QX  = (double *)malloc(sizeof(double) * (size_t)(n * k));
+    double *Pbuf= (double *)malloc(sizeof(double) * (size_t)(n * k));
+    if (!Xc || !AX || !Pm || !lam || !S || !AS || !Gp || !w || !QX || !Pbuf) { rc = TSR_ENOMEM; goto done; }
+
+    memcpy(Xc, X, sizeof(double) * (size_t)(n * k));
+    { int64_t keep; if (spl_qr_orth(Xc, n, k, &keep) != 0) { fn_set_error("lobpcg: QR orthonormalization failed"); rc = TSR_EARG; goto done; } }
+    for (int64_t c = 0; c < k; c++)
+        for (int64_t i = 0; i < n; i++) { double s = 0.0; const double *Ai = A + i * n; for (int64_t j = 0; j < n; j++) s += Ai[j] * Xc[j * k + c]; AX[i * k + c] = s; }
+    for (int64_t c = 0; c < k; c++) { double s = 0.0; for (int64_t i = 0; i < n; i++) s += Xc[i * k + c] * AX[i * k + c]; lam[c] = s; }
+
+    int64_t pwidth = 0;
+    for (int64_t iter = 0; iter < maxiter; iter++) {
+        double *R = Pbuf;
+        double maxrn = 0.0;
+        for (int64_t c = 0; c < k; c++) {
+            double rn = 0.0;
+            for (int64_t i = 0; i < n; i++) { double e = AX[i * k + c] - lam[c] * Xc[i * k + c]; R[i * k + c] = e; rn += e * e; }
+            rn = sqrt(rn); if (rn > maxrn) maxrn = rn;
+        }
+        if (maxrn < tol) break;
+        /* The search subspace is [X | R | P] with up to 3k columns, which can exceed
+           n (e.g. n=8, k=3 -> 9). A block with more columns than rows has at most n
+           orthonormal columns, so cap the assembled width to n, dropping the P block
+           first (it is the search-direction history) and then trailing R columns. X
+           (the current approximation, k columns) is always kept. */
+        int64_t rcols = k, pcols = pwidth;
+        if (k + rcols + pcols > n) pcols = (n - k - rcols > 0) ? (n - k - rcols) : 0;
+        if (k + rcols + pcols > n) rcols = (n - k > 0) ? (n - k) : 0;
+        int64_t width = k + rcols + pcols;
+        for (int64_t i = 0; i < n; i++) {
+            double *Si = S + i * width;
+            for (int64_t c = 0; c < k; c++) Si[c] = Xc[i * k + c];
+            for (int64_t c = 0; c < rcols; c++) Si[k + c] = R[i * k + c];
+            for (int64_t c = 0; c < pcols; c++) Si[k + rcols + c] = Pm[i * k + c];
+        }
+        int64_t keep;
+        if (spl_qr_orth(S, n, width, &keep) != 0) { fn_set_error("lobpcg: subspace QR failed"); rc = TSR_EARG; goto done; }
+        width = keep;                              /* QR may yield fewer than width orthonormal cols */
+        for (int64_t c = 0; c < width; c++)
+            for (int64_t i = 0; i < n; i++) { double s = 0.0; const double *Ai = A + i * n; for (int64_t j = 0; j < n; j++) s += Ai[j] * S[j * width + c]; AS[i * width + c] = s; }
+        for (int64_t a = 0; a < width; a++)
+            for (int64_t b = 0; b < width; b++) { double s = 0.0; for (int64_t i = 0; i < n; i++) s += S[i * width + a] * AS[i * width + b]; Gp[a * width + b] = s; }
+        for (int64_t a = 0; a < width; a++) for (int64_t b = a + 1; b < width; b++) { double t = 0.5 * (Gp[a * width + b] + Gp[b * width + a]); Gp[a * width + b] = Gp[b * width + a] = t; }
+        lapack_int info = LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'V', 'L', (lapack_int)width, Gp, (lapack_int)width, w);
+        if (info != 0) { fn_set_error("lobpcg: the projected eigensolve (dsyevd) failed"); rc = TSR_EARG; goto done; }
+        for (int64_t c = 0; c < k; c++) {
+            int64_t col = largest ? (width - 1 - c) : c;
+            lam[c] = w[col];
+            for (int64_t i = 0; i < n; i++) {
+                double s = 0.0; for (int64_t a = 0; a < width; a++) s += S[i * width + a] * Gp[a * width + col];
+                QX[i * k + c] = s;
+            }
+        }
+        for (int64_t c = 0; c < k; c++)
+            for (int64_t i = 0; i < n; i++) {
+                double proj = 0.0;
+                for (int64_t d = 0; d < k; d++) { double xtn = 0.0; for (int64_t t = 0; t < n; t++) xtn += Xc[t * k + d] * QX[t * k + c]; proj += Xc[i * k + d] * xtn; }
+                Pm[i * k + c] = QX[i * k + c] - proj;
+            }
+        pwidth = k;
+        memcpy(Xc, QX, sizeof(double) * (size_t)(n * k));
+        for (int64_t c = 0; c < k; c++)
+            for (int64_t i = 0; i < n; i++) { double s = 0.0; const double *Ai = A + i * n; for (int64_t j = 0; j < n; j++) s += Ai[j] * Xc[j * k + c]; AX[i * k + c] = s; }
+    }
+    for (int64_t i = 1; i < k; i++) { double v = lam[i]; int64_t j = i - 1; while (j >= 0 && lam[j] > v) { lam[j + 1] = lam[j]; j--; } lam[j + 1] = v; }
+    {
+        int64_t sh[1] = {k};
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+        if (!out) { rc = TSR_ENOMEM; goto done; }
+        for (int64_t i = 0; i < k; i++) out[i] = lam[i];
+    }
+done:
+    free(Xc); free(AX); free(Pm); free(lam); free(S); free(AS); free(Gp); free(w); free(QX); free(Pbuf);
+    fn_free_doubles(A, LA); fn_free_doubles(X, LX);
+    return rc;
+}
+
+/* funm_multiply_krylov(f, A, b): f(A) @ b approximated in a full Krylov subspace via
+   Arnoldi. With m = n (dense, small) the approximation equals the dense f(A) @ b to
+   round-off. f is a function name (one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan);
+   f(H) on the m x m upper-Hessenberg H uses the shared matfun engine sl_funm_byname.
+   scipy.sparse.linalg.funm_multiply_krylov (compared to the dense f(A) @ b). */
+static int r_funm_multiply_krylov(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 3 || args[0].kind != 2 || !args[0].str || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3) {
+        fn_set_error("funm_multiply_krylov: expected (func_name, A 2-D, b array)"); return TSR_EARG;
+    }
+    const char *fname = args[0].str;
+    int64_t n = args[1].arr.shape[0];
+    if (args[1].arr.shape[1] != n) { fn_set_error("funm_multiply_krylov: A must be square"); return TSR_EARG; }
+    if (args[2].arr.shape[0] != n) { fn_set_error("funm_multiply_krylov: b has the wrong length"); return TSR_EARG; }
+    int64_t LA, Lb; double *A = fn_arg_doubles(&args[1], &LA); if (!A) return TSR_ENOMEM;
+    double *b = fn_arg_doubles(&args[2], &Lb); if (!b) { fn_free_doubles(A, LA); return TSR_ENOMEM; }
+
+    int rc = TSR_OK;
+    int64_t m = n;
+    double *V = (double *)calloc((size_t)(n * (m + 1)), sizeof(double));
+    double *H = (double *)calloc((size_t)((m + 1) * m), sizeof(double));
+    double *wv = (double *)malloc(sizeof(double) * (size_t)n);
+    if (!V || !H || !wv) { rc = TSR_ENOMEM; goto done2; }
+
+    double beta = spl_nrm(b, n);
+    int64_t md = m;
+    if (beta == 0.0) { md = 0; }
+    else {
+        for (int64_t i = 0; i < n; i++) V[i * (m + 1) + 0] = b[i] / beta;
+        for (int64_t j = 0; j < m; j++) {
+            for (int64_t i = 0; i < n; i++) { double s = 0.0; const double *Ai = A + i * n; for (int64_t t = 0; t < n; t++) s += Ai[t] * V[t * (m + 1) + j]; wv[i] = s; }
+            for (int64_t i = 0; i <= j; i++) {
+                double hij = 0.0; for (int64_t t = 0; t < n; t++) hij += V[t * (m + 1) + i] * wv[t];
+                H[i * m + j] = hij;
+                for (int64_t t = 0; t < n; t++) wv[t] -= hij * V[t * (m + 1) + i];
+            }
+            double hn = spl_nrm(wv, n);
+            H[(j + 1) * m + j] = hn;
+            if (hn < 1e-14) { md = j + 1; break; }
+            for (int64_t i = 0; i < n; i++) V[i * (m + 1) + (j + 1)] = wv[i] / hn;
+        }
+    }
+
+    {
+        int64_t sh[1] = {n};
+        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+        if (!out) { rc = TSR_ENOMEM; goto done2; }
+        for (int64_t i = 0; i < n; i++) out[i] = 0.0;
+        if (md > 0) {
+            double *Hm = (double *)malloc(sizeof(double) * (size_t)(md * md));
+            double *fH = (double *)malloc(sizeof(double) * (size_t)(md * md));
+            double *y  = (double *)malloc(sizeof(double) * (size_t)md);
+            if (!Hm || !fH || !y) { free(Hm); free(fH); free(y); rc = TSR_ENOMEM; goto done2; }
+            for (int64_t i = 0; i < md; i++) for (int64_t j = 0; j < md; j++) Hm[i * md + j] = H[i * m + j];
+            if (sl_funm_byname(fname, Hm, md, fH) != 0) {
+                free(Hm); free(fH); free(y);
+                fn_set_error("funm_multiply_krylov: unsupported func name '%s' or non-real/degenerate Hessenberg spectrum", fname);
+                rc = TSR_EARG; goto done2;
+            }
+            for (int64_t i = 0; i < md; i++) y[i] = fH[i * md + 0] * beta;
+            for (int64_t i = 0; i < n; i++) { double s = 0.0; for (int64_t j = 0; j < md; j++) s += V[i * (m + 1) + j] * y[j]; out[i] = s; }
+            free(Hm); free(fH); free(y);
+        }
+    }
+done2:
+    free(V); free(H); free(wv);
+    fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    return rc;
+}
+
+
 static const fn_def DEFS[] = {
     ROUTINE("splinalg.spsolve", 1, "A, b, permc_spec=None, use_umfpack=True", "x", r_spsolve, NULL, "Solve a sparse linear system A x = b (scipy.sparse.linalg.spsolve)."),
     ROUTINE("splinalg.spsolve_triangular", 1, "A, b, lower=True, overwrite_A=False, overwrite_b=False, unit_diagonal=False", "x", r_spsolve_triangular, NULL, "Solve a triangular sparse system (scipy.sparse.linalg.spsolve_triangular)."),
@@ -883,12 +1316,22 @@ static const fn_def DEFS[] = {
             "LSQR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsqr)."),
     ROUTINE("splinalg.onenormest", 1, "A, t=2, itmax=5", "est", r_onenormest, NULL,
             "Estimate of the matrix 1-norm (scipy.sparse.linalg.onenormest)."),
+    ROUTINE("splinalg.eigsh", 1, "A, k=6, which=LM|SM|LA|SA|BE, sigma=None, v0=None, ncv=None, maxiter=None, tol=0.0, return_eigenvectors=True", "w", r_eigsh, NULL,
+            "k eigenvalues of a symmetric matrix, ascending, values only (scipy.sparse.linalg.eigsh); vectors are out of scope."),
+    ROUTINE("splinalg.eigs", 1, "A, k=6, which=LM|LR|SR|LI, sigma=None, v0=None, ncv=None, maxiter=None, tol=0.0, return_eigenvectors=True", "w", r_eigs, NULL,
+            "k eigenvalues of a general matrix as (real, |imag|) pairs, values only (scipy.sparse.linalg.eigs); vectors / imag sign are out of scope."),
+    ROUTINE("splinalg.svds", 1, "A, k=6, which=LM, v0=None, maxiter=None, return_singular_vectors=True, tol=0.0", "s", r_svds, NULL,
+            "Top-k singular values, ascending, values only (scipy.sparse.linalg.svds); which=LM only, vectors out of scope."),
     ROUTINE("splinalg.qmr", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None, M1=None, M2=None", "x", r_qmr, NULL,
             "Quasi-minimal residual for a general square system (scipy.sparse.linalg.qmr)."),
     ROUTINE("splinalg.tfqmr", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None, M=None", "x", r_tfqmr, NULL,
             "Transpose-free QMR for a general square system (scipy.sparse.linalg.tfqmr)."),
     ROUTINE("splinalg.lsmr", 1, "A, b, damp=0.0, atol=1e-6, btol=1e-6, conlim=1e8, maxiter=None", "x", r_lsmr, NULL,
             "LSMR least-squares solver for a sparse rectangular system (scipy.sparse.linalg.lsmr)."),
+    ROUTINE("splinalg.lobpcg", 1, "A, X, B=None, M=None, Y=None, tol=None, maxiter=None, largest=True", "w", r_lobpcg, NULL,
+            "LOBPCG eigenvalues (ascending) of the k smallest/largest eigenpairs of a symmetric matrix; eigenvectors are non-unique so only the eigenvalues are returned (scipy.sparse.linalg.lobpcg)."),
+    ROUTINE("splinalg.funm_multiply_krylov", 1, "f, A, b", "y", r_funm_multiply_krylov, NULL,
+            "Krylov (Arnoldi) approximation of f(A) @ b; f is a matrix-function name one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.sparse.linalg.funm_multiply_krylov)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_LINALG_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

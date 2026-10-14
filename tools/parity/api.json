@@ -5951,6 +5951,18 @@
                 "doc": "Conjugate Gradient Squared for a general square system (scipy.sparse.linalg.cgs)."
             },
             {
+                "name": "eigs",
+                "static": true,
+                "sig": "eigs(mixed $A, mixed $k = 6, mixed $which = 'LM|LR|SR|LI', mixed $sigma = null, mixed $v0 = null, mixed $ncv = null, mixed $maxiter = null, mixed $tol = 0.0, mixed $returnEigenvectors = true): mixed",
+                "doc": "k eigenvalues of a general matrix as (real, |imag|) pairs, values only (scipy.sparse.linalg.eigs); vectors / imag sign are out of scope."
+            },
+            {
+                "name": "eigsh",
+                "static": true,
+                "sig": "eigsh(mixed $A, mixed $k = 6, mixed $which = 'LM|SM|LA|SA|BE', mixed $sigma = null, mixed $v0 = null, mixed $ncv = null, mixed $maxiter = null, mixed $tol = 0.0, mixed $returnEigenvectors = true): mixed",
+                "doc": "k eigenvalues of a symmetric matrix, ascending, values only (scipy.sparse.linalg.eigsh); vectors are out of scope."
+            },
+            {
                 "name": "expm",
                 "static": true,
                 "sig": "expm(mixed $A): mixed",
@@ -5961,6 +5973,12 @@
                 "static": true,
                 "sig": "expmMultiply(mixed $A, mixed $B, mixed $start = null, mixed $stop = null, mixed $num = null, mixed $endpoint = null): mixed",
                 "doc": "Action of the matrix exponential, expm(A) @ B (scipy.sparse.linalg.expm_multiply)."
+            },
+            {
+                "name": "funmMultiplyKrylov",
+                "static": true,
+                "sig": "funmMultiplyKrylov(mixed $f, mixed $A, mixed $b): mixed",
+                "doc": "Krylov (Arnoldi) approximation of f(A) @ b; f is a matrix-function name one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.sparse.linalg.funm_multiply_krylov)."
             },
             {
                 "name": "gmres",
@@ -5979,6 +5997,12 @@
                 "static": true,
                 "sig": "isSptriangular(mixed $A): mixed",
                 "doc": "Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular)."
+            },
+            {
+                "name": "lobpcg",
+                "static": true,
+                "sig": "lobpcg(mixed $A, mixed $X, mixed $B = null, mixed $M = null, mixed $Y = null, mixed $tol = null, mixed $maxiter = null, mixed $largest = true): mixed",
+                "doc": "LOBPCG eigenvalues (ascending) of the k smallest/largest eigenpairs of a symmetric matrix; eigenvectors are non-unique so only the eigenvalues are returned (scipy.sparse.linalg.lobpcg)."
             },
             {
                 "name": "lsmr",
@@ -6039,6 +6063,12 @@
                 "static": true,
                 "sig": "spsolveTriangular(mixed $A, mixed $b, mixed $lower = true, mixed $overwriteA = false, mixed $overwriteB = false, mixed $unitDiagonal = false): mixed",
                 "doc": "Solve a triangular sparse system (scipy.sparse.linalg.spsolve_triangular)."
+            },
+            {
+                "name": "svds",
+                "static": true,
+                "sig": "svds(mixed $A, mixed $k = 6, mixed $which = 'LM', mixed $v0 = null, mixed $maxiter = null, mixed $returnSingularVectors = true, mixed $tol = 0.0): mixed",
+                "doc": "Top-k singular values, ascending, values only (scipy.sparse.linalg.svds); which=LM only, vectors out of scope."
             },
             {
                 "name": "tfqmr",
@@ -25169,6 +25199,24 @@
                 "doc": ""
             },
             {
+                "name": "eigsh",
+                "static": true,
+                "sig": "eigsh($A, $k = 6, $which = \u2026, $sigma = null, $v0 = null, $ncv = null, $maxiter = null, $tol = 0.0, $returnEigenvectors = true)",
+                "doc": ""
+            },
+            {
+                "name": "eigs",
+                "static": true,
+                "sig": "eigs($A, $k = 6, $which = \u2026, $sigma = null, $v0 = null, $ncv = null, $maxiter = null, $tol = 0.0, $returnEigenvectors = true)",
+                "doc": ""
+            },
+            {
+                "name": "svds",
+                "static": true,
+                "sig": "svds($A, $k = 6, $which = \u2026, $v0 = null, $maxiter = null, $returnSingularVectors = true, $tol = 0.0)",
+                "doc": ""
+            },
+            {
                 "name": "qmr",
                 "static": true,
                 "sig": "qmr($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null, $M1 = null, $M2 = null)",
@@ -25184,6 +25232,18 @@
                 "name": "lsmr",
                 "static": true,
                 "sig": "lsmr($A, $b, $damp = 0.0, $atol = 1.0E-6, $btol = 1.0E-6, $conlim = 100000000.0, $maxiter = null)",
+                "doc": ""
+            },
+            {
+                "name": "lobpcg",
+                "static": true,
+                "sig": "lobpcg($A, $X, $B = null, $M = null, $Y = null, $tol = null, $maxiter = null, $largest = true)",
+                "doc": ""
+            },
+            {
+                "name": "funmMultiplyKrylov",
+                "static": true,
+                "sig": "funmMultiplyKrylov($f, $A, $b)",
                 "doc": ""
             }
         ]
