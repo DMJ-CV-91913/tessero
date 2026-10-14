@@ -315,7 +315,8 @@ final class Minimize
             'TRUST-NCG', 'TRUSTNCG' => $self->trustRegion($x0, $options, 'trust-ncg'),
             'TRUST-EXACT', 'TRUSTEXACT' => $self->trustRegion($x0, $options, 'trust-exact'),
             'TRUST-KRYLOV', 'TRUSTKRYLOV' => $self->trustRegion($x0, $options, 'trust-krylov'),
-            default => throw new TesseroException("minimize: unknown method '{$method}' (BFGS, L-BFGS-B, Nelder-Mead, CG, Powell, Newton-CG, TNC, SLSQP, COBYLA)."),
+            'TRUST-CONSTR', 'TRUSTCONSTR' => TrustConstr::run($fun, $x0, $jac, $bounds, $options),
+            default => throw new TesseroException("minimize: unknown method '{$method}' (BFGS, L-BFGS-B, Nelder-Mead, CG, Powell, Newton-CG, TNC, SLSQP, COBYLA, trust-constr)."),
         };
     }
 

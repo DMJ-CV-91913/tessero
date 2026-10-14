@@ -755,6 +755,7 @@
         "optimize.rosen_hess_prod": "pass",
         "optimize.shgo": "pass",
         "optimize.toms748": "pass",
+        "optimize.trust_constr": "pass",
         "random.beta": "pass",
         "random.binomial": "pass",
         "random.bytes": "pass",
@@ -3593,7 +3594,8 @@
             "optimize.BFGS": null,
             "optimize.SR1": null,
             "signal.ZoomFFT": null,
-            "stats.CensoredData": null
+            "stats.CensoredData": null,
+            "optimize.trust_constr": null
         },
         "ext": {
             "np.median": 0,
@@ -5390,7 +5392,8 @@
             "optimize.BFGS": null,
             "optimize.SR1": null,
             "signal.ZoomFFT": null,
-            "stats.CensoredData": null
+            "stats.CensoredData": null,
+            "optimize.trust_constr": null
         }
     },
     "ext": {
@@ -6149,6 +6152,7 @@
         "optimize.rosen_hess_prod": "pass",
         "optimize.shgo": "pass",
         "optimize.toms748": "pass",
+        "optimize.trust_constr": "pass",
         "random.beta": "pass",
         "random.binomial": "pass",
         "random.bytes": "pass",
