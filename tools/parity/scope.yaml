@@ -92,6 +92,7 @@ phases:
     # single-input pole placement by state feedback (Ackermann); unique gain reproduces scipy. Multi-input out of scope.
     place_poles: {ffi: [PP::place], ext: [PP::place], fixtures: [signal.place_poles]}
     # pure-PHP chirp-z / zoom-FFT callable classes over the landed czt/zoom_fft primitives.
+    CZT: {ffi: [CZT::__invoke, CZT::transform], ext: [CZT::__invoke, CZT::transform], fixtures: [signal.CZT]}
     ZoomFFT: {ffi: [ZFFT::__invoke, ZFFT::transform], ext: [ZFFT::__invoke, ZFFT::transform], fixtures: [signal.ZoomFFT]}
     # pure-PHP LTI system classes over the landed conversion/response primitives; ss equality via impulse/step.
     lti: {ffi: [LTI::create], ext: [LTI::create], fixtures: [signal.lti]}

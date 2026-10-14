@@ -813,6 +813,7 @@
         "scipyio.mmread": "pass",
         "scipyio.mmwrite": "pass",
         "scipyio.wavfile": "pass",
+        "signal.CZT": "pass",
         "signal.ShortTimeFFT": "pass",
         "signal.StateSpace": "pass",
         "signal.TransferFunction": "pass",
@@ -3595,7 +3596,8 @@
             "optimize.SR1": null,
             "signal.ZoomFFT": null,
             "stats.CensoredData": null,
-            "optimize.trust_constr": null
+            "optimize.trust_constr": null,
+            "signal.CZT": null
         },
         "ext": {
             "np.median": 0,
@@ -5393,7 +5395,8 @@
             "optimize.SR1": null,
             "signal.ZoomFFT": null,
             "stats.CensoredData": null,
-            "optimize.trust_constr": null
+            "optimize.trust_constr": null,
+            "signal.CZT": null
         }
     },
     "ext": {
@@ -6210,6 +6213,7 @@
         "scipyio.mmread": "pass",
         "scipyio.mmwrite": "pass",
         "scipyio.wavfile": "pass",
+        "signal.CZT": "pass",
         "signal.ShortTimeFFT": "pass",
         "signal.StateSpace": "pass",
         "signal.TransferFunction": "pass",
