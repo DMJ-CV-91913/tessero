@@ -570,6 +570,7 @@ legacy:
     logrank: {ffi: [LR::logrank], ext: [LR::logrank], fixtures: [stats.logrank]}
     permutation_test: {ffi: [PT::permutationTest], ext: [PT::permutationTest], fixtures: [stats.permutation_test]}
     ortho_group: {ffi: [OG::rvs], ext: [OG::rvs], fixtures: [stats.ortho_group]}
+    unitary_group: {ffi: [UG::rvs], ext: [UG::rvs], fixtures: [stats.unitary_group]}
     special_ortho_group: {ffi: [OG::rvsSpecial], ext: [OG::rvsSpecial], fixtures: [stats.special_ortho_group]}
     uniform_direction: {ffi: [UD::rvs], ext: [UD::rvs], fixtures: [stats.uniform_direction]}
     bootstrap: {ffi: [BOOT::bootstrap], ext: [BOOT::bootstrap], fixtures: [stats.bootstrap]}

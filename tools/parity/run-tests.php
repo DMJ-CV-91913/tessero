@@ -1802,6 +1802,44 @@ foreach ($files as $file) {
         foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['unitarygroup_cases'])) {               // scipy.stats.unitary_group (pure-PHP Tessero\Stats\UnitaryGroup)
+        $ugRtol = (float) ($data['tol']['rtol'] ?? 1e-9);
+        $ugAtol = (float) ($data['tol']['atol'] ?? 1e-11);
+        foreach ($data['unitarygroup_cases'] as $c) {
+            $fn  = $c['fn'];
+            $key = "stats.{$fn}";
+            $checked++;
+            $w = 0.0;
+            $problem = null;
+            try {
+                $dim  = (int) $c['dim'];
+                $seed = (int) $c['seed'];
+                $m = \Tessero\Stats\UnitaryGroup::rvs($dim, $seed);
+                $got  = method_exists($m, 'toArray') ? $m->toArray() : $m;   // complex -> [re, im] pairs
+                $want = $c['matrix'];                                        // [re, im] pairs
+                for ($i = 0; $i < $dim && $problem === null; $i++) {
+                    for ($j = 0; $j < $dim; $j++) {
+                        foreach ([0, 1] as $p) {                            // real part, then imaginary part
+                            [$ok, $rel] = close((float) $got[$i][$j][$p], (float) $want[$i][$j][$p], $ugRtol, $ugAtol);
+                            if ($rel !== INF && $rel > $w) { $w = $rel; }
+                            if (! $ok) {
+                                $problem = sprintf('dim=%d seed=%d [%d][%d][%s] got %.17g want %.17g',
+                                    $dim, $seed, $i, $j, $p ? 'im' : 're',
+                                    (float) $got[$i][$j][$p], (float) $want[$i][$j][$p]);
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = ($results['max_rel'][$backend][$key] ?? 0.0) > $w ? ($results['max_rel'][$backend][$key] ?? 0.0) : $w;
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        continue;
+    }
     if (isset($data['orthogroup_cases'])) {                  // scipy.stats.ortho_group / special_ortho_group (pure-PHP Tessero\Stats\OrthoGroup)
         $ogRtol = (float) ($data['tol']['rtol'] ?? 1e-9);
         $ogAtol = (float) ($data['tol']['atol'] ?? 1e-11);

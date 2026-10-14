@@ -13,6 +13,7 @@
 
 #include <float.h>
 #include <lapacke.h>
+#include <complex.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1319,7 +1320,131 @@ static int r_vecmat(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 
 extern int r_tensordot(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres); /* np_numeric.c */
 
+static lapack_complex_double *cmat_c128(const tsr_arg *a, int64_t m, int64_t n)
+{
+    const tsr_array *x = &a->arr;
+    lapack_complex_double *out = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * (size_t)(m * n > 0 ? m * n : 1));
+    if (!out) return NULL;
+    for (int64_t i = 0; i < m; i++) {
+        for (int64_t j = 0; j < n; j++) {
+            const char *p = (const char *)x->data + x->offset + i * x->strides[0] + j * x->strides[1];
+            const double re = ((const double *)p)[0];
+            const double im = ((const double *)p)[1];
+            out[i * n + j] = re + im * _Complex_I;
+        }
+    }
+    return out;
+}
+
+/* qr_complex(a): reduced complex QR of a dim x dim (or m x n) complex matrix via zgeqrf + zungqr.
+   Returns (Q, R) as TSR_C128 arrays. The caller (facade) applies scipy's diagonal-phase fix. */
+static int r_qr_complex(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("qr_complex: input must be an array"); return TSR_ETYPE; }
+    const tsr_array *A = &args[0].arr;
+    if (A->dtype != TSR_C128) { fn_set_error("qr_complex: input must be complex128"); return TSR_ETYPE; }
+    if (A->ndim != 2) { fn_set_error("qr_complex: input must be two-dimensional"); return TSR_EARG; }
+    const int64_t m = A->shape[0], n = A->shape[1], k = m < n ? m : n;
+
+    lapack_complex_double *a = cmat_c128(&args[0], m, n);     /* m x n, holds R + reflectors after zgeqrf */
+    if (!a) return TSR_ENOMEM;
+    lapack_complex_double *tau = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * (size_t)(k > 0 ? k : 1));
+    if (!tau) { free(a); return TSR_ENOMEM; }
+
+    int64_t qsh[2] = {m, k}, rsh[2] = {k, n};
+    double *q = (double *)fn_result_array(&res[0], TSR_C128, 2, qsh);   /* interleaved (re, im) */
+    double *r = (double *)fn_result_array(&res[1], TSR_C128, 2, rsh);
+    if (!q || !r) { free(tau); free(a); return TSR_ENOMEM; }
+
+    if (k > 0) {
+        lapack_int info = LAPACKE_zgeqrf(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)n, a, (lapack_int)n, tau);
+        if (info != 0) { free(tau); free(a); fn_set_error("qr_complex: zgeqrf failed"); return TSR_EARG; }
+        /* R = upper triangle of the m x n factor, rows 0..k-1 */
+        for (int64_t i = 0; i < k; i++)
+            for (int64_t j = 0; j < n; j++) {
+                lapack_complex_double v = (j >= i) ? a[i * n + j] : 0.0;
+                r[2 * (i * n + j)]     = creal(v);
+                r[2 * (i * n + j) + 1] = cimag(v);
+            }
+        /* Q: copy the reflector part into an m x k buffer, then zungqr */
+        lapack_complex_double *qb = (lapack_complex_double *)malloc(sizeof(lapack_complex_double) * (size_t)(m * k > 0 ? m * k : 1));
+        if (!qb) { free(tau); free(a); return TSR_ENOMEM; }
+        for (int64_t i = 0; i < m; i++)
+            for (int64_t j = 0; j < k; j++) qb[i * k + j] = (j < n) ? a[i * n + j] : 0.0;
+        lapack_int info2 = LAPACKE_zungqr(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)k, (lapack_int)k, qb, (lapack_int)k, tau);
+        if (info2 != 0) { free(qb); free(tau); free(a); fn_set_error("qr_complex: zungqr failed"); return TSR_EARG; }
+        for (int64_t i = 0; i < m; i++)
+            for (int64_t j = 0; j < k; j++) {
+                q[2 * (i * k + j)]     = creal(qb[i * k + j]);
+                q[2 * (i * k + j) + 1] = cimag(qb[i * k + j]);
+            }
+        free(qb);
+    }
+    free(tau);
+    free(a);
+    return TSR_OK;
+}
+
+int sl_funm_byname(const char *fname, const double *A, int64_t n, double *out)
+{
+    if (n == 0) return 0;
+    double (*f)(double) = NULL;
+    if      (!strcmp(fname, "exp"))  f = exp;
+    else if (!strcmp(fname, "sqrt")) f = sqrt;
+    else if (!strcmp(fname, "log"))  f = log;
+    else if (!strcmp(fname, "sin"))  f = sin;
+    else if (!strcmp(fname, "cos"))  f = cos;
+    else if (!strcmp(fname, "sinh")) f = sinh;
+    else if (!strcmp(fname, "cosh")) f = cosh;
+    else if (!strcmp(fname, "tanh")) f = tanh;
+    else if (!strcmp(fname, "tan"))  f = tan;
+    else return -1;
+    const size_t nn = (size_t)(n * n);
+    double *a   = (double *)malloc(sizeof(double) * nn);
+    double *wr  = (double *)malloc(sizeof(double) * (size_t)n);
+    double *wi  = (double *)malloc(sizeof(double) * (size_t)n);
+    double *zz  = (double *)malloc(sizeof(double) * nn);
+    double *fm  = (double *)calloc(nn, sizeof(double));
+    double *tmp = (double *)malloc(sizeof(double) * nn);
+    if (!a || !wr || !wi || !zz || !fm || !tmp) { free(a); free(wr); free(wi); free(zz); free(fm); free(tmp); return -1; }
+    memcpy(a, A, sizeof(double) * nn);
+    int rc = 0;
+    lapack_int sdim = 0;
+    lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
+    if (info != 0) rc = -1;
+    for (int64_t i = 0; rc == 0 && i < n; i++) {
+        if (fabs(wi[i]) > 1e-12 * (1.0 + fabs(wr[i]))) rc = -1;        /* complex spectrum unsupported */
+        else fm[i * n + i] = f(a[i * n + i]);
+    }
+    for (int64_t d = 1; rc == 0 && d < n; d++)
+        for (int64_t i = 0; i + d < n; i++) {
+            const int64_t j = i + d;
+            const double denom = a[i * n + i] - a[j * n + j];
+            double num = a[i * n + j] * (fm[i * n + i] - fm[j * n + j]);
+            for (int64_t k = i + 1; k < j; k++) num += fm[i * n + k] * a[k * n + j] - a[i * n + k] * fm[k * n + j];
+            if (denom == 0.0) { if (num != 0.0) rc = -1; fm[i * n + j] = 0.0; }
+            else fm[i * n + j] = num / denom;
+        }
+    if (rc == 0) {
+        for (int64_t i = 0; i < n; i++)                               /* tmp = Z @ F */
+            for (int64_t j = 0; j < n; j++) {
+                double acc = 0.0; for (int64_t k = 0; k < n; k++) acc += zz[i * n + k] * fm[k * n + j];
+                tmp[i * n + j] = acc;
+            }
+        for (int64_t i = 0; i < n; i++)                               /* out = tmp @ Z^T */
+            for (int64_t j = 0; j < n; j++) {
+                double acc = 0.0; for (int64_t k = 0; k < n; k++) acc += tmp[i * n + k] * zz[j * n + k];
+                out[i * n + j] = acc;
+            }
+    }
+    free(a); free(wr); free(wi); free(zz); free(fm); free(tmp);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
+    ROUTINE("linalg.qr_complex", 2, "a", "Q, R", r_qr_complex, NULL,
+            "Reduced complex QR via LAPACKE zgeqrf+zungqr; A = Q R with Q unitary (internal helper for scipy.stats.unitary_group)."),
     ROUTINE("linalg.matmul", 1, "x1, x2", "out", r_la_matmul, NULL, "Matrix product of two arrays (numpy.linalg.matmul)."),
     ROUTINE("linalg.vector_norm", 1, "x, axis=None, keepdims=False, ord=2", "out", r_vector_norm, NULL, "Vector norm over the flattened array (numpy.linalg.vector_norm)."),
     ROUTINE("linalg.matrix_norm", 1, "x, keepdims=False, ord='fro'", "out", r_matrix_norm, NULL, "Matrix norm over the last two axes (numpy.linalg.matrix_norm)."),

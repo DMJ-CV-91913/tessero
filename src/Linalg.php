@@ -39,6 +39,7 @@ final class Linalg
     'outer' => 'outer',
     'pinv' => 'pinv',
     'qr' => 'qr',
+    'qr_complex' => 'qrComplex',
     'slogdet' => 'slogdet',
     'solve' => 'solve',
     'svd' => 'svd',
@@ -283,6 +284,18 @@ final class Linalg
     public static function qr(mixed $a, mixed $mode = 'reduced'): mixed
     {
         return Registry::routine('linalg.qr', [$a, $mode]);
+    }
+
+    /**
+     * Reduced complex QR via LAPACKE zgeqrf+zungqr; A = Q R with Q unitary (internal helper for scipy.stats.unitary_group).
+     *
+     * numpy.linalg.qr_complex
+     *
+     * @return mixed one array, or an array keyed by Q, R when several results are requested
+     */
+    public static function qrComplex(mixed $a): mixed
+    {
+        return Registry::routine('linalg.qr_complex', [$a]);
     }
 
     /**
