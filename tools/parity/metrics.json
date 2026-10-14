@@ -102,20 +102,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1437,
+   "both": 1446,
    "excluded": 74,
-   "impl_ext": 1437,
-   "impl_ffi": 1437,
+   "impl_ext": 1446,
+   "impl_ffi": 1446,
    "in_scope": 1488,
-   "m2_ext": 96.6,
-   "m2_ffi": 96.6,
+   "m2_ext": 97.2,
+   "m2_ffi": 97.2,
    "m3": 4.7,
-   "m4_ext": 96.6,
-   "m4_ffi": 96.6,
+   "m4_ext": 97.2,
+   "m4_ffi": 97.2,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1437,
-   "verified_ffi": 1437
+   "verified_ext": 1446,
+   "verified_ffi": 1446
   }
  },
  "modules": {
@@ -424,20 +424,20 @@
    "verified_ffi": 27
   },
   "scipy.interpolate": {
-   "both": 46,
+   "both": 47,
    "excluded": 2,
-   "impl_ext": 46,
-   "impl_ffi": 46,
+   "impl_ext": 47,
+   "impl_ffi": 47,
    "in_scope": 54,
-   "m2_ext": 85.2,
-   "m2_ffi": 85.2,
+   "m2_ext": 87.0,
+   "m2_ffi": 87.0,
    "m3": 3.6,
-   "m4_ext": 85.2,
-   "m4_ffi": 85.2,
+   "m4_ext": 87.0,
+   "m4_ffi": 87.0,
    "m5": 100.0,
    "symbols": 56,
-   "verified_ext": 46,
-   "verified_ffi": 46
+   "verified_ext": 47,
+   "verified_ffi": 47
   },
   "scipy.io": {
    "both": 4,
@@ -488,20 +488,20 @@
    "verified_ffi": 75
   },
   "scipy.optimize": {
-   "both": 59,
+   "both": 62,
    "excluded": 5,
-   "impl_ext": 59,
-   "impl_ffi": 59,
+   "impl_ext": 62,
+   "impl_ffi": 62,
    "in_scope": 66,
-   "m2_ext": 89.4,
-   "m2_ffi": 89.4,
+   "m2_ext": 93.9,
+   "m2_ffi": 93.9,
    "m3": 7.0,
-   "m4_ext": 89.4,
-   "m4_ffi": 89.4,
+   "m4_ext": 93.9,
+   "m4_ffi": 93.9,
    "m5": 100.0,
    "symbols": 71,
-   "verified_ext": 59,
-   "verified_ffi": 59
+   "verified_ext": 62,
+   "verified_ffi": 62
   },
   "scipy.signal": {
    "both": 144,
@@ -648,20 +648,20 @@
    "verified_ffi": 336
   },
   "scipy.stats": {
-   "both": 282,
+   "both": 287,
    "excluded": 6,
-   "impl_ext": 282,
-   "impl_ffi": 282,
+   "impl_ext": 287,
+   "impl_ffi": 287,
    "in_scope": 297,
-   "m2_ext": 94.9,
-   "m2_ffi": 94.9,
+   "m2_ext": 96.6,
+   "m2_ffi": 96.6,
    "m3": 2.0,
-   "m4_ext": 94.9,
-   "m4_ffi": 94.9,
+   "m4_ext": 96.6,
+   "m4_ffi": 96.6,
    "m5": 100.0,
    "symbols": 303,
-   "verified_ext": 282,
-   "verified_ffi": 282
+   "verified_ext": 287,
+   "verified_ffi": 287
   }
  },
  "numpy": "2.4.4",

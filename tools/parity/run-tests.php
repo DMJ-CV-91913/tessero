@@ -1403,6 +1403,18 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $r = \Tessero\Optimize\Root::rootScalar(static fn (float $x): float => $x * $x - 2.0, $c['ctor']['method'], array_map('floatval', $c['ctor']['bracket']), null);
                 $rr = new \Tessero\Optimize\RootResults((float) $r['root'], 0, 0, (bool) $r['converged'], (string) $r['flag'], $c['ctor']['method']);
                 $ok = abs($rr->root - (float) $c['root']) <= $rtol * (1 + abs((float) $c['root'])) && $rr->converged === (bool) $c['converged'];
+            } elseif ($fn === 'BFGS' || $fn === 'SR1') {
+                $h = $fn === 'BFGS' ? new \Tessero\Optimize\Bfgs() : new \Tessero\Optimize\Sr1();
+                $h->initialize((int) $c['n'], 'hess');
+                $ok = true;
+                foreach ($c['steps'] as $i => $pair) {
+                    $h->update($pair[0], $pair[1]);
+                    $M = $h->getMatrix();
+                    foreach ($c['seq'][$i] as $r => $row) {
+                        if (! vecClose($M[$r], $row, $rtol)) { $ok = false; break 2; }
+                    }
+                }
+                if ($ok) { $ok = vecClose($h->dot($c['p']), $c['dot'], $rtol); }
             }
         } catch (\Throwable $e) {
             $msg = $e->getMessage();
@@ -1906,6 +1918,309 @@ foreach ($files as $file) {
         }
         continue;
     }
+    if (isset($data['lsqbiv_cases'])) {                      // scipy.interpolate.LSQBivariateSpline (pure-PHP, fixed-knot tensor LS)
+        $local = [];
+        foreach ($data['lsqbiv_cases'] as $c) {
+            $key = 'interpolate.LSQBivariateSpline';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\LSQBivariateSpline(
+                    $c['x'], $c['y'], $c['z'], $c['tx'], $c['ty'], (int) $c['kx'], (int) $c['ky']);
+                $got = $sp($c['xq'], $c['yq']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-9);
+                if (! $ok) { $msg = 'values did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['zoomfft_cases'])) {                     // scipy.signal.ZoomFFT (pure-PHP Tessero\Signal\ZoomFft over landed zoom_fft)
+        foreach ($data['zoomfft_cases'] as $c) {
+            $key = 'signal.ZoomFFT';
+            $rtol = (float) ($c['rtol'] ?? 1e-12);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $zf = new \Tessero\Signal\ZoomFft((int) $c['n'], $c['fn'], $c['m'], $c['fs'], (bool) $c['endpoint']);
+                $ga = $zf->transform(array_map('floatval', $c['x']))->toArray();
+                $exp = $c['expect'];
+                $ok = count($ga) === count($exp);
+                foreach ($exp as $i => $e) {
+                    if (! $ok || abs($ga[$i][0] - $e[0]) > $rtol * (1 + abs($e[0]))
+                              || abs($ga[$i][1] - $e[1]) > $rtol * (1 + abs($e[1]))) { $ok = false; break; }
+                }
+                if (! $ok) { $msg = 'did not match scipy.signal.zoom_fft'; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['covariance_cases'])) {                  // scipy.stats.Covariance (pure-PHP Tessero\Stats\Covariance)
+        $cflat = static function ($a) {                       // flatten nested float/complex array to a flat float list
+            $f = []; array_walk_recursive($a, static function ($v) use (&$f) { $f[] = (float) $v; });
+            return $f;
+        };
+        foreach ($data['covariance_cases'] as $c) {
+            $key = 'stats.Covariance';
+            $rtol = (float) ($c['rtol'] ?? 1e-10);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $arg = $c['arg'];
+                $cov = match ($c['kind']) {
+                    'precision' => \Tessero\Stats\Covariance::fromPrecision($arg['P']),
+                    'cholesky'  => \Tessero\Stats\Covariance::fromCholesky($arg['L']),
+                    'diagonal'  => \Tessero\Stats\Covariance::fromDiagonal($arg['d']),
+                    'eigh'      => \Tessero\Stats\Covariance::fromEigendecomposition([$arg['w'], $arg['v']]),
+                    default     => throw new \RuntimeException("covariance kind {$c['kind']}"),
+                };
+                $pairs = [
+                    [$cov->whiten($c['x1']), $c['whiten1']],
+                    [$cov->whiten($c['xm']), $c['whitenm']],
+                    [$cov->colorize($c['x1']), $c['colorize1']],
+                    [$cov->colorize($c['xm']), $c['colorizem']],
+                    [[$cov->logPdet()], [$c['log_pdet']]],
+                    [$cov->covariance(), $c['cov']],
+                ];
+                $ok = true;
+                foreach ($pairs as $p) {
+                    $gf = $cflat($p[0]); $ef = $cflat($p[1]);
+                    if (count($gf) !== count($ef)) { $ok = false; break; }
+                    foreach ($ef as $i => $e) {
+                        if (abs($gf[$i] - $e) > $rtol * (1 + abs($e))) { $ok = false; break 2; }
+                    }
+                }
+                if ($ok && $cov->rank() !== $c['rank']) { $ok = false; $msg = 'rank mismatch'; }
+                if (! $ok && $msg === '') { $msg = "did not match scipy.stats.Covariance.{$c['kind']}"; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+    }
+    if (isset($data['censored_cases'])) {                    // scipy.stats.CensoredData (pure-PHP Tessero\Stats\CensoredData)
+        foreach ($data['censored_cases'] as $c) {
+            $key = 'stats.CensoredData';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $arg = $c['arg'];
+                $decIv = static function ($iv) {              // decode "inf"/"-inf" sentinels in interval rows
+                    if ($iv === null) { return null; }
+                    return array_map(static function ($row) {
+                        return array_map(static function ($v) {
+                            return $v === 'inf' ? INF : ($v === '-inf' ? -INF : (float) $v);
+                        }, $row);
+                    }, $iv);
+                };
+                $cd = match ($c['ctor']) {
+                    'ctor' => new \Tessero\Stats\CensoredData(
+                        $arg['uncensored'] ?? null, $arg['left'] ?? null, $arg['right'] ?? null,
+                        $decIv($arg['interval'] ?? null)),
+                    'right_censored'    => \Tessero\Stats\CensoredData::rightCensored($arg['x'], $arg['censored']),
+                    'left_censored'     => \Tessero\Stats\CensoredData::leftCensored($arg['x'], $arg['censored']),
+                    'interval_censored' => \Tessero\Stats\CensoredData::intervalCensored($arg['low'], $arg['high']),
+                    default             => throw new \RuntimeException("censored ctor {$c['ctor']}"),
+                };
+                $ok = $cd->uncensored() === array_map('floatval', $c['uncensored'])
+                    && $cd->left() === array_map('floatval', $c['left'])
+                    && $cd->right() === array_map('floatval', $c['right'])
+                    && $cd->interval() === array_map(static fn ($r) => array_map('floatval', $r), $c['interval'])
+                    && $cd->len() === $c['len']
+                    && $cd->numCensored() === $c['num_censored'];
+                if (! $ok) { $msg = "did not match scipy.stats.CensoredData ({$c['ctor']})"; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['class_cases'])) {                       // deterministic exception/config classes (construction + attributes)
+        $local = [];
+        foreach ($data['class_cases'] as $c) {
+            $key = "{$c['module']}.{$c['name']}";
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                if ($c['name'] === 'NoConvergence') {
+                    $thrown = false;
+                    try { throw new \Tessero\Optimize\NoConvergence((string) $c['ctor'][0]); }
+                    catch (\Exception $e) { $thrown = ($e->getMessage() === $c['message']); }
+                    $ok = $thrown && ($c['is_exception'] === true);
+                } elseif ($c['name'] === 'QhullError') {
+                    $q = new \Tessero\Spatial\QhullError((string) $c['ctor'][0]);
+                    $ok = ($q instanceof \RuntimeException) === ($c['is_runtime'] === true)
+                        && $q->getMessage() === $c['message'];
+                } elseif ($c['name'] === 'BootstrapMethod') {
+                    $o = new \Tessero\Stats\BootstrapMethod();
+                    $f = $c['fields'];
+                    $ok = $o->n_resamples === $f['n_resamples'] && $o->batch === $f['batch']
+                        && $o->rng === $f['rng'] && $o->method === $f['method'];
+                } elseif ($c['name'] === 'MonteCarloMethod') {
+                    $o = new \Tessero\Stats\MonteCarloMethod();
+                    $f = $c['fields'];
+                    $ok = $o->n_resamples === $f['n_resamples'] && $o->batch === $f['batch']
+                        && $o->rvs === $f['rvs'] && $o->rng === $f['rng'];
+                } elseif ($c['name'] === 'PermutationMethod') {
+                    $o = new \Tessero\Stats\PermutationMethod();
+                    $f = $c['fields'];
+                    $ok = $o->n_resamples === $f['n_resamples'] && $o->batch === $f['batch']
+                        && $o->rng === $f['rng'];
+                } else {
+                    throw new \RuntimeException("unknown class case {$c['name']}");
+                }
+                if (! $ok) { $msg = 'construction/attribute surface did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    // ===================================================================================
+    // scipy.signal LTI system classes + ShortTimeFFT  (pure-PHP, both backends)
+    //   lti/dlti factories, StateSpace/TransferFunction/ZerosPolesGain, ShortTimeFFT.
+    //   State-space is non-unique, so ss equality is tested via the impulse/step
+    //   responses (invariants) and the tf/zpk conversions, never raw A/B/C/D.
+    //   Poles/zeros are compared as sorted complex multisets.
+    // Insert EARLY in the foreach($files ...) loop (alongside the other *_cases arms).
+    // ===================================================================================
+    if (isset($data['lti_cases']) || isset($data['dlti_cases']) || isset($data['stft_cases'])) {
+        // sorted-complex-multiset comparison (poles/zeros order is implementation-defined)
+        $cmpSet = static function ($got, $exp, float $rtol, float $atol): bool {
+            $norm = static function ($arr): array {
+                $o = [];
+                foreach ((array) $arr as $v) {
+                    $o[] = is_array($v) ? [(float) $v[0], (float) ($v[1] ?? 0.0)] : [(float) $v, 0.0];
+                }
+                usort($o, static fn ($a, $b) => ($a[0] <=> $b[0]) ?: ($a[1] <=> $b[1]));
+                return $o;
+            };
+            $g = $norm($got); $e = $norm($exp);
+            if (count($g) !== count($e)) { return false; }
+            foreach ($e as $i => $ev) {
+                foreach ([0, 1] as $j) {
+                    if (abs($g[$i][$j] - $ev[$j]) > $atol + $rtol * abs($ev[$j])) { return false; }
+                }
+            }
+            return true;
+        };
+        // flat (real or [re,im]) element-wise comparison
+        $cmpFlat = static function ($got, $exp, float $rtol, float $atol): bool {
+            $flat = static function ($arr): array {
+                $o = [];
+                foreach ((array) $arr as $v) {
+                    if (is_array($v)) { $o[] = (float) $v[0]; $o[] = (float) ($v[1] ?? 0.0); }
+                    else { $o[] = (float) $v; }
+                }
+                return $o;
+            };
+            $g = $flat($got); $e = $flat($exp);
+            if (count($g) !== count($e)) { return false; }
+            foreach ($e as $i => $ev) {
+                if (abs($g[$i] - $ev) > $atol + $rtol * abs($ev)) { return false; }
+            }
+            return true;
+        };
+        $mark = static function (string $key, bool $ok, string $msg) use (&$results, $backend, &$failures) {
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        };
+
+        foreach (($data['lti_cases'] ?? []) as $c) {
+            $checked++;
+            $ok = true; $msg = '';
+            // the representation class exercised for this case gets credited too
+            $reprKey = ['tf' => 'signal.TransferFunction', 'zpk' => 'signal.ZerosPolesGain', 'ss' => 'signal.StateSpace'][$c['kind']];
+            try {
+                $s = \Tessero\Signal\Lti::create(...$c['args']);
+                $tf = $s->toTf();
+                $ok = $ok && $cmpFlat($tf->num, $c['tf_num'], 1e-7, 1e-9);
+                $ok = $ok && $cmpFlat($tf->den, $c['tf_den'], 1e-7, 1e-9);
+                $zpk = $s->toZpk();
+                $ok = $ok && $cmpSet($zpk->z, $c['zpk_z'], 1e-6, 1e-8);
+                $ok = $ok && $cmpSet($zpk->p, $c['zpk_p'], 1e-6, 1e-8);
+                $ok = $ok && abs($zpk->k - (float) $c['zpk_k']) <= 1e-9 + 1e-7 * abs((float) $c['zpk_k']);
+                $ok = $ok && $cmpSet($s->poles(), $c['poles'], 1e-6, 1e-8);
+                $ok = $ok && $cmpSet($s->zeros(), $c['zeros'], 1e-6, 1e-8);
+                $imp = $s->impulse($c['T']);
+                $ok = $ok && $cmpFlat($imp['yout'], $c['impulse'], 1e-6, 1e-8);
+                $stp = $s->step($c['T']);
+                $ok = $ok && $cmpFlat($stp['yout'], $c['step'], 1e-6, 1e-8);
+                $bd = $s->bode($c['w']);
+                $ok = $ok && $cmpFlat($bd['mag'], $c['mag'], 1e-6, 1e-8);
+                $ok = $ok && $cmpFlat($bd['phase'], $c['phase'], 1e-6, 1e-8);
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $ok = false; $msg = $e->getMessage();
+            }
+            $mark('signal.lti', $ok, $msg);
+            $mark($reprKey, $ok, $msg);
+        }
+
+        foreach (($data['dlti_cases'] ?? []) as $c) {
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $d = \Tessero\Signal\Dlti::create($c['args'], (float) $c['dt']);
+                $ok = $ok && $cmpSet($d->poles(), $c['poles'], 1e-6, 1e-8);
+                $ok = $ok && $cmpSet($d->zeros(), $c['zeros'], 1e-6, 1e-8);
+                $di = $d->dimpulse((int) $c['n']);
+                $ok = $ok && $cmpFlat($di['yout'], $c['dimpulse'], 1e-6, 1e-8);
+                $ds = $d->dstep((int) $c['n']);
+                $ok = $ok && $cmpFlat($ds['yout'], $c['dstep'], 1e-6, 1e-8);
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $ok = false; $msg = $e->getMessage();
+            }
+            $mark('signal.dlti', $ok, $msg);
+        }
+
+        foreach (($data['stft_cases'] ?? []) as $c) {
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $S = new \Tessero\Signal\ShortTimeFFT(
+                    $c['win'], (int) $c['hop'], (float) $c['fs'],
+                    $c['mfft'] !== null ? (int) $c['mfft'] : null, (string) $c['fft_mode']
+                );
+                $ok = $ok && ($S->fPts() === (int) $c['f_pts']);
+                $ok = $ok && ($S->pMin() === (int) $c['p_min']);
+                $ok = $ok && ($S->pMax(count($c['x'])) === (int) $c['p_max']);
+                $ok = $ok && abs($S->deltaT() - (float) $c['delta_t']) <= 1e-11 + 1e-9 * abs((float) $c['delta_t']);
+                $ok = $ok && abs($S->deltaF() - (float) $c['delta_f']) <= 1e-11 + 1e-9 * abs((float) $c['delta_f']);
+                $ok = $ok && $cmpFlat($S->dualWin(), $c['dual_win'], 1e-9, 1e-11);
+                $ok = $ok && $cmpFlat($S->f(), $c['f'], 1e-9, 1e-11);
+                $Sx = $S->stft($c['x']);
+                $gotSx = []; foreach ($Sx as $row) { foreach ($row as $v) { $gotSx[] = $v; } }
+                $expSx = []; foreach ($c['Sx'] as $row) { foreach ($row as $v) { $expSx[] = $v; } }
+                $ok = $ok && $cmpFlat($gotSx, $expSx, 1e-8, 1e-10);
+                $xr = $S->istft($Sx, 0, count($c['x']));
+                $ok = $ok && $cmpFlat($xr, $c['istft'], 1e-7, 1e-9);
+                $Px = $S->spectrogram($c['x']);
+                $gotPx = []; foreach ($Px as $row) { foreach ($row as $v) { $gotPx[] = $v; } }
+                $expPx = []; foreach ($c['spectrogram'] as $row) { foreach ($row as $v) { $expPx[] = $v; } }
+                $ok = $ok && $cmpFlat($gotPx, $expPx, 1e-8, 1e-10);
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $ok = false; $msg = $e->getMessage();
+            }
+            $mark('signal.ShortTimeFFT', $ok, $msg);
+        }
+        continue;
+    }
+
     if (isset($data['findpeakscwt_cases'])) {               // scipy.signal.find_peaks_cwt (pure-PHP Tessero\Signal\FindPeaksCwt)
         foreach ($data['findpeakscwt_cases'] as $c) {
             $key = 'signal.find_peaks_cwt';
