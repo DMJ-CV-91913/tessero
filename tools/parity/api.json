@@ -8672,7 +8672,12 @@
             "DOP_B",
             "DOP_E3",
             "DOP_E5",
-            "DOP_D"
+            "DOP_D",
+            "BDF_MAX_ORDER",
+            "BDF_NEWTON_MAXITER",
+            "RADAU_NEWTON_MAXITER",
+            "RADAU_MIN_FACTOR",
+            "RADAU_MAX_FACTOR"
         ]
     },
     {
