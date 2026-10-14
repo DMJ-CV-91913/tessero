@@ -91,8 +91,35 @@ add_zoom(16, [0.2, 0.6], m=32, fs=2, endpoint=True)          # endpoint inclusiv
 add_zoom(20, [0.05, 0.25], m=25, fs=4.0)                     # finer band
 
 
+
+# ---- splinefilter_cases: scipy.signal.spline_filter (pure-PHP Tessero\Signal\SplineFilter over the
+# landed symiirorder2 / cspline2d / sepfir2d kernel routines). Real float64 path only (scipy computes
+# float32/complex inputs in single precision; Tessero's kernel is float64). Image sizes are chosen so
+# scipy's per-axis symiirorder2 IC sum converges for the given lambda (lmbda=5.0 needs N>=40, etc.).
+from scipy.signal import spline_filter
+splinefilter_cases = []
+_rng_sf = np.random.default_rng(20241014)
+for (R, C, lmbda) in [(48, 48, 5.0), (48, 40, 10.0), (44, 44, 2.0), (40, 40, 1.0),
+                      (32, 28, 0.5), (24, 24, 0.1), (20, 20, 0.05), (40, 40, 0.0),
+                      (36, 44, 5.0), (40, 36, 3.0)]:
+    img = _rng_sf.standard_normal((R, C))
+    out = np.asarray(spline_filter(img.astype(np.float64), lmbda), np.float64)
+    splinefilter_cases.append({
+        'lmbda': float(lmbda), 'shape': [int(R), int(C)],
+        'input': img.astype(np.float64).tolist(), 'expect': out.tolist(),
+        'rtol': 1e-10, 'atol': 1e-12,
+    })
+_eye = np.eye(40); _eye[20, :] = 1.0
+for lmbda in [5.0, 1.0, 0.1]:
+    out = np.asarray(spline_filter(_eye.astype(np.float64), lmbda), np.float64)
+    splinefilter_cases.append({
+        'lmbda': float(lmbda), 'shape': [40, 40],
+        'input': _eye.astype(np.float64).tolist(), 'expect': out.tolist(),
+        'rtol': 1e-10, 'atol': 1e-12,
+    })
+
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 with open(OUT, 'w') as f:
-    json.dump({'czt_cases': czt_cases, 'zoomfft_cases': zoomfft_cases}, f,
+    json.dump({'czt_cases': czt_cases, 'zoomfft_cases': zoomfft_cases, 'splinefilter_cases': splinefilter_cases}, f,
               allow_nan=False, indent=1)
-print(f'wrote {len(czt_cases)} czt + {len(zoomfft_cases)} zoomfft cases to {OUT}')
+print(f'wrote {len(czt_cases)} czt + {len(zoomfft_cases)} zoomfft + {len(splinefilter_cases)} spline_filter cases to {OUT}')

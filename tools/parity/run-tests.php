@@ -741,6 +741,25 @@ function makeConProblem(string $prob): array
     };
 }
 
+function makeQmcIntegrand(string $kind): callable
+{
+    // integrand receives an n_points x d list of points, returns n_points scalars
+    switch ($kind) {
+        case 'sum':
+            return static fn (array $x) => array_map(static fn ($p) => array_sum($p), $x);
+        case 'gauss':
+            return static fn (array $x) => array_map(static fn ($p) => exp(-array_sum(array_map(static fn ($v) => $v * $v, $p))), $x);
+        case 'cosprod':
+            return static fn (array $x) => array_map(static fn ($p) => array_product(array_map('cos', $p)), $x);
+        case 'sumsq1':
+            return static fn (array $x) => array_map(static fn ($p) => array_sum(array_map(static fn ($v) => $v * $v, $p)) + 1.0, $x);
+        case 'invsum':
+            return static fn (array $x) => array_map(static fn ($p) => 1.0 / (1.0 + array_sum($p)), $x);
+        default:
+            throw new \RuntimeException("unknown qmc integrand kind {$kind}");
+    }
+}
+
 function makeObjective(array $spec): callable
 {
     return match ($spec['kind']) {
@@ -2135,6 +2154,40 @@ foreach ($files as $file) {
         // This branch MUST be placed immediately BEFORE the zoomfft_cases branch, which ends in continue.
     }
 
+    if (isset($data['splinefilter_cases'])) {               // scipy.signal.spline_filter (pure-PHP Tessero\Signal\SplineFilter over landed symiirorder2/cspline2d/sepfir2d)
+        $sfSignal = $backend === 'ext' ? 'Tessero\Ext\Signal' : \Tessero\Signal::class;
+        $sfNd = $arrayClass;
+        foreach ($data['splinefilter_cases'] as $c) {
+            $key = 'signal.spline_filter';
+            $rtol = (float) ($c['rtol'] ?? 1e-10);
+            $atol = (float) ($c['atol'] ?? 1e-12);
+            $checked++;
+            $ok = false; $msg = ''; $worstRel = 0.0;
+            try {
+                $in = $sfNd::array(array_map(static fn ($row) => array_map('floatval', $row), $c['input']), 'float64');
+                $got = \Tessero\Signal\SplineFilter::filter($in, (float) $c['lmbda'], $sfSignal, $sfNd);
+                $ga = $got->toList();
+                $exp = [];
+                foreach ($c['expect'] as $row) { foreach ($row as $v) { $exp[] = (float) $v; } }
+                $ok = count($ga) === count($exp);
+                if ($ok) {
+                    foreach ($exp as $i => $e) {
+                        $d = abs($ga[$i] - $e);
+                        if ($d > $atol + $rtol * abs($e)) { $ok = false; $msg = sprintf('idx %d got %.17g want %.17g', $i, $ga[$i], $e); break; }
+                        $rel = abs($e) > 0 ? $d / abs($e) : $d;
+                        if ($rel > $worstRel) { $worstRel = $rel; }
+                    }
+                } else {
+                    $msg = 'length ' . count($ga) . ' != ' . count($exp);
+                }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = max((float) ($results['max_rel'][$backend][$key] ?? 0.0), $worstRel);
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        // fall through: czt_cases/zoomfft_cases live in the same signal_classes.json file (zoomfft ends in continue)
+    }
+
     if (isset($data['zoomfft_cases'])) {                     // scipy.signal.ZoomFFT (pure-PHP Tessero\Signal\ZoomFft over landed zoom_fft)
         foreach ($data['zoomfft_cases'] as $c) {
             $key = 'signal.ZoomFFT';
@@ -3211,6 +3264,255 @@ foreach ($files as $file) {
             }
             $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
             $results['max_rel'][$backend][$key] = ($results['max_rel'][$backend][$key] ?? 0.0) > $w ? ($results['max_rel'][$backend][$key] ?? 0.0) : $w;
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['sparse_random_cases'])) {               // scipy.sparse.random_array / random / rand (pure-PHP Tessero\Sparse\SparseRandom)
+        $srRtol = (float) ($data['tol']['rtol'] ?? 1e-12);
+        $srAtol = (float) ($data['tol']['atol'] ?? 0.0);
+        foreach ($data['sparse_random_cases'] as $c) {
+            $fn  = $c['fn'];                                  // random_array | random | rand
+            $key = "sparse.{$fn}";
+            $checked++;
+            $w = 0.0;
+            $problem = null;
+            try {
+                $r = (int) $c['rows'];
+                $cc = (int) $c['cols'];
+                $d = (float) $c['density'];
+                $seed = (int) $c['seed'];
+                if ($fn === 'random_array') {
+                    $got = \Tessero\Sparse\SparseRandom::randomArray([$r, $cc], $d, $seed);
+                } elseif ($fn === 'random') {
+                    $got = \Tessero\Sparse\SparseRandom::random($r, $cc, $d, $seed);
+                } else {
+                    $got = \Tessero\Sparse\SparseRandom::rand($r, $cc, $d, $seed);
+                }
+                $gRow = $got['row']; $gCol = $got['col']; $gData = $got['data'];
+                if (count($gData) !== (int) $c['nnz']) {
+                    $problem = sprintf('%s %dx%d d=%g seed=%d: nnz %d != %d', $fn, $r, $cc, $d, $seed, count($gData), (int) $c['nnz']);
+                } else {
+                    for ($i = 0, $N = count($gData); $i < $N && $problem === null; $i++) {
+                        if ((int) $gRow[$i] !== (int) $c['row'][$i]) {
+                            $problem = sprintf('%s %dx%d seed=%d row[%d] got %d want %d', $fn, $r, $cc, $seed, $i, (int) $gRow[$i], (int) $c['row'][$i]);
+                            break;
+                        }
+                        if ((int) $gCol[$i] !== (int) $c['col'][$i]) {
+                            $problem = sprintf('%s %dx%d seed=%d col[%d] got %d want %d', $fn, $r, $cc, $seed, $i, (int) $gCol[$i], (int) $c['col'][$i]);
+                            break;
+                        }
+                        [$ok, $rel] = close((float) $gData[$i], (float) $c['data'][$i], $srRtol, $srAtol);
+                        if ($rel !== INF && $rel > $w) { $w = $rel; }
+                        if (! $ok) {
+                            $problem = sprintf('%s %dx%d seed=%d data[%d] got %.17g want %.17g', $fn, $r, $cc, $seed, $i, (float) $gData[$i], (float) $c['data'][$i]);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = ($results['max_rel'][$backend][$key] ?? 0.0) > $w ? ($results['max_rel'][$backend][$key] ?? 0.0) : $w;
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['gof_cases'])) {                         // scipy.stats.goodness_of_fit (pure-PHP Tessero\Stats\GoodnessOfFit)
+        foreach ($data['gof_cases'] as $c) {
+            $key = 'stats.goodness_of_fit';
+            $rtol = (float) ($c['rtol'] ?? 1e-11);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $kp = [];
+                foreach (($c['known_params'] ?? []) as $k => $v) { $kp[$k] = (float) $v; }
+                $got = \Tessero\Stats\GoodnessOfFit::goodnessOfFit(
+                    array_map('floatval', $c['data']),
+                    (string) $c['dist'],
+                    (string) $c['statistic'],
+                    $kp,
+                    (int) $c['n_mc_samples'],
+                    (int) $c['seed']
+                );
+                $es = (float) $c['expect']['statistic'];
+                $ep = (float) $c['expect']['pvalue'];
+                $oks = abs($got['statistic'] - $es) <= $rtol * (1 + abs($es));
+                $okp = abs($got['pvalue'] - $ep) <= 1e-12;
+                $ok = $oks && $okp;
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key} ({$c['name']}): {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['power_cases'])) {                       // scipy.stats.power (pure-PHP Tessero\Stats\Power)
+        foreach ($data['power_cases'] as $c) {
+            $key = 'stats.power';
+            $rtol = (float) ($c['rtol'] ?? 1e-12);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $rvs = [];
+                foreach ($c['rvs'] as $r) { $rvs[] = [(string) $r['kind'], (array) ($r['params'] ?? [])]; }
+                $got = \Tessero\Stats\Power::power(
+                    (string) $c['test'],
+                    $rvs,
+                    array_map('intval', $c['n_observations']),
+                    (float) $c['significance'],
+                    (int) $c['n_resamples'],
+                    (int) $c['seed'],
+                    (array) ($c['test_kwargs'] ?? [])
+                );
+                $ep = (float) $c['expect']['power'];
+                $ok = abs($got['power'] - $ep) <= $rtol * (1 + abs($ep));
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key} ({$c['name']}): {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['makedist_cases'])) {                   // scipy.stats.make_distribution (pure-PHP Tessero\Stats\MakeDistribution over Distribution)
+        $key = 'stats.make_distribution';
+        $local = 'pass';
+        foreach ($data['makedist_cases'] as $c) {
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $rv = \Tessero\Stats\MakeDistribution::of($c['name'])($c['shape']);
+                $arg = $c['arg'];
+                $got = match ($c['method']) {
+                    'pdf' => $rv->pdf($arg), 'logpdf' => $rv->logpdf($arg),
+                    'cdf' => $rv->cdf($arg), 'logcdf' => $rv->logcdf($arg),
+                    'ccdf' => $rv->ccdf($arg), 'logccdf' => $rv->logccdf($arg),
+                    'icdf' => $rv->icdf($arg), 'iccdf' => $rv->iccdf($arg),
+                    'mean' => $rv->mean(), 'median' => $rv->median(),
+                    'variance' => $rv->variance(), 'entropy' => $rv->entropy(),
+                    'moment' => $rv->moment((int) $arg), 'support' => $rv->support(),
+                    default => throw new \RuntimeException("unknown makedist method {$c['method']}"),
+                };
+                $wf = []; $we = [$c['expect']]; array_walk_recursive($we, static function ($x) use (&$wf) { $wf[] = dec($x); });
+                $g = $got;
+                if (is_array($g)) {
+                    $gf = []; foreach ($g as $e) { $gf[] = (is_object($e) && method_exists($e, 'item')) ? (float) $e->item() : (float) $e; }
+                } elseif (is_object($g) && method_exists($g, 'toArray')) {
+                    $gf = []; $ga = [$g->toArray()]; array_walk_recursive($ga, static function ($x) use (&$gf) { $gf[] = (float) $x; });
+                } else {
+                    $gf = [(float) $g];
+                }
+                $ok = count($gf) === count($wf);
+                foreach ($wf as $i => $want) {
+                    if (! $ok) { break; }
+                    $gi = $gf[$i] ?? NAN;
+                    if (is_nan($want)) { $ok = is_nan($gi); }
+                    elseif (is_infinite($want)) { $ok = $gi === $want; }
+                    else { $ok = abs($gi - $want) <= 1e-10 * (1 + abs($want)); }
+                }
+                if (! $ok) { $msg = "{$c['method']} did not match scipy.stats.make_distribution({$c['name']})"; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            if (! $ok) { $local = 'fail'; $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        $results[$backend][$key] = $local;
+        $results['max_rel'][$backend][$key] = null;
+        continue;
+    }
+    if (isset($data['randcorr_cases']) || isset($data['randtable_cases'])) {   // scipy.stats.random_correlation / random_table
+        $rcRtol = (float) ($data['tol']['rtol'] ?? 1e-9);
+        $rcAtol = (float) ($data['tol']['atol'] ?? 1e-11);
+        foreach (($data['randcorr_cases'] ?? []) as $c) {
+            $key = 'stats.random_correlation';
+            $checked++;
+            $w = 0.0; $problem = null;
+            try {
+                $m = \Tessero\Stats\RandomCorrelation::rvs($c['eigs'], (int) $c['seed']);
+                $dim = count($c['matrix']);
+                for ($i = 0; $i < $dim && $problem === null; $i++) {
+                    for ($j = 0; $j < $dim; $j++) {
+                        [$ok, $rel] = close((float) $m[$i][$j], (float) $c['matrix'][$i][$j], $rcRtol, $rcAtol);
+                        if ($rel !== INF && $rel > $w) { $w = $rel; }
+                        if (! $ok) { $problem = sprintf('seed=%d [%d][%d] got %.17g want %.17g',
+                            (int) $c['seed'], $i, $j, (float) $m[$i][$j], (float) $c['matrix'][$i][$j]); break; }
+                    }
+                }
+            } catch (\Throwable $e) { $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = ($results['max_rel'][$backend][$key] ?? 0.0) > $w ? ($results['max_rel'][$backend][$key] ?? 0.0) : $w;
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        foreach (($data['randtable_cases'] ?? []) as $c) {
+            $key = 'stats.random_table';
+            $checked++;
+            $problem = null;
+            try {
+                $method = ($c['method'] === 'auto') ? null : $c['method'];
+                $t = \Tessero\Stats\RandomTable::rvs($c['row'], $c['col'], $method, (int) $c['seed']);
+                $nr = count($c['table']); $nc = count($c['table'][0]);
+                for ($i = 0; $i < $nr && $problem === null; $i++) {
+                    for ($j = 0; $j < $nc; $j++) {
+                        if ((int) $t[$i][$j] !== (int) $c['table'][$i][$j]) {
+                            $problem = sprintf('seed=%d method=%s [%d][%d] got %d want %d',
+                                (int) $c['seed'], $c['method'], $i, $j, (int) $t[$i][$j], (int) $c['table'][$i][$j]);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) { $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['qmcquad_cases'])) {                     // scipy.integrate.qmc_quad (pure-PHP Tessero\Integrate\QmcQuad via SeedSequence+Halton)
+        $key = 'integrate.qmc_quad';
+        foreach ($data['qmcquad_cases'] as $c) {
+            $checked++;
+            $rtol = (float) ($c['rtol'] ?? 1e-10);
+            $ok = false; $msg = ''; $w = 0.0;
+            try {
+                $func = makeQmcIntegrand((string) $c['kind']);
+                $res = \Tessero\Integrate\QmcQuad::qmcQuad($func, array_map('floatval', $c['a']), array_map('floatval', $c['b']), (int) $c['seed'], (int) $c['n_estimates'], (int) $c['n_points']);
+                $got = (float) ($res['integral'] ?? 0.0);
+                $exp = (float) $c['expect'];
+                $d = abs($got - $exp); $w = abs($exp) > 0 ? $d / abs($exp) : $d;
+                $ok = $d <= $rtol * (1 + abs($exp));
+                if (! $ok) { $msg = sprintf('%s got %.17g want %.17g', $c['kind'], $got, $exp); }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = max((float) ($results['max_rel'][$backend][$key] ?? 0.0), $w);
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['clarkson_cases'])) {                    // scipy.linalg.clarkson_woodruff_transform (pure-PHP Tessero\Linalg\ClarksonWoodruff)
+        $key = 'linalg.clarkson_woodruff_transform';
+        $cwRtol = (float) ($data['tol']['rtol'] ?? 1e-9);
+        $cwAtol = (float) ($data['tol']['atol'] ?? 1e-11);
+        foreach ($data['clarkson_cases'] as $c) {
+            $checked++;
+            $crtol = (float) ($c['rtol'] ?? $cwRtol); $catol = (float) ($c['atol'] ?? $cwAtol);
+            $problem = null; $w = 0.0;
+            try {
+                $A = array_map(static fn ($row) => array_map('floatval', $row), $c['A']);
+                $got = \Tessero\Linalg\ClarksonWoodruff::transform($A, (int) $c['sketch_size'], (int) $c['seed']);
+                $ga = $got->toList();
+                $exp = [];
+                foreach ($c['expect'] as $row) { foreach ($row as $v) { $exp[] = (float) $v; } }
+                if (count($ga) !== count($exp)) { $problem = 'len ' . count($ga) . ' != ' . count($exp); }
+                else { foreach ($exp as $i => $e) {
+                    [$okc, $rel] = close((float) $ga[$i], $e, $crtol, $catol);
+                    if ($rel !== INF && $rel > $w) { $w = $rel; }
+                    if (! $okc) { $problem = sprintf('[%d] got %.17g want %.17g', $i, (float) $ga[$i], $e); break; }
+                } }
+            } catch (\Throwable $e) { $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = max((float) ($results['max_rel'][$backend][$key] ?? 0.0), $w);
             if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
         }
         continue;

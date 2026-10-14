@@ -102,20 +102,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1465,
+   "both": 1476,
    "excluded": 74,
-   "impl_ext": 1465,
-   "impl_ffi": 1465,
+   "impl_ext": 1476,
+   "impl_ffi": 1476,
    "in_scope": 1488,
-   "m2_ext": 98.5,
-   "m2_ffi": 98.5,
+   "m2_ext": 99.2,
+   "m2_ffi": 99.2,
    "m3": 4.7,
-   "m4_ext": 98.5,
-   "m4_ffi": 98.5,
+   "m4_ext": 99.2,
+   "m4_ffi": 99.2,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1465,
-   "verified_ffi": 1465
+   "verified_ext": 1476,
+   "verified_ffi": 1476
   }
  },
  "modules": {
@@ -408,20 +408,20 @@
    "verified_ffi": 35
   },
   "scipy.integrate": {
-   "both": 27,
+   "both": 28,
    "excluded": 5,
-   "impl_ext": 27,
-   "impl_ffi": 27,
+   "impl_ext": 28,
+   "impl_ffi": 28,
    "in_scope": 28,
-   "m2_ext": 96.4,
-   "m2_ffi": 96.4,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 15.2,
-   "m4_ext": 96.4,
-   "m4_ffi": 96.4,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 33,
-   "verified_ext": 27,
-   "verified_ffi": 27
+   "verified_ext": 28,
+   "verified_ffi": 28
   },
   "scipy.interpolate": {
    "both": 47,
@@ -456,20 +456,20 @@
    "verified_ffi": 4
   },
   "scipy.linalg": {
-   "both": 91,
+   "both": 92,
    "excluded": 5,
-   "impl_ext": 91,
-   "impl_ffi": 91,
+   "impl_ext": 92,
+   "impl_ffi": 92,
    "in_scope": 92,
-   "m2_ext": 98.9,
-   "m2_ffi": 98.9,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 5.2,
-   "m4_ext": 98.9,
-   "m4_ffi": 98.9,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 97,
-   "verified_ext": 91,
-   "verified_ffi": 91
+   "verified_ext": 92,
+   "verified_ffi": 92
   },
   "scipy.ndimage": {
    "both": 75,
@@ -504,20 +504,20 @@
    "verified_ffi": 65
   },
   "scipy.signal": {
-   "both": 154,
+   "both": 155,
    "excluded": 1,
-   "impl_ext": 154,
-   "impl_ffi": 154,
+   "impl_ext": 155,
+   "impl_ffi": 155,
    "in_scope": 156,
-   "m2_ext": 98.7,
-   "m2_ffi": 98.7,
+   "m2_ext": 99.4,
+   "m2_ffi": 99.4,
    "m3": 0.6,
-   "m4_ext": 98.7,
-   "m4_ffi": 98.7,
+   "m4_ext": 99.4,
+   "m4_ffi": 99.4,
    "m5": 100.0,
    "symbols": 157,
-   "verified_ext": 154,
-   "verified_ffi": 154
+   "verified_ext": 155,
+   "verified_ffi": 155
   },
   "scipy.signal.windows": {
    "both": 26,
@@ -536,20 +536,20 @@
    "verified_ffi": 26
   },
   "scipy.sparse": {
-   "both": 35,
+   "both": 38,
    "excluded": 15,
-   "impl_ext": 35,
-   "impl_ffi": 35,
+   "impl_ext": 38,
+   "impl_ffi": 38,
    "in_scope": 38,
-   "m2_ext": 92.1,
-   "m2_ffi": 92.1,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 28.3,
-   "m4_ext": 92.1,
-   "m4_ffi": 92.1,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 53,
-   "verified_ext": 35,
-   "verified_ffi": 35
+   "verified_ext": 38,
+   "verified_ffi": 38
   },
   "scipy.sparse.csgraph": {
    "both": 22,
@@ -648,20 +648,20 @@
    "verified_ffi": 336
   },
   "scipy.stats": {
-   "both": 289,
+   "both": 294,
    "excluded": 6,
-   "impl_ext": 289,
-   "impl_ffi": 289,
+   "impl_ext": 294,
+   "impl_ffi": 294,
    "in_scope": 297,
-   "m2_ext": 97.3,
-   "m2_ffi": 97.3,
+   "m2_ext": 99.0,
+   "m2_ffi": 99.0,
    "m3": 2.0,
-   "m4_ext": 97.3,
-   "m4_ffi": 97.3,
+   "m4_ext": 99.0,
+   "m4_ffi": 99.0,
    "m5": 100.0,
    "symbols": 303,
-   "verified_ext": 289,
-   "verified_ffi": 289
+   "verified_ext": 294,
+   "verified_ffi": 294
   }
  },
  "numpy": "2.4.4",
@@ -675,9 +675,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40155,
-   "covered_ext": 40155,
-   "covered_ffi": 40155,
+   "covered_both": 40157,
+   "covered_ext": 40157,
+   "covered_ffi": 40157,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -754,9 +754,9 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2357,
-    "covered_ext": 2357,
-    "covered_ffi": 2357,
+    "covered_both": 2359,
+    "covered_ext": 2359,
+    "covered_ffi": 2359,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,
@@ -786,9 +786,9 @@
       "n": 50
      }
     },
-    "u_both": 99.8,
-    "u_ext": 99.8,
-    "u_ffi": 99.8
+    "u_both": 99.9,
+    "u_ext": 99.9,
+    "u_ffi": 99.9
    }
   },
   "total_calls": 42551,
