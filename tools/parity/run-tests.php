@@ -760,6 +760,63 @@ function makeQmcIntegrand(string $kind): callable
     }
 }
 
+function makeLinOpMatrix(string $kind): array
+{
+    return match ($kind) {
+        'm33a' => [[1.0, 2.0, 0.0], [0.0, 3.0, 1.0], [4.0, 0.0, 2.0]],
+        'm33b' => [[2.0, 0.0, 1.0], [1.0, 1.0, 0.0], [0.0, 2.0, 3.0]],
+        'm23'  => [[1.0, -2.0, 3.0], [0.5, 4.0, -1.0]],
+        'm32'  => [[2.0, 1.0], [-1.0, 3.0], [0.0, 2.0]],
+        'm44'  => [[1.0, 0.0, -1.0, 2.0], [3.0, 2.0, 0.0, 1.0], [0.0, 1.0, 4.0, -2.0], [2.0, -1.0, 1.0, 3.0]],
+        's33'  => [[2.0, -1.0, 0.0], [-1.0, 2.0, -1.0], [0.0, -1.0, 2.0]],
+        default => throw new \RuntimeException("unknown linop kind '{$kind}'"),
+    };
+}
+
+function buildLinOp(string $kind, string $source): \Tessero\Sparse\Linalg\LinearOperator
+{
+    $A = makeLinOpMatrix($kind);
+    if ($source === 'matrix') { return \Tessero\Sparse\Linalg\LinearOperator::fromMatrix($A); }
+    if ($source === 'csr') {
+        $m = count($A); $n = count($A[0]); $data = []; $indices = []; $indptr = [0];
+        for ($i = 0; $i < $m; $i++) { for ($j = 0; $j < $n; $j++) { $v = (float) $A[$i][$j]; if ($v !== 0.0) { $data[] = $v; $indices[] = $j; } } $indptr[] = count($data); }
+        return \Tessero\Sparse\Linalg\Aslinearoperator::aslinearoperator(['data' => $data, 'indices' => $indices, 'indptr' => $indptr, 'shape' => [$m, $n]]);
+    }
+    $m = count($A); $n = count($A[0]);
+    $mv = static function (array $x) use ($A, $m, $n): array { $o = []; for ($i = 0; $i < $m; $i++) { $t = 0.0; for ($j = 0; $j < $n; $j++) { $t += $A[$i][$j] * $x[$j]; } $o[] = $t; } return $o; };
+    $rmv = static function (array $y) use ($A, $m, $n): array { $o = array_fill(0, $n, 0.0); for ($i = 0; $i < $m; $i++) { for ($j = 0; $j < $n; $j++) { $o[$j] += $A[$i][$j] * $y[$i]; } } return $o; };
+    return \Tessero\Sparse\Linalg\LinearOperator::fromCallbacks([$m, $n], $mv, $rmv);
+}
+
+function runLinopCase(array $c): array
+{
+    if ($c['op'] === 'linop') {
+        $op = buildLinOp($c['kind'], $c['source']);
+        $act = $c['act'];
+        if ($act === 'sum') { $op2 = buildLinOp($c['kind2'], 'matrix'); return $op->add($op2)->matvec($c['x']); }
+        if ($act === 'scale') { return $op->scale((float) $c['scalar'])->matvec($c['x']); }
+        if ($act === 'compose') { $op2 = buildLinOp($c['kind2'], 'matrix'); return $op->compose($op2)->matvec($c['x']); }
+        if ($act === 'scaledsum') { $op2 = buildLinOp($c['kind2'], 'matrix'); return $op->scale((float) $c['scalar'])->add($op2)->matvec($c['x']); }
+        if ($act === 'matvec') { return $op->matvec($c['x']); }
+        if ($act === 'dot') { return $op->dot($c['x']); }
+        if ($act === 'rmatvec') { return $op->rmatvec($c['x']); }
+        if ($act === 'H.matvec') { return $op->getH()->matvec($c['x']); }
+        if ($act === 'T.matvec') { return $op->getT()->matvec($c['x']); }
+        if ($act === 'matmat') { return $op->matmat($c['X']); }
+        throw new \RuntimeException("unknown act '{$act}'");
+    }
+    if ($c['op'] === 'laplacian') {
+        $lap = new \Tessero\Sparse\Linalg\LaplacianNd($c['grid'], $c['bc']);
+        $method = $c['method'];
+        if ($method === 'toarray') { return $lap->toarray(); }
+        if ($method === 'tosparse') { return $lap->tosparse(); }
+        if ($method === 'eigenvalues') { return isset($c['m']) ? $lap->eigenvalues((int) $c['m']) : $lap->eigenvalues(); }
+        if ($method === 'matvec') { return $lap->matvec($c['x']); }
+        throw new \RuntimeException("unknown method '{$method}'");
+    }
+    throw new \RuntimeException("unknown op '{$c['op']}'");
+}
+
 function makeObjective(array $spec): callable
 {
     return match ($spec['kind']) {
@@ -1969,6 +2026,25 @@ foreach ($files as $file) {
             } catch (\Throwable $e) { $msg = $e->getMessage(); }
             $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
             if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['splinalg_linop_cases'])) {              // scipy.sparse.linalg LinearOperator / aslinearoperator / LaplacianNd (pure-PHP Tessero\Sparse\Linalg)
+        $local = [];
+        foreach ($data['splinalg_linop_cases'] as $c) {
+            if ($c['op'] === 'laplacian') { $key = 'splinalg.LaplacianNd'; }
+            elseif (($c['source'] ?? '') === 'csr') { $key = 'splinalg.aslinearoperator'; }
+            elseif ($c['op'] === 'linop' && in_array(($c['act'] ?? ''), ['matvec', 'rmatvec'], true) && ($c['source'] ?? '') === 'matrix' && !isset($c['kind2']) && !isset($c['scalar'])) { $key = 'splinalg.aslinearoperator'; }
+            else { $key = 'splinalg.LinearOperator'; }
+            $checked++;
+            $p = null;
+            try {
+                $got = runLinopCase($c);
+                if (!vecClose(flattenNums($got), flattenNums($c['expect']), 1e-12)) { $p = 'mismatch'; }
+            } catch (\Throwable $e) { $p = 'threw ' . $e->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
         }
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;

@@ -52,7 +52,7 @@ exclude:
       isspmatrix_csr, isspmatrix_csc, isspmatrix_coo, isspmatrix_bsr, isspmatrix_dia, isspmatrix_lil, isspmatrix_dok,
       get_index_dtype, safely_cast_index_arrays]}
   - {category: E4, module: scipy.sparse.linalg, names: [ArpackError, ArpackNoConvergence, MatrixRankWarning, test, use_solver,
-      aslinearoperator, spilu, LinearOperator, LaplacianNd]}
+      spilu]}
   - {category: E2, module: scipy.sparse.csgraph, names: [csgraph_masked_from_dense, csgraph_from_masked, csgraph_to_masked]}
   - {category: E4, module: scipy.sparse.csgraph, names: [NegativeCycleError]}
   - {category: E4, module: scipy.integrate, names: [IntegrationWarning, ODEintWarning, OdeSolution, OdeSolver, DenseOutput]}
@@ -687,6 +687,9 @@ legacy:
     splu: {ffi: [SPLU::splu, SPLU::solve], ext: [SPLU::splu, SPLU::solve], fixtures: [splinalg.splu]}
     factorized: {ffi: [SPLU::factorized], ext: [SPLU::factorized], fixtures: [splinalg.factorized]}
     SuperLU: {ffi: [SPLU::splu, SPLU::solve], ext: [SPLU::splu, SPLU::solve], fixtures: [splinalg.SuperLU]}
+    LinearOperator:   {ffi: [LINOP::matvec], ext: [LINOP::matvec], fixtures: [splinalg.LinearOperator]}
+    aslinearoperator: {ffi: [ASLO::aslinearoperator], ext: [ASLO::aslinearoperator], fixtures: [splinalg.aslinearoperator]}
+    LaplacianNd:      {ffi: [LAPND::toarray], ext: [LAPND::toarray], fixtures: [splinalg.LaplacianNd]}
   scipy.fft:
     fft: {ffi: [F::fft], ext: [XF::fft], fixtures: [fft.fft]}
     ifft: {ffi: [F::ifft], ext: [XF::ifft], fixtures: [fft.ifft]}
