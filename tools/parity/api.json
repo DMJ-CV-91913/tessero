@@ -9039,6 +9039,64 @@
         ]
     },
     {
+        "class": "Tessero\\Stats\\MatrixT",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $mean, mixed $rowSpread, mixed $colSpread, float $df)",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): float",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): float",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\NormalInverseGamma",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(float $mu = 0.0, float $lmbda = 1.0, float $a = 1.0, float $b = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(float $x, float $s2): float",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(float $x, float $s2): float",
+                "doc": ""
+            },
+            {
+                "name": "mean",
+                "static": false,
+                "sig": "mean(): array",
+                "doc": ""
+            },
+            {
+                "name": "var",
+                "static": false,
+                "sig": "var(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Interpolate\\MakeSmoothingSpline",
         "methods": [
             {

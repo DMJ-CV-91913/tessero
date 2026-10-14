@@ -42,6 +42,8 @@ ALIAS = {
     "STF": "Tessero\\Signal\\TransferFunction",
     "ZPG": "Tessero\\Signal\\ZerosPolesGain",
     "STFT": "Tessero\\Signal\\ShortTimeFFT",
+    "MT": "Tessero\\Stats\\MatrixT",
+    "NIG": "Tessero\\Stats\\NormalInverseGamma",
 }
 BACKENDS = ('ffi', 'ext')
 
