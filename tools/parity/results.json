@@ -1676,6 +1676,7 @@
         "stats.mood": "pass",
         "stats.moyal": "pass",
         "stats.multinomial": "pass",
+        "stats.multiscale_graphcorr": "pass",
         "stats.multivariate_hypergeom": "pass",
         "stats.multivariate_normal": "pass",
         "stats.multivariate_t": "pass",
@@ -1715,6 +1716,7 @@
         "stats.ppcc_max": "pass",
         "stats.ppcc_plot": "pass",
         "stats.probplot": "pass",
+        "stats.qmc.Sobol": "pass",
         "stats.quantile": "pass",
         "stats.quantile_test": "pass",
         "stats.randint": "pass",
@@ -1741,6 +1743,7 @@
         "stats.skewcauchy": "pass",
         "stats.skewnorm": "pass",
         "stats.skewtest": "pass",
+        "stats.sobol_indices": "pass",
         "stats.somersd": "pass",
         "stats.spearmanr": "pass",
         "stats.spearmanrho": "pass",
@@ -3642,7 +3645,10 @@
             "splinalg.SuperLU": null,
             "splinalg.aslinearoperator": null,
             "splinalg.LinearOperator": null,
-            "splinalg.LaplacianNd": null
+            "splinalg.LaplacianNd": null,
+            "stats.multiscale_graphcorr": null,
+            "stats.qmc.Sobol": 0,
+            "stats.sobol_indices": 5.4071055215157714e-15
         },
         "ext": {
             "np.median": 0,
@@ -5463,7 +5469,10 @@
             "splinalg.SuperLU": null,
             "splinalg.aslinearoperator": null,
             "splinalg.LinearOperator": null,
-            "splinalg.LaplacianNd": null
+            "splinalg.LaplacianNd": null,
+            "stats.multiscale_graphcorr": null,
+            "stats.qmc.Sobol": 0,
+            "stats.sobol_indices": 5.4071055215157714e-15
         }
     },
     "ext": {
@@ -7143,6 +7152,7 @@
         "stats.mood": "pass",
         "stats.moyal": "pass",
         "stats.multinomial": "pass",
+        "stats.multiscale_graphcorr": "pass",
         "stats.multivariate_hypergeom": "pass",
         "stats.multivariate_normal": "pass",
         "stats.multivariate_t": "pass",
@@ -7182,6 +7192,7 @@
         "stats.ppcc_max": "pass",
         "stats.ppcc_plot": "pass",
         "stats.probplot": "pass",
+        "stats.qmc.Sobol": "pass",
         "stats.quantile": "pass",
         "stats.quantile_test": "pass",
         "stats.randint": "pass",
@@ -7208,6 +7219,7 @@
         "stats.skewcauchy": "pass",
         "stats.skewnorm": "pass",
         "stats.skewtest": "pass",
+        "stats.sobol_indices": "pass",
         "stats.somersd": "pass",
         "stats.spearmanr": "pass",
         "stats.spearmanrho": "pass",

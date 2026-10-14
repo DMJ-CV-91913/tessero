@@ -656,6 +656,8 @@ legacy:
     uniform_direction: {ffi: [UD::rvs], ext: [UD::rvs], fixtures: [stats.uniform_direction]}
     bootstrap: {ffi: [BOOT::bootstrap], ext: [BOOT::bootstrap], fixtures: [stats.bootstrap]}
     monte_carlo_test: {ffi: [MCT::monteCarloTest], ext: [MCT::monteCarloTest], fixtures: [stats.monte_carlo_test]}
+    multiscale_graphcorr: {ffi: [MGC::multiscaleGraphcorr], ext: [MGC::multiscaleGraphcorr], fixtures: [stats.multiscale_graphcorr]}
+    sobol_indices: {ffi: [SOBI::sobolIndices], ext: [SOBI::sobolIndices], fixtures: [stats.sobol_indices]}
     yeojohnson_normmax: {ffi: [SF::yeojohnsonNormmax], ext: [SF::yeojohnsonNormmax], fixtures: [stats.yeojohnson_normmax]}
     ppcc_max: {ffi: [SF::ppccMax], ext: [SF::ppccMax], fixtures: [stats.ppcc_max]}
     ppcc_plot: {ffi: [SF::ppccPlot], ext: [SF::ppccPlot], fixtures: [stats.ppcc_plot]}
