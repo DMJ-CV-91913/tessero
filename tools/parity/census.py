@@ -20,7 +20,7 @@ MODULES = [
     'scipy.special', 'scipy.stats', 'scipy.linalg', 'scipy.optimize', 'scipy.sparse', 'scipy.sparse.linalg',
     'scipy.sparse.csgraph', 'scipy.interpolate', 'scipy.signal', 'scipy.signal.windows', 'scipy.integrate',
     'scipy.spatial', 'scipy.spatial.distance', 'scipy.spatial.transform', 'scipy.cluster.vq', 'scipy.cluster.hierarchy', 'scipy.ndimage',
-    'scipy.fft', 'scipy.constants',
+    'scipy.fft', 'scipy.constants', 'scipy.differentiate',
 ]
 
 

@@ -8602,6 +8602,29 @@
         ]
     },
     {
+        "class": "Tessero\\Differentiate\\Derivative",
+        "methods": [
+            {
+                "name": "derivative",
+                "static": true,
+                "sig": "derivative(callable $f, float $x, ?float $atol = null, ?float $rtol = null, int $maxiter = 10, int $order = 8, float $initialStep = 0.5, float $stepFactor = 2.0): array",
+                "doc": "d/dx f(x) by adaptive central finite differences."
+            },
+            {
+                "name": "jacobian",
+                "static": true,
+                "sig": "jacobian(callable $f, array $x, ?float $atol = null, ?float $rtol = null, int $maxiter = 10, int $order = 8, float $initialStep = 0.5, float $stepFactor = 2.0): array",
+                "doc": "Jacobian of f: R^m -> R^k, evaluated at the point $x (length m). Returns a k-by-m array."
+            },
+            {
+                "name": "hessian",
+                "static": true,
+                "sig": "hessian(callable $f, array $x, ?float $atol = null, ?float $rtol = null, int $maxiter = 10, int $order = 8, float $initialStep = 0.5, float $stepFactor = 2.0): array",
+                "doc": "Hessian of a scalar function f: R^m -> R at the point $x. Returns an m-by-m array of second partials, computed as the Jacobian of the numerical gradient."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Integrate\\SolveIvp",
         "methods": [
             {

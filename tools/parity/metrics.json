@@ -371,6 +371,22 @@
    "verified_ext": 163,
    "verified_ffi": 163
   },
+  "scipy.differentiate": {
+   "both": 3,
+   "excluded": 0,
+   "impl_ext": 3,
+   "impl_ffi": 3,
+   "in_scope": 3,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
+   "m3": 0.0,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
+   "m5": 100.0,
+   "symbols": 3,
+   "verified_ext": 3,
+   "verified_ffi": 3
+  },
   "scipy.fft": {
    "both": 35,
    "excluded": 6,
