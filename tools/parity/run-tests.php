@@ -1971,6 +1971,53 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+
+    // ===== CORRECTED czt_cases branch (scipy.signal.CZT) =====
+    // Place EARLY in the per-fixture loop (alongside zoomfft_cases / findpeakscwt_cases),
+    // before the generic numeric comparison.
+    //
+    // ROOT-CAUSE FIX: Tessero\Signal\Czt is a thin pure-PHP wrapper that forwards to the FFI
+    // facade Tessero\Signal::czt (it hardcodes `use Tessero\Signal`). Feeding it a per-backend
+    // $arrayClass NDArray breaks on ext: the FFI czt routine rejects a Tessero\Ext\NDArray with
+    // "Arrays hold numbers or booleans, got Tessero\Ext\NDArray". Mirror the sibling wrapper
+    // classes (ZoomFFT, FindPeaksCwt, PlacePoles) which always feed the FFI facade regardless of
+    // the backend under test: build the complex inputs with the FFI \Tessero\NDArray, NOT $arrayClass.
+    // (czt genuinely needs complex NDArray inputs for x/w/a, so a plain PHP array cannot be used.)
+    if (isset($data['czt_cases'])) {                         // scipy.signal.CZT (pure-PHP Tessero\Signal\Czt over landed czt)
+        $nd = \Tessero\NDArray::class;                        // FFI NDArray: the Czt wrapper always forwards to the FFI facade
+        foreach ($data['czt_cases'] as $c) {
+            $key = 'signal.CZT';
+            $rtol = (float) ($c['rtol'] ?? 1e-12);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $cx = static function ($pair) use ($nd) {       // complex scalar from [re,im] (1-elem array), or null
+                    if ($pair === null) { return null; }
+                    return $nd::complex($nd::array([(float) $pair[0]], 'float64'),
+                                        $nd::array([(float) $pair[1]], 'float64'));
+                };
+                $re = []; $im = [];
+                foreach ($c['x'] as $p) { $re[] = (float) $p[0]; $im[] = (float) $p[1]; }
+                $x = $nd::complex($nd::array($re, 'float64'), $nd::array($im, 'float64'));
+                $czt = new \Tessero\Signal\Czt((int) $c['n'], $c['m'], $cx($c['w']), $cx($c['a']));
+                $got = $czt($x);
+                $ga = $got->toArray();
+                $exp = $c['expect'];
+                $ok = count($ga) === count($exp);
+                foreach ($exp as $i => $e) {
+                    if (! $ok || abs($ga[$i][0] - $e[0]) > $rtol * (1 + abs($e[0]))
+                              || abs($ga[$i][1] - $e[1]) > $rtol * (1 + abs($e[1]))) { $ok = false; break; }
+                }
+                if (! $ok) { $msg = 'did not match scipy.signal.czt'; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        // NO continue: fall through so the zoomfft_cases branch (same signal_classes.json file) also runs.
+        // This branch MUST be placed immediately BEFORE the zoomfft_cases branch, which ends in continue.
+    }
+
     if (isset($data['zoomfft_cases'])) {                     // scipy.signal.ZoomFFT (pure-PHP Tessero\Signal\ZoomFft over landed zoom_fft)
         foreach ($data['zoomfft_cases'] as $c) {
             $key = 'signal.ZoomFFT';
