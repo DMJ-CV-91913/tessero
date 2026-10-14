@@ -22,11 +22,15 @@ final class SparseLinalg
     'bicgstab' => 'bicgstab',
     'cg' => 'cg',
     'cgs' => 'cgs',
+    'eigs' => 'eigs',
+    'eigsh' => 'eigsh',
     'expm' => 'expm',
     'expm_multiply' => 'expmMultiply',
+    'funm_multiply_krylov' => 'funmMultiplyKrylov',
     'gmres' => 'gmres',
     'inv' => 'inv',
     'is_sptriangular' => 'isSptriangular',
+    'lobpcg' => 'lobpcg',
     'lsmr' => 'lsmr',
     'lsqr' => 'lsqr',
     'matrix_power' => 'matrixPower',
@@ -37,6 +41,7 @@ final class SparseLinalg
     'spbandwidth' => 'spbandwidth',
     'spsolve' => 'spsolve',
     'spsolve_triangular' => 'spsolveTriangular',
+    'svds' => 'svds',
     'tfqmr' => 'tfqmr',
     ];
 
@@ -97,6 +102,26 @@ final class SparseLinalg
     }
 
     /**
+     * k eigenvalues of a general matrix as (real, |imag|) pairs, values only (scipy.sparse.linalg.eigs); vectors / imag sign are out of scope.
+     *
+     * scipy.splinalg.eigs
+     */
+    public static function eigs(mixed $A, mixed $k = 6, mixed $which = 'LM|LR|SR|LI', mixed $sigma = null, mixed $v0 = null, mixed $ncv = null, mixed $maxiter = null, mixed $tol = 0.0, mixed $returnEigenvectors = true): mixed
+    {
+        return Registry::routine('splinalg.eigs', [$A, $k, $which, $sigma, $v0, $ncv, $maxiter, $tol, $returnEigenvectors]);
+    }
+
+    /**
+     * k eigenvalues of a symmetric matrix, ascending, values only (scipy.sparse.linalg.eigsh); vectors are out of scope.
+     *
+     * scipy.splinalg.eigsh
+     */
+    public static function eigsh(mixed $A, mixed $k = 6, mixed $which = 'LM|SM|LA|SA|BE', mixed $sigma = null, mixed $v0 = null, mixed $ncv = null, mixed $maxiter = null, mixed $tol = 0.0, mixed $returnEigenvectors = true): mixed
+    {
+        return Registry::routine('splinalg.eigsh', [$A, $k, $which, $sigma, $v0, $ncv, $maxiter, $tol, $returnEigenvectors]);
+    }
+
+    /**
      * Matrix exponential of a sparse matrix (scipy.sparse.linalg.expm).
      *
      * scipy.splinalg.expm
@@ -114,6 +139,16 @@ final class SparseLinalg
     public static function expmMultiply(mixed $A, mixed $B, mixed $start = null, mixed $stop = null, mixed $num = null, mixed $endpoint = null): mixed
     {
         return Registry::routine('splinalg.expm_multiply', [$A, $B, $start, $stop, $num, $endpoint]);
+    }
+
+    /**
+     * Krylov (Arnoldi) approximation of f(A) @ b; f is a matrix-function name one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.sparse.linalg.funm_multiply_krylov).
+     *
+     * scipy.splinalg.funm_multiply_krylov
+     */
+    public static function funmMultiplyKrylov(mixed $f, mixed $A, mixed $b): mixed
+    {
+        return Registry::routine('splinalg.funm_multiply_krylov', [$f, $A, $b]);
     }
 
     /**
@@ -146,6 +181,16 @@ final class SparseLinalg
     public static function isSptriangular(mixed $A): mixed
     {
         return Registry::routine('splinalg.is_sptriangular', [$A]);
+    }
+
+    /**
+     * LOBPCG eigenvalues (ascending) of the k smallest/largest eigenpairs of a symmetric matrix; eigenvectors are non-unique so only the eigenvalues are returned (scipy.sparse.linalg.lobpcg).
+     *
+     * scipy.splinalg.lobpcg
+     */
+    public static function lobpcg(mixed $A, mixed $X, mixed $B = null, mixed $M = null, mixed $Y = null, mixed $tol = null, mixed $maxiter = null, mixed $largest = true): mixed
+    {
+        return Registry::routine('splinalg.lobpcg', [$A, $X, $B, $M, $Y, $tol, $maxiter, $largest]);
     }
 
     /**
@@ -248,6 +293,16 @@ final class SparseLinalg
     public static function spsolveTriangular(mixed $A, mixed $b, mixed $lower = true, mixed $overwriteA = false, mixed $overwriteB = false, mixed $unitDiagonal = false): mixed
     {
         return Registry::routine('splinalg.spsolve_triangular', [$A, $b, $lower, $overwriteA, $overwriteB, $unitDiagonal]);
+    }
+
+    /**
+     * Top-k singular values, ascending, values only (scipy.sparse.linalg.svds); which=LM only, vectors out of scope.
+     *
+     * scipy.splinalg.svds
+     */
+    public static function svds(mixed $A, mixed $k = 6, mixed $which = 'LM', mixed $v0 = null, mixed $maxiter = null, mixed $returnSingularVectors = true, mixed $tol = 0.0): mixed
+    {
+        return Registry::routine('splinalg.svds', [$A, $k, $which, $v0, $maxiter, $returnSingularVectors, $tol]);
     }
 
     /**
