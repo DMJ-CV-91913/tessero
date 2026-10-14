@@ -952,6 +952,32 @@ function makeOdeSystem(string $kind, array $p): callable
             $mu = (float) $p['mu'];
             return [$y[1], $mu * (1.0 - $y[0] * $y[0]) * $y[1] - $y[0]];
         },
+        'robertson' => static function (float $t, array $y): array {
+            return [
+                -0.04 * $y[0] + 1e4 * $y[1] * $y[2],
+                0.04 * $y[0] - 1e4 * $y[1] * $y[2] - 3e7 * $y[1] * $y[1],
+                3e7 * $y[1] * $y[1],
+            ];
+        },
+        'linear3x3' => static function (float $t, array $y) use ($p): array {
+            $M = $p['M'];
+            return [
+                $M[0][0] * $y[0] + $M[0][1] * $y[1] + $M[0][2] * $y[2],
+                $M[1][0] * $y[0] + $M[1][1] * $y[1] + $M[1][2] * $y[2],
+                $M[2][0] * $y[0] + $M[2][1] * $y[1] + $M[2][2] * $y[2],
+            ];
+        },
+        'stiff_linear' => static function (float $t, array $y): array {
+            return [-1000.0 * $y[0] + $y[1], -$y[1]];
+        },
+        'stiff_linear3' => static function (float $t, array $y): array {
+            $A = [[-21.0, 19.0, -20.0], [19.0, -21.0, 20.0], [40.0, -40.0, -40.0]];
+            return [
+                $A[0][0] * $y[0] + $A[0][1] * $y[1] + $A[0][2] * $y[2],
+                $A[1][0] * $y[0] + $A[1][1] * $y[1] + $A[1][2] * $y[2],
+                $A[2][0] * $y[0] + $A[2][1] * $y[1] + $A[2][2] * $y[2],
+            ];
+        },
         default => throw new \RuntimeException("solve_ivp: unknown ODE system: " . $kind),
     };
 }
