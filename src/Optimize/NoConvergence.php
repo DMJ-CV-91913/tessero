@@ -4,24 +4,18 @@ declare(strict_types=1);
 
 namespace Tessero\Optimize;
 
-use Tessero\Exceptions\ConvergenceError;
-
 /**
- * scipy.optimize.NoConvergence: raised when a nonlinear quasi-Newton solver
- * (broyden1/broyden2/anderson/diagbroyden) fails to converge within maxiter.
- *
- * Extends ConvergenceError so existing convergence-aware catch sites still match.
- * The best iterate reached is carried on ->x (scipy stores it as the exception arg).
+ * scipy.optimize.NoConvergence: raised by the nonlinear (Broyden / Anderson /
+ * quasi-Newton) solvers in scipy.optimize._nonlin when the iteration fails to
+ * meet the tolerance within the allotted steps. scipy derives it directly from
+ * the built-in Exception; this mirrors that so `catch (\Exception)` behaves the
+ * same and the attribute surface (message / previous) matches.
  */
-final class NoConvergence extends ConvergenceError
+class NoConvergence extends \Exception
 {
-    /** @var list<float> best iterate reached before giving up */
-    public array $x;
-
-    /** @param list<float> $x */
-    public function __construct(array $x, string $message = 'A solution was not found.')
+    /** Mirror scipy's Exception-derived signature (message, code, previous). */
+    public function __construct(string $message = '', int $code = 0, ?\Throwable $previous = null)
     {
-        $this->x = $x;
-        parent::__construct($message);
+        parent::__construct($message, $code, $previous);
     }
 }

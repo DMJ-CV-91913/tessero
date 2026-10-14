@@ -9623,6 +9623,635 @@
         ]
     },
     {
+        "class": "Tessero\\Interpolate\\LSQBivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, array $z, array $tx, array $ty, int $kx = 3, int $ky = 3)",
+                "doc": ""
+            },
+            {
+                "name": "ev",
+                "static": false,
+                "sig": "ev(array $xq, array $yq): array",
+                "doc": "Alias of __invoke, for callers that prefer an explicit method."
+            },
+            {
+                "name": "getCoeffs",
+                "static": false,
+                "sig": "getCoeffs(): array",
+                "doc": ""
+            },
+            {
+                "name": "getKnots",
+                "static": false,
+                "sig": "getKnots(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\Czt",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $n, mixed $m = null, mixed $w = null, mixed $a = 1)",
+                "doc": "points around the entire unit circle."
+            },
+            {
+                "name": "transform",
+                "static": false,
+                "sig": "transform(mixed $x): mixed",
+                "doc": "Apply the chirp z-transform to $x (equivalent to scipy.signal.czt(x, m, w, a))."
+            },
+            {
+                "name": "points",
+                "static": false,
+                "sig": "points(): mixed",
+                "doc": "Points in the complex plane at which the chirp z-transform is sampled (scipy.signal.CZT.points), i.e. czt_points(m, w, a)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\ZoomFft",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $n, mixed $fn, mixed $m = null, mixed $fs = 2, bool $endpoint = false)",
+                "doc": "for which the range [0, fn] is assumed."
+            },
+            {
+                "name": "transform",
+                "static": false,
+                "sig": "transform(mixed $x): mixed",
+                "doc": "Apply the zoom FFT to $x (equivalent to scipy.signal.zoom_fft(x, fn, m, fs, endpoint))."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Covariance",
+        "methods": [
+            {
+                "name": "fromPrecision",
+                "static": true,
+                "sig": "fromPrecision(mixed $precision, mixed $covariance = null): self",
+                "doc": "Representation of a covariance from its precision matrix (inverse covariance)."
+            },
+            {
+                "name": "fromCholesky",
+                "static": true,
+                "sig": "fromCholesky(mixed $cholesky): self",
+                "doc": "Representation of a covariance provided via the lower Cholesky factor L (L L\u1d40 = A)."
+            },
+            {
+                "name": "fromDiagonal",
+                "static": true,
+                "sig": "fromDiagonal(mixed $diagonal): self",
+                "doc": "Representation of a covariance via its diagonal elements (diagonal covariance matrix). Supports singular matrices: non-positive entries are treated as zeros in whitening and ignored in the log pseudo-determinant."
+            },
+            {
+                "name": "fromEigendecomposition",
+                "static": true,
+                "sig": "fromEigendecomposition(array $eigendecomposition): self",
+                "doc": "Representation of a covariance via its eigendecomposition [$eigenvalues, $eigenvectors], as returned by eigh: V W V\u1d40 = A. Supports singular matrices (non-positive eigenvalues ignored / treated as zero), matching scipy."
+            },
+            {
+                "name": "covariance",
+                "static": false,
+                "sig": "covariance(): array",
+                "doc": "Explicit covariance matrix A as a nested PHP array. @return array<int,array<int,float>>"
+            },
+            {
+                "name": "logPdet",
+                "static": false,
+                "sig": "logPdet(): float",
+                "doc": "Log of the pseudo-determinant of the covariance matrix."
+            },
+            {
+                "name": "rank",
+                "static": false,
+                "sig": "rank(): int",
+                "doc": "Rank of the covariance matrix."
+            },
+            {
+                "name": "shape",
+                "static": false,
+                "sig": "shape(): array",
+                "doc": "Shape [n, n] of the covariance array. @return array{0:int,1:int}"
+            },
+            {
+                "name": "whiten",
+                "static": false,
+                "sig": "whiten(mixed $x): array",
+                "doc": "Whitening transform. $x is a 1-D vector or 2-D array of row points (last axis = space dim). Returns the same shape."
+            },
+            {
+                "name": "colorize",
+                "static": false,
+                "sig": "colorize(mixed $x): array",
+                "doc": "Colorizing transform (inverse of whiten). Same shape conventions as whiten()."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\CensoredData",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $uncensored = null, mixed $left = null, mixed $right = null, mixed $interval = null)",
+                "doc": ""
+            },
+            {
+                "name": "rightCensored",
+                "static": true,
+                "sig": "rightCensored(mixed $x, mixed $censored): self",
+                "doc": "Create a CensoredData instance of right-censored data from measurements and a boolean mask."
+            },
+            {
+                "name": "leftCensored",
+                "static": true,
+                "sig": "leftCensored(mixed $x, mixed $censored): self",
+                "doc": "Create a CensoredData instance of left-censored data from measurements and a boolean mask."
+            },
+            {
+                "name": "intervalCensored",
+                "static": true,
+                "sig": "intervalCensored(mixed $low, mixed $high): self",
+                "doc": "Create a CensoredData instance of interval-censored data from low/high bound arrays."
+            },
+            {
+                "name": "uncensored",
+                "static": false,
+                "sig": "uncensored(): array",
+                "doc": "Uncensored observations. @return array<int,float>"
+            },
+            {
+                "name": "left",
+                "static": false,
+                "sig": "left(): array",
+                "doc": "Left-censored observations. @return array<int,float>"
+            },
+            {
+                "name": "right",
+                "static": false,
+                "sig": "right(): array",
+                "doc": "Right-censored observations. @return array<int,float>"
+            },
+            {
+                "name": "interval",
+                "static": false,
+                "sig": "interval(): array",
+                "doc": "Interval-censored observations (finite, non-degenerate rows only). @return array<int,array{0:float,1:float}>"
+            },
+            {
+                "name": "len",
+                "static": false,
+                "sig": "len(): int",
+                "doc": "Total number of values (censored and not censored)."
+            },
+            {
+                "name": "numCensored",
+                "static": false,
+                "sig": "numCensored(): int",
+                "doc": "Number of censored values."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\NoConvergence",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(string $message = '', int $code = 0, ?Throwable $previous = null)",
+                "doc": "Mirror scipy's Exception-derived signature (message, code, previous)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\HessianUpdateStrategy",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(string|float $initScale = 'auto')",
+                "doc": ""
+            },
+            {
+                "name": "initialize",
+                "static": false,
+                "sig": "initialize(int $n, string $approxType = 'hess'): void",
+                "doc": "Allocate the n x n identity for the Hessian ('hess') or inverse Hessian ('inv_hess')."
+            },
+            {
+                "name": "update",
+                "static": false,
+                "sig": "update(array $dx, array $dg): void",
+                "doc": "Update the internal matrix from a step dx = x2 - x1 and gradient change dg."
+            },
+            {
+                "name": "dot",
+                "static": false,
+                "sig": "dot(array $p): array",
+                "doc": "Product of the internal matrix with p (the `@`-operator in scipy)."
+            },
+            {
+                "name": "getMatrix",
+                "static": false,
+                "sig": "getMatrix(): array",
+                "doc": "The current dense n x n matrix (symmetric)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\Bfgs",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(string $exceptionStrategy = 'skip_update', ?float $minCurvature = null, string|float $initScale = 'auto')",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\Sr1",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(float $minDenominator = 1.0E-8, string|float $initScale = 'auto')",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Spatial\\QhullError",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(string $message = '', int $code = 0, ?Throwable $previous = null)",
+                "doc": "Mirror scipy's RuntimeError-derived signature (message, code, previous)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\BootstrapMethod",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $n_resamples = 9999, ?int $batch = null, mixed $rng = null, string $method = 'BCa')",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\MonteCarloMethod",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $n_resamples = 9999, ?int $batch = null, mixed $rvs = null, mixed $rng = null)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\PermutationMethod",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $n_resamples = 9999, ?int $batch = null, mixed $rng = null)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\Lti",
+        "methods": [
+            {
+                "name": "create",
+                "static": true,
+                "sig": "create(mixed ...$system): Tessero\\Signal\\Lti",
+                "doc": "Factory: construct the appropriate representation from a variable argument list."
+            },
+            {
+                "name": "poles",
+                "static": false,
+                "sig": "poles(): array",
+                "doc": "Poles of the system (roots of the denominator / eigenvalues of A), as [re, im] pairs."
+            },
+            {
+                "name": "zeros",
+                "static": false,
+                "sig": "zeros(): array",
+                "doc": "Zeros of the system, as [re, im] pairs."
+            },
+            {
+                "name": "toTf",
+                "static": false,
+                "sig": "toTf(): Tessero\\Signal\\TransferFunction",
+                "doc": "Convert to TransferFunction representation."
+            },
+            {
+                "name": "toZpk",
+                "static": false,
+                "sig": "toZpk(): Tessero\\Signal\\ZerosPolesGain",
+                "doc": "Convert to ZerosPolesGain representation."
+            },
+            {
+                "name": "toSs",
+                "static": false,
+                "sig": "toSs(): Tessero\\Signal\\StateSpace",
+                "doc": "Convert to StateSpace representation."
+            },
+            {
+                "name": "impulse",
+                "static": false,
+                "sig": "impulse(mixed $T): array",
+                "doc": "Continuous-time impulse response (scipy LTI.impulse)."
+            },
+            {
+                "name": "step",
+                "static": false,
+                "sig": "step(mixed $T): array",
+                "doc": "Continuous-time step response (scipy LTI.step)."
+            },
+            {
+                "name": "bode",
+                "static": false,
+                "sig": "bode(mixed $w): array",
+                "doc": "Bode magnitude (dB) and phase (deg) (scipy LTI.bode)."
+            },
+            {
+                "name": "freqresp",
+                "static": false,
+                "sig": "freqresp(mixed $w): array",
+                "doc": "Complex frequency response H(jw) (scipy LTI.freqresp), returned as [re, im] pairs."
+            },
+            {
+                "name": "dimpulse",
+                "static": false,
+                "sig": "dimpulse(int $n = 100): array",
+                "doc": "Discrete-time impulse response (scipy dlti.impulse / dimpulse)."
+            },
+            {
+                "name": "dstep",
+                "static": false,
+                "sig": "dstep(int $n = 100): array",
+                "doc": "Discrete-time step response (scipy dlti.step / dstep)."
+            },
+            {
+                "name": "dbode",
+                "static": false,
+                "sig": "dbode(mixed $w): array",
+                "doc": "Discrete-time Bode magnitude (dB) and phase (deg) (scipy dlti.bode)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\Dlti",
+        "methods": [
+            {
+                "name": "create",
+                "static": true,
+                "sig": "create(array $system, float $dt = 1.0): Tessero\\Signal\\Lti",
+                "doc": "Factory: construct the discrete representation from a variable argument list plus a sampling interval dt (keyword in scipy; trailing argument here)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\StateSpace",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $A, mixed $B, mixed $C, mixed $D, ?float $dt = null)",
+                "doc": ""
+            },
+            {
+                "name": "poles",
+                "static": false,
+                "sig": "poles(): array",
+                "doc": ""
+            },
+            {
+                "name": "zeros",
+                "static": false,
+                "sig": "zeros(): array",
+                "doc": ""
+            },
+            {
+                "name": "toTf",
+                "static": false,
+                "sig": "toTf(): Tessero\\Signal\\TransferFunction",
+                "doc": ""
+            },
+            {
+                "name": "toZpk",
+                "static": false,
+                "sig": "toZpk(): Tessero\\Signal\\ZerosPolesGain",
+                "doc": ""
+            },
+            {
+                "name": "toSs",
+                "static": false,
+                "sig": "toSs(): Tessero\\Signal\\StateSpace",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\TransferFunction",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $num, mixed $den, ?float $dt = null)",
+                "doc": ""
+            },
+            {
+                "name": "poles",
+                "static": false,
+                "sig": "poles(): array",
+                "doc": ""
+            },
+            {
+                "name": "zeros",
+                "static": false,
+                "sig": "zeros(): array",
+                "doc": ""
+            },
+            {
+                "name": "toTf",
+                "static": false,
+                "sig": "toTf(): Tessero\\Signal\\TransferFunction",
+                "doc": ""
+            },
+            {
+                "name": "toZpk",
+                "static": false,
+                "sig": "toZpk(): Tessero\\Signal\\ZerosPolesGain",
+                "doc": ""
+            },
+            {
+                "name": "toSs",
+                "static": false,
+                "sig": "toSs(): Tessero\\Signal\\StateSpace",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\ZerosPolesGain",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $z, mixed $p, mixed $k, ?float $dt = null)",
+                "doc": ""
+            },
+            {
+                "name": "poles",
+                "static": false,
+                "sig": "poles(): array",
+                "doc": ""
+            },
+            {
+                "name": "zeros",
+                "static": false,
+                "sig": "zeros(): array",
+                "doc": ""
+            },
+            {
+                "name": "toTf",
+                "static": false,
+                "sig": "toTf(): Tessero\\Signal\\TransferFunction",
+                "doc": ""
+            },
+            {
+                "name": "toZpk",
+                "static": false,
+                "sig": "toZpk(): Tessero\\Signal\\ZerosPolesGain",
+                "doc": ""
+            },
+            {
+                "name": "toSs",
+                "static": false,
+                "sig": "toSs(): Tessero\\Signal\\StateSpace",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\ShortTimeFFT",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $win, int $hop, float $fs = 1.0, ?int $mfft = null, string $fftMode = 'onesided', ?int $phaseShift = 0)",
+                "doc": ""
+            },
+            {
+                "name": "onesidedFft",
+                "static": false,
+                "sig": "onesidedFft(): bool",
+                "doc": ""
+            },
+            {
+                "name": "fPts",
+                "static": false,
+                "sig": "fPts(): int",
+                "doc": ""
+            },
+            {
+                "name": "deltaT",
+                "static": false,
+                "sig": "deltaT(): float",
+                "doc": ""
+            },
+            {
+                "name": "deltaF",
+                "static": false,
+                "sig": "deltaF(): float",
+                "doc": ""
+            },
+            {
+                "name": "f",
+                "static": false,
+                "sig": "f(): array",
+                "doc": "rfftfreq / fftfreq spacing, as a flat list."
+            },
+            {
+                "name": "pMin",
+                "static": false,
+                "sig": "pMin(): int",
+                "doc": ""
+            },
+            {
+                "name": "kMin",
+                "static": false,
+                "sig": "kMin(): int",
+                "doc": ""
+            },
+            {
+                "name": "pMax",
+                "static": false,
+                "sig": "pMax(int $n): int",
+                "doc": ""
+            },
+            {
+                "name": "kMax",
+                "static": false,
+                "sig": "kMax(int $n): int",
+                "doc": ""
+            },
+            {
+                "name": "pNum",
+                "static": false,
+                "sig": "pNum(int $n): int",
+                "doc": ""
+            },
+            {
+                "name": "pRange",
+                "static": false,
+                "sig": "pRange(int $n, ?int $p0 = null, ?int $p1 = null): array",
+                "doc": ""
+            },
+            {
+                "name": "stft",
+                "static": false,
+                "sig": "stft(array $x): array",
+                "doc": "Short-time Fourier transform of a real 1-D signal."
+            },
+            {
+                "name": "istft",
+                "static": false,
+                "sig": "istft(array $S, int $k0 = 0, ?int $k1 = null): array",
+                "doc": "Inverse STFT reconstructing the real signal (scipy ShortTimeFFT.istft)."
+            },
+            {
+                "name": "spectrogram",
+                "static": false,
+                "sig": "spectrogram(array $x): array",
+                "doc": "Spectrogram = |stft|^2 (scipy ShortTimeFFT.spectrogram, default)."
+            },
+            {
+                "name": "dualWin",
+                "static": false,
+                "sig": "dualWin(): array",
+                "doc": "Canonical dual window (scipy _calc_dual_canonical_window)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
