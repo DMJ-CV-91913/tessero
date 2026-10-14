@@ -86,6 +86,11 @@ phases:
   scipy.differentiate: 7
   scipy.interpolate: 7
   scipy.signal: 8
+  scipy.signal:
+    # pure-PHP CWT peak detection; one Tessero\Signal\FindPeaksCwt serves both backends (exact integer-index match).
+    find_peaks_cwt: {ffi: [SIG2::find], ext: [SIG2::find], fixtures: [signal.find_peaks_cwt]}
+    # single-input pole placement by state feedback (Ackermann); unique gain reproduces scipy. Multi-input out of scope.
+    place_poles: {ffi: [PP::place], ext: [PP::place], fixtures: [signal.place_poles]}
   scipy.signal.windows: 8
   scipy.optimize: 9
   scipy.sparse: 10
@@ -456,6 +461,12 @@ legacy:
     DOP853: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     BDF: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     Radau: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    RK45: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    RK23: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    # ode/complex_ode: stateful stepper facade over the SolveIvp RK engines (dopri5->RK45,
+    # dop853->DOP853) vs scipy's Fortran ode at tight tol; complex_ode = ode on the (Re,Im)-split system.
+    ode: {ffi: [ODE::integrate], ext: [ODE::integrate], fixtures: [integrate.ode]}
+    complex_ode: {ffi: [ODE::integrate], ext: [ODE::integrate], fixtures: [integrate.ode]}
     LSODA: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     odeint: {ffi: [SIVP::odeint], ext: [SIVP::odeint], fixtures: [integrate.odeint]}
     solve_bvp: {ffi: [SBVP::solve], ext: [SBVP::solve], fixtures: [integrate.solve_bvp]}
@@ -492,6 +503,10 @@ legacy:
     Delaunay: {ffi: [DEL::findSimplex], ext: [DEL::findSimplex], fixtures: [spatial.Delaunay]}
     tsearch: {ffi: [DEL::tsearch], ext: [DEL::tsearch], fixtures: [spatial.Delaunay]}
     Voronoi: {ffi: [VOR::__construct], ext: [VOR::__construct], fixtures: [spatial.Voronoi]}
+    # pure-PHP convex-hull dual; vertex SET (hull-facet circumcenters projected to the sphere).
+    SphericalVoronoi: {ffi: [SVOR::__construct], ext: [SVOR::__construct], fixtures: [spatial.SphericalVoronoi]}
+    # pure-PHP polar dual hull; intersections (polytope vertex SET) + dual_vertices SET.
+    HalfspaceIntersection: {ffi: [HSI::__construct], ext: [HSI::__construct], fixtures: [spatial.HalfspaceIntersection]}
   scipy.spatial.transform:
     # pure-PHP Rotation: all representation conversions validated through the rotation matrix.
     Rotation: {ffi: [ROT::fromQuat], ext: [ROT::fromQuat], fixtures: [spatial.transform.Rotation]}
@@ -600,6 +615,10 @@ legacy:
     barnard_exact: {ffi: [BN::barnardExact], ext: [BN::barnardExact], fixtures: [stats.barnard_exact]}
     boschloo_exact: {ffi: [B::boschlooExact], ext: [B::boschlooExact], fixtures: [stats.boschloo_exact]}
     logrank: {ffi: [LR::logrank], ext: [LR::logrank], fixtures: [stats.logrank]}
+    # dunnett: .statistic exact (all inputs); .pvalue exact on tie-free group counts (fixtures restricted).
+    dunnett: {ffi: [DUN::dunnett], ext: [DUN::dunnett], fixtures: [stats.dunnett]}
+    # rv_histogram: pure-PHP step distribution (pdf/cdf/sf/ppf + moments), deterministic both backends.
+    rv_histogram: {ffi: [RVH::pdf], ext: [RVH::pdf], fixtures: [stats.rv_histogram]}
     permutation_test: {ffi: [PT::permutationTest], ext: [PT::permutationTest], fixtures: [stats.permutation_test]}
     ortho_group: {ffi: [OG::rvs], ext: [OG::rvs], fixtures: [stats.ortho_group]}
     unitary_group: {ffi: [UG::rvs], ext: [UG::rvs], fixtures: [stats.unitary_group]}

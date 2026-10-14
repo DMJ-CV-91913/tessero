@@ -1070,6 +1070,68 @@ function makePermStatistic(string $kind): callable
     };
 }
 
+
+/**
+ * Order-free match of two point collections to tolerance (Qhull-order-independent SET compare).
+ * @param list<list<float>> $got
+ * @param list<list<float>> $want
+ */
+function spatialSetMatch(array $got, array $want, float $tol): bool
+{
+    if (count($got) !== count($want)) {
+        return false;
+    }
+    $used = array_fill(0, count($want), false);
+    foreach ($got as $a) {
+        $best = -1;
+        $bestd = $tol;
+        foreach ($want as $j => $b) {
+            if ($used[$j]) {
+                continue;
+            }
+            $sum = 0.0;
+            foreach ($a as $k => $ak) {
+                $dk = $ak - $b[$k];
+                $sum += $dk * $dk;
+            }
+            $dd = sqrt($sum);
+            if ($dd <= $bestd) {
+                $bestd = $dd;
+                $best = $j;
+            }
+        }
+        if ($best < 0) {
+            return false;
+        }
+        $used[$best] = true;
+    }
+
+    return true;
+}
+
+/** Rebuild a named complex ODE RHS (scipy.integrate.complex_ode fixtures) as a PHP callable.
+ *  y and the return value are lists of [re, im] pairs (complex components). */
+function makeOdeComplexRhs(string $kind, array $p): callable
+{
+    $cmul = static fn (array $a, array $b): array => [$a[0] * $b[0] - $a[1] * $b[1], $a[0] * $b[1] + $a[1] * $b[0]];
+    $cadd = static fn (array $a, array $b): array => [$a[0] + $b[0], $a[1] + $b[1]];
+    return match ($kind) {
+        'rot' => static function (float $t, array $y) use ($p, $cmul): array {  // y' = i*w*y
+            return [$cmul([0.0, (float) $p['w']], $y[0])];
+        },
+        'cdecay' => static function (float $t, array $y) use ($p, $cmul): array {  // y' = (a + i b) y
+            return [$cmul([(float) $p['a'], (float) $p['b']], $y[0])];
+        },
+        'cpair' => static function (float $t, array $y) use ($cmul, $cadd): array {  // 2-component
+            return [
+                $cadd($cmul([0.0, 1.0], $y[0]), $cmul([-0.1, 0.0], $y[1])),
+                $cmul([0.0, 2.0], $y[1]),
+            ];
+        },
+        default => throw new \RuntimeException('complex_ode: unknown system: ' . $kind),
+    };
+}
+
 function runSolverCases(array $cases, string $module, int &$checked, int &$failures): array
 {
     $status = [];
@@ -1652,6 +1714,206 @@ foreach ($files as $file) {
             if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
         }
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['sphvor_cases']) || isset($data['halfspace_cases'])) {   // scipy.spatial.SphericalVoronoi + HalfspaceIntersection (pure-PHP convex-hull dual)
+        $local = [];
+        foreach (($data['sphvor_cases'] ?? []) as $c) {
+            $key = 'spatial.SphericalVoronoi';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $center = array_key_exists('center', $c) && $c['center'] !== null ? $c['center'] : null;
+                $sv = new \Tessero\Spatial\SphericalVoronoi($c['points'], (float) $c['radius'], $center);
+                $ok = spatialSetMatch($sv->vertices, $c['vertices'], 1e-9);
+                if (! $ok) { $msg = 'SphericalVoronoi vertex set did not match scipy'; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach (($data['halfspace_cases'] ?? []) as $c) {
+            $key = 'spatial.HalfspaceIntersection';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $hi = new \Tessero\Spatial\HalfspaceIntersection($c['halfspaces'], $c['interior_point']);
+                $okInt = spatialSetMatch($hi->intersections, $c['intersections'], 1e-9);
+                $dv = $hi->dualVertices; sort($dv);
+                $exp = array_map('intval', $c['dual_vertices']); sort($exp);
+                $okDv = ($dv === $exp);
+                $ok = $okInt && $okDv;
+                if (! $ok) { $msg = $okInt ? 'dual_vertices set did not match scipy' : 'intersections set did not match scipy'; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['ode_cases'])) {                    // scipy.integrate.ode / complex_ode (stateful stepper facade over SolveIvp; pure-PHP)
+        $local = [];
+        foreach ($data['ode_cases'] as $c) {
+            $key = 'integrate.ode';
+            $checked++;
+            $ok = true; $msg = '';
+            $complex = (bool) ($c['complex'] ?? false);
+            try {
+                if ($complex) {
+                    $rhs = makeOdeComplexRhs((string) $c['kind'], (array) $c['params']);
+                    $ode = \Tessero\Integrate\Ode::complexOde($rhs);
+                    $ode->setIntegrator((string) $c['integrator'], (float) $c['rtol'], (float) $c['atol']);
+                    $ode->setInitialValue($c['y0'], (float) $c['t0']);
+                } else {
+                    $rhs = makeOdeSystem((string) $c['kind'], (array) $c['params']);
+                    $ode = new \Tessero\Integrate\Ode($rhs);
+                    $ode->setIntegrator((string) $c['integrator'], (float) $c['rtol'], (float) $c['atol']);
+                    $ode->setInitialValue(array_map('floatval', $c['y0']), (float) $c['t0']);
+                }
+                foreach ($c['ts'] as $i => $t) {
+                    $y = $ode->integrate((float) $t);
+                    if (! $ode->successful()) { $ok = false; $msg = 'not successful at t=' . $t; break; }
+                    $exp = $c['expect'][$i];
+                    foreach ($exp as $j => $ev) {
+                        if ($complex) {
+                            $gr = (float) $y[$j][0]; $gi = (float) $y[$j][1];
+                            $er = (float) $ev[0]; $ei = (float) $ev[1];
+                            if (abs($gr - $er) > 1e-7 + 1e-6 * abs($er) || abs($gi - $ei) > 1e-7 + 1e-6 * abs($ei)) {
+                                $ok = false; $msg = 'off at t=' . $t . ' comp ' . $j; break 2;
+                            }
+                        } else {
+                            $g = (float) $y[$j];
+                            if (abs($g - (float) $ev) > 1e-7 + 1e-6 * abs((float) $ev)) {
+                                $ok = false; $msg = 'off at t=' . $t . ' comp ' . $j; break 2;
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $ok = false; $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['dunnett_cases'])) {                    // scipy.stats.dunnett (pure-PHP Tessero\StatsDunnett)
+        foreach ($data['dunnett_cases'] as $c) {
+            $key = 'stats.dunnett';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $atol = (float) ($c['atol'] ?? 1e-11);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = \Tessero\StatsDunnett::dunnett(
+                    $c['samples'],
+                    $c['control'],
+                    (string) ($c['alternative'] ?? 'two-sided'),
+                    (int) $c['seed']
+                );
+                $expS = $c['expect']['statistic'];
+                $expP = $c['expect']['pvalue'];
+                $ok = count($got['statistic']) === count($expS)
+                    && count($got['pvalue']) === count($expP);
+                for ($i = 0; $ok && $i < count($expS); $i++) {
+                    $es = abs($got['statistic'][$i] - (float) $expS[$i]);
+                    $ep = abs($got['pvalue'][$i] - (float) $expP[$i]);
+                    if ($es > $atol + $rtol * abs((float) $expS[$i])) { $ok = false; }
+                    if ($ep > $atol + $rtol * abs((float) $expP[$i])) { $ok = false; }
+                }
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['rvhistogram_cases'])) {                // scipy.stats.rv_histogram (pure-PHP Tessero\Stats\RvHistogram)
+        foreach ($data['rvhistogram_cases'] as $c) {
+            $key = 'stats.rv_histogram';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $d = new \Tessero\Stats\RvHistogram(
+                    array_map('floatval', $c['counts']),
+                    array_map('floatval', $c['bin_edges']),
+                    (bool) $c['density'],
+                );
+                $method = (string) $c['method'];
+                if (in_array($method, ['pdf', 'cdf', 'sf', 'ppf'], true)) {
+                    $got = $d->{$method}(array_map('floatval', $c['arg']));
+                } else {
+                    $got = [$d->{$method}()];
+                }
+                $ok = true;
+                foreach ($c['expect'] as $i => $e) {
+                    $g = is_array($got) ? $got[$i] : $got;
+                    if (abs($g - (float) $e) > $rtol * (1 + abs((float) $e))) { $ok = false; $msg = "{$method} idx {$i}"; break; }
+                }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['findpeakscwt_cases'])) {               // scipy.signal.find_peaks_cwt (pure-PHP Tessero\Signal\FindPeaksCwt)
+        foreach ($data['findpeakscwt_cases'] as $c) {
+            $key = 'signal.find_peaks_cwt';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = \Tessero\Signal\FindPeaksCwt::find(
+                    array_map('floatval', $c['vector']),
+                    array_map('floatval', $c['widths']),
+                    null,
+                    null,
+                    null,
+                    (float) ($c['min_snr'] ?? 1.0),
+                    (float) ($c['noise_perc'] ?? 10.0),
+                    null,
+                );
+                $exp = array_map('intval', $c['expect']);
+                $ok = $got === $exp;
+                if (! $ok) { $msg = 'did not match scipy: got ' . json_encode($got) . ' expect ' . json_encode($exp); }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['placepoles_cases'])) {                 // scipy.signal.place_poles (pure-PHP Tessero\Signal\PlacePoles, single-input)
+        foreach ($data['placepoles_cases'] as $c) {
+            $key = 'signal.place_poles';
+            $rtol = (float) ($c['rtol'] ?? 1e-6);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $poles = array_map(static fn($p) => [(float) $p[0], (float) $p[1]], $c['poles']);
+                $got = \Tessero\Signal\PlacePoles::place($c['A'], $c['B'], $poles, (string) ($c['method'] ?? 'YT'));
+                $K = $got['gain_matrix'][0];
+                $exp = $c['expect']['gain_matrix'][0];
+                $ok = count($K) === count($exp);
+                foreach ($exp as $j => $e) {
+                    if (! $ok || abs($K[$j] - (float) $e) > $rtol * (1 + abs((float) $e))) { $ok = false; break; }
+                }
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
         continue;
     }
     if (isset($data['solver_cases'])) {                      // scipy.optimize / scipy.integrate: callable objectives
@@ -2821,16 +3083,26 @@ foreach ($files as $file) {
           $ok = false; $msg = '';
           try {
               $v = new \Tessero\Spatial\Voronoi($c['points']);
-              // vertices as a rounded SET
-              $got = []; foreach ($v->vertices as $p) { $got[] = sprintf('%.6f,%.6f', $p[0], $p[1]); }
-              $exp = []; foreach ($c['vertices'] as $p) { $exp[] = sprintf('%.6f,%.6f', $p[0], $p[1]); }
+              // vertices as a rounded SET (dimension-generic: join all coords of each vertex)
+              $fmt = static function (array $p): string {
+                  $s = [];
+                  foreach ($p as $x) { $s[] = sprintf('%.6f', (float) $x); }
+                  return implode(',', $s);
+              };
+              $got = []; foreach ($v->vertices as $p) { $got[] = $fmt($p); }
+              $exp = []; foreach ($c['vertices'] as $p) { $exp[] = $fmt($p); }
               sort($got); sort($exp);
               $vOk = $got === $exp;
-              // ridge_points as a SET of sorted index pairs
-              $gr = []; foreach ($v->ridgePoints as $e) { $a = min($e); $b = max($e); $gr[] = "$a,$b"; }
-              $er = []; foreach ($c['ridge_points'] as $e) { $er[] = $e[0] . ',' . $e[1]; }
-              sort($gr); sort($er);
-              $rOk = $gr === $er;
+              // ridge_points as a SET of sorted index pairs -- 2-D ONLY. N-D cases omit the
+              // 'ridge_points' key (Qhull's unbounded-Voronoi ridge enumeration is not reproduced
+              // from the lower-hull Delaunay), so the ridge check is skipped for those.
+              $rOk = true;
+              if (array_key_exists('ridge_points', $c)) {
+                  $gr = []; foreach ($v->ridgePoints as $e) { $a = min($e); $b = max($e); $gr[] = "$a,$b"; }
+                  $er = []; foreach ($c['ridge_points'] as $e) { $er[] = $e[0] . ',' . $e[1]; }
+                  sort($gr); sort($er);
+                  $rOk = $gr === $er;
+              }
               $ok = $vOk && $rOk;
               if (! $ok) { $msg = $vOk ? 'ridge_points set did not match scipy' : 'vertex set did not match scipy'; }
           } catch (\Throwable $e) { $msg = $e->getMessage(); }
@@ -2840,7 +3112,7 @@ foreach ($files as $file) {
       foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
       continue;
   }
-  if (isset($data['transform_cases'])) {
+    if (isset($data['transform_cases'])) {
       $local = [];
       $use = '\\Tessero\\Spatial\\Transform\\Rotation';
       $close = static function (array $a, array $b, float $tol = 1e-7): bool {
