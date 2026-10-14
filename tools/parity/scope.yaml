@@ -480,6 +480,9 @@ legacy:
   scipy.spatial.transform:
     # pure-PHP Rotation: all representation conversions validated through the rotation matrix.
     Rotation: {ffi: [ROT::fromQuat], ext: [ROT::fromQuat], fixtures: [spatial.transform.Rotation]}
+    Slerp: {ffi: [SLERP::__construct], ext: [SLERP::__construct], fixtures: [spatial.transform.Slerp]}
+    RigidTransform: {ffi: [RGT::fromComponents], ext: [RGT::fromComponents], fixtures: [spatial.transform.RigidTransform]}
+    RotationSpline: {ffi: [RSP::__construct], ext: [RSP::__construct], fixtures: [spatial.transform.RotationSpline]}
   scipy.spatial.distance:
     # pure-PHP directed Hausdorff distance (Taha-Hanbury early-break); distance verified both backends
     # (the returned index pair is RNG-dependent in scipy and is not asserted).
@@ -637,6 +640,8 @@ legacy:
     make_smoothing_spline: {ffi: [MSS::__construct], ext: [MSS::__construct], fixtures: [interpolate.make_smoothing_spline]}
     # LinearNDInterpolator (2-D, value-only, general position): inlined Bowyer-Watson Delaunay + barycentric-linear, NaN outside hull
     LinearNDInterpolator: {ffi: [LND::query], ext: [LND::query], fixtures: [interpolate.LinearNDInterpolator]}
+    CloughTocher2DInterpolator: {ffi: [CT2D::query], ext: [CT2D::query], fixtures: [interpolate.CloughTocher2DInterpolator]}
+    AAA: {ffi: [AAA::query], ext: [AAA::query], fixtures: [interpolate.AAA]}
     # bisplev(x,y,tck): bivariate FITPACK spline eval via the tensor-de-Boor kernel interpolate.NdBSpline (dx=dy=0)
     bisplev: {ffi: [BSPL::eval], ext: [BSPL::eval], fixtures: [interpolate.bisplev]}
     # InterpolatedUnivariateSpline(x,y,k): s=0 interpolating spline over interpolate.make_interp_spline (k=1,3)

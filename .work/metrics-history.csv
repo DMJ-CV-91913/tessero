@@ -286,3 +286,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-14,sparse lil/dok/bsr format classes + stats.unitary_group (complex-QR kernel); eigsh/eigs/svds+lobpcg deferred (live which-arg + QR-cap bugs),100.0,100.0,93.9,93.9,100.0,100.0,100.0,100.0,91.9,91.9
 2026-10-14,optimize: trust-region dogleg/trust-ncg/trust-exact + TNC/SLSQP/COBYLA + fmin_tnc/slsqp/cobyla (both backends),100.0,100.0,94.1,94.1,100.0,100.0,100.0,100.0,91.9,91.9
 2026-10-14,integrate: solve_ivp BDF + Radau implicit stiff ODE solvers (both backends),100.0,100.0,94.2,94.2,100.0,100.0,100.0,100.0,91.9,91.9
+2026-10-14,spatial Slerp/RigidTransform/RotationSpline + N-D ConvexHull + interpolate CloughTocher2D/AAA (both backends),100.0,100.0,94.4,94.4,100.0,100.0,100.0,100.0,91.9,91.9
