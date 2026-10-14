@@ -456,10 +456,17 @@ legacy:
     DOP853: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     BDF: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     Radau: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    LSODA: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    odeint: {ffi: [SIVP::odeint], ext: [SIVP::odeint], fixtures: [integrate.odeint]}
+    solve_bvp: {ffi: [SBVP::solve], ext: [SBVP::solve], fixtures: [integrate.solve_bvp]}
     dblquad: {ffi: [NQ::dblquad], ext: [NQ::dblquad], fixtures: [integrate.dblquad]}
     tplquad: {ffi: [NQ::tplquad], ext: [NQ::tplquad], fixtures: [integrate.tplquad]}
     nquad: {ffi: [NQ::nquad], ext: [NQ::nquad], fixtures: [integrate.nquad]}
     nsum: {ffi: [NS::nsum], ext: [NS::nsum], fixtures: [integrate.nsum]}
+    # lebedev_rule: Lebedev-Laikov spherical quadrature nodes/weights; pure-PHP data-table port (bit-exact)
+    lebedev_rule: {ffi: [Leb::lebedevRule], ext: [Leb::lebedevRule], fixtures: [integrate.lebedev_rule]}
+    # cubature: heap-adaptive multidimensional cubature (product Gauss-Kronrod + Genz-Malik); pure-PHP
+    cubature: {ffi: [Cub::cubature], ext: [Cub::cubature], fixtures: [integrate.cubature]}
     # scipy.integrate.trapezoid is numpy.trapezoid re-exported: credit the already-verified np.trapezoid routine
     trapezoid: {ffi: [NpC::trapezoid], ext: [XNpC::trapezoid], fixtures: [np.trapezoid]}
     # cumulative_trapezoid: the running trapezoid integral, implemented alongside trapezoid as an np.* routine

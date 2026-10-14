@@ -1,6 +1,6 @@
 import json
 import numpy as np
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp, odeint
 
 
 def make_rhs(kind, p):
@@ -100,6 +100,54 @@ cases = [
     case('harmonic', {'w': 2.0},     (0.0, 6.0),   [1.0, 0.0],   np.linspace(0, 6, 13).tolist(),    method='Radau'),
     case('harmonic', {'w': 1.5},     (0.0, -5.0),  [0.0, 1.0],   np.linspace(0, -5, 11).tolist(),   method='Radau'),
     case('exp_decay', {'k': 0.7},    (0.0, 5.0),   [2.0],        np.linspace(0, 5, 11).tolist(),    method='Radau'),
+    # --- method='LSODA' (ODEPACK dlsoda: Adams-Moulton <-> BDF automatic stiffness switching) ---
+    # scipy's LSODA wraps compiled Fortran whose exact step/order/switch sequence is not reproducible
+    # in pure PHP; at rtol<=1e-10 the solver has converged, so Tessero's switching driver (BDF for the
+    # detected-stiff regime, DOP853 for the nonstiff regime) matches dlsoda's output within the harness
+    # threshold. Mix of nonstiff (exp_decay/harmonic/lotka/logistic) and stiff (robertson/vanderpol).
+    case('exp_decay', {'k': 0.7},    (0.0, 5.0),   [2.0],           np.linspace(0, 5, 11).tolist(),   method='LSODA', rtol=1e-10, atol=1e-12),
+    case('harmonic',  {'w': 2.0},    (0.0, 6.0),   [1.0, 0.0],      np.linspace(0, 6, 13).tolist(),   method='LSODA', rtol=1e-10, atol=1e-12),
+    case('lotka', {'a': 1.5, 'b': 1.0, 'c': 3.0, 'd': 1.0}, (0.0, 10.0), [10.0, 5.0], np.linspace(0, 10, 21).tolist(), method='LSODA', rtol=1e-10, atol=1e-12),
+    case('logistic',  {'r': 1.0, 'K': 10.0}, (0.0, 6.0), [1.0],     np.linspace(0, 6, 13).tolist(),   method='LSODA', rtol=1e-10, atol=1e-12),
+    case('harmonic',  {'w': 1.5},    (0.0, -5.0),  [0.0, 1.0],      np.linspace(0, -5, 11).tolist(),  method='LSODA', rtol=1e-10, atol=1e-12),
+    case('robertson', {},            (0.0, 100.0), [1.0, 0.0, 0.0], [0.0, 0.4, 4.0, 40.0, 100.0],     method='LSODA', rtol=1e-10, atol=1e-12),
+    case('vanderpol', {'mu': 5.0},   (0.0, 20.0),  [2.0, 0.0],      np.linspace(0, 20, 21).tolist(),  method='LSODA', rtol=1e-10, atol=1e-12),
+    case('vanderpol', {'mu': 50.0},  (0.0, 30.0),  [2.0, 0.0],      np.linspace(0, 30, 16).tolist(),  method='LSODA', rtol=1e-10, atol=1e-12),
+    case('exp_decay', {'k': 50.0},   (0.0, 1.0),   [3.0],           np.linspace(0, 1, 20).tolist(),   method='LSODA', rtol=1e-10, atol=1e-12),
+]
+
+
+# --- scipy.integrate.odeint (legacy interface over the SAME ODEPACK dlsoda engine) ---
+# odeint(func, y0, t, tfirst=False) returns y at every t (shape len(t) x n). We mirror LSODA's
+# matchable-tolerance regime (rtol=atol=1e-10..1e-12). The runner reconstructs func via makeOdeSystem
+# (func is called as func(y, t) by default; our PHP facade supports tfirst for the func(t, y) order).
+def odeint_case(kind, params, y0, t, rtol=1e-10, atol=1e-12, tfirst=False):
+    f = make_rhs(kind, params)
+    tv = np.asarray(t, dtype=float)
+    if tfirst:
+        y = odeint(f, y0, tv, rtol=rtol, atol=atol, tfirst=True)
+    else:
+        y = odeint(lambda yy, tt: f(tt, yy), y0, tv, rtol=rtol, atol=atol)
+    return {
+        'kind': kind,
+        'params': params,
+        'y0': [float(v) for v in y0],
+        't': tv.tolist(),
+        'tfirst': tfirst,
+        'rtol': rtol,
+        'atol': atol,
+        'expect': y.tolist(),   # shape (len(t), n), matching scipy odeint orientation
+    }
+
+
+odeint_cases = [
+    odeint_case('exp_decay', {'k': 0.7},    [2.0],           np.linspace(0, 5, 11).tolist()),
+    odeint_case('harmonic',  {'w': 2.0},    [1.0, 0.0],      np.linspace(0, 6, 13).tolist()),
+    odeint_case('lotka', {'a': 1.5, 'b': 1.0, 'c': 3.0, 'd': 1.0}, [10.0, 5.0], np.linspace(0, 10, 21).tolist()),
+    odeint_case('logistic',  {'r': 1.0, 'K': 10.0}, [1.0],   np.linspace(0, 6, 13).tolist()),
+    odeint_case('robertson', {},            [1.0, 0.0, 0.0], [0.0, 0.4, 4.0, 40.0, 100.0]),
+    odeint_case('vanderpol', {'mu': 50.0},  [2.0, 0.0],      np.linspace(0, 30, 16).tolist()),
+    odeint_case('exp_decay', {'k': 2.0},    [5.0],           np.linspace(0, 4, 9).tolist(), tfirst=True),
 ]
 
 
@@ -107,3 +155,9 @@ out = {'module': 'integrate', 'scipy': __import__('scipy').__version__, 'solveiv
 with open(OUT, 'w') as fh:
     json.dump(out, fh, separators=(',', ':'))
 print('integrate_solveivp: %d solve_ivp cases' % len(cases))
+
+OUT_ODEINT = '../../tests/fixtures/parity/integrate_odeint.json'
+out2 = {'module': 'integrate', 'scipy': __import__('scipy').__version__, 'odeint_cases': odeint_cases}
+with open(OUT_ODEINT, 'w') as fh:
+    json.dump(out2, fh, separators=(',', ':'))
+print('integrate_odeint: %d odeint cases' % len(odeint_cases))
