@@ -86,21 +86,6 @@ phases:
   scipy.differentiate: 7
   scipy.interpolate: 7
   scipy.signal: 8
-  scipy.signal:
-    # pure-PHP CWT peak detection; one Tessero\Signal\FindPeaksCwt serves both backends (exact integer-index match).
-    find_peaks_cwt: {ffi: [SIG2::find], ext: [SIG2::find], fixtures: [signal.find_peaks_cwt]}
-    # single-input pole placement by state feedback (Ackermann); unique gain reproduces scipy. Multi-input out of scope.
-    place_poles: {ffi: [PP::place], ext: [PP::place], fixtures: [signal.place_poles]}
-    # pure-PHP chirp-z / zoom-FFT callable classes over the landed czt/zoom_fft primitives.
-    CZT: {ffi: [CZT::__invoke, CZT::transform], ext: [CZT::__invoke, CZT::transform], fixtures: [signal.CZT]}
-    ZoomFFT: {ffi: [ZFFT::__invoke, ZFFT::transform], ext: [ZFFT::__invoke, ZFFT::transform], fixtures: [signal.ZoomFFT]}
-    # pure-PHP LTI system classes over the landed conversion/response primitives; ss equality via impulse/step.
-    lti: {ffi: [LTI::create], ext: [LTI::create], fixtures: [signal.lti]}
-    dlti: {ffi: [DLTI::create], ext: [DLTI::create], fixtures: [signal.dlti]}
-    StateSpace: {ffi: [SSS::toTf], ext: [SSS::toTf], fixtures: [signal.StateSpace]}
-    TransferFunction: {ffi: [STF::toSs], ext: [STF::toSs], fixtures: [signal.TransferFunction]}
-    ZerosPolesGain: {ffi: [ZPG::toTf], ext: [ZPG::toTf], fixtures: [signal.ZerosPolesGain]}
-    ShortTimeFFT: {ffi: [STFT::stft], ext: [STFT::stft], fixtures: [signal.ShortTimeFFT]}
   scipy.signal.windows: 8
   scipy.optimize: 9
   scipy.sparse: 10
@@ -146,6 +131,21 @@ legacy_tests:
   sparse: [tests/Unit/NumericsTest.php]
 
 legacy:
+  scipy.signal:
+    # pure-PHP CWT peak detection; one Tessero\Signal\FindPeaksCwt serves both backends (exact integer-index match).
+    find_peaks_cwt: {ffi: [SIG2::find], ext: [SIG2::find], fixtures: [signal.find_peaks_cwt]}
+    # single-input pole placement by state feedback (Ackermann); unique gain reproduces scipy. Multi-input out of scope.
+    place_poles: {ffi: [PP::place], ext: [PP::place], fixtures: [signal.place_poles]}
+    # pure-PHP chirp-z / zoom-FFT callable classes over the landed czt/zoom_fft primitives.
+    CZT: {ffi: [CZT::transform], ext: [CZT::transform], fixtures: [signal.CZT]}
+    ZoomFFT: {ffi: [ZFFT::transform], ext: [ZFFT::transform], fixtures: [signal.ZoomFFT]}
+    # pure-PHP LTI system classes over the landed conversion/response primitives; ss equality via impulse/step.
+    lti: {ffi: [LTI::create], ext: [LTI::create], fixtures: [signal.lti]}
+    dlti: {ffi: [DLTI::create], ext: [DLTI::create], fixtures: [signal.dlti]}
+    StateSpace: {ffi: [SSS::toTf], ext: [SSS::toTf], fixtures: [signal.StateSpace]}
+    TransferFunction: {ffi: [STF::toSs], ext: [STF::toSs], fixtures: [signal.TransferFunction]}
+    ZerosPolesGain: {ffi: [ZPG::toTf], ext: [ZPG::toTf], fixtures: [signal.ZerosPolesGain]}
+    ShortTimeFFT: {ffi: [STFT::stft], ext: [STFT::stft], fixtures: [signal.ShortTimeFFT]}
   scipy.io:
     mmread: {ffi: [MM::read], ext: [MM::read], fixtures: [scipyio.mmread]}
     mmwrite: {ffi: [MM::write], ext: [MM::write], fixtures: [scipyio.mmwrite]}
@@ -517,6 +517,7 @@ legacy:
     SphericalVoronoi: {ffi: [SVOR::__construct], ext: [SVOR::__construct], fixtures: [spatial.SphericalVoronoi]}
     # pure-PHP polar dual hull; intersections (polytope vertex SET) + dual_vertices SET.
     HalfspaceIntersection: {ffi: [HSI::__construct], ext: [HSI::__construct], fixtures: [spatial.HalfspaceIntersection]}
+    QhullError: {ffi: [QHE::__construct], ext: [QHE::__construct], fixtures: [spatial.QhullError]}
   scipy.spatial.transform:
     # pure-PHP Rotation: all representation conversions validated through the rotation matrix.
     Rotation: {ffi: [ROT::fromQuat], ext: [ROT::fromQuat], fixtures: [spatial.transform.Rotation]}
@@ -527,7 +528,6 @@ legacy:
     # pure-PHP directed Hausdorff distance (Taha-Hanbury early-break); distance verified both backends
     # (the returned index pair is RNG-dependent in scipy and is not asserted).
     directed_hausdorff: {ffi: [HAUS::directed], ext: [HAUS::directed], fixtures: [spatial.directed_hausdorff]}
-    QhullError: {ffi: [QHE::__construct], ext: [QHE::__construct], fixtures: [spatial.QhullError]}
   scipy.optimize:
     # the scalar/BFGS/Nelder-Mead solvers are pure PHP (they call the user's callable, no kernel), so the one
     # class serves both backends - unlike linprog/milp which are kernel-backed and need an Ext provider. They are
@@ -612,6 +612,8 @@ legacy:
     # kernel-backed normal distribution (Stats::norm -> Distribution), one class both backends; verified by
     # stats_normal.json rvdist_cases (every method, scalar + array).
     Normal: {ffi: [NORM::pdf], ext: [NORM::pdf], fixtures: [stats.Normal]}
+    matrix_t: {ffi: [MT::logpdf], ext: [MT::logpdf], fixtures: [stats.matrix_t]}
+    normal_inverse_gamma: {ffi: [NIG::logpdf], ext: [NIG::logpdf], fixtures: [stats.normal_inverse_gamma]}
     Uniform: {ffi: [UNIF::pdf], ext: [UNIF::pdf], fixtures: [stats.Uniform]}
     Logistic: {ffi: [LOGI::pdf], ext: [LOGI::pdf], fixtures: [stats.Logistic]}
     Binomial: {ffi: [BINO::pmf], ext: [BINO::pmf], fixtures: [stats.Binomial]}

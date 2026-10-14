@@ -1527,6 +1527,58 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['matvardist_cases'])) {                 // scipy.stats matrix_t / normal_inverse_gamma (pure-PHP density facades)
+        $local = [];
+        foreach ($data['matvardist_cases'] as $c) {
+            $key = 'stats.' . $c['kind'];
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                if ($c['kind'] === 'matrix_t') {
+                    $rv = new \Tessero\Stats\MatrixT($c['mean'], $c['row'], $c['col'], (float) $c['df']);
+                    $got = match ($c['method']) {
+                        'pdf'    => $rv->pdf($c['X']),
+                        'logpdf' => $rv->logpdf($c['X']),
+                        default  => throw new \RuntimeException("unknown matrix_t method {$c['method']}"),
+                    };
+                } else { // normal_inverse_gamma
+                    $rv = new \Tessero\Stats\NormalInverseGamma((float) $c['mu'], (float) $c['lmbda'], (float) $c['a'], (float) $c['b']);
+                    $got = match ($c['method']) {
+                        'pdf'    => $rv->pdf((float) $c['x'], (float) $c['s2']),
+                        'logpdf' => $rv->logpdf((float) $c['x'], (float) $c['s2']),
+                        'mean'   => $rv->mean(),
+                        'var'    => $rv->var(),
+                        default  => throw new \RuntimeException("unknown nig method {$c['method']}"),
+                    };
+                }
+                $wf = []; $we = [$c['expect']]; array_walk_recursive($we, static function ($x) use (&$wf) { $wf[] = dec($x); });
+                $g = $got;
+                if (is_array($g)) {
+                    $gf = []; foreach ($g as $e) { $gf[] = (is_object($e) && method_exists($e, 'item')) ? (float) $e->item() : (float) $e; }
+                } elseif (is_object($g) && method_exists($g, 'toArray')) {
+                    $gf = []; $ga = [$g->toArray()]; array_walk_recursive($ga, static function ($x) use (&$gf) { $gf[] = (float) $x; });
+                } else {
+                    $gf = [(float) $g];
+                }
+                $ok = count($gf) === count($wf);
+                foreach ($wf as $i => $want) {
+                    if (! $ok) { break; }
+                    $gi = $gf[$i] ?? NAN;
+                    if (is_nan($want)) { $ok = is_nan($gi); }
+                    elseif (is_infinite($want)) { $ok = $gi === $want; }
+                    else { $ok = abs($gi - $want) <= 1e-10 * (1 + abs($want)); }
+                }
+                if (! $ok) { $msg = "{$c['method']} did not match scipy.stats.{$c['kind']}"; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+
     if (isset($data['metadist_cases'])) {                   // scipy.stats dist-infrastructure (pure-PHP Tessero\Stats meta-facades over Distribution)
         $local = [];
         $buildBase = static function (array $spec): \Tessero\Stats\Distribution {
