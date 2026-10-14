@@ -43,6 +43,9 @@
         "datetime.is_busday": "pass",
         "datetime.isnat": "pass",
         "datetime.timedelta64": "pass",
+        "differentiate.derivative": "pass",
+        "differentiate.hessian": "pass",
+        "differentiate.jacobian": "pass",
         "distance.braycurtis": "pass",
         "distance.canberra": "pass",
         "distance.cdist": "pass",
@@ -3449,7 +3452,10 @@
             "optimize.broyden1": null,
             "optimize.broyden2": null,
             "optimize.anderson": null,
-            "optimize.diagbroyden": null
+            "optimize.diagbroyden": null,
+            "differentiate.derivative": null,
+            "differentiate.hessian": null,
+            "differentiate.jacobian": null
         },
         "ext": {
             "np.median": 0,
@@ -5174,7 +5180,10 @@
             "optimize.broyden1": null,
             "optimize.broyden2": null,
             "optimize.anderson": null,
-            "optimize.diagbroyden": null
+            "optimize.diagbroyden": null,
+            "differentiate.derivative": null,
+            "differentiate.hessian": null,
+            "differentiate.jacobian": null
         }
     },
     "ext": {
@@ -5221,6 +5230,9 @@
         "datetime.is_busday": "pass",
         "datetime.isnat": "pass",
         "datetime.timedelta64": "pass",
+        "differentiate.derivative": "pass",
+        "differentiate.hessian": "pass",
+        "differentiate.jacobian": "pass",
         "distance.braycurtis": "pass",
         "distance.canberra": "pass",
         "distance.cdist": "pass",
