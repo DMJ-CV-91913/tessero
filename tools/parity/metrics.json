@@ -81,8 +81,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1551,
-  "ffi": 1551
+  "ext": 1552,
+  "ffi": 1552
  },
  "groups": {
   "NumPy core": {
@@ -102,20 +102,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1461,
+   "both": 1465,
    "excluded": 74,
-   "impl_ext": 1461,
-   "impl_ffi": 1461,
+   "impl_ext": 1465,
+   "impl_ffi": 1465,
    "in_scope": 1488,
-   "m2_ext": 98.2,
-   "m2_ffi": 98.2,
+   "m2_ext": 98.5,
+   "m2_ffi": 98.5,
    "m3": 4.7,
-   "m4_ext": 98.2,
-   "m4_ffi": 98.2,
+   "m4_ext": 98.5,
+   "m4_ffi": 98.5,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1461,
-   "verified_ffi": 1461
+   "verified_ext": 1465,
+   "verified_ffi": 1465
   }
  },
  "modules": {
@@ -488,20 +488,20 @@
    "verified_ffi": 75
   },
   "scipy.optimize": {
-   "both": 62,
+   "both": 65,
    "excluded": 5,
-   "impl_ext": 62,
-   "impl_ffi": 62,
+   "impl_ext": 65,
+   "impl_ffi": 65,
    "in_scope": 66,
-   "m2_ext": 93.9,
-   "m2_ffi": 93.9,
+   "m2_ext": 98.5,
+   "m2_ffi": 98.5,
    "m3": 7.0,
-   "m4_ext": 93.9,
-   "m4_ffi": 93.9,
+   "m4_ext": 98.5,
+   "m4_ffi": 98.5,
    "m5": 100.0,
    "symbols": 71,
-   "verified_ext": 62,
-   "verified_ffi": 62
+   "verified_ext": 65,
+   "verified_ffi": 65
   },
   "scipy.signal": {
    "both": 154,
@@ -536,20 +536,20 @@
    "verified_ffi": 26
   },
   "scipy.sparse": {
-   "both": 34,
+   "both": 35,
    "excluded": 15,
-   "impl_ext": 34,
-   "impl_ffi": 34,
+   "impl_ext": 35,
+   "impl_ffi": 35,
    "in_scope": 38,
-   "m2_ext": 89.5,
-   "m2_ffi": 89.5,
+   "m2_ext": 92.1,
+   "m2_ffi": 92.1,
    "m3": 28.3,
-   "m4_ext": 89.5,
-   "m4_ffi": 89.5,
+   "m4_ext": 92.1,
+   "m4_ffi": 92.1,
    "m5": 100.0,
    "symbols": 53,
-   "verified_ext": 34,
-   "verified_ffi": 34
+   "verified_ext": 35,
+   "verified_ffi": 35
   },
   "scipy.sparse.csgraph": {
    "both": 22,
@@ -665,7 +665,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1554,
+ "registry_functions": 1555,
  "registry_untested": [
   "linalg.qr_complex",
   "np.cumulativeSimpson",

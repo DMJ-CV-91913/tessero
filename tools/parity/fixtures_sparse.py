@@ -217,6 +217,34 @@ for A, (R, C) in _bsr_specs:
 calls.append({'fn': 'bsr_array', 'cases': _bsr})
 calls.append({'fn': 'bsr_matrix', 'cases': _bsr})
 
+# ===== APPEND to tools/parity/fixtures_sparse.py, before the final out=/json.dump block =====
+# (uses the module-level `dense`, `rng`, `F`, and `calls` already defined there)
+#
+# scipy.sparse.expand_dims(A, axis): insert a length-1 axis into a 2-D sparse array, producing an
+# N-D (ndim==3) coo_array. Tessero's kernel routine sparse.expand_dims emits the canonical
+# (C/row-major) coordinate storage: data[k] is the k-th nonzero of the expanded array in C-order,
+# coords is (nnz x 3) int32, shape is the 3 expanded dims. Compared as that dict of arrays.
+import scipy.sparse as _spED
+
+
+def _ed_dict(A, axis):
+    B = _spED.expand_dims(_spED.coo_array(A), axis=axis)
+    coords = np.vstack(B.coords)                      # (ndim, nnz)
+    order = np.lexsort(coords[::-1])                  # C-order: last axis varies fastest
+    cc = np.ascontiguousarray(coords[:, order].T.astype(np.int32))   # (nnz, ndim)
+    dd = np.asarray(B.data)[order]
+    return {'data': F.enc(dd), 'coords': F.enc(cc), 'shape': F.enc(np.array(B.shape, dtype=np.int64))}
+
+
+_ed = []
+for A in (dense(3, 4), dense(4, 3), dense(2, 5), dense(5, 2),
+          np.diag([1., 2., 3.]), dense(1, 4), dense(4, 1), dense(3, 3), dense(6, 2),
+          np.array([[0., 2., 0., 3.], [0., 0., 0., 0.], [4., 0., 5., 0.]])):
+    for ax in (0, 1, 2, -1, -2, -3):
+        _ed.append({'args': [F.enc(A), F.enc(ax)], 'kwargs': {},
+                    'expect': {'dict': _ed_dict(A, ax)}, 'compare': 'tol'})
+calls.append({'fn': 'expand_dims', 'cases': _ed})
+
 out = {'module': 'sparse', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

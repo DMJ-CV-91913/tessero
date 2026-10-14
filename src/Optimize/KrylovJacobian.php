@@ -89,7 +89,7 @@ final class KrylovJacobian implements JacobianApprox
      * @param list<float> $v
      * @return list<float>
      */
-    private function matvec(array $v): array
+    public function matvec(array $v): array
     {
         $nv = NonlinSolve::n2($v);
         if ($nv === 0.0) {

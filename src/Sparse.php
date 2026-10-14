@@ -35,6 +35,7 @@ final class Sparse
     'diags_array' => 'diagsArray',
     'dok_array' => 'dokArray',
     'dok_matrix' => 'dokMatrix',
+    'expand_dims' => 'expandDims',
     'eye' => 'eye',
     'eye_array' => 'eyeArray',
     'find' => 'find',
@@ -268,6 +269,18 @@ final class Sparse
     public static function dokMatrix(mixed $A): mixed
     {
         return Registry::routine('sparse.dok_matrix', [$A]);
+    }
+
+    /**
+     * Insert a length-1 axis into a 2-D array, returning N-D coordinate storage (scipy.sparse.expand_dims).
+     *
+     * scipy.sparse.expand_dims
+     *
+     * @return mixed one array, or an array keyed by data, coords, shape when several results are requested
+     */
+    public static function expandDims(mixed $A, mixed $axis = 0): mixed
+    {
+        return Registry::routine('sparse.expand_dims', [$A, $axis]);
     }
 
     /**

@@ -562,6 +562,9 @@ legacy:
     # differential_evolution(func,bounds): best1bin/polish=False over the bit-exact PCG64 Generator; loose x (rtol 1e-4) on convex problems
     differential_evolution: {ffi: [DE::solve], ext: [DE::solve], fixtures: [optimize.differential_evolution]}
     broyden1: {ffi: [NLS::broyden1], ext: [NLS::broyden1], fixtures: [optimize.broyden1]}
+    BroydenFirst: {ffi: [BF::setup], ext: [BF::setup], fixtures: [optimize.BroydenFirst]}
+    InverseJacobian: {ffi: [IJ::matvec], ext: [IJ::matvec], fixtures: [optimize.InverseJacobian]}
+    KrylovJacobian: {ffi: [KJ::matvec], ext: [KJ::matvec], fixtures: [optimize.KrylovJacobian]}
     broyden2: {ffi: [NLS::broyden2], ext: [NLS::broyden2], fixtures: [optimize.broyden2]}
     anderson: {ffi: [NLS::anderson], ext: [NLS::anderson], fixtures: [optimize.anderson]}
     diagbroyden: {ffi: [NLS::diagbroyden], ext: [NLS::diagbroyden], fixtures: [optimize.diagbroyden]}
