@@ -10424,6 +10424,254 @@
         ]
     },
     {
+        "class": "Tessero\\Sparse\\SparseRandom",
+        "methods": [
+            {
+                "name": "randomArray",
+                "static": true,
+                "sig": "randomArray(array $shape, float $density = 0.01, Tessero\\Random\\Generator|array|int $rng = 0): array",
+                "doc": "scipy.sparse.random_array(shape, density, rng=...). Returns the COO triplets as a map {'row': int[], 'col': int[], 'data': float[], 'shape': [m, n]}."
+            },
+            {
+                "name": "random",
+                "static": true,
+                "sig": "random(int $m, ?int $n = null, float $density = 0.01, Tessero\\Random\\Generator|array|int $rng = 0): array",
+                "doc": "scipy.sparse.random(m, n, density, rng=...) \u2014 identical math to {@see randomArray}; scipy only differs in returning a coo_matrix rather than a coo_array."
+            },
+            {
+                "name": "rand",
+                "static": true,
+                "sig": "rand(int $m, ?int $n = null, float $density = 0.01, Tessero\\Random\\Generator|array|int $rng = 0): array",
+                "doc": "scipy.sparse.rand(m, n, density, rng=...) \u2014 alias of {@see random} (uniform [0,1) data only)."
+            },
+            {
+                "name": "choiceNoReplace",
+                "static": true,
+                "sig": "choiceNoReplace(Tessero\\Random\\Generator $g, int $pop, int $size): array",
+                "doc": "numpy.random.Generator.choice(pop, size, replace=False, p=None), shuffle=True \u2014 returns the chosen raveled indices in numpy's exact order. All index draws use the Lemire bounded path (Generator::integers), matching numpy's random_bounded_uint64(..., use_masked=0)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\GoodnessOfFit",
+        "methods": [
+            {
+                "name": "goodnessOfFit",
+                "static": true,
+                "sig": "goodnessOfFit(array $data, string $dist = 'norm', string $statistic = 'ad', array $knownParams = [], int $nMcSamples = 9999, int $seed = 0): array",
+                "doc": ""
+            }
+        ],
+        "constants": [
+            "EPS100"
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Power",
+        "methods": [
+            {
+                "name": "power",
+                "static": true,
+                "sig": "power(string $test, array $rvs, array $nObservations, float $significance = 0.01, int $nResamples = 10000, int $seed = 0, array $testKwargs = []): array",
+                "doc": "kind 'standard_normal' | 'normal'"
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\SplineFilter",
+        "methods": [
+            {
+                "name": "filter",
+                "static": true,
+                "sig": "filter(mixed $iin, float $lmbda, string $signalClass, string $ndClass): mixed",
+                "doc": "(\\Tessero\\Signal or \\Tessero\\Ext\\Signal)"
+            },
+            {
+                "name": "rootFromLambda",
+                "static": true,
+                "sig": "rootFromLambda(float $lamb): array",
+                "doc": "scipy.signal._spline_filters.compute_root_from_lambda"
+            }
+        ],
+        "constants": [
+            "HCOL"
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\MakeDistribution",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(string $name, array $shape = [])",
+                "doc": ""
+            },
+            {
+                "name": "of",
+                "static": true,
+                "sig": "of(string $name): Tessero\\Stats\\MakeDistributionFactory",
+                "doc": "The family class \u2014 SciPy's make_distribution(stats.<name>). Invoke the returned factory with the shape parameters to freeze a distribution object."
+            },
+            {
+                "name": "make",
+                "static": true,
+                "sig": "make(string $name, array $shape = []): self",
+                "doc": "One-step construction: make_distribution(stats.X)(**shapes)."
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "Complementary CDF \u2014 the survival function (scipy ccdf == legacy sf)."
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "log of the complementary CDF (scipy logccdf == legacy logsf)."
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse CDF \u2014 the quantile / percent-point function (scipy icdf == legacy ppf)."
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse complementary CDF (scipy iccdf == legacy isf)."
+            },
+            {
+                "name": "mean",
+                "static": false,
+                "sig": "mean(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "variance",
+                "static": false,
+                "sig": "variance(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "entropy",
+                "static": false,
+                "sig": "entropy(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "moment",
+                "static": false,
+                "sig": "moment(int $order): Tessero\\NDArray|float",
+                "doc": "The raw (non-central) moment of the given order \u2014 the new-API default moment kind."
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            }
+        ],
+        "constants": [
+            "SHAPES"
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\MakeDistributionFactory",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(string $name)",
+                "doc": ""
+            },
+            {
+                "name": "name",
+                "static": false,
+                "sig": "name(): string",
+                "doc": "The scipy base-distribution name this family wraps."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\RandomCorrelation",
+        "methods": [
+            {
+                "name": "rvs",
+                "static": true,
+                "sig": "rvs(array $eigs, Tessero\\Random\\Generator|array|int|null $rng = null, float $tol = 1.0E-13, float $diagTol = 1.0E-7): array",
+                "doc": "Draw one random correlation matrix with eigenvalues $eigs (scipy random_correlation.rvs, size 1)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\RandomTable",
+        "methods": [
+            {
+                "name": "rvs",
+                "static": true,
+                "sig": "rvs(array $row, array $col, ?string $method = null, Tessero\\Random\\Generator|array|int|null $rng = null): array",
+                "doc": "Draw one random contingency table with the given row and column sums (size 1)."
+            }
+        ],
+        "constants": [
+            "LOGFACT"
+        ]
+    },
+    {
+        "class": "Tessero\\Integrate\\QmcQuad",
+        "methods": [
+            {
+                "name": "qmcQuad",
+                "static": true,
+                "sig": "qmcQuad(callable $func, array $a, array $b, array|int $seed, int $nEstimates = 8, int $nPoints = 1024): array",
+                "doc": "rows) and returns a list of n_points scalar values"
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Linalg\\ClarksonWoodruff",
+        "methods": [
+            {
+                "name": "transform",
+                "static": true,
+                "sig": "transform(Tessero\\NDArray|array $inputMatrix, int $sketchSize, Tessero\\Random\\Generator|array|int|null $rng = null): Tessero\\NDArray",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
