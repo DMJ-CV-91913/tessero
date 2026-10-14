@@ -1307,6 +1307,238 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['metadist_cases'])) {                   // scipy.stats dist-infrastructure (pure-PHP Tessero\Stats meta-facades over Distribution)
+        $local = [];
+        $buildBase = static function (array $spec): \Tessero\Stats\Distribution {
+            $p = $spec['params'];
+            return match ($spec['name']) {
+                'norm'    => \Tessero\Stats::norm($p[0], $p[1]),
+                'uniform' => \Tessero\Stats::uniform($p[0], $p[1]),
+                'expon'   => \Tessero\Stats::expon($p[0], $p[1]),
+                default   => throw new \RuntimeException("metadist base {$spec['name']}"),
+            };
+        };
+        foreach ($data['metadist_cases'] as $c) {
+            $kind = $c['kind'];
+            $key = 'stats.' . match ($kind) {
+                'truncate' => 'truncate', 'order_statistic' => 'order_statistic',
+                'mixture' => 'Mixture', 'exp' => 'exp', 'log' => 'log', 'abs' => 'abs',
+                default => $kind,
+            };
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $rv = match ($kind) {
+                    'truncate'        => new \Tessero\Stats\Truncated($buildBase($c['base']), (float) $c['lb'], (float) $c['ub']),
+                    'order_statistic' => new \Tessero\Stats\OrderStatistic($buildBase($c['base']), (int) $c['n'], (int) $c['r']),
+                    'mixture'         => new \Tessero\Stats\Mixture(array_map($buildBase, $c['components']), $c['weights']),
+                    'exp'             => \Tessero\Stats\Transformed::exp($buildBase($c['base'])),
+                    'log'             => \Tessero\Stats\Transformed::log($buildBase($c['base'])),
+                    'abs'             => \Tessero\Stats\Transformed::abs($buildBase($c['base'])),
+                    default           => throw new \RuntimeException("unknown metadist kind {$kind}"),
+                };
+                $arg = $c['arg'];
+                $got = match ($c['method']) {
+                    'pdf' => $rv->pdf($arg), 'logpdf' => $rv->logpdf($arg),
+                    'cdf' => $rv->cdf($arg), 'logcdf' => $rv->logcdf($arg),
+                    'ccdf' => $rv->ccdf($arg), 'logccdf' => $rv->logccdf($arg),
+                    'icdf' => $rv->icdf($arg), 'iccdf' => $rv->iccdf($arg),
+                    'mean' => $rv->mean(), 'variance' => $rv->variance(),
+                    'median' => $rv->median(), 'support' => $rv->support(),
+                    default => throw new \RuntimeException("unknown metadist method {$c['method']}"),
+                };
+                $wf = []; $we = [$c['expect']]; array_walk_recursive($we, static function ($x) use (&$wf) { $wf[] = dec($x); });
+                $g = $got;
+                if (is_array($g)) {
+                    $gf = []; foreach ($g as $e) { $gf[] = (is_object($e) && method_exists($e, 'item')) ? (float) $e->item() : (float) $e; }
+                } elseif (is_object($g) && method_exists($g, 'toArray')) {
+                    $gf = []; $ga = [$g->toArray()]; array_walk_recursive($ga, static function ($x) use (&$gf) { $gf[] = (float) $x; });
+                } else {
+                    $gf = [(float) $g];
+                }
+                $ok = count($gf) === count($wf);
+                foreach ($wf as $i => $want) {
+                    if (! $ok) { break; }
+                    $gi = $gf[$i] ?? NAN;
+                    if (is_nan($want)) { $ok = is_nan($gi); }
+                    elseif (is_infinite($want)) { $ok = $gi === $want; }
+                    else { $ok = abs($gi - $want) <= 1e-10 * (1 + abs($want)); }
+                }
+                if (! $ok) { $msg = "{$c['method']} did not match scipy.stats.{$kind}"; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['scipyio_cases'])) {                     // scipy.io file formats: MatrixMarket / WAV / FortranFile (pure-PHP Tessero\Io)
+        $local = [];
+        $bump = static function (string $key, bool $ok) use (&$local): void {
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+        };
+        $cmpFlat = static function (array $want, array $got, float $tol = 1e-9): bool {
+            if (count($want) !== count($got)) {
+                return false;
+            }
+            foreach ($want as $i => $w) {
+                $g = $got[$i];
+                if (is_nan((float) $w)) {
+                    if (! is_nan((float) $g)) { return false; }
+                } elseif (abs((float) $w - (float) $g) > $tol + $tol * abs((float) $w)) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+        foreach ($data['scipyio_cases'] as $c) {
+            $kind = $c['kind'];
+            $checked++;
+            $ok = false;
+            $msg = '';
+            try {
+                switch ($kind) {
+                    case 'mmread':
+                        $r = \Tessero\Io\MatrixMarket::read(base64_decode($c['content_b64']));
+                        $flat = [];
+                        foreach ($r['data'] as $row) {
+                            foreach ($row as $v) {
+                                if (is_array($v)) { $flat[] = $v[0]; $flat[] = $v[1]; }   // complex re/im
+                                else { $flat[] = $v; }
+                            }
+                        }
+                        $okShape = $r['rows'] === $c['rows'] && $r['cols'] === $c['cols'];
+                        $info = \Tessero\Io\MatrixMarket::info(base64_decode($c['content_b64']));
+                        $okInfo = $info === $c['info'] || [$info[0], $info[1], $info[2], $info[3], $info[4], $info[5]] === $c['info'];
+                        $ok = $okShape && $cmpFlat($c['flat'], $flat) && $okInfo;
+                        if (! $ok) { $msg = $okShape ? ($okInfo ? 'data differs' : 'mminfo ' . json_encode($info) . ' want ' . json_encode($c['info'])) : "shape {$r['rows']}x{$r['cols']}"; }
+                        $key = 'scipyio.mmread';
+                        $bump('scipyio.mminfo', $okInfo);
+                        break;
+
+                    case 'mmwrite':
+                        $text = \Tessero\Io\MatrixMarket::write($c['data'], $c['format'], $c['field']);
+                        $r = \Tessero\Io\MatrixMarket::read($text);
+                        $flat = [];
+                        foreach ($r['data'] as $row) {
+                            foreach ($row as $v) {
+                                if (is_array($v)) { $flat[] = $v[0]; $flat[] = $v[1]; }
+                                else { $flat[] = $v; }
+                            }
+                        }
+                        $want = [];
+                        foreach ($c['data'] as $row) {
+                            foreach ($row as $v) {
+                                if (is_array($v)) { $want[] = $v[0]; $want[] = $v[1]; }
+                                else { $want[] = $v; }
+                            }
+                        }
+                        $ok = $r['rows'] === $c['rows'] && $r['cols'] === $c['cols'] && $cmpFlat($want, $flat);
+                        if (! $ok) { $msg = 'write/re-read differs'; }
+                        $key = 'scipyio.mmwrite';
+                        break;
+
+                    case 'wavread':
+                        $r = \Tessero\Io\Wav::read(base64_decode($c['content_b64']));
+                        $ok = $r['rate'] === $c['rate'] && $r['channels'] === $c['channels']
+                            && $r['dtype'] === $c['dtype'] && $cmpFlat($c['flat'], $r['data']);
+                        if (! $ok) { $msg = "rate={$r['rate']} ch={$r['channels']} dtype={$r['dtype']}"; }
+                        $key = 'scipyio.wavfile';
+                        break;
+
+                    case 'wavwrite':
+                        $bytes = \Tessero\Io\Wav::write($c['rate'], $c['flat'], $c['dtype'], $c['channels']);
+                        $r = \Tessero\Io\Wav::read($bytes);
+                        $ok = $r['rate'] === $c['rate'] && $r['channels'] === $c['channels']
+                            && $r['dtype'] === $c['dtype'] && $cmpFlat($c['flat'], $r['data']);
+                        if (! $ok) { $msg = 'wav write/re-read differs'; }
+                        $key = 'scipyio.wavfile';
+                        break;
+
+                    case 'fortranread':
+                        $recs = \Tessero\Io\FortranFile::readRecords(base64_decode($c['content_b64']), $c['dtype'], $c['header_dtype']);
+                        $ok = count($recs) === count($c['records']);
+                        foreach ($c['records'] as $i => $want) {
+                            if (! $ok || ! isset($recs[$i]) || ! $cmpFlat($want, $recs[$i])) { $ok = false; break; }
+                        }
+                        if (! $ok) { $msg = 'records differ (' . count($recs) . ' read)'; }
+                        $key = 'scipyio.FortranFile';
+                        break;
+
+                    case 'fortranwrite':
+                        $bytes = \Tessero\Io\FortranFile::writeRecords($c['records'], $c['dtype']);
+                        $recs = \Tessero\Io\FortranFile::readRecords($bytes, $c['dtype']);
+                        $ok = count($recs) === count($c['records']);
+                        foreach ($c['records'] as $i => $want) {
+                            if (! $ok || ! isset($recs[$i]) || ! $cmpFlat($want, $recs[$i])) { $ok = false; break; }
+                        }
+                        if (! $ok) { $msg = 'fortran write/re-read differs'; }
+                        $key = 'scipyio.FortranFile';
+                        break;
+
+                    default:
+                        $key = "scipyio.{$kind}";
+                        $msg = "unknown kind {$kind}";
+                }
+            } catch (\Throwable $e) {
+                $key = $key ?? "scipyio.{$kind}";
+                $msg = $e->getMessage();
+            }
+            $bump($key, $ok);
+            if (! $ok) { $failures++; echo "FAIL {$key} [{$c['name']}]: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['sparse_npz_cases'])) {                  // scipy.sparse.save_npz / load_npz round-trip
+        $local = [];
+        foreach ($data['sparse_npz_cases'] as $c) {
+            $key = 'sparse.' . ($c['dir'] === 'load' ? 'load_npz' : 'save_npz');
+            $checked++;
+            $tmp = tempnam(sys_get_temp_dir(), 'spnpz') . '.npz';
+            try {
+                if ($c['dir'] === 'load') {
+                    file_put_contents($tmp, base64_decode($c['npz_b64']));
+                    $got = \Tessero\Io\SparseNpz::load($tmp);
+                } else {
+                    $csrIn = [
+                        'data'    => $arrayClass::array($c['csr']['data'], 'float64'),
+                        'indices' => $arrayClass::array($c['csr']['indices'], 'int32'),
+                        'indptr'  => $arrayClass::array($c['csr']['indptr'], 'int32'),
+                        'shape'   => $c['csr']['shape'],
+                    ];
+                    \Tessero\Io\SparseNpz::save($tmp, $csrIn, (bool) $c['is_array']);
+                    $got = \Tessero\Io\SparseNpz::load($tmp);
+                }
+                $e = $c['expect'];
+                $flat = static fn ($v) => (is_object($v) && method_exists($v, 'toList')) ? $v->toList() : (array) $v;
+                $p = null;
+                $gi = array_map('intval', $flat($got['indices']));
+                $gp = array_map('intval', $flat($got['indptr']));
+                if ($got['format'] !== $e['format']) { $p = "format {$got['format']}"; }
+                elseif ($got['shape'] !== [(int) $e['shape'][0], (int) $e['shape'][1]]) { $p = 'shape ' . json_encode($got['shape']); }
+                elseif ((bool) $got['is_array'] !== (bool) $e['is_array']) { $p = 'is_array ' . var_export($got['is_array'], true); }
+                else {
+                    $gd = array_map('floatval', $flat($got['data']));
+                    $ed = array_map(static fn ($x) => is_string($x) ? dec($x) : (float) $x, $e['data']);
+                    if (count($gd) !== count($ed)) { $p = 'data length ' . count($gd) . ' vs ' . count($ed); }
+                    else { foreach ($ed as $i => $wv) { if (abs($gd[$i] - (float) $wv) > 1e-12 * (1 + abs((float) $wv))) { $p = "data[{$i}] {$gd[$i]} vs {$wv}"; break; } } }
+                    if ($p === null && $gi !== array_map('intval', $e['indices'])) { $p = 'indices differ'; }
+                    if ($p === null && $gp !== array_map('intval', $e['indptr'])) { $p = 'indptr differ'; }
+                }
+            } catch (\Throwable $ex) {
+                $p = 'threw ' . $ex->getMessage();
+            }
+            @unlink($tmp);
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+            if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['datetime_cases'])) {                    // numpy datetime64 / busday / isnat (pure-PHP, int64 counts)
         $local = [];
         foreach ($data['datetime_cases'] as $c) {
