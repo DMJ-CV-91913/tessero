@@ -102,20 +102,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1482,
+   "both": 1484,
    "excluded": 68,
-   "impl_ext": 1482,
-   "impl_ffi": 1482,
+   "impl_ext": 1484,
+   "impl_ffi": 1484,
    "in_scope": 1494,
-   "m2_ext": 99.2,
-   "m2_ffi": 99.2,
+   "m2_ext": 99.3,
+   "m2_ffi": 99.3,
    "m3": 4.4,
-   "m4_ext": 99.2,
-   "m4_ffi": 99.2,
+   "m4_ext": 99.3,
+   "m4_ffi": 99.3,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1482,
-   "verified_ffi": 1482
+   "verified_ext": 1484,
+   "verified_ffi": 1484
   }
  },
  "modules": {
@@ -648,20 +648,20 @@
    "verified_ffi": 336
   },
   "scipy.stats": {
-   "both": 294,
+   "both": 296,
    "excluded": 6,
-   "impl_ext": 294,
-   "impl_ffi": 294,
+   "impl_ext": 296,
+   "impl_ffi": 296,
    "in_scope": 297,
-   "m2_ext": 99.0,
-   "m2_ffi": 99.0,
+   "m2_ext": 99.7,
+   "m2_ffi": 99.7,
    "m3": 2.0,
-   "m4_ext": 99.0,
-   "m4_ffi": 99.0,
+   "m4_ext": 99.7,
+   "m4_ffi": 99.7,
    "m5": 100.0,
    "symbols": 303,
-   "verified_ext": 294,
-   "verified_ffi": 294
+   "verified_ext": 296,
+   "verified_ffi": 296
   }
  },
  "numpy": "2.4.4",
