@@ -708,11 +708,13 @@
         "optimize.diagbroyden": "pass",
         "optimize.differential_evolution": "pass",
         "optimize.dual_annealing": "pass",
+        "optimize.excitingmixing": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
         "optimize.fmin_cg": "pass",
         "optimize.fmin_cobyla": "pass",
+        "optimize.fmin_l_bfgs_b": "pass",
         "optimize.fmin_ncg": "pass",
         "optimize.fmin_powell": "pass",
         "optimize.fmin_slsqp": "pass",
@@ -725,6 +727,7 @@
         "optimize.leastsq": "pass",
         "optimize.line_search": "pass",
         "optimize.linear_sum_assignment": "pass",
+        "optimize.linearmixing": "pass",
         "optimize.lsq_linear": "pass",
         "optimize.minimize": "pass",
         "optimize.minimize_con": "pass",
@@ -3523,7 +3526,10 @@
             "splinalg.eigsh": 0,
             "splinalg.svds": 3.25462018888813e-16,
             "splinalg.lobpcg": 1.5520756639495613e-15,
-            "splinalg.funm_multiply_krylov": 1.230856586669014e-12
+            "splinalg.funm_multiply_krylov": 1.230856586669014e-12,
+            "optimize.linearmixing": null,
+            "optimize.excitingmixing": null,
+            "optimize.fmin_l_bfgs_b": null
         },
         "ext": {
             "np.median": 0,
@@ -5285,7 +5291,10 @@
             "splinalg.eigsh": 0,
             "splinalg.svds": 3.25462018888813e-16,
             "splinalg.lobpcg": 1.5520756639495613e-15,
-            "splinalg.funm_multiply_krylov": 1.230856586669014e-12
+            "splinalg.funm_multiply_krylov": 1.230856586669014e-12,
+            "optimize.linearmixing": null,
+            "optimize.excitingmixing": null,
+            "optimize.fmin_l_bfgs_b": null
         }
     },
     "ext": {
@@ -5997,11 +6006,13 @@
         "optimize.diagbroyden": "pass",
         "optimize.differential_evolution": "pass",
         "optimize.dual_annealing": "pass",
+        "optimize.excitingmixing": "pass",
         "optimize.fixed_point": "pass",
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
         "optimize.fmin_cg": "pass",
         "optimize.fmin_cobyla": "pass",
+        "optimize.fmin_l_bfgs_b": "pass",
         "optimize.fmin_ncg": "pass",
         "optimize.fmin_powell": "pass",
         "optimize.fmin_slsqp": "pass",
@@ -6014,6 +6025,7 @@
         "optimize.leastsq": "pass",
         "optimize.line_search": "pass",
         "optimize.linear_sum_assignment": "pass",
+        "optimize.linearmixing": "pass",
         "optimize.lsq_linear": "pass",
         "optimize.minimize": "pass",
         "optimize.minimize_con": "pass",
