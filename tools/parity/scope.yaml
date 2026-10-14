@@ -446,6 +446,8 @@ legacy:
     quad_vec: {ffi: [QVec::quadVec], ext: [QVec::quadVec], fixtures: [integrate.quad_vec]}
     solve_ivp: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     DOP853: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    BDF: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    Radau: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     dblquad: {ffi: [NQ::dblquad], ext: [NQ::dblquad], fixtures: [integrate.dblquad]}
     tplquad: {ffi: [NQ::tplquad], ext: [NQ::tplquad], fixtures: [integrate.tplquad]}
     nquad: {ffi: [NQ::nquad], ext: [NQ::nquad], fixtures: [integrate.nquad]}

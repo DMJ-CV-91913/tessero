@@ -22,6 +22,20 @@ def make_rhs(kind, p):
     if kind == 'vanderpol':
         mu = p['mu']
         return lambda t, y: np.array([y[1], mu * (1.0 - y[0] ** 2) * y[1] - y[0]])
+    if kind == 'robertson':
+        return lambda t, y: np.array([
+            -0.04 * y[0] + 1e4 * y[1] * y[2],
+            0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2,
+            3e7 * y[1] ** 2,
+        ])
+    if kind == 'linear3x3':
+        M = np.asarray(p['M'], dtype=float)
+        return lambda t, y: M.dot(np.asarray(y))
+    if kind == 'stiff_linear':
+        return lambda t, y: np.array([-1000.0 * y[0] + y[1], -y[1]])
+    if kind == 'stiff_linear3':
+        A = np.array([[-21.0, 19.0, -20.0], [19.0, -21.0, 20.0], [40.0, -40.0, -40.0]])
+        return lambda t, y: A.dot(np.asarray(y))
     raise ValueError(kind)
 
 
@@ -67,6 +81,25 @@ cases = [
     case('logistic', {'r': 1.0, 'K': 10.0}, (0.0, 6.0), [1.0], np.linspace(0, 6, 13).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
     case('vanderpol', {'mu': 0.5}, (0.0, 10.0), [2.0, 0.0], np.linspace(0, 10, 21).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
     case('harmonic', {'w': 1.5}, (0.0, -5.0), [0.0, 1.0], np.linspace(0, -5, 11).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
+    # --- method='BDF' (variable-order 1-5 implicit backward-differentiation; stiff systems) ---
+    case('exp_decay', {'k': 50.0}, (0.0, 1.0), [3.0], np.linspace(0, 1, 20).tolist(), method='BDF'),
+    case('robertson', {}, (0.0, 100.0), [1.0, 0.0, 0.0], np.linspace(0, 100, 40).tolist(), method='BDF'),
+    case('linear2x2', {'M': [[-1000.0, 1.0], [0.0, -1.0]]}, (0.0, 5.0), [1.0, 1.0], np.linspace(0, 5, 30).tolist(), method='BDF'),
+    case('linear3x3', {'M': [[-100.0, 1.0, 0.0], [0.0, -10.0, 1.0], [0.0, 0.0, -1.0]]}, (0.0, 2.0), [1.0, 1.0, 1.0], np.linspace(0, 2, 25).tolist(), method='BDF'),
+    case('robertson', {}, (0.0, 40.0), [1.0, 0.0, 0.0], np.linspace(0, 40, 30).tolist(), method='BDF', rtol=1e-8, atol=1e-11),
+    case('linear3x3', {'M': [[-100.0, 1.0, 0.0], [0.0, -10.0, 1.0], [0.0, 0.0, -1.0]]}, (0.0, 3.0), [2.0, -1.0, 0.5], np.linspace(0, 3, 25).tolist(), method='BDF', rtol=1e-8, atol=1e-11),
+    case('exp_decay', {'k': 100.0}, (0.0, 0.5), [1.0, 2.0, 3.0], np.linspace(0, 0.5, 15).tolist(), method='BDF', rtol=1e-8, atol=1e-11),
+    # --- method='Radau' (implicit Radau IIA order 5, stiff ODEs) ---
+    case('vanderpol', {'mu': 5.0},   (0.0, 20.0),  [2.0, 0.0],   np.linspace(0, 20, 21).tolist(),   method='Radau'),
+    case('vanderpol', {'mu': 50.0},  (0.0, 30.0),  [2.0, 0.0],   np.linspace(0, 30, 16).tolist(),   method='Radau'),
+    case('vanderpol', {'mu': 200.0}, (0.0, 40.0),  [2.0, 0.0],   np.linspace(0, 40, 21).tolist(),   method='Radau'),
+    case('robertson', {},            (0.0, 100.0), [1.0, 0.0, 0.0], [0.0, 0.4, 4.0, 40.0, 100.0],    method='Radau'),
+    case('robertson', {},            (0.0, 1e3),   [1.0, 0.0, 0.0], [0.0, 1.0, 10.0, 100.0, 1000.0], method='Radau', rtol=1e-8, atol=1e-10),
+    case('stiff_linear', {},         (0.0, 5.0),   [1.0, 1.0],   np.linspace(0, 5, 11).tolist(),    method='Radau'),
+    case('stiff_linear3', {},        (0.0, 2.0),   [1.0, 0.0, -1.0], np.linspace(0, 2, 11).tolist(), method='Radau'),
+    case('harmonic', {'w': 2.0},     (0.0, 6.0),   [1.0, 0.0],   np.linspace(0, 6, 13).tolist(),    method='Radau'),
+    case('harmonic', {'w': 1.5},     (0.0, -5.0),  [0.0, 1.0],   np.linspace(0, -5, 11).tolist(),   method='Radau'),
+    case('exp_decay', {'k': 0.7},    (0.0, 5.0),   [2.0],        np.linspace(0, 5, 11).tolist(),    method='Radau'),
 ]
 
 
