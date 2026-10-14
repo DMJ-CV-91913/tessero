@@ -984,6 +984,70 @@ function makeOdeSystem(string $kind, array $p): callable
     };
 }
 
+/** Rebuild a named BVP system (scipy.integrate.solve_bvp fixtures) as [fun, bc, hasP]. */
+function makeBvpSystem(string $kind): array
+{
+    switch ($kind) {
+        case 'bratu':
+            $fun = static function (array $x, array $y, array $p): array {
+                $o0 = []; $o1 = [];
+                foreach ($x as $j => $_) { $o0[$j] = $y[1][$j]; $o1[$j] = -exp($y[0][$j]); }
+                return [$o0, $o1];
+            };
+            $bc = static fn (array $ya, array $yb, array $p): array => [$ya[0], $yb[0]];
+            return [$fun, $bc, false];
+        case 'linear_sin':
+            $fun = static function (array $x, array $y, array $p): array {
+                $o0 = []; $o1 = [];
+                foreach ($x as $j => $_) { $o0[$j] = $y[1][$j]; $o1[$j] = -$y[0][$j]; }
+                return [$o0, $o1];
+            };
+            $bc = static fn (array $ya, array $yb, array $p): array => [$ya[0], $yb[0] - 1.0];
+            return [$fun, $bc, false];
+        case 'nonlin_reaction':
+            $fun = static function (array $x, array $y, array $p): array {
+                $o0 = []; $o1 = [];
+                foreach ($x as $j => $_) { $o0[$j] = $y[1][$j]; $o1[$j] = -3.0 * $y[0][$j] * $y[1][$j]; }
+                return [$o0, $o1];
+            };
+            $bc = static fn (array $ya, array $yb, array $p): array => [$ya[0], $yb[0] - 1.0];
+            return [$fun, $bc, false];
+        case 'exp_shrink':
+            $fun = static function (array $x, array $y, array $p): array {
+                $o0 = []; $o1 = [];
+                foreach ($x as $j => $_) { $o0[$j] = $y[1][$j]; $o1[$j] = $y[0][$j]; }
+                return [$o0, $o1];
+            };
+            $bc = static fn (array $ya, array $yb, array $p): array => [$ya[0] - 1.0, $yb[0] - M_E];
+            return [$fun, $bc, false];
+        case 'sturm_liouville':
+            $fun = static function (array $x, array $y, array $p): array {
+                $k = $p[0]; $o0 = []; $o1 = [];
+                foreach ($x as $j => $_) { $o0[$j] = $y[1][$j]; $o1[$j] = -$k * $k * $y[0][$j]; }
+                return [$o0, $o1];
+            };
+            $bc = static fn (array $ya, array $yb, array $p): array => [$ya[0], $yb[0], $ya[1] - $p[0]];
+            return [$fun, $bc, true];
+        default:
+            throw new \RuntimeException("solve_bvp: unknown BVP system: " . $kind);
+    }
+}
+
+/** Rebuild a scipy.integrate.cubature integrand f: R^ndim -> R from its named kind (mirrors fixtures_cubature.py). */
+function makeCubIntegrand(string $kind): callable
+{
+    return match ($kind) {
+        'sumsq'  => static fn (array $x): float => array_sum(array_map(static fn ($v) => $v * $v, $x)),
+        'prod'   => static fn (array $x): float => (float) array_product($x),
+        'coscos' => static fn (array $x): float => array_sum(array_map('cos', $x)),
+        'expsum' => static fn (array $x): float => exp(array_sum($x)),
+        'gauss'  => static fn (array $x): float => exp(-array_sum(array_map(static fn ($v) => $v * $v, $x))),
+        'poly'   => static fn (array $x): float => array_sum(array_map(static fn ($v) => $v ** 3, $x)) + (float) array_product($x),
+        'invr'   => static fn (array $x): float => 1.0 / (1.0 + array_sum(array_map(static fn ($v) => $v * $v, $x))),
+        default  => throw new \RuntimeException("unknown cubature integrand '{$kind}'"),
+    };
+}
+
 /** Rebuild a named permutation_test statistic (scipy.stats.permutation_test fixtures) as a callable. */
 function makePermStatistic(string $kind): callable
 {
@@ -2051,6 +2115,134 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['solvebvp_cases'])) {               // scipy.integrate.solve_bvp (callable fun/bc; collocation + mesh refinement; pure-PHP)
+        $local = [];
+        foreach ($data['solvebvp_cases'] as $c) {
+            $key = 'integrate.solve_bvp';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                [$fun, $bc, $hasP] = makeBvpSystem($c['kind']);
+                $p = $hasP && $c['p_init'] !== null ? array_map('floatval', $c['p_init']) : null;
+                $res = \Tessero\Integrate\SolveBvp::solve(
+                    $fun,
+                    $bc,
+                    array_map('floatval', $c['x']),
+                    array_map(static fn ($r) => array_map('floatval', $r), $c['y_init']),
+                    $p,
+                    (float) $c['tol'],
+                    1000,
+                    $c['bc_tol'] !== null ? (float) $c['bc_tol'] : null
+                );
+                $got = \Tessero\Integrate\SolveBvp::sol($res, array_map('floatval', $c['x_eval']), $res['x']);
+                $exp = $c['expect'];
+                $ok = $res['status'] === (int) $c['status'] && count($got) === count($exp);
+                if ($ok && $c['p_expect'] !== null) {
+                    foreach ($c['p_expect'] as $pi => $pv) {
+                        if (abs((float) $res['p'][$pi] - (float) $pv) > 1e-7 * (1 + abs((float) $pv))) { $ok = false; $msg = 'p off at ' . $pi; break; }
+                    }
+                }
+                if ($ok) {
+                    foreach ($exp as $i => $row) {
+                        foreach ($row as $j => $w) {
+                            $g = (float) $got[$i][$j];
+                            if (abs($g - (float) $w) > 1e-9 + 1e-6 * abs((float) $w)) { $ok = false; $msg = 'off at row ' . $i . ' col ' . $j; break 2; }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $st) { $results[$backend][$k] = $st; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+
+    if (isset($data['odeint_cases'])) {               // scipy.integrate.odeint (legacy interface over ODEPACK dlsoda; pure-PHP LSODA engine)
+        $local = [];
+        foreach ($data['odeint_cases'] as $c) {
+            $key = 'integrate.odeint';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $fun = makeOdeSystem($c['kind'], $c['params']);   // fun(t, y)
+                $tfirst = (bool) ($c['tfirst'] ?? false);
+                // scipy odeint default is func(y, t); pass a matching callable unless tfirst=true.
+                $cb = $tfirst
+                    ? $fun
+                    : static function (array $y, float $t) use ($fun): array { return $fun($t, $y); };
+                $got = \Tessero\Integrate\SolveIvp::odeint(
+                    $cb,
+                    array_map('floatval', $c['y0']),
+                    array_map('floatval', $c['t']),
+                    $tfirst,
+                    (float) $c['rtol'],
+                    (float) $c['atol']
+                );
+                $exp = $c['expect'];   // shape (len(t), n)
+                $ok = count($got) === count($exp);
+                if ($ok) {
+                    foreach ($exp as $i => $row) {
+                        foreach ($row as $j => $w) {
+                            $g = (float) $got[$i][$j];
+                            if (abs($g - (float) $w) > 1e-9 + 1e-6 * abs((float) $w)) { $ok = false; $msg = 'off at row ' . $i . ' col ' . $j; break 2; }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['lebedev_cases'])) {                  // scipy.integrate.lebedev_rule (pure-PHP data-table port)
+        $local = [];
+        foreach ($data['lebedev_cases'] as $c) {
+            $key = 'integrate.lebedev_rule';
+            $rtol = (float) $c['rtol'];
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                [$x, $w] = \Tessero\Integrate\Lebedev::lebedevRule((int) $c['n']);
+                $m = count($w);
+                for ($i = 0; $i < 3 && $ok; $i++) {
+                    for ($k = 0; $k < $m; $k++) {
+                        if (abs($x[$i][$k] - (float) $c['x'][$i][$k]) > $rtol) { $ok = false; $msg = "x[$i][$k] n=" . $c['n']; break; }
+                    }
+                }
+                for ($k = 0; $k < $m && $ok; $k++) {
+                    if (abs($w[$k] - (float) $c['w'][$k]) > $rtol) { $ok = false; $msg = "w[$k] n=" . $c['n']; break; }
+                }
+            } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['cubature_cases'])) {                 // scipy.integrate.cubature (pure-PHP heap-adaptive)
+        $local = [];
+        foreach ($data['cubature_cases'] as $c) {
+            $key = 'integrate.cubature';
+            $rtol = (float) $c['rtol'];
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $r = \Tessero\Integrate\Cubature::cubature(makeCubIntegrand($c['kind']), $c['a'], $c['b'], $c['rule']);
+                $ok = abs($r['estimate'] - (float) $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+                if (! $ok) { $msg = 'got ' . $r['estimate'] . ' want ' . $c['expect']; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['differentiate_cases'])) {               // scipy.differentiate.derivative/jacobian/hessian (pure-PHP; named callables; central finite diff)
         $local = [];
         foreach ($data['differentiate_cases'] as $c) {
@@ -2117,7 +2309,8 @@ foreach ($files as $file) {
             $checked++;
             $ok = false; $msg = '';
             try {
-                $r = \Tessero\Integrate\Nsum::nsum(makeTerm($c['kind'], $c['params'] ?? []), (float) $c['a'], (float) $c['b'], (float) $c['step']);
+                $bb = ($c['b'] === 'inf') ? null : (float) $c['b'];
+        $r = \Tessero\Integrate\Nsum::nsum(makeTerm($c['kind'], $c['params'] ?? []), (float) $c['a'], $bb, (float) $c['step']);
                 $ok = abs($r['sum'] - (float) $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
                 if (! $ok) { $msg = 'got ' . $r['sum'] . ' want ' . $c['expect']; }
             } catch (\Throwable $e) { $msg = $e->getMessage(); }
