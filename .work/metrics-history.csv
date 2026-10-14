@@ -283,3 +283,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-14,stats-RNG + dists: ortho_group/special_ortho_group/uniform_direction/bootstrap/monte_carlo_test + Logistic/Binomial (both backends),100.0,100.0,93.1,93.1,100.0,100.0,100.0,100.0,91.6,91.6
 2026-10-14,optimize broyden1/broyden2/anderson/diagbroyden + solve_ivp DOP853 (both backends),100.0,100.0,93.4,93.4,100.0,100.0,100.0,100.0,91.6,91.6
 2026-10-14,"scipy.differentiate: derivative + jacobian + hessian (NEW module, both backends)",100.0,100.0,93.4,93.4,100.0,100.0,100.0,100.0,91.6,91.6
+2026-10-14,sparse lil/dok/bsr format classes + stats.unitary_group (complex-QR kernel); eigsh/eigs/svds+lobpcg deferred (live which-arg + QR-cap bugs),100.0,100.0,93.9,93.9,100.0,100.0,100.0,100.0,91.9,91.9

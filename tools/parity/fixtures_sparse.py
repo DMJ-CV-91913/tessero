@@ -161,6 +161,62 @@ for A in (dense(3, 4), dense(4, 3), dense(2, 5), dense(5, 2), np.diag([1., 2., 3
 calls.append({'fn': 'permute_dims', 'cases': _pm})
 calls.append({'fn': 'swapaxes', 'cases': _sw})
 
+# ===== APPEND to tools/parity/fixtures_sparse.py, before the final out=/json.dump block =====
+# (uses the module-level `dense`, `rng`, `F`, `MATS`, and `calls` already defined there)
+#
+# lil / dok / bsr constructors from a dense matrix. These three scipy formats are mutable
+# containers, but the storage built FROM a dense matrix is deterministic (no BLAS, host-
+# independent), so -- exactly like csr/csc/coo/dia_array above -- we compare the canonical
+# storage arrays:
+#   lil_array(A).data/.rows flatten row-major to CSR data/column-indices (+ indptr row bounds)
+#   dok_array(A) items sorted by (row, col) are the row-major coordinate triplets (= coo)
+#   bsr_array(A, blocksize) is block-CSR: data (nnz_blocks, R, C), indices, indptr, blocksize
+
+# lil: expose the row-list storage laid out as CSR (data, rows=column of each nnz, indptr, shape)
+_lil = []
+for A in MATS:
+    L = sp.lil_array(A)
+    data = np.array([v for rowvals in L.data for v in rowvals], dtype=np.float64)
+    cols = np.array([c for rowcols in L.rows for c in rowcols], dtype=np.int32)
+    indptr = np.concatenate(([0], np.cumsum([len(r) for r in L.rows]))).astype(np.int32)
+    d = {'data': F.enc(data), 'rows': F.enc(cols), 'indptr': F.enc(indptr), 'shape': F.enc(np.array(A.shape))}
+    _lil.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': {'dict': d}, 'compare': 'tol'})
+calls.append({'fn': 'lil_array', 'cases': _lil})
+calls.append({'fn': 'lil_matrix', 'cases': _lil})
+
+# dok: row-major coordinate triplets (sorted (row, col)) -> row, col, data, shape
+_dok = []
+for A in MATS:
+    D = sp.dok_array(A)
+    items = sorted(D.items())
+    row = np.array([int(k[0]) for k, _ in items], dtype=np.int32)
+    col = np.array([int(k[1]) for k, _ in items], dtype=np.int32)
+    val = np.array([float(v) for _, v in items], dtype=np.float64)
+    d = {'data': F.enc(val), 'row': F.enc(row), 'col': F.enc(col), 'shape': F.enc(np.array(A.shape))}
+    _dok.append({'args': [F.enc(A)], 'kwargs': {}, 'expect': {'dict': d}, 'compare': 'tol'})
+calls.append({'fn': 'dok_array', 'cases': _dok})
+calls.append({'fn': 'dok_matrix', 'cases': _dok})
+
+# bsr: block-CSR. Pass blocksize as two scalar args (R, C); use blocks that divide each matrix.
+# shapes in MATS: (3,4),(4,4),(5,3),(2,6),(6,2),(4,4 diag),(3,4). Choose a dividing blocksize per matrix.
+_bsr_specs = [
+    (dense(4, 4), (2, 2)), (dense(4, 6), (2, 3)), (dense(6, 2), (3, 1)),
+    (dense(4, 4), (1, 1)), (dense(6, 4), (2, 2)), (dense(2, 6), (2, 2)),
+    (np.diag([1., 2., 3., 4.]), (2, 2)), (dense(6, 6), (3, 3)), (dense(4, 4), (4, 4)),
+]
+_bsr = []
+for A, (R, C) in _bsr_specs:
+    B = sp.bsr_array(A, blocksize=(R, C))
+    B.sort_indices()  # scipy csr->bsr leaves block-columns unsorted; canonicalise to the sorted form the kernel emits
+    d = {'data': F.enc(np.asarray(B.data, dtype=np.float64)),
+         'indices': F.enc(np.asarray(B.indices, dtype=np.int32)),
+         'indptr': F.enc(np.asarray(B.indptr, dtype=np.int32)),
+         'shape': F.enc(np.array(B.shape)),
+         'blocksize': F.enc(np.array([R, C]))}
+    _bsr.append({'args': [F.enc(A), F.enc(R), F.enc(C)], 'kwargs': {}, 'expect': {'dict': d}, 'compare': 'tol'})
+calls.append({'fn': 'bsr_array', 'cases': _bsr})
+calls.append({'fn': 'bsr_matrix', 'cases': _bsr})
+
 out = {'module': 'sparse', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(), 'calls': calls}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

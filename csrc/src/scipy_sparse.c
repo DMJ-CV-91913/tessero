@@ -232,6 +232,114 @@ static int64_t sp_int(const tsr_arg *a, int n, int idx, int64_t dflt)
 { if (idx >= n || a[idx].kind != 1) return dflt; return (a[idx].flags & 1) ? a[idx].ival : (int64_t)a[idx].num; }
 
 /* eye(m, n=None, k=0): sparse identity-like matrix with ones on diagonal k, as CSR. */
+static int r_lil_array(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    const double *A; int64_t m, n, tot; double *owned;
+    int rc = sp_input(&args[0], &A, &m, &n, &tot, &owned);
+    if (rc < 0) return rc;
+    int64_t nnz = 0;
+    for (int64_t i = 0; i < m * n; i++) if (A[i] != 0.0) nnz++;
+    int64_t dsh[1] = {nnz}, psh[1] = {m + 1};
+    double *data = (double *)fn_result_array(&res[0], TSR_F64, 1, dsh);
+    int32_t *rows = (int32_t *)fn_result_array(&res[1], TSR_I32, 1, dsh);
+    int32_t *iptr = (int32_t *)fn_result_array(&res[2], TSR_I32, 1, psh);
+    if (!data || !rows || !iptr) { fn_free_doubles(owned, tot); return TSR_ENOMEM; }
+    int64_t k = 0;
+    iptr[0] = 0;
+    for (int64_t i = 0; i < m; i++) {
+        for (int64_t j = 0; j < n; j++) { const double v = A[i * n + j]; if (v != 0.0) { data[k] = v; rows[k] = (int32_t)j; k++; } }
+        iptr[i + 1] = (int32_t)k;
+    }
+    sp_shape(&res[3], m, n);
+    fn_free_doubles(owned, tot);
+    return TSR_OK;
+}
+
+/* dok_array(A): dict-of-keys. The stored (i,j)->v entries, canonicalised by
+   sorting on (row, col), are exactly the row-major coordinate triplets ->
+   row, col, data, shape (same layout as coo_array). */
+static int r_dok_array(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    const double *A; int64_t m, n, tot; double *owned;
+    int rc = sp_input(&args[0], &A, &m, &n, &tot, &owned);
+    if (rc < 0) return rc;
+    int64_t nnz = 0;
+    for (int64_t i = 0; i < m * n; i++) if (A[i] != 0.0) nnz++;
+    int64_t dsh[1] = {nnz};
+    double *data = (double *)fn_result_array(&res[0], TSR_F64, 1, dsh);
+    int32_t *row = (int32_t *)fn_result_array(&res[1], TSR_I32, 1, dsh);
+    int32_t *col = (int32_t *)fn_result_array(&res[2], TSR_I32, 1, dsh);
+    if (!data || !row || !col) { fn_free_doubles(owned, tot); return TSR_ENOMEM; }
+    int64_t k = 0;
+    for (int64_t i = 0; i < m; i++)
+        for (int64_t j = 0; j < n; j++) { const double v = A[i * n + j]; if (v != 0.0) { data[k] = v; row[k] = (int32_t)i; col[k] = (int32_t)j; k++; } }
+    sp_shape(&res[3], m, n);
+    fn_free_doubles(owned, tot);
+    return TSR_OK;
+}
+
+/* bsr_array(A, R=1, C=1): block sparse row. A is tiled into R-by-C blocks
+   (m%R==C-divisible checked); a block is stored iff it has any nonzero. The
+   block grid is traversed row-major, so block-column indices are sorted
+   within each block-row (scipy's canonical layout). Returns
+     data    (nnz_blocks x R x C, 3-D),
+     indices (block column of each stored block, int32),
+     indptr  (block-row boundaries, int32),
+     shape (m, n),
+     blocksize (R, C).
+   SciPy's default blocksize is (1,1); the facade passes it explicitly. */
+static int r_bsr_array(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const double *A; int64_t m, n, tot; double *owned;
+    int rc = sp_input(&args[0], &A, &m, &n, &tot, &owned);
+    if (rc < 0) return rc;
+    const int64_t R = sp_int(args, nargs, 1, 1), C = sp_int(args, nargs, 2, 1);
+    if (R <= 0 || C <= 0 || (m % R) != 0 || (n % C) != 0) {
+        fn_set_error("sparse.bsr_array: blocksize must divide the matrix shape");
+        fn_free_doubles(owned, tot); return TSR_EARG;
+    }
+    const int64_t mb = m / R, nb = n / C;
+    /* count nonzero blocks */
+    int64_t nblk = 0;
+    for (int64_t bi = 0; bi < mb; bi++)
+        for (int64_t bj = 0; bj < nb; bj++) {
+            int has = 0;
+            for (int64_t r = 0; r < R && !has; r++)
+                for (int64_t c = 0; c < C && !has; c++)
+                    if (A[(bi * R + r) * n + (bj * C + c)] != 0.0) has = 1;
+            if (has) nblk++;
+        }
+    int64_t dsh[3] = {nblk, R, C}, ish[1] = {nblk}, psh[1] = {mb + 1};
+    double *data = (double *)fn_result_array(&res[0], TSR_F64, 3, dsh);
+    int32_t *ind = (int32_t *)fn_result_array(&res[1], TSR_I32, 1, ish);
+    int32_t *iptr = (int32_t *)fn_result_array(&res[2], TSR_I32, 1, psh);
+    if (!data || !ind || !iptr) { fn_free_doubles(owned, tot); return TSR_ENOMEM; }
+    int64_t k = 0;
+    iptr[0] = 0;
+    for (int64_t bi = 0; bi < mb; bi++) {
+        for (int64_t bj = 0; bj < nb; bj++) {
+            int has = 0;
+            for (int64_t r = 0; r < R && !has; r++)
+                for (int64_t c = 0; c < C && !has; c++)
+                    if (A[(bi * R + r) * n + (bj * C + c)] != 0.0) has = 1;
+            if (!has) continue;
+            ind[k] = (int32_t)bj;
+            for (int64_t r = 0; r < R; r++)
+                for (int64_t c = 0; c < C; c++)
+                    data[(k * R + r) * C + c] = A[(bi * R + r) * n + (bj * C + c)];
+            k++;
+        }
+        iptr[bi + 1] = (int32_t)k;
+    }
+    sp_shape(&res[3], m, n);
+    { int64_t bsh[1] = {2}; int64_t *bs = (int64_t *)fn_result_array(&res[4], TSR_I64, 1, bsh); if (bs) { bs[0] = R; bs[1] = C; } }
+    fn_free_doubles(owned, tot);
+    return TSR_OK;
+}
+
 static int r_sp_eye(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -496,6 +604,12 @@ static int r_sp_swapaxes(const void *ctx, const tsr_arg *a, int nargs, tsr_resul
 }
 
 static const fn_def DEFS[] = {
+    ROUTINE("sparse.lil_array", 4, "A", "data, rows, indptr, shape", r_lil_array, NULL, "List-of-lists row storage of a dense matrix (scipy.sparse.lil_array)."),
+    ROUTINE("sparse.lil_matrix", 4, "A", "data, rows, indptr, shape", r_lil_array, NULL, "List-of-lists row storage of a dense matrix (scipy.sparse.lil_matrix)."),
+    ROUTINE("sparse.dok_array", 4, "A", "data, row, col, shape", r_dok_array, NULL, "Dictionary-of-keys storage of a dense matrix (scipy.sparse.dok_array)."),
+    ROUTINE("sparse.dok_matrix", 4, "A", "data, row, col, shape", r_dok_array, NULL, "Dictionary-of-keys storage of a dense matrix (scipy.sparse.dok_matrix)."),
+    ROUTINE("sparse.bsr_array", 5, "A, R=1, C=1", "data, indices, indptr, shape, blocksize", r_bsr_array, NULL, "Block sparse row storage of a dense matrix (scipy.sparse.bsr_array)."),
+    ROUTINE("sparse.bsr_matrix", 5, "A, R=1, C=1", "data, indices, indptr, shape, blocksize", r_bsr_array, NULL, "Block sparse row storage of a dense matrix (scipy.sparse.bsr_matrix)."),
     ROUTINE("sparse.hstack", 4, "*blocks", "data, indices, indptr, shape", r_hstack, NULL, "Stack sparse blocks horizontally, as CSR storage (scipy.sparse.hstack)."),
     ROUTINE("sparse.vstack", 4, "*blocks", "data, indices, indptr, shape", r_vstack, NULL, "Stack sparse blocks vertically, as CSR storage (scipy.sparse.vstack)."),
     ROUTINE("sparse.csr_array", 4, "A", "data, indices, indptr, shape", r_csr_array, NULL, "Compressed sparse row storage of a dense matrix (scipy.sparse.csr_array)."),

@@ -8077,6 +8077,17 @@
         ]
     },
     {
+        "class": "Tessero\\Stats\\UnitaryGroup",
+        "methods": [
+            {
+                "name": "rvs",
+                "static": true,
+                "sig": "rvs(int $dim, Tessero\\Random\\Generator|array|int|null $rng = null): Tessero\\NDArray",
+                "doc": "Draw a random unitary matrix from U(dim) (scipy.stats.unitary_group.rvs, size=1)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Stats\\UniformDirection",
         "methods": [
             {
@@ -20466,6 +20477,12 @@
     {
         "class": "Tessero\\Ext\\Linalg",
         "methods": [
+            {
+                "name": "qrComplex",
+                "static": true,
+                "sig": "qrComplex($a)",
+                "doc": ""
+            },
             {
                 "name": "matmul",
                 "static": true,

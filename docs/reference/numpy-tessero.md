@@ -251,6 +251,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `numpy.linalg.outer` | `Tessero\Linalg::outer()` |
 | `numpy.linalg.pinv` | `Tessero\Linalg::pinv()` |
 | `numpy.linalg.qr` | `Tessero\Linalg::qr()` |
+| `numpy.linalg.qr_complex` | `Tessero\Linalg::qrComplex()` |
 | `numpy.linalg.slogdet` | `Tessero\Linalg::slogdet()` |
 | `numpy.linalg.solve` | `Tessero\Linalg::solve()` |
 | `numpy.linalg.svd` | `Tessero\Linalg::svd()` |
@@ -1029,6 +1030,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.block_array` | `Tessero\Sparse::blockArray()` |
 | `scipy.sparse.block_diag` | `Tessero\Sparse::blockDiag()` |
 | `scipy.sparse.bmat` | `Tessero\Sparse::bmat()` |
+| `scipy.sparse.bsr_array` | `Tessero\Sparse::bsrArray()` |
+| `scipy.sparse.bsr_matrix` | `Tessero\Sparse::bsrMatrix()` |
 | `scipy.sparse.coo_array` | `Tessero\Sparse::cooArray()` |
 | `scipy.sparse.coo_matrix` | `Tessero\Sparse::cooMatrix()` |
 | `scipy.sparse.csc_array` | `Tessero\Sparse::cscArray()` |
@@ -1039,6 +1042,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.dia_matrix` | `Tessero\Sparse::diaMatrix()` |
 | `scipy.sparse.diags` | `Tessero\Sparse::diags()` |
 | `scipy.sparse.diags_array` | `Tessero\Sparse::diagsArray()` |
+| `scipy.sparse.dok_array` | `Tessero\Sparse::dokArray()` |
+| `scipy.sparse.dok_matrix` | `Tessero\Sparse::dokMatrix()` |
 | `scipy.sparse.eye` | `Tessero\Sparse::eye()` |
 | `scipy.sparse.eye_array` | `Tessero\Sparse::eyeArray()` |
 | `scipy.sparse.find` | `Tessero\Sparse::find()` |
@@ -1046,6 +1051,8 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.identity` | `Tessero\Sparse::identity()` |
 | `scipy.sparse.kron` | `Tessero\Sparse::kron()` |
 | `scipy.sparse.kronsum` | `Tessero\Sparse::kronsum()` |
+| `scipy.sparse.lil_array` | `Tessero\Sparse::lilArray()` |
+| `scipy.sparse.lil_matrix` | `Tessero\Sparse::lilMatrix()` |
 | `scipy.sparse.permute_dims` | `Tessero\Sparse::permuteDims()` |
 | `scipy.sparse.spdiags` | `Tessero\Sparse::spdiags()` |
 | `scipy.sparse.swapaxes` | `Tessero\Sparse::swapaxes()` |
