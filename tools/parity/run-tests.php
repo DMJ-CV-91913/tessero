@@ -1139,6 +1139,71 @@ function makeOdeComplexRhs(string $kind, array $p): callable
     };
 }
 
+/**
+ * scipy.optimize.{BroydenFirst, InverseJacobian, KrylovJacobian} Jacobian-helper classes.
+ *
+ * Each case scripts a deterministic op sequence on one helper and compares a probe
+ * (solve(v) = J^-1.v for BroydenFirst/InverseJacobian, matvec(v) = finite-diff J.v for
+ * KrylovJacobian) against scipy. The residual func is a named makeObjective() 'vecsys_*'
+ * kind (no callable serialised). Pure PHP (no kernel) -> identical on both backends.
+ * Returns status keyed "optimize.<ClassName>".
+ *
+ * @param list<array<string,mixed>> $cases
+ * @return array<string,string>
+ */
+function runNkClassCases(array $cases, string $module, int &$checked, int &$failures): array
+{
+    $status = [];
+    foreach ($cases as $c) {
+        $cls = (string) $c['cls'];
+        $key = "{$module}.{$cls}";
+        $rtol = (float) ($c['rtol'] ?? 1e-10);
+        $func = makeObjective($c['obj']);
+        $x0 = array_map('floatval', $c['x0']);
+        $f0 = $func($x0);
+        $probe = array_map('floatval', $c['probe']);
+        $checked++;
+        $ok = false;
+        $msg = '';
+        try {
+            switch ($cls) {
+                case 'BroydenFirst':
+                    $jac = new \Tessero\Optimize\BroydenFirst();
+                    $jac->setup($x0, $f0, $func);
+                    foreach ($c['updates'] as $p) {
+                        $p = array_map('floatval', $p);
+                        $jac->update($p, $func($p));
+                    }
+                    $got = $jac->solve($probe);
+                    break;
+                case 'InverseJacobian':
+                    $jac = new \Tessero\Optimize\InverseJacobian(new \Tessero\Optimize\BroydenFirst());
+                    $jac->setup($x0, $f0, $func);
+                    foreach ($c['updates'] as $p) {
+                        $p = array_map('floatval', $p);
+                        $jac->update($p, $func($p));
+                    }
+                    $got = $jac->matvec($probe);
+                    break;
+                case 'KrylovJacobian':
+                    $jac = new \Tessero\Optimize\KrylovJacobian();
+                    $jac->setup($x0, $f0, $func);
+                    $got = $jac->matvec($probe);
+                    break;
+                default:
+                    throw new \RuntimeException("runNkClassCases: unknown class '{$cls}'");
+            }
+            $ok = vecClose($got, $c['expect'], $rtol);
+            if (! $ok) { $msg = 'value mismatch'; }
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+        }
+        $status[$key] = ($status[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+        if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+    }
+    return $status;
+}
+
 function runSolverCases(array $cases, string $module, int &$checked, int &$failures): array
 {
     $status = [];
@@ -2435,6 +2500,19 @@ foreach ($files as $file) {
     }
     if (isset($data['solver_cases'])) {                      // scipy.optimize / scipy.integrate: callable objectives
         foreach (runSolverCases($data['solver_cases'], $module, $checked, $failures) as $k => $s) {
+            $results[$backend][$k] = $s;
+            $results['max_rel'][$backend][$k] = null;
+        }
+        if (isset($data['nkclass_cases'])) {               // optimize.json ALSO carries Jacobian-helper classes; process before continue
+            foreach (runNkClassCases($data['nkclass_cases'], $module, $checked, $failures) as $k => $s) {
+                $results[$backend][$k] = $s;
+                $results['max_rel'][$backend][$k] = null;
+            }
+        }
+        continue;
+    }
+    if (isset($data['nkclass_cases'])) {               // scipy.optimize Jacobian-helper classes
+        foreach (runNkClassCases($data['nkclass_cases'], $module, $checked, $failures) as $k => $s) {
             $results[$backend][$k] = $s;
             $results['max_rel'][$backend][$k] = null;
         }

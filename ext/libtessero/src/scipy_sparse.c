@@ -603,6 +603,47 @@ static int r_sp_swapaxes(const void *ctx, const tsr_arg *a, int nargs, tsr_resul
     return sp_transpose_or_copy(a, res, ax1 != ax2);
 }
 
+
+static int r_sp_expand_dims(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const double *A; int64_t m, n, tot; double *owned;
+    int rc = sp_input(&a[0], &A, &m, &n, &tot, &owned);
+    if (rc < 0) return rc;
+    int64_t axis = sp_int(a, nargs, 1, 0);
+    const int64_t ond = 3;
+    if (axis < 0) axis += ond;
+    if (axis < 0 || axis >= ond) { fn_free_doubles(owned, tot); fn_set_error("sparse.expand_dims: axis out of range"); return TSR_EARG; }
+    int64_t osh[3];
+    {
+        int64_t src[2] = {m, n};
+        int64_t s = 0;
+        for (int64_t d = 0; d < ond; d++) osh[d] = (d == axis) ? 1 : src[s++];
+    }
+    int64_t nnz = 0;
+    for (int64_t i = 0; i < m * n; i++) if (A[i] != 0.0) nnz++;
+    int64_t dsh[1] = {nnz}, csh[2] = {nnz, ond}, ssh[1] = {ond};
+    double  *data   = (double  *)fn_result_array(&res[0], TSR_F64, 1, dsh);
+    int32_t *coords = (int32_t *)fn_result_array(&res[1], TSR_I32, 2, csh);
+    int64_t *shape  = (int64_t *)fn_result_array(&res[2], TSR_I64, 1, ssh);
+    if (!data || !coords || !shape) { fn_free_doubles(owned, tot); return TSR_ENOMEM; }
+    for (int64_t d = 0; d < ond; d++) shape[d] = osh[d];
+    int64_t k = 0;
+    for (int64_t i = 0; i < m; i++) {
+        for (int64_t j = 0; j < n; j++) {
+            const double v = A[i * n + j];
+            if (v == 0.0) continue;
+            data[k] = v;
+            int64_t src2[2] = {i, j};
+            int64_t s = 0;
+            for (int64_t d = 0; d < ond; d++) coords[k * ond + d] = (int32_t)((d == axis) ? 0 : src2[s++]);
+            k++;
+        }
+    }
+    fn_free_doubles(owned, tot);
+    return TSR_OK;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("sparse.lil_array", 4, "A", "data, rows, indptr, shape", r_lil_array, NULL, "List-of-lists row storage of a dense matrix (scipy.sparse.lil_array)."),
     ROUTINE("sparse.lil_matrix", 4, "A", "data, rows, indptr, shape", r_lil_array, NULL, "List-of-lists row storage of a dense matrix (scipy.sparse.lil_matrix)."),
@@ -636,6 +677,7 @@ static const fn_def DEFS[] = {
     ROUTINE("sparse.block_array", 4, "blocks[], nrows, ncols", "data, indices, indptr, shape", r_sp_bmat, NULL, "Assemble a 2-D grid of blocks, as CSR (scipy.sparse.block_array)."),
     ROUTINE("sparse.permute_dims", 4, "A, axes=None", "data, indices, indptr, shape", r_sp_permute_dims, NULL, "Permute the axes of a 2-D sparse matrix (transpose), as CSR (scipy.sparse.permute_dims)."),
     ROUTINE("sparse.swapaxes", 4, "A, axis1=0, axis2=1", "data, indices, indptr, shape", r_sp_swapaxes, NULL, "Swap two axes of a 2-D sparse matrix (transpose), as CSR (scipy.sparse.swapaxes)."),
+    ROUTINE("sparse.expand_dims", 3, "A, axis=0", "data, coords, shape", r_sp_expand_dims, NULL, "Insert a length-1 axis into a 2-D array, returning N-D coordinate storage (scipy.sparse.expand_dims)."),
 };
 
 const fn_table TSR_SCIPY_SPARSE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
