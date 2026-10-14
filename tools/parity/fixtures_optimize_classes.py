@@ -22,4 +22,22 @@ def cases():
     rr = O.root_scalar(lambda x: x * x - 2.0, bracket=[0.0, 2.0])
     out.append({'fn': 'RootResults', 'ctor': {'bracket': [0.0, 2.0], 'method': 'brentq'},
                 'root': float(rr.root), 'converged': bool(rr.converged), 'flag': str(rr.flag)})
+    def _steps(seed, n, k):
+        rng = np.random.default_rng(seed)
+        x = rng.standard_normal(n); g = rng.standard_normal(n); st = []
+        for _ in range(k):
+            xn = rng.standard_normal(n); gn = rng.standard_normal(n)
+            st.append([list(map(float, xn - x)), list(map(float, gn - g))]); x, g = xn, gn
+        return st
+
+    for _cls, _name, _seed in [(O.BFGS, 'BFGS', 7), (O.SR1, 'SR1', 13)]:
+        for _n, _k in [(3, 4), (4, 5)]:
+            _st = _steps(_seed + _n, _n, _k)
+            _obj = _cls(); _obj.initialize(_n, 'hess')
+            _seq = []
+            for _dx, _dg in _st:
+                _obj.update(_dx, _dg); _seq.append(_obj.get_matrix().tolist())
+            _p = list(np.arange(1.0, _n + 1.0))
+            out.append({'fn': _name, 'n': _n, 'steps': _st, 'seq': _seq,
+                        'p': _p, 'dot': _obj.dot(np.asarray(_p)).tolist(), 'rtol': 1e-12})
     return out

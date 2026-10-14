@@ -91,6 +91,15 @@ phases:
     find_peaks_cwt: {ffi: [SIG2::find], ext: [SIG2::find], fixtures: [signal.find_peaks_cwt]}
     # single-input pole placement by state feedback (Ackermann); unique gain reproduces scipy. Multi-input out of scope.
     place_poles: {ffi: [PP::place], ext: [PP::place], fixtures: [signal.place_poles]}
+    # pure-PHP chirp-z / zoom-FFT callable classes over the landed czt/zoom_fft primitives.
+    ZoomFFT: {ffi: [ZFFT::__invoke, ZFFT::transform], ext: [ZFFT::__invoke, ZFFT::transform], fixtures: [signal.ZoomFFT]}
+    # pure-PHP LTI system classes over the landed conversion/response primitives; ss equality via impulse/step.
+    lti: {ffi: [LTI::create], ext: [LTI::create], fixtures: [signal.lti]}
+    dlti: {ffi: [DLTI::create], ext: [DLTI::create], fixtures: [signal.dlti]}
+    StateSpace: {ffi: [SSS::toTf], ext: [SSS::toTf], fixtures: [signal.StateSpace]}
+    TransferFunction: {ffi: [STF::toSs], ext: [STF::toSs], fixtures: [signal.TransferFunction]}
+    ZerosPolesGain: {ffi: [ZPG::toTf], ext: [ZPG::toTf], fixtures: [signal.ZerosPolesGain]}
+    ShortTimeFFT: {ffi: [STFT::stft], ext: [STFT::stft], fixtures: [signal.ShortTimeFFT]}
   scipy.signal.windows: 8
   scipy.optimize: 9
   scipy.sparse: 10
@@ -517,6 +526,7 @@ legacy:
     # pure-PHP directed Hausdorff distance (Taha-Hanbury early-break); distance verified both backends
     # (the returned index pair is RNG-dependent in scipy and is not asserted).
     directed_hausdorff: {ffi: [HAUS::directed], ext: [HAUS::directed], fixtures: [spatial.directed_hausdorff]}
+    QhullError: {ffi: [QHE::__construct], ext: [QHE::__construct], fixtures: [spatial.QhullError]}
   scipy.optimize:
     # the scalar/BFGS/Nelder-Mead solvers are pure PHP (they call the user's callable, no kernel), so the one
     # class serves both backends - unlike linprog/milp which are kernel-backed and need an Ext provider. They are
@@ -575,6 +585,9 @@ legacy:
     newton_krylov: {ffi: [NLS::newtonKrylov], ext: [NLS::newtonKrylov], fixtures: [optimize.newton_krylov]}
     direct: {ffi: [DIR::minimize], ext: [DIR::minimize], fixtures: [optimize.direct]}
     shgo: {ffi: [SHGO::minimize], ext: [SHGO::minimize], fixtures: [optimize.shgo]}
+    NoConvergence: {ffi: [NOCONV::__construct], ext: [NOCONV::__construct], fixtures: [optimize.NoConvergence]}
+    BFGS: {ffi: [BFGSH::__construct], ext: [BFGSH::__construct], fixtures: [optimize.BFGS]}
+    SR1: {ffi: [SR1H::__construct], ext: [SR1H::__construct], fixtures: [optimize.SR1]}
     curve_fit: {ffi: [LS::curveFit], ext: [LS::curveFit], fixtures: [optimize.curve_fit]}
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
@@ -632,6 +645,11 @@ legacy:
     yeojohnson_normmax: {ffi: [SF::yeojohnsonNormmax], ext: [SF::yeojohnsonNormmax], fixtures: [stats.yeojohnson_normmax]}
     ppcc_max: {ffi: [SF::ppccMax], ext: [SF::ppccMax], fixtures: [stats.ppcc_max]}
     ppcc_plot: {ffi: [SF::ppccPlot], ext: [SF::ppccPlot], fixtures: [stats.ppcc_plot]}
+    Covariance: {ffi: [COV::whiten, COV::colorize, COV::logPdet, COV::covariance], ext: [COV::whiten, COV::colorize, COV::logPdet, COV::covariance], fixtures: [stats.Covariance]}
+    CensoredData: {ffi: [CD::uncensored, CD::left, CD::right, CD::numCensored], ext: [CD::uncensored, CD::left, CD::right, CD::numCensored], fixtures: [stats.CensoredData]}
+    BootstrapMethod: {ffi: [BSM::__construct], ext: [BSM::__construct], fixtures: [stats.BootstrapMethod]}
+    MonteCarloMethod: {ffi: [MCM::__construct], ext: [MCM::__construct], fixtures: [stats.MonteCarloMethod]}
+    PermutationMethod: {ffi: [PMM::__construct], ext: [PMM::__construct], fixtures: [stats.PermutationMethod]}
   scipy.constants:
     convert_temperature: {ffi: [Const::convertTemperature], ext: [Const::convertTemperature], fixtures: [constants.convert_temperature]}
     lambda2nu: {ffi: [Const::lambda2nu], ext: [Const::lambda2nu], fixtures: [constants.lambda2nu]}
@@ -697,6 +715,7 @@ legacy:
     InterpolatedUnivariateSpline: {ffi: [IUS::evaluate], ext: [IUS::evaluate], fixtures: [interpolate.InterpolatedUnivariateSpline]}
     # LSQUnivariateSpline(x,y,t_interior,k): augments knots then make_lsq_spline (k=1..7)
     LSQUnivariateSpline: {ffi: [LSQS::__construct], ext: [LSQS::__construct], fixtures: [interpolate.LSQUnivariateSpline]}
+    LSQBivariateSpline: {ffi: [LSQBS::__construct], ext: [LSQBS::__construct], fixtures: [interpolate.LSQBivariateSpline]}
     # RectBivariateSpline(x,y,z,kx,ky,s=0): tensor-product interpolating spline (two 1-D solves + NdBSpline eval)
     RectBivariateSpline: {ffi: [RBS::__construct], ext: [RBS::__construct], fixtures: [interpolate.RectBivariateSpline]}
     make_splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
