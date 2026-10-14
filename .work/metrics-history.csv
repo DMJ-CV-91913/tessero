@@ -281,3 +281,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-13,integrate: dblquad + tplquad + nquad + nsum (both backends),100.0,100.0,92.4,92.4,100.0,100.0,100.0,100.0,89.2,89.2
 2026-10-13,sparse.linalg: qmr + tfqmr + lsmr + lgmres + gcrotmk Krylov solvers (both backends),100.0,100.0,92.6,92.6,100.0,100.0,100.0,100.0,89.2,89.2
 2026-10-14,stats-RNG + dists: ortho_group/special_ortho_group/uniform_direction/bootstrap/monte_carlo_test + Logistic/Binomial (both backends),100.0,100.0,93.1,93.1,100.0,100.0,100.0,100.0,91.6,91.6
+2026-10-14,optimize broyden1/broyden2/anderson/diagbroyden + solve_ivp DOP853 (both backends),100.0,100.0,93.4,93.4,100.0,100.0,100.0,100.0,91.6,91.6
