@@ -706,6 +706,41 @@ function makeTaylorFunc(string $kind): callable {
     };
 }
 
+function makeConProblem(string $prob): array
+{
+    $rosen = static function (array $x): float {
+        $s = 0.0;
+        for ($i = 0, $n = count($x); $i < $n - 1; $i++) { $s += 100.0 * ($x[$i + 1] - $x[$i] ** 2) ** 2 + (1.0 - $x[$i]) ** 2; }
+        return $s;
+    };
+    $rd = static fn (array $x): array => \Tessero\Optimize\Minimize::rosenDer($x);
+    $cfun = [
+        'sum_m1' => static fn (array $x): float => $x[0] + $x[1] - 1,
+        'g1' => static fn (array $x): float => $x[0] - 2 * $x[1] + 2,
+        'g2' => static fn (array $x): float => -$x[0] - 2 * $x[1] + 6,
+        'g3' => static fn (array $x): float => -$x[0] + 2 * $x[1] + 2,
+        'h1' => static fn (array $x): float => 1 - $x[0] - 2 * $x[1],
+        'h2' => static fn (array $x): float => $x[0],
+        'h3' => static fn (array $x): float => $x[1],
+        'line' => static fn (array $x): float => $x[0] + $x[1] - 1,
+    ];
+    $con = static fn (array $names, string $type) => array_map(static fn ($n) => ['type' => $type, 'fun' => $cfun[$n]], $names);
+    return match ($prob) {
+        'rosen2'    => ['f' => $rosen, 'jac' => $rd, 'x0' => [-1.2, 1.0], 'bounds' => [[-2, 2], [-2, 2]], 'cons' => []],
+        'rosen4'    => ['f' => $rosen, 'jac' => $rd, 'x0' => [0.0, 0.0, 0.0, 0.0], 'bounds' => [[-5, 5], [-5, 5], [-5, 5], [-5, 5]], 'cons' => []],
+        'quad2'     => ['f' => static fn (array $x): float => ($x[0] - 2) ** 2 + ($x[1] + 3) ** 2, 'jac' => static fn (array $x): array => [2 * ($x[0] - 2), 2 * ($x[1] + 3)], 'x0' => [0, 0], 'bounds' => [[0, 1], [-1, 1]], 'cons' => []],
+        'quad3'     => ['f' => static fn (array $x): float => ($x[0] - 1) ** 2 + ($x[1] - 2) ** 2 + ($x[2] + 1) ** 2, 'jac' => static fn (array $x): array => [2 * ($x[0] - 1), 2 * ($x[1] - 2), 2 * ($x[2] + 1)], 'x0' => [0, 0, 0], 'bounds' => null, 'cons' => []],
+        'sphere_lo' => ['f' => static fn (array $x): float => $x[0] ** 2 + $x[1] ** 2, 'jac' => static fn (array $x): array => [2 * $x[0], 2 * $x[1]], 'x0' => [3, 3], 'bounds' => [[1, null], [2, null]], 'cons' => []],
+        'sphere_eq' => ['f' => static fn (array $x): float => $x[0] ** 2 + $x[1] ** 2, 'jac' => null, 'x0' => [2, 2], 'bounds' => null, 'cons' => $con(['sum_m1'], 'eq')],
+        'qp_tri'    => ['f' => static fn (array $x): float => ($x[0] - 1) ** 2 + ($x[1] - 2.5) ** 2, 'jac' => null, 'x0' => [2, 0], 'bounds' => [[0, null], [0, null]], 'cons' => $con(['g1', 'g2', 'g3'], 'ineq')],
+        'qp_tri0'   => ['f' => static fn (array $x): float => ($x[0] - 1) ** 2 + ($x[1] - 2.5) ** 2, 'jac' => null, 'x0' => [0, 0], 'bounds' => null, 'cons' => $con(['g1', 'g2', 'g3'], 'ineq')],
+        'rosen_con' => ['f' => $rosen, 'jac' => null, 'x0' => [0.5, 0.0], 'bounds' => null, 'cons' => $con(['h1', 'h2', 'h3'], 'ineq')],
+        'sphere_line' => ['f' => static fn (array $x): float => $x[0] ** 2 + $x[1] ** 2, 'jac' => null, 'x0' => [2, 2], 'bounds' => null, 'cons' => $con(['line'], 'ineq')],
+        'uncon'     => ['f' => static fn (array $x): float => ($x[0] - 3) ** 2 + ($x[1] + 1) ** 2, 'jac' => null, 'x0' => [0, 0], 'bounds' => null, 'cons' => []],
+        default     => throw new \RuntimeException("makeConProblem: unknown prob '{$prob}'"),
+    };
+}
+
 function makeObjective(array $spec): callable
 {
     return match ($spec['kind']) {
@@ -990,15 +1025,23 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $mup = strtoupper((string) $c['method']);
                 $jac = null;
                 $opts = [];
-                if (($c['obj']['kind'] ?? '') === 'rosen' && in_array($mup, ['CG', 'NEWTON-CG', 'NEWTONCG'], true)) {
+                $isRosen = ($c['obj']['kind'] ?? '') === 'rosen';
+                if ($isRosen && in_array($mup, ['CG', 'NEWTON-CG', 'NEWTONCG', 'DOGLEG', 'TRUST-NCG', 'TRUSTNCG', 'TRUST-EXACT', 'TRUSTEXACT'], true)) {
                     $jac = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
-                    if ($mup !== 'CG') {
+                    // Hessian-vector product for Newton-CG; the 5-D trust-ncg fixture exercises the hessp path.
+                    if (in_array($mup, ['NEWTON-CG', 'NEWTONCG'], true)
+                        || ($mup === 'TRUST-NCG' || $mup === 'TRUSTNCG') && count($c['x0']) === 5) {
                         $opts['hessp'] = static fn (array $v, array $p): array => \Tessero\Optimize\Minimize::rosenHessProd($v, $p);
+                    }
+                    // Full Hessian matrix for dogleg / trust-exact (and the 2-D trust-ncg fixture).
+                    if (in_array($mup, ['DOGLEG', 'TRUST-EXACT', 'TRUSTEXACT'], true)
+                        || ($mup === 'TRUST-NCG' || $mup === 'TRUSTNCG') && count($c['x0']) !== 5) {
+                        $opts['hess'] = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenHess($v);
                     }
                 }
                 $got = \Tessero\Optimize\Minimize::minimize($obj, array_map('floatval', $c['x0']), $jac, (string) $c['method'], null, $opts)->x;
                 $ok = vecClose($got, $c['expect'], $rtol);
-            } elseif ($fn === 'fmin') {
+                        } elseif ($fn === 'fmin') {
                 $got = \Tessero\Optimize\Minimize::fmin($obj, array_map('floatval', $c['x0']));
                 $ok = vecClose($got, $c['expect'], $rtol);
             } elseif ($fn === 'quad') {
@@ -1093,6 +1136,23 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $grad = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
                 $hessp = static fn (array $v, array $p): array => \Tessero\Optimize\Minimize::rosenHessProd($v, $p);
                 $ok = vecClose(\Tessero\Optimize\Minimize::fminNcg($obj, array_map('floatval', $c['x0']), $grad, $hessp), $c['expect'], $rtol);
+            } elseif ($fn === 'minimize_con') {
+                $p = makeConProblem($c['prob']);
+                $opts = $p['cons'] !== [] ? ['constraints' => $p['cons']] : [];
+                $got = \Tessero\Optimize\Minimize::minimize($p['f'], array_map('floatval', $p['x0']), $p['jac'], (string) $c['method'], $p['bounds'], $opts)->x;
+                $ok = vecClose($got, $c['expect'], $rtol);
+            } elseif ($fn === 'fmin_tnc') {
+                $p = makeConProblem($c['prob']);
+                $ok = vecClose(\Tessero\Optimize\Minimize::fminTnc($p['f'], array_map('floatval', $p['x0']), $p['jac'], $p['bounds']), $c['expect'], $rtol);
+            } elseif ($fn === 'fmin_slsqp') {
+                $p = makeConProblem($c['prob']);
+                $eq = []; $ineq = [];
+                foreach ($p['cons'] as $cc) { if ($cc['type'] === 'eq') { $eq[] = $cc['fun']; } else { $ineq[] = $cc['fun']; } }
+                $ok = vecClose(\Tessero\Optimize\Minimize::fminSlsqp($p['f'], array_map('floatval', $p['x0']), $eq, $ineq, $p['bounds'], $p['jac']), $c['expect'], $rtol);
+            } elseif ($fn === 'fmin_cobyla') {
+                $p = makeConProblem($c['prob']);
+                $cons = array_map(static fn ($cc) => $cc['fun'], $p['cons']);
+                $ok = vecClose(\Tessero\Optimize\Minimize::fminCobyla($p['f'], array_map('floatval', $p['x0']), $cons, 1.0, 1e-6), $c['expect'], $rtol);
             } elseif ($fn === 'check_grad') {
                 $grad = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
                 $got = \Tessero\Optimize\Minimize::checkGrad($obj, $grad, array_map('floatval', $c['x0']));

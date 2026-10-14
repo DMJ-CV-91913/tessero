@@ -710,8 +710,11 @@
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
         "optimize.fmin_cg": "pass",
+        "optimize.fmin_cobyla": "pass",
         "optimize.fmin_ncg": "pass",
         "optimize.fmin_powell": "pass",
+        "optimize.fmin_slsqp": "pass",
+        "optimize.fmin_tnc": "pass",
         "optimize.fminbound": "pass",
         "optimize.fsolve": "pass",
         "optimize.golden": "pass",
@@ -722,6 +725,7 @@
         "optimize.linear_sum_assignment": "pass",
         "optimize.lsq_linear": "pass",
         "optimize.minimize": "pass",
+        "optimize.minimize_con": "pass",
         "optimize.minimize_scalar": "pass",
         "optimize.newton": "pass",
         "optimize.nnls": "pass",
@@ -3469,7 +3473,11 @@
             "sparse.dok_matrix": 0,
             "sparse.bsr_array": 0,
             "sparse.bsr_matrix": 0,
-            "stats.unitary_group": 2.202902877451789e-16
+            "stats.unitary_group": 2.202902877451789e-16,
+            "optimize.minimize_con": null,
+            "optimize.fmin_tnc": null,
+            "optimize.fmin_slsqp": null,
+            "optimize.fmin_cobyla": null
         },
         "ext": {
             "np.median": 0,
@@ -5204,7 +5212,11 @@
             "sparse.dok_array": 0,
             "sparse.dok_matrix": 0,
             "sparse.bsr_array": 0,
-            "sparse.bsr_matrix": 0
+            "sparse.bsr_matrix": 0,
+            "optimize.minimize_con": null,
+            "optimize.fmin_tnc": null,
+            "optimize.fmin_slsqp": null,
+            "optimize.fmin_cobyla": null
         }
     },
     "ext": {
@@ -5918,8 +5930,11 @@
         "optimize.fmin": "pass",
         "optimize.fmin_bfgs": "pass",
         "optimize.fmin_cg": "pass",
+        "optimize.fmin_cobyla": "pass",
         "optimize.fmin_ncg": "pass",
         "optimize.fmin_powell": "pass",
+        "optimize.fmin_slsqp": "pass",
+        "optimize.fmin_tnc": "pass",
         "optimize.fminbound": "pass",
         "optimize.fsolve": "pass",
         "optimize.golden": "pass",
@@ -5930,6 +5945,7 @@
         "optimize.linear_sum_assignment": "pass",
         "optimize.lsq_linear": "pass",
         "optimize.minimize": "pass",
+        "optimize.minimize_con": "pass",
         "optimize.minimize_scalar": "pass",
         "optimize.newton": "pass",
         "optimize.nnls": "pass",

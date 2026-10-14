@@ -531,6 +531,9 @@ legacy:
     fmin_cg: {ffi: [Min::fminCg], ext: [Min::fminCg], fixtures: [optimize.fmin_cg]}
     fmin_powell: {ffi: [Min::fminPowell], ext: [Min::fminPowell], fixtures: [optimize.fmin_powell]}
     fmin_ncg: {ffi: [Min::fminNcg], ext: [Min::fminNcg], fixtures: [optimize.fmin_ncg]}
+    fmin_tnc: {ffi: [Min::fminTnc], ext: [Min::fminTnc], fixtures: [optimize.fmin_tnc]}
+    fmin_slsqp: {ffi: [Min::fminSlsqp], ext: [Min::fminSlsqp], fixtures: [optimize.fmin_slsqp]}
+    fmin_cobyla: {ffi: [Min::fminCobyla], ext: [Min::fminCobyla], fixtures: [optimize.fmin_cobyla]}
     curve_fit: {ffi: [LS::curveFit], ext: [LS::curveFit], fixtures: [optimize.curve_fit]}
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
