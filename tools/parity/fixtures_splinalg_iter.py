@@ -82,6 +82,8 @@ out = {'module': 'splinalg', 'scipy': __import__('scipy').__version__, 'env': F.
     {'fn': 'bicg', 'cases': gen_c},
     {'fn': 'cgs', 'cases': gen_c},
     {'fn': 'gmres', 'cases': gen_c},
+    {'fn': 'lgmres', 'cases': gen_c},
+    {'fn': 'gcrotmk', 'cases': gen_c},
     {'fn': 'minres', 'cases': sym_c},
     {'fn': 'lsqr', 'cases': lsq_c},
     {'fn': 'onenormest', 'cases': one_c},
