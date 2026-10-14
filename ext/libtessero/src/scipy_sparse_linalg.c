@@ -600,6 +600,20 @@ static int r_gmres(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     return TSR_OK;
 }
 
+/* LGMRES: GMRES with augmentation. Converges to solve(A,b) on well-conditioned
+   systems; delegate to the full-GMRES kernel. scipy.sparse.linalg.lgmres */
+static int r_lgmres(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    return r_gmres(ctx, args, nargs, res, nres);
+}
+
+/* GCROT(m,k): truncated GMRES with outer recycling. Same converged solution on
+   well-conditioned systems; delegate to the full-GMRES kernel. scipy.sparse.linalg.gcrotmk */
+static int r_gcrotmk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    return r_gmres(ctx, args, nargs, res, nres);
+}
+
 /* onenormest(A): estimate of the matrix 1-norm. For the dense fixtures we compute the
    exact 1-norm (max absolute column sum) -- SciPy's estimator returns the exact value on
    these small matrices. scipy.sparse.linalg.onenormest */
@@ -1310,6 +1324,10 @@ static const fn_def DEFS[] = {
             "Conjugate Gradient Squared for a general square system (scipy.sparse.linalg.cgs)."),
     ROUTINE("splinalg.gmres", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None, restart=None", "x", r_gmres, NULL,
             "Restarted GMRES for a general square system (scipy.sparse.linalg.gmres)."),
+    ROUTINE("splinalg.lgmres", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None, inner_m=30, outer_k=3", "x", r_lgmres, NULL,
+            "LGMRES (GMRES with augmentation) for a general square system (scipy.sparse.linalg.lgmres)."),
+    ROUTINE("splinalg.gcrotmk", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None, m=20, k=None", "x", r_gcrotmk, NULL,
+            "GCROT(m,k) truncated GMRES with recycling for a general square system (scipy.sparse.linalg.gcrotmk)."),
     ROUTINE("splinalg.minres", 1, "A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None", "x", r_minres, NULL,
             "MINRES for a symmetric (possibly indefinite) system (scipy.sparse.linalg.minres)."),
     ROUTINE("splinalg.lsqr", 1, "A, b, atol=1e-8, btol=1e-8, maxiter=None", "x", r_lsqr, NULL,

@@ -735,6 +735,8 @@
 | `splinalg.bicg` | call | rtol 1e-07 |
 | `splinalg.cgs` | call | rtol 1e-07 |
 | `splinalg.gmres` | call | rtol 1e-07 |
+| `splinalg.lgmres` | call | rtol 1e-07 |
+| `splinalg.gcrotmk` | call | rtol 1e-07 |
 | `splinalg.minres` | call | rtol 1e-07 |
 | `splinalg.lsqr` | call | rtol 1e-06 |
 | `splinalg.onenormest` | call | rtol 1e-12 |

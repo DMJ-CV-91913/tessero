@@ -6290,6 +6290,11 @@
             "nin": 0,
             "nout": 1
         },
+        "splinalg.gcrotmk": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "splinalg.gmres": {
             "kind": "routine",
             "nin": 0,
@@ -6304,6 +6309,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 2
+        },
+        "splinalg.lgmres": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
         },
         "splinalg.lobpcg": {
             "kind": "routine",
