@@ -5981,6 +5981,12 @@
                 "doc": "Krylov (Arnoldi) approximation of f(A) @ b; f is a matrix-function name one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.sparse.linalg.funm_multiply_krylov)."
             },
             {
+                "name": "gcrotmk",
+                "static": true,
+                "sig": "gcrotmk(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $m = 20, mixed $k = null): mixed",
+                "doc": "GCROT(m,k) truncated GMRES with recycling for a general square system (scipy.sparse.linalg.gcrotmk)."
+            },
+            {
                 "name": "gmres",
                 "static": true,
                 "sig": "gmres(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $restart = null): mixed",
@@ -5997,6 +6003,12 @@
                 "static": true,
                 "sig": "isSptriangular(mixed $A): mixed",
                 "doc": "Whether a sparse matrix is lower/upper triangular (scipy.sparse.linalg.is_sptriangular)."
+            },
+            {
+                "name": "lgmres",
+                "static": true,
+                "sig": "lgmres(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1.0E-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $innerM = 30, mixed $outerK = 3): mixed",
+                "doc": "LGMRES (GMRES with augmentation) for a general square system (scipy.sparse.linalg.lgmres)."
             },
             {
                 "name": "lobpcg",
@@ -26109,6 +26121,18 @@
                 "name": "gmres",
                 "static": true,
                 "sig": "gmres($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null, $restart = null)",
+                "doc": ""
+            },
+            {
+                "name": "lgmres",
+                "static": true,
+                "sig": "lgmres($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null, $innerM = 30, $outerK = 3)",
+                "doc": ""
+            },
+            {
+                "name": "gcrotmk",
+                "static": true,
+                "sig": "gcrotmk($A, $b, $x0 = null, $rtol = 1.0E-5, $atol = 0.0, $maxiter = null, $m = 20, $k = null)",
                 "doc": ""
             },
             {

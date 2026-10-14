@@ -81,8 +81,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1549,
-  "ffi": 1549
+  "ext": 1551,
+  "ffi": 1551
  },
  "groups": {
   "NumPy core": {
@@ -102,20 +102,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1446,
+   "both": 1448,
    "excluded": 74,
-   "impl_ext": 1446,
-   "impl_ffi": 1446,
+   "impl_ext": 1448,
+   "impl_ffi": 1448,
    "in_scope": 1488,
-   "m2_ext": 97.2,
-   "m2_ffi": 97.2,
+   "m2_ext": 97.3,
+   "m2_ffi": 97.3,
    "m3": 4.7,
-   "m4_ext": 97.2,
-   "m4_ffi": 97.2,
+   "m4_ext": 97.3,
+   "m4_ffi": 97.3,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1446,
-   "verified_ffi": 1446
+   "verified_ext": 1448,
+   "verified_ffi": 1448
   }
  },
  "modules": {
@@ -568,20 +568,20 @@
    "verified_ffi": 22
   },
   "scipy.sparse.linalg": {
-   "both": 25,
+   "both": 27,
    "excluded": 11,
-   "impl_ext": 25,
-   "impl_ffi": 25,
+   "impl_ext": 27,
+   "impl_ffi": 27,
    "in_scope": 27,
-   "m2_ext": 92.6,
-   "m2_ffi": 92.6,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 28.9,
-   "m4_ext": 92.6,
-   "m4_ffi": 92.6,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 38,
-   "verified_ext": 25,
-   "verified_ffi": 25
+   "verified_ext": 27,
+   "verified_ffi": 27
   },
   "scipy.spatial": {
    "both": 14,
@@ -665,7 +665,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1552,
+ "registry_functions": 1554,
  "registry_untested": [
   "linalg.qr_complex",
   "np.cumulativeSimpson",

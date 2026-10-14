@@ -27,9 +27,11 @@ final class SparseLinalg
     'expm' => 'expm',
     'expm_multiply' => 'expmMultiply',
     'funm_multiply_krylov' => 'funmMultiplyKrylov',
+    'gcrotmk' => 'gcrotmk',
     'gmres' => 'gmres',
     'inv' => 'inv',
     'is_sptriangular' => 'isSptriangular',
+    'lgmres' => 'lgmres',
     'lobpcg' => 'lobpcg',
     'lsmr' => 'lsmr',
     'lsqr' => 'lsqr',
@@ -152,6 +154,16 @@ final class SparseLinalg
     }
 
     /**
+     * GCROT(m,k) truncated GMRES with recycling for a general square system (scipy.sparse.linalg.gcrotmk).
+     *
+     * scipy.splinalg.gcrotmk
+     */
+    public static function gcrotmk(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $m = 20, mixed $k = null): mixed
+    {
+        return Registry::routine('splinalg.gcrotmk', [$A, $b, $x0, $rtol, $atol, $maxiter, $m, $k]);
+    }
+
+    /**
      * Restarted GMRES for a general square system (scipy.sparse.linalg.gmres).
      *
      * scipy.splinalg.gmres
@@ -181,6 +193,16 @@ final class SparseLinalg
     public static function isSptriangular(mixed $A): mixed
     {
         return Registry::routine('splinalg.is_sptriangular', [$A]);
+    }
+
+    /**
+     * LGMRES (GMRES with augmentation) for a general square system (scipy.sparse.linalg.lgmres).
+     *
+     * scipy.splinalg.lgmres
+     */
+    public static function lgmres(mixed $A, mixed $b, mixed $x0 = null, mixed $rtol = 1e-5, mixed $atol = 0.0, mixed $maxiter = null, mixed $innerM = 30, mixed $outerK = 3): mixed
+    {
+        return Registry::routine('splinalg.lgmres', [$A, $b, $x0, $rtol, $atol, $maxiter, $innerM, $outerK]);
     }
 
     /**
