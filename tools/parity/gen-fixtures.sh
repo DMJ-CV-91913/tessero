@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal stats_uniform stats_orthogroup stats_unifdir bootstrap stats_dists barnard boschloo logrank permtest ndimage_valindices ndimage_geomxform ndimage_genfilter ndimage_genfilter1d ndimage_genlaplace ndimage_gengradmag spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_splrep interpolate_splprep interpolate_generate_knots interpolate_atp interpolate_rbf spatial_voronoi spatial_transform spatial_slerp spatial_rigid spatial_rotspline interpolate_cloughtocher interpolate_aaa interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg splinalg_iter stats_unitarygroup scipyfft optimize qap de da bh linesearch io integrate integrate_tanhsinh integrate_quadvec integrate_solveivp integrate_nestedquad integrate_nsum differentiate nonlin spatial datetime random stats desc corr tests tests2 legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal stats_uniform stats_orthogroup stats_unifdir bootstrap stats_dists barnard boschloo logrank permtest ndimage_valindices ndimage_geomxform ndimage_genfilter ndimage_genfilter1d ndimage_genlaplace ndimage_gengradmag spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_splrep interpolate_splprep interpolate_generate_knots interpolate_atp interpolate_rbf spatial_voronoi spatial_transform spatial_slerp spatial_rigid spatial_rotspline interpolate_cloughtocher interpolate_aaa interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy splinalg splinalg_iter stats_unitarygroup scipyfft optimize qap de da bh linesearch io integrate integrate_tanhsinh integrate_quadvec integrate_solveivp integrate_nestedquad integrate_nsum differentiate nonlin stats_distinfra scipyio sparse_npz spatial datetime random stats desc corr tests tests2 legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
@@ -92,6 +92,9 @@ for g in "${groups[@]}"; do
         interpolate_mss) python3 fixtures_mss.py ;;
         interpolate_linearnd) python3 fixtures_linearnd.py ;;
         io) python3 fixtures_io.py ;;
+        stats_distinfra) python3 fixtures_distinfra.py ;;
+        scipyio) python3 fixtures_scipyio.py ;;
+        sparse_npz) python3 fixtures_sparse_npz.py ;;
         integrate) python3 fixtures_integrate.py ;;
         integrate_tanhsinh) python3 fixtures_tanhsinh.py ;;
         integrate_quadvec) python3 fixtures_quadvec.py ;;

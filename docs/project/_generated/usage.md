@@ -122,6 +122,6 @@ The 100 most-called in-scope symbols (calls in the corpus, packages calling them
 | 99 | `numpy.multiply` | 68 | 12 | ✔ | ✔ |
 | 100 | `numpy.pad` | 68 | 11 | ✔ | ✔ |
 
-The most-called in-scope symbols not yet verified on both backends: `scipy.sparse.linalg.eigsh` 10 (neither), `scipy.sparse.linalg.svds` 7 (neither), `scipy.integrate.odeint` 5 (neither), `scipy.interpolate.UnivariateSpline` 3 (neither), `scipy.sparse.linalg.eigs` 3 (neither), `scipy.sparse.linalg.lobpcg` 3 (neither), `scipy.optimize.fmin_l_bfgs_b` 2 (neither), `scipy.sparse.random` 1 (neither), `scipy.sparse.random_array` 1 (neither), `scipy.sparse.save_npz` 1 (neither).
+The most-called in-scope symbols not yet verified on both backends: `scipy.sparse.linalg.eigsh` 10 (neither), `scipy.sparse.linalg.svds` 7 (neither), `scipy.integrate.odeint` 5 (neither), `scipy.interpolate.UnivariateSpline` 3 (neither), `scipy.sparse.linalg.eigs` 3 (neither), `scipy.sparse.linalg.lobpcg` 3 (neither), `scipy.optimize.fmin_l_bfgs_b` 2 (neither), `scipy.sparse.random` 1 (neither), `scipy.sparse.random_array` 1 (neither).
 
 The most-called excluded symbols: `numpy.dtype` 504 (E4), `scipy.sparse.issparse` 317 (E4), `numpy.issubdtype` 222 (E4), `numpy.errstate` 220 (E4), `numpy.asanyarray` 218 (E4), `numpy.isscalar` 191 (E4), `numpy.iterable` 131 (E4), `numpy.random.RandomState` 53 (E3), `numpy.vectorize` 47 (E4), `numpy.apply_along_axis` 44 (E4), `numpy.ndarray` 38 (E4), `scipy.interpolate.interp1d` 36 (E6). Their calls are counted above but not weighted into the in-scope figures.

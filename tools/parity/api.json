@@ -6994,6 +6994,107 @@
         ]
     },
     {
+        "class": "Tessero\\Io\\MatrixMarket",
+        "methods": [
+            {
+                "name": "read",
+                "static": true,
+                "sig": "read(string $text): array",
+                "doc": "Parse Matrix Market text."
+            },
+            {
+                "name": "info",
+                "static": true,
+                "sig": "info(string $text): array",
+                "doc": "mminfo: inspect the header/size without reading the body."
+            },
+            {
+                "name": "write",
+                "static": true,
+                "sig": "write(array $data, string $format = 'array', string $field = 'real', string $symmetry = 'general'): string",
+                "doc": "Serialise a dense row-major matrix to Matrix Market text, matching scipy.io.mmwrite's layout so scipy.io.mmread reads it back exactly."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Io\\Wav",
+        "methods": [
+            {
+                "name": "read",
+                "static": true,
+                "sig": "read(string $bytes): array",
+                "doc": "Parse WAV bytes."
+            },
+            {
+                "name": "write",
+                "static": true,
+                "sig": "write(int $rate, array $data, string $dtype, int $channels = 1): string",
+                "doc": "Serialise interleaved samples to WAV bytes matching scipy.io.wavfile.write."
+            }
+        ],
+        "constants": [
+            "TYPES"
+        ]
+    },
+    {
+        "class": "Tessero\\Io\\FortranFile",
+        "methods": [
+            {
+                "name": "readRecords",
+                "static": true,
+                "sig": "readRecords(string $bytes, string $dtype, string $headerDtype = 'uint32'): array",
+                "doc": "Split a Fortran unformatted file into records, decoding each to a flat PHP array."
+            },
+            {
+                "name": "readRecord",
+                "static": true,
+                "sig": "readRecord(string $bytes, string $dtype, string $headerDtype = 'uint32'): array",
+                "doc": "Convenience: decode exactly the first record. @return array<int,int|float>"
+            },
+            {
+                "name": "writeRecord",
+                "static": true,
+                "sig": "writeRecord(array $values, string $dtype, string $headerDtype = 'uint32'): string",
+                "doc": "Frame one flat numeric array into a single Fortran unformatted record."
+            },
+            {
+                "name": "writeRecords",
+                "static": true,
+                "sig": "writeRecords(array $records, string $dtype, string $headerDtype = 'uint32'): string",
+                "doc": "Frame several records back-to-back. @param array<int,array<int,int|float>> $records"
+            }
+        ],
+        "constants": [
+            "ITEMSIZE"
+        ]
+    },
+    {
+        "class": "Tessero\\Io\\SparseNpz",
+        "methods": [
+            {
+                "name": "save",
+                "static": true,
+                "sig": "save(string $path, array $csr, bool $isArray = true, bool $compress = true): void",
+                "doc": "scipy.sparse.save_npz: write a CSR matrix as a scipy-readable .npz."
+            },
+            {
+                "name": "load",
+                "static": true,
+                "sig": "load(string $path): array",
+                "doc": "scipy.sparse.load_npz: read a CSR .npz (scipy's or Tessero's own)."
+            },
+            {
+                "name": "toDense",
+                "static": true,
+                "sig": "toDense(string $path): Tessero\\NDArray",
+                "doc": "Reconstruct the dense matrix from a loaded CSR archive (for verification / convenience)."
+            }
+        ],
+        "constants": [
+            "MAGIC"
+        ]
+    },
+    {
         "class": "Tessero\\Integrate\\Quad",
         "methods": [
             {
@@ -8562,6 +8663,325 @@
                 "sig": "moment(int $order, string $kind = 'raw'): Tessero\\NDArray|float",
                 "doc": "The raw ('raw' \u2014 non-central), 'central' or 'standardized' moment of the given order."
             }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Truncated",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(Tessero\\Stats\\Distribution $base, float $lb, float $ub)",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "Complementary CDF (survival)."
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $q): Tessero\\NDArray|float",
+                "doc": "Inverse CDF (quantile): the base ppf of the renormalised quantile."
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $q): Tessero\\NDArray|float",
+                "doc": "Inverse complementary CDF."
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): float",
+                "doc": ""
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\OrderStatistic",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(Tessero\\Stats\\Distribution $base, int $n, int $r)",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $q): Tessero\\NDArray|float",
+                "doc": "Inverse CDF: base ppf of the inverse regularised incomplete beta."
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $q): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): float",
+                "doc": ""
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Mixture",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $components, ?array $weights = null)",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "mean",
+                "static": false,
+                "sig": "mean(): float",
+                "doc": ""
+            },
+            {
+                "name": "variance",
+                "static": false,
+                "sig": "variance(): float",
+                "doc": ""
+            },
+            {
+                "name": "standard_deviation",
+                "static": false,
+                "sig": "standard_deviation(): float",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): float",
+                "doc": ""
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $q): Tessero\\NDArray|float",
+                "doc": "Inverse CDF (quantile) by bracketed root-finding on the strictly-increasing mixture CDF."
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $q): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Transformed",
+        "methods": [
+            {
+                "name": "exp",
+                "static": true,
+                "sig": "exp(Tessero\\Stats\\Distribution $base): self",
+                "doc": "Y = exp(X)."
+            },
+            {
+                "name": "log",
+                "static": true,
+                "sig": "log(Tessero\\Stats\\Distribution $base): self",
+                "doc": "Y = log(X), for a positive base X."
+            },
+            {
+                "name": "abs",
+                "static": true,
+                "sig": "abs(Tessero\\Stats\\Distribution $base): self",
+                "doc": "Y = |X|."
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $q): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $q): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): float",
+                "doc": ""
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            }
+        ],
+        "constants": [
+            "EXP",
+            "LOG",
+            "ABS"
         ]
     },
     {

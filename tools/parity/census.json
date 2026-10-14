@@ -12442,6 +12442,76 @@
 "name": "jacobian"
 },
 {
+"kind": "class",
+"module": "scipy.io",
+"name": "FortranEOFError"
+},
+{
+"kind": "class",
+"module": "scipy.io",
+"name": "FortranFile"
+},
+{
+"kind": "class",
+"module": "scipy.io",
+"name": "FortranFormattingError"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "hb_read"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "hb_write"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "loadmat"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "mminfo"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "mmread"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "mmwrite"
+},
+{
+"kind": "class",
+"module": "scipy.io",
+"name": "netcdf_file"
+},
+{
+"kind": "class",
+"module": "scipy.io",
+"name": "netcdf_variable"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "readsav"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "savemat"
+},
+{
+"kind": "function",
+"module": "scipy.io",
+"name": "whosmat"
+},
+{
 "kind": "method",
 "module": "numpy.ndarray",
 "name": "T"

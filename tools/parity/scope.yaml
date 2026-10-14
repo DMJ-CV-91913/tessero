@@ -19,6 +19,8 @@ categories:
   E7: interactive, plotting or dataset helpers
 
 exclude:
+  - {category: E5, module: scipy.io, names: [loadmat, savemat, whosmat, readsav, hb_read, hb_write, netcdf_file, netcdf_variable]}
+  - {category: E4, module: scipy.io, names: [test, FortranEOFError, FortranFormattingError]}
   - {category: E1, module: numpy, names: [bytes_, str_, object_, void, character, flexible, record, recarray, fromregex, fromstring]}
   - {category: E3, module: numpy, names: [matrix, asmatrix, bmat, row_stack, poly1d, asfarray, mintypecode, common_type, fix]}
   - {category: E4, module: numpy, names: [array2string, array_repr, array_str, base_repr, binary_repr, format_float_positional,
@@ -87,6 +89,7 @@ phases:
   scipy.signal.windows: 8
   scipy.optimize: 9
   scipy.sparse: 10
+  scipy.io: 6
   scipy.sparse.linalg: 10
   scipy.sparse.csgraph: 10
   scipy.spatial: 10
@@ -128,6 +131,11 @@ legacy_tests:
   sparse: [tests/Unit/NumericsTest.php]
 
 legacy:
+  scipy.io:
+    mmread: {ffi: [MM::read], ext: [MM::read], fixtures: [scipyio.mmread]}
+    mmwrite: {ffi: [MM::write], ext: [MM::write], fixtures: [scipyio.mmwrite]}
+    mminfo: {ffi: [MM::info], ext: [MM::info], fixtures: [scipyio.mminfo]}
+    FortranFile: {ffi: [FF::readRecords], ext: [FF::readRecords], fixtures: [scipyio.FortranFile]}
   scipy.differentiate:
     derivative: {ffi: [DFV::derivative], ext: [DFV::derivative], fixtures: [differentiate.derivative]}
     jacobian:   {ffi: [DFV::jacobian],   ext: [DFV::jacobian],   fixtures: [differentiate.jacobian]}
@@ -565,6 +573,12 @@ legacy:
     Uniform: {ffi: [UNIF::pdf], ext: [UNIF::pdf], fixtures: [stats.Uniform]}
     Logistic: {ffi: [LOGI::pdf], ext: [LOGI::pdf], fixtures: [stats.Logistic]}
     Binomial: {ffi: [BINO::pmf], ext: [BINO::pmf], fixtures: [stats.Binomial]}
+    truncate: {ffi: [TRUNC::pdf], ext: [TRUNC::pdf], fixtures: [stats.truncate]}
+    order_statistic: {ffi: [OSTAT::pdf], ext: [OSTAT::pdf], fixtures: [stats.order_statistic]}
+    Mixture: {ffi: [MIX::pdf], ext: [MIX::pdf], fixtures: [stats.Mixture]}
+    exp: {ffi: [XFORM::exp], ext: [XFORM::exp], fixtures: [stats.exp]}
+    log: {ffi: [XFORM::log], ext: [XFORM::log], fixtures: [stats.log]}
+    abs: {ffi: [XFORM::abs], ext: [XFORM::abs], fixtures: [stats.abs]}
     # optimiser-based transform-parameter selectors: pure-PHP Tessero\StatsFns drives the scipy-matched
     # Brent / bounded minimisers over the Box-Cox / Yeo-Johnson objectives; verified both backends by the
     # stats_opt.json statsfn_cases.
@@ -597,6 +611,8 @@ legacy:
   scipy.sparse:
     csr_matrix: {ffi: [S::fromDense, S::fromTriplets], tests: sparse}
     identity: {ffi: [S::identity], tests: sparse}
+    save_npz: {ffi: [SNPZ::save, SNPZ::load], ext: [SNPZ::save, SNPZ::load], fixtures: [sparse.save_npz]}
+    load_npz: {ffi: [SNPZ::load], ext: [SNPZ::load], fixtures: [sparse.load_npz]}
   scipy.sparse.linalg:
     cg: {ffi: [S::cg], tests: sparse}
     bicgstab: {ffi: [S::bicgstab], tests: sparse}
