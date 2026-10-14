@@ -132,6 +132,7 @@ legacy_tests:
 
 legacy:
   scipy.signal:
+    spline_filter: {ffi: [SF2::filter], ext: [SF2::filter], fixtures: [signal.spline_filter]}
     # pure-PHP CWT peak detection; one Tessero\Signal\FindPeaksCwt serves both backends (exact integer-index match).
     find_peaks_cwt: {ffi: [SIG2::find], ext: [SIG2::find], fixtures: [signal.find_peaks_cwt]}
     # single-input pole placement by state feedback (Ackermann); unique gain reproduces scipy. Multi-input out of scope.
@@ -456,8 +457,10 @@ legacy:
   # tests/fixtures/parity/slinalg.json and classified from the registry (scope.py PREFIX slinalg -> scipy.linalg):
   # solve, inv, det, svdvals, lstsq, pinv, norm, eigvalsh, svd, eigh, qr, cholesky, solve_triangular, lu, eigvals,
   # eig. lu_factor, lu_solve and expm remain (piv-convention / matrix-exponential) as follow-ups.
-  scipy.linalg: {}
+  scipy.linalg:
+    clarkson_woodruff_transform: {ffi: [CWT::transform], ext: [CWT::transform], fixtures: [linalg.clarkson_woodruff_transform]}
   scipy.integrate:
+    qmc_quad: {ffi: [QMCQ::qmcQuad], ext: [QMCQ::qmcQuad], fixtures: [integrate.qmc_quad]}
     # adaptive Gauss-Kronrod quadrature is pure PHP (calls the user's callable, no kernel) -> one class, both
     # backends; verified against scipy's integral value by the integrate.json solver fixtures.
     quad: {ffi: [Int::quad], ext: [Int::quad], fixtures: [integrate.quad]}
@@ -611,6 +614,11 @@ legacy:
     labeled_comprehension: {ffi: [LC::labeledComprehension], ext: [LC::labeledComprehension], fixtures: [ndimage.labeled_comprehension]}
     vectorized_filter: {ffi: [VF::vectorizedFilter], ext: [VF::vectorizedFilter], fixtures: [ndimage.vectorized_filter]}
   scipy.stats:
+    goodness_of_fit: {ffi: [GOF::goodnessOfFit], ext: [GOF::goodnessOfFit], fixtures: [stats.goodness_of_fit]}
+    power: {ffi: [POW::power], ext: [POW::power], fixtures: [stats.power]}
+    make_distribution: {ffi: [MKD::pdf], ext: [MKD::pdf], fixtures: [stats.make_distribution]}
+    random_correlation: {ffi: [RCORR::rvs], ext: [RCORR::rvs], fixtures: [stats.random_correlation]}
+    random_table: {ffi: [RTAB::rvs], ext: [RTAB::rvs], fixtures: [stats.random_table]}
     # scipy.stats.Normal (new 1.15 random-variable class): pure-PHP Tessero\Stats\Normal facade over the
     # kernel-backed normal distribution (Stats::norm -> Distribution), one class both backends; verified by
     # stats_normal.json rvdist_cases (every method, scalar + array).
@@ -666,6 +674,9 @@ legacy:
     find: {ffi: [Const::find], ext: [Const::find], fixtures: [constants.find]}
     physical_constants: {ffi: [Const::physicalConstants], ext: [Const::physicalConstants], fixtures: [constants.physical_constants]}
   scipy.sparse:
+    random_array: {ffi: [SR::randomArray], ext: [SR::randomArray], fixtures: [sparse.random_array]}
+    random: {ffi: [SR::random], ext: [SR::random], fixtures: [sparse.random]}
+    rand: {ffi: [SR::rand], ext: [SR::rand], fixtures: [sparse.rand]}
     csr_matrix: {ffi: [S::fromDense, S::fromTriplets], tests: sparse}
     identity: {ffi: [S::identity], tests: sparse}
     save_npz: {ffi: [SNPZ::save, SNPZ::load], ext: [SNPZ::save, SNPZ::load], fixtures: [sparse.save_npz]}

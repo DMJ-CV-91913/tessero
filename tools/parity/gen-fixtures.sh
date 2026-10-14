@@ -29,6 +29,13 @@ for g in "${groups[@]}"; do
         stats_normal) python3 fixtures_normal.py ;;
         stats_uniform) python3 fixtures_uniform.py ;;
         stats_orthogroup) python3 fixtures_orthogroup.py ;;
+        sparse_random) python3 fixtures_sparserand.py ;;
+        stats_goodness_of_fit) python3 fixtures_goodness_of_fit.py ;;
+        power_stats) python3 fixtures_power.py ;;
+        stats_makedist) python3 fixtures_makedist.py ;;
+        stats_randcorr) python3 fixtures_randcorr.py ;;
+        integrate_qmcquad) python3 fixtures_qmcquad.py ;;
+        slinalg_clarkson) python3 fixtures_clarkson.py ;;
         stats_unifdir) python3 fixtures_unifdir.py ;;
         bootstrap) python3 fixtures_bootstrap.py ;;
         stats_dists) python3 fixtures_dists.py ;;
