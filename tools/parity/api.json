@@ -10919,6 +10919,129 @@
         ]
     },
     {
+        "class": "Tessero\\Random\\MT19937",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array|int $seed)",
+                "doc": "(\u2192 init_by_array), exactly as numpy.random.RandomState accepts."
+            },
+            {
+                "name": "nextUint32",
+                "static": false,
+                "sig": "nextUint32(): int",
+                "doc": "The next tempered 32-bit word (numpy next_uint32 / genrand_uint32)."
+            },
+            {
+                "name": "nextDouble",
+                "static": false,
+                "sig": "nextDouble(): float",
+                "doc": "A single double in [0, 1) (numpy legacy next_double / random_sample)."
+            },
+            {
+                "name": "randomSample",
+                "static": false,
+                "sig": "randomSample(int $n): array",
+                "doc": ""
+            },
+            {
+                "name": "nextGauss",
+                "static": false,
+                "sig": "nextGauss(): float",
+                "doc": "A single standard normal (numpy legacy gauss: Box\u2013Muller polar)."
+            },
+            {
+                "name": "standardNormal",
+                "static": false,
+                "sig": "standardNormal(int $n): array",
+                "doc": ""
+            },
+            {
+                "name": "randomInterval",
+                "static": false,
+                "sig": "randomInterval(int $max): int",
+                "doc": "A uniform integer in [0, $max] by numpy's smallest-mask rejection (rk_interval). Uses a 32-bit draw when the range fits in 32 bits, else a 64-bit draw \u2014 matching numpy's legacy buffered path."
+            },
+            {
+                "name": "randint",
+                "static": false,
+                "sig": "randint(int $low, int $high, int $size): array",
+                "doc": ""
+            },
+            {
+                "name": "permutation",
+                "static": false,
+                "sig": "permutation(int $n): array",
+                "doc": ""
+            },
+            {
+                "name": "shuffle",
+                "static": false,
+                "sig": "shuffle(array $arr): void",
+                "doc": "In-place legacy Fisher\u2013Yates shuffle (numpy RandomState.shuffle)."
+            }
+        ],
+        "constants": [
+            "N",
+            "M",
+            "MATRIX_A",
+            "UPPER_MASK",
+            "LOWER_MASK",
+            "UINT32"
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\MultiscaleGraphcorr",
+        "methods": [
+            {
+                "name": "multiscaleGraphcorr",
+                "static": true,
+                "sig": "multiscaleGraphcorr(array $x, array $y, bool $computeDistance = true, int $reps = 1000, Tessero\\Random\\MT19937|int $randomState = 0, bool $isTwosamp = false): array",
+                "doc": "when false, x and y are already distance matrices"
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Qmc\\Sobol",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $d, bool $scramble = true, ?int $seed = null, int $bits = 30)",
+                "doc": "ignored when $scramble is false"
+            },
+            {
+                "name": "random",
+                "static": false,
+                "sig": "random(int $n = 1): Tessero\\NDArray",
+                "doc": "Draw the next `$n` points of the sequence as an (n, d) NDArray of float64 in [0, 1)."
+            },
+            {
+                "name": "reset",
+                "static": false,
+                "sig": "reset(): void",
+                "doc": "Reset the engine so the next draw starts the sequence again."
+            }
+        ],
+        "constants": [
+            "MAXDIM",
+            "POLY",
+            "MINIT"
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\SobolIndices",
+        "methods": [
+            {
+                "name": "sobolIndices",
+                "static": true,
+                "sig": "sobolIndices(callable $func, int $n, array $dists, ?int $seed = null, bool $scramble = true): array",
+                "doc": "each (s, d): first_order[output][input], total_order[output][input]"
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {

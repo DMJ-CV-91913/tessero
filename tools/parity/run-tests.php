@@ -817,6 +817,35 @@ function runLinopCase(array $c): array
     throw new \RuntimeException("unknown op '{$c['op']}'");
 }
 
+function makeSobolIndicesFunc(string $kind): callable
+{
+    return match ($kind) {
+        'ishigami' => static function (array $x): array {
+            $n = count($x[0]); $o = [];
+            for ($k = 0; $k < $n; $k++) {
+                $o[$k] = sin($x[0][$k]) + 7 * sin($x[1][$k]) ** 2 + 0.1 * ($x[2][$k] ** 4) * sin($x[0][$k]);
+            }
+            return $o;
+        },
+        'linear' => static function (array $x): array {
+            $n = count($x[0]); $o = [];
+            for ($k = 0; $k < $n; $k++) { $o[$k] = $x[0][$k] + 2 * $x[1][$k] + 3 * $x[2][$k]; }
+            return $o;
+        },
+        'poly' => static function (array $x): array {
+            $n = count($x[0]); $o = [];
+            for ($k = 0; $k < $n; $k++) { $o[$k] = $x[0][$k] ** 2 + $x[1][$k] * $x[2][$k] + sin($x[0][$k]); }
+            return $o;
+        },
+        'sum4' => static function (array $x): array {
+            $n = count($x[0]); $o = [];
+            for ($k = 0; $k < $n; $k++) { $o[$k] = $x[0][$k] + $x[1][$k] + $x[2][$k] + $x[3][$k]; }
+            return $o;
+        },
+        default => throw new RuntimeException("unknown sobol_indices kind $kind"),
+    };
+}
+
 function makeObjective(array $spec): callable
 {
     return match ($spec['kind']) {
@@ -2049,6 +2078,96 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['mgc_cases'])) {
+        $local = [];
+        foreach ($data['mgc_cases'] as $c) {
+            $key = 'stats.multiscale_graphcorr';
+            $rtol = (float) ($c['rtol'] ?? 1e-11);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $x = array_map(static fn ($r) => is_array($r) ? array_map('floatval', $r) : (float) $r, $c['x']);
+                $y = array_map(static fn ($r) => is_array($r) ? array_map('floatval', $r) : (float) $r, $c['y']);
+                $got = \Tessero\Stats\MultiscaleGraphcorr::multiscaleGraphcorr(
+                    $x,
+                    $y,
+                    (bool) ($c['compute_distance'] ?? true),
+                    (int) $c['reps'],
+                    (int) $c['seed'],
+                    (bool) ($c['is_twosamp'] ?? false),
+                );
+                $es = (float) $c['expect']['statistic'];
+                $ep = (float) $c['expect']['pvalue'];
+                $oks = abs($got['statistic'] - $es) <= $rtol * (1 + abs($es));
+                $okp = abs($got['pvalue'] - $ep) <= 1e-12; // p-value is a rational k/(reps+1): exact
+                $ok = $oks && $okp;
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $ex) { $msg = $ex->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key} ({$c['name']}): {$msg}\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+
+    if (isset($data['sobol_cases'])) {                       // scipy.stats.qmc.Sobol (pure-PHP Tessero\Stats\Qmc\Sobol)
+        $key = 'stats.qmc.Sobol';
+        $sRtol = (float) ($data['tol']['rtol'] ?? 1e-12);
+        $sAtol = (float) ($data['tol']['atol'] ?? 1e-14);
+        foreach ($data['sobol_cases'] as $c) {
+            $checked++;
+            $w = 0.0; $problem = null;
+            try {
+                $dim = (int) $c['dim']; $bits = (int) $c['bits']; $n = (int) $c['n'];
+                $scr = (bool) $c['scramble']; $seed = $c['seed'] === null ? null : (int) $c['seed'];
+                $got = (new \Tessero\Stats\Qmc\Sobol($dim, $scr, $seed, $bits))->random($n)->toArray();
+                $want = $c['expect'];
+                for ($i = 0; $i < $n && $problem === null; $i++) {
+                    for ($j = 0; $j < $dim; $j++) {
+                        [$ok, $rel] = close((float) $got[$i][$j], (float) $want[$i][$j], $sRtol, $sAtol);
+                        if ($rel !== INF && $rel > $w) { $w = $rel; }
+                        if (! $ok) { $problem = sprintf('dim=%d bits=%d scr=%d [%d][%d] got %.17g want %.17g',
+                            $dim, $bits, $scr ? 1 : 0, $i, $j, (float) $got[$i][$j], (float) $want[$i][$j]); break; }
+                    }
+                }
+            } catch (\Throwable $e) { $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = max((float) ($results['max_rel'][$backend][$key] ?? 0.0), $w);
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        // NO continue: fall through so sobolindices_cases (same stats_sobol.json) also runs
+    }
+    if (isset($data['sobolindices_cases'])) {                // scipy.stats.sobol_indices (pure-PHP Tessero\Stats\SobolIndices)
+        $key = 'stats.sobol_indices';
+        $siRtol = (float) ($data['tol']['rtol'] ?? 1e-12);
+        $siAtol = (float) ($data['tol']['atol'] ?? 1e-14);
+        foreach ($data['sobolindices_cases'] as $c) {
+            $checked++;
+            $crtol = (float) ($c['rtol'] ?? $siRtol);
+            $w = 0.0; $problem = null;
+            try {
+                $func = makeSobolIndicesFunc((string) $c['kind']);
+                $dists = array_map(static fn ($p) => [(float) $p[0], (float) $p[1]], $c['dists']);
+                $res = \Tessero\Stats\SobolIndices::sobolIndices($func, (int) $c['n'], $dists, (int) $c['seed']);
+                foreach (['first_order', 'total_order'] as $kk) {
+                    $got = $res[$kk]; $want = $c[$kk];
+                    for ($o = 0; $o < count($want) && $problem === null; $o++) {
+                        for ($i = 0; $i < count($want[$o]); $i++) {
+                            [$ok, $rel] = close((float) $got[$o][$i], (float) $want[$o][$i], $crtol, $siAtol);
+                            if ($rel !== INF && $rel > $w) { $w = $rel; }
+                            if (! $ok) { $problem = sprintf('%s %s [%d][%d] got %.17g want %.17g',
+                                $c['kind'], $kk, $o, $i, (float) $got[$o][$i], (float) $want[$o][$i]); break; }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) { $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = max((float) ($results['max_rel'][$backend][$key] ?? 0.0), $w);
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        continue;
+    }
+
     if (isset($data['splu_cases'])) {                        // scipy.sparse.linalg.splu / factorized / SuperLU (pure-PHP solve layer over spsolve)
         $local = [];
         $splClass = $classes[$backend]['splinalg'];          // Tessero\SparseLinalg | Tessero\Ext\SparseLinalg
