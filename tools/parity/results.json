@@ -687,6 +687,7 @@
         "optimize.LinearConstraint": "pass",
         "optimize.NonlinearConstraint": "pass",
         "optimize.RootResults": "pass",
+        "optimize.anderson": "pass",
         "optimize.approx_fprime": "pass",
         "optimize.basinhopping": "pass",
         "optimize.bisect": "pass",
@@ -694,9 +695,12 @@
         "optimize.brent": "pass",
         "optimize.brenth": "pass",
         "optimize.brentq": "pass",
+        "optimize.broyden1": "pass",
+        "optimize.broyden2": "pass",
         "optimize.brute": "pass",
         "optimize.check_grad": "pass",
         "optimize.curve_fit": "pass",
+        "optimize.diagbroyden": "pass",
         "optimize.differential_evolution": "pass",
         "optimize.dual_annealing": "pass",
         "optimize.fixed_point": "pass",
@@ -3441,7 +3445,11 @@
             "stats.Logistic": null,
             "stats.Binomial": null,
             "stats.bootstrap": null,
-            "stats.monte_carlo_test": null
+            "stats.monte_carlo_test": null,
+            "optimize.broyden1": null,
+            "optimize.broyden2": null,
+            "optimize.anderson": null,
+            "optimize.diagbroyden": null
         },
         "ext": {
             "np.median": 0,
@@ -5162,7 +5170,11 @@
             "stats.bootstrap": null,
             "stats.monte_carlo_test": null,
             "stats.Logistic": null,
-            "stats.Binomial": null
+            "stats.Binomial": null,
+            "optimize.broyden1": null,
+            "optimize.broyden2": null,
+            "optimize.anderson": null,
+            "optimize.diagbroyden": null
         }
     },
     "ext": {
@@ -5853,6 +5865,7 @@
         "optimize.LinearConstraint": "pass",
         "optimize.NonlinearConstraint": "pass",
         "optimize.RootResults": "pass",
+        "optimize.anderson": "pass",
         "optimize.approx_fprime": "pass",
         "optimize.basinhopping": "pass",
         "optimize.bisect": "pass",
@@ -5860,9 +5873,12 @@
         "optimize.brent": "pass",
         "optimize.brenth": "pass",
         "optimize.brentq": "pass",
+        "optimize.broyden1": "pass",
+        "optimize.broyden2": "pass",
         "optimize.brute": "pass",
         "optimize.check_grad": "pass",
         "optimize.curve_fit": "pass",
+        "optimize.diagbroyden": "pass",
         "optimize.differential_evolution": "pass",
         "optimize.dual_annealing": "pass",
         "optimize.fixed_point": "pass",

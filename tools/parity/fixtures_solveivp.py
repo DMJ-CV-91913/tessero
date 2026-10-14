@@ -59,6 +59,14 @@ cases = [
     case('lotka', {'a': 1.5, 'b': 1.0, 'c': 3.0, 'd': 1.0}, (0.0, 10.0), [10.0, 5.0], np.linspace(0, 10, 21).tolist(), method='RK23'),
     case('exp_decay', {'k': 0.7}, (0.0, 5.0), [2.0], np.linspace(0, 5, 11).tolist(), method='RK23'),
     case('logistic', {'r': 1.0, 'K': 10.0}, (0.0, 6.0), [1.0], np.linspace(0, 6, 13).tolist(), method='RK23'),
+    # --- method='DOP853' (Dormand-Prince 8(5,3)); mirror the RK45 cases + a backward-time case, rtol 1e-8 ---
+    case('exp_decay', {'k': 0.7}, (0.0, 5.0), [2.0], np.linspace(0, 5, 11).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
+    case('harmonic', {'w': 2.0}, (0.0, 6.0), [1.0, 0.0], np.linspace(0, 6, 13).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
+    case('lotka', {'a': 1.5, 'b': 1.0, 'c': 3.0, 'd': 1.0}, (0.0, 10.0), [10.0, 5.0], np.linspace(0, 10, 21).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
+    case('linear2x2', {'M': [[-0.5, 1.0], [-1.0, -0.5]]}, (0.0, 8.0), [1.0, 1.0], np.linspace(0, 8, 17).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
+    case('logistic', {'r': 1.0, 'K': 10.0}, (0.0, 6.0), [1.0], np.linspace(0, 6, 13).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
+    case('vanderpol', {'mu': 0.5}, (0.0, 10.0), [2.0, 0.0], np.linspace(0, 10, 21).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
+    case('harmonic', {'w': 1.5}, (0.0, -5.0), [0.0, 1.0], np.linspace(0, -5, 11).tolist(), method='DOP853', rtol=1e-8, atol=1e-11),
 ]
 
 

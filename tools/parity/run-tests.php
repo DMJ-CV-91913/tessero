@@ -721,6 +721,11 @@ function makeObjective(array $spec): callable
         'linresid' => static function (array $p) use ($spec): array { $r = []; foreach ($spec['x'] as $i => $xi) { $r[] = $p[0] * $xi + $p[1] - $spec['y'][$i]; } return $r; },
         'expresid' => static function (array $p) use ($spec): array { $r = []; foreach ($spec['x'] as $i => $xi) { $r[] = $p[0] * exp($p[1] * $xi) + $p[2] - $spec['y'][$i]; } return $r; },
         'vecsys' => static fn (array $x): array => [$x[0] - 0.5 * cos($x[1]) - 0.5, $x[1] - 0.5 * sin($x[0]) - 0.3],
+        'vecsys_rotten' => static fn (array $x): array => [$x[0] + 0.5 * ($x[0] - $x[1]) ** 3 - 1.0, 0.5 * ($x[1] - $x[0]) ** 3 + $x[1]],
+        'vecsys_quad2'  => static fn (array $x): array => [$x[0] ** 2 + $x[1] ** 2 - 4.0, $x[0] - $x[1]],
+        'vecsys_lin2'   => static fn (array $x): array => [2.0 * $x[0] + $x[1] - 5.0, $x[0] + 3.0 * $x[1] - 10.0],
+        'vecsys_trig2'  => static fn (array $x): array => [$x[0] - 0.5 * cos($x[1]) - 0.5, $x[1] - 0.5 * sin($x[0]) - 0.3],
+        'vecsys_lin3'   => static fn (array $x): array => [3 * $x[0] + $x[1] - $x[2] - 2.0, $x[0] + 4 * $x[1] + $x[2] - 6.0, -$x[0] + $x[1] + 5 * $x[2] - 5.0],
         'sphere' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v; } return $s; },
         'shifted_quadratic' => static function (array $x) use ($spec): float { $s = 0.0; foreach ($x as $i => $v) { $d = $v - $spec['shift'][$i]; $s += $d * $d; } return $s; },
         'rastrigin' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v - 10.0 * cos(2.0 * M_PI * $v); } return $s + 10.0 * count($x); },
@@ -1011,6 +1016,9 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $ok = vecClose($got, $c['expect'], $rtol);
             } elseif ($fn === 'fsolve') {
                 $got = \Tessero\Optimize\Root::fsolve($obj, array_map('floatval', $c['x0']));
+                $ok = vecClose($got, $c['expect'], $rtol);
+            } elseif ($fn === 'broyden1' || $fn === 'broyden2' || $fn === 'anderson' || $fn === 'diagbroyden') {
+                $got = \Tessero\Optimize\NonlinSolve::{$fn}($obj, array_map('floatval', $c['x0']));
                 $ok = vecClose($got, $c['expect'], $rtol);
             } elseif ($fn === 'fixed_point') {
                 $got = \Tessero\Optimize\Root::fixedPoint($obj, (float) $c['x0']);
