@@ -1044,6 +1044,7 @@ covered by the [arrays](../guide/arrays.md) and [FFT](../guide/fft.md) guides. S
 | `scipy.sparse.diags_array` | `Tessero\Sparse::diagsArray()` |
 | `scipy.sparse.dok_array` | `Tessero\Sparse::dokArray()` |
 | `scipy.sparse.dok_matrix` | `Tessero\Sparse::dokMatrix()` |
+| `scipy.sparse.expand_dims` | `Tessero\Sparse::expandDims()` |
 | `scipy.sparse.eye` | `Tessero\Sparse::eye()` |
 | `scipy.sparse.eye_array` | `Tessero\Sparse::eyeArray()` |
 | `scipy.sparse.find` | `Tessero\Sparse::find()` |

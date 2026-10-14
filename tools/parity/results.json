@@ -696,6 +696,9 @@
         "npoly.polyzero": "pass",
         "optimize.BFGS": "pass",
         "optimize.Bounds": "pass",
+        "optimize.BroydenFirst": "pass",
+        "optimize.InverseJacobian": "pass",
+        "optimize.KrylovJacobian": "pass",
         "optimize.LinearConstraint": "pass",
         "optimize.NoConvergence": "pass",
         "optimize.NonlinearConstraint": "pass",
@@ -1076,6 +1079,7 @@
         "sparse.diags_array": "pass",
         "sparse.dok_array": "pass",
         "sparse.dok_matrix": "pass",
+        "sparse.expand_dims": "pass",
         "sparse.eye": "pass",
         "sparse.eye_array": "pass",
         "sparse.find": "pass",
@@ -3601,7 +3605,11 @@
             "optimize.trust_constr": null,
             "signal.CZT": null,
             "stats.matrix_t": null,
-            "stats.normal_inverse_gamma": null
+            "stats.normal_inverse_gamma": null,
+            "sparse.expand_dims": 0,
+            "optimize.BroydenFirst": null,
+            "optimize.InverseJacobian": null,
+            "optimize.KrylovJacobian": null
         },
         "ext": {
             "np.median": 0,
@@ -5402,7 +5410,11 @@
             "optimize.trust_constr": null,
             "signal.CZT": null,
             "stats.matrix_t": null,
-            "stats.normal_inverse_gamma": null
+            "stats.normal_inverse_gamma": null,
+            "sparse.expand_dims": 0,
+            "optimize.BroydenFirst": null,
+            "optimize.InverseJacobian": null,
+            "optimize.KrylovJacobian": null
         }
     },
     "ext": {
@@ -6102,6 +6114,9 @@
         "npoly.polyzero": "pass",
         "optimize.BFGS": "pass",
         "optimize.Bounds": "pass",
+        "optimize.BroydenFirst": "pass",
+        "optimize.InverseJacobian": "pass",
+        "optimize.KrylovJacobian": "pass",
         "optimize.LinearConstraint": "pass",
         "optimize.NoConvergence": "pass",
         "optimize.NonlinearConstraint": "pass",
@@ -6482,6 +6497,7 @@
         "sparse.diags_array": "pass",
         "sparse.dok_array": "pass",
         "sparse.dok_matrix": "pass",
+        "sparse.expand_dims": "pass",
         "sparse.eye": "pass",
         "sparse.eye_array": "pass",
         "sparse.find": "pass",

@@ -9355,6 +9355,108 @@
         ]
     },
     {
+        "class": "Tessero\\Optimize\\BroydenFirst",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(?float $alpha = null)",
+                "doc": ""
+            },
+            {
+                "name": "setup",
+                "static": false,
+                "sig": "setup(array $x, array $F, callable $func): void",
+                "doc": ""
+            },
+            {
+                "name": "solve",
+                "static": false,
+                "sig": "solve(array $f, float $tol = 0.0): array",
+                "doc": ""
+            },
+            {
+                "name": "update",
+                "static": false,
+                "sig": "update(array $x, array $f): void",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\KrylovJacobian",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $innerMaxiter = 20)",
+                "doc": ""
+            },
+            {
+                "name": "setup",
+                "static": false,
+                "sig": "setup(array $x, array $F, callable $func): void",
+                "doc": ""
+            },
+            {
+                "name": "update",
+                "static": false,
+                "sig": "update(array $x, array $f): void",
+                "doc": ""
+            },
+            {
+                "name": "solve",
+                "static": false,
+                "sig": "solve(array $f, float $tol = 0.0): array",
+                "doc": "Solve J dx = rhs with restarted GMRES to the inexact-Newton tolerance `tol` (scipy passes tol = min(eta, eta*||F||) from the driver as the GMRES rtol)."
+            },
+            {
+                "name": "matvec",
+                "static": false,
+                "sig": "matvec(array $v): array",
+                "doc": "Finite-difference directional derivative J . v."
+            }
+        ],
+        "constants": [
+            "EPS"
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\InverseJacobian",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(Tessero\\Optimize\\JacobianApprox $jacobian)",
+                "doc": ""
+            },
+            {
+                "name": "jacobian",
+                "static": false,
+                "sig": "jacobian(): Tessero\\Optimize\\JacobianApprox",
+                "doc": "The wrapped Jacobian (scipy: InverseJacobian.jacobian)."
+            },
+            {
+                "name": "setup",
+                "static": false,
+                "sig": "setup(array $x, array $F, callable $func): void",
+                "doc": "scipy: self.setup = jacobian.setup."
+            },
+            {
+                "name": "matvec",
+                "static": false,
+                "sig": "matvec(array $v): array",
+                "doc": "scipy: self.matvec = jacobian.solve, i.e. J^-1 . v."
+            },
+            {
+                "name": "update",
+                "static": false,
+                "sig": "update(array $x, array $f): void",
+                "doc": "scipy: self.update = jacobian.update."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Differentiate\\Derivative",
         "methods": [
             {
