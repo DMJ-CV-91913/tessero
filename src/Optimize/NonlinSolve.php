@@ -74,6 +74,20 @@ final class NonlinSolve
     }
 
     /**
+     * scipy.optimize.newton_krylov: Jacobian-free (matrix-free) inexact-Newton with a
+     * restarted-GMRES inner solve ({@see KrylovJacobian}). The Jacobian's action on a
+     * vector is a finite difference of the residual, so no analytic/explicit Jacobian is
+     * needed. Converges to the same root scipy's newton_krylov reaches (unique-root
+     * systems match to ~1e-6 relative; the inner forcing tolerance follows the
+     * inexact-Newton schedule, so the iterate path is numerically but not bit-for-bit
+     * identical to scipy's gmres). Real-valued systems only.
+     */
+    public static function newtonKrylov(callable $F, array $xin, ?int $maxiter = null): array
+    {
+        return self::nonlinSolve($F, $xin, 'krylov', $maxiter);
+    }
+
+    /**
      * nonlin_solve driver (line_search='armijo', the scipy default).
      *
      * @param callable(list<float>): list<float> $F
@@ -163,6 +177,7 @@ final class NonlinSolve
             'diagbroyden' => new DiagBroyden(),
             'linearmixing' => new LinearMixing(),
             'excitingmixing' => new ExcitingMixing(),
+            'krylov' => new KrylovJacobian(),
             default => throw new \RuntimeException("unknown jacobian '{$kind}'"),
         };
     }

@@ -758,6 +758,13 @@ function makeObjective(array $spec): callable
         'vecsys' => static fn (array $x): array => [$x[0] - 0.5 * cos($x[1]) - 0.5, $x[1] - 0.5 * sin($x[0]) - 0.3],
         'vecsys_rotten' => static fn (array $x): array => [$x[0] + 0.5 * ($x[0] - $x[1]) ** 3 - 1.0, 0.5 * ($x[1] - $x[0]) ** 3 + $x[1]],
         'vecsys_quad2'  => static fn (array $x): array => [$x[0] ** 2 + $x[1] ** 2 - 4.0, $x[0] - $x[1]],
+        'vecsys_nkexample' => static fn (array $x): array => [$x[0] + 0.5 * $x[1] - 1.0, 0.5 * ($x[1] - $x[0]) ** 2],
+        'vecsys_exp2'      => static fn (array $x): array => [exp($x[0]) + $x[1] - 2.0, $x[0] + exp($x[1]) - 2.0],
+        'vecsys_mix2'      => static fn (array $x): array => [$x[0] + sin($x[1]) - 1.0, $x[1] + cos($x[0]) - 0.5],
+        'softbowl'         => static function (array $x): float { $c=[1.5,-0.5]; $s=0.0; for($i=0;$i<2;$i++){$s+=sqrt(1+($x[$i]-$c[$i])**2)-1;} return $s; },
+        'bowl3'            => static fn (array $x): float => ($x[0]-1)**2+($x[1]+2)**2+2*($x[2]-0.5)**2,
+        'qbowl'            => static fn (array $x): float => $x[0]**2+2*$x[1]**2+$x[0]*$x[1],
+        'styblinski'       => static fn (array $x): float => 0.5 * array_sum(array_map(static fn ($v): float => $v ** 4 - 16.0 * $v ** 2 + 5.0 * $v, $x)),
         'vecsys_lin2'   => static fn (array $x): array => [2.0 * $x[0] + $x[1] - 5.0, $x[0] + 3.0 * $x[1] - 10.0],
         'vecsys_trig2'  => static fn (array $x): array => [$x[0] - 0.5 * cos($x[1]) - 0.5, $x[1] - 0.5 * sin($x[0]) - 0.3],
         'vecsys_lin3'   => static fn (array $x): array => [3 * $x[0] + $x[1] - $x[2] - 2.0, $x[0] + 4 * $x[1] + $x[2] - 6.0, -$x[0] + $x[1] + 5 * $x[2] - 5.0],
@@ -1180,7 +1187,7 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $jac = null;
                 $opts = [];
                 $isRosen = ($c['obj']['kind'] ?? '') === 'rosen';
-                if ($isRosen && in_array($mup, ['CG', 'NEWTON-CG', 'NEWTONCG', 'DOGLEG', 'TRUST-NCG', 'TRUSTNCG', 'TRUST-EXACT', 'TRUSTEXACT'], true)) {
+                if ($isRosen && in_array($mup, ['CG', 'NEWTON-CG', 'NEWTONCG', 'DOGLEG', 'TRUST-NCG', 'TRUSTNCG', 'TRUST-EXACT', 'TRUSTEXACT', 'TRUST-KRYLOV', 'TRUSTKRYLOV'], true)) {
                     $jac = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
                     // Hessian-vector product for Newton-CG; the 5-D trust-ncg fixture exercises the hessp path.
                     if (in_array($mup, ['NEWTON-CG', 'NEWTONCG'], true)
@@ -1192,6 +1199,23 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                         || ($mup === 'TRUST-NCG' || $mup === 'TRUSTNCG') && count($c['x0']) !== 5) {
                         $opts['hess'] = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenHess($v);
                     }
+                    if ($mup === 'TRUST-KRYLOV' || $mup === 'TRUSTKRYLOV') {
+                        if (! empty($c['hessp'])) { $opts['hessp'] = static fn (array $v, array $p): array => \Tessero\Optimize\Minimize::rosenHessProd($v, $p); }
+                        else { $opts['hess'] = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenHess($v); }
+                    }
+                }
+                if (in_array($mup, ['TRUST-KRYLOV', 'TRUSTKRYLOV'], true) && ! $isRosen) {
+                    $kk = $c['obj']['kind'];
+                    $jac = match ($kk) {
+                        'softbowl' => static fn (array $x): array => [($x[0] - 1.5) / sqrt(1 + ($x[0] - 1.5) ** 2), ($x[1] + 0.5) / sqrt(1 + ($x[1] + 0.5) ** 2)],
+                        'bowl3'    => static fn (array $x): array => [2 * ($x[0] - 1), 2 * ($x[1] + 2), 4 * ($x[2] - 0.5)],
+                        'qbowl'    => static fn (array $x): array => [2 * $x[0] + $x[1], 4 * $x[1] + $x[0]],
+                    };
+                    $opts['hess'] = match ($kk) {
+                        'softbowl' => static fn (array $x): array => [[1.0 / (1 + ($x[0] - 1.5) ** 2) ** 1.5, 0.0], [0.0, 1.0 / (1 + ($x[1] + 0.5) ** 2) ** 1.5]],
+                        'bowl3'    => static fn (array $x): array => [[2.0, 0, 0], [0, 2.0, 0], [0, 0, 4.0]],
+                        'qbowl'    => static fn (array $x): array => [[2.0, 1.0], [1.0, 4.0]],
+                    };
                 }
                 $got = \Tessero\Optimize\Minimize::minimize($obj, array_map('floatval', $c['x0']), $jac, (string) $c['method'], null, $opts)->x;
                 $ok = vecClose($got, $c['expect'], $rtol);
@@ -1246,6 +1270,25 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                       || $fn === 'linearmixing' || $fn === 'excitingmixing') {
                 $got = \Tessero\Optimize\NonlinSolve::{$fn}($obj, array_map('floatval', $c['x0']));
                 $ok = vecClose($got, $c['expect'], $rtol);
+            } elseif ($fn === 'newton_krylov') {
+                $got = \Tessero\Optimize\NonlinSolve::newtonKrylov($obj, array_map('floatval', $c['x0']));
+                $ok = vecClose($got, $c['expect'], $rtol);
+            } elseif ($fn === 'direct') {
+                $bounds = array_map(static fn ($b): array => [(float) $b[0], (float) $b[1]], $c['bounds']);
+                $r = \Tessero\Optimize\Direct::minimize($obj, $bounds);
+                $okX = vecClose($r->x, $c['expect'], $rtol);
+                if (($c['tier'] ?? '') === 'global') {
+                    $okF = abs($r->fun) <= (float) ($c['fun_atol'] ?? 1e-2);
+                } else {
+                    $okF = abs($r->fun - (float) $c['expect_fun']) <= $rtol * (1 + abs((float) $c['expect_fun']));
+                }
+                $ok = $okX && $okF;
+            } elseif ($fn === 'shgo') {
+                $bounds = array_map(static fn ($b): array => [(float) $b[0], (float) $b[1]], $c['bounds']);
+                $r = \Tessero\Optimize\Shgo::minimize($obj, $bounds);
+                $okX = vecClose($r->x, $c['expect'], $rtol);
+                $okF = abs($r->fun - (float) $c['expect_fun']) <= max($rtol, 1e-9) * (1 + abs((float) $c['expect_fun']));
+                $ok = $okX && $okF;
             } elseif ($fn === 'fixed_point') {
                 $got = \Tessero\Optimize\Root::fixedPoint($obj, (float) $c['x0']);
                 $ok = abs($got - $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
@@ -1907,6 +1950,34 @@ foreach ($files as $file) {
                     if (! $ok || abs($K[$j] - (float) $e) > $rtol * (1 + abs((float) $e))) { $ok = false; break; }
                 }
                 if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['ppccplot_cases'])) {                   // scipy.stats.ppcc_plot (pure-PHP Tessero\StatsFns::ppccPlot)
+        foreach ($data['ppccplot_cases'] as $c) {
+            $key = 'stats.ppcc_plot';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                [$svals, $ppcc] = \Tessero\StatsFns::ppccPlot(
+                    array_map('floatval', $c['x']),
+                    (float) $c['a'],
+                    (float) $c['b'],
+                    (int) $c['n'],
+                );
+                $ok = true;
+                foreach (['svals' => $svals, 'ppcc' => $ppcc] as $name => $got) {
+                    foreach ($c['expect'][$name] as $i => $e) {
+                        if (abs($got[$i] - (float) $e) > $rtol * (1 + abs((float) $e))) { $ok = false; $msg = "{$name}[{$i}]"; break 2; }
+                    }
+                }
             } catch (\Throwable $e) {
                 $msg = $e->getMessage();
             }

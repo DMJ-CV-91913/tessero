@@ -572,6 +572,9 @@ legacy:
     fmin_l_bfgs_b: {ffi: [Min::fminLbfgsb], ext: [Min::fminLbfgsb], fixtures: [optimize.fmin_l_bfgs_b]}
     linearmixing: {ffi: [NLS::linearmixing], ext: [NLS::linearmixing], fixtures: [optimize.linearmixing]}
     excitingmixing: {ffi: [NLS::excitingmixing], ext: [NLS::excitingmixing], fixtures: [optimize.excitingmixing]}
+    newton_krylov: {ffi: [NLS::newtonKrylov], ext: [NLS::newtonKrylov], fixtures: [optimize.newton_krylov]}
+    direct: {ffi: [DIR::minimize], ext: [DIR::minimize], fixtures: [optimize.direct]}
+    shgo: {ffi: [SHGO::minimize], ext: [SHGO::minimize], fixtures: [optimize.shgo]}
     curve_fit: {ffi: [LS::curveFit], ext: [LS::curveFit], fixtures: [optimize.curve_fit]}
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}
@@ -628,6 +631,7 @@ legacy:
     monte_carlo_test: {ffi: [MCT::monteCarloTest], ext: [MCT::monteCarloTest], fixtures: [stats.monte_carlo_test]}
     yeojohnson_normmax: {ffi: [SF::yeojohnsonNormmax], ext: [SF::yeojohnsonNormmax], fixtures: [stats.yeojohnson_normmax]}
     ppcc_max: {ffi: [SF::ppccMax], ext: [SF::ppccMax], fixtures: [stats.ppcc_max]}
+    ppcc_plot: {ffi: [SF::ppccPlot], ext: [SF::ppccPlot], fixtures: [stats.ppcc_plot]}
   scipy.constants:
     convert_temperature: {ffi: [Const::convertTemperature], ext: [Const::convertTemperature], fixtures: [constants.convert_temperature]}
     lambda2nu: {ffi: [Const::lambda2nu], ext: [Const::lambda2nu], fixtures: [constants.lambda2nu]}

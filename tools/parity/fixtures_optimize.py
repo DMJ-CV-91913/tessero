@@ -291,6 +291,28 @@ cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0], 'me
 cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2], 'method': 'trust-exact',
               'expect': list(so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='trust-exact', jac=so.rosen_der, hess=so.rosen_hess).x), 'rtol': 1e-6})
 
+# --- scipy.optimize.minimize(method='trust-krylov')  (GLTR, _trlib); compare converged x only ---
+_tkC = (1.5, -0.5)
+def _softbowl(x): return sum((1 + (x[i] - _tkC[i]) ** 2) ** 0.5 - 1 for i in range(2))
+def _softbowl_der(x): return np.array([(x[i] - _tkC[i]) / (1 + (x[i] - _tkC[i]) ** 2) ** 0.5 for i in range(2)])
+def _softbowl_hess(x): return np.array([[1.0 / (1 + (x[0]-_tkC[0])**2)**1.5, 0.0], [0.0, 1.0 / (1 + (x[1]-_tkC[1])**2)**1.5]])
+def _bowl3(x): return (x[0]-1)**2 + (x[1]+2)**2 + 2*(x[2]-0.5)**2
+def _bowl3_der(x): return np.array([2*(x[0]-1), 2*(x[1]+2), 4*(x[2]-0.5)])
+def _bowl3_hess(x): return np.array([[2.,0,0],[0,2.,0],[0,0,4.]])
+def _qbowl(x): return x[0]**2 + 2*x[1]**2 + x[0]*x[1]
+def _qbowl_der(x): return np.array([2*x[0]+x[1], 4*x[1]+x[0]])
+def _qbowl_hess(x): return np.array([[2.,1.],[1.,4.]])
+cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7], 'method': 'trust-krylov', 'hessp': False,
+              'expect': list(map(float, so.minimize(rosen, [1.3, 0.7], method='trust-krylov', jac=so.rosen_der, hess=so.rosen_hess).x)), 'rtol': 1e-5})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2], 'method': 'trust-krylov', 'hessp': True,
+              'expect': list(map(float, so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='trust-krylov', jac=so.rosen_der, hessp=so.rosen_hess_prod).x)), 'rtol': 1e-5})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'softbowl'}, 'x0': [1.0, 1.0], 'method': 'trust-krylov', 'hessp': False,
+              'expect': list(map(float, so.minimize(_softbowl, np.array([1.0, 1.0]), method='trust-krylov', jac=_softbowl_der, hess=_softbowl_hess).x)), 'rtol': 1e-5})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'bowl3'}, 'x0': [0.0, 0.0, 0.0], 'method': 'trust-krylov', 'hessp': False,
+              'expect': list(map(float, so.minimize(_bowl3, np.array([0.0, 0.0, 0.0]), method='trust-krylov', jac=_bowl3_der, hess=_bowl3_hess).x)), 'rtol': 1e-5})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'qbowl'}, 'x0': [2.0, -1.0], 'method': 'trust-krylov', 'hessp': False,
+              'expect': list(map(float, so.minimize(_qbowl, np.array([2.0, -1.0]), method='trust-krylov', jac=_qbowl_der, hess=_qbowl_hess).x)), 'rtol': 1e-5})
+
 out = {'module': 'optimize', 'scipy': __import__('scipy').__version__, 'solver_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))
