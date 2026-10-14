@@ -737,11 +737,39 @@ function makeObjective(array $spec): callable
         'shift3' => static fn (array $x): float => ($x[0] - 1.0) ** 2 + ($x[1] - 2.5) ** 2 + ($x[2] + 0.3) ** 2,
         'expsum' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += exp(0.5 * $v) + $v ** 2; } return $s; },
         'trig' => static fn (array $x): float => sin($x[0]) * cos($x[1]) + 0.5 * ($x[0] ** 2 + $x[1] ** 2),
+        'qcross' => static fn (array $x): float => $x[0] ** 2 + 3.0 * $x[1] ** 2 + 2.0 * $x[0] * $x[1],
+        'trigq'  => static fn (array $x): float => sin($x[0]) * cos($x[1]) + 0.5 * ($x[0] ** 2 + $x[1] ** 2),
+        'prodq'  => static fn (array $x): float => $x[0] * $x[1] * $x[2] + $x[0] ** 2 * $x[2],
         default => throw new \RuntimeException("unknown objective '{$spec['kind']}'"),
     };
 }
 
 /** Rebuild a quad_vec integrand (scalar kinds return float; vector kinds 'xpow'/'osc' return list<float>). */
+/** Vector function kinds f: R^m -> R^k for scipy.differentiate.jacobian (mirrors makeObjective's naming). */
+function makeVecFunc(string $kind): callable
+{
+    return match ($kind) {
+        'vlin'   => static fn (array $v): array => [2.0 * $v[0] + $v[1], $v[0] - 3.0 * $v[1], $v[0] * $v[1]],
+        'vtrig'  => static fn (array $v): array => [sin($v[0]) + $v[1] ** 2, cos($v[1]) * $v[0]],
+        'vexp'   => static fn (array $v): array => [exp($v[0]) * $v[1], $v[0] + $v[1] ** 3, $v[0] - $v[1]],
+        'vquad3' => static fn (array $v): array => [$v[0] ** 2 + $v[1], $v[1] * $v[2], $v[0] + $v[2] ** 2],
+        default  => throw new \RuntimeException("unknown vecfunc '{$kind}'"),
+    };
+}
+
+function makeDiffScalar(string $kind, array $c): callable
+{
+    return match ($kind) {
+        'poly'    => static function (float $x) use ($c): float { $s = 0.0; $p = 1.0; foreach ($c as $ck) { $s += $ck * $p; $p *= $x; } return $s; },
+        'expx'    => static fn (float $x): float => exp($x),
+        'sinx'    => static fn (float $x): float => sin($x),
+        'cosx'    => static fn (float $x): float => cos($x),
+        'sincos'  => static fn (float $x): float => sin($x) * cos(2.0 * $x),
+        'expquad' => static fn (float $x): float => exp(0.3 * $x) + $x * $x,
+        default   => throw new \RuntimeException("unknown diffscalar '{$kind}'"),
+    };
+}
+
 function makeIntegrand(array $spec): callable
 {
     return match ($spec['kind']) {
@@ -1696,6 +1724,39 @@ foreach ($files as $file) {
             if (! $ok) { $failures++; echo 'FAIL ' . $key . ': ' . $msg . "\n"; }
         }
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['differentiate_cases'])) {               // scipy.differentiate.derivative/jacobian/hessian (pure-PHP; named callables; central finite diff)
+        $local = [];
+        foreach ($data['differentiate_cases'] as $c) {
+            $key = 'differentiate.' . $c['op'];
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                if ($c['op'] === 'derivative') {
+                    $f = makeDiffScalar($c['kind'], $c['c'] ?? []);
+                    $df = \Tessero\Differentiate\Derivative::derivative($f, (float) $c['x'])['df'];
+                    $ok = abs($df - (float) $c['expect']) <= $rtol * (1 + abs((float) $c['expect']));
+                    if (! $ok) { $msg = 'got ' . $df . ' want ' . $c['expect']; }
+                } elseif ($c['op'] === 'jacobian') {
+                    $f = makeVecFunc($c['kind']);
+                    $J = \Tessero\Differentiate\Derivative::jacobian($f, array_map('floatval', $c['x']));
+                    $ok = vecClose(array_merge(...$J), array_merge(...$c['expect']), $rtol);
+                    if (! $ok) { $msg = 'jacobian mismatch'; }
+                } elseif ($c['op'] === 'hessian') {
+                    $f = makeObjective(['kind' => $c['kind']]);
+                    $H = \Tessero\Differentiate\Derivative::hessian($f, array_map('floatval', $c['x']));
+                    $ok = vecClose(array_merge(...$H), array_merge(...$c['expect']), $rtol);
+                    if (! $ok) { $msg = 'hessian mismatch'; }
+                }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
     if (isset($data['nestedquad_cases'])) {               // scipy.integrate.dblquad/tplquad/nquad (nested GK, pure-PHP)

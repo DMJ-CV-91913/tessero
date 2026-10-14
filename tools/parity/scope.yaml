@@ -81,6 +81,7 @@ phases:
   scipy.linalg: 6
   scipy.fft: 6
   scipy.integrate: 7
+  scipy.differentiate: 7
   scipy.interpolate: 7
   scipy.signal: 8
   scipy.signal.windows: 8
@@ -127,6 +128,10 @@ legacy_tests:
   sparse: [tests/Unit/NumericsTest.php]
 
 legacy:
+  scipy.differentiate:
+    derivative: {ffi: [DFV::derivative], ext: [DFV::derivative], fixtures: [differentiate.derivative]}
+    jacobian:   {ffi: [DFV::jacobian],   ext: [DFV::jacobian],   fixtures: [differentiate.jacobian]}
+    hessian:    {ffi: [DFV::hessian],    ext: [DFV::hessian],    fixtures: [differentiate.hessian]}
   numpy:
     # datetime64/timedelta64 are represented as NumPy's own int64 counts at a unit (Tessero has no datetime dtype);
     # the pure-PHP Tessero\Datetime\Datetime parses/formats and does the calendar maths, verified via datetime.json.

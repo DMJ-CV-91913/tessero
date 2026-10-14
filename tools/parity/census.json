@@ -12427,6 +12427,21 @@
 "name": "zetta"
 },
 {
+"kind": "function",
+"module": "scipy.differentiate",
+"name": "derivative"
+},
+{
+"kind": "function",
+"module": "scipy.differentiate",
+"name": "hessian"
+},
+{
+"kind": "function",
+"module": "scipy.differentiate",
+"name": "jacobian"
+},
+{
 "kind": "method",
 "module": "numpy.ndarray",
 "name": "T"
