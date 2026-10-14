@@ -98,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1378,
+   "both": 1385,
    "excluded": 74,
-   "impl_ext": 1378,
-   "impl_ffi": 1378,
+   "impl_ext": 1385,
+   "impl_ffi": 1385,
    "in_scope": 1488,
-   "m2_ext": 92.6,
-   "m2_ffi": 92.6,
+   "m2_ext": 93.1,
+   "m2_ffi": 93.1,
    "m3": 4.7,
-   "m4_ext": 92.6,
-   "m4_ffi": 92.6,
+   "m4_ext": 93.1,
+   "m4_ffi": 93.1,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1378,
-   "verified_ffi": 1378
+   "verified_ext": 1385,
+   "verified_ffi": 1385
   }
  },
  "modules": {
@@ -612,20 +612,20 @@
    "verified_ffi": 336
   },
   "scipy.stats": {
-   "both": 265,
+   "both": 272,
    "excluded": 6,
-   "impl_ext": 265,
-   "impl_ffi": 265,
+   "impl_ext": 272,
+   "impl_ffi": 272,
    "in_scope": 297,
-   "m2_ext": 89.2,
-   "m2_ffi": 89.2,
+   "m2_ext": 91.6,
+   "m2_ffi": 91.6,
    "m3": 2.0,
-   "m4_ext": 89.2,
-   "m4_ffi": 89.2,
+   "m4_ext": 91.6,
+   "m4_ffi": 91.6,
    "m5": 100.0,
    "symbols": 303,
-   "verified_ext": 265,
-   "verified_ffi": 265
+   "verified_ext": 272,
+   "verified_ffi": 272
   }
  },
  "numpy": "2.4.4",
@@ -638,9 +638,9 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40109,
-   "covered_ext": 40109,
-   "covered_ffi": 40109,
+   "covered_both": 40110,
+   "covered_ext": 40110,
+   "covered_ffi": 40110,
    "excluded_calls": 2388,
    "excluded_share": 5.6,
    "in_scope_calls": 40160,
@@ -717,9 +717,9 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2311,
-    "covered_ext": 2311,
-    "covered_ffi": 2311,
+    "covered_both": 2312,
+    "covered_ext": 2312,
+    "covered_ffi": 2312,
     "excluded_calls": 386,
     "excluded_share": 14.0,
     "in_scope_calls": 2362,
@@ -749,9 +749,9 @@
       "n": 50
      }
     },
-    "u_both": 97.8,
-    "u_ext": 97.8,
-    "u_ffi": 97.8
+    "u_both": 97.9,
+    "u_ext": 97.9,
+    "u_ffi": 97.9
    }
   },
   "total_calls": 42551,

@@ -1,0 +1,452 @@
+{
+  "bootstrap_cases": [
+    {
+      "fn": "bootstrap",
+      "name": "mean/perc",
+      "stat": "mean",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0,
+          10.0
+        ]
+      ],
+      "method": "percentile",
+      "n_resamples": 999,
+      "seed": 42,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 3.7,
+        "high": 7.3,
+        "se": 0.9003425397220337
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "std/perc",
+      "stat": "std",
+      "data": [
+        [
+          2.0,
+          4.0,
+          4.0,
+          4.0,
+          5.0,
+          5.0,
+          7.0,
+          9.0
+        ]
+      ],
+      "method": "percentile",
+      "n_resamples": 500,
+      "seed": 0,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 0.7180516157321337,
+        "high": 2.7726341266023544,
+        "se": 0.5233290853616512
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "median/perc",
+      "stat": "median",
+      "data": [
+        [
+          1.0,
+          5.0,
+          2.0,
+          8.0,
+          3.0,
+          9.0,
+          4.0,
+          7.0,
+          6.0,
+          10.0,
+          11.0
+        ]
+      ],
+      "method": "percentile",
+      "n_resamples": 777,
+      "seed": 7,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 3.0,
+        "high": 9.0,
+        "se": 1.5984490004692244
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "mean/basic",
+      "stat": "mean",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0,
+          10.0
+        ]
+      ],
+      "method": "basic",
+      "n_resamples": 999,
+      "seed": 42,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 3.7,
+        "high": 7.3,
+        "se": 0.9003425397220337
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "std/basic",
+      "stat": "std",
+      "data": [
+        [
+          2.0,
+          4.0,
+          4.0,
+          4.0,
+          5.0,
+          5.0,
+          7.0,
+          9.0
+        ]
+      ],
+      "method": "basic",
+      "n_resamples": 600,
+      "seed": 123,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 1.3660865617868154,
+        "high": 3.515877081724073,
+        "se": 0.5102134547508035
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "median/basic",
+      "stat": "median",
+      "data": [
+        [
+          3.0,
+          1.0,
+          4.0,
+          1.0,
+          5.0,
+          9.0,
+          2.0,
+          6.0,
+          5.0,
+          3.0,
+          5.0
+        ]
+      ],
+      "method": "basic",
+      "n_resamples": 800,
+      "seed": 3,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 3.0,
+        "high": 6.0,
+        "se": 0.9522747944291771
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "2samp/diff/perc",
+      "stat": "diffmean",
+      "data": [
+        [
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0
+        ],
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0
+        ]
+      ],
+      "method": "percentile",
+      "n_resamples": 500,
+      "seed": 9,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 1.666666666666667,
+        "high": 5.4174999999999995,
+        "se": 0.9549324331615341
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "2samp/diff/basic",
+      "stat": "diffmean",
+      "data": [
+        [
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0
+        ],
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0
+        ]
+      ],
+      "method": "basic",
+      "n_resamples": 500,
+      "seed": 11,
+      "confidence_level": 0.95,
+      "alternative": "two-sided",
+      "expect": {
+        "low": 1.7825000000000006,
+        "high": 5.4,
+        "se": 0.9244072260976465
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "mean/perc/less",
+      "stat": "mean",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0,
+          10.0
+        ]
+      ],
+      "method": "percentile",
+      "n_resamples": 600,
+      "seed": 15,
+      "confidence_level": 0.95,
+      "alternative": "less",
+      "expect": {
+        "low": null,
+        "high": 7.0049999999999955,
+        "se": 0.8961613400878227
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "bootstrap",
+      "name": "mean/perc/greater",
+      "stat": "mean",
+      "data": [
+        [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0,
+          6.0,
+          7.0,
+          8.0,
+          9.0,
+          10.0
+        ]
+      ],
+      "method": "percentile",
+      "n_resamples": 600,
+      "seed": 15,
+      "confidence_level": 0.95,
+      "alternative": "greater",
+      "expect": {
+        "low": 4.1,
+        "high": null,
+        "se": 0.8961613400878227
+      },
+      "rtol": 1e-11
+    }
+  ],
+  "montecarlo_cases": [
+    {
+      "fn": "monte_carlo_test",
+      "name": "skew/stdnorm/two-sided",
+      "stat": "skew",
+      "data": [
+        [
+          0.1,
+          -0.5,
+          2.0,
+          0.3,
+          -1.2,
+          0.8,
+          1.5,
+          -0.3,
+          0.0,
+          0.9
+        ]
+      ],
+      "rvs": "standard_normal",
+      "params": {},
+      "n_resamples": 999,
+      "alternative": "two-sided",
+      "seed": 42,
+      "expect": {
+        "statistic": 0.17914520780879534,
+        "pvalue": 0.752
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "monte_carlo_test",
+      "name": "mean/stdnorm/greater",
+      "stat": "mean",
+      "data": [
+        [
+          0.1,
+          -0.5,
+          2.0,
+          0.3,
+          -1.2,
+          0.8,
+          1.5,
+          -0.3,
+          0.0,
+          0.9
+        ]
+      ],
+      "rvs": "standard_normal",
+      "params": {},
+      "n_resamples": 500,
+      "alternative": "greater",
+      "seed": 7,
+      "expect": {
+        "statistic": 0.36,
+        "pvalue": 0.1437125748502994
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "monte_carlo_test",
+      "name": "mean/random/less",
+      "stat": "mean",
+      "data": [
+        [
+          0.6,
+          0.4,
+          0.55,
+          0.7,
+          0.52
+        ]
+      ],
+      "rvs": "random",
+      "params": {},
+      "n_resamples": 777,
+      "alternative": "less",
+      "seed": 3,
+      "expect": {
+        "statistic": 0.554,
+        "pvalue": 0.6580976863753213
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "monte_carlo_test",
+      "name": "range/normal/two-sided",
+      "stat": "range",
+      "data": [
+        [
+          0.1,
+          -0.5,
+          2.0,
+          0.3,
+          -1.2,
+          0.8,
+          1.5,
+          -0.3,
+          0.0,
+          0.9
+        ]
+      ],
+      "rvs": "normal",
+      "params": {
+        "loc": 0.0,
+        "scale": 1.0
+      },
+      "n_resamples": 600,
+      "alternative": "two-sided",
+      "seed": 11,
+      "expect": {
+        "statistic": 3.2,
+        "pvalue": 0.8153078202995009
+      },
+      "rtol": 1e-11
+    },
+    {
+      "fn": "monte_carlo_test",
+      "name": "mean/uniform/two-sided",
+      "stat": "mean",
+      "data": [
+        [
+          0.3,
+          0.7,
+          0.5,
+          0.6,
+          0.45,
+          0.55
+        ]
+      ],
+      "rvs": "uniform",
+      "params": {
+        "low": 0.0,
+        "high": 1.0
+      },
+      "n_resamples": 500,
+      "alternative": "two-sided",
+      "seed": 99,
+      "expect": {
+        "statistic": 0.5166666666666667,
+        "pvalue": 0.9820359281437125
+      },
+      "rtol": 1e-11
+    }
+  ]
+}
