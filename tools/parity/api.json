@@ -7993,10 +7993,16 @@
                 "doc": "scipy.stats.yeojohnson_normmax: the Yeo-Johnson parameter lambda maximising the log-likelihood."
             },
             {
+                "name": "ppccPlot",
+                "static": true,
+                "sig": "ppccPlot(array $x, float $a, float $b, int $n = 80): array",
+                "doc": "scipy.stats.ppcc_plot(x, a, b, dist='tukeylambda', N=80): probability-plot correlation coefficient of the Tukey-lambda family over N shape values linspace(a, b, N)."
+            },
+            {
                 "name": "ppccMax",
                 "static": true,
                 "sig": "ppccMax(array $x): float",
-                "doc": "scipy.stats.ppcc_max: the shape parameter (Tukey-lambda) maximising the probability-plot correlation coefficient for x."
+                "doc": ""
             },
             {
                 "name": "bayesMvs",
@@ -9107,6 +9113,34 @@
         ]
     },
     {
+        "class": "Tessero\\Optimize\\Direct",
+        "methods": [
+            {
+                "name": "minimize",
+                "static": true,
+                "sig": "minimize(callable $func, array $bounds, float $eps = 0.0001, ?int $maxfun = null, int $maxiter = 1000, bool $locallyBiased = true, float $fMin = -INF, float $fMinRtol = 0.0001, float $volTol = 1.0E-16, float $lenTol = 1.0E-6): Tessero\\Optimize\\OptimizeResult",
+                "doc": "Minimise $func over box $bounds with DIRECT."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Optimize\\Shgo",
+        "methods": [
+            {
+                "name": "minimize",
+                "static": true,
+                "sig": "minimize(callable $func, array $bounds, string $samplingMethod = 'simplicial'): Tessero\\Optimize\\OptimizeResult",
+                "doc": ""
+            },
+            {
+                "name": "minimizeFull",
+                "static": true,
+                "sig": "minimizeFull(callable $func, array $bounds): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Optimize\\LineSearch",
         "methods": [
             {
@@ -9208,6 +9242,12 @@
                 "static": true,
                 "sig": "excitingmixing(callable $F, array $xin, ?int $maxiter = null): array",
                 "doc": "scipy.optimize.excitingmixing: root via a tuned diagonal Jacobian approximation."
+            },
+            {
+                "name": "newtonKrylov",
+                "static": true,
+                "sig": "newtonKrylov(callable $F, array $xin, ?int $maxiter = null): array",
+                "doc": "scipy.optimize.newton_krylov: Jacobian-free (matrix-free) inexact-Newton with a restarted-GMRES inner solve ({@see KrylovJacobian}). The Jacobian's action on a vector is a finite difference of the residual, so no analytic/explicit Jacobian is needed. Converges to the same root scipy's newton_krylov reaches (unique-root systems match to ~1e-6 relative; the inner forcing tolerance follows the inexact-Newton schedule, so the iterate path is numerically but not bit-for-bit identical to scipy's gmres). Real-valued systems only."
             },
             {
                 "name": "nonlinSolve",

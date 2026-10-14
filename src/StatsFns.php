@@ -89,6 +89,42 @@ final class StatsFns
      *
      * @param list<float> $x
      */
+    /**
+     * scipy.stats.ppcc_plot(x, a, b, dist='tukeylambda', N=80): probability-plot correlation
+     * coefficient of the Tukey-lambda family over N shape values linspace(a, b, N).
+     *
+     * @param  float[] $x
+     * @return array{0: list<float>, 1: list<float>}  [svals, ppcc]
+     */
+    public static function ppccPlot(array $x, float $a, float $b, int $n = 80): array
+    {
+        if ($a >= $b) {
+            throw new TesseroException('ppcc_plot: `b` has to be larger than `a`.');
+        }
+        $x = array_map('floatval', array_values($x));
+        foreach ($x as $v) {
+            if (! is_finite($v)) {
+                throw new TesseroException('ppcc_plot: x must be finite.');
+            }
+        }
+        sort($x);
+        $mi = self::uom(count($x));
+        $svals = [];
+        $ppcc = [];
+        $step = ($n > 1) ? ($b - $a) / ($n - 1) : 0.0;
+        for ($k = 0; $k < $n; $k++) {
+            $shape = ($n > 1) ? ($k === $n - 1 ? $b : $a + $step * $k) : $a;
+            $svals[$k] = $shape;
+            $q = [];
+            foreach ($mi as $i => $m) {
+                $q[$i] = self::tukeyPpf($m, $shape);
+            }
+            $ppcc[$k] = self::pearsonr($q, $x);
+        }
+
+        return [$svals, $ppcc];
+    }
+
     public static function ppccMax(array $x): float
     {
         $x = array_map('floatval', array_values($x));
