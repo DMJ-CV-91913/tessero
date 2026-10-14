@@ -761,6 +761,8 @@ function makeObjective(array $spec): callable
         'vecsys_lin2'   => static fn (array $x): array => [2.0 * $x[0] + $x[1] - 5.0, $x[0] + 3.0 * $x[1] - 10.0],
         'vecsys_trig2'  => static fn (array $x): array => [$x[0] - 0.5 * cos($x[1]) - 0.5, $x[1] - 0.5 * sin($x[0]) - 0.3],
         'vecsys_lin3'   => static fn (array $x): array => [3 * $x[0] + $x[1] - $x[2] - 2.0, $x[0] + 4 * $x[1] + $x[2] - 6.0, -$x[0] + $x[1] + 5 * $x[2] - 5.0],
+        'vecsys_mtrig1' => static fn (array $x): array => [cos($x[0]) + 0.1 * $x[1] - 1.0, 0.1 * $x[0] + sin($x[1]) - 0.5],
+        'vecsys_mtrig3' => static fn (array $x): array => [cos($x[0]) + 0.15 * $x[1] - 0.9, 0.15 * $x[0] + sin($x[1]) - 0.4],
         'sphere' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v; } return $s; },
         'shifted_quadratic' => static function (array $x) use ($spec): float { $s = 0.0; foreach ($x as $i => $v) { $d = $v - $spec['shift'][$i]; $s += $d * $d; } return $s; },
         'rastrigin' => static function (array $x): float { $s = 0.0; foreach ($x as $v) { $s += $v * $v - 10.0 * cos(2.0 * M_PI * $v); } return $s + 10.0 * count($x); },
@@ -1114,7 +1116,8 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
             } elseif ($fn === 'fsolve') {
                 $got = \Tessero\Optimize\Root::fsolve($obj, array_map('floatval', $c['x0']));
                 $ok = vecClose($got, $c['expect'], $rtol);
-            } elseif ($fn === 'broyden1' || $fn === 'broyden2' || $fn === 'anderson' || $fn === 'diagbroyden') {
+            } elseif ($fn === 'broyden1' || $fn === 'broyden2' || $fn === 'anderson' || $fn === 'diagbroyden'
+                      || $fn === 'linearmixing' || $fn === 'excitingmixing') {
                 $got = \Tessero\Optimize\NonlinSolve::{$fn}($obj, array_map('floatval', $c['x0']));
                 $ok = vecClose($got, $c['expect'], $rtol);
             } elseif ($fn === 'fixed_point') {
@@ -1170,6 +1173,10 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
             } elseif ($fn === 'fmin_tnc') {
                 $p = makeConProblem($c['prob']);
                 $ok = vecClose(\Tessero\Optimize\Minimize::fminTnc($p['f'], array_map('floatval', $p['x0']), $p['jac'], $p['bounds']), $c['expect'], $rtol);
+            } elseif ($fn === 'fmin_l_bfgs_b') {
+                $p = makeConProblem($c['prob']);
+                $jac = ($c['approx_grad'] ?? false) ? null : $p['jac'];
+                $ok = vecClose(\Tessero\Optimize\Minimize::fminLbfgsb($p['f'], array_map('floatval', $p['x0']), $jac, $p['bounds']), $c['expect'], $rtol);
             } elseif ($fn === 'fmin_slsqp') {
                 $p = makeConProblem($c['prob']);
                 $eq = []; $ineq = [];

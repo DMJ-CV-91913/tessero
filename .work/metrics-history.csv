@@ -290,3 +290,4 @@ date,phase,m2_numpy_ffi,m2_numpy_ext,m2_scipy_ffi,m2_scipy_ext,m5_numpy,m5_scipy
 2026-10-14,stats meta-distributions (truncate/order_statistic/Mixture/exp/log/abs) + scipy.io mmread/mmwrite/mminfo/FortranFile + sparse save_npz/load_npz (both backends),100.0,100.0,94.8,94.8,100.0,100.0,100.0,100.0,93.9,93.9
 2026-10-14,P4 scope fix,100.0,100.0,94.9,94.9,100.0,100.0,100.0,100.0,93.9,93.9
 2026-10-14,sparse.linalg: eigsh/eigs/svds + lobpcg + funm_multiply_krylov -> closes scipy.sparse.linalg (both backends),100.0,100.0,95.2,95.2,100.0,100.0,100.0,100.0,93.9,93.9
+2026-10-14,optimize fmin_l_bfgs_b + linearmixing + excitingmixing (both backends),100.0,100.0,95.4,95.4,100.0,100.0,100.0,100.0,93.9,93.9

@@ -142,6 +142,20 @@ final class Minimize
     }
 
     /**
+     * scipy.optimize.fmin_l_bfgs_b: bound-constrained L-BFGS-B minimiser. scipy returns
+     * (x, f, d); here we return the minimiser x only, matching the other fmin_* wrappers.
+     *
+     * @param callable(list<float>): float $func
+     * @param list<float> $x0
+     * @param (callable(list<float>): list<float>)|null $fprime analytic gradient; finite-differenced if null
+     * @param list<array{0: float|null, 1: float|null}>|null $bounds
+     */
+    public static function fminLbfgsb(callable $func, array $x0, ?callable $fprime = null, ?array $bounds = null): array
+    {
+        return self::minimize($func, $x0, $fprime, 'L-BFGS-B', $bounds)->x;
+    }
+
+    /**
      * scipy.optimize.fmin_slsqp: sequential least-squares programming with equality / inequality constraints
      * and bounds. eqcons / ieqcons are lists of callables c(x) returning a scalar (eq: c==0, ineq: c>=0),
      * exactly as scipy's fmin_slsqp. Returns the minimiser x.
