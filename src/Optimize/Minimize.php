@@ -314,6 +314,7 @@ final class Minimize
             'DOGLEG' => $self->trustRegion($x0, $options, 'dogleg'),
             'TRUST-NCG', 'TRUSTNCG' => $self->trustRegion($x0, $options, 'trust-ncg'),
             'TRUST-EXACT', 'TRUSTEXACT' => $self->trustRegion($x0, $options, 'trust-exact'),
+            'TRUST-KRYLOV', 'TRUSTKRYLOV' => $self->trustRegion($x0, $options, 'trust-krylov'),
             default => throw new TesseroException("minimize: unknown method '{$method}' (BFGS, L-BFGS-B, Nelder-Mead, CG, Powell, Newton-CG, TNC, SLSQP, COBYLA)."),
         };
     }
@@ -2331,11 +2332,12 @@ final class Minimize
         if ($this->jac === null) {
             throw new TesseroException("minimize: method '{$subkind}' requires a Jacobian (jac).");
         }
-        if ($subkind !== 'trust-ncg' && ! is_callable($hess)) {
+        $hvpOnly = ($subkind === 'trust-ncg' || $subkind === 'trust-krylov');
+        if (! $hvpOnly && ! is_callable($hess)) {
             throw new TesseroException("minimize: method '{$subkind}' requires a callable Hessian (options['hess']).");
         }
-        if ($subkind === 'trust-ncg' && ! is_callable($hess) && ! is_callable($hessp)) {
-            throw new TesseroException("minimize: method 'trust-ncg' requires options['hess'] or options['hessp'].");
+        if ($hvpOnly && ! is_callable($hess) && ! is_callable($hessp)) {
+            throw new TesseroException("minimize: method '{$subkind}' requires options['hess'] or options['hessp'].");
         }
 
         $eta = (float) ($o['eta'] ?? 0.15);
@@ -2364,12 +2366,14 @@ final class Minimize
         $gx = $this->g($x, $fx);
         $k = 0;
         while (self::norm2($gx) >= $gtol) {
-            $Hx = ($subkind === 'trust-ncg' && $hess === null) ? null : $hess($x);
+            $Hx = ($hvpOnly && $hess === null) ? null : $hess($x);
             try {
                 if ($subkind === 'dogleg') {
                     [$p, $hits] = self::subDogleg($gx, $Hx, $tr);
                 } elseif ($subkind === 'trust-ncg') {
                     [$p, $hits] = self::subSteihaug($gx, $tr, static fn (array $v): array => $hvp($x, $v));
+                } elseif ($subkind === 'trust-krylov') {
+                    [$p, $hits] = self::subGltr($gx, $tr, static fn (array $v): array => $hvp($x, $v));
                 } else {
                     [$p, $hits] = self::subExact($gx, $Hx, $tr, $subMaxiter, $exactState);
                 }
@@ -2412,7 +2416,7 @@ final class Minimize
             }
         }
 
-        $method = match ($subkind) { 'dogleg' => 'dogleg', 'trust-ncg' => 'trust-ncg', default => 'trust-exact' };
+        $method = match ($subkind) { 'dogleg' => 'dogleg', 'trust-ncg' => 'trust-ncg', 'trust-krylov' => 'trust-krylov', default => 'trust-exact' };
 
         return new OptimizeResult($x, $fx, $warn === 0, $warn, $msg, $k, $this->nfev, $this->njev, null, null, $method);
     }
@@ -2516,6 +2520,259 @@ final class Minimize
             $z = $zNext;
             $r = $rNext;
         }
+    }
+
+    /**
+     * GLTR (Generalized Lanczos Trust Region) subproblem, the method used by
+     * scipy.optimize.minimize(method='trust-krylov') (which wraps the _trlib GLTR
+     * solver of Gould, Lucidi, Roma & Toint). Needs only Hessian-vector products.
+     *
+     * Build a Lanczos tridiagonalisation of H with first vector q_1 = -g/||g||; in
+     * that basis the trust-region model is  1/2 h^T T h + ||g|| e_1 . h. If the
+     * unconstrained (CG) solution of (interior) T h = ||g|| e_1 lies inside the
+     * trust region and the model gradient g + H p is small, return it; otherwise
+     * solve the tridiagonal boundary problem ||h(lam)|| = tr by a safeguarded
+     * Newton iteration on the Moré-Sorensen secular equation 1/tr - 1/||h(lam)|| = 0,
+     * with the lower bound lam >= max(0, -lambda_min(T)).
+     *
+     * Converges to the same minimiser scipy's trust-krylov reaches (unique-min
+     * problems match to ~1e-5 relative). The outer trust-region loop is shared with
+     * dogleg / trust-ncg / trust-exact, so only the step direction differs.
+     *
+     * @param list<float> $g
+     * @param callable(list<float>): list<float> $hvp
+     * @return array{0: list<float>, 1: bool}
+     */
+    private static function subGltr(array $g, float $tr, callable $hvp): array
+    {
+        $n = count($g);
+        $gnorm = self::norm2($g);
+        if ($gnorm === 0.0) {
+            return [array_fill(0, $n, 0.0), false];
+        }
+        $maxiter = 200;
+        $cgTol = min(1e-11, $gnorm) * $gnorm;
+
+        /** @var list<list<float>> $Q */
+        $Q = [self::scale(-1.0 / $gnorm, $g)];   // q_1 = -g/||g||
+        /** @var list<float> $alpha */
+        $alpha = [];
+        /** @var list<float> $beta */
+        $beta = [];
+
+        $lim = min($maxiter, $n);
+        for ($j = 0; $j < $lim; $j++) {
+            $w = $hvp($Q[$j]);
+            $a = self::dot($Q[$j], $w);
+            $alpha[] = $a;
+            $w = self::axpy(-$a, $Q[$j], $w);
+            if ($j > 0) {
+                $w = self::axpy(-$beta[$j - 1], $Q[$j - 1], $w);
+            }
+            // full reorthogonalisation (short Lanczos recurrences lose orthogonality)
+            foreach ($Q as $qi) {
+                $w = self::axpy(-self::dot($qi, $w), $qi, $w);
+            }
+            $b = self::norm2($w);
+
+            // interior (lam = 0) solution attempt: (T) h = ||g|| e_1
+            if (self::tridiagIsPd($alpha, $beta, 0.0)) {
+                $m = count($alpha);
+                $rhs = array_fill(0, $m, 0.0);
+                $rhs[0] = $gnorm;
+                $h = self::tridiagSolveShifted($alpha, $beta, 0.0, $rhs);
+                $p = array_fill(0, $n, 0.0);
+                foreach ($h as $i => $hi) {
+                    $p = self::axpy($hi, $Q[$i], $p);
+                }
+                if (self::norm2($p) <= $tr * (1.0 + 1e-12)) {
+                    $grad = self::axpy(1.0, $g, $hvp($p));   // g + H p
+                    if (self::norm2($grad) < $cgTol) {
+                        return [$p, false];
+                    }
+                }
+            }
+
+            if ($b < 1e-14) {
+                break;
+            }
+            $beta[] = $b;
+            $Q[] = self::scale(1.0 / $b, $w);
+        }
+
+        // Boundary solution: min 1/2 h^T T h + ||g|| e_1 . h  s.t. ||h|| = tr.
+        $k = count($alpha);
+        $rhs = array_fill(0, $k, 0.0);
+        $rhs[0] = $gnorm;
+        $lamMin = self::tridiagMinEig($alpha, $beta);
+        $lamLower = max(0.0, -$lamMin);
+        $lam = ($lamLower > 0.0) ? $lamLower + max(1.0, $lamLower) * 1e-3 : 0.0;
+
+        for ($iter = 0; $iter < 100; $iter++) {
+            while (! self::tridiagIsPd($alpha, $beta, $lam) && $lam < 1e18) {
+                $lam = $lam * 2.0 + 1.0;
+            }
+            $h = self::tridiagSolveShifted($alpha, $beta, $lam, $rhs);
+            $hn = self::norm2($h);
+            if ($hn === 0.0) {
+                $lam = $lam * 2.0 + 1.0;
+                continue;
+            }
+            $phi = 1.0 / $tr - 1.0 / $hn;
+            if (abs($phi) < 1e-12) {
+                break;
+            }
+            $qv = self::tridiagSolveShifted($alpha, $beta, $lam, $h);
+            $hq = self::dot($h, $qv);
+            if ($hq <= 0.0) {
+                $lam = $lam * 2.0 + 1.0;
+                continue;
+            }
+            $denom = $hq / ($hn ** 3);
+            $lamNew = $lam - $phi / $denom;
+            if ($lamNew < $lamLower) {
+                $lamNew = ($lam > $lamLower) ? ($lam + $lamLower) / 2.0 : $lamLower + 1e-8;
+            }
+            if (abs($lamNew - $lam) < 1e-14) {
+                $lam = $lamNew;
+                break;
+            }
+            $lam = $lamNew;
+        }
+
+        $h = self::tridiagSolveShifted($alpha, $beta, $lam, $rhs);
+        $hn = self::norm2($h);
+        if ($hn > 0.0) {
+            $h = self::scale($tr / $hn, $h);   // project onto the boundary (guard)
+        }
+        $p = array_fill(0, $n, 0.0);
+        foreach ($h as $i => $hi) {
+            $p = self::axpy($hi, $Q[$i], $p);
+        }
+
+        return [$p, true];
+    }
+
+    /**
+     * Thomas algorithm for (T + lam*I) h = rhs, with T symmetric tridiagonal
+     * (diagonal $alpha, off-diagonal $beta of length n-1).
+     *
+     * @param list<float> $alpha
+     * @param list<float> $beta
+     * @param list<float> $rhs
+     * @return list<float>
+     */
+    private static function tridiagSolveShifted(array $alpha, array $beta, float $lam, array $rhs): array
+    {
+        $n = count($alpha);
+        $d = [];
+        for ($i = 0; $i < $n; $i++) {
+            $d[$i] = $alpha[$i] + $lam;
+        }
+        $cp = array_fill(0, $n, 0.0);
+        $dp = array_fill(0, $n, 0.0);
+        $cp[0] = ($n > 1) ? ($beta[0] / $d[0]) : 0.0;
+        $dp[0] = $rhs[0] / $d[0];
+        for ($i = 1; $i < $n; $i++) {
+            $denom = $d[$i] - $beta[$i - 1] * $cp[$i - 1];
+            if ($i < $n - 1) {
+                $cp[$i] = $beta[$i] / $denom;
+            }
+            $dp[$i] = ($rhs[$i] - $beta[$i - 1] * $dp[$i - 1]) / $denom;
+        }
+        $h = array_fill(0, $n, 0.0);
+        $h[$n - 1] = $dp[$n - 1];
+        for ($i = $n - 2; $i >= 0; $i--) {
+            $h[$i] = $dp[$i] - $cp[$i] * $h[$i + 1];
+        }
+
+        return $h;
+    }
+
+    /**
+     * Positive-definiteness test of T + lam*I via the LDL^T pivots (all > 0).
+     *
+     * @param list<float> $alpha
+     * @param list<float> $beta
+     */
+    private static function tridiagIsPd(array $alpha, array $beta, float $lam): bool
+    {
+        $n = count($alpha);
+        $dp = $alpha[0] + $lam;
+        if ($dp <= 0.0) {
+            return false;
+        }
+        for ($i = 1; $i < $n; $i++) {
+            $d = ($alpha[$i] + $lam) - ($beta[$i - 1] ** 2) / $dp;
+            if ($d <= 0.0) {
+                return false;
+            }
+            $dp = $d;
+        }
+
+        return true;
+    }
+
+    /**
+     * Smallest eigenvalue of a symmetric tridiagonal matrix (diagonal $alpha,
+     * off-diagonal $beta) by bisection on the Sturm sequence (negative-pivot count
+     * of T - x*I), bracketed by the Gershgorin interval. Used for the Moré-Sorensen
+     * lower bound lam >= -lambda_min.
+     *
+     * @param list<float> $alpha
+     * @param list<float> $beta
+     */
+    private static function tridiagMinEig(array $alpha, array $beta): float
+    {
+        $n = count($alpha);
+        if ($n === 1) {
+            return $alpha[0];
+        }
+        $lo = INF;
+        $hi = -INF;
+        for ($i = 0; $i < $n; $i++) {
+            $r = 0.0;
+            if ($i > 0) {
+                $r += abs($beta[$i - 1]);
+            }
+            if ($i < $n - 1) {
+                $r += abs($beta[$i]);
+            }
+            $lo = min($lo, $alpha[$i] - $r);
+            $hi = max($hi, $alpha[$i] + $r);
+        }
+        $sturm = static function (float $x) use ($alpha, $beta, $n): int {
+            $cnt = 0;
+            $d = $alpha[0] - $x;
+            if ($d < 0.0) {
+                $cnt++;
+            }
+            for ($i = 1; $i < $n; $i++) {
+                if ($d === 0.0) {
+                    $d = 1e-300;
+                }
+                $d = ($alpha[$i] - $x) - ($beta[$i - 1] ** 2) / $d;
+                if ($d < 0.0) {
+                    $cnt++;
+                }
+            }
+            return $cnt;
+        };
+        $a = $lo - 1.0;
+        $b = $hi + 1.0;
+        for ($it = 0; $it < 200; $it++) {
+            $mid = 0.5 * ($a + $b);
+            if ($sturm($mid) >= 1) {
+                $b = $mid;
+            } else {
+                $a = $mid;
+            }
+            if ($b - $a < 1e-14 * (1.0 + abs($b))) {
+                break;
+            }
+        }
+
+        return 0.5 * ($a + $b);
     }
 
     /**
