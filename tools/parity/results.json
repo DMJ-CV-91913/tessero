@@ -1647,6 +1647,7 @@
         "stats.lomax": "pass",
         "stats.mannwhitneyu": "pass",
         "stats.matrix_normal": "pass",
+        "stats.matrix_t": "pass",
         "stats.maxwell": "pass",
         "stats.median_abs_deviation": "pass",
         "stats.median_test": "pass",
@@ -1670,6 +1671,7 @@
         "stats.ncx2": "pass",
         "stats.nhypergeom": "pass",
         "stats.norm": "pass",
+        "stats.normal_inverse_gamma": "pass",
         "stats.normaltest": "pass",
         "stats.norminvgauss": "pass",
         "stats.obrientransform": "pass",
@@ -3597,7 +3599,9 @@
             "signal.ZoomFFT": null,
             "stats.CensoredData": null,
             "optimize.trust_constr": null,
-            "signal.CZT": null
+            "signal.CZT": null,
+            "stats.matrix_t": null,
+            "stats.normal_inverse_gamma": null
         },
         "ext": {
             "np.median": 0,
@@ -5396,7 +5400,9 @@
             "signal.ZoomFFT": null,
             "stats.CensoredData": null,
             "optimize.trust_constr": null,
-            "signal.CZT": null
+            "signal.CZT": null,
+            "stats.matrix_t": null,
+            "stats.normal_inverse_gamma": null
         }
     },
     "ext": {
@@ -7047,6 +7053,7 @@
         "stats.lomax": "pass",
         "stats.mannwhitneyu": "pass",
         "stats.matrix_normal": "pass",
+        "stats.matrix_t": "pass",
         "stats.maxwell": "pass",
         "stats.median_abs_deviation": "pass",
         "stats.median_test": "pass",
@@ -7070,6 +7077,7 @@
         "stats.ncx2": "pass",
         "stats.nhypergeom": "pass",
         "stats.norm": "pass",
+        "stats.normal_inverse_gamma": "pass",
         "stats.normaltest": "pass",
         "stats.norminvgauss": "pass",
         "stats.obrientransform": "pass",
