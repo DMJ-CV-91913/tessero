@@ -30,7 +30,7 @@ if (! class_exists('Illuminate\\Support\\Facades\\Facade')) {
     eval('namespace Illuminate\\Support\\Facades; abstract class Facade {}');
 }
 
-$classes = ['Tessero\\NDArray', 'Tessero\\Math', 'Tessero\\Tessero', 'Tessero\\Linalg\\Linalg', 'Tessero\\Fft\\Fft',
+$classes = ['Tessero\\Cluster\\Hierarchy\\ClusterNode', 'Tessero\\Cluster\\Hierarchy\\DisjointSet', 'Tessero\\Cluster\\Hierarchy\\Trees', 'Tessero\\NDArray', 'Tessero\\Math', 'Tessero\\Tessero', 'Tessero\\Linalg\\Linalg', 'Tessero\\Fft\\Fft',
     'Tessero\\ScipyLinalg', 'Tessero\\Constants', 'Tessero\\Distance', 'Tessero\\Signal', 'Tessero\\SignalWindows', 'Tessero\\Ndimage', 'Tessero\\Csgraph',
     'Tessero\\Interpolate', 'Tessero\\Cluster', 'Tessero\\Polynomial', 'Tessero\\Hierarchy', 'Tessero\\SparseLinalg', 'Tessero\\ScipyFft', 'Tessero\\Random\\Generator', 'Tessero\\Sparse\\CsrMatrix', 'Tessero\\Optimize\\Minimize', 'Tessero\\Optimize\\Root',
     'Tessero\\Optimize\\LeastSquares', 'Tessero\\Optimize\\LinearProgramming', 'Tessero\\Optimize\\Assignment', 'Tessero\\Optimize\\Bounds', 'Tessero\\Optimize\\LinearConstraint', 'Tessero\\Optimize\\NonlinearConstraint', 'Tessero\\Optimize\\RootResults', 'Tessero\\Optimize\\QuadraticAssignment', 'Tessero\\Mdp\\MarkovDecisionProcess',

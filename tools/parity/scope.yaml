@@ -60,8 +60,6 @@ exclude:
   - {category: E4, module: scipy.fft, names: [set_backend, skip_backend, set_global_backend, register_backend, set_workers, get_workers]}
   - {category: E4, module: scipy.constants, names: [ConstantWarning]}
   - {category: E6, module: scipy.interpolate, names: [interp1d, interp2d, spline, splmake, spleval, spltopp]}
-  - {category: E7, module: scipy.cluster.hierarchy, names: [dendrogram, set_link_color_palette]}
-  - {category: E4, module: scipy.cluster.hierarchy, names: [to_tree, ClusterNode, DisjointSet]}
   - {category: E7, module: scipy.spatial, names: [delaunay_plot_2d, convex_hull_plot_2d, voronoi_plot_2d]}
 
 phases:
@@ -131,6 +129,12 @@ legacy_tests:
   sparse: [tests/Unit/NumericsTest.php]
 
 legacy:
+  scipy.cluster.hierarchy:
+    ClusterNode: {ffi: [CNODE::getId], ext: [CNODE::getId], fixtures: [hierarchy.ClusterNode]}
+    to_tree: {ffi: [TRE::toTree], ext: [TRE::toTree], fixtures: [hierarchy.to_tree]}
+    DisjointSet: {ffi: [DSET::merge], ext: [DSET::merge], fixtures: [hierarchy.DisjointSet]}
+    dendrogram: {ffi: [TRE::dendrogram], ext: [TRE::dendrogram], fixtures: [hierarchy.dendrogram]}
+    set_link_color_palette: {ffi: [TRE::setLinkColorPalette], ext: [TRE::setLinkColorPalette], fixtures: [hierarchy.set_link_color_palette]}
   scipy.signal:
     spline_filter: {ffi: [SF2::filter], ext: [SF2::filter], fixtures: [signal.spline_filter]}
     # pure-PHP CWT peak detection; one Tessero\Signal\FindPeaksCwt serves both backends (exact integer-index match).
