@@ -1973,6 +1973,62 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['splu_cases'])) {                        // scipy.sparse.linalg.splu / factorized / SuperLU (pure-PHP solve layer over spsolve)
+        $local = [];
+        $splClass = $classes[$backend]['splinalg'];          // Tessero\SparseLinalg | Tessero\Ext\SparseLinalg
+        foreach ($data['splu_cases'] as $c) {
+            $checked++;
+            $A = decodeValue($c['A'], $arrayClass)->toArray();
+            $b = decodeValue($c['b'], $arrayClass)->toArray();
+            $wantShape = [(int) $c['shape'][0], (int) $c['shape'][1]];
+            $tol = $c['tol'] ?? ['rtol' => 1e-9, 'atol' => 1e-9];
+            $rtol = (float) ($tol['rtol'] ?? 1e-9); $atol = (float) ($tol['atol'] ?? 1e-9);
+
+            // flatten the expected x (vector or matrix) to a comparable float list
+            $wantFlat = [];
+            $we = [$c['expect']['data'] ?? $c['expect']];
+            array_walk_recursive($we, static function ($x) use (&$wantFlat) {
+                $wantFlat[] = is_string($x) ? dec($x) : (float) $x;
+            });
+
+            $flat = static function ($v): array {
+                if (is_object($v) && method_exists($v, 'toArray')) { $v = $v->toArray(); }
+                $out = []; $vv = [$v];
+                array_walk_recursive($vv, static function ($x) use (&$out) { $out[] = (float) $x; });
+                return $out;
+            };
+            $cmp = static function (array $got) use ($wantFlat, $rtol, $atol): ?string {
+                if (count($got) !== count($wantFlat)) { return 'length ' . count($got) . ' vs ' . count($wantFlat); }
+                foreach ($wantFlat as $i => $wv) {
+                    if (abs($got[$i] - $wv) > $atol + $rtol * abs($wv)) { return "elem {$i} {$got[$i]} vs {$wv}"; }
+                }
+                return null;
+            };
+
+            foreach (['splu', 'factorized', 'SuperLU'] as $variant) {
+                $key = 'splinalg.' . $variant;
+                $p = null;
+                try {
+                    if ($variant === 'factorized') {
+                        $solve = \Tessero\Sparse\Linalg\SuperLU::factorized($A, $splClass);
+                        $got = $flat($solve($b));             // __invoke, like scipy's returned callable
+                        $p = $cmp($got);
+                    } else {
+                        $lu = \Tessero\Sparse\Linalg\SuperLU::splu($A, $splClass);
+                        if ($lu->shape() !== $wantShape) { $p = 'shape ' . json_encode($lu->shape()); }
+                        else { $p = $cmp($flat($lu->solve($b))); }
+                    }
+                } catch (\Throwable $e) {
+                    $p = 'threw ' . $e->getMessage();
+                }
+                $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($p === null ? 'pass' : 'fail');
+                if ($p !== null) { $failures++; echo "FAIL {$key}: {$p}\n"; }
+            }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+
     if (isset($data['ode_cases'])) {                    // scipy.integrate.ode / complex_ode (stateful stepper facade over SolveIvp; pure-PHP)
         $local = [];
         foreach ($data['ode_cases'] as $c) {

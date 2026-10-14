@@ -10672,6 +10672,58 @@
         ]
     },
     {
+        "class": "Tessero\\Sparse\\Linalg\\SuperLU",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $A, string $splinalg)",
+                "doc": ""
+            },
+            {
+                "name": "splu",
+                "static": true,
+                "sig": "splu(array $A, string $splinalg): self",
+                "doc": "Factorise a square matrix for repeated solves (scipy.sparse.linalg.splu)."
+            },
+            {
+                "name": "factorized",
+                "static": true,
+                "sig": "factorized(array $A, string $splinalg): Tessero\\Sparse\\Linalg\\Factorized",
+                "doc": "Return a pre-factorised solve callable (scipy.sparse.linalg.factorized)."
+            },
+            {
+                "name": "shape",
+                "static": false,
+                "sig": "shape(): array",
+                "doc": "Number of rows/columns: (n, n). @return array{int, int}"
+            },
+            {
+                "name": "solve",
+                "static": false,
+                "sig": "solve(array $b): array",
+                "doc": "Solve A x = b (scipy SuperLU.solve). b may be a vector (n) or a matrix (n x k); the result has the matching shape. Only trans=0 (A x = b) is supported for the real symmetric parity surface here."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Sparse\\Linalg\\Factorized",
+        "methods": [
+            {
+                "name": "of",
+                "static": true,
+                "sig": "of(array $A, string $splinalg): self",
+                "doc": ""
+            },
+            {
+                "name": "solve",
+                "static": false,
+                "sig": "solve(array $b): array",
+                "doc": "Explicit solve (same as invoking the object)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {

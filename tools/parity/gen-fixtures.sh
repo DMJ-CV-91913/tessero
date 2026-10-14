@@ -86,6 +86,7 @@ for g in "${groups[@]}"; do
         cluster) python3 fixtures_cluster.py ;;
         npoly) python3 fixtures_npoly.py ;;
         hierarchy) python3 fixtures_hierarchy.py ;;
+        splu) python3 fixtures_splu.py ;;
         splinalg) python3 fixtures_splinalg.py && python3 fixtures_splinalg_eig.py ;;
         splinalg_iter) python3 fixtures_splinalg_iter.py ;;
         splinalg_lobpcg) python3 fixtures_splinalg_lobpcg.py ;;
