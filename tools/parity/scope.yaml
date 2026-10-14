@@ -545,6 +545,8 @@ legacy:
     # stats_normal.json rvdist_cases (every method, scalar + array).
     Normal: {ffi: [NORM::pdf], ext: [NORM::pdf], fixtures: [stats.Normal]}
     Uniform: {ffi: [UNIF::pdf], ext: [UNIF::pdf], fixtures: [stats.Uniform]}
+    Logistic: {ffi: [LOGI::pdf], ext: [LOGI::pdf], fixtures: [stats.Logistic]}
+    Binomial: {ffi: [BINO::pmf], ext: [BINO::pmf], fixtures: [stats.Binomial]}
     # optimiser-based transform-parameter selectors: pure-PHP Tessero\StatsFns drives the scipy-matched
     # Brent / bounded minimisers over the Box-Cox / Yeo-Johnson objectives; verified both backends by the
     # stats_opt.json statsfn_cases.
@@ -557,6 +559,11 @@ legacy:
     boschloo_exact: {ffi: [B::boschlooExact], ext: [B::boschlooExact], fixtures: [stats.boschloo_exact]}
     logrank: {ffi: [LR::logrank], ext: [LR::logrank], fixtures: [stats.logrank]}
     permutation_test: {ffi: [PT::permutationTest], ext: [PT::permutationTest], fixtures: [stats.permutation_test]}
+    ortho_group: {ffi: [OG::rvs], ext: [OG::rvs], fixtures: [stats.ortho_group]}
+    special_ortho_group: {ffi: [OG::rvsSpecial], ext: [OG::rvsSpecial], fixtures: [stats.special_ortho_group]}
+    uniform_direction: {ffi: [UD::rvs], ext: [UD::rvs], fixtures: [stats.uniform_direction]}
+    bootstrap: {ffi: [BOOT::bootstrap], ext: [BOOT::bootstrap], fixtures: [stats.bootstrap]}
+    monte_carlo_test: {ffi: [MCT::monteCarloTest], ext: [MCT::monteCarloTest], fixtures: [stats.monte_carlo_test]}
     yeojohnson_normmax: {ffi: [SF::yeojohnsonNormmax], ext: [SF::yeojohnsonNormmax], fixtures: [stats.yeojohnson_normmax]}
     ppcc_max: {ffi: [SF::ppccMax], ext: [SF::ppccMax], fixtures: [stats.ppcc_max]}
   scipy.constants:

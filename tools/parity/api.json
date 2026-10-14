@@ -8060,6 +8060,339 @@
         ]
     },
     {
+        "class": "Tessero\\Stats\\OrthoGroup",
+        "methods": [
+            {
+                "name": "rvs",
+                "static": true,
+                "sig": "rvs(int $dim, Tessero\\Random\\Generator|array|int|null $rng = null): Tessero\\NDArray",
+                "doc": "Draw a random orthogonal matrix from O(dim) (scipy.stats.ortho_group.rvs, size=1)."
+            },
+            {
+                "name": "rvsSpecial",
+                "static": true,
+                "sig": "rvsSpecial(int $dim, Tessero\\Random\\Generator|array|int|null $rng = null): Tessero\\NDArray",
+                "doc": "Draw a random special-orthogonal matrix from SO(dim), det = +1 (scipy.stats.special_ortho_group.rvs, size=1)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\UniformDirection",
+        "methods": [
+            {
+                "name": "rvs",
+                "static": true,
+                "sig": "rvs(int $dim, array|int|null $size, object $rng): array",
+                "doc": "Draw random direction vectors on S(dim-1)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Bootstrap",
+        "methods": [
+            {
+                "name": "bootstrap",
+                "static": true,
+                "sig": "bootstrap(array $data, callable $statistic, int $nResamples = 9999, string $method = 'percentile', float $confidenceLevel = 0.95, string $alternative = 'two-sided', Tessero\\Random\\Generator|array|int|null $rng = null): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\MonteCarloTest",
+        "methods": [
+            {
+                "name": "monteCarloTest",
+                "static": true,
+                "sig": "monteCarloTest(array $data, array $rvs, callable $statistic, int $nResamples = 9999, string $alternative = 'two-sided'): array",
+                "doc": ""
+            },
+            {
+                "name": "makeRvs",
+                "static": true,
+                "sig": "makeRvs(Tessero\\Random\\Generator $gen, string $kind, array $params = []): callable",
+                "doc": "Build a named null-distribution sampler over a Generator, returning a callable(rows, n): list<list<float>> that draws an (rows, n) block in numpy's row-major order (one standardNormal/normal/random/uniform call)."
+            }
+        ],
+        "constants": [
+            "EPS100"
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Logistic",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $loc = 0.0, mixed $scale = 1.0)",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "Complementary CDF \u2014 the survival function (scipy ccdf == legacy sf)."
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "log of the complementary CDF (scipy logccdf == legacy logsf)."
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse CDF \u2014 the quantile / percent-point function (scipy icdf == legacy ppf)."
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse complementary CDF (scipy iccdf == legacy isf)."
+            },
+            {
+                "name": "ilogcdf",
+                "static": false,
+                "sig": "ilogcdf(mixed $y): Tessero\\NDArray|float",
+                "doc": "Inverse of logcdf: icdf(exp(y))."
+            },
+            {
+                "name": "ilogccdf",
+                "static": false,
+                "sig": "ilogccdf(mixed $y): Tessero\\NDArray|float",
+                "doc": "Inverse of logccdf: iccdf(exp(y))."
+            },
+            {
+                "name": "mean",
+                "static": false,
+                "sig": "mean(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "variance",
+                "static": false,
+                "sig": "variance(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "standard_deviation",
+                "static": false,
+                "sig": "standard_deviation(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "skewness",
+                "static": false,
+                "sig": "skewness(): Tessero\\NDArray|float",
+                "doc": "The skewness \u2014 0 for every logistic."
+            },
+            {
+                "name": "kurtosis",
+                "static": false,
+                "sig": "kurtosis(): Tessero\\NDArray|float",
+                "doc": "The Pearson (NON-excess) kurtosis: the RV API returns the full fourth standardized moment, which is the legacy excess kurtosis (stats('k') = 1.2) plus 3 (= 4.2 for every logistic)."
+            },
+            {
+                "name": "entropy",
+                "static": false,
+                "sig": "entropy(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "mode",
+                "static": false,
+                "sig": "mode(): Tessero\\NDArray|float",
+                "doc": "The mode \u2014 for the logistic it is the location loc (= the mean)."
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            },
+            {
+                "name": "moment",
+                "static": false,
+                "sig": "moment(int $order, string $kind = 'raw'): Tessero\\NDArray|float",
+                "doc": "The raw ('raw' \u2014 non-central), 'central' or 'standardized' moment of the given order."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Stats\\Binomial",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(mixed $n = 1, mixed $p = 0.5)",
+                "doc": ""
+            },
+            {
+                "name": "pmf",
+                "static": false,
+                "sig": "pmf(mixed $k): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logpmf",
+                "static": false,
+                "sig": "logpmf(mixed $k): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "pdf",
+                "static": false,
+                "sig": "pdf(mixed $k): Tessero\\NDArray|float",
+                "doc": "The RV class aliases pdf \u2192 pmf for a discrete distribution."
+            },
+            {
+                "name": "logpdf",
+                "static": false,
+                "sig": "logpdf(mixed $k): Tessero\\NDArray|float",
+                "doc": "The RV class aliases logpdf \u2192 logpmf for a discrete distribution."
+            },
+            {
+                "name": "cdf",
+                "static": false,
+                "sig": "cdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "logcdf",
+                "static": false,
+                "sig": "logcdf(mixed $x): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "ccdf",
+                "static": false,
+                "sig": "ccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "Complementary CDF \u2014 the survival function (scipy ccdf == legacy sf)."
+            },
+            {
+                "name": "logccdf",
+                "static": false,
+                "sig": "logccdf(mixed $x): Tessero\\NDArray|float",
+                "doc": "log of the complementary CDF (scipy logccdf == legacy logsf)."
+            },
+            {
+                "name": "icdf",
+                "static": false,
+                "sig": "icdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse CDF \u2014 the quantile / percent-point function (scipy icdf == legacy ppf)."
+            },
+            {
+                "name": "iccdf",
+                "static": false,
+                "sig": "iccdf(mixed $p): Tessero\\NDArray|float",
+                "doc": "Inverse complementary CDF (scipy iccdf == legacy isf)."
+            },
+            {
+                "name": "ilogcdf",
+                "static": false,
+                "sig": "ilogcdf(mixed $y): Tessero\\NDArray|float",
+                "doc": "Inverse of logcdf: icdf(exp(y))."
+            },
+            {
+                "name": "ilogccdf",
+                "static": false,
+                "sig": "ilogccdf(mixed $y): Tessero\\NDArray|float",
+                "doc": "Inverse of logccdf: iccdf(exp(y))."
+            },
+            {
+                "name": "mean",
+                "static": false,
+                "sig": "mean(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "median",
+                "static": false,
+                "sig": "median(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "variance",
+                "static": false,
+                "sig": "variance(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "standard_deviation",
+                "static": false,
+                "sig": "standard_deviation(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "skewness",
+                "static": false,
+                "sig": "skewness(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "kurtosis",
+                "static": false,
+                "sig": "kurtosis(): Tessero\\NDArray|float",
+                "doc": "The Pearson (NON-excess) kurtosis: the RV API returns the full fourth standardized moment, which is the legacy excess kurtosis (stats('k')) plus 3."
+            },
+            {
+                "name": "entropy",
+                "static": false,
+                "sig": "entropy(): Tessero\\NDArray|float",
+                "doc": ""
+            },
+            {
+                "name": "mode",
+                "static": false,
+                "sig": "mode(): Tessero\\NDArray|float",
+                "doc": "The mode \u2014 floor((n + 1) p) for the binomial."
+            },
+            {
+                "name": "support",
+                "static": false,
+                "sig": "support(): array",
+                "doc": ""
+            },
+            {
+                "name": "moment",
+                "static": false,
+                "sig": "moment(int $order, string $kind = 'raw'): Tessero\\NDArray|float",
+                "doc": "The raw ('raw' \u2014 non-central), 'central' or 'standardized' moment of the given order."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Interpolate\\MakeSmoothingSpline",
         "methods": [
             {
