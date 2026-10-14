@@ -1469,7 +1469,10 @@
         "special.yvp": "pass",
         "special.zeta": "pass",
         "special.zetac": "pass",
+        "splinalg.LaplacianNd": "pass",
+        "splinalg.LinearOperator": "pass",
         "splinalg.SuperLU": "pass",
+        "splinalg.aslinearoperator": "pass",
         "splinalg.bicg": "pass",
         "splinalg.bicgstab": "pass",
         "splinalg.cg": "pass",
@@ -3636,7 +3639,10 @@
             "stats.random_correlation": 0.13781380429500922,
             "splinalg.splu": null,
             "splinalg.factorized": null,
-            "splinalg.SuperLU": null
+            "splinalg.SuperLU": null,
+            "splinalg.aslinearoperator": null,
+            "splinalg.LinearOperator": null,
+            "splinalg.LaplacianNd": null
         },
         "ext": {
             "np.median": 0,
@@ -5454,7 +5460,10 @@
             "stats.random_correlation": 0.13781380429500922,
             "splinalg.splu": null,
             "splinalg.factorized": null,
-            "splinalg.SuperLU": null
+            "splinalg.SuperLU": null,
+            "splinalg.aslinearoperator": null,
+            "splinalg.LinearOperator": null,
+            "splinalg.LaplacianNd": null
         }
     },
     "ext": {
@@ -6927,7 +6936,10 @@
         "special.yvp": "pass",
         "special.zeta": "pass",
         "special.zetac": "pass",
+        "splinalg.LaplacianNd": "pass",
+        "splinalg.LinearOperator": "pass",
         "splinalg.SuperLU": "pass",
+        "splinalg.aslinearoperator": "pass",
         "splinalg.bicg": "pass",
         "splinalg.bicgstab": "pass",
         "splinalg.cg": "pass",

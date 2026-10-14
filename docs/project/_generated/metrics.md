@@ -18,7 +18,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 43 (100.0 %) | 43 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| **SciPy** | 1562 | 71 (4.5 %) | 1491 | **1479 (99.2 %)** | **1479 (99.2 %)** | 99.2 % / 99.2 % | 100.0 % |
+| **SciPy** | 1562 | 68 (4.4 %) | 1494 | **1482 (99.2 %)** | **1482 (99.2 %)** | 99.2 % / 99.2 % | 100.0 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 336 (100.0 %) | 336 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 294 (99.0 %) | 294 (99.0 %) | 99.0 % / 99.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 92 (100.0 %) | 92 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -29,7 +29,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.signal | 157 | 1 (0.6 %) | 156 | 155 (99.4 %) | 155 (99.4 %) | 99.4 % / 99.4 % | 100.0 % |
 | &nbsp;&nbsp;scipy.signal.windows | 26 | 0 (0.0 %) | 26 | 26 (100.0 %) | 26 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.sparse | 53 | 15 (28.3 %) | 38 | 38 (100.0 %) | 38 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.sparse.linalg | 38 | 8 (21.1 %) | 30 | 30 (100.0 %) | 30 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
+| &nbsp;&nbsp;scipy.sparse.linalg | 38 | 5 (13.2 %) | 33 | 33 (100.0 %) | 33 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.sparse.csgraph | 26 | 4 (15.4 %) | 22 | 22 (100.0 %) | 22 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.spatial | 18 | 3 (16.7 %) | 15 | 15 (100.0 %) | 15 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.spatial.distance | 27 | 0 (0.0 %) | 27 | 27 (100.0 %) | 27 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -61,7 +61,7 @@ Exclusions by category (definitions in `tools/parity/scope.yaml`):
 - `scipy.signal`: E4 1
 - `scipy.sparse`: E4 15
 - `scipy.sparse.csgraph`: E2 3, E4 1
-- `scipy.sparse.linalg`: E4 8
+- `scipy.sparse.linalg`: E4 5
 - `scipy.spatial`: E7 3
 - `scipy.special`: E4 5
 - `scipy.stats`: E4 6

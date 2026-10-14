@@ -10724,6 +10724,201 @@
         ]
     },
     {
+        "class": "Tessero\\Sparse\\Linalg\\LinearOperator",
+        "methods": [
+            {
+                "name": "fromMatrix",
+                "static": true,
+                "sig": "fromMatrix(array $matrix, string $dtype = 'float64'): self",
+                "doc": "Wrap an explicit dense matrix A (list of rows). matvec = A x, rmatvec = A^T x."
+            },
+            {
+                "name": "fromCallbacks",
+                "static": true,
+                "sig": "fromCallbacks(array $shape, callable $matvec, ?callable $rmatvec = null, ?callable $matmat = null, string $dtype = 'float64'): self",
+                "doc": "Construct from callbacks (as scipy LinearOperator(shape, matvec, rmatvec, matmat))."
+            },
+            {
+                "name": "shape",
+                "static": false,
+                "sig": "shape(): array",
+                "doc": ""
+            },
+            {
+                "name": "dtype",
+                "static": false,
+                "sig": "dtype(): string",
+                "doc": ""
+            },
+            {
+                "name": "ndim",
+                "static": false,
+                "sig": "ndim(): int",
+                "doc": ""
+            },
+            {
+                "name": "matvec",
+                "static": false,
+                "sig": "matvec(array $x): array",
+                "doc": "Matrix-vector product A x. Accepts a flat list; returns a flat list."
+            },
+            {
+                "name": "rmatvec",
+                "static": false,
+                "sig": "rmatvec(array $y): array",
+                "doc": "Adjoint (here, transpose) matrix-vector product A^H y."
+            },
+            {
+                "name": "matmat",
+                "static": false,
+                "sig": "matmat(array $X): array",
+                "doc": "Matrix-matrix product A X, X row-major of shape (n, k); returns shape (m, k)."
+            },
+            {
+                "name": "dot",
+                "static": false,
+                "sig": "dot(array $x): array",
+                "doc": "dot(x): matvec if x is 1-D, matmat if x is 2-D (row-major)."
+            },
+            {
+                "name": "adjoint",
+                "static": false,
+                "sig": "adjoint(): self",
+                "doc": "Adjoint operator A^H (conjugate transpose; for real data this is the transpose)."
+            },
+            {
+                "name": "transpose",
+                "static": false,
+                "sig": "transpose(): self",
+                "doc": "Transpose operator A^T (== adjoint for real data)."
+            },
+            {
+                "name": "getH",
+                "static": false,
+                "sig": "getH(): self",
+                "doc": "scipy property aliases."
+            },
+            {
+                "name": "getT",
+                "static": false,
+                "sig": "getT(): self",
+                "doc": ""
+            },
+            {
+                "name": "scale",
+                "static": false,
+                "sig": "scale(float $alpha): self",
+                "doc": "Scalar multiple (alpha * A)."
+            },
+            {
+                "name": "add",
+                "static": false,
+                "sig": "add(Tessero\\Sparse\\Linalg\\LinearOperator $other): self",
+                "doc": "Operator sum (A + B); shapes must match."
+            },
+            {
+                "name": "compose",
+                "static": false,
+                "sig": "compose(Tessero\\Sparse\\Linalg\\LinearOperator $other): self",
+                "doc": "Operator composition / product (A @ B): applies B then A."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Sparse\\Linalg\\LaplacianNd",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $gridShape, string $boundaryConditions = 'neumann')",
+                "doc": ""
+            },
+            {
+                "name": "shape",
+                "static": false,
+                "sig": "shape(): array",
+                "doc": ""
+            },
+            {
+                "name": "ndim",
+                "static": false,
+                "sig": "ndim(): int",
+                "doc": ""
+            },
+            {
+                "name": "boundaryConditions",
+                "static": false,
+                "sig": "boundaryConditions(): string",
+                "doc": ""
+            },
+            {
+                "name": "gridShape",
+                "static": false,
+                "sig": "gridShape(): array",
+                "doc": ""
+            },
+            {
+                "name": "toarray",
+                "static": false,
+                "sig": "toarray(): array",
+                "doc": "Dense array of the Laplacian (Kronecker sum of 1-D Laplacians). Values are exact integers represented as floats."
+            },
+            {
+                "name": "tosparse",
+                "static": false,
+                "sig": "tosparse(): array",
+                "doc": "Dense array of the sparse representation. The LaplacianNd sparse form is identical to its dense form, so tosparse()->toarray() == toarray()."
+            },
+            {
+                "name": "eigenvalues",
+                "static": false,
+                "sig": "eigenvalues(?int $m = null): array",
+                "doc": "Closed-form eigenvalues in ascending order. If $m is given, the $m largest (least negative) eigenvalues are returned (scipy returns the m smallest in absolute value, i.e. the largest algebraically, still ascending)."
+            },
+            {
+                "name": "matvec",
+                "static": false,
+                "sig": "matvec(array $x): array",
+                "doc": "Matrix-vector product L x via the dense array."
+            },
+            {
+                "name": "rmatvec",
+                "static": false,
+                "sig": "rmatvec(array $y): array",
+                "doc": "Adjoint == matvec (L is symmetric)."
+            },
+            {
+                "name": "matmat",
+                "static": false,
+                "sig": "matmat(array $X): array",
+                "doc": "Matrix-matrix product L X (X row-major, shape (p, k))."
+            },
+            {
+                "name": "dot",
+                "static": false,
+                "sig": "dot(array $x): array",
+                "doc": ""
+            },
+            {
+                "name": "asLinearOperator",
+                "static": false,
+                "sig": "asLinearOperator(): Tessero\\Sparse\\Linalg\\LinearOperator",
+                "doc": "Return this Laplacian as a generic LinearOperator (wrapping its dense array)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Sparse\\Linalg\\Aslinearoperator",
+        "methods": [
+            {
+                "name": "aslinearoperator",
+                "static": true,
+                "sig": "aslinearoperator(mixed $a): Tessero\\Sparse\\Linalg\\LinearOperator",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Ext\\NDArray",
         "methods": [
             {
