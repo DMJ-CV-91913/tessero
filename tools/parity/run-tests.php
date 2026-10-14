@@ -1334,6 +1334,38 @@ function runSolverCases(array $cases, string $module, int &$checked, int &$failu
                 $grad = static fn (array $v): array => \Tessero\Optimize\Minimize::rosenDer($v);
                 $hessp = static fn (array $v, array $p): array => \Tessero\Optimize\Minimize::rosenHessProd($v, $p);
                 $ok = vecClose(\Tessero\Optimize\Minimize::fminNcg($obj, array_map('floatval', $c['x0']), $grad, $hessp), $c['expect'], $rtol);
+            } elseif ($fn === 'trust_constr') {
+                [$tcf, $tcjac, $tcx0, $tcbounds, $tccons] = (static function (string $prob): array {
+                    $rosen = static function (array $x): float {
+                        $s = 0.0; for ($i = 0, $n = count($x); $i < $n - 1; $i++) { $s += 100.0 * ($x[$i + 1] - $x[$i] ** 2) ** 2 + (1.0 - $x[$i]) ** 2; } return $s;
+                    };
+                    switch ($prob) {
+                        case 'p1_rosen3':
+                            return [$rosen, null, [0.5, 0.5, 0.5], null, []];
+                        case 'p2_boundquad':
+                            return [static fn (array $x): float => ($x[0] - 2.0) ** 2 + ($x[1] + 3.0) ** 2, null, [0.0, 0.0], new \Tessero\Optimize\Bounds([-1.0, -1.0], [1.0, 1.0]), []];
+                        case 'p3_lineq':
+                            return [static fn (array $x): float => $x[0] ** 2 + $x[1] ** 2, null, [2.0, -1.0], null, [new \Tessero\Optimize\LinearConstraint([[1.0, 1.0]], 1.0, 1.0)]];
+                        case 'p4_linineq_bnd':
+                            return [static fn (array $x): float => ($x[0] - 3.0) ** 2 + ($x[1] - 2.0) ** 2, null, [0.5, 0.5], new \Tessero\Optimize\Bounds([0.0, 0.0], [INF, INF]), [new \Tessero\Optimize\LinearConstraint([[1.0, 1.0]], -INF, 4.0)]];
+                        case 'p6_nleq':
+                            return [static fn (array $x): float => ($x[0] - 1.0) ** 2 + ($x[1] - 2.0) ** 2, null, [1.5, 1.5], null, [new \Tessero\Optimize\NonlinearConstraint(static fn (array $x): array => [$x[0] ** 2 - $x[1]], 0.0, 0.0, static fn (array $x): array => [[2 * $x[0], -1.0]], static fn (array $x, array $v): array => [[2.0 * $v[0], 0.0], [0.0, 0.0]])]];
+                        case 'p7_mixed':
+                            return [static fn (array $x): float => ($x[0] - 1.5) ** 2 + ($x[1] - 1.5) ** 2, null, [0.2, 0.1], new \Tessero\Optimize\Bounds([0.0, 0.0], [5.0, 5.0]), [new \Tessero\Optimize\LinearConstraint([[1.0, -1.0]], 0.0, 0.0), new \Tessero\Optimize\NonlinearConstraint(static fn (array $x): array => [$x[0] ** 2 + $x[1] ** 2], -INF, 1.0, static fn (array $x): array => [[2 * $x[0], 2 * $x[1]]], static fn (array $x, array $v): array => [[2.0 * $v[0], 0.0], [0.0, 2.0 * $v[0]]])]];
+                        case 'p8_rosen5_jac':
+                            $g = static function (array $x): array {
+                                $gg = array_fill(0, 5, 0.0);
+                                for ($i = 0; $i < 4; $i++) { $gg[$i] += -400 * $x[$i] * ($x[$i + 1] - $x[$i] ** 2) - 2 * (1 - $x[$i]); $gg[$i + 1] += 200 * ($x[$i + 1] - $x[$i] ** 2); }
+                                return $gg;
+                            };
+                            return [static function (array $x): float { $s = 0.0; for ($i = 0; $i < 4; $i++) { $s += 100.0 * ($x[$i + 1] - $x[$i] ** 2) ** 2 + (1 - $x[$i]) ** 2; } return $s; }, $g, [1.3, 0.7, 0.8, 1.9, 1.2], null, []];
+                        default:
+                            throw new \RuntimeException("trust_constr: unknown prob '{$prob}'");
+                    }
+                })($c['prob']);
+                $tcopts = $tccons !== [] ? ['constraints' => $tccons] : [];
+                $got = \Tessero\Optimize\TrustConstr::run($tcf, array_map('floatval', $tcx0), $tcjac, $tcbounds, $tcopts)->x;
+                $ok = vecClose($got, $c['expect'], $rtol);
             } elseif ($fn === 'minimize_con') {
                 $p = makeConProblem($c['prob']);
                 $opts = $p['cons'] !== [] ? ['constraints' => $p['cons']] : [];

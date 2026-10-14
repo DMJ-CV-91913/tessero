@@ -1,0 +1,77 @@
+{
+  "module": "optimize",
+  "_meta": {
+    "scipy": "1.17.1",
+    "method": "trust-constr",
+    "note": "non-degenerate problems; degenerate boundary cases excluded (see docstring)"
+  },
+  "solver_cases": [
+    {
+      "fn": "trust_constr",
+      "prob": "p1_rosen3",
+      "expect": [
+        0.9999973115201615,
+        0.9999946245242296,
+        0.9999892415889771
+      ],
+      "rtol": 1e-05
+    },
+    {
+      "fn": "trust_constr",
+      "prob": "p2_boundquad",
+      "expect": [
+        0.9999311174800009,
+        -0.9999742346243773
+      ],
+      "rtol": 1e-05
+    },
+    {
+      "fn": "trust_constr",
+      "prob": "p3_lineq",
+      "expect": [
+        0.49999999741410905,
+        0.5000000025858906
+      ],
+      "rtol": 1e-05
+    },
+    {
+      "fn": "trust_constr",
+      "prob": "p4_linineq_bnd",
+      "expect": [
+        2.4999091376723332,
+        1.4999304747638902
+      ],
+      "rtol": 1e-05
+    },
+    {
+      "fn": "trust_constr",
+      "prob": "p6_nleq",
+      "expect": [
+        1.3660253978837673,
+        1.8660253876490869
+      ],
+      "rtol": 1e-05
+    },
+    {
+      "fn": "trust_constr",
+      "prob": "p7_mixed",
+      "expect": [
+        0.7058586741126519,
+        0.7058586741126519
+      ],
+      "rtol": 1e-05
+    },
+    {
+      "fn": "trust_constr",
+      "prob": "p8_rosen5_jac",
+      "expect": [
+        0.9999999999999559,
+        0.9999999999998627,
+        0.9999999999997544,
+        0.9999999999994668,
+        0.9999999999989759
+      ],
+      "rtol": 1e-05
+    }
+  ]
+}
