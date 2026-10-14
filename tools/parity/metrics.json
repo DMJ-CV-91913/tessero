@@ -98,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1402,
+   "both": 1404,
    "excluded": 74,
-   "impl_ext": 1402,
-   "impl_ffi": 1402,
+   "impl_ext": 1404,
+   "impl_ffi": 1404,
    "in_scope": 1488,
-   "m2_ext": 94.2,
-   "m2_ffi": 94.2,
+   "m2_ext": 94.4,
+   "m2_ffi": 94.4,
    "m3": 4.7,
-   "m4_ext": 94.2,
-   "m4_ffi": 94.2,
+   "m4_ext": 94.4,
+   "m4_ffi": 94.4,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1402,
-   "verified_ffi": 1402
+   "verified_ext": 1404,
+   "verified_ffi": 1404
   }
  },
  "modules": {
@@ -420,20 +420,20 @@
    "verified_ffi": 18
   },
   "scipy.interpolate": {
-   "both": 44,
+   "both": 46,
    "excluded": 2,
-   "impl_ext": 44,
-   "impl_ffi": 44,
+   "impl_ext": 46,
+   "impl_ffi": 46,
    "in_scope": 54,
-   "m2_ext": 81.5,
-   "m2_ffi": 81.5,
+   "m2_ext": 85.2,
+   "m2_ffi": 85.2,
    "m3": 3.6,
-   "m4_ext": 81.5,
-   "m4_ffi": 81.5,
+   "m4_ext": 85.2,
+   "m4_ffi": 85.2,
    "m5": 100.0,
    "symbols": 56,
-   "verified_ext": 44,
-   "verified_ffi": 44
+   "verified_ext": 46,
+   "verified_ffi": 46
   },
   "scipy.linalg": {
    "both": 91,
@@ -596,20 +596,20 @@
    "verified_ffi": 27
   },
   "scipy.spatial.transform": {
-   "both": 1,
+   "both": 4,
    "excluded": 0,
-   "impl_ext": 1,
-   "impl_ffi": 1,
+   "impl_ext": 4,
+   "impl_ffi": 4,
    "in_scope": 4,
-   "m2_ext": 25.0,
-   "m2_ffi": 25.0,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
    "m3": 0.0,
-   "m4_ext": 25.0,
-   "m4_ffi": 25.0,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 4,
-   "verified_ext": 1,
-   "verified_ffi": 1
+   "verified_ext": 4,
+   "verified_ffi": 4
   },
   "scipy.special": {
    "both": 336,
