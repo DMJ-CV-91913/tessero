@@ -1,5 +1,143 @@
 [
     {
+        "class": "Tessero\\Cluster\\Hierarchy\\ClusterNode",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(int $id, ?Tessero\\Cluster\\Hierarchy\\ClusterNode $left = null, ?Tessero\\Cluster\\Hierarchy\\ClusterNode $right = null, float $dist = 0.0, ?int $count = null)",
+                "doc": ""
+            },
+            {
+                "name": "getId",
+                "static": false,
+                "sig": "getId(): int",
+                "doc": "The cluster id of this node (scipy ClusterNode.get_id)."
+            },
+            {
+                "name": "getCount",
+                "static": false,
+                "sig": "getCount(): int",
+                "doc": "The number of original observations in the cluster rooted at this node (scipy get_count)."
+            },
+            {
+                "name": "getLeft",
+                "static": false,
+                "sig": "getLeft(): ?Tessero\\Cluster\\Hierarchy\\ClusterNode",
+                "doc": "The left child, or null for a leaf (scipy get_left)."
+            },
+            {
+                "name": "getRight",
+                "static": false,
+                "sig": "getRight(): ?Tessero\\Cluster\\Hierarchy\\ClusterNode",
+                "doc": "The right child, or null for a leaf (scipy get_right)."
+            },
+            {
+                "name": "isLeaf",
+                "static": false,
+                "sig": "isLeaf(): bool",
+                "doc": "True when this node is a leaf (an original observation). scipy is_leaf."
+            },
+            {
+                "name": "preOrder",
+                "static": false,
+                "sig": "preOrder(?callable $func = null): array",
+                "doc": "Left-first pre-order traversal returning a leaf value per original observation (scipy pre_order). The default $func returns each leaf's id; pass a callable to map each leaf ClusterNode to a value. Iterative (matches scipy's explicit-stack implementation and avoids recursion limits)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Cluster\\Hierarchy\\DisjointSet",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(?iterable $elements = null)",
+                "doc": ""
+            },
+            {
+                "name": "add",
+                "static": false,
+                "sig": "add(string|int|float|bool $x): void",
+                "doc": "Add an element to the disjoint set (no-op if present). scipy DisjointSet.add."
+            },
+            {
+                "name": "find",
+                "static": false,
+                "sig": "find(string|int|float|bool $x): string|int|float|bool",
+                "doc": "The root element value of $x (scipy __getitem__ / find)."
+            },
+            {
+                "name": "merge",
+                "static": false,
+                "sig": "merge(string|int|float|bool $x, string|int|float|bool $y): bool",
+                "doc": "Merge the subsets containing $x and $y. The smaller subset is attached to the larger; on a tie the earlier-inserted root wins. Returns true iff they were in different subsets. scipy merge."
+            },
+            {
+                "name": "connected",
+                "static": false,
+                "sig": "connected(string|int|float|bool $x, string|int|float|bool $y): bool",
+                "doc": "Whether $x and $y are in the same subset. scipy connected."
+            },
+            {
+                "name": "subset",
+                "static": false,
+                "sig": "subset(string|int|float|bool $x): array",
+                "doc": "The subset containing $x, as a list of element values in the subset's internal circular order (scipy returns a Python set; order is not significant). scipy subset."
+            },
+            {
+                "name": "subsetSize",
+                "static": false,
+                "sig": "subsetSize(string|int|float|bool $x): int",
+                "doc": "The size of the subset containing $x, without materializing it. scipy subset_size."
+            },
+            {
+                "name": "subsets",
+                "static": false,
+                "sig": "subsets(): array",
+                "doc": "All subsets, each a list of element values, in the order subsets are first encountered scanning elements by insertion order. scipy subsets."
+            },
+            {
+                "name": "count",
+                "static": false,
+                "sig": "count(): int",
+                "doc": ""
+            },
+            {
+                "name": "getIterator",
+                "static": false,
+                "sig": "getIterator(): Traversable",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Cluster\\Hierarchy\\Trees",
+        "methods": [
+            {
+                "name": "toTree",
+                "static": true,
+                "sig": "toTree(mixed $Z, bool $rd = false): Tessero\\Cluster\\Hierarchy\\ClusterNode|array",
+                "doc": "Build the binary ClusterNode tree from a linkage matrix Z (scipy.cluster.hierarchy.to_tree). With $rd = false returns the root node; with $rd = true returns [root, nodes] where nodes[i] is the ClusterNode with id i (0..2n-2)."
+            },
+            {
+                "name": "setLinkColorPalette",
+                "static": true,
+                "sig": "setLinkColorPalette(?array $palette): void",
+                "doc": "Set (or reset, with null) the module link-colour palette. scipy set_link_color_palette."
+            },
+            {
+                "name": "dendrogram",
+                "static": true,
+                "sig": "dendrogram(mixed $Z): array",
+                "doc": "The deterministic data payload of scipy.cluster.hierarchy.dendrogram(Z, no_plot=True) with default ordering (no count_sort / distance_sort), default colour_threshold = 0.7 * max(Z[:,2]) and above_threshold_color = 'C0'. Returns the dict keys icoord, dcoord, ivl, leaves, color_list, leaves_color_list."
+            }
+        ],
+        "constants": [
+            "DEFAULT_PALETTE"
+        ]
+    },
+    {
         "class": "Tessero\\NDArray",
         "methods": [
             {

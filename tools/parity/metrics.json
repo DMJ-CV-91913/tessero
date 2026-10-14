@@ -26,10 +26,6 @@
   "numpy.random.Generator": {
    "E4": 2
   },
-  "scipy.cluster.hierarchy": {
-   "E4": 3,
-   "E7": 2
-  },
   "scipy.constants": {
    "E4": 1
   },
@@ -102,20 +98,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1484,
-   "excluded": 68,
-   "impl_ext": 1484,
-   "impl_ffi": 1484,
-   "in_scope": 1494,
+   "both": 1489,
+   "excluded": 63,
+   "impl_ext": 1489,
+   "impl_ffi": 1489,
+   "in_scope": 1499,
    "m2_ext": 99.3,
    "m2_ffi": 99.3,
-   "m3": 4.4,
+   "m3": 4.0,
    "m4_ext": 99.3,
    "m4_ffi": 99.3,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1484,
-   "verified_ffi": 1484
+   "verified_ext": 1489,
+   "verified_ffi": 1489
   }
  },
  "modules": {
@@ -328,20 +324,20 @@
    "verified_ffi": 43
   },
   "scipy.cluster.hierarchy": {
-   "both": 27,
-   "excluded": 5,
-   "impl_ext": 27,
-   "impl_ffi": 27,
-   "in_scope": 27,
+   "both": 32,
+   "excluded": 0,
+   "impl_ext": 32,
+   "impl_ffi": 32,
+   "in_scope": 32,
    "m2_ext": 100.0,
    "m2_ffi": 100.0,
-   "m3": 15.6,
+   "m3": 0.0,
    "m4_ext": 100.0,
    "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 32,
-   "verified_ext": 27,
-   "verified_ffi": 27
+   "verified_ext": 32,
+   "verified_ffi": 32
   },
   "scipy.cluster.vq": {
    "both": 4,
@@ -675,12 +671,12 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40168,
-   "covered_ext": 40168,
-   "covered_ffi": 40168,
-   "excluded_calls": 2377,
+   "covered_both": 40170,
+   "covered_ext": 40170,
+   "covered_ffi": 40170,
+   "excluded_calls": 2375,
    "excluded_share": 5.6,
-   "in_scope_calls": 40171,
+   "in_scope_calls": 40173,
    "top": {
     "100": {
      "both": 100,
@@ -754,12 +750,12 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2370,
-    "covered_ext": 2370,
-    "covered_ffi": 2370,
-    "excluded_calls": 375,
+    "covered_both": 2372,
+    "covered_ext": 2372,
+    "covered_ffi": 2372,
+    "excluded_calls": 373,
     "excluded_share": 13.6,
-    "in_scope_calls": 2373,
+    "in_scope_calls": 2375,
     "top": {
      "100": {
       "both": 100,
