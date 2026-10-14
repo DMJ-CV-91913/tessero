@@ -8540,6 +8540,68 @@
         ]
     },
     {
+        "class": "Tessero\\Optimize\\NonlinSolve",
+        "methods": [
+            {
+                "name": "broyden1",
+                "static": true,
+                "sig": "broyden1(callable $F, array $xin, ?int $maxiter = null): array",
+                "doc": "scipy.optimize.broyden1 (\"good\" Broyden, low-rank inverse-Jacobian update)."
+            },
+            {
+                "name": "broyden2",
+                "static": true,
+                "sig": "broyden2(callable $F, array $xin, ?int $maxiter = null): array",
+                "doc": "scipy.optimize.broyden2 (\"bad\" Broyden)."
+            },
+            {
+                "name": "anderson",
+                "static": true,
+                "sig": "anderson(callable $F, array $xin, ?int $maxiter = null): array",
+                "doc": "scipy.optimize.anderson (extended Anderson mixing)."
+            },
+            {
+                "name": "diagbroyden",
+                "static": true,
+                "sig": "diagbroyden(callable $F, array $xin, ?int $maxiter = null): array",
+                "doc": "scipy.optimize.diagbroyden (diagonal Broyden approximation)."
+            },
+            {
+                "name": "nonlinSolve",
+                "static": true,
+                "sig": "nonlinSolve(callable $F, array $xin, string $jacobian, ?int $maxiter = null): array",
+                "doc": "nonlin_solve driver (line_search='armijo', the scipy default)."
+            },
+            {
+                "name": "n2",
+                "static": true,
+                "sig": "n2(array $v): float",
+                "doc": "2-norm (scipy.linalg.norm default). @param list<float> $v"
+            },
+            {
+                "name": "safeNorm",
+                "static": true,
+                "sig": "safeNorm(array $v): float",
+                "doc": "_safe_norm: inf if any non-finite. @param list<float> $v"
+            },
+            {
+                "name": "dot",
+                "static": true,
+                "sig": "dot(array $a, array $b): float",
+                "doc": "vdot. @param list<float> $a @param list<float> $b"
+            },
+            {
+                "name": "solveLin",
+                "static": true,
+                "sig": "solveLin(array $A, array $b): array",
+                "doc": "Gaussian elimination with partial pivoting (scipy.linalg.solve stand-in for the small MxM systems inside the Jacobian approximations)."
+            }
+        ],
+        "constants": [
+            "EPS"
+        ]
+    },
+    {
         "class": "Tessero\\Integrate\\SolveIvp",
         "methods": [
             {
@@ -8552,7 +8614,13 @@
         "constants": [
             "SAFETY",
             "MIN_FACTOR",
-            "MAX_FACTOR"
+            "MAX_FACTOR",
+            "DOP_C",
+            "DOP_A",
+            "DOP_B",
+            "DOP_E3",
+            "DOP_E5",
+            "DOP_D"
         ]
     },
     {

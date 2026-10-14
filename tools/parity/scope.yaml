@@ -440,6 +440,7 @@ legacy:
     # quad_vec: vector-valued adaptive GK quadrature (batched max-heap bisection) over a PHP callable; pure-PHP
     quad_vec: {ffi: [QVec::quadVec], ext: [QVec::quadVec], fixtures: [integrate.quad_vec]}
     solve_ivp: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
+    DOP853: {ffi: [SIVP::solve], ext: [SIVP::solve], fixtures: [integrate.solve_ivp]}
     dblquad: {ffi: [NQ::dblquad], ext: [NQ::dblquad], fixtures: [integrate.dblquad]}
     tplquad: {ffi: [NQ::tplquad], ext: [NQ::tplquad], fixtures: [integrate.tplquad]}
     nquad: {ffi: [NQ::nquad], ext: [NQ::nquad], fixtures: [integrate.nquad]}
@@ -509,6 +510,10 @@ legacy:
     quadratic_assignment: {ffi: [QAP::faq], ext: [QAP::faq], fixtures: [optimize.quadratic_assignment]}
     # differential_evolution(func,bounds): best1bin/polish=False over the bit-exact PCG64 Generator; loose x (rtol 1e-4) on convex problems
     differential_evolution: {ffi: [DE::solve], ext: [DE::solve], fixtures: [optimize.differential_evolution]}
+    broyden1: {ffi: [NLS::broyden1], ext: [NLS::broyden1], fixtures: [optimize.broyden1]}
+    broyden2: {ffi: [NLS::broyden2], ext: [NLS::broyden2], fixtures: [optimize.broyden2]}
+    anderson: {ffi: [NLS::anderson], ext: [NLS::anderson], fixtures: [optimize.anderson]}
+    diagbroyden: {ffi: [NLS::diagbroyden], ext: [NLS::diagbroyden], fixtures: [optimize.diagbroyden]}
     dual_annealing: {ffi: [DA::minimize], ext: [DA::minimize], fixtures: [optimize.dual_annealing]}
     basinhopping: {ffi: [BH::solve], ext: [BH::solve], fixtures: [optimize.basinhopping]}
     rosen: {ffi: [Min::rosen], ext: [Min::rosen], fixtures: [optimize.rosen]}
