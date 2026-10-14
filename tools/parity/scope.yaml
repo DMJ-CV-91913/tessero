@@ -547,6 +547,9 @@ legacy:
     fmin_tnc: {ffi: [Min::fminTnc], ext: [Min::fminTnc], fixtures: [optimize.fmin_tnc]}
     fmin_slsqp: {ffi: [Min::fminSlsqp], ext: [Min::fminSlsqp], fixtures: [optimize.fmin_slsqp]}
     fmin_cobyla: {ffi: [Min::fminCobyla], ext: [Min::fminCobyla], fixtures: [optimize.fmin_cobyla]}
+    fmin_l_bfgs_b: {ffi: [Min::fminLbfgsb], ext: [Min::fminLbfgsb], fixtures: [optimize.fmin_l_bfgs_b]}
+    linearmixing: {ffi: [NLS::linearmixing], ext: [NLS::linearmixing], fixtures: [optimize.linearmixing]}
+    excitingmixing: {ffi: [NLS::excitingmixing], ext: [NLS::excitingmixing], fixtures: [optimize.excitingmixing]}
     curve_fit: {ffi: [LS::curveFit], ext: [LS::curveFit], fixtures: [optimize.curve_fit]}
     linprog: {ffi: [LP::linprog], ext: [XE::linprog], tests: solvers}
     milp: {ffi: [LP::milp], ext: [XE::milp], tests: solvers}

@@ -61,6 +61,18 @@ final class NonlinSolve
         return self::nonlinSolve($F, $xin, 'diagbroyden', $maxiter);
     }
 
+    /** scipy.optimize.linearmixing: root via a constant scalar (-alpha) Jacobian approximation. */
+    public static function linearmixing(callable $F, array $xin, ?int $maxiter = null): array
+    {
+        return self::nonlinSolve($F, $xin, 'linearmixing', $maxiter);
+    }
+
+    /** scipy.optimize.excitingmixing: root via a tuned diagonal Jacobian approximation. */
+    public static function excitingmixing(callable $F, array $xin, ?int $maxiter = null): array
+    {
+        return self::nonlinSolve($F, $xin, 'excitingmixing', $maxiter);
+    }
+
     /**
      * nonlin_solve driver (line_search='armijo', the scipy default).
      *
@@ -149,6 +161,8 @@ final class NonlinSolve
             'broyden2' => new BroydenSecond(),
             'anderson' => new AndersonMixing(),
             'diagbroyden' => new DiagBroyden(),
+            'linearmixing' => new LinearMixing(),
+            'excitingmixing' => new ExcitingMixing(),
             default => throw new \RuntimeException("unknown jacobian '{$kind}'"),
         };
     }

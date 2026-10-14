@@ -6619,6 +6619,12 @@
                 "doc": "scipy.optimize.fmin_tnc: bound-constrained minimisation by a truncated-Newton algorithm. Returns the minimiser x (scipy returns (x, nfeval, rc); here we return x only, matching the other fmin_* wrappers)."
             },
             {
+                "name": "fminLbfgsb",
+                "static": true,
+                "sig": "fminLbfgsb(callable $func, array $x0, ?callable $fprime = null, ?array $bounds = null): array",
+                "doc": "scipy.optimize.fmin_l_bfgs_b: bound-constrained L-BFGS-B minimiser. scipy returns (x, f, d); here we return the minimiser x only, matching the other fmin_* wrappers."
+            },
+            {
                 "name": "fminSlsqp",
                 "static": true,
                 "sig": "fminSlsqp(callable $func, array $x0, array $eqcons = [], array $ieqcons = [], ?array $bounds = null, ?callable $fprime = null): array",
@@ -9187,6 +9193,18 @@
                 "static": true,
                 "sig": "diagbroyden(callable $F, array $xin, ?int $maxiter = null): array",
                 "doc": "scipy.optimize.diagbroyden (diagonal Broyden approximation)."
+            },
+            {
+                "name": "linearmixing",
+                "static": true,
+                "sig": "linearmixing(callable $F, array $xin, ?int $maxiter = null): array",
+                "doc": "scipy.optimize.linearmixing: root via a constant scalar (-alpha) Jacobian approximation."
+            },
+            {
+                "name": "excitingmixing",
+                "static": true,
+                "sig": "excitingmixing(callable $F, array $xin, ?int $maxiter = null): array",
+                "doc": "scipy.optimize.excitingmixing: root via a tuned diagonal Jacobian approximation."
             },
             {
                 "name": "nonlinSolve",
