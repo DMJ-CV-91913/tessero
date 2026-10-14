@@ -18,7 +18,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 43 (100.0 %) | 43 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| **SciPy** | 1562 | 68 (4.4 %) | 1494 | **1484 (99.3 %)** | **1484 (99.3 %)** | 99.3 % / 99.3 % | 100.0 % |
+| **SciPy** | 1562 | 63 (4.0 %) | 1499 | **1489 (99.3 %)** | **1489 (99.3 %)** | 99.3 % / 99.3 % | 100.0 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 336 (100.0 %) | 336 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 296 (99.7 %) | 296 (99.7 %) | 99.7 % / 99.7 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 92 (100.0 %) | 92 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -34,7 +34,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.spatial | 18 | 3 (16.7 %) | 15 | 15 (100.0 %) | 15 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.spatial.distance | 27 | 0 (0.0 %) | 27 | 27 (100.0 %) | 27 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.cluster.vq | 4 | 0 (0.0 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.cluster.hierarchy | 32 | 5 (15.6 %) | 27 | 27 (100.0 %) | 27 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
+| &nbsp;&nbsp;scipy.cluster.hierarchy | 32 | 0 (0.0 %) | 32 | 32 (100.0 %) | 32 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 75 (100.0 %) | 75 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 163 (100.0 %) | 163 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 
@@ -50,7 +50,6 @@ Exclusions by category (definitions in `tools/parity/scope.yaml`):
 - `numpy.polynomial.chebyshev`: E4 1
 - `numpy.random`: E3 55, E4 1
 - `numpy.random.Generator`: E4 2
-- `scipy.cluster.hierarchy`: E4 3, E7 2
 - `scipy.constants`: E4 1
 - `scipy.fft`: E4 6
 - `scipy.integrate`: E4 5

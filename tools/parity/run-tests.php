@@ -2025,6 +2025,129 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    // ===== scipy.cluster.hierarchy data-structure classes (pure-PHP Tessero\Cluster\Hierarchy) =====
+    // Place EARLY in the per-fixture loop. ClusterNode/to_tree tree structure, DisjointSet union-find op log,
+    // dendrogram(no_plot=True) dict payload (default + custom palette) + set_link_color_palette effect.
+    if (isset($data['totree_cases']) || isset($data['dendro_cases']) || isset($data['disjoint_cases'])) {
+        $local = [];
+        $mark = static function (string $key, bool $ok, string $msg) use (&$local, &$failures): void {
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        };
+        $tol = static fn (float $a, float $b): bool => $a === $b
+            || abs($a - $b) <= 1e-12 * max(abs($a), abs($b)) + 0.0;
+
+        foreach (($data['totree_cases'] ?? []) as $c) {
+            $checked++;
+            $okNode = true; $okTree = true; $msg = '';
+            try {
+                $Z = decodeValue($c['Z'], $arrayClass);
+                [$root, $nodes] = \Tessero\Cluster\Hierarchy\Trees::toTree($Z, true);
+                $exp = $c['expect'];
+                $N = count($exp['ids']);
+                for ($k = 0; $k < $N; $k++) {
+                    $nd = $nodes[$k];
+                    if ($nd->getId() !== (int) $exp['ids'][$k]) { $okNode = false; $msg = "id[$k]"; break; }
+                    if ($nd->getCount() !== (int) $exp['counts'][$k]) { $okNode = false; $msg = "count[$k]"; break; }
+                    if (! $tol((float) $nd->dist, (float) $exp['dists'][$k])) { $okNode = false; $msg = "dist[$k]"; break; }
+                    if ($nd->isLeaf() !== (bool) $exp['is_leaf'][$k]) { $okNode = false; $msg = "is_leaf[$k]"; break; }
+                    $le = $exp['left'][$k]; $ri = $exp['right'][$k];
+                    $gl = $nd->getLeft() === null ? null : $nd->getLeft()->getId();
+                    $gr = $nd->getRight() === null ? null : $nd->getRight()->getId();
+                    if ($gl !== ($le === null ? null : (int) $le)) { $okNode = false; $msg = "left[$k]"; break; }
+                    if ($gr !== ($ri === null ? null : (int) $ri)) { $okNode = false; $msg = "right[$k]"; break; }
+                }
+                $pre = array_map('intval', $root->preOrder());
+                $wantPre = array_map('intval', $exp['preorder']);
+                if ($pre !== $wantPre) { $okTree = false; $msg = $msg ?: 'preorder'; }
+            } catch (\Throwable $e) { $okNode = $okTree = false; $msg = $e->getMessage(); }
+            $mark('hierarchy.ClusterNode', $okNode && $okTree, $msg);
+            $mark('hierarchy.to_tree', $okNode && $okTree, $msg);
+        }
+
+        foreach (($data['dendro_cases'] ?? []) as $c) {
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $Z = decodeValue($c['Z'], $arrayClass);
+                \Tessero\Cluster\Hierarchy\Trees::setLinkColorPalette($c['palette'] ?? null);
+                $d = \Tessero\Cluster\Hierarchy\Trees::dendrogram($Z);
+                \Tessero\Cluster\Hierarchy\Trees::setLinkColorPalette(null);
+                $exp = $c['expect'];
+                foreach (['icoord', 'dcoord'] as $kk) {
+                    if (count($d[$kk]) !== count($exp[$kk])) { $ok = false; $msg = "$kk nrows"; break; }
+                    foreach ($exp[$kk] as $ri => $row) {
+                        foreach ($row as $ci => $v) {
+                            if (! $tol((float) $d[$kk][$ri][$ci], (float) $v)) { $ok = false; $msg = "$kk [$ri][$ci]"; break 3; }
+                        }
+                    }
+                }
+                if ($ok) {
+                    if (array_map('strval', $d['ivl']) !== array_map('strval', $exp['ivl'])) { $ok = false; $msg = 'ivl'; }
+                    elseif (array_map('intval', $d['leaves']) !== array_map('intval', $exp['leaves'])) { $ok = false; $msg = 'leaves'; }
+                    elseif (array_map('strval', $d['color_list']) !== array_map('strval', $exp['color_list'])) { $ok = false; $msg = 'color_list'; }
+                    else {
+                        $gl = array_map(static fn ($x) => $x === null ? null : (string) $x, $d['leaves_color_list']);
+                        $el = array_map(static fn ($x) => $x === null ? null : (string) $x, $exp['leaves_color_list']);
+                        if ($gl !== $el) { $ok = false; $msg = 'leaves_color_list'; }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Tessero\Cluster\Hierarchy\Trees::setLinkColorPalette(null);
+                $ok = false; $msg = $e->getMessage();
+            }
+            $mark('hierarchy.dendrogram', $ok, $msg);
+            $mark('hierarchy.set_link_color_palette', $ok, $msg);
+        }
+
+        foreach (($data['disjoint_cases'] ?? []) as $c) {
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $ds = new \Tessero\Cluster\Hierarchy\DisjointSet($c['elements']);
+                foreach ($c['ops'] as $op) {
+                    $a = $op['args'];
+                    switch ($op['op']) {
+                        case 'merge':    $got = $ds->merge($a[0], $a[1]); break;
+                        case 'getitem':  $got = $ds[$a[0]]; break;
+                        case 'subset_size': $got = $ds->subsetSize($a[0]); break;
+                        case 'contains': $got = isset($ds[$a[0]]); break;
+                        case 'connected': $got = $ds->connected($a[0], $a[1]); break;
+                        case 'subset':   $got = $ds->subset($a[0]); sort($got); $got = array_map('intval', $got); break;
+                        default: throw new \RuntimeException('bad op ' . $op['op']);
+                    }
+                    $want = $op['ret'];
+                    if (is_array($want)) { $want = array_map('intval', $want); }
+                    if ($got !== $want) { $ok = false; $msg = $op['op'] . ' => ' . json_encode($got) . ' != ' . json_encode($want); break; }
+                }
+                if ($ok) {
+                    if (count($ds) !== (int) $c['len']) { $ok = false; $msg = 'len'; }
+                    elseif ($ds->nSubsets !== (int) $c['n_subsets']) { $ok = false; $msg = 'n_subsets'; }
+                    elseif (array_map('intval', iterator_to_array($ds, false)) !== array_map('intval', $c['iter'])) { $ok = false; $msg = 'iter'; }
+                    else {
+                        $gs = array_map(static function ($s) { $s = array_map('intval', $s); sort($s); return $s; }, $ds->subsets());
+                        $es = array_map(static function ($s) { $s = array_map('intval', $s); sort($s); return $s; }, $c['subsets']);
+                        if ($gs !== $es) { $ok = false; $msg = 'subsets'; }
+                    }
+                }
+            } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+            $mark('hierarchy.DisjointSet', $ok, $msg);
+        }
+
+        foreach (($data['disjoint_err_cases'] ?? []) as $c) {
+            $checked++;
+            $threw = false;
+            try {
+                $ds = new \Tessero\Cluster\Hierarchy\DisjointSet($c['elements']);
+                $ds[$c['args'][0]];
+            } catch (\Throwable $e) { $threw = true; }
+            $mark('hierarchy.DisjointSet', $threw, 'expected KeyError-like throw on missing element');
+        }
+
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+
     if (isset($data['sphvor_cases']) || isset($data['halfspace_cases'])) {   // scipy.spatial.SphericalVoronoi + HalfspaceIntersection (pure-PHP convex-hull dual)
         $local = [];
         foreach (($data['sphvor_cases'] ?? []) as $c) {
