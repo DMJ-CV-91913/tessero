@@ -198,6 +198,99 @@ cases.append({'fn': 'curve_fit', 'obj': {'kind': 'linresid', 'x': _lx, 'y': _ly}
               'rtol': 1e-6, 'rtol_pcov': 1e-4})
 # ===== end curve_fit cases =====
 cases += _oc.cases()
+
+# --- pkg6 optimize methods (TNC/SLSQP/COBYLA + fmin_*) ---
+def rosen(x):
+    return float(sum(100.0 * (x[i + 1] - x[i] ** 2) ** 2 + (1.0 - x[i]) ** 2 for i in range(len(x) - 1)))
+
+
+rosen_der = so.rosen_der
+
+# Named problems (keyed by 'prob'): objective, optional jac, bounds, and constraints. The PHP runner holds
+# the identical definitions in makeConObjective()/makeCons(); here we only need to produce the scipy optimum.
+PROBS = {
+    # bounds-only (TNC / SLSQP)
+    'rosen2':  dict(f=rosen, jac=rosen_der, x0=[-1.2, 1.0], bounds=[(-2, 2), (-2, 2)]),
+    'rosen4':  dict(f=rosen, jac=rosen_der, x0=[0.0, 0.0, 0.0, 0.0], bounds=[(-5, 5)] * 4),
+    'quad2':   dict(f=lambda x: (x[0] - 2) ** 2 + (x[1] + 3) ** 2, jac=lambda x: np.array([2 * (x[0] - 2), 2 * (x[1] + 3)]), x0=[0, 0], bounds=[(0, 1), (-1, 1)]),
+    'quad3':   dict(f=lambda x: (x[0] - 1) ** 2 + (x[1] - 2) ** 2 + (x[2] + 1) ** 2, jac=lambda x: np.array([2 * (x[0] - 1), 2 * (x[1] - 2), 2 * (x[2] + 1)]), x0=[0, 0, 0], bounds=None),
+    'sphere_lo': dict(f=lambda x: x[0] ** 2 + x[1] ** 2, jac=lambda x: np.array([2 * x[0], 2 * x[1]]), x0=[3, 3], bounds=[(1, None), (2, None)]),
+}
+
+# Equality / inequality constrained problems (SLSQP / COBYLA). 'eq'/'ineq' are name lists resolved in PHP.
+CPROBS = {
+    'sphere_eq':  dict(f=lambda x: x[0] ** 2 + x[1] ** 2, x0=[2, 2], eq=['sum_m1'], ineq=[], bounds=None),
+    'qp_tri':     dict(f=lambda x: (x[0] - 1) ** 2 + (x[1] - 2.5) ** 2, x0=[2, 0], eq=[], ineq=['g1', 'g2', 'g3'], bounds=[(0, None), (0, None)]),
+    'qp_tri0':    dict(f=lambda x: (x[0] - 1) ** 2 + (x[1] - 2.5) ** 2, x0=[0, 0], eq=[], ineq=['g1', 'g2', 'g3'], bounds=None),
+    'rosen_con':  dict(f=rosen, x0=[0.5, 0.0], eq=[], ineq=['h1', 'h2', 'h3'], bounds=None),
+    'sphere_line': dict(f=lambda x: x[0] ** 2 + x[1] ** 2, x0=[2, 2], eq=[], ineq=['line'], bounds=None),
+    'uncon':      dict(f=lambda x: (x[0] - 3) ** 2 + (x[1] + 1) ** 2, x0=[0, 0], eq=[], ineq=[], bounds=None),
+}
+
+# constraint callables, referenced by name from CPROBS
+CFUN = {
+    'sum_m1': lambda x: x[0] + x[1] - 1,
+    'g1': lambda x: x[0] - 2 * x[1] + 2,
+    'g2': lambda x: -x[0] - 2 * x[1] + 6,
+    'g3': lambda x: -x[0] + 2 * x[1] + 2,
+    'h1': lambda x: 1 - x[0] - 2 * x[1],
+    'h2': lambda x: x[0],
+    'h3': lambda x: x[1],
+    'line': lambda x: x[0] + x[1] - 1,
+}
+
+
+# ----- TNC: bounds-only problems
+for prob in ('rosen2', 'rosen4', 'quad2', 'quad3', 'sphere_lo'):
+    p = PROBS[prob]
+    r = so.minimize(p['f'], p['x0'], method='TNC', jac=p['jac'], bounds=p['bounds'])
+    cases.append({'fn': 'minimize_con', 'method': 'TNC', 'prob': prob, 'expect': list(map(float, r.x)), 'rtol': 1e-3})
+
+# ----- SLSQP: bounds-only + constrained
+for prob in ('rosen2', 'quad3'):
+    p = PROBS[prob]
+    r = so.minimize(p['f'], p['x0'], method='SLSQP', jac=p['jac'], bounds=p['bounds'])
+    cases.append({'fn': 'minimize_con', 'method': 'SLSQP', 'prob': prob, 'expect': list(map(float, r.x)), 'rtol': 1e-3})
+for prob in ('sphere_eq', 'qp_tri', 'uncon'):
+    p = CPROBS[prob]
+    cons = [{'type': 'eq', 'fun': CFUN[n]} for n in p['eq']] + [{'type': 'ineq', 'fun': CFUN[n]} for n in p['ineq']]
+    r = so.minimize(p['f'], p['x0'], method='SLSQP', bounds=p['bounds'], constraints=cons)
+    cases.append({'fn': 'minimize_con', 'method': 'SLSQP', 'prob': prob, 'expect': list(map(float, r.x)), 'rtol': 1e-4})
+
+# ----- COBYLA: inequality-constrained (choose starts that converge cleanly, matching scipy's optimum)
+for prob in ('sphere_line', 'qp_tri0', 'rosen_con'):
+    p = CPROBS[prob]
+    cons = [{'type': 'ineq', 'fun': CFUN[n]} for n in p['ineq']]
+    r = so.minimize(p['f'], p['x0'], method='COBYLA', constraints=cons)
+    cases.append({'fn': 'minimize_con', 'method': 'COBYLA', 'prob': prob, 'expect': list(map(float, r.x)), 'rtol': 2e-2})
+
+# ----- fmin_* wrappers
+r = so.fmin_tnc(lambda x: x[0] ** 2 + x[1] ** 2, [3, 3], approx_grad=1, bounds=[(1, None), (2, None)], disp=0)
+cases.append({'fn': 'fmin_tnc', 'prob': 'sphere_lo', 'expect': list(map(float, r[0])), 'rtol': 1e-4})
+
+r = so.fmin_slsqp(lambda x: x[0] ** 2 + x[1] ** 2, [2, 2], eqcons=[lambda x: x[0] + x[1] - 1], iprint=0)
+cases.append({'fn': 'fmin_slsqp', 'prob': 'sphere_eq', 'expect': list(map(float, r)), 'rtol': 1e-4})
+
+r = so.fmin_cobyla(lambda x: x[0] ** 2 + x[1] ** 2, [2, 2], [lambda x: x[0] + x[1] - 1], rhoend=1e-6, disp=0)
+cases.append({'fn': 'fmin_cobyla', 'prob': 'sphere_line', 'expect': list(map(float, np.atleast_1d(r))), 'rtol': 1e-3})
+
+
+# --- pkg6 trust-region methods ---
+# === APPEND to tools/parity/fixtures_optimize.py (after the existing minimize cases) ===
+# scipy.optimize.minimize trust-region methods (jac + hess required; rosen family analytic derivatives).
+# dogleg needs a positive-definite Hessian, so its rosen start is near the minimum; at an indefinite
+# start (e.g. [1.3,...]) scipy's dogleg itself returns status 3 and does not move -- not exercised here.
+cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [0.8, 0.6], 'method': 'dogleg',
+              'expect': list(so.minimize(rosen, [0.8, 0.6], method='dogleg', jac=so.rosen_der, hess=so.rosen_hess).x), 'rtol': 1e-6})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0], 'method': 'trust-ncg',
+              'expect': list(so.minimize(rosen, [-1.2, 1.0], method='trust-ncg', jac=so.rosen_der, hess=so.rosen_hess).x), 'rtol': 1e-4})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2], 'method': 'trust-ncg',
+              'expect': list(so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='trust-ncg', jac=so.rosen_der, hessp=lambda x, p: so.rosen_hess_prod(x, p)).x), 'rtol': 1e-4})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [-1.2, 1.0], 'method': 'trust-exact',
+              'expect': list(so.minimize(rosen, [-1.2, 1.0], method='trust-exact', jac=so.rosen_der, hess=so.rosen_hess).x), 'rtol': 1e-6})
+cases.append({'fn': 'minimize', 'obj': {'kind': 'rosen'}, 'x0': [1.3, 0.7, 0.8, 1.9, 1.2], 'method': 'trust-exact',
+              'expect': list(so.minimize(rosen, [1.3, 0.7, 0.8, 1.9, 1.2], method='trust-exact', jac=so.rosen_der, hess=so.rosen_hess).x), 'rtol': 1e-6})
+
 out = {'module': 'optimize', 'scipy': __import__('scipy').__version__, 'solver_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

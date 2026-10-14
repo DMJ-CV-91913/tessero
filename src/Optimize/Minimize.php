@@ -128,6 +128,63 @@ final class Minimize
     }
 
     /**
+     * scipy.optimize.fmin_tnc: bound-constrained minimisation by a truncated-Newton algorithm. Returns the
+     * minimiser x (scipy returns (x, nfeval, rc); here we return x only, matching the other fmin_* wrappers).
+     *
+     * @param callable(list<float>): float $func
+     * @param list<float> $x0
+     * @param (callable(list<float>): list<float>)|null $fprime analytic gradient; finite-differenced if null
+     * @param list<array{0: float|null, 1: float|null}>|null $bounds
+     */
+    public static function fminTnc(callable $func, array $x0, ?callable $fprime = null, ?array $bounds = null): array
+    {
+        return self::minimize($func, $x0, $fprime, 'TNC', $bounds)->x;
+    }
+
+    /**
+     * scipy.optimize.fmin_slsqp: sequential least-squares programming with equality / inequality constraints
+     * and bounds. eqcons / ieqcons are lists of callables c(x) returning a scalar (eq: c==0, ineq: c>=0),
+     * exactly as scipy's fmin_slsqp. Returns the minimiser x.
+     *
+     * @param callable(list<float>): float $func
+     * @param list<float> $x0
+     * @param list<callable(list<float>): float> $eqcons
+     * @param list<callable(list<float>): float> $ieqcons
+     * @param list<array{0: float|null, 1: float|null}>|null $bounds
+     * @param (callable(list<float>): list<float>)|null $fprime
+     */
+    public static function fminSlsqp(callable $func, array $x0, array $eqcons = [], array $ieqcons = [], ?array $bounds = null, ?callable $fprime = null): array
+    {
+        $cons = [];
+        foreach ($eqcons as $c) {
+            $cons[] = ['type' => 'eq', 'fun' => $c];
+        }
+        foreach ($ieqcons as $c) {
+            $cons[] = ['type' => 'ineq', 'fun' => $c];
+        }
+
+        return self::minimize($func, $x0, $fprime, 'SLSQP', $bounds, ['constraints' => $cons])->x;
+    }
+
+    /**
+     * scipy.optimize.fmin_cobyla: constrained minimisation by linear approximation (Powell's COBYLA). cons is
+     * a list of callables c(x) >= 0 (inequality constraints only, as in scipy). Returns the minimiser x.
+     *
+     * @param callable(list<float>): float $func
+     * @param list<float> $x0
+     * @param list<callable(list<float>): float> $cons
+     */
+    public static function fminCobyla(callable $func, array $x0, array $cons, float $rhobeg = 1.0, float $rhoend = 1e-4, int $maxfun = 1000): array
+    {
+        $c = [];
+        foreach ($cons as $cc) {
+            $c[] = ['type' => 'ineq', 'fun' => $cc];
+        }
+
+        return self::minimize($func, $x0, null, 'COBYLA', null, ['constraints' => $c, 'rhobeg' => $rhobeg, 'rhoend' => $rhoend, 'maxfun' => $maxfun])->x;
+    }
+
+    /**
      * scipy.optimize.check_grad: the 2-norm of the difference between the analytic gradient and a
      * forward-difference approximation of it at x0 (absolute step epsilon, as in scipy).
      *
@@ -237,7 +294,13 @@ final class Minimize
             'CG' => $self->cg($x0, $options),
             'POWELL' => $self->powell($x0, $options),
             'NEWTON-CG', 'NEWTONCG' => $self->newtonCg($x0, $options),
-            default => throw new TesseroException("minimize: unknown method '{$method}' (BFGS, L-BFGS-B, Nelder-Mead, CG, Powell, Newton-CG)."),
+            'TNC' => $self->tnc($x0, $bounds, $options),
+            'SLSQP' => $self->slsqp($x0, $bounds, $options),
+            'COBYLA' => $self->cobyla($x0, $options),
+            'DOGLEG' => $self->trustRegion($x0, $options, 'dogleg'),
+            'TRUST-NCG', 'TRUSTNCG' => $self->trustRegion($x0, $options, 'trust-ncg'),
+            'TRUST-EXACT', 'TRUSTEXACT' => $self->trustRegion($x0, $options, 'trust-exact'),
+            default => throw new TesseroException("minimize: unknown method '{$method}' (BFGS, L-BFGS-B, Nelder-Mead, CG, Powell, Newton-CG, TNC, SLSQP, COBYLA)."),
         };
     }
 
@@ -1210,6 +1273,773 @@ final class Minimize
         return new OptimizeResult($x, $f, $status === 0, $status, $msg, $k, $this->nfev, $this->njev, $g, null, 'L-BFGS-B');
     }
 
+    // ------------------------------------------------------------------ TNC (truncated Newton, box-bounded)
+
+    /**
+     * scipy.optimize.minimize(method='TNC'): a truncated-Newton algorithm with box bounds. Each outer step
+     * solves H d = -g on the free variables by conjugate gradients (Hessian-vector products from a
+     * finite-difference of the gradient), then a projected Armijo line search clips to the bounds. Converges
+     * to scipy's TNC optimum; the intermediate iterate sequence differs (scipy wraps Nash's Fortran tnc).
+     *
+     * @param list<float> $x
+     * @param list<array{0: float|null, 1: float|null}>|null $bounds
+     * @param array<string, mixed> $o
+     */
+    private function tnc(array $x, ?array $bounds, array $o): OptimizeResult
+    {
+        $n = count($x);
+        [$lo, $hi] = self::unpackBounds($bounds, $n);
+        $gtol = (float) ($o['gtol'] ?? 1e-6);
+        $maxiter = (int) ($o['maxiter'] ?? 200);
+        $x = self::project($x, $lo, $hi);
+        $f = $this->f($x);
+        $status = 1;
+        $msg = 'Local minimum reached (|pg| ~= 0)';
+        $k = 0;
+        $g = $this->g($x, $f);
+        for ($outer = 0; $outer < 4 * $maxiter; $outer++) {
+            $g = $this->g($x);
+            // free set: a variable is fixed only if it sits on a bound with the gradient pushing outward.
+            $free = [];
+            for ($i = 0; $i < $n; $i++) {
+                $atLo = $x[$i] <= $lo[$i] + 1e-12 && $g[$i] > 0;
+                $atHi = $x[$i] >= $hi[$i] - 1e-12 && $g[$i] < 0;
+                $free[$i] = ! ($atLo || $atHi);
+            }
+            $pg = [];
+            for ($i = 0; $i < $n; $i++) {
+                $pg[$i] = $free[$i] ? $g[$i] : 0.0;
+            }
+            if (self::normInf($pg) <= $gtol) {
+                $status = 0;
+                break;
+            }
+            // CG to approximately solve H d = -pg on the free subspace
+            $d = array_fill(0, $n, 0.0);
+            $r = self::neg($pg);
+            $p = $r;
+            $rs = self::dot($r, $r);
+            $pgnorm = sqrt(self::dot($pg, $pg));
+            $maxcg = 2 * $n + 2;
+            for ($j = 0; $j < $maxcg; $j++) {
+                $pf = [];
+                for ($i = 0; $i < $n; $i++) {
+                    $pf[$i] = $free[$i] ? $p[$i] : 0.0;
+                }
+                $Hp = $this->hessVec($x, $pf, $g);
+                for ($i = 0; $i < $n; $i++) {
+                    $Hp[$i] = $free[$i] ? $Hp[$i] : 0.0;
+                }
+                $pHp = self::dot($p, $Hp);
+                if ($pHp <= 1e-14) {
+                    if (! self::anyNonzero($d)) {
+                        $d = $r;
+                    }
+                    break;
+                }
+                $alpha = $rs / $pHp;
+                $d = self::axpy($alpha, $p, $d);
+                $r = self::axpy(-$alpha, $Hp, $r);
+                $rs2 = self::dot($r, $r);
+                if (sqrt($rs2) < 0.1 * max($pgnorm, 1e-15)) {
+                    break;
+                }
+                $p = self::axpy($rs2 / $rs, $p, $r);
+                $rs = $rs2;
+            }
+            for ($i = 0; $i < $n; $i++) {
+                $d[$i] = $free[$i] ? $d[$i] : 0.0;
+            }
+            if (self::dot($d, $g) >= 0) {
+                $d = self::neg($pg);
+            }
+            // projected backtracking (Armijo) along P(x + alpha d)
+            $alpha = 1.0;
+            $accepted = false;
+            $xn = $x;
+            for ($ls = 0; $ls < 40; $ls++) {
+                $xn = self::project(self::axpy($alpha, $d, $x), $lo, $hi);
+                $ft = $this->f($xn);
+                $step = self::sub($xn, $x);
+                if ($ft <= $f + 1e-4 * self::dot($g, $step)) {
+                    $accepted = true;
+                    break;
+                }
+                $alpha *= 0.5;
+            }
+            if (! $accepted) {
+                break;
+            }
+            if (self::norm2(self::sub($xn, $x)) < 1e-12) {
+                $x = $xn;
+                $f = $this->f($x);
+                break;
+            }
+            $x = $xn;
+            $f = $this->f($x);
+            $k++;
+        }
+
+        return new OptimizeResult($x, $f, $status === 0, $status, $msg, $k, $this->nfev, $this->njev, $g, null, 'TNC');
+    }
+
+    /** Finite-difference Hessian-vector product (df-of-gradient), as TNC/Newton-CG use. */
+    private function hessVec(array $x, array $v, array $g): array
+    {
+        $eps = 1e-7;
+        $xv = self::axpy($eps, $v, $x);
+        $gv = $this->g($xv);
+
+        return array_map(static fn (float $a, float $b): float => ($a - $b) / $eps, $gv, $g);
+    }
+
+    // ------------------------------------------------------------------ SLSQP (Kraft sequential QP)
+
+    /**
+     * scipy.optimize.minimize(method='SLSQP'): sequential least-squares programming. At each iterate we solve
+     * the QP  min 1/2 d'Bd + g'd  s.t. linearised equality / inequality constraints and the box bounds, with B
+     * a BFGS approximation of the Lagrangian Hessian, then take an L1-merit line search. Converges to the same
+     * KKT point as scipy's slsqp (Kraft's Fortran); intermediate iterates differ.
+     *
+     * @param list<float> $x
+     * @param list<array{0: float|null, 1: float|null}>|null $bounds
+     * @param array<string, mixed> $o constraints: list<array{type:'eq'|'ineq', fun:callable}>
+     */
+    private function slsqp(array $x, ?array $bounds, array $o): OptimizeResult
+    {
+        $n = count($x);
+        [$lo, $hi] = self::unpackBounds($bounds, $n);
+        $cons = $o['constraints'] ?? [];
+        $eq = [];
+        $ineq = [];
+        foreach ($cons as $c) {
+            if (($c['type'] ?? 'ineq') === 'eq') {
+                $eq[] = $c['fun'];
+            } else {
+                $ineq[] = $c['fun'];
+            }
+        }
+        $tol = (float) ($o['ftol'] ?? 1e-6);
+        $maxiter = (int) ($o['maxiter'] ?? 200);
+        $B = self::identity($n);
+        $status = 1;
+        $msg = 'Iteration limit reached';
+        $it = 0;
+        $f = $this->f($x);
+        for ($it = 0; $it < $maxiter; $it++) {
+            $gk = $this->g($x);
+            $Ceq = [];
+            $beq = [];
+            foreach ($eq as $c) {
+                $Ceq[] = self::constraintGrad($c, $x);
+                $beq[] = (float) $c($x);
+            }
+            $Cin = [];
+            $bin = [];
+            foreach ($ineq as $c) {
+                $Cin[] = self::constraintGrad($c, $x);
+                $bin[] = (float) $c($x);
+            }
+            $d = self::solveQp($B, $gk, $Ceq, $beq, $Cin, $bin, $lo, $hi, $x);
+            $nd = self::norm2($d);
+            if ($nd < $tol) {
+                $status = 0;
+                $msg = 'Optimization terminated successfully';
+                break;
+            }
+            // L1 merit line search
+            $mu = 10.0;
+            $merit = function (array $z) use ($eq, $ineq, $mu): float {
+                $viol = 0.0;
+                foreach ($eq as $c) {
+                    $viol += abs((float) $c($z));
+                }
+                foreach ($ineq as $c) {
+                    $viol += max(0.0, -(float) $c($z));
+                }
+
+                return $this->f($z) + $mu * $viol;
+            };
+            $m0 = $merit($x);
+            $alpha = 1.0;
+            $xn = $x;
+            for ($ls = 0; $ls < 30; $ls++) {
+                $xn = self::project(self::axpy($alpha, $d, $x), $lo, $hi);
+                if ($merit($xn) <= $m0) {
+                    break;
+                }
+                $alpha *= 0.5;
+            }
+            $xn = self::project(self::axpy($alpha, $d, $x), $lo, $hi);
+            $gn = $this->g($xn);
+            $s = self::sub($xn, $x);
+            $y = self::sub($gn, $gk);
+            $sy = self::dot($s, $y);
+            if ($sy > 1e-10) {
+                $Bs = self::matvec($B, $s);
+                $sBs = self::dot($s, $Bs);
+                for ($i = 0; $i < $n; $i++) {
+                    for ($jj = 0; $jj < $n; $jj++) {
+                        $B[$i][$jj] = $B[$i][$jj] - $Bs[$i] * $Bs[$jj] / $sBs + $y[$i] * $y[$jj] / $sy;
+                    }
+                }
+            }
+            $done = self::norm2(self::sub($xn, $x)) < $tol * max(1.0, self::norm2($x));
+            $x = $xn;
+            $f = $this->f($x);
+            if ($done) {
+                $status = 0;
+                $msg = 'Optimization terminated successfully';
+                break;
+            }
+        }
+
+        return new OptimizeResult($x, $f, $status === 0, $status, $msg, $it, $this->nfev, $this->njev, $this->g($x), null, 'SLSQP');
+    }
+
+    // ------------------------------------------------------------------ COBYLA (linear-approximation TR)
+
+    /**
+     * scipy.optimize.minimize(method='COBYLA'): Powell's constrained optimisation by linear approximation. A
+     * simplex of n+1 points yields affine models of f and of every inequality constraint c_j>=0; each step
+     * minimises the penalised linear merit within a box trust region of half-width rho, then the simplex is
+     * updated and rho is reduced on rejected steps (rhobeg -> rhoend). A geometry safeguard rebuilds the
+     * simplex when its edges become ill-conditioned. Reaches scipy's constrained optimum on well-posed
+     * problems; the iterate sequence differs and very degenerate corners can be sensitive.
+     *
+     * @param list<float> $x
+     * @param array<string, mixed> $o constraints: list<array{type:'ineq', fun:callable}>, rhobeg, rhoend, maxfun
+     */
+    private function cobyla(array $x0, array $o): OptimizeResult
+    {
+        $n = count($x0);
+        $cons = [];
+        foreach (($o['constraints'] ?? []) as $c) {
+            $cons[] = $c['fun'];
+        }
+        $m = count($cons);
+        $rhobeg = (float) ($o['rhobeg'] ?? 1.0);
+        $rhoend = (float) ($o['rhoend'] ?? 1e-4);
+        $maxfun = (int) ($o['maxfun'] ?? 3500);
+
+        $evalC = function (array $x) use ($cons): array {
+            $out = [];
+            foreach ($cons as $c) {
+                $out[] = (float) $c($x);
+            }
+
+            return $out;
+        };
+        $viol = static function (array $cv) use ($m): float {
+            if ($m === 0) {
+                return 0.0;
+            }
+
+            return max(0.0, -min($cv));
+        };
+
+        // simplex
+        $sim = [$x0];
+        for ($i = 0; $i < $n; $i++) {
+            $e = $x0;
+            $e[$i] += $rhobeg;
+            $sim[] = $e;
+        }
+        $fv = [];
+        $cv = [];
+        foreach ($sim as $p) {
+            $fv[] = $this->f($p);
+            $cv[] = $evalC($p);
+        }
+        $rho = $rhobeg;
+        $mu = 0.0;
+        $merit = function (float $fval, array $cval) use (&$mu, $viol): float {
+            return $fval + $mu * $viol($cval);
+        };
+        $rebuild = function (array $xb) use (&$sim, &$fv, &$cv, &$rho, $n, $evalC): void {
+            $sim[0] = $xb;
+            $fv[0] = $this->f($xb);
+            $cv[0] = $evalC($xb);
+            for ($i = 0; $i < $n; $i++) {
+                $e = $xb;
+                $e[$i] += $rho;
+                $sim[$i + 1] = $e;
+                $fv[$i + 1] = $this->f($e);
+                $cv[$i + 1] = $evalC($e);
+            }
+        };
+
+        while (true) {
+            for ($inner = 0; $inner < 200; $inner++) {
+                // order vertices by merit; best is the model base
+                $order = range(0, $n);
+                usort($order, fn ($a, $b) => $merit($fv[$a], $cv[$a]) <=> $merit($fv[$b], $cv[$b]));
+                $b = $order[0];
+                $rows = array_values(array_filter(range(0, $n), fn ($i) => $i !== $b));
+                $M = [];
+                foreach ($rows as $i) {
+                    $M[] = self::sub($sim[$i], $sim[$b]);
+                }
+                // geometry safeguard: rebuild if edges degenerate (singular / mis-scaled)
+                $edge = 0.0;
+                foreach ($M as $row) {
+                    $edge = max($edge, self::norm2($row));
+                }
+                $det = self::absDet($M);
+                if ($edge < 0.25 * $rho || $edge > 4.0 * $rho || $det < 1e-12 * ($rho ** $n)) {
+                    $rebuild($sim[$b]);
+                    $order = range(0, $n);
+                    usort($order, fn ($a, $c) => $merit($fv[$a], $cv[$a]) <=> $merit($fv[$c], $cv[$c]));
+                    $b = $order[0];
+                    $rows = array_values(array_filter(range(0, $n), fn ($i) => $i !== $b));
+                    $M = [];
+                    foreach ($rows as $i) {
+                        $M[] = self::sub($sim[$i], $sim[$b]);
+                    }
+                }
+                $Minv = self::pinvSmall($M);          // (n x n): columns index rows[]
+                $gf = self::matTvec($Minv, array_map(fn ($i) => $fv[$i] - $fv[$b], $rows));
+                $gc = [];
+                for ($j = 0; $j < $m; $j++) {
+                    $gc[$j] = self::matTvec($Minv, array_map(fn ($i) => $cv[$i][$j] - $cv[$b][$j], $rows));
+                }
+                $c0 = $cv[$b];
+                if ($m > 0) {
+                    $muNeed = self::norm2($gf) / max($viol($c0), $rho);
+                    $mu = max(min($muNeed, 2.0 * ($mu + 1.0)), $mu);
+                }
+                $d = self::cobylaStep($gf, $gc, $c0, $rho, $mu, $n, $m);
+                if (self::normInf($d) < 1e-3 * $rho) {
+                    break;
+                }
+                $xnew = self::axpy(1.0, $d, $sim[$b]);
+                $fn = $this->f($xnew);
+                $cn = $evalC($xnew);
+                // worst non-base vertex by merit
+                $worst = $rows[0];
+                foreach ($rows as $i) {
+                    if ($merit($fv[$i], $cv[$i]) > $merit($fv[$worst], $cv[$worst])) {
+                        $worst = $i;
+                    }
+                }
+                if ($merit($fn, $cn) < $merit($fv[$worst], $cv[$worst]) - 1e-14) {
+                    $sim[$worst] = $xnew;
+                    $fv[$worst] = $fn;
+                    $cv[$worst] = $cn;
+                } else {
+                    $rho *= 0.5;
+                    $rebuild($sim[$b]);
+                    if ($rho <= $rhoend) {
+                        break;
+                    }
+                }
+                if ($this->nfev > $maxfun) {
+                    break;
+                }
+            }
+            if ($rho <= $rhoend || $this->nfev > $maxfun) {
+                break;
+            }
+            $rho *= 0.5;
+            $order = range(0, $n);
+            usort($order, fn ($a, $b) => $merit($fv[$a], $cv[$a]) <=> $merit($fv[$b], $cv[$b]));
+            $rebuild($sim[$order[0]]);
+        }
+        $order = range(0, $n);
+        usort($order, fn ($a, $b) => $merit($fv[$a], $cv[$a]) <=> $merit($fv[$b], $cv[$b]));
+        $b = $order[0];
+        $success = $m === 0 || $viol($cv[$b]) <= (float) ($o['catol'] ?? 2e-4);
+
+        return new OptimizeResult($sim[$b], $fv[$b], $success, $success ? 1 : 4, $success ? 'Optimization terminated successfully.' : 'Did not converge to a feasible point.', $this->nfev, $this->nfev, 0, null, null, 'COBYLA');
+    }
+
+    /**
+     * COBYLA trust-region subproblem: minimise  gf.d + mu * max_j max(0, -(c0_j + gc_j . d))  over the box
+     * ||d||_inf <= rho, by projected subgradient descent with a coordinate polish (reliable at the small n
+     * the constrained minimiser covers).
+     *
+     * @param list<float> $gf
+     * @param list<list<float>> $gc
+     * @param list<float> $c0
+     */
+    private static function cobylaStep(array $gf, array $gc, array $c0, float $rho, float $mu, int $n, int $m): array
+    {
+        $meritLin = static function (array $d) use ($gf, $gc, $c0, $mu, $m): float {
+            $v = 0.0;
+            for ($j = 0; $j < $m; $j++) {
+                $v = max($v, max(0.0, -($c0[$j] + self::dot($gc[$j], $d))));
+            }
+
+            return self::dot($gf, $d) + $mu * $v;
+        };
+        $subgrad = static function (array $d) use ($gf, $gc, $c0, $mu, $m, $n): array {
+            $g = $gf;
+            $worst = -1.0;
+            $wj = -1;
+            for ($j = 0; $j < $m; $j++) {
+                $vj = -($c0[$j] + self::dot($gc[$j], $d));
+                if ($vj > $worst) {
+                    $worst = $vj;
+                    $wj = $j;
+                }
+            }
+            if ($worst > 0 && $wj >= 0) {
+                $g = self::axpy(-$mu, $gc[$wj], $g);
+            }
+
+            return $g;
+        };
+        $clip = static function (array $d) use ($rho, $n): array {
+            for ($i = 0; $i < $n; $i++) {
+                $d[$i] = min(max($d[$i], -$rho), $rho);
+            }
+
+            return $d;
+        };
+        $d = array_fill(0, $n, 0.0);
+        $best = $meritLin($d);
+        $bestd = $d;
+        $lr = $rho;
+        for ($t = 0; $t < 400; $t++) {
+            $g = $subgrad($d);
+            $ng = self::norm2($g);
+            if ($ng < 1e-14) {
+                break;
+            }
+            $d = $clip(self::axpy(-$lr / $ng, $g, $d));
+            $mv = $meritLin($d);
+            if ($mv < $best - 1e-16) {
+                $best = $mv;
+                $bestd = $d;
+            } else {
+                $lr *= 0.7;
+            }
+            if ($lr < 1e-6 * $rho) {
+                break;
+            }
+        }
+        $d = $bestd;
+        $step = $rho;
+        for ($t = 0; $t < 80; $t++) {
+            $improved = false;
+            for ($i = 0; $i < $n; $i++) {
+                foreach ([$step, -$step] as $s) {
+                    $dd = $d;
+                    $dd[$i] = min(max($dd[$i] + $s, -$rho), $rho);
+                    $mv = $meritLin($dd);
+                    if ($mv < $best - 1e-16) {
+                        $best = $mv;
+                        $d = $dd;
+                        $improved = true;
+                    }
+                }
+            }
+            if (! $improved) {
+                $step *= 0.5;
+                if ($step < 1e-4 * $rho) {
+                    break;
+                }
+            }
+        }
+
+        return $d;
+    }
+
+    /**
+     * Active-set QP: minimise 1/2 d'Bd + g'd subject to Aeq d = -beq and Cin d >= -bin and box
+     * lo-x <= d <= hi-x. Used by SLSQP (and by extension) as the step subproblem.
+     *
+     * @param list<list<float>> $B
+     * @param list<float> $g
+     * @param list<list<float>> $Ceq
+     * @param list<float> $beq
+     * @param list<list<float>> $Cin
+     * @param list<float> $bin
+     * @param list<float> $lo
+     * @param list<float> $hi
+     * @param list<float> $x
+     */
+    private static function solveQp(array $B, array $g, array $Ceq, array $beq, array $Cin, array $bin, array $lo, array $hi, array $x): array
+    {
+        $n = count($g);
+        // assemble inequalities (>= form):  row . d >= rhs
+        $Crows = [];
+        $brows = [];
+        foreach ($Cin as $i => $row) {
+            $Crows[] = $row;
+            $brows[] = -$bin[$i];
+        }
+        for ($i = 0; $i < $n; $i++) {
+            if (is_finite($lo[$i])) {
+                $e = array_fill(0, $n, 0.0);
+                $e[$i] = 1.0;
+                $Crows[] = $e;
+                $brows[] = $lo[$i] - $x[$i];
+            }
+            if (is_finite($hi[$i])) {
+                $e = array_fill(0, $n, 0.0);
+                $e[$i] = -1.0;
+                $Crows[] = $e;
+                $brows[] = -($hi[$i] - $x[$i]);
+            }
+        }
+        $nbeq = count($beq);
+        // equality rhs: Aeq d = -beq
+        $eqRhs = array_map(static fn (float $v): float => -$v, $beq);
+        $active = [];
+        $d = array_fill(0, $n, 0.0);
+        for ($iter = 0; $iter < 200; $iter++) {
+            // rows = equalities ++ active inequalities
+            $Amat = $Ceq;
+            $bvec = $eqRhs;
+            foreach ($active as $a) {
+                $Amat[] = $Crows[$a];
+                $bvec[] = $brows[$a];
+            }
+            $k = count($Amat);
+            // build KKT [[B, -A'],[A, 0]] [d; lam] = [-g; bvec]
+            $dim = $n + $k;
+            $K = [];
+            for ($i = 0; $i < $dim; $i++) {
+                $K[$i] = array_fill(0, $dim, 0.0);
+            }
+            for ($i = 0; $i < $n; $i++) {
+                for ($jj = 0; $jj < $n; $jj++) {
+                    $K[$i][$jj] = $B[$i][$jj];
+                }
+                $K[$i][$i] += 1e-12;
+            }
+            for ($r = 0; $r < $k; $r++) {
+                for ($jj = 0; $jj < $n; $jj++) {
+                    $K[$jj][$n + $r] = -$Amat[$r][$jj];
+                    $K[$n + $r][$jj] = $Amat[$r][$jj];
+                }
+            }
+            $rhs = [];
+            for ($i = 0; $i < $n; $i++) {
+                $rhs[$i] = -$g[$i];
+            }
+            for ($r = 0; $r < $k; $r++) {
+                $rhs[$n + $r] = $bvec[$r];
+            }
+            $sol = self::linSolve($K, $rhs);
+            $d = array_slice($sol, 0, $n);
+            $lam = array_slice($sol, $n);
+            // find violated inactive inequalities
+            $viol = [];
+            foreach ($Crows as $i => $row) {
+                if (in_array($i, $active, true)) {
+                    continue;
+                }
+                if (self::dot($row, $d) - $brows[$i] < -1e-10) {
+                    $viol[] = $i;
+                }
+            }
+            if ($viol === []) {
+                // check inequality multipliers (indices after equalities) >= 0
+                $neg = -1;
+                $negval = 0.0;
+                for ($r = 0; $r < count($active); $r++) {
+                    $lv = $lam[$nbeq + $r];
+                    if ($lv < -1e-10 && $lv < $negval) {
+                        $negval = $lv;
+                        $neg = $r;
+                    }
+                }
+                if ($neg < 0) {
+                    return $d;
+                }
+                array_splice($active, $neg, 1);
+            } else {
+                $active[] = $viol[0];
+            }
+        }
+
+        return $d;
+    }
+
+    /**
+     * @param list<array{0: float|null, 1: float|null}>|null $bounds
+     * @return array{0: list<float>, 1: list<float>}
+     */
+    private static function unpackBounds(?array $bounds, int $n): array
+    {
+        $lo = array_fill(0, $n, -INF);
+        $hi = array_fill(0, $n, INF);
+        if ($bounds !== null) {
+            if (count($bounds) !== $n) {
+                throw new TesseroException('minimize: bounds needs one (min, max) pair per variable.');
+            }
+            foreach (array_values($bounds) as $i => $pair) {
+                $lo[$i] = $pair[0] ?? -INF;
+                $hi[$i] = $pair[1] ?? INF;
+            }
+        }
+
+        return [$lo, $hi];
+    }
+
+    /** Forward-difference gradient of a scalar constraint callable at x. */
+    private static function constraintGrad(callable $c, array $x): array
+    {
+        $rel = sqrt(self::EPS);
+        $f0 = (float) $c($x);
+        $g = [];
+        foreach ($x as $i => $xi) {
+            $h = $rel * ($xi >= 0 ? 1.0 : -1.0) * max(1.0, abs($xi));
+            $xh = $x;
+            $xh[$i] = $xi + $h;
+            $h = $xh[$i] - $xi;
+            $g[$i] = ((float) $c($xh) - $f0) / $h;
+        }
+
+        return $g;
+    }
+
+    /** Solve A y = b for a dense square A by Gaussian elimination with partial pivoting. */
+    private static function linSolve(array $A, array $b): array
+    {
+        $n = count($b);
+        $M = [];
+        for ($i = 0; $i < $n; $i++) {
+            $M[$i] = array_merge($A[$i], [$b[$i]]);
+        }
+        for ($col = 0; $col < $n; $col++) {
+            $piv = $col;
+            $best = abs($M[$col][$col]);
+            for ($r = $col + 1; $r < $n; $r++) {
+                if (abs($M[$r][$col]) > $best) {
+                    $best = abs($M[$r][$col]);
+                    $piv = $r;
+                }
+            }
+            if ($piv !== $col) {
+                $tmp = $M[$col];
+                $M[$col] = $M[$piv];
+                $M[$piv] = $tmp;
+            }
+            $d = $M[$col][$col];
+            if (abs($d) < 1e-300) {
+                $M[$col][$col] = $d = 1e-300;
+            }
+            for ($r = 0; $r < $n; $r++) {
+                if ($r === $col) {
+                    continue;
+                }
+                $factor = $M[$r][$col] / $d;
+                if ($factor === 0.0) {
+                    continue;
+                }
+                for ($cc = $col; $cc <= $n; $cc++) {
+                    $M[$r][$cc] -= $factor * $M[$col][$cc];
+                }
+            }
+        }
+        $y = [];
+        for ($i = 0; $i < $n; $i++) {
+            $y[$i] = $M[$i][$n] / $M[$i][$i];
+        }
+
+        return $y;
+    }
+
+    /** Moore-Penrose pseudo-inverse of a small (n x n) matrix via normal equations; returns n x n. */
+    private static function pinvSmall(array $M): array
+    {
+        $n = count($M);
+        // M is n x n (rows are simplex edges). pinv(M) = M^{-1} if invertible, else (M'M)^{-1} M'.
+        $MtM = [];
+        for ($i = 0; $i < $n; $i++) {
+            $MtM[$i] = array_fill(0, $n, 0.0);
+            for ($j = 0; $j < $n; $j++) {
+                $s = 0.0;
+                for ($r = 0; $r < $n; $r++) {
+                    $s += $M[$r][$i] * $M[$r][$j];
+                }
+                $MtM[$i][$j] = $s + ($i === $j ? 1e-14 : 0.0);
+            }
+        }
+        // inverse of MtM via solving against identity, then pinv = inv(MtM) M'
+        $inv = [];
+        for ($col = 0; $col < $n; $col++) {
+            $e = array_fill(0, $n, 0.0);
+            $e[$col] = 1.0;
+            $colsol = self::linSolve($MtM, $e);
+            for ($i = 0; $i < $n; $i++) {
+                $inv[$i][$col] = $colsol[$i];
+            }
+        }
+        // pinv (n x n): pinv[i][r] = sum_j inv[i][j] * M[r][j]
+        $pinv = [];
+        for ($i = 0; $i < $n; $i++) {
+            $pinv[$i] = array_fill(0, $n, 0.0);
+            for ($r = 0; $r < $n; $r++) {
+                $s = 0.0;
+                for ($j = 0; $j < $n; $j++) {
+                    $s += $inv[$i][$j] * $M[$r][$j];
+                }
+                $pinv[$i][$r] = $s;
+            }
+        }
+
+        return $pinv;
+    }
+
+    /** Compute Minv^T . v where Minv is n x n and v has length n (column-indexed by simplex rows). */
+    private static function matTvec(array $Minv, array $v): array
+    {
+        $n = count($Minv);
+        $out = array_fill(0, $n, 0.0);
+        for ($i = 0; $i < $n; $i++) {
+            $s = 0.0;
+            for ($r = 0; $r < $n; $r++) {
+                $s += $Minv[$i][$r] * $v[$r];
+            }
+            $out[$i] = $s;
+        }
+
+        return $out;
+    }
+
+    /** Absolute determinant of a small square matrix (Gaussian elimination). */
+    private static function absDet(array $M): float
+    {
+        $n = count($M);
+        if ($n === 0) {
+            return 1.0;
+        }
+        $A = array_map(static fn ($row) => array_values($row), $M);
+        $det = 1.0;
+        for ($col = 0; $col < $n; $col++) {
+            $piv = $col;
+            $best = abs($A[$col][$col]);
+            for ($r = $col + 1; $r < $n; $r++) {
+                if (abs($A[$r][$col]) > $best) {
+                    $best = abs($A[$r][$col]);
+                    $piv = $r;
+                }
+            }
+            if ($best < 1e-300) {
+                return 0.0;
+            }
+            if ($piv !== $col) {
+                $tmp = $A[$col];
+                $A[$col] = $A[$piv];
+                $A[$piv] = $tmp;
+                $det = -$det;
+            }
+            $det *= $A[$col][$col];
+            for ($r = $col + 1; $r < $n; $r++) {
+                $factor = $A[$r][$col] / $A[$col][$col];
+                for ($cc = $col; $cc < $n; $cc++) {
+                    $A[$r][$cc] -= $factor * $A[$col][$cc];
+                }
+            }
+        }
+
+        return abs($det);
+    }
+
     private static function project(array $x, array $lo, array $hi): array
     {
         foreach ($x as $i => $v) {
@@ -1477,5 +2307,585 @@ final class Minimize
     private static function normInf(array $a): float
     {
         return max(array_map('abs', $a));
+    }
+
+    private function trustRegion(array $x, array $o, string $subkind): OptimizeResult
+    {
+        $n = count($x);
+        $hess = $o['hess'] ?? null;
+        $hessp = $o['hessp'] ?? null;
+        if ($this->jac === null) {
+            throw new TesseroException("minimize: method '{$subkind}' requires a Jacobian (jac).");
+        }
+        if ($subkind !== 'trust-ncg' && ! is_callable($hess)) {
+            throw new TesseroException("minimize: method '{$subkind}' requires a callable Hessian (options['hess']).");
+        }
+        if ($subkind === 'trust-ncg' && ! is_callable($hess) && ! is_callable($hessp)) {
+            throw new TesseroException("minimize: method 'trust-ncg' requires options['hess'] or options['hessp'].");
+        }
+
+        $eta = (float) ($o['eta'] ?? 0.15);
+        $gtol = (float) ($o['gtol'] ?? 1e-4);
+        $tr = (float) ($o['initial_trust_radius'] ?? 1.0);
+        $maxTr = (float) ($o['max_trust_radius'] ?? 1000.0);
+        $maxiter = (int) ($o['maxiter'] ?? 200 * $n);
+        $subMaxiter = (int) ($o['subproblem_maxiter'] ?? 25);
+
+        // Hessian-vector product used by the model and by the Steihaug CG solver.
+        $hvp = static function (array $xp, array $p) use ($hess, $hessp): array {
+            if ($hessp !== null) {
+                return array_map('floatval', array_values($hessp($xp, $p)));
+            }
+            $H = $hess($xp);
+
+            return self::matvec($H, $p);
+        };
+
+        // per-iteration cache for trust-exact (lambda lower bound reuse across shrinking radii)
+        $exactState = ['prev' => -1.0, 'lb' => null];
+
+        $warn = 0;
+        $msg = 'Optimization terminated successfully.';
+        $fx = $this->f($x);
+        $gx = $this->g($x, $fx);
+        $k = 0;
+        while (self::norm2($gx) >= $gtol) {
+            $Hx = ($subkind === 'trust-ncg' && $hess === null) ? null : $hess($x);
+            try {
+                if ($subkind === 'dogleg') {
+                    [$p, $hits] = self::subDogleg($gx, $Hx, $tr);
+                } elseif ($subkind === 'trust-ncg') {
+                    [$p, $hits] = self::subSteihaug($gx, $tr, static fn (array $v): array => $hvp($x, $v));
+                } else {
+                    [$p, $hits] = self::subExact($gx, $Hx, $tr, $subMaxiter, $exactState);
+                }
+            } catch (\RuntimeException $e) {   // non-PD Hessian / linalg failure, as scipy's warnflag 3
+                $warn = 3;
+                $msg = 'A linalg error occurred, such as a non-psd Hessian.';
+                break;
+            }
+
+            $Hp = $hvp($x, $p);
+            $predval = $fx + self::dot($gx, $p) + 0.5 * self::dot($p, $Hp);
+            $xp = self::axpy(1.0, $p, $x);
+            $fxp = $this->f($xp);
+            $actual = $fx - $fxp;
+            $pred = $fx - $predval;
+            if ($pred <= 0) {
+                $warn = 2;
+                $msg = 'A bad approximation caused failure to predict improvement.';
+                break;
+            }
+            $rho = $actual / $pred;
+            if ($rho < 0.25) {
+                $tr *= 0.25;
+            } elseif ($rho > 0.75 && $hits) {
+                $tr = min(2.0 * $tr, $maxTr);
+            }
+            if ($rho > $eta) {
+                $x = $xp;
+                $fx = $fxp;
+                $gx = $this->g($x, $fx);
+            }
+            $k++;
+            if (self::norm2($gx) < $gtol) {
+                break;
+            }
+            if ($k >= $maxiter) {
+                $warn = 1;
+                $msg = 'Maximum number of iterations has been exceeded.';
+                break;
+            }
+        }
+
+        $method = match ($subkind) { 'dogleg' => 'dogleg', 'trust-ncg' => 'trust-ncg', default => 'trust-exact' };
+
+        return new OptimizeResult($x, $fx, $warn === 0, $warn, $msg, $k, $this->nfev, $this->njev, null, null, $method);
+    }
+
+    /**
+     * Solve ||z + t d|| == trust_radius for the two roots t, sorted low to high
+     * (scipy BaseQuadraticSubproblem.get_boundaries_intersections; the round-off-safe form).
+     *
+     * @param list<float> $z
+     * @param list<float> $d
+     * @return array{0: float, 1: float}
+     */
+    private static function boundaryIntersections(array $z, array $d, float $tr): array
+    {
+        $a = self::dot($d, $d);
+        $b = 2.0 * self::dot($z, $d);
+        $c = self::dot($z, $z) - $tr * $tr;
+        $sqrtDisc = sqrt($b * $b - 4.0 * $a * $c);
+        $aux = $b + ($b >= 0.0 ? $sqrtDisc : -$sqrtDisc);   // copysign(sqrt_disc, b)
+        $ta = -$aux / (2.0 * $a);
+        $tb = -2.0 * $c / $aux;
+
+        return $ta <= $tb ? [$ta, $tb] : [$tb, $ta];
+    }
+
+    /**
+     * Dogleg subproblem (scipy DoglegSubproblem.solve). Requires a positive-definite Hessian.
+     *
+     * @param list<float> $g
+     * @param list<list<float>> $H
+     * @return array{0: list<float>, 1: bool}
+     */
+    private static function subDogleg(array $g, array $H, float $tr): array
+    {
+        $n = count($g);
+        [$U, $info] = self::cholUpper($H);
+        if ($info !== 0) {
+            throw new \RuntimeException('Hessian is not positive definite.');
+        }
+        $pBest = self::choSolveUpper($U, self::neg($g));   // Newton point -H^{-1} g
+        if (self::norm2($pBest) < $tr) {
+            return [$pBest, false];
+        }
+        $Bg = self::matvec($H, $g);
+        $pu = self::scale(-self::dot($g, $g) / self::dot($g, $Bg), $g);   // Cauchy point
+        $puNorm = self::norm2($pu);
+        if ($puNorm >= $tr) {
+            return [self::scale($tr / $puNorm, $pu), true];
+        }
+        $diff = self::sub($pBest, $pu);
+        [, $tb] = self::boundaryIntersections($pu, $diff, $tr);
+
+        return [self::axpy($tb, $diff, $pu), true];
+    }
+
+    /**
+     * Steihaug conjugate-gradient subproblem (scipy CGSteihaugSubproblem.solve, Nocedal-Wright alg 7.2).
+     * Only needs Hessian-vector products; the Hessian need not be positive definite.
+     *
+     * @param list<float> $g
+     * @param callable(list<float>): list<float> $hvp
+     * @return array{0: list<float>, 1: bool}
+     */
+    private static function subSteihaug(array $g, float $tr, callable $hvp): array
+    {
+        $n = count($g);
+        $gMag = self::norm2($g);
+        $tol = min(0.5, sqrt($gMag)) * $gMag;
+        $z = array_fill(0, $n, 0.0);
+        if ($gMag < $tol) {
+            return [$z, false];
+        }
+        $r = $g;
+        $d = self::neg($r);
+        $mval = static fn (array $p): float => self::dot($g, $p) + 0.5 * self::dot($p, $hvp($p));
+        while (true) {
+            $Bd = $hvp($d);
+            $dBd = self::dot($d, $Bd);
+            if ($dBd <= 0) {
+                [$ta, $tb] = self::boundaryIntersections($z, $d, $tr);
+                $pa = self::axpy($ta, $d, $z);
+                $pb = self::axpy($tb, $d, $z);
+
+                return [$mval($pa) < $mval($pb) ? $pa : $pb, true];
+            }
+            $rSq = self::dot($r, $r);
+            $alpha = $rSq / $dBd;
+            $zNext = self::axpy($alpha, $d, $z);
+            if (self::norm2($zNext) >= $tr) {
+                [, $tb] = self::boundaryIntersections($z, $d, $tr);
+
+                return [self::axpy($tb, $d, $z), true];
+            }
+            $rNext = self::axpy($alpha, $Bd, $r);
+            $rNextSq = self::dot($rNext, $rNext);
+            if (sqrt($rNextSq) < $tol) {
+                return [$zNext, false];
+            }
+            $beta = $rNextSq / $rSq;
+            $d = self::axpy($beta, $d, self::neg($rNext));
+            $z = $zNext;
+            $r = $rNext;
+        }
+    }
+
+    /**
+     * Nearly-exact More-Sorensen subproblem (scipy IterativeSubproblem.solve). Requires the Hessian.
+     *
+     * @param list<float> $g
+     * @param list<list<float>> $H
+     * @param array{prev: float, lb: float|null} $state  carried across calls for lambda-lower-bound reuse
+     * @return array{0: list<float>, 1: bool}
+     */
+    private static function subExact(array $g, array $H, float $tr, int $maxiter, array &$state): array
+    {
+        $n = count($H);
+        $gMag = self::norm2($g);
+        $uc = 0.01;
+        $kEasy = 0.1;
+        $kHard = 0.2;
+
+        [$glb, $gub] = self::gershgorin($H);
+        $hInf = self::normInfMat($H);
+        $hFro = self::normFro($H);
+        $closeToZero = $n * self::EPS * $hInf;
+
+        $diag = [];
+        for ($i = 0; $i < $n; $i++) {
+            $diag[] = $H[$i][$i];
+        }
+        $minDiag = min($diag);
+
+        $lub = max(0.0, $gMag / $tr + min(-$glb, $hFro, $hInf));
+        $llb = max(0.0, -$minDiag, $gMag / $tr - min($gub, $hFro, $hInf));
+        if ($tr < $state['prev'] && $state['lb'] !== null) {
+            $llb = max($state['lb'], $llb);
+        }
+        $lam = ($llb == 0.0) ? 0.0 : max(sqrt($llb * $lub), $llb + $uc * ($lub - $llb));
+
+        $hits = true;
+        $alreadyFactorized = false;
+        $it = 0;
+        $p = array_fill(0, $n, 0.0);
+        $Hl = [];
+        $U = [];
+        $info = 0;
+        while ($it < $maxiter) {
+            if ($alreadyFactorized) {
+                $alreadyFactorized = false;
+            } else {
+                $Hl = self::addDiag($H, $lam);
+                [$U, $info] = self::cholUpper($Hl);
+            }
+            $it++;
+
+            if ($info === 0 && $gMag > $closeToZero) {
+                $p = self::choSolveUpper($U, self::neg($g));
+                $pNorm = self::norm2($p);
+                if ($pNorm <= $tr && $lam == 0.0) {
+                    $hits = false;
+                    break;
+                }
+                $w = self::solveTriangularUpperTrans($U, $p);   // U^T w = p
+                $wNorm = self::norm2($w);
+                $deltaLam = ($pNorm / $wNorm) ** 2 * ($pNorm - $tr) / $tr;
+                $lamNew = $lam + $deltaLam;
+
+                if ($pNorm < $tr) {   // inside the boundary (hard case handling)
+                    [$sMin, $zMin] = self::smallestSingular($U);
+                    [$ta, $tb] = self::boundaryIntersections($p, $zMin, $tr);
+                    $stepLen = (abs($ta) <= abs($tb)) ? $ta : $tb;
+                    $quadTerm = self::dot($p, self::matvec($H, $p));
+                    $relErr = ($stepLen ** 2 * $sMin ** 2) / ($quadTerm + $lam * $tr ** 2);
+                    if ($relErr <= $kHard) {
+                        $p = self::axpy($stepLen, $zMin, $p);
+                        break;
+                    }
+                    $lub = $lam;
+                    $llb = max($llb, $lam - $sMin ** 2);
+                    $Hl = self::addDiag($H, $lamNew);
+                    [$c, $info] = self::cholUpper($Hl);
+                    if ($info === 0) {
+                        $lam = $lamNew;
+                        $alreadyFactorized = true;
+                        $U = $c;
+                    } else {
+                        $llb = max($llb, $lamNew);
+                        $lam = max(sqrt(abs($llb * $lub)), $llb + $uc * ($lub - $llb));
+                    }
+                } else {   // outside the boundary
+                    $relErr = abs($pNorm - $tr) / $tr;
+                    if ($relErr <= $kEasy) {
+                        break;
+                    }
+                    $llb = $lam;
+                    $lam = $lamNew;
+                }
+            } elseif ($info === 0 && $gMag <= $closeToZero) {
+                if ($lam == 0.0) {
+                    $p = array_fill(0, $n, 0.0);
+                    $hits = false;
+                    break;
+                }
+                [$sMin, $zMin] = self::smallestSingular($U);
+                $p = self::scale($tr, $zMin);
+                if ($tr ** 2 * $sMin ** 2 <= $kHard * $lam * $tr ** 2) {
+                    break;
+                }
+                $lub = $lam;
+                $llb = max($llb, $lam - $sMin ** 2);
+                $lam = max(sqrt($llb * $lub), $llb + $uc * ($lub - $llb));
+            } else {   // unsuccessful factorization at leading minor $info
+                [$delta, $v] = self::singularLeadingSubmatrix($Hl, $U, $info);
+                $vNorm = self::norm2($v);
+                $llb = max($llb, $lam + $delta / ($vNorm ** 2));
+                $lam = max(sqrt(abs($llb * $lub)), $llb + $uc * ($lub - $llb));
+            }
+        }
+
+        $state['lb'] = $llb;
+        $state['prev'] = $tr;
+
+        return [$p, $hits];
+    }
+
+    /**
+     * Upper-triangular Cholesky H = U^T U with LAPACK potrf(clean=True) semantics: returns [U, info].
+     * On success info === 0; on a non-PD leading minor k (1-based), info === k and the leading
+     * (k-1)x(k-1) block of U is a valid factor (upper entries above it zeroed, as clean=True).
+     *
+     * @param list<list<float>> $A
+     * @return array{0: list<list<float>>, 1: int}
+     */
+    private static function cholUpper(array $A): array
+    {
+        $n = count($A);
+        $U = [];
+        for ($i = 0; $i < $n; $i++) {
+            $U[] = array_fill(0, $n, 0.0);
+        }
+        for ($j = 0; $j < $n; $j++) {
+            $s = $A[$j][$j];
+            for ($k = 0; $k < $j; $k++) {
+                $s -= $U[$k][$j] * $U[$k][$j];
+            }
+            if ($s <= 0.0) {
+                return [$U, $j + 1];   // 1-based leading minor that failed
+            }
+            $ujj = sqrt($s);
+            $U[$j][$j] = $ujj;
+            for ($i = $j + 1; $i < $n; $i++) {
+                $t = $A[$j][$i];
+                for ($k = 0; $k < $j; $k++) {
+                    $t -= $U[$k][$j] * $U[$k][$i];
+                }
+                $U[$j][$i] = $t / $ujj;
+            }
+        }
+
+        return [$U, 0];
+    }
+
+    /**
+     * Solve H x = b given the upper Cholesky factor U (H = U^T U): forward solve U^T y = b, back solve U x = y.
+     *
+     * @param list<list<float>> $U
+     * @param list<float> $b
+     * @return list<float>
+     */
+    private static function choSolveUpper(array $U, array $b): array
+    {
+        $n = count($U);
+        $y = array_fill(0, $n, 0.0);
+        for ($i = 0; $i < $n; $i++) {   // forward: U^T y = b
+            $s = $b[$i];
+            for ($k = 0; $k < $i; $k++) {
+                $s -= $U[$k][$i] * $y[$k];
+            }
+            $y[$i] = $s / $U[$i][$i];
+        }
+        $x = array_fill(0, $n, 0.0);
+        for ($i = $n - 1; $i >= 0; $i--) {   // back: U x = y
+            $s = $y[$i];
+            for ($k = $i + 1; $k < $n; $k++) {
+                $s -= $U[$i][$k] * $x[$k];
+            }
+            $x[$i] = $s / $U[$i][$i];
+        }
+
+        return $x;
+    }
+
+    /**
+     * Solve U^T w = p for w (scipy solve_triangular(U, p, trans='T')).
+     *
+     * @param list<list<float>> $U
+     * @param list<float> $p
+     * @return list<float>
+     */
+    private static function solveTriangularUpperTrans(array $U, array $p): array
+    {
+        $n = count($U);
+        $w = array_fill(0, $n, 0.0);
+        for ($i = 0; $i < $n; $i++) {
+            $s = $p[$i];
+            for ($k = 0; $k < $i; $k++) {
+                $s -= $U[$k][$i] * $w[$k];
+            }
+            $w[$i] = $s / $U[$i][$i];
+        }
+
+        return $w;
+    }
+
+    /**
+     * Solve U x = b for an upper-triangular U (scipy solve_triangular, no transpose).
+     *
+     * @param list<list<float>> $U
+     * @param list<float> $b
+     * @return list<float>
+     */
+    private static function solveTriangularUpper(array $U, array $b): array
+    {
+        $n = count($U);
+        $x = array_fill(0, $n, 0.0);
+        for ($i = $n - 1; $i >= 0; $i--) {
+            $s = $b[$i];
+            for ($k = $i + 1; $k < $n; $k++) {
+                $s -= $U[$i][$k] * $x[$k];
+            }
+            $x[$i] = $s / $U[$i][$i];
+        }
+
+        return $x;
+    }
+
+    /**
+     * Estimate the smallest singular value of upper-triangular U and its right singular vector
+     * (scipy estimate_smallest_singular_value; Cline et al. 1979 condition estimator).
+     *
+     * @param list<list<float>> $U
+     * @return array{0: float, 1: list<float>}
+     */
+    private static function smallestSingular(array $U): array
+    {
+        $n = count($U);
+        $p = array_fill(0, $n, 0.0);
+        $w = array_fill(0, $n, 0.0);
+        for ($k = 0; $k < $n; $k++) {
+            $ukk = $U[$k][$k];   // U.T[k,k] == U[k,k]
+            $wp = (1.0 - $p[$k]) / $ukk;
+            $wm = (-1.0 - $p[$k]) / $ukk;
+            $ppSum = 0.0;
+            $pmSum = 0.0;
+            $pp = [];
+            $pm = [];
+            for ($j = $k + 1; $j < $n; $j++) {
+                $ujk = $U[$k][$j];   // U.T[j,k] == U[k,j]
+                $ppv = $p[$j] + $ujk * $wp;
+                $pmv = $p[$j] + $ujk * $wm;
+                $pp[$j] = $ppv;
+                $pm[$j] = $pmv;
+                $ppSum += abs($ppv);
+                $pmSum += abs($pmv);
+            }
+            if (abs($wp) + $ppSum >= abs($wm) + $pmSum) {
+                $w[$k] = $wp;
+                for ($j = $k + 1; $j < $n; $j++) {
+                    $p[$j] = $pp[$j];
+                }
+            } else {
+                $w[$k] = $wm;
+                for ($j = $k + 1; $j < $n; $j++) {
+                    $p[$j] = $pm[$j];
+                }
+            }
+        }
+        $v = self::solveTriangularUpper($U, $w);
+        $vNorm = self::norm2($v);
+        $wNorm = self::norm2($w);
+
+        return [$wNorm / $vNorm, self::scale(1.0 / $vNorm, $v)];
+    }
+
+    /**
+     * The term that makes the leading k-by-k submatrix of A singular (scipy singular_leading_submatrix).
+     *
+     * @param list<list<float>> $A
+     * @param list<list<float>> $U
+     * @return array{0: float, 1: list<float>}
+     */
+    private static function singularLeadingSubmatrix(array $A, array $U, int $k): array
+    {
+        $n = count($A);
+        $delta = -$A[$k - 1][$k - 1];
+        for ($i = 0; $i < $k - 1; $i++) {
+            $delta += $U[$i][$k - 1] ** 2;
+        }
+        $v = array_fill(0, $n, 0.0);
+        $v[$k - 1] = 1.0;
+        if ($k !== 1) {
+            // solve U[:k-1,:k-1] x = -U[:k-1,k-1]
+            $sub = [];
+            $rhs = [];
+            for ($i = 0; $i < $k - 1; $i++) {
+                $row = [];
+                for ($j = 0; $j < $k - 1; $j++) {
+                    $row[] = $U[$i][$j];
+                }
+                $sub[] = $row;
+                $rhs[] = -$U[$i][$k - 1];
+            }
+            $x = self::solveTriangularUpper($sub, $rhs);
+            for ($i = 0; $i < $k - 1; $i++) {
+                $v[$i] = $x[$i];
+            }
+        }
+
+        return [$delta, $v];
+    }
+
+    /**
+     * Gregoshgorin bounds [lb, ub] for the eigenvalues of symmetric H (scipy gershgorin_bounds).
+     *
+     * @param list<list<float>> $H
+     * @return array{0: float, 1: float}
+     */
+    private static function gershgorin(array $H): array
+    {
+        $n = count($H);
+        $lb = INF;
+        $ub = -INF;
+        for ($i = 0; $i < $n; $i++) {
+            $d = $H[$i][$i];
+            $rowSum = 0.0;
+            for ($j = 0; $j < $n; $j++) {
+                $rowSum += abs($H[$i][$j]);
+            }
+            $lb = min($lb, $d + abs($d) - $rowSum);
+            $ub = max($ub, $d - abs($d) + $rowSum);
+        }
+
+        return [$lb, $ub];
+    }
+
+    /** Induced infinity-norm of a matrix (max absolute row sum), == scipy norm(H, inf). */
+    private static function normInfMat(array $H): float
+    {
+        $m = 0.0;
+        foreach ($H as $row) {
+            $s = 0.0;
+            foreach ($row as $v) {
+                $s += abs($v);
+            }
+            $m = max($m, $s);
+        }
+
+        return $m;
+    }
+
+    /** Frobenius norm of a matrix (scipy norm(H, 'fro')). */
+    private static function normFro(array $H): float
+    {
+        $s = 0.0;
+        foreach ($H as $row) {
+            foreach ($row as $v) {
+                $s += $v * $v;
+            }
+        }
+
+        return sqrt($s);
+    }
+
+    /**
+     * Return H + lambda * I.
+     *
+     * @param list<list<float>> $H
+     * @return list<list<float>>
+     */
+    private static function addDiag(array $H, float $lam): array
+    {
+        $out = $H;
+        $n = count($H);
+        for ($i = 0; $i < $n; $i++) {
+            $out[$i][$i] += $lam;
+        }
+
+        return $out;
     }
 }
