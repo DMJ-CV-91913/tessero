@@ -86,6 +86,13 @@ final class SolveIvp
             for ($i = 0; $i < $n0; $i++) { $row = []; foreach ($colsR as $cc) { $row[] = $cc[$i]; } $ysolR[] = $row; }
             return ['t' => array_map('floatval', array_values($tEval)), 'y' => $ysolR];
         }
+        if (strtoupper($method) === 'LSODA') {
+            $n0 = count($y0v);
+            $colsL = self::solveLsoda($fun, (float) $tSpan[0], (float) $tSpan[1], $y0v, array_map('floatval', array_values($tEval)), $rtol, $atol);
+            $ysolL = [];
+            for ($i = 0; $i < $n0; $i++) { $row = []; foreach ($colsL as $cc) { $row[] = $cc[$i]; } $ysolL[] = $row; }
+            return ['t' => array_map('floatval', array_values($tEval)), 'y' => $ysolL];
+        }
 
         [$C, $A, $B, $E, $P, $nStages, $errOrder] = self::tableau($method);
         $y0 = is_array($y0) ? array_values(array_map('floatval', $y0)) : [(float) $y0];
@@ -1389,6 +1396,163 @@ final class SolveIvp
         $bits = unpack('Q', pack('d', $x))[1];
         if (($dir > $x) === ($x > 0)) { $bits++; } else { $bits--; }
         return unpack('d', pack('Q', $bits))[1];
+    }
+
+    // =====================================================================================
+    // scipy.integrate.solve_ivp method='LSODA' (ODEPACK dlsoda) + scipy.integrate.odeint.
+    //
+    // LSODA is the Livermore solver with automatic method switching: it integrates with the
+    // nonstiff Adams-Moulton family while the problem is nonstiff, and switches to the stiff
+    // BDF family when stiffness is detected (and back). scipy's _ivp/lsoda.py is a thin wrapper
+    // over the compiled Fortran ODEPACK dlsoda; odeint wraps the same Fortran with the same
+    // defaults. The exact Fortran step/order/switch *sequence* is not reproducible in PHP (same
+    // class of problem as FITPACK/UnivariateSpline), so this implementation does NOT attempt to
+    // bit-match dlsoda's internal trajectory at loose tolerances. Instead it reproduces LSODA's
+    // DEFINING behaviour -- automatic stiff/nonstiff method selection -- via a continuous
+    // stiffness scan, routing the nonstiff regime to the validated explicit high-order path
+    // (solveDop853) and the stiff regime to the validated implicit BDF path (solveBdf). At the
+    // tolerances used by the parity fixtures (rtol<=1e-10) every convergent integrator agrees
+    // with dlsoda's output to within the comparison threshold (1e-9 + 1e-6*|y|), because the
+    // method distinction affects efficiency, not the converged solution. See the LSODA fixtures.
+    // =====================================================================================
+
+    /**
+     * LSODA driver: detect stiffness across the integration interval, then integrate the whole
+     * span with the appropriate validated engine (BDF when stiff, DOP853 when nonstiff).
+     *
+     * @param callable(float, list<float>): (list<float>|float) $fun
+     * @param list<float> $y0
+     * @param list<float> $tEval
+     * @return list<list<float>>  one column (state vector) per t_eval point
+     */
+    private static function solveLsoda(callable $fun, float $t0, float $tf, array $y0, array $tEval, float $rtol, float $atol): array
+    {
+        $n = count($y0);
+        $call = static function (float $t, array $y) use ($fun, $n): array {
+            $r = $fun($t, $y); $r = is_array($r) ? array_values($r) : [$r]; $o = [];
+            foreach ($r as $v) { $o[] = (float) $v; }
+            if (count($o) !== $n) { throw new \RuntimeException('solve_ivp: RHS returned ' . count($o) . ' components, expected ' . $n); }
+            return $o;
+        };
+        $stiff = self::lsodaDetectStiff($call, $t0, $tf, $y0, $rtol, $atol, $n);
+        $tSpan = [$t0, $tf];
+        if ($stiff) {
+            return self::solveBdf($call, $t0, $tf, $y0, $tEval, $rtol, $atol);
+        }
+        return self::solveDop853($call, $t0, $tf, $y0, $tEval, $rtol, $atol);
+    }
+
+    /**
+     * Continuous stiffness scan. Integrate a cheap robust pre-pass (BDF at coarse tol) to obtain
+     * representative states along the trajectory, estimate the dominant Jacobian eigenvalue at
+     * each sample by power iteration, and declare the problem stiff if max|lambda| * |t_span|
+     * exceeds a threshold (i.e. the fastest mode decays on a timescale far shorter than the span).
+     * This mirrors LSODA switching to BDF whenever the nonstiff method would be step-limited by
+     * stability rather than accuracy.
+     *
+     * @param callable(float, list<float>): list<float> $call
+     * @param list<float> $y0
+     */
+    private static function lsodaDetectStiff(callable $call, float $t0, float $tf, array $y0, float $rtol, float $atol, int $n): bool
+    {
+        if ($tf === $t0) { return false; }
+        $span = abs($tf - $t0);
+        $k = 8;
+        $probeTs = [];
+        for ($i = 0; $i <= $k; $i++) { $probeTs[] = $t0 + ($tf - $t0) * ($i / $k); }
+        // Cheap robust pre-pass to sample the trajectory (coarse tol; BDF handles any stiffness).
+        try {
+            $pre = self::solveBdf($call, $t0, $tf, $y0, $probeTs, max($rtol, 1e-6), max($atol, 1e-9));
+        } catch (\Throwable $e) {
+            // Pre-pass failed to converge non-stiffly -> treat as stiff.
+            return true;
+        }
+        $maxRho = 0.0;
+        for ($c = 0; $c <= $k; $c++) {
+            $yy = [];
+            for ($i = 0; $i < $n; $i++) { $yy[$i] = $pre[$c][$i]; }
+            $tt = $probeTs[$c];
+            $ff = $call($tt, $yy);
+            $J = self::lsodaNumJac($call, $tt, $yy, $ff, $n);
+            // dominant |eigenvalue| via power iteration on J (real spectral-radius proxy)
+            $v = array_fill(0, $n, 1.0);
+            $lam = 0.0;
+            for ($it = 0; $it < 12; $it++) {
+                $w = array_fill(0, $n, 0.0);
+                for ($a = 0; $a < $n; $a++) { for ($b = 0; $b < $n; $b++) { $w[$a] += $J[$a][$b] * $v[$b]; } }
+                $nw = 0.0;
+                for ($a = 0; $a < $n; $a++) { $nw += $w[$a] * $w[$a]; }
+                $nw = sqrt($nw);
+                if ($nw === 0.0) { break; }
+                for ($a = 0; $a < $n; $a++) { $v[$a] = $w[$a] / $nw; }
+                $lam = $nw;
+            }
+            $rho = $lam * $span;
+            if ($rho > $maxRho) { $maxRho = $rho; }
+        }
+        return $maxRho > 25.0;
+    }
+
+    /**
+     * Simple forward-difference Jacobian for the stiffness scan (independent of the BDF num_jac
+     * factor machinery; used only for the eigenvalue estimate, not for the integration itself).
+     *
+     * @param callable(float, list<float>): list<float> $call
+     * @param list<float> $y
+     * @param list<float> $f
+     * @return list<list<float>>
+     */
+    private static function lsodaNumJac(callable $call, float $t, array $y, array $f, int $n): array
+    {
+        $J = [];
+        for ($i = 0; $i < $n; $i++) { $J[$i] = array_fill(0, $n, 0.0); }
+        $eps = sqrt(PHP_FLOAT_EPSILON);
+        for ($j = 0; $j < $n; $j++) {
+            $d = $eps * max(1.0, abs($y[$j]));
+            if ($d === 0.0) { $d = $eps; }
+            $yp = $y; $yp[$j] += $d;
+            $fp = $call($t, $yp);
+            for ($i = 0; $i < $n; $i++) { $J[$i][$j] = ($fp[$i] - $f[$i]) / $d; }
+        }
+        return $J;
+    }
+
+    /**
+     * scipy.integrate.odeint(func, y0, t, tfirst=False): legacy ODE interface over the same
+     * ODEPACK dlsoda engine as solve_ivp(method='LSODA'). Integrates from t[0] through the t
+     * array (which may be non-monotonic in scipy, but here we require a monotone t as odeint's
+     * defaults do) and returns y evaluated at every t, shaped (len(t), n) -- matching scipy's
+     * returned array orientation (rows = time points, columns = state components).
+     *
+     * @param callable(float, list<float>): (list<float>|float)|callable(list<float>, float): (list<float>|float) $func
+     * @param list<float>|float $y0
+     * @param list<float> $t
+     * @return list<list<float>>  shape (len(t), n), like scipy odeint output
+     */
+    public static function odeint(callable $func, array|float $y0, array $t, bool $tfirst = false, float $rtol = 1.49012e-8, float $atol = 1.49012e-8): array
+    {
+        $y0v = is_array($y0) ? array_values(array_map('floatval', $y0)) : [(float) $y0];
+        $tv = array_map('floatval', array_values($t));
+        $m = count($tv);
+        if ($m === 0) { return []; }
+        // Normalise to fun(t, y) regardless of tfirst (scipy odeint default is func(y, t)).
+        $fun = $tfirst
+            ? $func
+            : static function (float $tt, array $yy) use ($func) { return $func($yy, $tt); };
+        $t0 = $tv[0];
+        $tf = $tv[$m - 1];
+        // solve over [t0, tf] with LSODA, evaluating at the supplied t grid.
+        $res = self::solve($fun, [$t0, $tf], $y0v, $tv, 'LSODA', $rtol, $atol);
+        // res['y'] is (n x m); odeint returns (m x n).
+        $yMat = $res['y'];
+        $n = count($yMat);
+        $out = [];
+        for ($r = 0; $r < $m; $r++) {
+            $row = [];
+            for ($i = 0; $i < $n; $i++) { $row[] = $yMat[$i][$r]; }
+            $out[] = $row;
+        }
+        return $out;
     }
 
 }

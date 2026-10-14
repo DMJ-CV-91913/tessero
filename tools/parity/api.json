@@ -9165,6 +9165,9 @@
                 "sig": "nsum(callable $f, float $a, ?float $b = null, float $step = 1.0): array",
                 "doc": ""
             }
+        ],
+        "constants": [
+            "EPS"
         ]
     },
     {
@@ -9272,6 +9275,12 @@
                 "static": true,
                 "sig": "solve(callable $fun, array $tSpan, array|float $y0, array $tEval, string $method = 'RK45', float $rtol = 0.001, float $atol = 1.0E-6): array",
                 "doc": ""
+            },
+            {
+                "name": "odeint",
+                "static": true,
+                "sig": "odeint(callable $func, array|float $y0, array $t, bool $tfirst = false, float $rtol = 1.49012E-8, float $atol = 1.49012E-8): array",
+                "doc": "scipy.integrate.odeint(func, y0, t, tfirst=False): legacy ODE interface over the same ODEPACK dlsoda engine as solve_ivp(method='LSODA'). Integrates from t[0] through the t array (which may be non-monotonic in scipy, but here we require a monotone t as odeint's defaults do) and returns y evaluated at every t, shaped (len(t), n) -- matching scipy's returned array orientation (rows = time points, columns = state components)."
             }
         ],
         "constants": [
@@ -9289,6 +9298,62 @@
             "RADAU_NEWTON_MAXITER",
             "RADAU_MIN_FACTOR",
             "RADAU_MAX_FACTOR"
+        ]
+    },
+    {
+        "class": "Tessero\\Integrate\\SolveBvp",
+        "methods": [
+            {
+                "name": "solve",
+                "static": true,
+                "sig": "solve(callable $fun, callable $bc, array $x, array $y, ?array $p = null, float $tol = 0.001, int $maxNodes = 1000, ?float $bcTol = null): array",
+                "doc": "x: list<float>, y: list<list<float>>, yp: list<list<float>>, p: list<float>|null, rms_residuals: list<float>, niter: int, status: int, success: bool, c: list<list<list<float>>> }  c = spline coeffs (4,n,m-1) for sol() evaluation"
+            },
+            {
+                "name": "sol",
+                "static": true,
+                "sig": "sol(array $result, array $xq, array $meshX, int $nu = 0): array",
+                "doc": "Evaluate the solution spline at query points (scipy res.sol(x))."
+            }
+        ],
+        "constants": [
+            "EPS"
+        ]
+    },
+    {
+        "class": "Tessero\\Integrate\\Lebedev",
+        "methods": [
+            {
+                "name": "lebedevRule",
+                "static": true,
+                "sig": "lebedevRule(int $n): array",
+                "doc": "Sample points and weights for Lebedev quadrature of order $n."
+            }
+        ],
+        "constants": [
+            "TABLES"
+        ]
+    },
+    {
+        "class": "Tessero\\Integrate\\Cubature",
+        "methods": [
+            {
+                "name": "cubature",
+                "static": true,
+                "sig": "cubature(callable $f, array $a, array $b, string $rule = 'gk21', float $rtol = 1.0E-8, float $atol = 0.0, int $maxSubdivisions = 10000): array",
+                "doc": "Integrate $f over the box [$a, $b] (elementwise lower/upper limits)."
+            }
+        ],
+        "constants": [
+            "EPS",
+            "GK21_NODES",
+            "GK21_WEIGHTS",
+            "GK15_NODES",
+            "GK15_WEIGHTS",
+            "GL10_NODES",
+            "GL10_WEIGHTS",
+            "GL7_NODES",
+            "GL7_WEIGHTS"
         ]
     },
     {
