@@ -609,6 +609,32 @@ function makeTerm(string $kind, array $p): callable {   // scipy.integrate.nsum 
 }
 
 
+/** Rebuild a named bootstrap / monte_carlo_test statistic (scipy.stats fixtures) as a callable. */
+function makeStat(string $kind): callable
+{
+    return match ($kind) {
+        'mean'     => static fn (array $x): float => array_sum($x) / count($x),
+        'std'      => static function (array $x): float {
+            $m = array_sum($x) / count($x); $s = 0.0;
+            foreach ($x as $v) { $d = $v - $m; $s += $d * $d; }
+            return sqrt($s / count($x));
+        },
+        'median'   => static function (array $x): float {
+            $s = $x; sort($s); $n = count($s);
+            return $n % 2 ? (float) $s[intdiv($n, 2)] : ($s[$n / 2 - 1] + $s[$n / 2]) / 2.0;
+        },
+        'diffmean' => static fn (array $a, array $b): float => array_sum($a) / count($a) - array_sum($b) / count($b),
+        'range'    => static fn (array $x): float => max($x) - min($x),
+        'skew'     => static function (array $x): float {
+            $n = count($x); $m = array_sum($x) / $n; $m2 = 0.0; $m3 = 0.0;
+            foreach ($x as $v) { $d = $v - $m; $m2 += $d * $d; $m3 += $d * $d * $d; }
+            $m2 /= $n; $m3 /= $n;
+            return $m2 == 0.0 ? 0.0 : $m3 / ($m2 ** 1.5);
+        },
+        default    => throw new \RuntimeException("unknown stat '{$kind}'"),
+    };
+}
+
 function runCall(string|object $class, string $method, array $case, string $arrayClass, float $rtol, float $atol, float &$worst): ?string
 {
     $args = array_map(static fn ($v) => decodeValue($v, $arrayClass), $case['args']);
@@ -1707,6 +1733,128 @@ foreach ($files as $file) {
         foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['orthogroup_cases'])) {                  // scipy.stats.ortho_group / special_ortho_group (pure-PHP Tessero\Stats\OrthoGroup)
+        $ogRtol = (float) ($data['tol']['rtol'] ?? 1e-9);
+        $ogAtol = (float) ($data['tol']['atol'] ?? 1e-11);
+        foreach ($data['orthogroup_cases'] as $c) {
+            $fn  = $c['fn'];
+            $key = "stats.{$fn}";
+            $checked++;
+            $w = 0.0;
+            $problem = null;
+            try {
+                $dim  = (int) $c['dim'];
+                $seed = (int) $c['seed'];
+                $m = $fn === 'special_ortho_group'
+                    ? \Tessero\Stats\OrthoGroup::rvsSpecial($dim, $seed)
+                    : \Tessero\Stats\OrthoGroup::rvs($dim, $seed);
+                $got  = method_exists($m, 'toArray') ? $m->toArray() : $m;
+                $want = $c['matrix'];
+                for ($i = 0; $i < $dim && $problem === null; $i++) {
+                    for ($j = 0; $j < $dim; $j++) {
+                        [$ok, $rel] = close((float) $got[$i][$j], (float) $want[$i][$j], $ogRtol, $ogAtol);
+                        if ($rel !== INF && $rel > $w) { $w = $rel; }
+                        if (! $ok) {
+                            $problem = sprintf('dim=%d seed=%d [%d][%d] got %.17g want %.17g',
+                                $dim, $seed, $i, $j, (float) $got[$i][$j], (float) $want[$i][$j]);
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $problem = 'threw ' . get_class($e) . ': ' . $e->getMessage();
+            }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($problem === null ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = ($results['max_rel'][$backend][$key] ?? 0.0) > $w ? ($results['max_rel'][$backend][$key] ?? 0.0) : $w;
+            if ($problem !== null) { $failures++; echo "FAIL {$key}: {$problem}\n"; }
+        }
+        continue;
+    }
+    if (isset($data['unifdir_cases'])) {                     // scipy.stats.uniform_direction (pure-PHP Tessero\Stats\UniformDirection)
+        $local = [];
+        foreach ($data['unifdir_cases'] as $c) {
+            $key = 'stats.uniform_direction';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $atol = (float) ($c['atol'] ?? 1e-11);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $rng = decodeValue($c['rng'], $arrayClass);
+                $got = \Tessero\Stats\UniformDirection::rvs((int) $c['dim'], $c['size'], $rng);
+                $gf = flattenNums($got);
+                $wf = flattenNums($c['expect']);
+                $ok = count($gf) === count($wf);
+                foreach ($wf as $i => $w) {
+                    if (! $ok) { break; }
+                    $ok = abs((float) $gf[$i] - (float) $w) <= $atol + $rtol * abs((float) $w);
+                }
+                if (! $ok) { $msg = 'values did not match scipy.stats.uniform_direction'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['bootstrap_cases']) || isset($data['montecarlo_cases'])) {   // scipy.stats.bootstrap + monte_carlo_test (pure-PHP; both may share one file)
+        $local = [];
+        foreach (($data['bootstrap_cases'] ?? []) as $c) {
+            $key = 'stats.bootstrap';
+            $rtol = (float) ($c['rtol'] ?? 1e-11);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $got = \Tessero\Stats\Bootstrap::bootstrap(
+                    array_map(static fn ($ss) => array_map('floatval', $ss), $c['data']),
+                    makeStat($c['stat']),
+                    (int) $c['n_resamples'],
+                    (string) $c['method'],
+                    (float) ($c['confidence_level'] ?? 0.95),
+                    (string) ($c['alternative'] ?? 'two-sided'),
+                    (int) $c['seed']
+                );
+                [$lo, $hi] = $got['confidence_interval'];
+                $e = $c['expect'];
+                $eLow = $e['low'] === null ? -INF : (float) $e['low'];
+                $eHigh = $e['high'] === null ? INF : (float) $e['high'];
+                $cl = is_infinite($eLow) ? ($lo === $eLow) : abs($lo - $eLow) <= $rtol * (1 + abs($eLow));
+                $ch = is_infinite($eHigh) ? ($hi === $eHigh) : abs($hi - $eHigh) <= $rtol * (1 + abs($eHigh));
+                $cse = abs($got['standard_error'] - (float) $e['se']) <= $rtol * (1 + abs((float) $e['se']));
+                $ok = $cl && $ch && $cse;
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $ex) { $msg = $ex->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key} ({$c['name']}): {$msg}\n"; }
+        }
+        foreach (($data['montecarlo_cases'] ?? []) as $c) {
+            $key = 'stats.monte_carlo_test';
+            $rtol = (float) ($c['rtol'] ?? 1e-11);
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $gen = \Tessero\Random\Generator::defaultRng((int) $c['seed']);
+                $rvs = [\Tessero\Stats\MonteCarloTest::makeRvs($gen, (string) $c['rvs'], $c['params'] ?? [])];
+                $got = \Tessero\Stats\MonteCarloTest::monteCarloTest(
+                    array_map(static fn ($ss) => array_map('floatval', $ss), $c['data']),
+                    $rvs,
+                    makeStat($c['stat']),
+                    (int) $c['n_resamples'],
+                    (string) ($c['alternative'] ?? 'two-sided')
+                );
+                $e = $c['expect'];
+                $os = abs($got['statistic'] - (float) $e['statistic']) <= $rtol * (1 + abs((float) $e['statistic']));
+                $op = abs($got['pvalue'] - (float) $e['pvalue']) <= 1e-12;
+                $ok = $os && $op;
+                if (! $ok) { $msg = 'did not match scipy'; }
+            } catch (\Throwable $ex) { $msg = $ex->getMessage(); }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key} ({$c['name']}): {$msg}\n"; }
+        }
+        foreach ($local as $k => $sx) { $results[$backend][$k] = $sx; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['permtest_cases'])) {               // scipy.stats.permutation_test (pure-PHP Tessero\PermutationTest, exact path)
         foreach ($data['permtest_cases'] as $c) {
             $key = 'stats.permutation_test';
@@ -1744,12 +1892,14 @@ foreach ($files as $file) {
             $ok = false; $msg = '';
             try {
                 $rv = match ($c['dist']) {
-                    'uniform' => new \Tessero\Stats\Uniform($c['params'][0], $c['params'][1]),
-                    default   => new \Tessero\Stats\Normal($c['params'][0], $c['params'][1]),
+                    'uniform'  => new \Tessero\Stats\Uniform($c['params'][0], $c['params'][1]),
+                    'logistic' => new \Tessero\Stats\Logistic($c['params'][0], $c['params'][1]),
+                    'binomial' => new \Tessero\Stats\Binomial($c['params'][0], $c['params'][1]),
+                    default    => new \Tessero\Stats\Normal($c['params'][0], $c['params'][1]),
                 };
                 $arg = $c['arg'];
                 $got = match ($c['method']) {
-                    'pdf' => $rv->pdf($arg), 'logpdf' => $rv->logpdf($arg),
+                    'pdf' => $rv->pdf($arg), 'pmf' => $rv->pmf($arg), 'logpmf' => $rv->logpmf($arg), 'logpdf' => $rv->logpdf($arg),
                     'cdf' => $rv->cdf($arg), 'logcdf' => $rv->logcdf($arg),
                     'ccdf' => $rv->ccdf($arg), 'logccdf' => $rv->logccdf($arg),
                     'icdf' => $rv->icdf($arg), 'iccdf' => $rv->iccdf($arg),
