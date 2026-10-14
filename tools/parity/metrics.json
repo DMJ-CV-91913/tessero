@@ -63,7 +63,7 @@
    "E4": 1
   },
   "scipy.sparse.linalg": {
-   "E4": 11
+   "E4": 8
   },
   "scipy.spatial": {
    "E7": 3
@@ -102,20 +102,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1476,
-   "excluded": 74,
-   "impl_ext": 1476,
-   "impl_ffi": 1476,
-   "in_scope": 1488,
+   "both": 1479,
+   "excluded": 71,
+   "impl_ext": 1479,
+   "impl_ffi": 1479,
+   "in_scope": 1491,
    "m2_ext": 99.2,
    "m2_ffi": 99.2,
-   "m3": 4.7,
+   "m3": 4.5,
    "m4_ext": 99.2,
    "m4_ffi": 99.2,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1476,
-   "verified_ffi": 1476
+   "verified_ext": 1479,
+   "verified_ffi": 1479
   }
  },
  "modules": {
@@ -568,20 +568,20 @@
    "verified_ffi": 22
   },
   "scipy.sparse.linalg": {
-   "both": 27,
-   "excluded": 11,
-   "impl_ext": 27,
-   "impl_ffi": 27,
-   "in_scope": 27,
+   "both": 30,
+   "excluded": 8,
+   "impl_ext": 30,
+   "impl_ffi": 30,
+   "in_scope": 30,
    "m2_ext": 100.0,
    "m2_ffi": 100.0,
-   "m3": 28.9,
+   "m3": 21.1,
    "m4_ext": 100.0,
    "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 38,
-   "verified_ext": 27,
-   "verified_ffi": 27
+   "verified_ext": 30,
+   "verified_ffi": 30
   },
   "scipy.spatial": {
    "both": 15,
@@ -675,12 +675,12 @@
  "usage": {
   "all": {
    "calls": 42548,
-   "covered_both": 40157,
-   "covered_ext": 40157,
-   "covered_ffi": 40157,
-   "excluded_calls": 2388,
+   "covered_both": 40160,
+   "covered_ext": 40160,
+   "covered_ffi": 40160,
+   "excluded_calls": 2385,
    "excluded_share": 5.6,
-   "in_scope_calls": 40160,
+   "in_scope_calls": 40163,
    "top": {
     "100": {
      "both": 100,
@@ -754,12 +754,12 @@
    },
    "SciPy": {
     "calls": 2748,
-    "covered_both": 2359,
-    "covered_ext": 2359,
-    "covered_ffi": 2359,
-    "excluded_calls": 386,
-    "excluded_share": 14.0,
-    "in_scope_calls": 2362,
+    "covered_both": 2362,
+    "covered_ext": 2362,
+    "covered_ffi": 2362,
+    "excluded_calls": 383,
+    "excluded_share": 13.9,
+    "in_scope_calls": 2365,
     "top": {
      "100": {
       "both": 100,
