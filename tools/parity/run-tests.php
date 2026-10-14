@@ -2528,6 +2528,100 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+  if (isset($data['slerp_cases'])) {                       // scipy.spatial.transform.Slerp (pure-PHP)
+      $local = [];
+      $slerp = '\\Tessero\\Spatial\\Transform\\Slerp';
+      $rotc  = '\\Tessero\\Spatial\\Transform\\Rotation';
+      $close = static function (array $a, array $b, float $tol = 1e-9): bool {
+          $fa = flattenNums($a); $fb = flattenNums($b);
+          if (count($fa) !== count($fb)) return false;
+          foreach ($fa as $i => $x) { if (abs($x - $fb[$i]) > $tol + $tol * abs($fb[$i])) return false; }
+          return true;
+      };
+      foreach ($data['slerp_cases'] as $c) {
+          $key = 'spatial.transform.Slerp';
+          $checked++;
+          $ok = true; $msg = '';
+          try {
+              $sl = new $slerp($c['times'], $rotc::fromQuat($c['quat']));
+              $got = [];
+              foreach ($c['query'] as $t) { $got[] = ($sl((float) $t))->asMatrix(); }
+              $ok = $close($got, $c['matrix'], 1e-9);
+              if (! $ok) { $msg = 'interpolated matrices did not match scipy'; }
+          } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+          $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+          if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+      }
+      foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+      continue;
+  }
+
+  if (isset($data['rigid_cases'])) {                       // scipy.spatial.transform.RigidTransform (pure-PHP)
+      $local = [];
+      $rgt  = '\\Tessero\\Spatial\\Transform\\RigidTransform';
+      $rotc = '\\Tessero\\Spatial\\Transform\\Rotation';
+      $close = static function (array $a, array $b, float $tol = 1e-9): bool {
+          $fa = flattenNums($a); $fb = flattenNums($b);
+          if (count($fa) !== count($fb)) return false;
+          foreach ($fa as $i => $x) { if (abs($x - $fb[$i]) > $tol + $tol * abs($fb[$i])) return false; }
+          return true;
+      };
+      foreach ($data['rigid_cases'] as $c) {
+          $key = 'spatial.transform.RigidTransform';
+          $checked++;
+          $ok = true; $msg = '';
+          try {
+              $tf = $rgt::fromComponents($c['trans'], $rotc::fromQuat($c['quat']));
+              $tfB = $rgt::fromComponents($c['trans_b'], $rotc::fromQuat($c['quat_b']));
+              $comp = $tf->compose($tfB);
+              $ok = $close($tf->asMatrix(), $c['matrix'], 1e-12)
+                  && $close($tf->inv()->asMatrix(), $c['inv_matrix'], 1e-9)
+                  && $close($tf->apply($c['points']), $c['apply'], 1e-9)
+                  && $close($tf->apply($c['points'], true), $c['apply_inv'], 1e-9)
+                  && $close($comp->asMatrix(), $c['compose_matrix'], 1e-9)
+                  && $close($comp->apply($c['points']), $c['compose_apply'], 1e-9);
+              if (! $ok) { $msg = 'rigid transform values did not match scipy'; }
+          } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+          $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+          if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+      }
+      foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+      continue;
+  }
+
+  if (isset($data['rotspline_cases'])) {                   // scipy.spatial.transform.RotationSpline (pure-PHP)
+      $local = [];
+      $rsp  = '\\Tessero\\Spatial\\Transform\\RotationSpline';
+      $rotc = '\\Tessero\\Spatial\\Transform\\Rotation';
+      $close = static function (array $a, array $b, float $tol): bool {
+          $fa = flattenNums($a); $fb = flattenNums($b);
+          if (count($fa) !== count($fb)) return false;
+          foreach ($fa as $i => $x) { if (abs($x - $fb[$i]) > $tol + $tol * abs($fb[$i])) return false; }
+          return true;
+      };
+      foreach ($data['rotspline_cases'] as $c) {
+          $key = 'spatial.transform.RotationSpline';
+          $checked++;
+          $ok = true; $msg = '';
+          try {
+              $sp = new $rsp($c['times'], $rotc::fromQuat($c['quat']));
+              $mat = []; $rate = []; $accel = [];
+              foreach ($c['query'] as $t) {
+                  $mat[]   = ($sp((float) $t, 0))->asMatrix();
+                  $rate[]  = $sp((float) $t, 1);
+                  $accel[] = $sp((float) $t, 2);
+              }
+              $ok = $close($mat, $c['matrix'], 1e-7)
+                  && $close($rate, $c['rate'], 1e-7)
+                  && $close($accel, $c['accel'], 1e-6);
+              if (! $ok) { $msg = 'spline interpolation did not match scipy'; }
+          } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+          $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+          if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+      }
+      foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+      continue;
+  }
     if (isset($data['linearnd_cases'])) {                   // scipy.interpolate.LinearNDInterpolator (pure-PHP, 2-D barycentric over inlined Bowyer-Watson Delaunay)
         $local = [];
         $decodeNan = static fn ($v): float => (is_string($v) && strtolower($v) === 'nan') ? NAN : (float) $v;
@@ -2548,6 +2642,73 @@ foreach ($files as $file) {
                             if (is_nan($e) !== is_nan($g)) { $ok = false; $msg = 'NaN-outside-hull mismatch'; break; }
                         } elseif (abs($g - $e) > 1e-9 * (1 + abs($e))) {
                             $ok = false; $msg = 'values did not match scipy'; break;
+                        }
+                    }
+                }
+            } catch (\Throwable $ex) {
+                $ok = false; $msg = $ex->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['cloughtocher_cases'])) {               // scipy.interpolate.CloughTocher2DInterpolator (pure-PHP, 2-D C1 cubic over inlined Bowyer-Watson Delaunay)
+        $local = [];
+        $decodeNan = static fn ($v): float => (is_string($v) && strtolower($v) === 'nan') ? NAN : (float) $v;
+        foreach ($data['cloughtocher_cases'] as $c) {
+            $key = 'interpolate.CloughTocher2DInterpolator';
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $interp = new \Tessero\Interpolate\CloughTocher2DInterpolator($c['points'], $c['values']);
+                $got = flattenNums($interp->query($c['query']));
+                $exp = flattenNums($c['expect']);
+                if (count($got) !== count($exp)) {
+                    $ok = false; $msg = 'length mismatch';
+                } else {
+                    foreach ($exp as $i => $ev) {
+                        $e = $decodeNan($ev); $g = (float) $got[$i];
+                        if (is_nan($e) || is_nan($g)) {
+                            if (is_nan($e) !== is_nan($g)) { $ok = false; $msg = 'NaN-outside-hull mismatch'; break; }
+                        } elseif (abs($g - $e) > 1e-9 * (1 + abs($e))) {
+                            $ok = false; $msg = 'values did not match scipy'; break;
+                        }
+                    }
+                }
+            } catch (\Throwable $ex) {
+                $ok = false; $msg = $ex->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+
+
+    if (isset($data['aaa_cases'])) {                         // scipy.interpolate.AAA (pure-PHP greedy barycentric rational approximation over Linalg::svd)
+        $local = [];
+        foreach ($data['aaa_cases'] as $c) {
+            $key = 'interpolate.AAA';
+            $checked++;
+            $ok = true; $msg = '';
+            try {
+                $a = new \Tessero\Interpolate\AAA($c['x'], $c['y']);
+                if (isset($c['nsupport']) && count($a->supportPoints) !== (int) $c['nsupport']) {
+                    $ok = false; $msg = 'support-point count did not match scipy (' . count($a->supportPoints) . ' vs ' . (int) $c['nsupport'] . ')';
+                } else {
+                    $got = flattenNums($a->query($c['query']));
+                    $exp = flattenNums($c['expect']);
+                    if (count($got) !== count($exp)) {
+                        $ok = false; $msg = 'length mismatch';
+                    } else {
+                        foreach ($exp as $i => $ev) {
+                            $e = (float) $ev; $g = (float) $got[$i];
+                            if (abs($g - $e) > 1e-9 * (1 + abs($e))) {
+                                $ok = false; $msg = 'values did not match scipy'; break;
+                            }
                         }
                     }
                 }

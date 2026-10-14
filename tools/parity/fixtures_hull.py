@@ -64,6 +64,46 @@ for pts in explicit:
         'volume': float(h.volume),
     })
 
+# --- N-D (d>=3) general-position clouds: the N-D quickhull facet triangulation is non-unique, so
+# we compare ONLY the well-defined invariants -- the vertex SET (sorted), the solid measure (.volume)
+# and the boundary measure (.area). Deterministic random clouds in 3-D/4-D/5-D plus explicit shapes. ---
+rng_nd = np.random.default_rng(20261013)
+
+
+def _add_nd(pts):
+    arr = np.asarray(pts, dtype=float)
+    h = ConvexHull(arr)
+    cases.append({
+        'points': arr.tolist(),
+        'expect': sorted(int(v) for v in h.vertices.tolist()),
+        'area': float(h.area),      # (d-1)-measure: surface area in 3-D, ...
+        'volume': float(h.volume),  # d-measure: volume in 3-D, ...
+    })
+
+
+for _d in (3, 4, 5):
+    _made = 0
+    while _made < (4 if _d == 3 else 3):
+        _np = int(rng_nd.integers(_d + 3, 24))
+        _pts = np.round(rng_nd.uniform(-5.0, 5.0, (_np, _d)), 10)
+        if len({tuple(p) for p in _pts.tolist()}) != _np:
+            continue
+        try:
+            _add_nd(_pts)
+        except Exception:
+            continue
+        _made += 1
+
+# explicit N-D shapes with known invariants
+_add_nd([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1], [1, 1, 1]])  # unit cube
+_add_nd([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [0.25, 0.25, 0.25]])                           # tetra + interior
+_add_nd(np.vstack([np.eye(4), np.zeros(4), np.full(4, 0.1)]).tolist())                              # 4-simplex + interior
+# points on a sphere/hypersphere -> every point is a hull vertex
+_sv = rng_nd.standard_normal((28, 3)); _sv /= np.linalg.norm(_sv, axis=1, keepdims=True)
+_add_nd(np.round(_sv, 10).tolist())
+_sv4 = rng_nd.standard_normal((34, 4)); _sv4 /= np.linalg.norm(_sv4, axis=1, keepdims=True)
+_add_nd(np.round(_sv4, 10).tolist())
+
 out = {'module': 'spatial', 'scipy': __import__('scipy').__version__, 'hull_cases': cases}
 with open(OUT, 'w') as f:
     json.dump(out, f, separators=(',', ':'))

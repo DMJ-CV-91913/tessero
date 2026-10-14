@@ -7458,6 +7458,149 @@
         ]
     },
     {
+        "class": "Tessero\\Spatial\\Transform\\Slerp",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $times, Tessero\\Spatial\\Transform\\Rotation $rotations)",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Spatial\\Transform\\RigidTransform",
+        "methods": [
+            {
+                "name": "single",
+                "static": false,
+                "sig": "single(): bool",
+                "doc": ""
+            },
+            {
+                "name": "count",
+                "static": false,
+                "sig": "count(): int",
+                "doc": ""
+            },
+            {
+                "name": "fromMatrix",
+                "static": true,
+                "sig": "fromMatrix(array $matrix): self",
+                "doc": ""
+            },
+            {
+                "name": "fromRotation",
+                "static": true,
+                "sig": "fromRotation(Tessero\\Spatial\\Transform\\Rotation $rotation): self",
+                "doc": ""
+            },
+            {
+                "name": "fromTranslation",
+                "static": true,
+                "sig": "fromTranslation(array $translation): self",
+                "doc": ""
+            },
+            {
+                "name": "fromComponents",
+                "static": true,
+                "sig": "fromComponents(array $translation, Tessero\\Spatial\\Transform\\Rotation $rotation): self",
+                "doc": ""
+            },
+            {
+                "name": "identity",
+                "static": true,
+                "sig": "identity(?int $num = null): self",
+                "doc": ""
+            },
+            {
+                "name": "asMatrix",
+                "static": false,
+                "sig": "asMatrix(): array",
+                "doc": ""
+            },
+            {
+                "name": "rotation",
+                "static": false,
+                "sig": "rotation(): Tessero\\Spatial\\Transform\\Rotation",
+                "doc": ""
+            },
+            {
+                "name": "translation",
+                "static": false,
+                "sig": "translation(): array",
+                "doc": ""
+            },
+            {
+                "name": "apply",
+                "static": false,
+                "sig": "apply(array $vectors, bool $inverse = false): array",
+                "doc": ""
+            },
+            {
+                "name": "inv",
+                "static": false,
+                "sig": "inv(): self",
+                "doc": ""
+            },
+            {
+                "name": "compose",
+                "static": false,
+                "sig": "compose(self $other): self",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Spatial\\Transform\\RotationSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $times, Tessero\\Spatial\\Transform\\Rotation $rotations)",
+                "doc": ""
+            }
+        ],
+        "constants": [
+            "MAX_ITER",
+            "TOL"
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\CloughTocher2DInterpolator",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $points, array $values, float $fillValue = NAN, float $tol = 1.0E-6, int $maxiter = 400, bool $rescale = false)",
+                "doc": ""
+            },
+            {
+                "name": "query",
+                "static": false,
+                "sig": "query(array $xi): array",
+                "doc": "Interpolated value(s) at the query point(s); outside the convex hull yields the fill value (NaN)."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\AAA",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, ?float $rtol = null, int $maxTerms = 100)",
+                "doc": ""
+            },
+            {
+                "name": "query",
+                "static": false,
+                "sig": "query(array $z): array",
+                "doc": "Evaluate the barycentric rational approximant at the query point(s)."
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Datetime\\Datetime",
         "methods": [
             {
