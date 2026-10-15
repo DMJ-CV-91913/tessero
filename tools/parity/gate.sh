@@ -56,6 +56,10 @@ bash tests/e2e/preload.sh
 step "runnable examples cookbook (both backends)"
 php tools/run-examples.php --ext-so="$EXT_SO"
 
+step "composed-pipeline scenarios (both backends)"
+php -d ffi.enable=1 tools/parity/run-scenarios.php --backend=ffi
+php -d extension="$EXT_SO" tools/parity/run-scenarios.php --backend=ext
+
 if [ -z "${QUICK:-}" ]; then
     step "usage corpus is current (clones pinned tags from GitHub)"
     $PY tools/parity/usage.py --check
