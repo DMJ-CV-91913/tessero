@@ -3,7 +3,7 @@
 #   implemented  a Tessero function provides it and a fixture test verifies it on the backend(s) listed:
 #                - registry functions: automatically, from spec/*.yaml `ref:` + the fixture results;
 #                - functions that predate the registry: the `legacy` map below (test suites named per entry).
-#   excluded     one of the fixed categories E1..E7 (prompts/numpy-scipy-parity-program.md section 3.3).
+#   excluded     one of the fixed categories E1..E8 (prompts/numpy-scipy-parity-program.md section 3.3).
 #   planned      everything else, assigned to a phase by `phases` (module default) and `phase_names` (overrides).
 #
 # Aliases (two names for one object, e.g. numpy.acos / numpy.arccos) inherit the status of their canonical
@@ -17,6 +17,7 @@ categories:
   E5: file formats other than .npy, .npz and text/CSV
   E6: superseded in the reference itself
   E7: interactive, plotting or dataset helpers
+  E8: non-deterministic reference output (stochastic global optimizer or RNG-dependent result with no fixed, bit-reproducible ground truth)
 
 exclude:
   - {category: E4, module: scipy.io, names: [test, FortranEOFError, FortranFormattingError]}
@@ -60,6 +61,8 @@ exclude:
   - {category: E4, module: scipy.constants, names: [ConstantWarning]}
   - {category: E6, module: scipy.interpolate, names: [interp1d, interp2d, spline, splmake, spleval, spltopp]}
   - {category: E7, module: scipy.spatial, names: [delaunay_plot_2d, convex_hull_plot_2d, voronoi_plot_2d]}
+  - {category: E7, module: scipy.optimize, names: [linprog_verbose_callback]}
+  - {category: E8, module: scipy.stats, names: [fit]}
 
 phases:
   numpy: 4

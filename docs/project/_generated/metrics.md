@@ -18,12 +18,12 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 43 (100.0 %) | 43 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| **SciPy** | 1562 | 63 (4.0 %) | 1499 | **1497 (99.9 %)** | **1497 (99.9 %)** | 99.9 % / 99.9 % | 100.0 % |
+| **SciPy** | 1562 | 65 (4.2 %) | 1497 | **1497 (100.0 %)** | **1497 (100.0 %)** | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 336 (100.0 %) | 336 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 296 (99.7 %) | 296 (99.7 %) | 99.7 % / 99.7 % | 100.0 % |
+| &nbsp;&nbsp;scipy.stats | 303 | 7 (2.3 %) | 296 | 296 (100.0 %) | 296 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 92 (100.0 %) | 92 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.fft | 41 | 6 (14.6 %) | 35 | 35 (100.0 %) | 35 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.optimize | 71 | 5 (7.0 %) | 66 | 65 (98.5 %) | 65 (98.5 %) | 98.5 % / 98.5 % | 100.0 % |
+| &nbsp;&nbsp;scipy.optimize | 71 | 6 (8.5 %) | 65 | 65 (100.0 %) | 65 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.integrate | 33 | 5 (15.2 %) | 28 | 28 (100.0 %) | 28 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.interpolate | 56 | 2 (3.6 %) | 54 | 54 (100.0 %) | 54 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.signal | 157 | 1 (0.6 %) | 156 | 156 (100.0 %) | 156 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -56,11 +56,11 @@ Exclusions by category (definitions in `tools/parity/scope.yaml`):
 - `scipy.interpolate`: E6 2
 - `scipy.io`: E4 2
 - `scipy.linalg`: E4 5
-- `scipy.optimize`: E4 5
+- `scipy.optimize`: E4 5, E7 1
 - `scipy.signal`: E4 1
 - `scipy.sparse`: E4 15
 - `scipy.sparse.csgraph`: E2 3, E4 1
 - `scipy.sparse.linalg`: E4 5
 - `scipy.spatial`: E7 3
 - `scipy.special`: E4 5
-- `scipy.stats`: E4 6
+- `scipy.stats`: E4 6, E8 1
