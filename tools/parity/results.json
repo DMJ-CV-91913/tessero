@@ -161,6 +161,7 @@
         "interpolate.InterpolatedUnivariateSpline": "pass",
         "interpolate.KroghInterpolator": "pass",
         "interpolate.LSQBivariateSpline": "pass",
+        "interpolate.LSQSphereBivariateSpline": "pass",
         "interpolate.LSQUnivariateSpline": "pass",
         "interpolate.LinearNDInterpolator": "pass",
         "interpolate.NdBSpline": "pass",
@@ -171,6 +172,7 @@
         "interpolate.RBFInterpolator": "pass",
         "interpolate.Rbf": "pass",
         "interpolate.RectBivariateSpline": "pass",
+        "interpolate.RectSphereBivariateSpline": "pass",
         "interpolate.RegularGridInterpolator": "pass",
         "interpolate.SmoothBivariateSpline": "pass",
         "interpolate.SmoothSphereBivariateSpline": "pass",
@@ -3686,7 +3688,9 @@
             "interpolate.bisplrep": null,
             "interpolate.SmoothBivariateSpline": null,
             "interpolate.BivariateSpline": null,
-            "interpolate.SmoothSphereBivariateSpline": null
+            "interpolate.SmoothSphereBivariateSpline": null,
+            "interpolate.LSQSphereBivariateSpline": null,
+            "interpolate.RectSphereBivariateSpline": null
         },
         "ext": {
             "np.median": 0,
@@ -5529,7 +5533,9 @@
             "interpolate.bisplrep": null,
             "interpolate.SmoothBivariateSpline": null,
             "interpolate.BivariateSpline": null,
-            "interpolate.SmoothSphereBivariateSpline": null
+            "interpolate.SmoothSphereBivariateSpline": null,
+            "interpolate.LSQSphereBivariateSpline": null,
+            "interpolate.RectSphereBivariateSpline": null
         }
     },
     "ext": {
@@ -5694,6 +5700,7 @@
         "interpolate.InterpolatedUnivariateSpline": "pass",
         "interpolate.KroghInterpolator": "pass",
         "interpolate.LSQBivariateSpline": "pass",
+        "interpolate.LSQSphereBivariateSpline": "pass",
         "interpolate.LSQUnivariateSpline": "pass",
         "interpolate.LinearNDInterpolator": "pass",
         "interpolate.NdBSpline": "pass",
@@ -5704,6 +5711,7 @@
         "interpolate.RBFInterpolator": "pass",
         "interpolate.Rbf": "pass",
         "interpolate.RectBivariateSpline": "pass",
+        "interpolate.RectSphereBivariateSpline": "pass",
         "interpolate.RegularGridInterpolator": "pass",
         "interpolate.SmoothBivariateSpline": "pass",
         "interpolate.SmoothSphereBivariateSpline": "pass",

@@ -4689,10 +4689,22 @@
                 "doc": "All derivatives 0..k of a B-spline at each x (scipy.interpolate.spalde)."
             },
             {
+                "name": "spgrid",
+                "static": true,
+                "sig": "spgrid(mixed $u, mixed $v, mixed $r, mixed $s): mixed",
+                "doc": "FITPACK smoothing spline on a rectangular grid over a sphere: knots tu, tv and coefficients c (scipy.interpolate.RectSphereBivariateSpline)."
+            },
+            {
                 "name": "spherfit",
                 "static": true,
                 "sig": "spherfit(mixed $teta, mixed $phi, mixed $r, mixed $w, mixed $s, mixed $eps): mixed",
                 "doc": "FITPACK sphere smoothing spline (sphere): knots tt, tp and coefficients c for smoothing s>=0 (scipy.interpolate.SmoothSphereBivariateSpline)."
+            },
+            {
+                "name": "spherfitLsq",
+                "static": true,
+                "sig": "spherfitLsq(mixed $teta, mixed $phi, mixed $r, mixed $w, mixed $tt, mixed $tp, mixed $eps): mixed",
+                "doc": "FITPACK sphere least-squares spline with given knots tt, tp: coefficients c (scipy.interpolate.LSQSphereBivariateSpline)."
             },
             {
                 "name": "splantider",
@@ -10193,6 +10205,52 @@
                 "name": "__construct",
                 "static": false,
                 "sig": "__construct(array $theta, array $phi, array $r, ?array $w = null, float $s = 0.0, float $eps = 1.0E-16)",
+                "doc": ""
+            },
+            {
+                "name": "getKnots",
+                "static": false,
+                "sig": "getKnots(): array",
+                "doc": ""
+            },
+            {
+                "name": "getCoeffs",
+                "static": false,
+                "sig": "getCoeffs(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\LSQSphereBivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $theta, array $phi, array $r, array $tt, array $tp, ?array $w = null, float $eps = 1.0E-16)",
+                "doc": ""
+            },
+            {
+                "name": "getKnots",
+                "static": false,
+                "sig": "getKnots(): array",
+                "doc": ""
+            },
+            {
+                "name": "getCoeffs",
+                "static": false,
+                "sig": "getCoeffs(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\RectSphereBivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $u, array $v, array $r, float $s = 0.0)",
                 "doc": ""
             },
             {
@@ -25903,6 +25961,18 @@
                 "name": "spherfit",
                 "static": true,
                 "sig": "spherfit($teta, $phi, $r, $w, $s, $eps)",
+                "doc": ""
+            },
+            {
+                "name": "spherfitLsq",
+                "static": true,
+                "sig": "spherfitLsq($teta, $phi, $r, $w, $tt, $tp, $eps)",
+                "doc": ""
+            },
+            {
+                "name": "spgrid",
+                "static": true,
+                "sig": "spgrid($u, $v, $r, $s)",
                 "doc": ""
             }
         ]
