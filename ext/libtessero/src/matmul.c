@@ -1,5 +1,19 @@
 /* Cache-blocked matrix product used when no BLAS library is available. */
 #include "internal.h"
+#include <limits.h>
+
+/* OpenBLAS cblas (the kernel links -lopenblas via lapacke): the fast float matmul path. Declared here to
+   avoid a hard dependency on a cblas.h include location; the LP64 (32-bit int) interface is used, with a
+   fall back to the portable blocked kernel when a dimension exceeds INT_MAX or for non-float dtypes. */
+extern void cblas_dgemm(int Order, int TransA, int TransB, int M, int N, int K,
+                        double alpha, const double *A, int lda, const double *B, int ldb,
+                        double beta, double *C, int ldc);
+extern void cblas_sgemm(int Order, int TransA, int TransB, int M, int N, int K,
+                        float alpha, const float *A, int lda, const float *B, int ldb,
+                        float beta, float *C, int ldc);
+#define TSR_CBLAS_ROWMAJOR 101
+#define TSR_CBLAS_NOTRANS  111
+#define TSR_FITS_INT(x) ((x) <= (int64_t)INT_MAX)
 
 #define BLOCK 64
 
@@ -32,8 +46,18 @@ int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_
                void *c, int64_t ldc)
 {
     switch (dtype) {
-    case TSR_F64: mm_f64(m, n, k, a, lda, b, ldb, c, ldc); return TSR_OK;
-    case TSR_F32: mm_f32(m, n, k, a, lda, b, ldb, c, ldc); return TSR_OK;
+    case TSR_F64:
+        if (TSR_FITS_INT(m) && TSR_FITS_INT(n) && TSR_FITS_INT(k) && TSR_FITS_INT(lda) && TSR_FITS_INT(ldb) && TSR_FITS_INT(ldc))
+            cblas_dgemm(TSR_CBLAS_ROWMAJOR, TSR_CBLAS_NOTRANS, TSR_CBLAS_NOTRANS, (int)m, (int)n, (int)k,
+                        1.0, (const double *)a, (int)lda, (const double *)b, (int)ldb, 0.0, (double *)c, (int)ldc);
+        else mm_f64(m, n, k, a, lda, b, ldb, c, ldc);
+        return TSR_OK;
+    case TSR_F32:
+        if (TSR_FITS_INT(m) && TSR_FITS_INT(n) && TSR_FITS_INT(k) && TSR_FITS_INT(lda) && TSR_FITS_INT(ldb) && TSR_FITS_INT(ldc))
+            cblas_sgemm(TSR_CBLAS_ROWMAJOR, TSR_CBLAS_NOTRANS, TSR_CBLAS_NOTRANS, (int)m, (int)n, (int)k,
+                        1.0f, (const float *)a, (int)lda, (const float *)b, (int)ldb, 0.0f, (float *)c, (int)ldc);
+        else mm_f32(m, n, k, a, lda, b, ldb, c, ldc);
+        return TSR_OK;
     case TSR_I64: mm_i64(m, n, k, a, lda, b, ldb, c, ldc); return TSR_OK;
     default: return TSR_ETYPE;
     }

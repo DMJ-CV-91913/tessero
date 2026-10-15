@@ -26,7 +26,7 @@ else
   PLATFORM := linux$(MUSL)-$(UNAME_M)
   EXT := so
   SHARED := -shared -Wl,-soname,libtessero.so
-  LAPACK := -llapacke
+  LAPACK := -llapacke -lblas
 endif
 
 CC ?= cc
