@@ -495,6 +495,11 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.bisplrep": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "interpolate.insert": {
             "kind": "routine",
             "nin": 0,
@@ -539,6 +544,11 @@
             "kind": "routine",
             "nin": 0,
             "nout": 1
+        },
+        "interpolate.spherfit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
         },
         "interpolate.splantider": {
             "kind": "routine",
