@@ -45,7 +45,8 @@
    "E4": 5
   },
   "scipy.optimize": {
-   "E4": 5
+   "E4": 5,
+   "E7": 1
   },
   "scipy.signal": {
    "E4": 1
@@ -67,7 +68,8 @@
    "E4": 5
   },
   "scipy.stats": {
-   "E4": 6
+   "E4": 6,
+   "E8": 1
   }
  },
  "fixture_fail": {
@@ -98,15 +100,15 @@
   },
   "SciPy": {
    "both": 1497,
-   "excluded": 63,
+   "excluded": 65,
    "impl_ext": 1497,
    "impl_ffi": 1497,
-   "in_scope": 1499,
-   "m2_ext": 99.9,
-   "m2_ffi": 99.9,
-   "m3": 4.0,
-   "m4_ext": 99.9,
-   "m4_ffi": 99.9,
+   "in_scope": 1497,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
+   "m3": 4.2,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 1562,
    "verified_ext": 1497,
@@ -484,15 +486,15 @@
   },
   "scipy.optimize": {
    "both": 65,
-   "excluded": 5,
+   "excluded": 6,
    "impl_ext": 65,
    "impl_ffi": 65,
-   "in_scope": 66,
-   "m2_ext": 98.5,
-   "m2_ffi": 98.5,
-   "m3": 7.0,
-   "m4_ext": 98.5,
-   "m4_ffi": 98.5,
+   "in_scope": 65,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
+   "m3": 8.5,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 71,
    "verified_ext": 65,
@@ -644,15 +646,15 @@
   },
   "scipy.stats": {
    "both": 296,
-   "excluded": 6,
+   "excluded": 7,
    "impl_ext": 296,
    "impl_ffi": 296,
-   "in_scope": 297,
-   "m2_ext": 99.7,
-   "m2_ffi": 99.7,
-   "m3": 2.0,
-   "m4_ext": 99.7,
-   "m4_ffi": 99.7,
+   "in_scope": 296,
+   "m2_ext": 100.0,
+   "m2_ffi": 100.0,
+   "m3": 2.3,
+   "m4_ext": 100.0,
+   "m4_ffi": 100.0,
    "m5": 100.0,
    "symbols": 303,
    "verified_ext": 296,
