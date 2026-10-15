@@ -76,8 +76,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1553,
-  "ffi": 1553
+  "ext": 1554,
+  "ffi": 1554
  },
  "groups": {
   "NumPy core": {
@@ -97,20 +97,20 @@
    "verified_ffi": 683
   },
   "SciPy": {
-   "both": 1491,
+   "both": 1495,
    "excluded": 63,
-   "impl_ext": 1491,
-   "impl_ffi": 1491,
+   "impl_ext": 1495,
+   "impl_ffi": 1495,
    "in_scope": 1499,
-   "m2_ext": 99.5,
-   "m2_ffi": 99.5,
+   "m2_ext": 99.7,
+   "m2_ffi": 99.7,
    "m3": 4.0,
-   "m4_ext": 99.5,
-   "m4_ffi": 99.5,
+   "m4_ext": 99.7,
+   "m4_ffi": 99.7,
    "m5": 100.0,
    "symbols": 1562,
-   "verified_ext": 1491,
-   "verified_ffi": 1491
+   "verified_ext": 1495,
+   "verified_ffi": 1495
   }
  },
  "modules": {
@@ -419,20 +419,20 @@
    "verified_ffi": 28
   },
   "scipy.interpolate": {
-   "both": 48,
+   "both": 52,
    "excluded": 2,
-   "impl_ext": 48,
-   "impl_ffi": 48,
+   "impl_ext": 52,
+   "impl_ffi": 52,
    "in_scope": 54,
-   "m2_ext": 88.9,
-   "m2_ffi": 88.9,
+   "m2_ext": 96.3,
+   "m2_ffi": 96.3,
    "m3": 3.6,
-   "m4_ext": 88.9,
-   "m4_ffi": 88.9,
+   "m4_ext": 96.3,
+   "m4_ffi": 96.3,
    "m5": 100.0,
    "symbols": 56,
-   "verified_ext": 48,
-   "verified_ffi": 48
+   "verified_ext": 52,
+   "verified_ffi": 52
   },
   "scipy.io": {
    "both": 12,
@@ -660,8 +660,9 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1556,
+ "registry_functions": 1558,
  "registry_untested": [
+  "interpolate.spherfit",
   "linalg.qr_complex",
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid"

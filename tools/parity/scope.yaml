@@ -755,6 +755,10 @@ legacy:
     LSQBivariateSpline: {ffi: [LSQBS::__construct], ext: [LSQBS::__construct], fixtures: [interpolate.LSQBivariateSpline]}
     # RectBivariateSpline(x,y,z,kx,ky,s=0): tensor-product interpolating spline (two 1-D solves + NdBSpline eval)
     RectBivariateSpline: {ffi: [RBS::__construct], ext: [RBS::__construct], fixtures: [interpolate.RectBivariateSpline]}
+    bisplrep: {ffi: [SBS::bisplrep], ext: [SBS::bisplrep], fixtures: [interpolate.bisplrep]}
+    SmoothBivariateSpline: {ffi: [SBS::__construct], ext: [SBS::__construct], fixtures: [interpolate.SmoothBivariateSpline]}
+    BivariateSpline: {ffi: [BVS::ev], ext: [BVS::ev], fixtures: [interpolate.BivariateSpline]}
+    SmoothSphereBivariateSpline: {ffi: [SSBS::__construct], ext: [SSBS::__construct], fixtures: [interpolate.SmoothSphereBivariateSpline]}
     make_splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
     splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
     # UnivariateSpline(x,y,w,k,s): FITPACK curfit smoothing spline (f2c-vendored Dierckx kernel interpolate.splrep)

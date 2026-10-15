@@ -33,6 +33,7 @@ final class Interpolate
     'RBFInterpolator' => 'RBFInterpolator',
     'RegularGridInterpolator' => 'RegularGridInterpolator',
     'barycentric_interpolate' => 'barycentricInterpolate',
+    'bisplrep' => 'bisplrep',
     'insert' => 'insert',
     'interpn' => 'interpn',
     'krogh_interpolate' => 'kroghInterpolate',
@@ -42,6 +43,7 @@ final class Interpolate
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
     'spalde' => 'spalde',
+    'spherfit' => 'spherfit',
     'splantider' => 'splantider',
     'splder' => 'splder',
     'splev' => 'splev',
@@ -217,6 +219,18 @@ final class Interpolate
     }
 
     /**
+     * FITPACK auto-knot bivariate smoothing spline (surfit): knots tx, ty and coefficients c for degrees kx, ky, smoothing s>=0 (scipy.interpolate.bisplrep / SmoothBivariateSpline).
+     *
+     * scipy.interpolate.bisplrep
+     *
+     * @return mixed one array, or an array keyed by tx, ty, c when several results are requested
+     */
+    public static function bisplrep(mixed $x, mixed $y, mixed $z, mixed $w, mixed $kx, mixed $ky, mixed $s, mixed $eps): mixed
+    {
+        return Registry::routine('interpolate.bisplrep', [$x, $y, $z, $w, $kx, $ky, $s, $eps]);
+    }
+
+    /**
      * Insert a knot into a B-spline m times by Boehm's algorithm (scipy.interpolate.insert).
      *
      * scipy.interpolate.insert
@@ -308,6 +322,18 @@ final class Interpolate
     public static function spalde(mixed $t, mixed $c, mixed $k, mixed $x): mixed
     {
         return Registry::routine('interpolate.spalde', [$t, $c, $k, $x]);
+    }
+
+    /**
+     * FITPACK sphere smoothing spline (sphere): knots tt, tp and coefficients c for smoothing s>=0 (scipy.interpolate.SmoothSphereBivariateSpline).
+     *
+     * scipy.interpolate.spherfit
+     *
+     * @return mixed one array, or an array keyed by tt, tp, c when several results are requested
+     */
+    public static function spherfit(mixed $teta, mixed $phi, mixed $r, mixed $w, mixed $s, mixed $eps): mixed
+    {
+        return Registry::routine('interpolate.spherfit', [$teta, $phi, $r, $w, $s, $eps]);
     }
 
     /**
