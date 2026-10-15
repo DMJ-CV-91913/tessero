@@ -60,6 +60,10 @@ step "composed-pipeline scenarios (both backends)"
 php -d ffi.enable=1 tools/parity/run-scenarios.php --backend=ffi
 php -d extension="$EXT_SO" tools/parity/run-scenarios.php --backend=ext
 
+step "arbitrary-precision oracle (BCMath, both backends)"
+php -d ffi.enable=1 tools/parity/run-oracle.php --backend=ffi
+php -d extension="$EXT_SO" tools/parity/run-oracle.php --backend=ext
+
 if [ -z "${QUICK:-}" ]; then
     step "usage corpus is current (clones pinned tags from GitHub)"
     $PY tools/parity/usage.py --check
