@@ -4707,6 +4707,12 @@
                 "doc": "Definite integral of a B-spline over [a, b], taking the spline as zero outside its base interval (scipy.interpolate.splint)."
             },
             {
+                "name": "splrep",
+                "static": true,
+                "sig": "splrep(mixed $x, mixed $y, mixed $w, mixed $k, mixed $s): mixed",
+                "doc": "FITPACK auto-knot smoothing spline (curfit): knots t and coefficients c for degree k, smoothing s>=0 (scipy.interpolate.splrep / UnivariateSpline)."
+            },
+            {
                 "name": "sproot",
                 "static": true,
                 "sig": "sproot(mixed $t, mixed $c, mixed $k, mixed $mest = 10): mixed",
@@ -7382,6 +7388,35 @@
                 "name": "compute",
                 "static": true,
                 "sig": "compute(array $win, int $hop, ?array $desiredDual = null, bool $scaled = true): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\UnivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, ?array $w = null, int $k = 3, ?float $s = null)",
+                "doc": ""
+            },
+            {
+                "name": "evaluate",
+                "static": false,
+                "sig": "evaluate(array $xq): array",
+                "doc": ""
+            },
+            {
+                "name": "getKnots",
+                "static": false,
+                "sig": "getKnots(): array",
+                "doc": ""
+            },
+            {
+                "name": "getCoeffs",
+                "static": false,
+                "sig": "getCoeffs(): array",
                 "doc": ""
             }
         ]
@@ -25769,6 +25804,12 @@
                 "name": "NdBSpline",
                 "static": true,
                 "sig": "NdBSpline($tx, $ty, $c, $kx, $ky, $xi)",
+                "doc": ""
+            },
+            {
+                "name": "splrep",
+                "static": true,
+                "sig": "splrep($x, $y, $w, $k, $s)",
                 "doc": ""
             }
         ]
