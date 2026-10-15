@@ -46,6 +46,7 @@ final class Interpolate
     'splder' => 'splder',
     'splev' => 'splev',
     'splint' => 'splint',
+    'splrep' => 'splrep',
     'sproot' => 'sproot',
     ];
 
@@ -351,6 +352,18 @@ final class Interpolate
     public static function splint(mixed $a, mixed $b, mixed $t, mixed $c, mixed $k): mixed
     {
         return Registry::routine('interpolate.splint', [$a, $b, $t, $c, $k]);
+    }
+
+    /**
+     * FITPACK auto-knot smoothing spline (curfit): knots t and coefficients c for degree k, smoothing s>=0 (scipy.interpolate.splrep / UnivariateSpline).
+     *
+     * scipy.interpolate.splrep
+     *
+     * @return mixed one array, or an array keyed by t, c when several results are requested
+     */
+    public static function splrep(mixed $x, mixed $y, mixed $w, mixed $k, mixed $s): mixed
+    {
+        return Registry::routine('interpolate.splrep', [$x, $y, $w, $k, $s]);
     }
 
     /**

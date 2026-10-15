@@ -38,7 +38,8 @@ NPRAND := third_party/numpy/random/src/distributions.c third_party/numpy/random/
   third_party/numpy/random/src/random_hypergeometric.c third_party/numpy/random/src/random_mvhg_count.c \
   third_party/numpy/random/src/random_mvhg_marginals.c
 # SciPy's QUADPACK translation and brentq (scipy.stats generic methods)
-SCIPYC := third_party/scipy/quadpack/quadpack.c third_party/scipy/zeros/brentq.c third_party/scipy/_cosine.c
+FITPACKC := $(wildcard third_party/scipy/fitpack/*.c)
+SCIPYC := third_party/scipy/quadpack/quadpack.c third_party/scipy/zeros/brentq.c third_party/scipy/_cosine.c $(FITPACKC)
 SRC := $(wildcard src/*.c) third_party/scipy/cdflib.c $(NPRAND) $(SCIPYC)
 # C++: the special-function libraries SciPy uses (xsf, Boost.Math, SciPy's glue), ADR 0011
 SRC_CXX := $(wildcard cxx/*.cpp) third_party/scipy/wright.cc $(EXTRA_CXX)
@@ -78,6 +79,9 @@ $(BUILD)/c/%.o: third_party/numpy/random/src/%.c
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/%.o: third_party/scipy/quadpack/%.c
+	@mkdir -p $(BUILD)/c
+	$(CC) $(CFLAGS) -w -MMD -MP -c -o $@ $<
+$(BUILD)/c/%.o: third_party/scipy/fitpack/%.c
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/%.o: third_party/scipy/zeros/%.c

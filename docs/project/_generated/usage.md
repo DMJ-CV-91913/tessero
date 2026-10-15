@@ -5,7 +5,7 @@
 | Scope | Calls | To excluded symbols | In scope | Verified FFI | Verified extension | Verified on both |
 |---|---:|---:|---:|---:|---:|---:|
 | **NumPy core** | 39800 | 2002 (5.0 %) | 37798 | 100.0 % | 100.0 % | **100.0 %** |
-| **SciPy** | 2748 | 373 (13.6 %) | 2375 | 99.9 % | 99.9 % | **99.9 %** |
+| **SciPy** | 2748 | 373 (13.6 %) | 2375 | 100.0 % | 100.0 % | **100.0 %** |
 | **NumPy and SciPy** | 42548 | 2375 (5.6 %) | 40173 | 100.0 % | 100.0 % | **100.0 %** |
 
 The most-called in-scope symbols, and how many of them are verified:
@@ -15,7 +15,7 @@ The most-called in-scope symbols, and how many of them are verified:
 | top 25 | 25 of 25 (25, 25) | 25 of 25 (25, 25) | 25 of 25 (25, 25) |
 | top 50 | 50 of 50 (50, 50) | 50 of 50 (50, 50) | 50 of 50 (50, 50) |
 | top 100 | 100 of 100 (100, 100) | 100 of 100 (100, 100) | 100 of 100 (100, 100) |
-| top 250 | 250 of 250 (250, 250) | 249 of 250 (249, 249) | 250 of 250 (250, 250) |
+| top 250 | 250 of 250 (250, 250) | 250 of 250 (250, 250) | 250 of 250 (250, 250) |
 
 The 100 most-called in-scope symbols (calls in the corpus, packages calling them, verified per backend):
 
@@ -122,6 +122,6 @@ The 100 most-called in-scope symbols (calls in the corpus, packages calling them
 | 99 | `numpy.multiply` | 68 | 12 | ✔ | ✔ |
 | 100 | `numpy.pad` | 68 | 11 | ✔ | ✔ |
 
-The most-called in-scope symbols not yet verified on both backends: `scipy.interpolate.UnivariateSpline` 3 (neither).
+The most-called in-scope symbols not yet verified on both backends: .
 
 The most-called excluded symbols: `numpy.dtype` 504 (E4), `scipy.sparse.issparse` 317 (E4), `numpy.issubdtype` 222 (E4), `numpy.errstate` 220 (E4), `numpy.asanyarray` 218 (E4), `numpy.isscalar` 191 (E4), `numpy.iterable` 131 (E4), `numpy.random.RandomState` 53 (E3), `numpy.vectorize` 47 (E4), `numpy.apply_along_axis` 44 (E4), `numpy.ndarray` 38 (E4), `scipy.interpolate.interp1d` 36 (E6). Their calls are counted above but not weighted into the in-scope figures.

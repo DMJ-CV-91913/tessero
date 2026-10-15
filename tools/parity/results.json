@@ -171,6 +171,7 @@
         "interpolate.Rbf": "pass",
         "interpolate.RectBivariateSpline": "pass",
         "interpolate.RegularGridInterpolator": "pass",
+        "interpolate.UnivariateSpline": "pass",
         "interpolate.approximate_taylor_polynomial": "pass",
         "interpolate.barycentric_interpolate": "pass",
         "interpolate.bisplev": "pass",
@@ -3676,7 +3677,8 @@
             "scipyio.savemat": null,
             "scipyio.netcdf_file": null,
             "scipyio.netcdf_variable": null,
-            "signal.closest_STFT_dual_window": null
+            "signal.closest_STFT_dual_window": null,
+            "interpolate.UnivariateSpline": null
         },
         "ext": {
             "np.median": 0,
@@ -5514,7 +5516,8 @@
             "scipyio.savemat": null,
             "scipyio.netcdf_file": null,
             "scipyio.netcdf_variable": null,
-            "signal.closest_STFT_dual_window": null
+            "signal.closest_STFT_dual_window": null,
+            "interpolate.UnivariateSpline": null
         }
     },
     "ext": {
@@ -5689,6 +5692,7 @@
         "interpolate.Rbf": "pass",
         "interpolate.RectBivariateSpline": "pass",
         "interpolate.RegularGridInterpolator": "pass",
+        "interpolate.UnivariateSpline": "pass",
         "interpolate.approximate_taylor_polynomial": "pass",
         "interpolate.barycentric_interpolate": "pass",
         "interpolate.bisplev": "pass",

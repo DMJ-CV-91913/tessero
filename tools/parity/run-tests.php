@@ -4412,6 +4412,26 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['univariatespline_cases'])) {           // scipy.interpolate.UnivariateSpline (FITPACK curfit, f2c-vendored Dierckx)
+        $local = [];
+        foreach ($data['univariatespline_cases'] as $c) {
+            $key = 'interpolate.UnivariateSpline';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\UnivariateSpline($c['x'], $c['y'], $c['w'], (int) $c['k'], (float) $c['s']);
+                $got = $sp->evaluate($c['query']);
+                $ok = vecClose(flattenNums($got), flattenNums($c['expect']), 1e-9);
+                if (! $ok) { $msg = 'values did not match scipy (k=' . $c['k'] . ', s=' . $c['s'] . ')'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $st) { $results[$backend][$k] = $st; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['hull_cases'])) {                        // scipy.spatial.ConvexHull (2-D, Andrew's monotone chain, pure-PHP)
         $local = [];
         foreach ($data['hull_cases'] as $c) {
