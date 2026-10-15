@@ -759,6 +759,8 @@ legacy:
     SmoothBivariateSpline: {ffi: [SBS::__construct], ext: [SBS::__construct], fixtures: [interpolate.SmoothBivariateSpline]}
     BivariateSpline: {ffi: [BVS::ev], ext: [BVS::ev], fixtures: [interpolate.BivariateSpline]}
     SmoothSphereBivariateSpline: {ffi: [SSBS::__construct], ext: [SSBS::__construct], fixtures: [interpolate.SmoothSphereBivariateSpline]}
+    LSQSphereBivariateSpline: {ffi: [LSQSBS::__construct], ext: [LSQSBS::__construct], fixtures: [interpolate.LSQSphereBivariateSpline]}
+    RectSphereBivariateSpline: {ffi: [RSBS::__construct], ext: [RSBS::__construct], fixtures: [interpolate.RectSphereBivariateSpline]}
     make_splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
     splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
     # UnivariateSpline(x,y,w,k,s): FITPACK curfit smoothing spline (f2c-vendored Dierckx kernel interpolate.splrep)

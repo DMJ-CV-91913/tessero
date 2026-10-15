@@ -545,7 +545,17 @@
             "nin": 0,
             "nout": 1
         },
+        "interpolate.spgrid": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
         "interpolate.spherfit": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "interpolate.spherfit_lsq": {
             "kind": "routine",
             "nin": 0,
             "nout": 3

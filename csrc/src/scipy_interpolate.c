@@ -1047,6 +1047,10 @@ extern int regrid_(integer*,integer*,doublereal*,integer*,doublereal*,doublereal
     doublereal*,doublereal*,doublereal*,doublereal*,integer*,integer*,doublereal*,
     integer*,integer*,integer*,integer*,doublereal*,integer*,doublereal*,doublereal*,
     doublereal*,doublereal*,integer*,integer*,integer*,integer*);
+extern int spgrid_(integer*,integer*,integer*,doublereal*,integer*,doublereal*,
+    doublereal*,doublereal*,doublereal*,doublereal*,integer*,integer*,integer*,
+    doublereal*,integer*,doublereal*,doublereal*,doublereal*,doublereal*,integer*,
+    integer*,integer*,integer*);
 
 /* interpolate.splrep -- curfit cold start.  Args: x,y,w,k,s -> Outs: t,c */
 static int r_fitpack_curfit(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -1251,6 +1255,109 @@ static int r_fitpack_regrid(const void *ctx, const tsr_arg *args, int nargs, tsr
 }
 
 
+/* interpolate.spherfit_lsq -- sphere least-squares with GIVEN knots (LSQSphereBivariateSpline).
+   Args: teta, phi, r, w, tt, tp, eps -> Outs: c   (sphere_ iopt=-1; tt/tp are the padded knot vectors) */
+static int r_fitpack_spherfit_lsq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 3 || args[4].kind != 3 || args[5].kind != 3) { fn_set_error("spherfit_lsq: teta, phi, r, w, tt, tp must be 1-D arrays"); return TSR_EARG; }
+    const double eps = args[6].num;
+    if (!(eps > 0.0 && eps < 1.0)) { fn_set_error("spherfit_lsq: eps must be in (0,1)"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0];
+    if (args[1].arr.shape[0] != m || args[2].arr.shape[0] != m || args[3].arr.shape[0] != m) { fn_set_error("spherfit_lsq: teta, phi, r, w must have the same length"); return TSR_EARG; }
+    const int64_t nt_in = args[4].arr.shape[0], np_in = args[5].arr.shape[0];
+    if (nt_in < 8 || np_in < 8) { fn_set_error("spherfit_lsq: need at least 8 knots in each direction"); return TSR_EARG; }
+    int64_t lt_, lp_, lr_, lw_, ltt_, ltp_;
+    double *teta = fn_arg_doubles(&args[0], &lt_);
+    double *phi  = teta ? fn_arg_doubles(&args[1], &lp_) : NULL;
+    double *r    = phi  ? fn_arg_doubles(&args[2], &lr_) : NULL;
+    double *w    = r    ? fn_arg_doubles(&args[3], &lw_) : NULL;
+    double *ttin = w    ? fn_arg_doubles(&args[4], &ltt_) : NULL;
+    double *tpin = ttin ? fn_arg_doubles(&args[5], &ltp_) : NULL;
+    integer ntest = (integer)nt_in, npest = (integer)np_in;
+    integer u = ntest - 7, v = npest - 7;
+    integer lwrk1 = 185 + 52 * v + 10 * u + 14 * u * v + 8 * (u - 1) * v * v + 8 * (integer)m;
+    integer lwrk2 = 48 + 21 * v + 7 * u * v + 4 * (u - 1) * v * v;
+    integer kwrk = (integer)m + (ntest - 7) * (npest - 7);
+    double *tt = (double *)calloc((size_t)ntest, sizeof(double));
+    double *tp = (double *)calloc((size_t)npest, sizeof(double));
+    double *c  = (double *)calloc((size_t)((ntest - 4) * (npest - 4)), sizeof(double));
+    double *wrk1 = (double *)calloc((size_t)lwrk1, sizeof(double));
+    double *wrk2 = (double *)calloc((size_t)lwrk2, sizeof(double));
+    integer *iwrk = (integer *)calloc((size_t)kwrk, sizeof(integer));
+    int rc = (!teta || !phi || !r || !w || !ttin || !tpin || !tt || !tp || !c || !wrk1 || !wrk2 || !iwrk) ? TSR_ENOMEM : TSR_OK;
+    integer iopt = -1, mm = (integer)m, nt = (integer)nt_in, np = (integer)np_in, ier = 0;
+    double S = 0.0, EPS = eps, fp = 0;
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < nt_in; i++) tt[i] = ttin[i];
+        for (int64_t i = 0; i < np_in; i++) tp[i] = tpin[i];
+        sphere_(&iopt, &mm, teta, phi, r, w, &S, &ntest, &npest, &EPS, &nt, tt, &np, tp, c, &fp, wrk1, &lwrk1, wrk2, &lwrk2, iwrk, &kwrk, &ier);
+        if (ier >= 10) { fn_set_error("spherfit_lsq: FITPACK sphere reported invalid input/workspace (ier>=10)"); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        const int64_t nc = (int64_t)(nt - 4) * (np - 4);
+        double *rtt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ (int64_t)nt });
+        double *rtp = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){ (int64_t)np });
+        double *rc_ = (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){ nc });
+        if (!rtt || !rtp || !rc_) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < nt; i++) rtt[i] = tt[i];
+               for (int64_t i = 0; i < np; i++) rtp[i] = tp[i];
+               for (int64_t i = 0; i < nc; i++) rc_[i] = c[i]; }
+    }
+    free(tt); free(tp); free(c); free(wrk1); free(wrk2); free(iwrk);
+    fn_free_doubles(teta, lt_); fn_free_doubles(phi, lp_); fn_free_doubles(r, lr_); fn_free_doubles(w, lw_); fn_free_doubles(ttin, ltt_); fn_free_doubles(tpin, ltp_);
+    return rc;
+}
+
+/* interpolate.spgrid -- smoothing spline on a rectangular grid over a sphere (RectSphereBivariateSpline).
+   Args: u, v, r, s -> Outs: tu, tv, c   (spgrid_; iopt=[0,0,0], ider=[-1,0,-1,0], poles not given => r0=r1=0,
+   matching scipy's RectSphereBivariateSpline default). u=colatitude grid in (0,pi), v=longitude grid, r=mu*mv
+   grid values raveled C-order. */
+static int r_fitpack_spgrid(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("spgrid: u, v and r must be arrays"); return TSR_EARG; }
+    const double s = args[3].num;
+    if (s < 0.0) { fn_set_error("spgrid: s must be non-negative"); return TSR_EARG; }
+    const int64_t mu = args[0].arr.shape[0], mv = args[1].arr.shape[0];
+    if (args[2].arr.shape[0] != mu * mv) { fn_set_error("spgrid: r must have length mu*mv"); return TSR_EARG; }
+    int64_t lu_, lv_, lr_;
+    double *u = fn_arg_doubles(&args[0], &lu_);
+    double *v = u ? fn_arg_doubles(&args[1], &lv_) : NULL;
+    double *r = v ? fn_arg_doubles(&args[2], &lr_) : NULL;
+    integer nuest = (integer)(mu + 8), nvest = (integer)(mv + 7);
+    integer mmu = (integer)mu, mmv = (integer)mv;
+    integer lwrk = 12 + nuest * (mmv + nvest + 3) + nvest * 24 + 4 * mmu + 8 * mmv + FP_MAXI(mmv + nvest, nuest);
+    integer kwrk = 5 + mmu + mmv + nuest + nvest;
+    double *tu = (double *)calloc((size_t)nuest, sizeof(double));
+    double *tv = (double *)calloc((size_t)nvest, sizeof(double));
+    double *c  = (double *)calloc((size_t)((nuest - 4) * (nvest - 4)), sizeof(double));
+    double *wrk = (double *)calloc((size_t)lwrk, sizeof(double));
+    integer *iwrk = (integer *)calloc((size_t)kwrk, sizeof(integer));
+    int rc = (!u || !v || !r || !tu || !tv || !c || !wrk || !iwrk) ? TSR_ENOMEM : TSR_OK;
+    integer iopt[3] = { 0, 0, 0 }, ider[4] = { -1, 0, -1, 0 };
+    integer nu = 0, nv = 0, ier = 0;
+    double r0 = 0.0, r1 = 0.0, S = s, fp = 0;
+    if (rc == TSR_OK) {
+        spgrid_(iopt, ider, &mmu, u, &mmv, v, r, &r0, &r1, &S, &nuest, &nvest, &nu, tu, &nv, tv, c, &fp,
+                wrk, &lwrk, iwrk, &kwrk, &ier);
+        if (ier > 0) { fn_set_error("spgrid: FITPACK spgrid reported invalid input/workspace (ier>0)"); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        const int64_t nc = (int64_t)(nu - 4) * (nv - 4);
+        double *rtu = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ (int64_t)nu });
+        double *rtv = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){ (int64_t)nv });
+        double *rc_ = (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){ nc });
+        if (!rtu || !rtv || !rc_) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < nu; i++) rtu[i] = tu[i];
+               for (int64_t i = 0; i < nv; i++) rtv[i] = tv[i];
+               for (int64_t i = 0; i < nc; i++) rc_[i] = c[i]; }
+    }
+    free(tu); free(tv); free(c); free(wrk); free(iwrk);
+    fn_free_doubles(u, lu_); fn_free_doubles(v, lv_); fn_free_doubles(r, lr_);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -1284,6 +1391,8 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.splrep", 2, "x, y, w, k, s", "t, c", r_fitpack_curfit, NULL, "FITPACK auto-knot smoothing spline (curfit): knots t and coefficients c for degree k, smoothing s>=0 (scipy.interpolate.splrep / UnivariateSpline)."),
     ROUTINE("interpolate.bisplrep", 3, "x, y, z, w, kx, ky, s, eps", "tx, ty, c", r_fitpack_surfit, NULL, "FITPACK auto-knot bivariate smoothing spline (surfit): knots tx, ty and coefficients c for degrees kx, ky, smoothing s>=0 (scipy.interpolate.bisplrep / SmoothBivariateSpline)."),
     ROUTINE("interpolate.spherfit", 3, "teta, phi, r, w, s, eps", "tt, tp, c", r_fitpack_sphere, NULL, "FITPACK sphere smoothing spline (sphere): knots tt, tp and coefficients c for smoothing s>=0 (scipy.interpolate.SmoothSphereBivariateSpline)."),
+    ROUTINE("interpolate.spherfit_lsq", 3, "teta, phi, r, w, tt, tp, eps", "tt, tp, c", r_fitpack_spherfit_lsq, NULL, "FITPACK sphere least-squares spline with given knots tt, tp: coefficients c (scipy.interpolate.LSQSphereBivariateSpline)."),
+    ROUTINE("interpolate.spgrid", 3, "u, v, r, s", "tu, tv, c", r_fitpack_spgrid, NULL, "FITPACK smoothing spline on a rectangular grid over a sphere: knots tu, tv and coefficients c (scipy.interpolate.RectSphereBivariateSpline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
