@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 export NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR"
 export OPENBLAS_CORETYPE=Haswell OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1
 groups=("$@")
-[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal stats_uniform stats_orthogroup stats_unifdir bootstrap stats_dists barnard boschloo logrank permtest ndimage_valindices ndimage_geomxform ndimage_genfilter ndimage_genfilter1d ndimage_genlaplace ndimage_gengradmag spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_splrep interpolate_splprep interpolate_generate_knots interpolate_atp interpolate_rbf spatial_voronoi spatial_transform spatial_slerp spatial_rigid spatial_rotspline interpolate_cloughtocher interpolate_aaa interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy hierarchy_trees splinalg splinalg_iter splinalg_lobpcg splinalg_linop stats_unitarygroup scipyfft optimize optimize_trustconstr mixing qap de da bh linesearch io integrate integrate_tanhsinh integrate_quadvec integrate_solveivp integrate_solvebvp integrate_lebedev integrate_cubature integrate_nestedquad integrate_nsum differentiate nonlin nk nkclasses directshgo stats_distinfra stats_matvardist scipyio sparse_npz spatial datetime random stats desc corr tests tests2 spatial_sphvor integrate_ode dunnett stats_rvhistogram stats_ppccplot signal_findpeakscwt placepoles interpolate_lsqbiv signal_classes stats_classes trivialclasses signal_lti stats_mgc stats_sobol legacy)
+[ ${#groups[@]} -eq 0 ] && groups=(special special_complex special_orthopoly special_seq stats_opt stats_normal stats_uniform stats_orthogroup stats_unifdir bootstrap stats_dists barnard boschloo logrank permtest ndimage_valindices ndimage_geomxform ndimage_genfilter ndimage_genfilter1d ndimage_genlaplace ndimage_gengradmag spatial_rect spatial_hausdorff spatial_hull spatial_delaunay interpolate_nn interpolate_griddata interpolate_bisplev interpolate_ius interpolate_lsq interpolate_rbs interpolate_splrep interpolate_splprep interpolate_generate_knots interpolate_atp interpolate_rbf spatial_voronoi spatial_transform spatial_slerp spatial_rigid spatial_rotspline interpolate_cloughtocher interpolate_aaa interpolate_mss interpolate_linearnd np shape numeric linalg slinalg fft distance sparse signal windows ndimage csgraph interpolate cluster npoly hierarchy hierarchy_trees splinalg splinalg_iter splinalg_lobpcg splinalg_linop stats_unitarygroup scipyfft optimize optimize_trustconstr mixing qap de da bh linesearch io integrate integrate_tanhsinh integrate_quadvec integrate_solveivp integrate_solvebvp integrate_lebedev integrate_cubature integrate_nestedquad integrate_nsum differentiate nonlin nk nkclasses directshgo stats_distinfra stats_matvardist scipyio matio netcdf hb idlsave signal_closest_stft_dual sparse_npz spatial datetime random stats desc corr tests tests2 spatial_sphvor integrate_ode dunnett stats_rvhistogram stats_ppccplot signal_findpeakscwt placepoles interpolate_lsqbiv signal_classes stats_classes trivialclasses signal_lti stats_mgc stats_sobol legacy)
 for g in "${groups[@]}"; do
     t=$SECONDS
     case $g in
@@ -112,6 +112,11 @@ for g in "${groups[@]}"; do
         stats_distinfra) python3 fixtures_distinfra.py ;;
         stats_matvardist) python3 fixtures_matvardist.py ;;
         scipyio) python3 fixtures_scipyio.py ;;
+        matio) python3 matio_fixtures.py ;;
+        netcdf) python3 netcdf_fixtures.py ;;
+        hb) python3 hb_fixtures.py ;;
+        idlsave) python3 idl_fixtures.py ;;
+        signal_closest_stft_dual) python3 fixtures_closest_stft_dual.py ;;
         sparse_npz) python3 fixtures_sparse_npz.py ;;
         integrate) python3 fixtures_integrate.py ;;
         integrate_tanhsinh) python3 fixtures_tanhsinh.py ;;

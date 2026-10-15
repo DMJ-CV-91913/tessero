@@ -18,7 +18,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;numpy.polynomial.hermite_e | 31 | 0 (0.0 %) | 31 | 31 (100.0 %) | 31 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random | 60 | 56 (93.3 %) | 4 | 4 (100.0 %) | 4 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;numpy.random.Generator | 45 | 2 (4.4 %) | 43 | 43 (100.0 %) | 43 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
-| **SciPy** | 1562 | 63 (4.0 %) | 1499 | **1489 (99.3 %)** | **1489 (99.3 %)** | 99.3 % / 99.3 % | 100.0 % |
+| **SciPy** | 1562 | 63 (4.0 %) | 1499 | **1490 (99.4 %)** | **1490 (99.4 %)** | 99.4 % / 99.4 % | 100.0 % |
 | &nbsp;&nbsp;scipy.special | 341 | 5 (1.5 %) | 336 | 336 (100.0 %) | 336 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.stats | 303 | 6 (2.0 %) | 297 | 296 (99.7 %) | 296 (99.7 %) | 99.7 % / 99.7 % | 100.0 % |
 | &nbsp;&nbsp;scipy.linalg | 97 | 5 (5.2 %) | 92 | 92 (100.0 %) | 92 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -26,7 +26,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.optimize | 71 | 5 (7.0 %) | 66 | 65 (98.5 %) | 65 (98.5 %) | 98.5 % / 98.5 % | 100.0 % |
 | &nbsp;&nbsp;scipy.integrate | 33 | 5 (15.2 %) | 28 | 28 (100.0 %) | 28 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.interpolate | 56 | 2 (3.6 %) | 54 | 47 (87.0 %) | 47 (87.0 %) | 87.0 % / 87.0 % | 100.0 % |
-| &nbsp;&nbsp;scipy.signal | 157 | 1 (0.6 %) | 156 | 155 (99.4 %) | 155 (99.4 %) | 99.4 % / 99.4 % | 100.0 % |
+| &nbsp;&nbsp;scipy.signal | 157 | 1 (0.6 %) | 156 | 156 (100.0 %) | 156 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.signal.windows | 26 | 0 (0.0 %) | 26 | 26 (100.0 %) | 26 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.sparse | 53 | 15 (28.3 %) | 38 | 38 (100.0 %) | 38 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.sparse.linalg | 38 | 5 (13.2 %) | 33 | 33 (100.0 %) | 33 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
@@ -54,7 +54,7 @@ Exclusions by category (definitions in `tools/parity/scope.yaml`):
 - `scipy.fft`: E4 6
 - `scipy.integrate`: E4 5
 - `scipy.interpolate`: E6 2
-- `scipy.io`: E4 2, E5 8
+- `scipy.io`: E4 2
 - `scipy.linalg`: E4 5
 - `scipy.optimize`: E4 5
 - `scipy.signal`: E4 1

@@ -19,7 +19,6 @@ categories:
   E7: interactive, plotting or dataset helpers
 
 exclude:
-  - {category: E5, module: scipy.io, names: [loadmat, savemat, whosmat, readsav, hb_read, hb_write, netcdf_file, netcdf_variable]}
   - {category: E4, module: scipy.io, names: [test, FortranEOFError, FortranFormattingError]}
   - {category: E1, module: numpy, names: [bytes_, str_, object_, void, character, flexible, record, recarray, fromregex, fromstring]}
   - {category: E3, module: numpy, names: [matrix, asmatrix, bmat, row_stack, poly1d, asfarray, mintypecode, common_type, fix]}
@@ -87,7 +86,7 @@ phases:
   scipy.signal.windows: 8
   scipy.optimize: 9
   scipy.sparse: 10
-  scipy.io: 6
+  scipy.io: 14
   scipy.sparse.linalg: 10
   scipy.sparse.csgraph: 10
   scipy.spatial: 10
@@ -151,11 +150,20 @@ legacy:
     TransferFunction: {ffi: [STF::toSs], ext: [STF::toSs], fixtures: [signal.TransferFunction]}
     ZerosPolesGain: {ffi: [ZPG::toTf], ext: [ZPG::toTf], fixtures: [signal.ZerosPolesGain]}
     ShortTimeFFT: {ffi: [STFT::stft], ext: [STFT::stft], fixtures: [signal.ShortTimeFFT]}
+    closest_STFT_dual_window: {ffi: [CSTFT::compute], ext: [CSTFT::compute], fixtures: [signal.closest_STFT_dual_window]}
   scipy.io:
     mmread: {ffi: [MM::read], ext: [MM::read], fixtures: [scipyio.mmread]}
     mmwrite: {ffi: [MM::write], ext: [MM::write], fixtures: [scipyio.mmwrite]}
     mminfo: {ffi: [MM::info], ext: [MM::info], fixtures: [scipyio.mminfo]}
     FortranFile: {ffi: [FF::readRecords], ext: [FF::readRecords], fixtures: [scipyio.FortranFile]}
+    loadmat: {ffi: [MATIO::read], ext: [MATIO::read], fixtures: [scipyio.loadmat]}
+    savemat: {ffi: [MATIO::write], ext: [MATIO::write], fixtures: [scipyio.savemat]}
+    whosmat: {ffi: [MATIO::info], ext: [MATIO::info], fixtures: [scipyio.whosmat]}
+    hb_read: {ffi: [HB::read], ext: [HB::read], fixtures: [scipyio.hb_read]}
+    hb_write: {ffi: [HB::write], ext: [HB::write], fixtures: [scipyio.hb_write]}
+    netcdf_file: {ffi: [NCDF::read], ext: [NCDF::read], fixtures: [scipyio.netcdf_file]}
+    netcdf_variable: {ffi: [NCDF::read], ext: [NCDF::read], fixtures: [scipyio.netcdf_variable]}
+    readsav: {ffi: [IDL::read], ext: [IDL::read], fixtures: [scipyio.readsav]}
   scipy.differentiate:
     derivative: {ffi: [DFV::derivative], ext: [DFV::derivative], fixtures: [differentiate.derivative]}
     jacobian:   {ffi: [DFV::jacobian],   ext: [DFV::jacobian],   fixtures: [differentiate.jacobian]}
