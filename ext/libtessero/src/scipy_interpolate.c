@@ -1282,6 +1282,8 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.NdPPoly", 1, "c, xb, yb, xi", "y", r_ndppoly, NULL, "2-D tensor piecewise polynomial evaluated at points xi (scipy.interpolate.NdPPoly)."),
     ROUTINE("interpolate.NdBSpline", 1, "tx, ty, c, kx, ky, xi", "y", r_ndbspline, NULL, "2-D tensor B-spline evaluated at points xi (scipy.interpolate.NdBSpline)."),
     ROUTINE("interpolate.splrep", 2, "x, y, w, k, s", "t, c", r_fitpack_curfit, NULL, "FITPACK auto-knot smoothing spline (curfit): knots t and coefficients c for degree k, smoothing s>=0 (scipy.interpolate.splrep / UnivariateSpline)."),
+    ROUTINE("interpolate.bisplrep", 3, "x, y, z, w, kx, ky, s, eps", "tx, ty, c", r_fitpack_surfit, NULL, "FITPACK auto-knot bivariate smoothing spline (surfit): knots tx, ty and coefficients c for degrees kx, ky, smoothing s>=0 (scipy.interpolate.bisplrep / SmoothBivariateSpline)."),
+    ROUTINE("interpolate.spherfit", 3, "teta, phi, r, w, s, eps", "tt, tp, c", r_fitpack_sphere, NULL, "FITPACK sphere smoothing spline (sphere): knots tt, tp and coefficients c for smoothing s>=0 (scipy.interpolate.SmoothSphereBivariateSpline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};

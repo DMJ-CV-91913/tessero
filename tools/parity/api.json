@@ -4629,6 +4629,12 @@
                 "doc": "Barycentric Lagrange polynomial interpolation evaluated at x (scipy.interpolate.barycentric_interpolate)."
             },
             {
+                "name": "bisplrep",
+                "static": true,
+                "sig": "bisplrep(mixed $x, mixed $y, mixed $z, mixed $w, mixed $kx, mixed $ky, mixed $s, mixed $eps): mixed",
+                "doc": "FITPACK auto-knot bivariate smoothing spline (surfit): knots tx, ty and coefficients c for degrees kx, ky, smoothing s>=0 (scipy.interpolate.bisplrep / SmoothBivariateSpline)."
+            },
+            {
                 "name": "insert",
                 "static": true,
                 "sig": "insert(mixed $x, mixed $t, mixed $c, mixed $k, mixed $m = 1): mixed",
@@ -4681,6 +4687,12 @@
                 "static": true,
                 "sig": "spalde(mixed $t, mixed $c, mixed $k, mixed $x): mixed",
                 "doc": "All derivatives 0..k of a B-spline at each x (scipy.interpolate.spalde)."
+            },
+            {
+                "name": "spherfit",
+                "static": true,
+                "sig": "spherfit(mixed $teta, mixed $phi, mixed $r, mixed $w, mixed $s, mixed $eps): mixed",
+                "doc": "FITPACK sphere smoothing spline (sphere): knots tt, tp and coefficients c for smoothing s>=0 (scipy.interpolate.SmoothSphereBivariateSpline)."
             },
             {
                 "name": "splantider",
@@ -10124,6 +10136,75 @@
                 "name": "getKnots",
                 "static": false,
                 "sig": "getKnots(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\BivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, array $z, ?array $w = null, int $kx = 3, int $ky = 3, ?float $s = null)",
+                "doc": ""
+            },
+            {
+                "name": "ev",
+                "static": false,
+                "sig": "ev(array $xi, array $yi): array",
+                "doc": "Evaluate at the paired points (xi[k], yi[k]) \u2014 scipy.interpolate.BivariateSpline.ev(xi, yi)."
+            },
+            {
+                "name": "getKnots",
+                "static": false,
+                "sig": "getKnots(): array",
+                "doc": ""
+            },
+            {
+                "name": "getCoeffs",
+                "static": false,
+                "sig": "getCoeffs(): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\SmoothBivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $x, array $y, array $z, ?array $w = null, int $kx = 3, int $ky = 3, ?float $s = null)",
+                "doc": "scipy.interpolate.SmoothBivariateSpline(x, y, z, w=None, kx=3, ky=3, s=None) \u2014 fit the scattered-data smoothing spline (FITPACK surfit). Construction/evaluation live on the BivariateSpline base; this override exists so the smoothing constructor is the class's own public entry point."
+            },
+            {
+                "name": "bisplrep",
+                "static": true,
+                "sig": "bisplrep(array $x, array $y, array $z, ?array $w = null, int $kx = 3, int $ky = 3, ?float $s = null): array",
+                "doc": "scipy.interpolate.bisplrep(x, y, z, w=None, kx=3, ky=3, s=None) -> [tx, ty, c, kx, ky]."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Interpolate\\SmoothSphereBivariateSpline",
+        "methods": [
+            {
+                "name": "__construct",
+                "static": false,
+                "sig": "__construct(array $theta, array $phi, array $r, ?array $w = null, float $s = 0.0, float $eps = 1.0E-16)",
+                "doc": ""
+            },
+            {
+                "name": "getKnots",
+                "static": false,
+                "sig": "getKnots(): array",
+                "doc": ""
+            },
+            {
+                "name": "getCoeffs",
+                "static": false,
+                "sig": "getCoeffs(): array",
                 "doc": ""
             }
         ]
@@ -25810,6 +25891,18 @@
                 "name": "splrep",
                 "static": true,
                 "sig": "splrep($x, $y, $w, $k, $s)",
+                "doc": ""
+            },
+            {
+                "name": "bisplrep",
+                "static": true,
+                "sig": "bisplrep($x, $y, $z, $w, $kx, $ky, $s, $eps)",
+                "doc": ""
+            },
+            {
+                "name": "spherfit",
+                "static": true,
+                "sig": "spherfit($teta, $phi, $r, $w, $s, $eps)",
                 "doc": ""
             }
         ]
