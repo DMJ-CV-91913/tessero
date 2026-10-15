@@ -1816,6 +1816,149 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['matio_cases'])) {                      // scipy.io MATLAB v5 (pure-PHP Tessero\Io\MatIO)
+        $local = [];
+        $bump = static function (string $key, bool $ok) use (&$local): void {
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+        };
+        $cmpFlat = static function ($want, $got, float $tol = 1e-6): bool {
+            if (count($want) !== count($got)) { return false; }
+            foreach ($want as $i => $w) {
+                if (is_string($w)) { if ((string) ($got[$i] ?? '') !== (string) $w) { return false; } continue; }
+                if (abs((float) $w - (float) ($got[$i] ?? NAN)) > $tol + $tol * abs((float) $w)) { return false; }
+            }
+            return true;
+        };
+        foreach ($data['matio_cases'] as $c) {
+            $checked++; $ok = false; $msg = ''; $kind = $c['kind']; $key = "scipyio.{$kind}";
+            try {
+                if ($kind === 'loadmat') {
+                    $vars = \Tessero\Io\MatIO::read(base64_decode($c['content_b64']));
+                    $ok = true;
+                    foreach ($c['vars'] as $name => $exp) {
+                        $v = $vars[$name] ?? null;
+                        if ($v === null || $v['shape'] !== $exp['shape'] || $v['class'] !== $exp['class'] || ! $cmpFlat($exp['flat'], $v['data'])) { $ok = false; $msg = "var {$name}"; break; }
+                    }
+                    if ($ok) {
+                        $info = \Tessero\Io\MatIO::info(base64_decode($c['content_b64']));
+                        $wi = array_map(static fn ($r) => [$r[0], $r[1], $r[2]], $info);
+                        $wantWhos = array_map(static fn ($r) => [$r[0], $r[1], $r[2]], $c['whos']);
+                        $okWhos = $wi === $wantWhos;
+                        $bump('scipyio.whosmat', $okWhos);
+                        if (! $okWhos) { $ok = false; $msg = 'whos'; }
+                    }
+                    $key = 'scipyio.loadmat';
+                } elseif ($kind === 'savemat') {
+                    $bytes = \Tessero\Io\MatIO::write($c['input']);
+                    $rb = \Tessero\Io\MatIO::read($bytes);
+                    $ok = true;
+                    foreach ($c['scipy_flat'] as $name => $exp) {
+                        $v = $rb[$name] ?? null;
+                        if ($v === null || $v['shape'] !== $exp['shape'] || $v['class'] !== $exp['class'] || ! $cmpFlat($exp['flat'], $v['data'])) { $ok = false; $msg = "roundtrip {$name}"; break; }
+                    }
+                    $key = 'scipyio.savemat';
+                } else { $msg = "unknown kind {$kind}"; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $bump($key, $ok);
+            if (! $ok) { $failures++; echo "FAIL {$key} [{$c['name']}]: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['netcdf_cases'])) {                      // scipy.io netCDF-3 (pure-PHP Tessero\Io\NetCDF)
+        $local = [];
+        $bump = static function (string $key, bool $ok) use (&$local): void {
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+        };
+        $cmpFlat = static function ($want, $got, float $tol = 1e-6): bool {
+            if (is_string($want) || is_string($got)) { return (string) $want === (string) $got; }
+            if (count($want) !== count($got)) { return false; }
+            foreach ($want as $i => $w) {
+                if (abs((float) $w - (float) $got[$i]) > $tol + $tol * abs((float) $w)) { return false; }
+            }
+            return true;
+        };
+        $cmpAttrs = static function (array $want, array $got) use ($cmpFlat): bool {
+            foreach ($want as $k => $wv) {
+                if (! array_key_exists($k, $got)) { return false; }
+                $gv = $got[$k];
+                if (is_string($wv) || is_string($gv)) { if ((string) $wv !== (string) $gv) { return false; } }
+                elseif (is_array($wv) || is_array($gv)) { if (! $cmpFlat((array) $wv, (array) $gv)) { return false; } }
+                elseif (abs((float) $wv - (float) $gv) > 1e-6 + 1e-6 * abs((float) $wv)) { return false; }
+            }
+            return true;
+        };
+        $cmpDecode = static function (array $c, array $r) use ($cmpFlat, $cmpAttrs): array {
+            if ((int) $r['numrecs'] !== (int) $c['numrecs']) { return [false, 'numrecs ' . $r['numrecs']]; }
+            foreach ($c['dims'] as $dn => $dl) {
+                if (! array_key_exists($dn, $r['dimensions'])) { return [false, "missing dim {$dn}"]; }
+                if ($r['dimensions'][$dn] !== $dl) { return [false, "dim {$dn}"]; }
+            }
+            if (! $cmpAttrs($c['global'], $r['attrs'])) { return [false, 'global attrs differ']; }
+            foreach ($c['vars'] as $vn => $ev) {
+                if (! isset($r['variables'][$vn])) { return [false, "missing var {$vn}"]; }
+                $rv = $r['variables'][$vn];
+                if ($rv['typecode'] !== $ev['typecode']) { return [false, "var {$vn} typecode"]; }
+                if ($rv['shape'] !== $ev['shape']) { return [false, "var {$vn} shape"]; }
+                if (! $cmpFlat($ev['flat'], $rv['data'])) { return [false, "var {$vn} data"]; }
+                if (! $cmpAttrs($ev['attrs'], $rv['attrs'])) { return [false, "var {$vn} attrs"]; }
+            }
+            return [true, ''];
+        };
+        foreach ($data['netcdf_cases'] as $c) {
+            $checked++; $ok = false; $msg = '';
+            try {
+                if ($c['kind'] === 'netcdf_read') {
+                    $r = \Tessero\Io\NetCDF::read(base64_decode($c['content_b64']));
+                    [$ok, $msg] = $cmpDecode($c, $r);
+                } elseif ($c['kind'] === 'netcdf_write') {
+                    $bytes = \Tessero\Io\NetCDF::write($c['spec']);
+                    $okBytes = $bytes === base64_decode($c['content_b64']);
+                    $r = \Tessero\Io\NetCDF::read($bytes);
+                    [$okRead, $msg] = $cmpDecode($c, $r);
+                    $ok = $okBytes && $okRead;
+                    if (! $okBytes) { $msg = 'bytes differ from scipy; ' . $msg; }
+                } else { $msg = "unknown kind {$c['kind']}"; }
+            } catch (\Throwable $e) { $msg = $e->getMessage(); }
+            $bump('scipyio.netcdf_file', $ok);
+            $bump('scipyio.netcdf_variable', $ok);
+            if (! $ok) { $failures++; echo "FAIL scipyio.netcdf [{$c['name']}]: {$msg}\n"; }
+        }
+        foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
+    if (isset($data['closest_stft_dual_cases'])) {          // scipy.signal.closest_STFT_dual_window (pure-PHP Tessero\Signal\ClosestStftDualWindow)
+        foreach ($data['closest_stft_dual_cases'] as $c) {
+            $key = 'signal.closest_STFT_dual_window';
+            $rtol = (float) ($c['rtol'] ?? 1e-9);
+            $atol = (float) ($c['atol'] ?? 1e-11);
+            $checked++;
+            $ok = true; $msg = '';
+            $reC = static fn ($v) => is_array($v) ? [(float) $v[0], (float) ($v[1] ?? 0.0)] : [(float) $v, 0.0];
+            try {
+                $got = \Tessero\Signal\ClosestStftDualWindow::compute(
+                    $c['win'], (int) $c['hop'], $c['desired_dual'] ?? null, (bool) ($c['scaled'] ?? true));
+                foreach ($c['expect']['dual_win'] as $i => $ev) {
+                    [$er, $ei] = $reC($ev);
+                    [$gr, $gi] = $reC($got['dual_win'][$i]);
+                    if (abs($gr - $er) > $atol + $rtol * abs($er) || abs($gi - $ei) > $atol + $rtol * abs($ei)) {
+                        $ok = false; $msg = "dual_win[{$i}]"; break;
+                    }
+                }
+                if ($ok) {
+                    [$ear, $eai] = $reC($c['expect']['alpha']);
+                    [$gar, $gai] = $reC($got['alpha']);
+                    if (abs($gar - $ear) > $atol + $rtol * abs($ear) || abs($gai - $eai) > $atol + $rtol * abs($eai)) {
+                        $ok = false; $msg = 'alpha';
+                    }
+                }
+            } catch (\Throwable $e) { $ok = false; $msg = $e->getMessage(); }
+            $results[$backend][$key] = ($results[$backend][$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            $results['max_rel'][$backend][$key] = null;
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        continue;
+    }
     if (isset($data['scipyio_cases'])) {                     // scipy.io file formats: MatrixMarket / WAV / FortranFile (pure-PHP Tessero\Io)
         $local = [];
         $bump = static function (string $key, bool $ok) use (&$local): void {
@@ -1826,6 +1969,7 @@ foreach ($files as $file) {
                 return false;
             }
             foreach ($want as $i => $w) {
+                if (is_string($w)) { if ((string) ($got[$i] ?? '') !== (string) $w) { return false; } continue; }
                 $g = $got[$i];
                 if (is_nan((float) $w)) {
                     if (! is_nan((float) $g)) { return false; }
@@ -1919,6 +2063,56 @@ foreach ($files as $file) {
                         }
                         if (! $ok) { $msg = 'fortran write/re-read differs'; }
                         $key = 'scipyio.FortranFile';
+                        break;
+
+                    case 'hb_read':
+                        $r = \Tessero\Io\HarwellBoeing::read(base64_decode($c['content_b64']));
+                        $okShape = $r['nrows'] === $c['nrows'] && $r['ncols'] === $c['ncols'];
+                        $okCsc = $r['indptr'] === $c['indptr'] && $r['indices'] === $c['indices'];
+                        $dense = [];
+                        for ($i = 0; $i < $r['nrows']; $i++) { $dense[$i] = array_fill(0, $r['ncols'], 0.0); }
+                        for ($col = 0; $col < $r['ncols']; $col++) {
+                            for ($k = $r['indptr'][$col]; $k < $r['indptr'][$col + 1]; $k++) {
+                                $dense[$r['indices'][$k]][$col] = (float) $r['data'][$k];
+                            }
+                        }
+                        $flat = [];
+                        foreach ($dense as $row) { foreach ($row as $v) { $flat[] = $v; } }
+                        $ok = $okShape && $okCsc && $cmpFlat($c['flat'], $flat);
+                        if (! $ok) { $msg = $okShape ? ($okCsc ? 'values differ' : 'csc arrays differ') : "shape {$r['nrows']}x{$r['ncols']}"; }
+                        $key = 'scipyio.hb_read';
+                        break;
+
+                    case 'hb_write':
+                        $data2 = $c['is_int'] ? array_map('intval', $c['data']) : array_map('floatval', $c['data']);
+                        $text = \Tessero\Io\HarwellBoeing::write($c['nrows'], $c['ncols'], $c['indptr'], $c['indices'], $data2);
+                        $byteOk = ($text === base64_decode($c['content_b64']));
+                        $rw = \Tessero\Io\HarwellBoeing::read($text);
+                        $dense = [];
+                        for ($i = 0; $i < $rw['nrows']; $i++) { $dense[$i] = array_fill(0, $rw['ncols'], 0.0); }
+                        for ($col = 0; $col < $rw['ncols']; $col++) {
+                            for ($k = $rw['indptr'][$col]; $k < $rw['indptr'][$col + 1]; $k++) {
+                                $dense[$rw['indices'][$k]][$col] = (float) $rw['data'][$k];
+                            }
+                        }
+                        $flat = [];
+                        foreach ($dense as $row) { foreach ($row as $v) { $flat[] = $v; } }
+                        $ok = $byteOk && $cmpFlat($c['flat'], $flat);
+                        if (! $ok) { $msg = $byteOk ? 'roundtrip differs' : 'bytes differ from scipy'; }
+                        $key = 'scipyio.hb_write';
+                        break;
+
+                    case 'readsav':
+                        $vars = \Tessero\Io\IdlSave::read(base64_decode($c['content_b64']));
+                        $ok = true;
+                        foreach ($c['vars'] as $vn => $spec) {
+                            $g = $vars[$vn] ?? null;
+                            if ($g === null || $g['shape'] !== $spec['shape'] || $g['type'] !== $spec['type']
+                                || ! $cmpFlat($spec['flat'], $g['data'], 1e-6)) {
+                                $ok = false; $msg = "var {$vn}"; break;
+                            }
+                        }
+                        $key = 'scipyio.readsav';
                         break;
 
                     default:
