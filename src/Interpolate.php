@@ -43,7 +43,9 @@ final class Interpolate
     'pade' => 'pade',
     'pchip_interpolate' => 'pchipInterpolate',
     'spalde' => 'spalde',
+    'spgrid' => 'spgrid',
     'spherfit' => 'spherfit',
+    'spherfit_lsq' => 'spherfitLsq',
     'splantider' => 'splantider',
     'splder' => 'splder',
     'splev' => 'splev',
@@ -325,6 +327,18 @@ final class Interpolate
     }
 
     /**
+     * FITPACK smoothing spline on a rectangular grid over a sphere: knots tu, tv and coefficients c (scipy.interpolate.RectSphereBivariateSpline).
+     *
+     * scipy.interpolate.spgrid
+     *
+     * @return mixed one array, or an array keyed by tu, tv, c when several results are requested
+     */
+    public static function spgrid(mixed $u, mixed $v, mixed $r, mixed $s): mixed
+    {
+        return Registry::routine('interpolate.spgrid', [$u, $v, $r, $s]);
+    }
+
+    /**
      * FITPACK sphere smoothing spline (sphere): knots tt, tp and coefficients c for smoothing s>=0 (scipy.interpolate.SmoothSphereBivariateSpline).
      *
      * scipy.interpolate.spherfit
@@ -334,6 +348,18 @@ final class Interpolate
     public static function spherfit(mixed $teta, mixed $phi, mixed $r, mixed $w, mixed $s, mixed $eps): mixed
     {
         return Registry::routine('interpolate.spherfit', [$teta, $phi, $r, $w, $s, $eps]);
+    }
+
+    /**
+     * FITPACK sphere least-squares spline with given knots tt, tp: coefficients c (scipy.interpolate.LSQSphereBivariateSpline).
+     *
+     * scipy.interpolate.spherfit_lsq
+     *
+     * @return mixed one array, or an array keyed by tt, tp, c when several results are requested
+     */
+    public static function spherfitLsq(mixed $teta, mixed $phi, mixed $r, mixed $w, mixed $tt, mixed $tp, mixed $eps): mixed
+    {
+        return Registry::routine('interpolate.spherfit_lsq', [$teta, $phi, $r, $w, $tt, $tp, $eps]);
     }
 
     /**

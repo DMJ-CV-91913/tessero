@@ -4426,6 +4426,48 @@ foreach ($files as $file) {
         foreach ($local as $k => $s) { $results[$backend][$k] = $s; $results['max_rel'][$backend][$k] = null; }
         continue;
     }
+    if (isset($data['lsqsphere_cases']) || isset($data['rectsphere_cases'])) {
+        // scipy.interpolate sphere LSQ / rectangular-grid bivariate smoothing splines (f2c-vendored sphere_/spgrid_)
+        $local = [];
+        foreach ($data['lsqsphere_cases'] ?? [] as $c) {      // scipy.interpolate.LSQSphereBivariateSpline
+            $key = 'interpolate.LSQSphereBivariateSpline';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\LSQSphereBivariateSpline(
+                    $c['theta'], $c['phi'], $c['r'], $c['tt'], $c['tp'], $c['w'], 1e-16);
+                [$tt, $tp] = $sp->getKnots();
+                $ok = vecClose(flattenNums($tt), flattenNums($c['exp_tt']), 1e-9)
+                    && vecClose(flattenNums($tp), flattenNums($c['exp_tp']), 1e-9)
+                    && vecClose(flattenNums($sp->getCoeffs()), flattenNums($c['exp_c']), 1e-9);
+                if (! $ok) { $msg = 'knots/coeffs did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($data['rectsphere_cases'] ?? [] as $c) {     // scipy.interpolate.RectSphereBivariateSpline
+            $key = 'interpolate.RectSphereBivariateSpline';
+            $checked++;
+            $ok = false; $msg = '';
+            try {
+                $sp = new \Tessero\Interpolate\RectSphereBivariateSpline(
+                    $c['u'], $c['v'], $c['r'], (float) $c['s']);
+                [$tu, $tv] = $sp->getKnots();
+                $ok = vecClose(flattenNums($tu), flattenNums($c['exp_tu']), 1e-9)
+                    && vecClose(flattenNums($tv), flattenNums($c['exp_tv']), 1e-9)
+                    && vecClose(flattenNums($sp->getCoeffs()), flattenNums($c['exp_c']), 1e-9);
+                if (! $ok) { $msg = 'knots/coeffs did not match scipy'; }
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+            }
+            $local[$key] = ($local[$key] ?? 'pass') === 'fail' ? 'fail' : ($ok ? 'pass' : 'fail');
+            if (! $ok) { $failures++; echo "FAIL {$key}: {$msg}\n"; }
+        }
+        foreach ($local as $k => $ss) { $results[$backend][$k] = $ss; $results['max_rel'][$backend][$k] = null; }
+        continue;
+    }
     if (isset($data['ius_cases'])) {                         // scipy.interpolate.InterpolatedUnivariateSpline (pure-PHP over interpolate.make_interp_spline)
         $local = [];
         foreach ($data['ius_cases'] as $c) {
