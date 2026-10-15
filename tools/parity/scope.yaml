@@ -757,6 +757,8 @@ legacy:
     RectBivariateSpline: {ffi: [RBS::__construct], ext: [RBS::__construct], fixtures: [interpolate.RectBivariateSpline]}
     make_splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
     splrep: {ffi: [MSR::evaluate], ext: [MSR::evaluate], fixtures: [interpolate.splrep]}
+    # UnivariateSpline(x,y,w,k,s): FITPACK curfit smoothing spline (f2c-vendored Dierckx kernel interpolate.splrep)
+    UnivariateSpline: {ffi: [UVS::evaluate], ext: [UVS::evaluate], fixtures: [interpolate.UnivariateSpline]}
     make_splprep: {ffi: [MSP::evaluate], ext: [MSP::evaluate], fixtures: [interpolate.splprep]}
     splprep: {ffi: [MSP::evaluate], ext: [MSP::evaluate], fixtures: [interpolate.splprep]}
     generate_knots: {ffi: [GKN::knots], ext: [GKN::knots], fixtures: [interpolate.generate_knots]}

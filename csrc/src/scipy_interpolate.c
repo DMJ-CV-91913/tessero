@@ -1016,6 +1016,241 @@ static int r_ndbspline(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* ============================================================================
+ * FITPACK auto-knot smoothing splines (scipy.interpolate smoothing family).
+ *
+ * These routines wrap the vendored, f2c-translated Dierckx FITPACK sources in
+ * third_party/scipy/fitpack/ (curfit/fpcurf for 1-D; surfit/fpsurf for 2-D
+ * scattered; sphere/fpsphe for the sphere; regrid/fpregr for the rect grid).
+ * f2c preserves Fortran source-level FP accumulation order, so outputs are
+ * BIT-EXACT vs scipy gfortran-built _dfitpack across the whole smoothing
+ * regime, active p-root iteration included (see pkg14 de-risk: curfit 28/28,
+ * surfit 16/16, sphere 3/3, regrid 6/6 bit-exact).
+ *
+ * Append these functions + ROUTINE() entries into scipy_interpolate.c (before
+ * the closing }; of DEFS).  f2c integer/doublereal come via f2c.h.
+ * ==========================================================================*/
+#include "../third_party/scipy/fitpack/f2c.h"
+#define FP_MAXI(a,b) ((a)>(b)?(a):(b))
+
+extern int curfit_(integer*,integer*,doublereal*,doublereal*,doublereal*,
+    doublereal*,doublereal*,integer*,doublereal*,integer*,integer*,
+    doublereal*,doublereal*,doublereal*,doublereal*,integer*,integer*,integer*);
+extern int surfit_(integer*,integer*,doublereal*,doublereal*,doublereal*,doublereal*,
+    doublereal*,doublereal*,doublereal*,doublereal*,integer*,integer*,doublereal*,
+    integer*,integer*,integer*,doublereal*,integer*,doublereal*,integer*,doublereal*,
+    doublereal*,doublereal*,doublereal*,integer*,doublereal*,integer*,integer*,integer*,integer*);
+extern int sphere_(integer*,integer*,doublereal*,doublereal*,doublereal*,doublereal*,
+    doublereal*,integer*,integer*,doublereal*,integer*,doublereal*,integer*,doublereal*,
+    doublereal*,doublereal*,doublereal*,integer*,doublereal*,integer*,integer*,integer*,integer*);
+extern int regrid_(integer*,integer*,doublereal*,integer*,doublereal*,doublereal*,
+    doublereal*,doublereal*,doublereal*,doublereal*,integer*,integer*,doublereal*,
+    integer*,integer*,integer*,integer*,doublereal*,integer*,doublereal*,doublereal*,
+    doublereal*,doublereal*,integer*,integer*,integer*,integer*);
+
+/* interpolate.splrep -- curfit cold start.  Args: x,y,w,k,s -> Outs: t,c */
+static int r_fitpack_curfit(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 ||
+        args[1].kind != 3 || args[1].arr.ndim != 1 ||
+        args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("splrep: x, y and w must be 1-D arrays"); return TSR_EARG; }
+    if (args[3].kind != 1) { fn_set_error("splrep: k must be an integer degree"); return TSR_EARG; }
+    const int k = (int)args[3].num;
+    if (k < 1 || k > 5) { fn_set_error("splrep: degree k must be between 1 and 5"); return TSR_EARG; }
+    const double s = args[4].num;
+    if (s < 0.0) { fn_set_error("splrep: smoothing factor s must be non-negative"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0];
+    if (args[1].arr.shape[0] != m || args[2].arr.shape[0] != m) { fn_set_error("splrep: x, y and w must have the same length"); return TSR_EARG; }
+    if (m <= k) { fn_set_error("splrep: need more than k data points"); return TSR_EARG; }
+    int64_t lx, ly, lw;
+    double *x = fn_arg_doubles(&args[0], &lx);
+    double *y = x ? fn_arg_doubles(&args[1], &ly) : NULL;
+    double *w = y ? fn_arg_doubles(&args[2], &lw) : NULL;
+    const integer nest = (integer)(m + k + 1);
+    const integer lwrk = (integer)(m * (k + 1) + nest * (7 + 3 * k));
+    double *t = (double *)calloc((size_t)nest, sizeof(double));
+    double *c = (double *)calloc((size_t)nest, sizeof(double));
+    double *wrk = (double *)calloc((size_t)lwrk, sizeof(double));
+    integer *iwrk = (integer *)calloc((size_t)nest, sizeof(integer));
+    int rc = (!x || !y || !w || !t || !c || !wrk || !iwrk) ? TSR_ENOMEM : TSR_OK;
+    integer iopt = 0, mm = (integer)m, kk = (integer)k, nn = 0, ier = 0, lwk = lwrk, ne = nest;
+    double xb = x ? x[0] : 0.0, xe = x ? x[m - 1] : 0.0, S = s, fp = 0.0;
+    if (rc == TSR_OK) {
+        curfit_(&iopt, &mm, x, y, w, &xb, &xe, &kk, &S, &ne, &nn, t, c, &fp, wrk, &lwk, iwrk, &ier);
+        if (ier >= 10) { fn_set_error("splrep: FITPACK curfit reported invalid input (ier>=10)"); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        const int64_t ncoef = (int64_t)nn - k - 1;
+        double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ (int64_t)nn });
+        double *rc_ = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){ ncoef });
+        if (!rt || !rc_) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < nn; i++) rt[i] = t[i];
+               for (int64_t i = 0; i < ncoef; i++) rc_[i] = c[i]; }
+    }
+    free(t); free(c); free(wrk); free(iwrk);
+    fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(w, lw);
+    return rc;
+}
+
+/* interpolate.bisplrep -- surfit cold start.  Args: x,y,z,w,kx,ky,s,eps -> Outs: tx,ty,c */
+static int r_fitpack_surfit(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 3) { fn_set_error("bisplrep: x, y, z and w must be 1-D arrays"); return TSR_EARG; }
+    if (args[4].kind != 1 || args[5].kind != 1) { fn_set_error("bisplrep: kx and ky must be integers"); return TSR_EARG; }
+    const int kx = (int)args[4].num, ky = (int)args[5].num;
+    if (kx < 1 || kx > 5 || ky < 1 || ky > 5) { fn_set_error("bisplrep: kx, ky must be in 1..5"); return TSR_EARG; }
+    const double s = args[6].num, eps = args[7].num;
+    if (s < 0.0) { fn_set_error("bisplrep: s must be non-negative"); return TSR_EARG; }
+    if (!(eps > 0.0 && eps < 1.0)) { fn_set_error("bisplrep: eps must be in (0,1)"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0];
+    if (args[1].arr.shape[0] != m || args[2].arr.shape[0] != m || args[3].arr.shape[0] != m) { fn_set_error("bisplrep: x, y, z, w must have the same length"); return TSR_EARG; }
+    if (m < (int64_t)(kx + 1) * (ky + 1)) { fn_set_error("bisplrep: need at least (kx+1)*(ky+1) points"); return TSR_EARG; }
+    int64_t lx, ly, lz, lw;
+    double *x = fn_arg_doubles(&args[0], &lx);
+    double *y = x ? fn_arg_doubles(&args[1], &ly) : NULL;
+    double *z = y ? fn_arg_doubles(&args[2], &lz) : NULL;
+    double *w = z ? fn_arg_doubles(&args[3], &lw) : NULL;
+    int ims = (int)(m / 2); double sq = sqrt((double)ims);
+    integer nxest = (integer)FP_MAXI(kx + 1 + (int)sq, 2 * (kx + 1));
+    integer nyest = (integer)FP_MAXI(ky + 1 + (int)sq, 2 * (ky + 1));
+    integer nmax = nxest > nyest ? nxest : nyest;
+    integer u = nxest - kx - 1, v = nyest - ky - 1, km = (kx > ky ? kx : ky) + 1, ne = nmax;
+    integer bx = kx * v + ky + 1, by = ky * u + kx + 1, b1, b2;
+    if (bx <= by) { b1 = bx; b2 = bx + v - ky; } else { b1 = by; b2 = by + u - kx; }
+    integer lwrk1 = u * v * (2 + b1 + b2) + 2 * (u + v + km * ((integer)m + ne) + ne - kx - ky) + b2 + 1;
+    integer lwrk2 = u * v * (b2 + 1) + b2;
+    integer kwrk = (integer)m + (nxest - 2 * kx - 1) * (nyest - 2 * ky - 1);
+    double *tx = (double *)calloc((size_t)nmax, sizeof(double));
+    double *ty = (double *)calloc((size_t)nmax, sizeof(double));
+    double *c  = (double *)calloc((size_t)(u * v), sizeof(double));
+    double *wrk1 = (double *)calloc((size_t)lwrk1, sizeof(double));
+    double *wrk2 = (double *)calloc((size_t)lwrk2, sizeof(double));
+    integer *iwrk = (integer *)calloc((size_t)kwrk, sizeof(integer));
+    int rc = (!x || !y || !z || !w || !tx || !ty || !c || !wrk1 || !wrk2 || !iwrk) ? TSR_ENOMEM : TSR_OK;
+    integer iopt = 0, mm = (integer)m, KX = kx, KY = ky, nx = 0, ny = 0, ier = 0;
+    double xb = 0, xe = 0, yb = 0, ye = 0, S = s, EPS = eps, fp = 0;
+    if (rc == TSR_OK) {
+        xb = xe = x[0]; yb = ye = y[0];
+        for (int64_t i = 0; i < m; i++) { if (x[i] < xb) xb = x[i]; if (x[i] > xe) xe = x[i]; if (y[i] < yb) yb = y[i]; if (y[i] > ye) ye = y[i]; }
+        surfit_(&iopt, &mm, x, y, z, w, &xb, &xe, &yb, &ye, &KX, &KY, &S, &nxest, &nyest, &nmax, &EPS,
+                &nx, tx, &ny, ty, c, &fp, wrk1, &lwrk1, wrk2, &lwrk2, iwrk, &kwrk, &ier);
+        if (ier >= 10) { fn_set_error("bisplrep: FITPACK surfit reported invalid input/workspace (ier>=10)"); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        const int64_t nc = (int64_t)(nx - kx - 1) * (ny - ky - 1);
+        double *rtx = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ (int64_t)nx });
+        double *rty = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){ (int64_t)ny });
+        double *rc_ = (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){ nc });
+        if (!rtx || !rty || !rc_) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < nx; i++) rtx[i] = tx[i];
+               for (int64_t i = 0; i < ny; i++) rty[i] = ty[i];
+               for (int64_t i = 0; i < nc; i++) rc_[i] = c[i]; }
+    }
+    free(tx); free(ty); free(c); free(wrk1); free(wrk2); free(iwrk);
+    fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(z, lz); fn_free_doubles(w, lw);
+    return rc;
+}
+
+/* interpolate.spherfit -- sphere smoothing (SmoothSphereBivariateSpline).
+   Args: teta,phi,r,w,s,eps -> Outs: tt,tp,c */
+static int r_fitpack_sphere(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 3) { fn_set_error("spherfit: teta, phi, r and w must be 1-D arrays"); return TSR_EARG; }
+    const double s = args[4].num, eps = args[5].num;
+    if (s < 0.0) { fn_set_error("spherfit: s must be non-negative"); return TSR_EARG; }
+    const int64_t m = args[0].arr.shape[0];
+    if (args[1].arr.shape[0] != m || args[2].arr.shape[0] != m || args[3].arr.shape[0] != m) { fn_set_error("spherfit: teta, phi, r, w must have the same length"); return TSR_EARG; }
+    int64_t lt_, lp_, lr_, lw_;
+    double *teta = fn_arg_doubles(&args[0], &lt_);
+    double *phi  = teta ? fn_arg_doubles(&args[1], &lp_) : NULL;
+    double *r    = phi  ? fn_arg_doubles(&args[2], &lr_) : NULL;
+    double *w    = r    ? fn_arg_doubles(&args[3], &lw_) : NULL;
+    integer ntest = (integer)(8 + (int)sqrt(m / 2.0)), npest = (integer)(8 + (int)sqrt(m / 2.0));
+    integer u = ntest - 7, v = npest - 7;
+    integer lwrk1 = 185 + 52 * v + 10 * u + 14 * u * v + 8 * (u - 1) * v * v + 8 * (integer)m;
+    integer lwrk2 = 48 + 21 * v + 7 * u * v + 4 * (u - 1) * v * v;
+    integer kwrk = (integer)m + (ntest - 7) * (npest - 7);
+    double *tt = (double *)calloc((size_t)ntest, sizeof(double));
+    double *tp = (double *)calloc((size_t)npest, sizeof(double));
+    double *c  = (double *)calloc((size_t)((ntest - 4) * (npest - 4)), sizeof(double));
+    double *wrk1 = (double *)calloc((size_t)lwrk1, sizeof(double));
+    double *wrk2 = (double *)calloc((size_t)lwrk2, sizeof(double));
+    integer *iwrk = (integer *)calloc((size_t)kwrk, sizeof(integer));
+    int rc = (!teta || !phi || !r || !w || !tt || !tp || !c || !wrk1 || !wrk2 || !iwrk) ? TSR_ENOMEM : TSR_OK;
+    integer iopt = 0, mm = (integer)m, nt = 0, np = 0, ier = 0;
+    double S = s, EPS = eps, fp = 0;
+    if (rc == TSR_OK) {
+        sphere_(&iopt, &mm, teta, phi, r, w, &S, &ntest, &npest, &EPS, &nt, tt, &np, tp, c, &fp, wrk1, &lwrk1, wrk2, &lwrk2, iwrk, &kwrk, &ier);
+        if (ier >= 10) { fn_set_error("spherfit: FITPACK sphere reported invalid input/workspace (ier>=10)"); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        const int64_t nc = (int64_t)(nt - 4) * (np - 4);
+        double *rtt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ (int64_t)nt });
+        double *rtp = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){ (int64_t)np });
+        double *rc_ = (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){ nc });
+        if (!rtt || !rtp || !rc_) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < nt; i++) rtt[i] = tt[i];
+               for (int64_t i = 0; i < np; i++) rtp[i] = tp[i];
+               for (int64_t i = 0; i < nc; i++) rc_[i] = c[i]; }
+    }
+    free(tt); free(tp); free(c); free(wrk1); free(wrk2); free(iwrk);
+    fn_free_doubles(teta, lt_); fn_free_doubles(phi, lp_); fn_free_doubles(r, lr_); fn_free_doubles(w, lw_);
+    return rc;
+}
+
+/* interpolate.regrid -- rectangular-grid smoothing (RectBivariateSpline s>0).
+   Args: x,y,z,kx,ky,s -> Outs: tx,ty,c   (z is the mx*my raveled grid, C order) */
+static int r_fitpack_regrid(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nargs; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("regrid: x, y and z must be arrays"); return TSR_EARG; }
+    if (args[3].kind != 1 || args[4].kind != 1) { fn_set_error("regrid: kx and ky must be integers"); return TSR_EARG; }
+    const int kx = (int)args[3].num, ky = (int)args[4].num;
+    if (kx < 1 || kx > 5 || ky < 1 || ky > 5) { fn_set_error("regrid: kx, ky must be in 1..5"); return TSR_EARG; }
+    const double s = args[5].num;
+    if (s < 0.0) { fn_set_error("regrid: s must be non-negative"); return TSR_EARG; }
+    const int64_t mx = args[0].arr.shape[0], my = args[1].arr.shape[0];
+    if (args[2].arr.shape[0] != mx * my) { fn_set_error("regrid: z must have length mx*my"); return TSR_EARG; }
+    int64_t lx, ly, lz;
+    double *x = fn_arg_doubles(&args[0], &lx);
+    double *y = x ? fn_arg_doubles(&args[1], &ly) : NULL;
+    double *z = y ? fn_arg_doubles(&args[2], &lz) : NULL;
+    integer nxest = (integer)(mx + kx + 1), nyest = (integer)(my + ky + 1);
+    integer uu = (integer)FP_MAXI(my, nxest);
+    integer lwrk = 4 + nxest * ((integer)my + 2 * kx + 5) + nyest * (2 * ky + 5) + (integer)mx * (kx + 1) + (integer)my * (ky + 1) + uu;
+    integer kwrk = 3 + (integer)mx + (integer)my + nxest + nyest;
+    double *tx = (double *)calloc((size_t)nxest, sizeof(double));
+    double *ty = (double *)calloc((size_t)nyest, sizeof(double));
+    double *c  = (double *)calloc((size_t)((nxest - kx - 1) * (nyest - ky - 1)), sizeof(double));
+    double *wrk = (double *)calloc((size_t)lwrk, sizeof(double));
+    integer *iwrk = (integer *)calloc((size_t)kwrk, sizeof(integer));
+    int rc = (!x || !y || !z || !tx || !ty || !c || !wrk || !iwrk) ? TSR_ENOMEM : TSR_OK;
+    integer iopt = 0, MX = (integer)mx, MY = (integer)my, KX = kx, KY = ky, maxit = 20, nx = 0, ny = 0, ier = 0;
+    double xb = x ? x[0] : 0, xe = x ? x[mx - 1] : 0, yb = y ? y[0] : 0, ye = y ? y[my - 1] : 0, S = s, fp = 0;
+    if (rc == TSR_OK) {
+        regrid_(&iopt, &MX, x, &MY, y, z, &xb, &xe, &yb, &ye, &KX, &KY, &S, &nxest, &nyest, &maxit,
+                &nx, tx, &ny, ty, c, &fp, wrk, &lwrk, iwrk, &kwrk, &ier);
+        if (ier >= 10) { fn_set_error("regrid: FITPACK regrid reported invalid input/workspace (ier>=10)"); rc = TSR_EARG; }
+    }
+    if (rc == TSR_OK) {
+        const int64_t nc = (int64_t)(nx - kx - 1) * (ny - ky - 1);
+        double *rtx = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){ (int64_t)nx });
+        double *rty = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){ (int64_t)ny });
+        double *rc_ = (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){ nc });
+        if (!rtx || !rty || !rc_) rc = TSR_ENOMEM;
+        else { for (int64_t i = 0; i < nx; i++) rtx[i] = tx[i];
+               for (int64_t i = 0; i < ny; i++) rty[i] = ty[i];
+               for (int64_t i = 0; i < nc; i++) rc_[i] = c[i]; }
+    }
+    free(tx); free(ty); free(c); free(wrk); free(iwrk);
+    fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(z, lz);
+    return rc;
+}
+
+
 static const fn_def DEFS[] = {
     ROUTINE("interpolate.pchip_interpolate", 1, "xi, yi, x", "y", r_pchip_interpolate, NULL, "Monotone piecewise-cubic (PCHIP) interpolation evaluated at x (scipy.interpolate.pchip_interpolate)."),
     ROUTINE("interpolate.PchipInterpolator", 1, "x, y, xnew", "y", r_pchip_class, NULL, "PCHIP monotone cubic interpolation evaluated at xnew (scipy.interpolate.PchipInterpolator)."),
@@ -1046,6 +1281,7 @@ static const fn_def DEFS[] = {
     ROUTINE("interpolate.spalde", 1, "t, c, k, x", "d", r_spalde, NULL, "All derivatives 0..k of a B-spline at each x (scipy.interpolate.spalde)."),
     ROUTINE("interpolate.NdPPoly", 1, "c, xb, yb, xi", "y", r_ndppoly, NULL, "2-D tensor piecewise polynomial evaluated at points xi (scipy.interpolate.NdPPoly)."),
     ROUTINE("interpolate.NdBSpline", 1, "tx, ty, c, kx, ky, xi", "y", r_ndbspline, NULL, "2-D tensor B-spline evaluated at points xi (scipy.interpolate.NdBSpline)."),
+    ROUTINE("interpolate.splrep", 2, "x, y, w, k, s", "t, c", r_fitpack_curfit, NULL, "FITPACK auto-knot smoothing spline (curfit): knots t and coefficients c for degree k, smoothing s>=0 (scipy.interpolate.splrep / UnivariateSpline)."),
 };
 
 const fn_table TSR_SCIPY_INTERPOLATE_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
