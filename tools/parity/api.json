@@ -7255,6 +7255,138 @@
         ]
     },
     {
+        "class": "Tessero\\Io\\MatIO",
+        "methods": [
+            {
+                "name": "read",
+                "static": true,
+                "sig": "read(string $bytes): array",
+                "doc": "Parse MAT v5 bytes into variables."
+            },
+            {
+                "name": "info",
+                "static": true,
+                "sig": "info(string $bytes): array",
+                "doc": "whosmat: name/shape/class of every variable without decoding data."
+            },
+            {
+                "name": "write",
+                "static": true,
+                "sig": "write(array $vars): string",
+                "doc": "Emit MAT v5 bytes for a dict of variables."
+            }
+        ],
+        "constants": [
+            "MI_INT8",
+            "MI_UINT8",
+            "MI_INT16",
+            "MI_UINT16",
+            "MI_INT32",
+            "MI_UINT32",
+            "MI_SINGLE",
+            "MI_DOUBLE",
+            "MI_INT64",
+            "MI_UINT64",
+            "MI_MATRIX",
+            "MI_COMPRESSED",
+            "MI_UTF8",
+            "MI_UTF16",
+            "MI_UTF32",
+            "MX_CELL",
+            "MX_STRUCT",
+            "MX_OBJECT",
+            "MX_CHAR",
+            "MX_SPARSE",
+            "MX_DOUBLE",
+            "MX_SINGLE",
+            "MX_INT8",
+            "MX_UINT8",
+            "MX_INT16",
+            "MX_UINT16",
+            "MX_INT32",
+            "MX_UINT32",
+            "MX_INT64",
+            "MX_UINT64",
+            "FLAG_COMPLEX",
+            "FLAG_LOGICAL",
+            "CLASS_NAME",
+            "NUMERIC"
+        ]
+    },
+    {
+        "class": "Tessero\\Io\\HarwellBoeing",
+        "methods": [
+            {
+                "name": "read",
+                "static": true,
+                "sig": "read(string $text): array",
+                "doc": "Parse an HB-format string into a 0-indexed CSC description."
+            },
+            {
+                "name": "write",
+                "static": true,
+                "sig": "write(int $nrows, int $ncols, array $indptr, array $indices, array $data, string $title = 'Default title', string $key = '0'): string",
+                "doc": "Write a 0-indexed CSC matrix as HB-format text matching scipy.io.hb_write."
+            }
+        ]
+    },
+    {
+        "class": "Tessero\\Io\\NetCDF",
+        "methods": [
+            {
+                "name": "read",
+                "static": true,
+                "sig": "read(string $bytes): array",
+                "doc": "Parse netCDF-3 bytes."
+            },
+            {
+                "name": "write",
+                "static": true,
+                "sig": "write(array $spec): string",
+                "doc": "Emit netCDF-3 classic (version 1) bytes."
+            }
+        ],
+        "constants": [
+            "NC_BYTE",
+            "NC_CHAR",
+            "NC_SHORT",
+            "NC_INT",
+            "NC_FLOAT",
+            "NC_DOUBLE",
+            "NC_DIMENSION",
+            "NC_VARIABLE",
+            "NC_ATTRIBUTE",
+            "TYPEMAP",
+            "REVERSE",
+            "FILLMAP"
+        ]
+    },
+    {
+        "class": "Tessero\\Io\\IdlSave",
+        "methods": [
+            {
+                "name": "read",
+                "static": true,
+                "sig": "read(string $bytes): array",
+                "doc": "Parse an IDL .sav byte string."
+            }
+        ],
+        "constants": [
+            "TYPECODE"
+        ]
+    },
+    {
+        "class": "Tessero\\Signal\\ClosestStftDualWindow",
+        "methods": [
+            {
+                "name": "compute",
+                "static": true,
+                "sig": "compute(array $win, int $hop, ?array $desiredDual = null, bool $scaled = true): array",
+                "doc": ""
+            }
+        ]
+    },
+    {
         "class": "Tessero\\Io\\SparseNpz",
         "methods": [
             {
