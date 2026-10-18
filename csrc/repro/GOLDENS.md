@@ -156,9 +156,30 @@ the EXACT-op tier (matmul/add/FMA) already is.
   constants and fmaf order and reproduce these goldens on real silicon. Vulkan f32
   `OpFMul`/`OpFMA`/`OpSqrt`/`OpFDiv` must be correctly rounded on the target; confirm per
   device. (Talario half, separate repo.)
-- Cross-CPU-ISA: re-run on ARM/NEON (e.g. GH200) to confirm the goldens hold there too.
-  Expected to hold (same IEEE fmaf), but not yet run.
-- AVX-512: this host has no AVX-512, so the scalar == avx512 cell is unconfirmed; the
-  runner checks it automatically on a host that has it.
+- Cross-CPU-ISA: CONFIRMED (2026-10-18). All four goldens reproduce byte-for-byte on ARM64
+  Neoverse V2 (GCP c4a Axion) across scalar/NEON/SVE. See csrc/repro/ARCH_MATRIX.md.
+- AVX-512: CONFIRMED (2026-10-18). scalar == AVX2 == AVX-512 on Intel Emerald Rapids (GCP
+  c4), all four primitives. See csrc/repro/ARCH_MATRIX.md.
 - erf accuracy is ~2.9e-7 abs / <= 5 ULP in the A&S region (ax > 0.5); the near-zero
   region (gelu-critical) is tight via the series. Correctly-rounded erf is a later tier.
+
+## Provenance and originality
+
+The reproducible-f32 primitives (tsr_repro_rsqrt/exp2/exp/erf_f32) are a NEW, ORIGINAL
+Tessero contribution and are NOT part of the ported NumPy/SciPy surface. NumPy/SciPy
+transcendentals are accuracy-first and defer to the system libm / vendor math, which is NOT
+bit-reproducible across hardware, drivers, or SIMD width. Tessero's ~1,845 parity-gated
+functions match NumPy/SciPy exactly and are untouched by this work.
+
+What is original is the REPRODUCIBLE-BY-CONSTRUCTION discipline: every primitive reduces to
+correctly-rounded f32 ops only (+, -, *, /, sqrtf, fmaf), in a fixed evaluation order, with
+exact integer range reduction and an exact exponent-bit scale2, so the output is ONE defined
+f32 bit-value on every SIMD width, thread count, and CPU ISA, and (via the mirrored GPU
+shader) on the GPU. That construction, and the CPU==GPU / cross-ISA bit-identity it enables,
+is the contribution.
+
+Attribution: the minimax polynomial COEFFICIENTS are standard published values - Cephes
+(S. Moshier, exp2f/expf; public domain) and Abramowitz & Stegun 7.1.26 (erf; public domain) -
+used as source constants and cited in csrc/src/repro_f32.c. Using well-known coefficients is
+routine; the novel element is the fixed-order fma construction and the resulting bit-identity,
+not the coefficients.
