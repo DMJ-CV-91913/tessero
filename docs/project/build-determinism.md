@@ -13,6 +13,12 @@ were bit-identical. Reran byte-for-byte identical, so it is deterministic, not a
 primitives were bit-identical across all three GPU generations and every CPU; the GEMM/axpy/dot reductions were
 not.
 
+Proof the fix matters (same H100 run): forcing the FMA path turned the invalid run (matmul CPU f4b5bd0c) into a
+clean pass (4f984242). That is the concrete payoff of this work. Once Layer 1 (explicit fma) + Layer 4
+(build-time self-test) land, a plain `make CC=gcc-12` produces the canonical 4f984242 result on any CPU, with no
+-march / -DTSR_NO_CLONES gymnastics - the determinism stops depending on which clone the runtime happens to pick.
+The valid canonical-FMA H100 attestation is banked in Talario (test(attest), commit b79071d).
+
 That one bug is the tip of a larger surface. A determinism library's promise - the same answer to the bit,
 everywhere - can be broken at four stages: the arithmetic, the build, the packaging, and the host it loads on.
 This document closes all four. Part I hardens the library; Part II hardens deployment; Part III is the
