@@ -75,6 +75,13 @@ OBJ_C = $(patsubst %.c,$(BUILD)/c/%.o,$(notdir $(SRC)))
 $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -Ithird_party/numpy/include -c -o $@ $<
+# repro_f32.c: the reproducible-f32 primitives MUST compile with contraction and fast-math OFF so
+# the compiler cannot contract or reassociate the non-fma arithmetic. This is what keeps the result
+# bit-identical across SIMD level, thread count and compiler (see csrc/repro/GOLDENS.md). The flags
+# follow $(CFLAGS) so they override anything inherited. This explicit target beats the generic rule.
+$(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h
+	@mkdir -p $(BUILD)/c
+	$(CC) $(CFLAGS) -fno-fast-math -ffp-contract=off -Ithird_party/numpy/include -c -o $@ $<
 $(BUILD)/c/%.o: third_party/numpy/random/src/%.c
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
