@@ -39,6 +39,51 @@ static inline float tsr__f32_from_bits(uint32_t b) {
     return f;
 }
 
+/* Reinterpret an f32 as its uint32 bit pattern (companion to the above). */
+static inline uint32_t tsr__bits_from_f32(float f) {
+    uint32_t b;
+    memcpy(&b, &f, sizeof b);
+    return b;
+}
+
+/*
+ * Deterministic reciprocal 1/b for b > 0, and reciprocal-sqrt 1/sqrt(x) for
+ * x > 0, built from ONLY correctly-rounded f32 ops (* and fmaf) plus an exact
+ * integer bit-hack seed. No sqrtf and no `/`: IEEE sqrt and divide are
+ * correctly rounded on a CPU, but Vulkan guarantees correct rounding ONLY for
+ * + - * fma (OpSqrt/OpFDiv are 2.5-3 ULP and vendor-approximate), so a
+ * sqrtf/divide definition cannot be reproduced bit-for-bit on the GPU. These
+ * reach the same f32 bits on every CPU and GPU because the seed is pure integer
+ * arithmetic (identical everywhere) and the Newton refinement uses only
+ * correctly-rounded * and fma. Five iterations reach the f32 fixed point for the
+ * primitive input domains; the result is ~1 ULP accurate and, crucially, the
+ * SAME ~1 ULP value everywhere (reproducibility, not correct rounding, is the
+ * guarantee). A GPU shader mirrors these with floatBitsToUint / uintBitsToFloat
+ * and precise fma() in the identical order.
+ */
+static inline float tsr__rrecip_f32(float b) {
+    uint32_t seed = 0x7EF127EAu - tsr__bits_from_f32(b);   /* ~1/b */
+    float t = tsr__f32_from_bits(seed);
+    t = t * fmaf(-b, t, 2.0f);           /* t <- t*(2 - b*t), quadratic decay */
+    t = t * fmaf(-b, t, 2.0f);
+    t = t * fmaf(-b, t, 2.0f);
+    t = t * fmaf(-b, t, 2.0f);
+    t = t * fmaf(-b, t, 2.0f);
+    return t;
+}
+
+static inline float tsr__rrsqrt_f32(float x) {
+    uint32_t seed = 0x5f3759dfu - (tsr__bits_from_f32(x) >> 1);  /* ~1/sqrt(x) */
+    float r = tsr__f32_from_bits(seed);
+    float h = 0.5f * x;                   /* exact (power-of-two multiply) */
+    r = r * fmaf(-h, r * r, 1.5f);        /* r <- r*(1.5 - 0.5*x*r^2) */
+    r = r * fmaf(-h, r * r, 1.5f);
+    r = r * fmaf(-h, r * r, 1.5f);
+    r = r * fmaf(-h, r * r, 1.5f);
+    r = r * fmaf(-h, r * r, 1.5f);
+    return r;
+}
+
 /*
  * y * 2^n, for n in [-150, 128]. Built only from an exact power-of-two bit
  * construction and two f32 multiplies, so a GPU shader can mirror it exactly.
@@ -190,7 +235,7 @@ static inline float tsr__erf_f32(float x) {
     float s  = copysignf(1.0f, x);                /* sign of x (+-1) */
     if (ax >= 4.0f) return s;                     /* saturate; +-Inf -> +-1 */
 
-    float t = 1.0f / fmaf(TSR_ERF_P, ax, 1.0f);   /* t = 1/(1+p*ax) */
+    float t = tsr__rrecip_f32(fmaf(TSR_ERF_P, ax, 1.0f));   /* t = 1/(1+p*ax), fma-only */
     float poly = fmaf(TSR_ERF_A5, t, TSR_ERF_A4);
     poly = fmaf(poly, t, TSR_ERF_A3);
     poly = fmaf(poly, t, TSR_ERF_A2);
@@ -218,7 +263,7 @@ int tsr_repro_rsqrt_f32(int64_t n, const float *x, float *y) {
 #pragma omp parallel for schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) {
-        y[i] = 1.0f / sqrtf(x[i]);          /* IEEE sqrt + divide, no estimate */
+        y[i] = tsr__rrsqrt_f32(x[i]);       /* deterministic seed + fma Newton */
     }
     return 0;
 }

@@ -36,10 +36,10 @@ identical == reproducible, and that hash is the golden.
 
 | primitive | GOLDEN(f32, N=2^20) SHA-256 | determinism | accuracy vs f64 ref |
 |-----------|------------------------------|-------------|---------------------|
-| rsqrt | `fce3ce9bb62423fb56ec0c331d6b6262d8f76be629718572b37d31d80b9a696b` | scalar == avx2 == 4-thread | <= 1 ULP |
+| rsqrt | `a55f20e5934645f1a554a0fddfa094531b13aa8b95b360ed8a44a24dc220e53f` | scalar == avx2 == 4-thread | <= 1 ULP |
 | exp2  | `d7b57bb03e2c26b20642f0697daf64a366bedd9d7a3ee5edd79d8dae502aabba` | scalar == avx2 == 4-thread | <= 1 ULP |
 | exp   | `7c0748f832cf0c6ea64d0382af76615033014602c90e882437dac5108d0aa336` | scalar == avx2 == 4-thread | <= 1 ULP |
-| erf   | `e268a1e2103e4ab6e33af6324bc5f01a208f18a0e3152f00309e9740c032a6eb` | scalar == avx2 == 4-thread | <= 5 ULP, max abs err 2.9e-7 |
+| erf   | `aebea57c4f009254b1dfd67953c209441bad55acb561ef3ca5f1f3b75e5f8797` | scalar == avx2 == 4-thread | <= 5 ULP, max abs err 2.9e-7 |
 
 The rsqrt golden is byte-for-byte the same hash the original proof-of-concept produced,
 which confirms the wired ABI function matches it exactly.
