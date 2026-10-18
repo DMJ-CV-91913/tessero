@@ -124,7 +124,7 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
     went from 53 ms to 30 ms.
 - Bench cases `log 1M` and `rfft 2^20 real`. `.npy` fixtures written by NumPy
   (`tests/fixtures/generate_npy.py`).
-- Error code −9 `TSR_EIO` for operating-system I/O errors.
+- Error code -9 `TSR_EIO` for operating-system I/O errors.
 
 ### Earlier in this cycle
 
@@ -247,10 +247,10 @@ From the memory-safety review (`docs/project/memory-safety-review.md`):
 - Soak (`tools/soak.php`): 30 minutes per backend, running concurrently.
   - Extension, JIT off: 785 608 iterations.
   - FFI package, tracing JIT: 475 522 iterations.
-  - Result: native and mapped bytes back at 0 after every iteration; heap slope 0; RSS slope +13.7 / −5.2 KiB/min (thresholds 16 / 64); no descriptor growth. PASS.
+  - Result: native and mapped bytes back at 0 after every iteration; heap slope 0; RSS slope +13.7 / -5.2 KiB/min (thresholds 16 / 64); no descriptor growth. PASS.
   - An earlier 11-minute run of both backends was also clean.
 - Not run: the Windows memory-map path (`csrc/src/mmap.c`, Win32 API, never
-  compiled), the CI matrix, 24–72 h soaks.
+  compiled), the CI matrix, 24-72 h soaks.
 
 ## [0.2.0] - 2026-09-26
 
@@ -281,7 +281,7 @@ From the memory-safety review (`docs/project/memory-safety-review.md`):
   and a JSON writer. `NDArray::sliceNative()`, `toJson()`, `meta()`,
   `__serialize`/`__unserialize`.
 - `tsr_reduce_mid` (fast reductions along non-last axes), `tsr_cumulative`,
-  `tsr_pcg64_shuffle`, error codes −6, −7, −8.
+  `tsr_pcg64_shuffle`, error codes -6, -7, -8.
 - **Laravel package `tessero/laravel`**: service provider, `Tessero` facade,
   `AsNDArray`/`TensorCast` Eloquent casts (JSON or exact binary),
   `NumericArray` validation rule, `response()->ndarray()`, `tessero:doctor`,
