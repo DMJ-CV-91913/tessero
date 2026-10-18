@@ -156,9 +156,9 @@ the EXACT-op tier (matmul/add/FMA) already is.
   constants and fmaf order and reproduce these goldens on real silicon. Vulkan f32
   `OpFMul`/`OpFMA`/`OpSqrt`/`OpFDiv` must be correctly rounded on the target; confirm per
   device. (Talario half, separate repo.)
-- Cross-CPU-ISA: CONFIRMED (2026-10-18). All four goldens reproduce byte-for-byte on ARM64
+- Cross-CPU-ISA: CONFIRMED (2026-10-17). All four goldens reproduce byte-for-byte on ARM64
   Neoverse V2 (GCP c4a Axion) across scalar/NEON/SVE. See csrc/repro/ARCH_MATRIX.md.
-- AVX-512: CONFIRMED (2026-10-18). scalar == AVX2 == AVX-512 on Intel Emerald Rapids (GCP
+- AVX-512: CONFIRMED (2026-10-17). scalar == AVX2 == AVX-512 on Intel Emerald Rapids (GCP
   c4), all four primitives. See csrc/repro/ARCH_MATRIX.md.
 - erf accuracy is ~2.9e-7 abs / <= 5 ULP in the A&S region (ax > 0.5); the near-zero
   region (gelu-critical) is tight via the series. Correctly-rounded erf is a later tier.

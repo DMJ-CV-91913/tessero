@@ -8,8 +8,8 @@ are bit-identical by construction on that hardware. Checked by `run_cross_arch.s
 | arch | host | vector paths | threads | rsqrt | exp2 | exp | erf | note |
 |------|------|--------------|---------|-------|------|-----|-----|------|
 | x86-64 | GCP n2 (AVX2+FMA, gcc 13.3) | scalar, AVX2 | 1, 4 | golden | golden | golden | golden | goldens defined here (824e9ff) |
-| x86-64 | GCP c4 Emerald Rapids (Intel Xeon 5th Gen) | scalar, AVX2, AVX-512 | 1, 4 | golden | golden | golden | golden | AVX-512 cell, 2026-10-18 |
-| aarch64 | GCP c4a Axion (Neoverse V2) | scalar, NEON, SVE | 1, 4 | MATCH | MATCH | MATCH | MATCH | CROSS-ISA, 2026-10-18 |
+| x86-64 | GCP c4 Emerald Rapids (Intel Xeon 5th Gen) | scalar, AVX2, AVX-512 | 1, 4 | golden | golden | golden | golden | AVX-512 cell, 2026-10-17 |
+| aarch64 | GCP c4a Axion (Neoverse V2) | scalar, NEON, SVE | 1, 4 | MATCH | MATCH | MATCH | MATCH | CROSS-ISA, 2026-10-17 |
 
 Coverage now: vector paths **scalar / AVX2 / AVX-512 / NEON / SVE**, thread counts **1 and 4**,
 ISAs **x86-64 (Intel) and ARM64 (Axion)** - all four primitives byte-identical to the goldens
