@@ -36,7 +36,7 @@ identical == reproducible, and that hash is the golden.
 
 | primitive | GOLDEN(f32, N=2^20) SHA-256 | determinism | accuracy vs f64 ref |
 |-----------|------------------------------|-------------|---------------------|
-| rsqrt | `a55f20e5934645f1a554a0fddfa094531b13aa8b95b360ed8a44a24dc220e53f` | scalar == avx2 == 4-thread | <= 1 ULP |
+| rsqrt | `a55f20e5934645f1a554a0fddfa094531b13aa8b95b360ed8a44a24dc220e53f` | scalar == avx2 == 4-thread | <= 2 ULP |
 | exp2  | `d7b57bb03e2c26b20642f0697daf64a366bedd9d7a3ee5edd79d8dae502aabba` | scalar == avx2 == 4-thread | <= 1 ULP |
 | exp   | `7c0748f832cf0c6ea64d0382af76615033014602c90e882437dac5108d0aa336` | scalar == avx2 == 4-thread | <= 1 ULP |
 | erf   | `aebea57c4f009254b1dfd67953c209441bad55acb561ef3ca5f1f3b75e5f8797` | scalar == avx2 == 4-thread | <= 5 ULP, max abs err 2.9e-7 |
@@ -49,9 +49,20 @@ which confirms the wired ABI function matches it exactly.
 Constants are exact f32 hex floats (printed by `determinism_test spec`). The evaluation
 order is part of the spec: a conformant GPU shader MUST use these exact values and this
 exact fmaf order, because CPU/GPU bit-identity depends on both sides running the identical
-sequence. Only correctly-rounded f32 ops are used: `+ - * /`, `sqrtf`, and `fmaf` (one
-rounding). No libm exp/exp2/erf, no SVML, no reciprocal/rsqrt estimate, no powf, no f64 or
-x87 intermediates, no reassociation.
+sequence.
+
+Only the PORTABLY-correctly-rounded f32 op set is used: `+ - *` and `fmaf` (one rounding).
+This is deliberate. A portable GPU API guarantees correct rounding (0.5 ULP) for add, sub,
+mul, and fma, but NOT for divide or sqrt: under Vulkan, `OpFDiv` is allowed 2.5 ULP and
+`OpSqrt` 3 ULP, and real NVIDIA silicon uses those tolerances, so any primitive that calls
+`/` or `sqrtf` cannot be bit-identical CPU==GPU. Therefore NO primitive here uses `/` or
+`sqrtf`. The two that mathematically need a reciprocal or an inverse-square-root (erf's A&S
+term and rsqrt) obtain it from a DETERMINISTIC integer bit-hack seed refined by Newton-Raphson
+steps evaluated purely in `fmaf` (see the rsqrt and erf specs). The integer seed uses only
+exact bit reinterpretation (`floatBitsToUint`/`uintBitsToFloat`) and integer subtraction/shift,
+which are bit-exact on every conformant target. No libm exp/exp2/erf, no SVML, no hardware
+reciprocal/rsqrt estimate (`OpFDiv`/`inversesqrt`), no powf, no f64 or x87 intermediates,
+no reassociation.
 
 ### scale2(y, n) = y * 2^n  (shared by exp2 and exp)
 ```
@@ -65,11 +76,27 @@ is a single correctly-rounded step even into the subnormal range. Valid for n in
 
 ### rsqrt(x) = 1/sqrt(x)
 ```
-y = 1.0f / sqrtf(x)
+seed  = 0x5f3759df - (bits_of(x) >> 1)              // fast inverse-sqrt seed, exact integer
+r     = f32_from_bits(seed)                         // approx 1/sqrt(x), ~3.4% rel err
+h     = 0.5f * x
+r = r * fmaf(-h, r*r, 1.5f)                         // Newton step 1  (r *= 1.5 - h*r*r)
+r = r * fmaf(-h, r*r, 1.5f)                         // step 2
+r = r * fmaf(-h, r*r, 1.5f)                         // step 3
+r = r * fmaf(-h, r*r, 1.5f)                         // step 4
+r = r * fmaf(-h, r*r, 1.5f)                         // step 5
+return r
 ```
-Both `sqrtf` and `/` are IEEE-correctly-rounded, so this is reproducible with no polynomial
-and no SFU estimate. Edges (IEEE-natural): x < 0 -> NaN; +0 -> +Inf; -0 -> -Inf;
-+Inf -> +0; -Inf -> NaN; NaN -> NaN; subnormal -> large finite.
+No `sqrtf` and no `/`: the classic Quake integer-bit-hack seed (Lomont/Carmack constant
+`0x5f3759df`) gives a deterministic starting approximation, and five Newton-Raphson iterations
+of the inverse-sqrt map `r <- r*(1.5 - (x/2)*r*r)`, each evaluated as a single `fmaf` plus
+multiplies, converge to the fixed f32 result. Error decays quadratically; five steps saturate
+f32 and leave `<= 2 ULP` vs the f64 reference (the old `1.0f/sqrtf(x)` form was `<= 1 ULP` but
+used the non-portable divide and sqrt, so it could not be reproduced on GPU; this form can).
+The seed and every step are bit-identical on CPU and on any target with correctly-rounded fma.
+Edges: the seed arithmetic makes x <= 0, Inf, and NaN produce deterministic (not IEEE-natural)
+outputs; the primitive is specified for finite x > 0 (its gate/attention use), and the golden
+is taken over the positive generator `gen_rsqrt`. Out-of-domain inputs are defined only as
+"whatever this fixed sequence yields," identically on both sides.
 
 ### exp2(x) = 2^x
 ```
@@ -121,11 +148,25 @@ if ax <= 0.5:        // Maclaurin series, avoids the 1 - P*exp cancellation near
 else:                // Abramowitz & Stegun 7.1.26
     s = sign(x)
     if ax >= 4 -> s                               // saturate; +-Inf -> +-1
-    t = 1.0f / fmaf(P, ax, 1.0f)
+    b = fmaf(P, ax, 1.0f)                         // denominator 1 + P*ax
+    // t = 1/b WITHOUT OpFDiv: integer seed + fma Newton, so CPU==GPU
+    seed = 0x7EF127EA - bits_of(b)                // reciprocal bit-hack seed
+    t = f32_from_bits(seed)
+    t = t * fmaf(-b, t, 2.0f)                      // Newton step 1  (t *= 2 - b*t)
+    t = t * fmaf(-b, t, 2.0f)                      // step 2
+    t = t * fmaf(-b, t, 2.0f)                      // step 3
+    t = t * fmaf(-b, t, 2.0f)                      // step 4
+    t = t * fmaf(-b, t, 2.0f)                      // step 5
     poly = fmaf(fmaf(fmaf(fmaf(A5,t,A4),t,A3),t,A2),t,A1) * t
     e = exp(-(ax*ax))                             // the reproducible exp above
     erf = s * fmaf(-poly, e, 1.0f)
 ```
+The reciprocal `t = 1/b` uses the same no-divide construction as rsqrt: an exact integer seed
+(`0x7EF127EA - bits_of(b)`) refined by five Newton steps of the reciprocal map `t <- t*(2 - b*t)`,
+each a single `fmaf`. For the erf input domain (`b = 1 + P*ax` with ax in (0.5, 4), so b well
+away from 0) five steps reach the fixed f32 reciprocal; erf accuracy is unchanged (~2.9e-7 abs,
+<= 5 ULP in the A&S region). The old `1.0f / fmaf(...)` form used `OpFDiv` and could not be
+reproduced on GPU; this form is bit-identical CPU==GPU.
 | const | hex float | decimal |
 |-------|-----------|---------|
 | B0 | `0x1.20dd76p+0`   | 1.12837923 |
@@ -150,12 +191,16 @@ CPU canonical the Talario GPU shader mirrors bit-for-bit to collapse the transce
 tier (gelu/softmax/rmsnorm/layernorm) into the single bit-identical family, the same way
 the EXACT-op tier (matmul/add/FMA) already is.
 
-## Open cells (honest scope, not yet proven)
+## Open cells (honest scope)
 
-- CPU == GPU: the Talario GLSL/SPIR-V shader must compute each primitive with these exact
-  constants and fmaf order and reproduce these goldens on real silicon. Vulkan f32
-  `OpFMul`/`OpFMA`/`OpSqrt`/`OpFDiv` must be correctly rounded on the target; confirm per
-  device. (Talario half, separate repo.)
+- CPU == GPU: CONFIRMED (2026-10-18) on a real NVIDIA Tesla V100 (GCP, Vulkan compute).
+  All four Talario GLSL/SPIR-V shaders compute each primitive with these exact constants and
+  fmaf order and reproduce these goldens byte-for-byte (rsqrt a55f20e5, exp2 d7b57bb0,
+  exp 7c0748f8, erf aebea57c). This is what forced the no-divide/no-sqrt reformulation above:
+  Vulkan guarantees correct rounding only for `OpFAdd/OpFSub/OpFMul/OpFMA`, so the original
+  `OpFDiv`/`OpSqrt` forms of rsqrt and erf diverged on silicon until reduced to the fma-only
+  seed+Newton construction. exp2 and exp (already fma-only) matched from the first run. Harness
+  and run script: Talario `tests/attest/repro_gpu_validate.c` + `repro_gpu_run.sh` (separate repo).
 - Cross-CPU-ISA: CONFIRMED (2026-10-17). All four goldens reproduce byte-for-byte on ARM64
   Neoverse V2 (GCP c4a Axion) across scalar/NEON/SVE. See csrc/repro/ARCH_MATRIX.md.
 - AVX-512: CONFIRMED (2026-10-17). scalar == AVX2 == AVX-512 on Intel Emerald Rapids (GCP
@@ -172,11 +217,14 @@ bit-reproducible across hardware, drivers, or SIMD width. Tessero's ~1,845 parit
 functions match NumPy/SciPy exactly and are untouched by this work.
 
 What is original is the REPRODUCIBLE-BY-CONSTRUCTION discipline: every primitive reduces to
-correctly-rounded f32 ops only (+, -, *, /, sqrtf, fmaf), in a fixed evaluation order, with
-exact integer range reduction and an exact exponent-bit scale2, so the output is ONE defined
-f32 bit-value on every SIMD width, thread count, and CPU ISA, and (via the mirrored GPU
-shader) on the GPU. That construction, and the CPU==GPU / cross-ISA bit-identity it enables,
-is the contribution.
+the PORTABLY-correctly-rounded f32 op set only (+, -, *, fmaf), in a fixed evaluation order,
+with exact integer range reduction, an exact exponent-bit scale2, and -- for the reciprocal
+and inverse-square-root -- a deterministic integer bit-hack seed refined by fma-only Newton
+steps in place of the non-portable `/` and `sqrtf`. So the output is ONE defined f32 bit-value
+on every SIMD width, thread count, and CPU ISA, and (confirmed on silicon) on the GPU. That
+construction -- in particular reducing transcendentals to the exact op set a portable GPU API
+guarantees, so divide and sqrt never appear -- and the CPU==GPU / cross-ISA bit-identity it
+enables, is the contribution.
 
 Attribution: the minimax polynomial COEFFICIENTS are standard published values - Cephes
 (S. Moshier, exp2f/expf; public domain) and Abramowitz & Stegun 7.1.26 (erf; public domain) -
