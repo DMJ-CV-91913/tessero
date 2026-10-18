@@ -9,6 +9,20 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Added
 
+- **Reproducible-f32 transcendental primitives** (`tsr_repro_rsqrt_f32`, `tsr_repro_exp2_f32`,
+  `tsr_repro_exp_f32`, `tsr_repro_erf_f32`; `csrc/src/repro_f32.c`, declared in
+  `csrc/include/tessero.h`). A **new, original contribution, NOT part of the ported NumPy/SciPy
+  architecture.** NumPy/SciPy transcendentals are accuracy-first and defer to the system
+  `libm`/vendor math, which is not bit-reproducible across hardware, drivers, or SIMD width.
+  These are reproducible **by construction** - reduced to correctly-rounded f32 ops only
+  (`+ - * /`, `sqrtf`, `fmaf`) in a fixed evaluation order with exact range reduction and
+  exponent-bit scaling, giving one defined f32 bit-value on every SIMD width, thread count,
+  and CPU ISA (and, via a mirrored GPU shader, the GPU). Proven bit-identical across
+  scalar/AVX2/AVX-512/NEON/SVE, 1 vs 4 threads, and x86 == ARM (`csrc/repro/ARCH_MATRIX.md`);
+  four frozen goldens + canonical spec in `csrc/repro/GOLDENS.md`. Minimax coefficients are
+  from Cephes (public domain) and Abramowitz & Stegun 7.1.26; the reproducible construction
+  and the resulting bit-identity are the contribution. The ~1,845 parity-gated NumPy/SciPy
+  functions are unaffected.
 - **NumPy/SciPy parity program** (`prompts/numpy-scipy-parity-program.md`, ADR 0011, ADR 0012). Coverage is
   measured, not asserted. `tools/parity/census.py` lists every public symbol of NumPy 2.4.4 and SciPy 1.17.1,
   and `tools/parity/report.py` classifies each one from the code and the recorded fixture runs
