@@ -21,6 +21,7 @@
         "ext-ffi": "*"
     },
     "require-dev": {
+        "illuminate/support": "^10.0 || ^11.0 || ^12.0",
         "phpunit/phpunit": "^10.5 || ^11.0"
     },
     "suggest": {
@@ -29,7 +30,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Tessero\\": "src/"
+            "Tessero\\": "src/",
+            "Tessero\\Laravel\\": "laravel/src/"
         },
         "files": [
             "src/functions.php"
@@ -38,7 +40,6 @@
     "autoload-dev": {
         "psr-4": {
             "Tessero\\Tests\\": "tests/",
-            "Tessero\\Laravel\\": "laravel/src/",
             "Tessero\\Laravel\\Tests\\": "laravel/tests/"
         }
     },
@@ -58,6 +59,14 @@
     "extra": {
         "branch-alias": {
             "dev-main": "0.2.x-dev"
+        },
+        "laravel": {
+            "providers": [
+                "Tessero\\Laravel\\TesseroServiceProvider"
+            ],
+            "aliases": {
+                "Tessero": "Tessero\\Laravel\\Facades\\Tessero"
+            }
         }
     }
 }
