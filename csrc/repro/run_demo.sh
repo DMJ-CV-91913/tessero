@@ -32,7 +32,7 @@ case "$ARCH" in
   aarch64|arm64)
     BUILDS+=("scalar|$BASE -fno-tree-vectorize")
     BUILDS+=("neon|$VEC")                               # NEON/ASIMD is baseline on ARMv8; -O3 vectorizes
-    grep -qi 'sve' /proc/cpuinfo 2>/dev/null && BUILDS+=("sve|$VEC -march=armv9-a+sve2 2>/dev/null || true")
+    grep -qi 'sve' /proc/cpuinfo 2>/dev/null && BUILDS+=("sve|$VEC -march=armv9-a+sve2")
     ;;
   *) BUILDS+=("scalar|$BASE") ;;
 esac
