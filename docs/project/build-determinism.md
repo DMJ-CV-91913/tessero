@@ -1,6 +1,6 @@
 # Determinism and deployment-robustness design: closing every leak from arithmetic to host
 
-Status: proposed. Owner posture: hard-fail conformance gate. Dev-first: build and verify on delta1cx.
+Status: proposed. Owner posture: hard-fail conformance gate. Dev-first: build and verify on the build server.
 Style: ASCII only, no em dashes (owner preference). This is the authoritative spec; Talario points here.
 
 ## Origin
@@ -22,7 +22,7 @@ The valid canonical-FMA H100 attestation is banked in Talario (test(attest), com
 That one bug is the tip of a larger surface. A determinism library's promise - the same answer to the bit,
 everywhere - can be broken at four stages: the arithmetic, the build, the packaging, and the host it loads on.
 This document closes all four. Part I hardens the library; Part II hardens deployment; Part III is the
-failure-mode matrix; Part IV is the phased plan to build and verify on delta1cx.
+failure-mode matrix; Part IV is the phased plan to build and verify on the build server.
 
 ## Core principle
 
@@ -298,7 +298,7 @@ proved it computes the canonical bits on this host".
 
 ---
 
-# PART IV - Phased implementation and verification (on delta1cx, dev-first)
+# PART IV - Phased implementation and verification (on the build server, dev-first)
 
 Per the dev-first workflow: local edit -> scp to tessero-ref -> build/verify -> commit/push from local. Each
 phase builds and re-verifies against goldens before the next.
