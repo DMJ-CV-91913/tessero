@@ -6,30 +6,31 @@ change ships only when the parity gate is green on BOTH backends (FFI + ext).
 Never loosen a tolerance or edit generated files to get green.**
 
 > **Scope.** This guide governs the **Tessero repo** only
-> (`github.com/DMJ-CV-91913/tessero`, ref server `tessero-ref`). It builds the
-> native numerical core `libtessero` and its two PHP bindings. The **Talario engine**
+> (`github.com/DMJ-CV-91913/tessero`). It builds the native numerical core
+> `libtessero` and its two PHP bindings. The **Talario engine**
 > (`github.com/DMJ-CV-91913/talario`) is a separate repo that only *consumes* a built
 > `libtessero` via `--with-tessero` -- see §4 and Talario's own
 > `docs/ops/update-guide.md`. The `tesserophp-org` / `talariophp-org` websites are
 > separate repos again.
 
-## 0. Shell & user conventions (used throughout)
-Every command block below is tagged with where it runs, because the two
-environments use different shells and users:
+## 0. Shell & environment conventions (used throughout)
+Every command block below is tagged with where it runs, because the dev box and the
+build server use different shells:
 - **[dev / PowerShell]** -- your Windows dev box, in PowerShell, from the local
-  clone `C:\xampp\htdocs\tessero\tessero` (note: the real repo is this **inner**
-  folder; the outer `tessero\` is a scratch area).
-- **[ref / bash]** -- the Ubuntu build server (delta1cx), in bash, as the **`tessero`**
-  user (the repo's `tessero-ref` remote resolves here), from `~/tessero`. Note: the
-  clone that feeds Talario is a *separate* checkout under user `kinetix` (§4), and the
-  website deploy is a *third* user, `snoopy72` (§7).
+  clone (note: the real repo is the **inner** `tessero/` folder; the outer `tessero/`
+  is a scratch area).
+- **[server / bash]** -- a Linux build server, in bash, as your deploy user, from the
+  server-side checkout of this repo. Reach it over SSH via a host alias (`<server>`).
+  A box that runs both projects may keep a *separate* checkout for the Talario link
+  (§4); the website is deployed from its own separate repo on the server (§7).
 
-Git is the only thing that crosses between the two. The built `libtessero` is a
-per-host native artifact and is **never** synced over git -- you build it on the ref
-server (and any box that runs the extension), from pushed source.
+Git is the only thing that crosses between dev and server. The built `libtessero` is a
+per-host native artifact and is **never** synced over git -- you build it on the server
+(and any box that runs the extension), from pushed source. Run `scp`/`ssh` from the dev
+box, not from the server, so one shell drives the whole loop.
 
 ## 1. The loop (source of truth = the public repo)
-Edit on the dev box -> commit -> push -> the ref server pulls, builds, and
+Edit on the dev box -> commit -> push -> the build server pulls, builds, and
 **gates on the parity suite**.
 
 **[dev / PowerShell]** -- commit + push (end commit messages with the
@@ -40,22 +41,31 @@ git commit -m "..."
 git push origin main
 ```
 
-**[ref / bash]** -- pull, build the core, run the gate:
+**[server / bash]** -- pull, build the core, run the gate. Chain with `&&` so a
+failure halts the loop (`<server>` = your SSH host alias):
 ```bash
-ssh tessero-ref
-cd ~/tessero
-git fetch --prune origin && git pull --ff-only origin main
-make -C csrc clean && make -C csrc          # -> lib/<platform>/libtessero.so
-bash tools/sync-ext.sh                       # refresh ext/libtessero from csrc (kernel changed)
-QUICK=1 bash tools/parity/gate.sh            # fast gate; drop QUICK=1 for the full sanitize+fuzz+soak+bench
+ssh <server>
+cd <server checkout> \
+  && git fetch --prune origin && git pull --ff-only origin main \
+  && make -C csrc clean && make -C csrc \
+  && bash tools/sync-ext.sh \
+  && QUICK=1 bash tools/parity/gate.sh
+# make -C csrc -> lib/<platform>/libtessero.so
+# sync-ext.sh refreshes ext/libtessero from csrc (run after a kernel change)
+# QUICK=1 = fast gate; drop it for the full sanitize+fuzz+soak+bench
 ```
 `QUICK=1` skips sanitizers, fuzzing, soak and benchmarks (per `CLAUDE.md`); run the
 full `bash tools/parity/gate.sh` before a release or anything ABI-affecting. The gate
 runs BOTH backends (`run-tests.php --backend=ffi` and `--backend=ext`). Only after
 green do you let a consumer relink (§4).
 
-## 1a. Build prerequisites (ref server, once)
-**[ref / bash]** -- the Linux linalg path links LAPACKE from OpenBLAS
+Notes that have bitten before, all generic:
+- Run `scp`/`ssh` from the dev box, not the server, so one shell drives the loop.
+- If this repo is **private**, the server's `git pull` needs working auth -- configure
+  `gh` or an HTTPS credential helper on the server (an SSH deploy key may be read-only).
+
+## 1a. Build prerequisites (build server, once)
+**[server / bash]** -- the Linux linalg path links LAPACKE from OpenBLAS
 (`csrc/Makefile` adds `-llapacke -lblas` on Linux). Install the dev packages:
 ```bash
 sudo apt-get update && sudo apt-get install -y build-essential liblapacke-dev libopenblas-dev
@@ -65,7 +75,7 @@ targets; the default `make` uses `target_clones` for runtime SIMD dispatch.
 
 ## 2. Build outputs (the consumption surface)
 `make -C csrc` produces, relative to the repo root:
-- **Library:** `lib/<platform>/libtessero.<ext>` -- on the ref server that is
+- **Library:** `lib/<platform>/libtessero.<ext>` -- on a Linux x86-64 build that is
   `lib/linux-x86_64/libtessero.so` (`linux-musl-x86_64` under musl; `.dylib` on
   macOS, `tessero.dll` on Windows).
 - **Header / ABI:** `csrc/include/tessero.h` -- the whole public C ABI (this is what
@@ -97,29 +107,30 @@ holding both `include/tessero.h` and `lib/libtessero.so`. It points `--with-tess
 there and bakes `<prefix>/lib` into `talario.so` as RUNPATH, so there is **no**
 `LD_LIBRARY_PATH` / `TALARIO_TESSERO_LIB` needed at runtime.
 
-On delta1cx the Talario deploy user (`kinetix`) keeps its **own** clone of this repo at
-`/home/kinetix/tessero`, built so that `csrc/` is that prefix -- `csrc/include/tessero.h`
-+ `csrc/lib/libtessero.so` both present (verified: `readelf -d .../talario.so` shows
-`RUNPATH [/home/kinetix/tessero/csrc/lib]`). So the Talario-side one-shot (run in the
-**Talario** repo, as its deploy user, not here) is:
+A box that runs both projects keeps its **own** clone of this repo for the Talario link,
+built so that `csrc/` is that prefix -- `csrc/include/tessero.h` + `csrc/lib/libtessero.so`
+both present (`readelf -d .../talario.so` then shows a `RUNPATH` pointing at that
+`csrc/lib`). So the Talario-side one-shot (run in the **Talario** repo, as its deploy
+user, not here) is:
 ```bash
-# [talario / bash as kinetix on delta1cx] in ~/talario, after rebuilding libtessero in that clone
+# [server / bash] in the Talario checkout, after rebuilding libtessero in that clone
 # use $HOME, NOT ~ -- tilde does not expand after = in --with-tessero=...
-scripts/update.sh --test --no-deploy --with-tessero="$HOME/tessero/csrc"
+./build.sh --with-tessero="$HOME/tessero/csrc" && scripts/test.sh
 ```
 Caveats:
-- That is a **separate clone** from this repo's `tessero-ref` checkout -- on delta1cx
-  they are even different users (`kinetix` vs `tessero`) at different commits. Both pull
-  from the same `origin`, so keep them on compatible commits: a Talario link is only as
-  current as the Tessero clone it points at.
+- That may be a **separate clone** from this repo's server-side checkout, possibly at a
+  different commit. Both pull from the same `origin`, so keep them on compatible commits:
+  a Talario link is only as current as the Tessero clone it points at.
 - This repo's `csrc/Makefile` emits the lib to `lib/<platform>/`, but the consumer
-  prefix needs it under `csrc/lib/`. The kinetix clone has `libtessero.so` directly in
+  prefix needs it under `csrc/lib/`. Arrange for `libtessero.so` to be directly in
   `csrc/lib/`; if a build emits to `lib/<platform>/` instead, copy or symlink it into
   `csrc/lib/` (or point `--with-tessero` at a prefix laid out with both subdirs).
+- To load for any user and SAPI, install `libtessero` into a system prefix like
+  `/usr/local/lib`; do not depend on a specific user's home directory.
 
 ## 5. Rollback
 - Code: **[dev / PowerShell]** `git revert <sha>` (or reset a branch) -> `git push`,
-  then **[ref / bash]** re-pull + `make -C csrc clean && make -C csrc` +
+  then **[server / bash]** re-pull + `make -C csrc clean && make -C csrc` +
   `QUICK=1 bash tools/parity/gate.sh` to re-gate the rolled-back tree.
 - A consumer (Talario) keeps linking the **old** `libtessero` until it is rebuilt
   against the new one; reverting here does not change an already-linked `talario.so`
@@ -129,7 +140,7 @@ Caveats:
 Coverage numbers are **generated**, never typed by hand (`CLAUDE.md`). After a parity
 run, record suites and regenerate the coverage doc:
 ```bash
-# [ref / bash] -- after the gate
+# [server / bash] -- after the gate
 php tools/parity/record-suites.php <junit.xml>...
 python3 tools/parity/report.py --record "<phase>"
 php tools/api-dump.php > tools/parity/api.json
@@ -140,7 +151,7 @@ prose.
 
 ## 7. Updating the website (tessero.org)
 The public site is a **separate Laravel repo** (`github.com/DMJ-CV-91913/tesserophp-org`),
-served on delta1cx behind a Cloudflare tunnel. It renders docs **live** from this
+served on a Linux box behind a reverse-proxy tunnel. It renders docs **live** from this
 library via `php artisan docs:sync`, so most content updates flow from the library
 (the generated coverage/metrics of §6), not by hand-editing the site.
 
@@ -149,12 +160,11 @@ library via `php artisan docs:sync`, so most content updates flow from the libra
 - **Site code / copy changes:** done in the `tesserophp-org` repo; read its `AGENTS.md`
   / `CLAUDE.md` house rules first (notably: NO em/en dashes anywhere; honest,
   source-backed messaging; verify routes + `npm run build` before shipping).
-- **Deploy (owner runs it; only `main` goes live):** on delta1cx as user **`snoopy72`**
-  (a different user than the `tessero` build user and the `kinetix` Talario user), from
-  `/var/www/tesserophp-org`, under `sudo`:
+- **Deploy (owner runs it; only `main` goes live):** the site is a separate repo with
+  its **own** `deploy.sh`, run from its own server-side checkout (a different checkout
+  than this build):
 ```bash
-# [prod / bash as snoopy72 on delta1cx]
-cd /var/www/tesserophp-org
-sudo COMPOSER_ALLOW_SUPERUSER=1 ./deploy.sh   # pull main -> composer --no-dev -> npm build -> migrate -> caches -> docs:sync -> opcache reset
+# [server / bash] -- in the site's checkout
+git pull --ff-only && ./deploy.sh   # pull main -> composer --no-dev -> npm build -> migrate -> caches -> docs:sync -> opcache reset
 ```
 Do NOT push to the site's `main` or run `deploy.sh` without explicit owner go-ahead.
