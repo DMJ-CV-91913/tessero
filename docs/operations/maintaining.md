@@ -16,7 +16,7 @@ Development is split across two hosts on purpose:
 | Role | Host | Has | Notes |
 |---|---|---|---|
 | **Dev checkout** | your workstation | the repo, GitHub **push** credentials | edits happen here; commits originate here |
-| **Build / reference host** | `tessero-ref` (SSH alias) | C/C++ toolchain, the pinned `.venv-parity`, LAPACK | all kernel builds, fixture generation, and gate runs happen here |
+| **Build / reference host** | `<server>` (SSH alias) | C/C++ toolchain, the pinned `.venv-parity`, LAPACK | all kernel builds, fixture generation, and gate runs happen here |
 
 The workstation has no C toolchain, so the loop is: **edit locally → sync to the
 reference host → build and verify there → commit and push from the workstation →

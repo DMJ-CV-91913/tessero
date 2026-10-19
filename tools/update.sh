@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-command update for a Tessero library mirror (e.g. the tessero-ref server):
+# One-command update for a Tessero library mirror (e.g. the <server> server):
 # force-sync to origin/main, rebuild + test (via tools/pull-build.sh), and
 # optionally publish the beta issue list to GitHub.
 #
