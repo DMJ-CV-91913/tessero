@@ -6,7 +6,7 @@ the alternative / pooled / n parameters, and the expected {statistic, pvalue} fr
 scipy.stats.barnard_exact. The run-tests 'statfn2_cases' arm (see wiring.txt) feeds
 the table + params to Tessero\\StatsBarnard::barnardExact and compares both outputs.
 
-Run on tessero-ref inside .venv-parity with the pinned env:
+Run on the build server inside .venv-parity with the pinned env:
   NPY_DISABLE_CPU_FEATURES="X86_V4 AVX512_ICL AVX512_SPR" OPENBLAS_CORETYPE=Haswell \
   OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 fixtures_barnard.py > stats_barnard.json
 """
