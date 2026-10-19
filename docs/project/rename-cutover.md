@@ -10,9 +10,9 @@ and a relaunched session can resume from here.
 | GitHub repo | `DMJ-CV-91913/tesseraphp` | `DMJ-CV-91913/tessero` |
 | Library folder | `C:\xampp\htdocs\tesseraphp\tessera` | `C:\xampp\htdocs\tessero` |
 | Web app folder | `C:\xampp\htdocs\tesseraphp-org` | `C:\xampp\htdocs\tesserophp-org` |
-| Server user / home | `tessera` / `/home/tessera` | `tessero` / `/home/tessero` |
-| Server clone dir | `/home/tessera/tessera` | `/home/tessero/tessero` |
-| SSH alias (Windows) | `tessera-ref` (User tessera) | `tessero-ref` (User tessero) |
+| Server user / home | `tessera` / the old home | `tessero` / the operator's home |
+| Server clone dir | the old clone dir | the operator's home tessero |
+| SSH alias (Windows) | `tessera-ref` (User tessera) | `<server>` (User tessero) |
 
 Unchanged on purpose: internal C ABI prefix `tsr_`/`TSR_`; the `.work/*` historical logs.
 
@@ -30,21 +30,21 @@ Unchanged on purpose: internal C ABI prefix `tsr_`/`TSR_`; the `.work/*` histori
 
 1. **GitHub repo rename** (user, web UI): repo Settings → rename `tesseraphp` → `tessero`.
 2. **Re-point Windows remote** (agent): `git remote set-url origin https://github.com/DMJ-CV-91913/tessero.git`
-3. **Server rename** (user, run as a sudo account e.g. `snoopy72`, while `tessera` is idle):
+3. **Server rename** (user, run as a sudo account, while `tessera` is idle):
    ```bash
    sudo usermod -l tessero tessera
    sudo groupmod -n tessero tessera
-   sudo usermod -d /home/tessero -m tessero
+   sudo usermod -d $HOME -m tessero
    sudo -u tessero bash -lc 'mv ~/tessera ~/tessero'
    sudo -u tessero bash -lc 'git -C ~/tessero remote set-url origin git@github.com:DMJ-CV-91913/tessero.git'
    sudo -u tessero bash -lc 'cd ~/tessero && python3 -m venv --clear .venv-parity && . .venv-parity/bin/activate && pip -q install -r tools/parity/requirements.txt && pip -q install mkdocs-material'
    ```
    (This box is python3.12 — not `python3.11`. The venv needs the full `requirements.txt` — numpy 2.4.4,
    scipy 1.17.1, PyYAML — plus `mkdocs-material`, not just numpy/scipy.)
-4. **Update Windows SSH config** (agent): alias `tessero-ref` → HostName <ref-host-ip>, User tessero,
+4. **Update Windows SSH config** (agent): alias `<server>` → HostName (redacted), User tessero,
    IdentityFile unchanged.
 5. **Merge + push** (agent): `git checkout main && git merge --ff-only rename/tessero && git push origin main`
-6. **Final gate** (agent, on server): `ssh tessero-ref 'cd ~/tessero && . .venv-parity/bin/activate && QUICK=1 bash tools/parity/gate.sh'`
+6. **Final gate** (agent, on server): `ssh <server> 'cd ~/tessero && . .venv-parity/bin/activate && QUICK=1 bash tools/parity/gate.sh'`
 7. **Local folder move** (user, LAST — breaks the live session's cwd): close the session, then
    rename `C:\xampp\htdocs\tesseraphp\tessera` → `C:\xampp\htdocs\tessero`.
    Leave `C:\xampp\htdocs\tesseraphp` (scaffolding + tessera.zip) for the user to review.

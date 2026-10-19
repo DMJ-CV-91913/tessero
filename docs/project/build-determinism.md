@@ -300,7 +300,7 @@ proved it computes the canonical bits on this host".
 
 # PART IV - Phased implementation and verification (on the build server, dev-first)
 
-Per the dev-first workflow: local edit -> scp to tessero-ref -> build/verify -> commit/push from local. Each
+Per the dev-first workflow: local edit -> scp to <server> -> build/verify -> commit/push from local. Each
 phase builds and re-verifies against goldens before the next.
 
 Phase 0 - Seed and FPU guard scaffolding. Pull the fixed attestation seed/input generator from the Talario harness
