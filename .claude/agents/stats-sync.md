@@ -24,7 +24,7 @@ counts as "verified" on a backend only when its fixture passes on that backend; 
   verbatim in one of the three generated pages above.**
 
 ## Procedure
-1. **Pre-req:** a verified build on the reference host (`tessero-ref`): kernel rebuilt (`make -C csrc`),
+1. **Pre-req:** a verified build on the reference host (`<server>`): kernel rebuilt (`make -C csrc`),
    extension rebuilt (fresh copy of `ext/` → `phpize && ./configure --enable-tessero && make`), façades
    regenerated (`php tools/parity/gen-facades.php`), and fixtures current (`bash tools/parity/gen-fixtures.sh
    <group>`). If you only need to re-publish existing stats, skip to step 3.
