@@ -104,11 +104,11 @@ rows = [
 ]
 
 # merge into a full splinalg.json ready to drop in
-base = json.load(open("/home/tessero/tessero/tests/fixtures/parity/splinalg.json"))
+base = json.load(open("tests/fixtures/parity/splinalg.json"))
 base["calls"] = [c for c in base["calls"] if c["fn"] not in ("eigsh","eigs","svds")]
 base["calls"].extend(rows)
 base["calls"].sort(key=lambda c: c["fn"])
-json.dump(base, open("/home/tessero/tessero/tests/fixtures/parity/splinalg.json","w"), indent=1)
+json.dump(base, open("tests/fixtures/parity/splinalg.json","w"), indent=1)
 
 print(f"eigsh {len(eigsh_cases)} cases, eigs {len(eigs_cases)} cases, svds {len(svds_cases)} cases")
 print(f"TOTAL {len(eigsh_cases)+len(eigs_cases)+len(svds_cases)} cases; ALL cross-checked vs scipy @ 1e-9")
