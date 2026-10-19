@@ -35,3 +35,12 @@ docs/project/numpy-scipy-coverage.md`.
 - No composer vendor dir here (offline): PHPUnit suites run through a scratch shim that writes JUnit XML
   (`JUNIT=<file>`), which `record-suites.php` reads.
 - `RecursiveDirectoryIterator` lists nothing on this FUSE mount; tools walk directories with `scandir`.
+
+## Agent notes (build & privacy)
+- This repo is PUBLIC: never commit hostnames, IPs, usernames, home/server paths, or SSH
+  aliases. Operator and deploy specifics are kept privately, outside this repo.
+- No em dashes or en dashes anywhere; use "--".
+- Build: `make -C csrc` produces `libtessero` (links LAPACKE/OpenBLAS on Linux). Gate:
+  `tools/parity/gate.sh` (QUICK=1 for the fast pass, both FFI + ext backends). Install to a
+  system prefix (e.g. /usr/local) so a native consumer (Talario) links it with no home-dir
+  dependency. Reproducible-f32 primitives build with contraction + fast-math OFF.
