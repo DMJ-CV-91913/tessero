@@ -150,6 +150,13 @@ int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
 int tsr_axpy(int dtype, int64_t n, double alpha, const void *x, int64_t incx, void *y, int64_t incy);
 double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const double *y, int64_t incy);
 
+/* Canonical-form self-check (the runtime approval guard). Runs a frozen known-answer GEMM on the
+   library's dispatched path and on a no-clone explicit-fma reference, and compares both to the frozen
+   canonical digest. Returns 0 if the build is canonical; negative if it diverges (a non-canonical,
+   mock or non-FMA build must NOT be used silently -- the caller substitutes the reference or aborts).
+   -1 = fast clone diverged from the reference; -2 = the reference itself is not the frozen canonical. */
+int tsr_selfcheck(void);
+
 /* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);
 /* real input: rows x n float64 -> rows x (n/2 + 1) complex128 (half the work of tsr_fft); irfft is the inverse
