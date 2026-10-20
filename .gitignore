@@ -22,3 +22,6 @@ __pycache__/
 
 # Local pinned parity environment (tools/setup-reference-host.sh)
 /.venv-parity/
+
+# ---- R&D process logs: disk only (owner directive 2026-10-20: code+tests+technical only) ----
+/.work/
