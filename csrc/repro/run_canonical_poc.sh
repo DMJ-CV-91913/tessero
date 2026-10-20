@@ -40,4 +40,20 @@ for row in "${MATRIX[@]}"; do
 done
 rm -f "$BIN" /tmp/canon_cc.$$
 echo
-echo "VERDICT: the fix works iff the CANON column is one identical value on every row."
+echo "VERDICT (kernel): the fix works iff the CANON column is one identical value on every row."
+
+# --- approval gate layer: fast clone must equal the scalar reference, else substitute ---
+echo
+echo "=== approval gate (runtime substitution layer) ==="
+GBIN="/tmp/canon_gate.$$"
+if $CC -O3 "$HERE/approval_gate_poc.c" -o "$GBIN" -lm 2>/tmp/canon_cc.$$; then
+  "$GBIN"; rc=$?
+  case $rc in
+    0) echo "VERDICT (gate): APPROVED -- vectorized clone is bit-identical to the reference." ;;
+    1) echo "VERDICT (gate): SUBSTITUTED -- clone diverged, reference was forced (gate did its job)." ;;
+    *) echo "VERDICT (gate): HARD FAILURE -- reference self-inconsistent (investigate before shipping)." ;;
+  esac
+else
+  echo "approval gate: COMPILE FAILED: $(head -1 /tmp/canon_cc.$$)"
+fi
+rm -f "$GBIN" /tmp/canon_cc.$$
