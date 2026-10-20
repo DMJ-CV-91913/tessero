@@ -11,11 +11,14 @@
 #include "internal.h"
 #include <stdio.h>
 
-/* Frozen canonical FNV-1a of the KAT gemm_f32 output bytes. 0 = UNBAKED: the first run on a
-   known-good build prints the value to stderr; bake it here (or via -DTSR_CANON_GEMM_F32_KAT=0x...)
-   to turn the hard canonical gate on. Until baked, the self-check still enforces fast == reference. */
+/* Frozen canonical FNV-1a of the KAT gemm_f32 output bytes. Baked 2026-10-20 from matching runs on
+   x86-64 under BOTH gcc-13.3 (Ubuntu 24.04 default) and gcc-12.4 -- the fast dispatched path and the
+   no-clone explicit-fma reference agreed on this value under both compilers, which is the determinism
+   this guard enforces. A build that produces any other digest is non-canonical (mock / non-FMA /
+   wrong-clone) and tsr_selfcheck returns negative. Override at build with -DTSR_CANON_GEMM_F32_KAT=0x...
+   only if the canonical form is deliberately re-baselined (and re-verify cross-supplier). */
 #ifndef TSR_CANON_GEMM_F32_KAT
-#define TSR_CANON_GEMM_F32_KAT 0ULL
+#define TSR_CANON_GEMM_F32_KAT 0x06adeb12fccd30c0ULL
 #endif
 
 #define TSR_KAT_N 8
