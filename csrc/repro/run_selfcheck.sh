@@ -32,7 +32,7 @@ LD_LIBRARY_PATH="$LIBDIR" "$TMP.run"; rc=$?
 rm -f "$TMP".*
 echo
 case $rc in
-  0) echo "VERDICT: CANONICAL. Bake the printed digest into TSR_CANON_GEMM_F32_KAT to arm the hard gate." ;;
+  0) echo "VERDICT: CANONICAL -- the built kernel reproduces the frozen canonical form (if a bootstrap digest printed above, bake it to arm the hard gate)." ;;
   *) echo "VERDICT: DIVERGED (rc=$rc) -- this build is NOT canonical; do not ship it." ;;
 esac
 exit $rc
