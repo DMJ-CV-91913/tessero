@@ -170,7 +170,7 @@ clean:
 #      mutation driver under ASan + UBSan anywhere. Corpora live in fuzz/corpus/<target>.
 FUZZ_TARGETS := slice npy mmap_plan json
 # the fuzzed parsers do not need the function registry (C++): build without it
-FUZZ_SRC := $(filter-out src/gen_%_table.c src/np_%.c third_party/scipy/cdflib.c $(NPRAND) $(SCIPYC),$(SRC))
+FUZZ_SRC := $(filter-out src/gen_%_table.c src/np_%.c src/scipy_%.c third_party/scipy/cdflib.c $(NPRAND) $(SCIPYC),$(SRC))
 FUZZ_TIME ?= 60
 FUZZ_RUNS ?= 200000
 FUZZ_FLAGS := -O1 -g -std=gnu11 -Ithird_party/numpy/include -fno-math-errno -fno-trapping-math -fno-omit-frame-pointer -DTSR_NO_CLONES $(WARN)
