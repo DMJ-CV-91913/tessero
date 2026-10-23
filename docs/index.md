@@ -55,9 +55,8 @@ A small set of f32 functions (`rsqrt`, `exp2`, `exp`, `erf`, `recip`, `tanh`, an
 `gelu_tanh`, `softmax`, `rmsnorm`, `layernorm` with their gradients) gives one exact bit result on every machine,
 not just a result within a tolerance. They are built only from correctly rounded floating-point operations, so
 every conformant implementation, CPU or GPU, computes the same bits. Each has a golden SHA-256 digest; run
-`bash csrc/repro/run_determinism.sh` to confirm a machine reproduces them. The primitive and forward-composite
-goldens are confirmed on two independent hosts; the backward-composite digests are candidates pending
-confirmation on the reference host.
+`bash csrc/repro/run_determinism.sh` to confirm a machine reproduces them. The primitive, forward-composite and
+backward-composite goldens are all confirmed on two independent hosts.
 
 ## Status
 
