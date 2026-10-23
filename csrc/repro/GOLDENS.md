@@ -2,7 +2,7 @@
 
 Golden SHA-256 hashes and the canonical spec for the reproducible-f32 transcendental
 primitives (`tsr_repro_rsqrt_f32` / `tsr_repro_exp2_f32` / `tsr_repro_exp_f32` /
-`tsr_repro_erf_f32`, plus the candidates `tsr_repro_recip_f32` / `tsr_repro_tanh_f32`),
+`tsr_repro_erf_f32` / `tsr_repro_recip_f32` / `tsr_repro_tanh_f32`),
 defined once in `csrc/include/tessero_repro_f32.h`, exported by `csrc/src/repro_f32.c`,
 declared in `csrc/include/tessero.h`. A hash here is the single defined f32 bit-result for the
 primitive on a fixed input. Every conformant implementation (Tessero at any SIMD level,
@@ -235,11 +235,12 @@ exp-form tanh to -Inf/NaN for u >= 44.36.
 Input vectors: `recip` = the rsqrt magnitude spread with alternating sign; `tanh` = a
 signed spread over [-10, 10] at scales 1, 1e-2 and 1e-5 so every frozen form is hit.
 
-**CANDIDATE goldens (not yet approved).** First captured 2026-10-23 on a dev box
-(x86-64, gcc 13.3, scalar == AVX2 == 4-thread). They become goldens only after capture on
-the reference host, like the four above:
+**Goldens (confirmed 2026-10-23 on two independent hosts).** Captured first on a dev box
+(x86-64, gcc 13.3) and then reproduced byte-for-byte on the build server (x86-64, AVX2+FMA,
+no AVX-512), each scalar == AVX2 == 4-thread, with identical edge-input classifications. The
+four goldens above re-verified unchanged on both hosts in the same runs.
 
-| primitive | CANDIDATE(f32, N=2^20) SHA-256 | determinism | accuracy vs f64 ref |
+| primitive | GOLDEN(f32, N=2^20) SHA-256 | determinism | accuracy vs f64 ref |
 |-----------|--------------------------------|-------------|---------------------|
 | recip | `f7f9ec19f8589f559977abefc0ba506e261ac1af84cbcaec32c0f4cf4979613d` | scalar == avx2 == 4-thread | <= 1 ULP |
 | tanh  | `5b43f3d6d5167193e3a18b9be0f55b3f99a650661b9635fac15aaa6ad310a694` | scalar == avx2 == 4-thread | <= 3 ULP, max abs err 2.1e-7 |
