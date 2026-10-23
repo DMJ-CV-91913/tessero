@@ -78,6 +78,13 @@ int tsr_repro_exp_f32  (int64_t n, const float *x, float *y);   /* e^x       */
 int tsr_repro_erf_f32  (int64_t n, const float *x, float *y);   /* erf(x)    */
 int tsr_repro_recip_f32(int64_t n, const float *x, float *y);   /* 1/x, any f32 input */
 int tsr_repro_tanh_f32 (int64_t n, const float *x, float *y);   /* tanh(x)   */
+/* composites: one definition of the composition, mirrored by the Talario GPU shaders */
+int tsr_repro_sigmoid_f32  (int64_t n, const float *x, float *y);
+int tsr_repro_gelu_tanh_f32(int64_t n, const float *x, float *y);
+int tsr_repro_softmax_f32  (int64_t m, int64_t n, const float *x, float *y);              /* row-wise */
+int tsr_repro_rmsnorm_f32  (int64_t m, int64_t n, const float *x, const float *gamma, float eps, float *y);
+int tsr_repro_layernorm_f32(int64_t m, int64_t n, const float *x, const float *gamma, const float *beta,
+                            float eps, float *y);
 /* The element-level definitions are header-only in tessero_repro_f32.h (shared with Talario). */
 
 /* ---- loop ufuncs (cbrt, erf, gamma, logaddexp, fmax, fmod, ...): ids are 0 .. tsr_ufunc_count()-1 ----

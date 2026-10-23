@@ -80,6 +80,8 @@ static void gen_input(const char *fn, float *x) {
     else if (!strcmp(fn, "erf"))   gen_span(x, -4.0f, 4.0f);
     else if (!strcmp(fn, "recip")) gen_recip(x);
     else if (!strcmp(fn, "tanh"))  gen_tanh(x);
+    else if (!strcmp(fn, "sigmoid") || !strcmp(fn, "gelu_tanh")) gen_span(x, -12.0f, 12.0f);
+    else if (!strcmp(fn, "softmax") || !strcmp(fn, "rmsnorm") || !strcmp(fn, "layernorm")) gen_span(x, -8.0f, 8.0f);
     else { fprintf(stderr, "unknown fn: %s\n", fn); exit(2); }
 }
 
@@ -90,6 +92,17 @@ static int run_fn(const char *fn, int64_t n, const float *x, float *y) {
     if (!strcmp(fn, "erf"))   return tsr_repro_erf_f32(n, x, y);
     if (!strcmp(fn, "recip")) return tsr_repro_recip_f32(n, x, y);
     if (!strcmp(fn, "tanh"))  return tsr_repro_tanh_f32(n, x, y);
+    if (!strcmp(fn, "sigmoid"))   return tsr_repro_sigmoid_f32(n, x, y);
+    if (!strcmp(fn, "gelu_tanh")) return tsr_repro_gelu_tanh_f32(n, x, y);
+    if (!strcmp(fn, "softmax") || !strcmp(fn, "rmsnorm") || !strcmp(fn, "layernorm")) {
+        /* fixed 1024 x 1024 row-major matrix; gamma/beta pure functions of the column */
+        static float g[1024], b[1024];
+        for (int j = 0; j < 1024; ++j) { g[j] = 0.5f + (float)(j % 17) * 0.0625f; b[j] = (float)(j % 5) - 2.0f; }
+        int64_t rows = n / 1024, cols = (n >= 1024) ? 1024 : n; if (rows == 0) rows = 1;
+        if (!strcmp(fn, "softmax")) return tsr_repro_softmax_f32(rows, cols, x, y);
+        if (!strcmp(fn, "rmsnorm")) return tsr_repro_rmsnorm_f32(rows, cols, x, g, 1.0e-5f, y);
+        return tsr_repro_layernorm_f32(rows, cols, x, g, b, 1.0e-5f, y);
+    }
     fprintf(stderr, "unknown fn: %s\n", fn); exit(2);
 }
 
