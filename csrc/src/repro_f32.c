@@ -100,6 +100,62 @@ int tsr_repro_recip_f32(int64_t n, const float *x, float *y) {
     return 0;
 }
 
+int tsr_repro_sigmoid_f32(int64_t n, const float *x, float *y) {
+    if (n < 0) return -1;
+    if (n > 0 && (!x || !y)) return -1;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int64_t i = 0; i < n; ++i) y[i] = tsr__sigmoid_f32(x[i]);
+    return 0;
+}
+
+int tsr_repro_gelu_tanh_f32(int64_t n, const float *x, float *y) {
+    if (n < 0) return -1;
+    if (n > 0 && (!x || !y)) return -1;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int64_t i = 0; i < n; ++i) y[i] = tsr__gelu_tanh_f32(x[i]);
+    return 0;
+}
+
+/* Row-wise composites over an m x n row-major matrix. Rows are independent and each
+ * runs the identical sequential sequence, so the parallel-for is thread-count invariant. */
+int tsr_repro_softmax_f32(int64_t m, int64_t n, const float *x, float *y) {
+    if (m < 0 || n < 0) return -1;
+    if (m > 0 && n > 0 && (!x || !y)) return -1;
+    if (n == 0) return 0;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int64_t r = 0; r < m; ++r) tsr__softmax_row_f32(x + r * n, y + r * n, n);
+    return 0;
+}
+
+int tsr_repro_rmsnorm_f32(int64_t m, int64_t n, const float *x, const float *gamma, float eps, float *y) {
+    if (m < 0 || n < 0) return -1;
+    if (m > 0 && n > 0 && (!x || !gamma || !y)) return -1;
+    if (n == 0) return 0;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int64_t r = 0; r < m; ++r) tsr__rmsnorm_row_f32(x + r * n, gamma, eps, y + r * n, n);
+    return 0;
+}
+
+int tsr_repro_layernorm_f32(int64_t m, int64_t n, const float *x, const float *gamma, const float *beta,
+                            float eps, float *y) {
+    if (m < 0 || n < 0) return -1;
+    if (m > 0 && n > 0 && (!x || !gamma || !beta || !y)) return -1;
+    if (n == 0) return 0;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int64_t r = 0; r < m; ++r) tsr__layernorm_row_f32(x + r * n, gamma, beta, eps, y + r * n, n);
+    return 0;
+}
+
 int tsr_repro_tanh_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;

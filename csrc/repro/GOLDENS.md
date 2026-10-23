@@ -245,6 +245,29 @@ four goldens above re-verified unchanged on both hosts in the same runs.
 | recip | `f7f9ec19f8589f559977abefc0ba506e261ac1af84cbcaec32c0f4cf4979613d` | scalar == avx2 == 4-thread | <= 1 ULP |
 | tanh  | `5b43f3d6d5167193e3a18b9be0f55b3f99a650661b9635fac15aaa6ad310a694` | scalar == avx2 == 4-thread | <= 3 ULP, max abs err 2.1e-7 |
 
+### Composites (2026-10-23): one definition of the composition
+
+`tsr__sigmoid_f32`, `tsr__gelu_tanh_f32`, `tsr__softmax_row_f32`, `tsr__rmsnorm_row_f32` and
+`tsr__layernorm_row_f32` (header) build only from the primitives above in one fixed operation order (canonicalized
+loads/stores, sequential index-order f32 sums, divides as products with the guarded reciprocal, inverse sqrt via
+rsqrt). Exported as `tsr_repro_{sigmoid,gelu_tanh,softmax,rmsnorm,layernorm}_f32`. Talario's CPU backend calls them
+directly and its GPU shaders mirror them; on NVIDIA A10/A100 the Talario attestation of softmax / rmsnorm /
+layernorm is bit-identical CPU==GPU (talario run 7), and moving the CPU side onto these functions left every
+Talario CPU digest unchanged. Constants `TSR_GELU_C` = sqrt(2/pi), `TSR_GELU_A` = 0.044715 joined the shared block.
+
+Inputs: sigmoid / gelu_tanh linear spread over [-12, 12]; softmax / rmsnorm / layernorm a 1024 x 1024 row-major
+matrix from a linear spread over [-8, 8], gamma[j] = 0.5 + (j mod 17) / 16, beta[j] = (j mod 5) - 2, eps = 1e-5.
+
+**CANDIDATE goldens (dev box, x86-64, gcc 13.3, scalar == AVX2 == 4-thread); approve on the reference host:**
+
+| composite | CANDIDATE SHA-256 |
+|-----------|-------------------|
+| sigmoid   | `4b218f084f039c8c1df22f33c7281db188a9b982a13351bde704ff385e207dbf` |
+| gelu_tanh | `e913256381ad13735e34acb246c451685c7abb6a02e88c1ed02438e021b5d0be` |
+| softmax   | `fc2c51599eef4eb2aed8f183785ee1a5df8db5445b482768b9c6d13bfc14e917` |
+| rmsnorm   | `cee10b51cf07b010ce97a888ff1e8ac4eec2c56a6ad29b381225cfa8aeba5254` |
+| layernorm | `94a4721637fd2be28cd8e27f1b1315874a0b4b71ad0e80a56af40ecf6d16405f` |
+
 ## What this PROVES
 
 On x86 with AVX2+FMA, all four primitives are bit-identical across SIMD width (scalar ==
