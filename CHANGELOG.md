@@ -14,15 +14,24 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   `csrc/include/tessero.h`). A **new, original contribution, NOT part of the ported NumPy/SciPy
   architecture.** NumPy/SciPy transcendentals are accuracy-first and defer to the system
   `libm`/vendor math, which is not bit-reproducible across hardware, drivers, or SIMD width.
-  These are reproducible **by construction** - reduced to correctly-rounded f32 ops only
-  (`+ - * /`, `sqrtf`, `fmaf`) in a fixed evaluation order with exact range reduction and
-  exponent-bit scaling, giving one defined f32 bit-value on every SIMD width, thread count,
+  These are reproducible **by construction** - built only from correctly-rounded f32
+  operations, giving one defined f32 bit-value on every SIMD width, thread count,
   and CPU ISA (and, via a mirrored GPU shader, the GPU). Proven bit-identical across
   scalar/AVX2/AVX-512/NEON/SVE, 1 vs 4 threads, and x86 == ARM (`csrc/repro/ARCH_MATRIX.md`);
   four frozen goldens + canonical spec in `csrc/repro/GOLDENS.md`. Minimax coefficients are
   from Cephes (public domain) and Abramowitz & Stegun 7.1.26; the reproducible construction
   and the resulting bit-identity are the contribution. The ~1,845 parity-gated NumPy/SciPy
   functions are unaffected.
+- **Reproducible `recip` and `tanh` primitives** (`tsr_repro_recip_f32`, `tsr_repro_tanh_f32`), with goldens
+  `f7f9ec19` and `5b43f3d6` in `csrc/repro/GOLDENS.md`.
+- **Reproducible composites** (`tsr_repro_{sigmoid,gelu_tanh,softmax,rmsnorm,layernorm}_f32`): one definition of
+  each composition, built on the primitives. Goldens confirmed on two independent hosts, each scalar == AVX2 ==
+  4-thread.
+- **Reproducible backward composites** (gradients of `gelu_tanh`, `erf`, `sigmoid`, `tanh`, `rmsnorm`,
+  `layernorm`, and the norm `gamma` gradient) in the single header `csrc/include/tessero_repro_f32.h`. Candidate
+  goldens recorded in `csrc/repro/GOLDENS.md`; approval on the reference host is pending.
+- Talario's GPU kernels mirror these definitions and match them bit for bit on NVIDIA A10, A100 and H100 PCIe
+  (attested at 1024 x 1024 by Talario); other GPUs are not yet attested.
 - **NumPy/SciPy parity program** (`prompts/numpy-scipy-parity-program.md`, ADR 0011, ADR 0012). Coverage is
   measured, not asserted. `tools/parity/census.py` lists every public symbol of NumPy 2.4.4 and SciPy 1.17.1,
   and `tools/parity/report.py` classifies each one from the code and the recorded fixture runs

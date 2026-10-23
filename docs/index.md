@@ -49,6 +49,16 @@ NumPy/SciPy fixtures through both. See [Choosing a backend](getting-started/choo
 
 </div>
 
+## Reproducible f32 functions
+
+A small set of f32 functions (`rsqrt`, `exp2`, `exp`, `erf`, `recip`, `tanh`, and the composites `sigmoid`,
+`gelu_tanh`, `softmax`, `rmsnorm`, `layernorm` with their gradients) gives one exact bit result on every machine,
+not just a result within a tolerance. They are built only from correctly rounded floating-point operations, so
+every conformant implementation, CPU or GPU, computes the same bits. Each has a golden SHA-256 digest; run
+`bash csrc/repro/run_determinism.sh` to confirm a machine reproduces them. The primitive and forward-composite
+goldens are confirmed on two independent hosts; the backward-composite digests are candidates pending
+confirmation on the reference host.
+
 ## Status
 
 Version **0.2.0**, pre-1.0. The API is usable and heavily tested, but it can
