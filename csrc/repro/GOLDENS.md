@@ -2,8 +2,9 @@
 
 Golden SHA-256 hashes and the canonical spec for the reproducible-f32 transcendental
 primitives (`tsr_repro_rsqrt_f32` / `tsr_repro_exp2_f32` / `tsr_repro_exp_f32` /
-`tsr_repro_erf_f32`, implemented in `csrc/src/repro_f32.c`, declared in
-`csrc/include/tessero.h`). A hash here is the single defined f32 bit-result for the
+`tsr_repro_erf_f32`, plus the candidates `tsr_repro_recip_f32` / `tsr_repro_tanh_f32`),
+defined once in `csrc/include/tessero_repro_f32.h`, exported by `csrc/src/repro_f32.c`,
+declared in `csrc/include/tessero.h`. A hash here is the single defined f32 bit-result for the
 primitive on a fixed input. Every conformant implementation (Tessero at any SIMD level,
 any thread count, any compiler, and the Talario GPU shader) must reproduce it. See
 `REPRO_F32_KICKOFF.md` and `talario/docs/papers/fma-only-transcendentals-design.md`.
@@ -181,6 +182,67 @@ reproduced on GPU; this form is bit-identical CPU==GPU.
 | A3 | `0x1.6be1c6p+0`   | 1.42141378 |
 | A4 | `-0x1.7401c6p+0`  | -1.45315206 |
 | A5 | `0x1.0fb844p+0`   | 1.06140542 |
+
+### Single definition and the canonicalization rule (2026-10-23)
+
+The element-level definitions now live in ONE header-only file,
+`csrc/include/tessero_repro_f32.h` (valid C11 and C++20). `csrc/src/repro_f32.c` wraps it
+as the exported array ABI; Talario compiles a byte-identical vendored copy for its CPU
+twins and mirrors it on the GPU in `shaders/repro_f32.glsl`, whose constant block must be
+byte-identical to the header's (Talario's build fails on any drift).
+
+Device float-mode dependence is removed by one helper, `tsr__canon_f32`: a subnormal
+becomes a signed zero and any NaN becomes the canonical quiet NaN `0x7FC00000`, using
+integer bit operations only, so a flush-to-zero device and a subnormal-preserving one
+read the same bits. Every primitive canonicalizes its input, and exp2/exp/recip
+canonicalize any output that can land in the subnormal range. recip and rsqrt rescale
+arguments >= 2^64 by an exact power of two (bit-identical to the unscaled path where both
+are normal) so no intermediate goes subnormal; rsqrt of a negative input returns the
+canonical NaN. Canonicalization is the identity on every normal value, so the four
+goldens above are unchanged (re-verified 2026-10-23: scalar == AVX2 == 4-thread, same
+four hashes). Edge behaviour changed only where it used to depend on the device: for
+example exp(-100) is now +0 (was a subnormal), and rsqrt(+Inf) is +0.
+
+### recip(b) = 1/b   (exported as tsr_repro_recip_f32, any f32 input)
+```
+b = canon(b); NaN -> canonical NaN; +-0 -> +-Inf; +-Inf -> +-0
+a = |b|;  r = (a >= 2^64) ? rrecip(a * 2^-64) * 2^-64 : rrecip(a)
+rrecip(v): t = f32_from_bits(0x7EF127EA - bits_of(v)); 5x  t = t * fmaf(-v, t, 2)
+return canon(r) with the sign of b
+```
+
+### tanh(u)   (exported as tsr_repro_tanh_f32)
+```
+u = canon(u); NaN -> canonical NaN;  a = |u|
+a <  2^-12 : u                                  (the correctly rounded f32 tanh)
+a >= 9.1   : copysign(1, u)                     (f32 tanh rounds to +-1 there)
+a <= 0.25  : w = u*u; p = fmaf(fmaf(fmaf(fmaf(C11,w,C9),w,C7),w,C5),w,C3)
+             return fmaf(u*w, p, u)            (odd Taylor series, Horner in fmaf)
+otherwise  : e2 = exp(2a); t = (e2 - 1) * rrecip(e2 + 1); sign of u restored by bit
+```
+Exactly odd. Saturation also removes the e^2u overflow that drove the old
+exp-form tanh to -Inf/NaN for u >= 44.36.
+
+| const | hex float | decimal |
+|-------|-----------|---------|
+| C3  | `-0x1.555556p-2` | -0.333333343 |
+| C5  | `0x1.111112p-3`  | 0.13333334 |
+| C7  | `-0x1.ba1ba2p-5` | -0.0539682545 |
+| C9  | `0x1.664f48p-6`  | 0.0218694881 |
+| C11 | `-0x1.226e36p-7` | -0.00886323582 |
+| SAT | `0x1.233334p+3`  | 9.10000038 |
+
+Input vectors: `recip` = the rsqrt magnitude spread with alternating sign; `tanh` = a
+signed spread over [-10, 10] at scales 1, 1e-2 and 1e-5 so every frozen form is hit.
+
+**CANDIDATE goldens (not yet approved).** First captured 2026-10-23 on a dev box
+(x86-64, gcc 13.3, scalar == AVX2 == 4-thread). They become goldens only after capture on
+the reference host, like the four above:
+
+| primitive | CANDIDATE(f32, N=2^20) SHA-256 | determinism | accuracy vs f64 ref |
+|-----------|--------------------------------|-------------|---------------------|
+| recip | `f7f9ec19f8589f559977abefc0ba506e261ac1af84cbcaec32c0f4cf4979613d` | scalar == avx2 == 4-thread | <= 1 ULP |
+| tanh  | `5b43f3d6d5167193e3a18b9be0f55b3f99a650661b9635fac15aaa6ad310a694` | scalar == avx2 == 4-thread | <= 3 ULP, max abs err 2.1e-7 |
 
 ## What this PROVES
 

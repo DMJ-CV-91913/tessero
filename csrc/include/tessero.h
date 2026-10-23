@@ -69,13 +69,16 @@ int tsr_where(int dtype, int32_t ndim, const int64_t *shape, const void *cond, c
 
 /* ---- reproducible f32 transcendentals (see csrc/src/repro_f32.c, csrc/repro/GOLDENS.md) ----
    A SEPARATE surface from the accuracy-first f64 ufuncs below. Each value is computed from a fixed
-   polynomial in correctly-rounded f32 ops (+, -, *, /, sqrtf, fmaf) only, so the result is a single
+   polynomial in portably correctly-rounded f32 ops (+, -, *, fmaf) only, so the result is a single
    defined bit-pattern, identical across SIMD level, thread count, compiler and the GPU shader that
    mirrors the same spec. Contiguous f32 arrays of length n; return 0, or -1 on a bad argument. */
 int tsr_repro_rsqrt_f32(int64_t n, const float *x, float *y);   /* 1/sqrt(x) */
 int tsr_repro_exp2_f32 (int64_t n, const float *x, float *y);   /* 2^x       */
 int tsr_repro_exp_f32  (int64_t n, const float *x, float *y);   /* e^x       */
 int tsr_repro_erf_f32  (int64_t n, const float *x, float *y);   /* erf(x)    */
+int tsr_repro_recip_f32(int64_t n, const float *x, float *y);   /* 1/x, any f32 input */
+int tsr_repro_tanh_f32 (int64_t n, const float *x, float *y);   /* tanh(x)   */
+/* The element-level definitions are header-only in tessero_repro_f32.h (shared with Talario). */
 
 /* ---- loop ufuncs (cbrt, erf, gamma, logaddexp, fmax, fmod, ...): ids are 0 .. tsr_ufunc_count()-1 ----
    tsr_ufunc_resolve() maps the promoted input dtype to the loop dtype (cast the inputs to it) and the output

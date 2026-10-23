@@ -79,7 +79,7 @@ $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h
 # the compiler cannot contract or reassociate the non-fma arithmetic. This is what keeps the result
 # bit-identical across SIMD level, thread count and compiler (see csrc/repro/GOLDENS.md). The flags
 # follow $(CFLAGS) so they override anything inherited. This explicit target beats the generic rule.
-$(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h
+$(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h include/tessero_repro_f32.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -fno-fast-math -ffp-contract=off -Ithird_party/numpy/include -c -o $@ $<
 $(BUILD)/c/%.o: third_party/numpy/random/src/%.c

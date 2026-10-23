@@ -56,11 +56,30 @@ static void gen_span(float *x, float lo, float hi) {
     }
 }
 
+/* recip: the rsqrt magnitude spread with alternating sign (exercises both signs). */
+static void gen_recip(float *x) {
+    gen_rsqrt(x);
+    for (int64_t i = 0; i < N; ++i) if (i & 1) x[i] = -x[i];
+}
+
+/* tanh: signed spread over [-10, 10] at three scales so every frozen form is
+ * hit: |u| < 2^-12 (identity), <= 0.25 (series), < 9.1 (exp form), >= 9.1 (+-1). */
+static void gen_tanh(float *x) {
+    for (int64_t i = 0; i < N; ++i) {
+        uint32_t s    = (uint32_t)i * 2654435761u;
+        float    base = (float)((s >> 8) & 0xffffu) / 65535.0f;  /* [0, 1] */
+        float    mag  = (i % 7 == 0) ? 1.0e-5f : (i % 11 == 0) ? 1.0e-2f : 1.0f;
+        x[i] = (base * 20.0f - 10.0f) * mag;
+    }
+}
+
 static void gen_input(const char *fn, float *x) {
     if      (!strcmp(fn, "rsqrt")) gen_rsqrt(x);
     else if (!strcmp(fn, "exp2"))  gen_span(x, -30.0f, 30.0f);
     else if (!strcmp(fn, "exp"))   gen_span(x, -20.0f, 20.0f);
     else if (!strcmp(fn, "erf"))   gen_span(x, -4.0f, 4.0f);
+    else if (!strcmp(fn, "recip")) gen_recip(x);
+    else if (!strcmp(fn, "tanh"))  gen_tanh(x);
     else { fprintf(stderr, "unknown fn: %s\n", fn); exit(2); }
 }
 
@@ -69,6 +88,8 @@ static int run_fn(const char *fn, int64_t n, const float *x, float *y) {
     if (!strcmp(fn, "exp2"))  return tsr_repro_exp2_f32(n, x, y);
     if (!strcmp(fn, "exp"))   return tsr_repro_exp_f32(n, x, y);
     if (!strcmp(fn, "erf"))   return tsr_repro_erf_f32(n, x, y);
+    if (!strcmp(fn, "recip")) return tsr_repro_recip_f32(n, x, y);
+    if (!strcmp(fn, "tanh"))  return tsr_repro_tanh_f32(n, x, y);
     fprintf(stderr, "unknown fn: %s\n", fn); exit(2);
 }
 
@@ -78,6 +99,8 @@ static double ref_fn(const char *fn, double v) {
     if (!strcmp(fn, "exp2"))  return exp2(v);
     if (!strcmp(fn, "exp"))   return exp(v);
     if (!strcmp(fn, "erf"))   return erf(v);
+    if (!strcmp(fn, "recip")) return 1.0 / v;
+    if (!strcmp(fn, "tanh"))  return tanh(v);
     exit(2);
 }
 
@@ -208,12 +231,26 @@ static int mode_spec(void) {
     spec_line("erf.A3", 1.421413741f);
     spec_line("erf.A4", -1.453152027f);
     spec_line("erf.A5", 1.061405429f);
+    puts("");
+    puts("recip(b): canon; NaN -> canonical NaN; +-0 -> +-Inf; +-Inf -> +-0;");
+    puts("  t = bits(0x7EF127EA - bits(|b|)); 5x t = t*fmaf(-|b|,t,2);");
+    puts("  |b| >= 2^64: rrecip(|b|*2^-64)*2^-64; result canon'd, sign restored.");
+    puts("");
+    puts("tanh(u): canon; |u|<2^-12 -> u; |u|>=9.1 -> +-1; |u|<=0.25 -> w=u*u,");
+    puts("  p=fmaf(fmaf(fmaf(fmaf(C11,w,C9),w,C7),w,C5),w,C3); fmaf(u*w,p,u);");
+    puts("  else a=|u|, e2=exp(2a), t=(e2-1)*rrecip(e2+1), sign of u restored by bit.");
+    spec_line("tanh.C3",  -3.3333333333E-1f);
+    spec_line("tanh.C5",  1.3333333333E-1f);
+    spec_line("tanh.C7",  -5.3968253968E-2f);
+    spec_line("tanh.C9",  2.1869488536E-2f);
+    spec_line("tanh.C11", -8.8632355299E-3f);
+    spec_line("tanh.SAT", 9.1f);
     return 0;
 }
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        fprintf(stderr, "usage: %s <rsqrt|exp2|exp|erf> [edges|accuracy] | spec\n", argv[0]);
+        fprintf(stderr, "usage: %s <rsqrt|exp2|exp|erf|recip|tanh> [edges|accuracy] | spec\n", argv[0]);
         return 2;
     }
     if (!strcmp(argv[1], "spec")) return mode_spec();

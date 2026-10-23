@@ -10,7 +10,7 @@ DST="$ROOT/ext/libtessero"
 stage() {                       # $1 = target directory
     mkdir -p "$1/src" "$1/include" "$1/cxx" "$1/third_party"
     cp "$ROOT"/csrc/src/*.c "$ROOT"/csrc/src/*.h "$1/src/"
-    cp "$ROOT"/csrc/include/tessero.h "$1/include/"
+    cp "$ROOT"/csrc/include/*.h "$1/include/"
     cp "$ROOT"/csrc/cxx/*.cpp "$ROOT"/csrc/cxx/*.hpp "$ROOT"/csrc/cxx/*.inc "$1/cxx/"
     cp -r "$ROOT"/csrc/third_party/. "$1/third_party/"
 }
