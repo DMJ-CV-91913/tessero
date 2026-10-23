@@ -258,9 +258,10 @@ Talario CPU digest unchanged. Constants `TSR_GELU_C` = sqrt(2/pi), `TSR_GELU_A` 
 Inputs: sigmoid / gelu_tanh linear spread over [-12, 12]; softmax / rmsnorm / layernorm a 1024 x 1024 row-major
 matrix from a linear spread over [-8, 8], gamma[j] = 0.5 + (j mod 17) / 16, beta[j] = (j mod 5) - 2, eps = 1e-5.
 
-**CANDIDATE goldens (dev box, x86-64, gcc 13.3, scalar == AVX2 == 4-thread); approve on the reference host:**
+**Goldens (confirmed 2026-10-23 on two independent hosts: dev box and build server, each scalar == AVX2 ==
+4-thread; the six primitive goldens re-verified unchanged in the same runs):**
 
-| composite | CANDIDATE SHA-256 |
+| composite | GOLDEN SHA-256 |
 |-----------|-------------------|
 | sigmoid   | `4b218f084f039c8c1df22f33c7281db188a9b982a13351bde704ff385e207dbf` |
 | gelu_tanh | `e913256381ad13735e34acb246c451685c7abb6a02e88c1ed02438e021b5d0be` |
