@@ -52,7 +52,7 @@ done
 h(){ sha256sum | cut -d' ' -f1; }
 echo; echo "== each primitive vs the recorded x86 golden, across all paths and 1/4 threads =="
 FAIL=0
-for fn in rsqrt exp2 exp erf; do
+for fn in rsqrt exp2 exp erf recip tanh; do
   ok=1; detail=""
   for n in "${NAMES[@]}"; do
     [ -x "$TMP/dt_$n" ] || continue
