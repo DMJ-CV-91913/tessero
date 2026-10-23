@@ -54,10 +54,25 @@ Build and CI:
   release job now needs fuzz, repro and both parity jobs, and ships `LICENSE` and `THIRD_PARTY_NOTICES.md`.
   macOS and Windows are tier 2 (no LAPACK linkage yet) and no longer block the pipeline.
 
+## CI status after this tranche
+
+Now green on GitHub: Linux x86-64, aarch64 and musl builds; C tests under ASan + UBSan; libFuzzer; the
+`ext/libtessero` sync check; reproducible f32 on both ISAs; FPM-style preload; the reference Docker image.
+
+The downstream jobs ran for the first time ever and expose a second layer of pre-existing problems, none caused
+by these changes (the reference host passes the same suites):
+* FFI parity, the PHP matrix, docs and bench on `ubuntu-22.04`: that runner's LAPACK/OpenBLAS fails
+  `eigvals` ("illegal value in argument 10"), `tf2zpk` root solves, `eig_banded`, `subspace_angles`. Move these
+  jobs to the runner image whose LAPACK matches the reference host, or pin OpenBLAS.
+* `tessero/laravel unit tests`: the job never enables FFI (`ffi.enable=1`) or installs OpenBLAS.
+* `ext-tessero under ASan + UBSan`: `make test` runs without loading the module ("Required extension missing").
+* macOS and Windows: no LAPACK linkage (tier 2, non-blocking). `macos-13` was retired; the leg now uses
+  `macos-15-intel` (it had left every `ci` run on `main` queued forever).
+
 ## Backlog (prioritised)
 
 P0
-* Merge this branch, confirm CI green on GitHub, then cut a release only once CI is green.
+* Fix the second-layer CI jobs above, then merge; cut a release only once CI is green.
 * Add the verbatim f2c permission notice next to `f2c.h`; SHA-pin third-party actions (`softprops`,
   `shivammathur`, `msys2`) and add Dependabot for actions and composer.
 
