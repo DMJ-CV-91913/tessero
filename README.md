@@ -116,6 +116,34 @@ modes, 6 native builds, sanitizers, a real Laravel application, the Docker
 image and the docs. The verification actually performed for this release is
 recorded in `CHANGELOG.md`.
 
+## Reproducible f32 functions
+
+Most of Tessero follows NumPy and SciPy: floating-point results match to a stated tolerance, because the system
+`libm` and vendor math libraries do not give the same bits on every machine. A separate, small set of f32
+functions is defined to give **one exact bit result everywhere**: every SIMD width, every thread count, every CPU
+architecture, and any GPU implementation that follows the same definition.
+
+| Kind | Functions |
+|---|---|
+| Primitives | `rsqrt`, `exp2`, `exp`, `erf`, `recip`, `tanh` (exported as `tsr_repro_*_f32`) |
+| Composites | `sigmoid`, `gelu_tanh`, `softmax`, `rmsnorm`, `layernorm` |
+| Backward composites | gradients of `gelu_tanh`, `erf`, `sigmoid`, `tanh`, `rmsnorm`, `layernorm`, and the norm `gamma` gradient |
+
+They are built only from correctly rounded floating-point operations, so every conformant implementation
+computes the same bits. Each function has a golden SHA-256 digest over 2^20 fixed inputs
+([`csrc/repro/GOLDENS.md`](csrc/repro/GOLDENS.md)). To check a machine:
+
+```
+bash csrc/repro/run_determinism.sh
+```
+
+It builds the functions scalar, AVX2 and (where available) AVX-512, runs each with 1 and 4 threads, and requires
+every hash to equal the golden. The primitive and forward-composite goldens are confirmed on two independent hosts;
+the backward-composite digests are candidates until they are confirmed on the reference host.
+
+[Talario](https://talario.org) mirrors these definitions in its GPU kernels; its attestation shows the same bits
+on CPU and GPU on NVIDIA A10, A100 and H100 PCIe at 1024 x 1024. Other GPUs are not yet attested.
+
 ## Performance
 
 Median ms, 2-core x86-64 VM with AVX-512, PHP 8.4, same session as NumPy 2.4.
