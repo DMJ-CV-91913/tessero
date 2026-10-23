@@ -31,6 +31,12 @@
  * Every in-domain result is bit-identical to the pre-header implementation, so
  * the published goldens (csrc/repro/GOLDENS.md) are unchanged.
  *
+ * COMPOSITES (end of file): sigmoid, tanh-GELU, and the row-wise softmax /
+ * rmsnorm / layernorm, built only from the primitives above in ONE fixed
+ * operation order. Talario's CPU backend calls these directly and its GPU
+ * shaders mirror them statement for statement, so the composition itself, not
+ * just the primitives, has a single definition with its own goldens.
+ *
  * Build: consumers MUST compile with -ffp-contract=off -fno-fast-math, so the
  * compiler cannot fuse a separate mul+add into an fma or reassociate.
  */
@@ -90,6 +96,8 @@
 #define TSR_TANH_C7       -5.3968253968E-2f
 #define TSR_TANH_C9       2.1869488536E-2f
 #define TSR_TANH_C11      -8.8632355299E-3f
+#define TSR_GELU_C        0.7978845608028654f
+#define TSR_GELU_A        0.044715f
 /* END TSR_REPRO_CONSTANTS */
 
 /* ---- exact bit reinterpretation (no aliasing hazard) ---- */
@@ -336,6 +344,60 @@ static inline float tsr__tanh_f32(float u) {
     float e2 = tsr__exp_f32(2.0f * au);
     float t  = (e2 - 1.0f) * tsr__rrecip_f32(e2 + 1.0f);   /* tanh(|u|) > 0 */
     return tsr__f32_from_bits(tsr__bits_from_f32(t) | (tsr__bits_from_f32(u) & 0x80000000u));
+}
+
+/* ==========================================================================
+ * Composites. Loads and stores canonicalized; sums are plain sequential f32
+ * adds in index order (consumers must compile with -ffp-contract=off).
+ * ======================================================================== */
+
+/* sigmoid(x) = recip(1 + exp(-x)) */
+static inline float tsr__sigmoid_f32(float x) {
+    return tsr__canon_f32(tsr__recip_f32(1.0f + tsr__exp_f32(-tsr__canon_f32(x))));
+}
+
+/* tanh-approximation GELU: 0.5*x*(1 + tanh(c*(x + a*x^3))), c = sqrt(2/pi), a = 0.044715 */
+static inline float tsr__gelu_tanh_f32(float x) {
+    const float xv    = tsr__canon_f32(x);
+    const float inner = TSR_GELU_C * (xv + TSR_GELU_A * xv * xv * xv);
+    const float tnh   = tsr__tanh_f32(inner);
+    const float h     = tsr__canon_f32(0.5f * xv);
+    return tsr__canon_f32(h * (1.0f + tnh));
+}
+
+/* softmax over one row of n: ordered max, reproducible exp, guarded reciprocal */
+static inline void tsr__softmax_row_f32(const float *x, float *y, int64_t n) {
+    float mx = tsr__canon_f32(x[0]);
+    for (int64_t j = 1; j < n; ++j) { const float v = tsr__canon_f32(x[j]); mx = (v > mx) ? v : mx; }
+    float sum = 0.0f;
+    for (int64_t j = 0; j < n; ++j) sum += tsr__exp_f32(tsr__canon_f32(x[j]) - mx);
+    const float inv = tsr__recip_f32(sum);
+    for (int64_t j = 0; j < n; ++j) y[j] = tsr__canon_f32(tsr__exp_f32(tsr__canon_f32(x[j]) - mx) * inv);
+}
+
+/* rmsnorm over one row of n: y = gamma * x * rsqrt(mean(x^2) + eps) */
+static inline void tsr__rmsnorm_row_f32(const float *x, const float *gamma, float eps, float *y, int64_t n) {
+    const float invn = tsr__recip_f32((float)n);
+    float ms = 0.0f;
+    for (int64_t j = 0; j < n; ++j) { const float v = tsr__canon_f32(x[j]); ms += v * v; }
+    ms = ms * invn;
+    const float rrms = tsr__rrsqrt_f32(ms + eps);
+    for (int64_t j = 0; j < n; ++j) y[j] = tsr__canon_f32(tsr__canon_f32(gamma[j]) * tsr__canon_f32(x[j]) * rrms);
+}
+
+/* layernorm over one row of n: y = gamma * ((x - mu) * rsqrt(var + eps)) + beta */
+static inline void tsr__layernorm_row_f32(const float *x, const float *gamma, const float *beta, float eps,
+                                          float *y, int64_t n) {
+    const float invn = tsr__recip_f32((float)n);
+    float mu = 0.0f;
+    for (int64_t j = 0; j < n; ++j) mu += tsr__canon_f32(x[j]);
+    mu = mu * invn;
+    float var = 0.0f;
+    for (int64_t j = 0; j < n; ++j) { const float d = tsr__canon_f32(x[j]) - mu; var += d * d; }
+    var = var * invn;
+    const float rstd = tsr__rrsqrt_f32(var + eps);
+    for (int64_t j = 0; j < n; ++j)
+        y[j] = tsr__canon_f32(tsr__canon_f32(gamma[j]) * ((tsr__canon_f32(x[j]) - mu) * rstd) + tsr__canon_f32(beta[j]));
 }
 
 #endif /* TESSERO_REPRO_F32_H */
