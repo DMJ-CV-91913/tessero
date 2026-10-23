@@ -107,11 +107,11 @@ the recorded test runs: see [coverage of real-world usage](docs/project/usage-we
 | Cross-backend parity (same random inputs, identical bytes required) | > 3 000 comparisons |
 | Property tests (identities, round trips; random shapes, dtypes, layouts) | 5 properties × 40 cases (×2000 nightly) |
 | Coverage-guided fuzzing (`make -C csrc fuzz`): slice parser, `.npy` header, memmap planning, JSON writer | 4 targets; ~13 million inputs so far, 2 bugs found and fixed |
-| Soak (`tools/soak.php`): native memory, mappings, heap, RSS, descriptors must not drift | minutes locally; 5.5 h nightly; 24–72 h before releases |
+| Soak (`tools/soak.php`): native memory, mappings, heap, RSS, descriptors must not drift | minutes locally; 5.5 h nightly; 24-72 h before releases |
 | Unit, Laravel bridge, documentation examples, FPM preload e2e | all pass |
 
 All PHP suites pass with the JIT off, `function` and `tracing`. CI
-(`.github/workflows/ci.yml`) is configured for 4 OSes × PHP 8.2–8.5 × 3 JIT
+(`.github/workflows/ci.yml`) is configured for 4 OSes × PHP 8.2-8.5 × 3 JIT
 modes, 6 native builds, sanitizers, a real Laravel application, the Docker
 image and the docs. The verification actually performed for this release is
 recorded in `CHANGELOG.md`.
@@ -160,9 +160,9 @@ These runs are noisy (±40 %).
 | log 1M | 1.7 | 1.0 |
 | sort 1M | 30 | 7.5 |
 | fft 2^20 (complex) | 73 | 35 |
-| rfft 2^20 (real input) | 36–55 | 14 |
-| linprog 200×200 dense | 3.1 | — |
-| MDP 20 000 states × 4 actions, modified PI | 91 | — |
+| rfft 2^20 (real input) | 36-55 | 14 |
+| linprog 200×200 dense | 3.1 | -- |
+| MDP 20 000 states × 4 actions, modified PI | 91 | -- |
 
 `exp`/`log` use Tessero's own vectorised kernels (< 1 ulp). Before them, `exp`
 took 9 ms. The remaining gaps are sort (NumPy uses an AVX-512 quicksort) and
