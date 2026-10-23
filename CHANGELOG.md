@@ -28,8 +28,8 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   each composition, built on the primitives. Goldens confirmed on two independent hosts, each scalar == AVX2 ==
   4-thread.
 - **Reproducible backward composites** (gradients of `gelu_tanh`, `erf`, `sigmoid`, `tanh`, `rmsnorm`,
-  `layernorm`, and the norm `gamma` gradient) in the single header `csrc/include/tessero_repro_f32.h`. Candidate
-  goldens recorded in `csrc/repro/GOLDENS.md`; approval on the reference host is pending.
+  `layernorm`, and the norm `gamma` gradient) in the single header `csrc/include/tessero_repro_f32.h`. Goldens
+  recorded in `csrc/repro/GOLDENS.md`, approved on two hosts.
 - Talario's GPU kernels mirror these definitions and match them bit for bit on NVIDIA A10, A100 and H100 PCIe
   (attested at 1024 x 1024 by Talario); other GPUs are not yet attested.
 - **NumPy/SciPy parity program** (`prompts/numpy-scipy-parity-program.md`, ADR 0011, ADR 0012). Coverage is

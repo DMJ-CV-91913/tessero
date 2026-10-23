@@ -281,9 +281,9 @@ tiny, subnormal, large, zero and NaN inputs) and 12,800 norm rows found 0 mismat
 Inputs: elementwise x linear over [-6, 6], dy[i] = 0.5 + (i mod 13) / 16, dx = 0 (sigmoid/tanh take y = forward(x));
 row-wise 1024 x 1024 x linear over [-8, 8], dy[j] = 0.25 + (j mod 11) / 8, gamma as above, eps = 1e-5, dx = 0.
 
-**CANDIDATE goldens (dev box; approve on the reference host):**
+**APPROVED goldens (2026-10-23): dev box and the build server (reference host) reproduce them, scalar == AVX2 == 4-thread on each:**
 
-| backward composite | CANDIDATE SHA-256 |
+| backward composite | APPROVED SHA-256 |
 |--------------------|-------------------|
 | gelu_tanh_bwd | `3e9a3aba2f8716f0a7c4ed0d811bcc4ffb69ecf79f77c7297ec8c035d460db5e` |
 | erf_bwd       | `8ee5b5e496c953d546924fcaada045d3ae90b16aad5b068943e7c400b0d41c70` |

@@ -138,8 +138,8 @@ bash csrc/repro/run_determinism.sh
 ```
 
 It builds the functions scalar, AVX2 and (where available) AVX-512, runs each with 1 and 4 threads, and requires
-every hash to equal the golden. The primitive and forward-composite goldens are confirmed on two independent hosts;
-the backward-composite digests are candidates until they are confirmed on the reference host.
+every hash to equal the golden. The primitive, forward-composite and backward-composite goldens are all confirmed on two
+independent hosts.
 
 [Talario](https://talario.org) mirrors these definitions in its GPU kernels; its attestation shows the same bits
 on CPU and GPU on NVIDIA A10, A100 and H100 PCIe at 1024 x 1024. Other GPUs are not yet attested.
