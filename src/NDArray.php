@@ -63,6 +63,41 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $this->shape = array_values($shape);
         $this->size = self::checkedSize($this->shape);
         $this->strides = $strides === null ? self::cStrides($this->shape, $dtype->itemsize()) : array_values($strides);
+        if ($strides !== null || $offset !== 0) {
+            self::checkExtent($buffer, $this->shape, $this->strides, $offset, $dtype->itemsize());
+        }
+    }
+
+    /**
+     * Every element a view can address must lie inside its buffer: the kernels trust shape, strides and offset,
+     * so a view reaching past the block (the constructor is public) would read or write outside it.
+     *
+     * @param list<int> $shape
+     * @param list<int> $strides
+     */
+    private static function checkExtent(Buffer $buffer, array $shape, array $strides, int $offset, int $itemsize): void
+    {
+        if (count($strides) !== count($shape)) {
+            throw new ShapeError('strides must have one entry per dimension.');
+        }
+        if (in_array(0, $shape, true)) {
+            return;                                   // an empty view addresses nothing
+        }
+        $lo = $hi = $offset;
+        foreach ($shape as $d => $len) {
+            $span = ($len - 1) * $strides[$d];
+            if (is_float($span)) {
+                throw new IndexError('View exceeds its buffer (stride arithmetic overflows).');
+            }
+            if ($span < 0) {
+                $lo += $span;
+            } else {
+                $hi += $span;
+            }
+        }
+        if (is_float($lo) || is_float($hi) || $lo < 0 || $hi + $itemsize > $buffer->bytes) {
+            throw new IndexError('View exceeds its buffer.');
+        }
     }
 
     // ------------------------------------------------------------------ creation

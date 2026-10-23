@@ -642,8 +642,14 @@ static PHP_METHOD(Generator, multivariateNormal)
     if ((int64_t)zend_hash_num_elements(Z_ARRVAL_P(cov_z)) != dim) {
         zend_throw_exception(tsr_ce_exception, "multivariateNormal: cov must be a (d, d) matrix matching mean.", 0); RETURN_THROWS();
     }
-    double *mean = (double *)emalloc((size_t)dim * sizeof(double));
-    double *cov = (double *)emalloc((size_t)dim * (size_t)dim * sizeof(double));
+    /* validate every row before allocating dim * dim doubles, so a malformed cov fails cheaply */
+    { zval *row; ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(cov_z), row) {
+        if (Z_TYPE_P(row) != IS_ARRAY || (int64_t)zend_hash_num_elements(Z_ARRVAL_P(row)) != dim) {
+            zend_throw_exception(tsr_ce_exception, "multivariateNormal: cov must be a (d, d) matrix matching mean.", 0); RETURN_THROWS();
+        }
+      } ZEND_HASH_FOREACH_END(); }
+    double *mean = (double *)safe_emalloc((size_t)dim, sizeof(double), 0);
+    double *cov = (double *)safe_emalloc((size_t)dim, (size_t)dim * sizeof(double), 0);
     { int64_t i = 0; zval *e; ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(mean_z), e) { mean[i++] = zval_get_double(e); } ZEND_HASH_FOREACH_END(); }
     { int64_t r = 0; zval *row;
       ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(cov_z), row) {

@@ -384,6 +384,10 @@ final class Linalg
         $B = self::f64($b);
         self::requireSquare($A, 'solveTriangular');
         $n = $A->shape()[0];
+        // LAPACK reads and writes n rows of b: a shorter b would be overrun on the heap
+        if (count($B->shape()) < 1 || count($B->shape()) > 2 || $B->shape()[0] !== $n) {
+            throw new ShapeError("solveTriangular: b must have {$n} rows.");
+        }
         $vector = count($B->shape()) === 1;
         $nrhs = $vector ? 1 : $B->shape()[1];
         $x = $B->copy();

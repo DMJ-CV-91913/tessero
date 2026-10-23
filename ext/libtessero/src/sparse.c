@@ -2,10 +2,28 @@
 #include "internal.h"
 #include <math.h>
 
+/* indptr must start at 0 and never decrease: the loops below index data/indices by it, so a decreasing or
+   negative entry would read (or, in the transpose, write) outside the arrays. O(rows), done once per call. */
+static int csr_indptr_ok(int64_t rows, const int64_t *indptr)
+{
+    if (indptr[0] != 0) return 0;
+    for (int64_t i = 0; i < rows; i++) if (indptr[i + 1] < indptr[i]) return 0;
+    return 1;
+}
+
+/* square n x n CSR: indptr as above and every column index inside [0, n) (the solvers multiply by x[indices[p]]) */
+static int csr_square_ok(int64_t n, const int64_t *indptr, const int64_t *indices)
+{
+    if (n < 0 || !indptr || !csr_indptr_ok(n, indptr)) return 0;
+    for (int64_t p = 0; p < indptr[n]; p++) if (indices[p] < 0 || indices[p] >= n) return 0;
+    return 1;
+}
+
 TSR_CLONES int tsr_csr_matvec(int64_t rows, const int64_t *indptr, const int64_t *indices, const double *data,
                               const double *x, double *y)
 {
     if (rows < 0 || !indptr) return TSR_EARG;
+    if (!csr_indptr_ok(rows, indptr)) return TSR_EINDEX;
     for (int64_t i = 0; i < rows; i++) {
         double acc = 0.0;
         for (int64_t p = indptr[i]; p < indptr[i + 1]; p++) acc += data[p] * x[indices[p]];
@@ -18,6 +36,7 @@ TSR_CLONES int tsr_csr_matmat(int64_t rows, int64_t k, const int64_t *indptr, co
                               const double *data, const double *b, double *c)
 {
     if (rows < 0 || k < 0 || !indptr) return TSR_EARG;
+    if (!csr_indptr_ok(rows, indptr)) return TSR_EINDEX;
     for (int64_t i = 0; i < rows; i++) {
         double *ci = c + i * k;
         memset(ci, 0, (size_t)k * sizeof(double));
@@ -59,6 +78,8 @@ int tsr_dense_to_csr(int64_t rows, int64_t cols, const double *a, int64_t *indpt
 int tsr_csr_transpose(int64_t rows, int64_t cols, const int64_t *indptr, const int64_t *indices, const double *data,
                       int64_t *t_indptr, int64_t *t_indices, double *t_data)
 {
+    if (rows < 0 || cols < 0 || !indptr) return TSR_EARG;
+    if (!csr_indptr_ok(rows, indptr)) return TSR_EINDEX;
     const int64_t nnz = indptr[rows];
     memset(t_indptr, 0, (size_t)(cols + 1) * sizeof(int64_t));
     for (int64_t p = 0; p < nnz; p++) {
@@ -95,6 +116,7 @@ static double dot(int64_t n, const double *a, const double *b)
 int64_t tsr_csr_cg(int64_t n, const int64_t *indptr, const int64_t *indices, const double *data, const double *b,
                    double *x, double tol, double atol, int64_t maxiter, double *resid)
 {
+    if (!csr_square_ok(n, indptr, indices)) return TSR_EINDEX;
     int64_t bytes = 5 * n * (int64_t)sizeof(double);
     double *mem = (double *)tsr_alloc(bytes > 0 ? bytes : 8);
     if (!mem) return TSR_ENOMEM;
@@ -138,6 +160,7 @@ int64_t tsr_csr_cg(int64_t n, const int64_t *indptr, const int64_t *indices, con
 int64_t tsr_csr_bicgstab(int64_t n, const int64_t *indptr, const int64_t *indices, const double *data, const double *b,
                          double *x, double tol, double atol, int64_t maxiter, double *resid)
 {
+    if (!csr_square_ok(n, indptr, indices)) return TSR_EINDEX;
     int64_t bytes = 6 * n * (int64_t)sizeof(double);
     double *mem = (double *)tsr_alloc(bytes > 0 ? bytes : 8);
     if (!mem) return TSR_ENOMEM;
