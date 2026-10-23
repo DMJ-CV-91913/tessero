@@ -12,6 +12,9 @@ on:
     inputs:
       soak_seconds: { description: 'soak duration per backend (s)', default: '19800' }
 
+permissions:
+  contents: read
+
 jobs:
   fuzz:
     name: fuzz ${{ matrix.target }} (30 min)
@@ -21,11 +24,13 @@ jobs:
       matrix: { target: [slice, npy, mmap_plan, json] }
     steps:
       - uses: actions/checkout@v4
+        with: { persist-credentials: false }
       - uses: actions/cache@v4
         with:
           path: csrc/build-fuzz/corpus_${{ matrix.target }}
           key: fuzz-${{ matrix.target }}-${{ github.run_id }}
           restore-keys: fuzz-${{ matrix.target }}-
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - run: make -C csrc fuzz FUZZ_TARGETS=${{ matrix.target }} FUZZ_TIME=1800 BUILD=./build-fuzz
       - if: failure()
         uses: actions/upload-artifact@v4
@@ -45,8 +50,10 @@ jobs:
           - { backend: ffi, jit: 'tracing JIT', ini: '-d opcache.enable_cli=1 -d opcache.jit=tracing -d opcache.jit_buffer_size=64M' }
     steps:
       - uses: actions/checkout@v4
+        with: { persist-credentials: false }
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.4', extensions: ffi, tools: phpize }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - run: make -C csrc
       - name: build ext-tessero
         if: matrix.backend == 'ext'
@@ -67,8 +74,10 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with: { persist-credentials: false }
       - uses: shivammathur/setup-php@v2
         with: { php-version: '8.4', extensions: ffi, tools: phpize }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - run: make -C csrc
       - run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
       - run: composer install --no-interaction --no-progress

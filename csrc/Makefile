@@ -57,6 +57,28 @@ OPENMP ?= -fopenmp
 CFLAGS ?= -O3 -std=gnu11 -fPIC -fno-math-errno -fno-trapping-math -fvisibility=default $(OPENMP) $(WARN)
 LDLIBS := -lm $(LAPACK)
 
+# ---- compiler and linker hardening (OpenSSF "Compiler Options Hardening Guide for C and C++"). Every flag is
+#      probed, so a toolchain that lacks one drops it instead of failing. None changes floating-point semantics;
+#      the parity gate verifies results stay bit-exact. HARDEN=0 turns it off. The sanitizer and fuzz builds keep
+#      their own flags (FORTIFY conflicts with the ASan interceptors, zero-init would hide uninitialised reads).
+HARDEN ?= 1
+comma := ,
+try_cc = $(shell printf 'int main(void){return 0;}\n' | $(CC) -Werror -O2 $(1) -x c - -o /dev/null >/dev/null 2>&1 && echo "$(1)")
+try_cxx = $(shell printf 'int main(void){return 0;}\n' | $(CXX) -Werror -O2 $(1) -x c++ - -o /dev/null >/dev/null 2>&1 && echo "$(1)")
+try_so = $(shell printf 'int tsr_probe(void){return 0;}\n' | $(CC) -Werror -fPIC -shared $(1) -x c - -o /dev/null >/dev/null 2>&1 && echo "$(1)")
+ifeq ($(HARDEN),1)
+  HARDEN_CC := $(call try_cc,-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3) $(call try_cc,-fstack-protector-strong) \
+    $(call try_cc,-fstack-clash-protection) $(call try_cc,-fcf-protection=full) \
+    $(call try_cc,-mbranch-protection=standard) $(call try_cc,-ftrivial-auto-var-init=zero) \
+    $(call try_cc,-fno-delete-null-pointer-checks)
+  HARDEN_CXX := $(HARDEN_CC) $(call try_cxx,-D_GLIBCXX_ASSERTIONS)
+  HARDEN_LD := $(call try_so,-Wl$(comma)-z$(comma)relro) $(call try_so,-Wl$(comma)-z$(comma)now) \
+    $(call try_so,-Wl$(comma)-z$(comma)noexecstack)
+  CFLAGS += $(HARDEN_CC) $(call try_cc,-Wformat=2) $(call try_cc,-Werror=format-security)
+  CXXFLAGS += $(HARDEN_CXX)
+  LDLIBS += $(HARDEN_LD)
+endif
+
 all: $(OUT)/$(LIBNAME).$(EXT)
 
 $(BUILD)/cxx/%.cpp.o: cxx/%.cpp cxx/*.hpp src/fn.h

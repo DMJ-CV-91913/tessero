@@ -1131,8 +1131,22 @@ int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result 
     const fn_def *d = def_of(id);
     if (!d || d->kind != FN_ROUTINE || !res || nres < d->nout || (nargs > 0 && !args)) return TSR_EARG;
     g_err[0] = '\0';
+    /* routines read their declared positional slots without checking nargs (the PHP bindings always pass them
+       all); a direct C caller passing fewer would make them read past `args`. Pad the missing trailing slots
+       with kind 0 ("absent"), which every routine already treats as the default. */
+    int declared = 0;
+    if (d->args && d->args[0]) { declared = 1; for (const char *c = d->args; *c; c++) declared += *c == ','; }
+    tsr_arg *padded = NULL;
+    if (nargs < declared) {
+        padded = (tsr_arg *)calloc((size_t)declared, sizeof *padded);
+        if (!padded) return TSR_ENOMEM;
+        if (nargs > 0) memcpy(padded, args, (size_t)nargs * sizeof *padded);
+        args = padded;
+        nargs = declared;
+    }
     for (int k = 0; k < nres; k++) memset(&res[k], 0, sizeof res[k]);
     const int rc = fn_call_routine(d->routine, d->ctx, args, nargs, res, nres);
+    free(padded);
     if (rc < 0) fn_results_free(res, nres);
     return rc;
 }

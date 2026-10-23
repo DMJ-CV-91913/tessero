@@ -3636,10 +3636,19 @@ static int r_einsum(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     int outlab[EINSUM_MAXLBL]; int nout = 0;
     if (explicit_out) {
         for (const char *p = outpart; *p; ) {
-            if (*p == '.') { for (int j = 0; j < E; j++) outlab[nout++] = base_ell + j; p += 3; }
+            /* every append is bounded (outlab/oshape/ostride_out hold EINSUM_MAXLBL), and a label may appear once
+               (as in NumPy): without both checks a long output subscript overflowed these stack arrays */
+            if (*p == '.') {
+                if (nout + E > EINSUM_MAXLBL) { fn_set_error("einsum: the output subscript is too long"); return TSR_EARG; }
+                for (int j = 0; j < E; j++) outlab[nout++] = base_ell + j;
+                p += 3;
+            }
             else if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z')) {
                 const int L = lblmap[(unsigned char)*p];
                 if (L < 0) { fn_set_error("einsum: output label '%c' does not appear in the input", *p); return TSR_EARG; }
+                for (int q = 0; q < nout; q++)
+                    if (outlab[q] == L) { fn_set_error("einsum: output subscript included '%c' multiple times", *p); return TSR_EARG; }
+                if (nout >= EINSUM_MAXLBL) { fn_set_error("einsum: the output subscript is too long"); return TSR_EARG; }
                 outlab[nout++] = L; p++;
             } else { fn_set_error("einsum: invalid character '%c' in the output subscript", *p); return TSR_EARG; }
         }
@@ -3753,7 +3762,8 @@ static int r_logsumexp(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
         double m = -INFINITY; for (int64_t i = 0; i < tot; i++) if (d[i] > m) m = d[i];
         double out;
         if (tot == 0 || m == -INFINITY) out = -INFINITY;
-        else { double s = 0.0; for (int64_t i = 0; i < tot; i++) s += exp(d[i] - m); out = m + log(s); }
+        else { if (m == INFINITY) m = 0.0;                       /* scipy shifts by 0 for a non-finite max: inf - inf would give NaN */
+               double s = 0.0; for (int64_t i = 0; i < tot; i++) s += exp(d[i] - m); out = m + log(s); }
         own z;
         if (keep) { int64_t sh[TSR_MAXDIM]; for (int32_t k = 0; k < n; k++) sh[k] = 1; if ((rc = own_new(&z, TSR_F64, n, sh)) < 0) { own_free(&src); return rc; } }
         else if ((rc = own_new(&z, TSR_F64, 0, NULL)) < 0) { own_free(&src); return rc; }
@@ -3782,7 +3792,8 @@ static int r_logsumexp(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
             double m = -INFINITY; for (int64_t j = 0; j < L; j++) { const double v = base[j * inner]; if (v > m) m = v; }
             double r;
             if (L == 0 || m == -INFINITY) r = -INFINITY;
-            else { double s = 0.0; for (int64_t j = 0; j < L; j++) s += exp(base[j * inner] - m); r = m + log(s); }
+            else { if (m == INFINITY) m = 0.0;
+                   double s = 0.0; for (int64_t j = 0; j < L; j++) s += exp(base[j * inner] - m); r = m + log(s); }
             out[o * inner + i] = r;
         }
     own_free(&src);
@@ -4886,6 +4897,7 @@ static int r_divmod(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         for (int64_t i = 0; i < nz; i++) {
             const int64_t x = pa[na == 1 ? 0 : i], y = pb[nb == 1 ? 0 : i];
             if (y == 0) { qq[i] = 0; rr[i] = 0; continue; }   /* numpy integer div by zero -> 0, 0 */
+            if (y == -1) { qq[i] = TSR_WSUB(int64_t, 0, x); rr[i] = 0; continue; }   /* MIN / -1 would trap (SIGFPE) */
             int64_t q = x / y, r = x % y;
             if (r != 0 && ((r < 0) != (y < 0))) { r += y; q -= 1; }
             qq[i] = q; rr[i] = r;

@@ -194,6 +194,22 @@ final class Buffer
     {
     }
 
+    /**
+     * Buffers are never serialized. unserialize() creates objects without the constructor, so a forged payload
+     * could otherwise name any address and size, and __destruct would free (or unmap) it. Serialize the NDArray
+     * instead: its __serialize copies the data and its __unserialize validates it.
+     */
+    public function __serialize(): array
+    {
+        throw new \LogicException('Tessero\Native\Buffer cannot be serialized; serialize the NDArray instead.');
+    }
+
+    /** @param array<mixed> $data */
+    public function __unserialize(array $data): void
+    {
+        throw new \LogicException('Tessero\Native\Buffer cannot be unserialized.');
+    }
+
     private static function human(int $bytes): string
     {
         $units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];

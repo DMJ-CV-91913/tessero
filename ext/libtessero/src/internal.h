@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <math.h>
 #include "../include/tessero.h"
 
 #ifndef M_PI
@@ -25,8 +26,17 @@ int tsr_get_threads(void);
  * x86-64-v4 (AVX-512), v3 (AVX2/FMA) and baseline, and the dynamic loader
  * picks the best clone for the running CPU (ifunc). Elsewhere (musl,
  * macOS, Windows, ARM) the platform build flags choose the ISA instead.
+ *
+ * GCC >= 12 is REQUIRED for the clones: GCC 11 (the Ubuntu 22.04 LTS default)
+ * cannot emit the ifunc dispatcher for `static` multiversioned functions and
+ * fails the build with "no dispatcher found for the versioning attributes".
+ * On GCC 11 (or anything else) TSR_CLONES expands to nothing, so the functions
+ * compile as a single version using the build's -march; results are IDENTICAL
+ * (determinism is by construction, not by which SIMD clone runs), only the
+ * auto-dispatched SIMD speedup is lost. Install gcc-12+ and build with CC=gcc-12
+ * to get the multiversioned fast paths. Define TSR_NO_CLONES to force-disable.
  */
-#if defined(__x86_64__) && defined(__GLIBC__) && defined(__GNUC__) && !defined(__clang__) && !defined(TSR_NO_CLONES)
+#if defined(__x86_64__) && defined(__GLIBC__) && defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 12) && !defined(TSR_NO_CLONES)
 #  define TSR_CLONES __attribute__((target_clones("arch=x86-64-v4", "arch=x86-64-v3", "default")))
 #else
 #  define TSR_CLONES
@@ -36,6 +46,18 @@ int tsr_get_threads(void);
 #define TSR_WADD(T, a, b) ((T)((uint64_t)(int64_t)(a) + (uint64_t)(int64_t)(b)))
 #define TSR_WSUB(T, a, b) ((T)((uint64_t)(int64_t)(a) - (uint64_t)(int64_t)(b)))
 #define TSR_WMUL(T, a, b) ((T)((uint64_t)(int64_t)(a) * (uint64_t)(int64_t)(b)))
+
+/*
+ * Round-once fused multiply-add: a*b + c with a SINGLE rounding, by construction.
+ * Explicit fmaf/fma make the result bit-identical across compiler version, the
+ * -ffp-contract setting, which SIMD clone runs, and the target ISA (a non-FMA CPU
+ * uses the correctly-rounded software FMA and gets the SAME bits). This is what
+ * makes the gemm / axpy / dot kernels canonical, the same discipline repro_f32.c
+ * applies to the transcendentals. Relying on the compiler to contract c + a*b into
+ * an FMA is the footgun: GCC 14 and GCC 12 disagreed and silently emitted a
+ * two-round, non-canonical kernel. T is the element type (float or double).
+ */
+#define TSR_RFMA(T, a, b, c) (_Generic((T)0, float: fmaf, double: fma, default: fma)((a), (b), (c)))
 
 /* Element count of a shape, or -1 if negative or if the count (or count * 16 bytes) would overflow int64.
    Every size that becomes an allocation or a loop bound goes through this. */

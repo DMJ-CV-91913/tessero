@@ -114,6 +114,30 @@ final class MemorySafetyTest extends TestCase
         }
     }
 
+    public function testSecurityReviewRegressions(): void
+    {
+        // 2026-10 review: a forged Buffer in an unserialize() payload made __destruct free an attacker-chosen address
+        $forged = 'O:21:"Tessero\Native\Buffer":3:{s:7:"address";i:4096;s:5:"bytes";i:64;s:5:"owned";b:1;}';
+        $this->throws(\LogicException::class, static fn () => unserialize($forged), 'forged Buffer');
+
+        // a public NDArray constructor must not describe memory outside its buffer
+        $buf = NDArray::zeros([2])->buffer();
+        $this->throws(\Tessero\Exceptions\IndexError::class, static fn () => new NDArray($buf, \Tessero\DType::Float64, [1 << 20], [8]), 'view past buffer');
+        $this->throws(\Tessero\Exceptions\IndexError::class, static fn () => new NDArray($buf, \Tessero\DType::Float64, [2], [8], 64), 'offset past buffer');
+        $this->throws(\Tessero\Exceptions\IndexError::class, static fn () => new NDArray($buf, \Tessero\DType::Float64, [2], [-8], 0), 'negative stride before buffer');
+        $ok = new NDArray($buf, \Tessero\DType::Float64, [2], [-8], 8);
+        $this->assertSame([0.0, 0.0], $ok->toList(), 'a reversed view inside the buffer still works');
+
+        // CSR indptr feeds the kernels' loop bounds: it must start at 0 and never decrease
+        $this->throws(ShapeError::class, static fn () => \Tessero\Sparse\CsrMatrix::fromArrays([0, 5, 2], [0, 1], [1.0, 1.0], [2, 2]), 'decreasing indptr');
+        $this->throws(ShapeError::class, static fn () => \Tessero\Sparse\CsrMatrix::fromArrays([-3, 2, 2], [0, 1], [1.0, 1.0], [2, 2]), 'negative indptr');
+
+        // LAPACK dtrtrs writes n rows of b: a shorter b overran the heap
+        if (\Tessero\Native\Blas::available()) {
+            $this->throws(ShapeError::class, static fn () => \Tessero\Linalg\Linalg::solveTriangular(NDArray::eye(100), [1.0]), 'short b');
+        }
+    }
+
     private function throws(string $class, callable $f, string $what = ''): void
     {
         try {

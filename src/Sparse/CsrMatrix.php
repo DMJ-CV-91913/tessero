@@ -107,6 +107,16 @@ final class CsrMatrix
         if ($ix->size() > 0 && ($ix->min() < 0 || $ix->max() >= $n)) {
             throw new ShapeError('CSR column index outside the matrix.');
         }
+        // the kernels index data/indices by indptr: it must start at 0 and never decrease
+        $pl = $p->toList();
+        if ($pl[0] !== 0) {
+            throw new ShapeError('CSR indptr must start at 0.');
+        }
+        for ($i = 0; $i < $m; $i++) {
+            if ($pl[$i + 1] < $pl[$i]) {
+                throw new ShapeError('CSR indptr must be non-decreasing.');
+            }
+        }
 
         return new self($p, $ix, $d, $m, $n);
     }
