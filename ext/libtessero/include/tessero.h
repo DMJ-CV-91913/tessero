@@ -67,6 +67,26 @@ int tsr_unary(int op, int dtype, int32_t ndim, const int64_t *shape,
 int tsr_where(int dtype, int32_t ndim, const int64_t *shape, const void *cond, const int64_t *sc,
               const void *a, const int64_t *sa, const void *b, const int64_t *sb, void *out, const int64_t *sout);
 
+/* ---- reproducible f32 transcendentals (see csrc/src/repro_f32.c, csrc/repro/GOLDENS.md) ----
+   A SEPARATE surface from the accuracy-first f64 ufuncs below. Each value is computed from a fixed
+   polynomial in portably correctly-rounded f32 ops (+, -, *, fmaf) only, so the result is a single
+   defined bit-pattern, identical across SIMD level, thread count, compiler and the GPU shader that
+   mirrors the same spec. Contiguous f32 arrays of length n; return 0, or -1 on a bad argument. */
+int tsr_repro_rsqrt_f32(int64_t n, const float *x, float *y);   /* 1/sqrt(x) */
+int tsr_repro_exp2_f32 (int64_t n, const float *x, float *y);   /* 2^x       */
+int tsr_repro_exp_f32  (int64_t n, const float *x, float *y);   /* e^x       */
+int tsr_repro_erf_f32  (int64_t n, const float *x, float *y);   /* erf(x)    */
+int tsr_repro_recip_f32(int64_t n, const float *x, float *y);   /* 1/x, any f32 input */
+int tsr_repro_tanh_f32 (int64_t n, const float *x, float *y);   /* tanh(x)   */
+/* composites: one definition of the composition, mirrored by the Talario GPU shaders */
+int tsr_repro_sigmoid_f32  (int64_t n, const float *x, float *y);
+int tsr_repro_gelu_tanh_f32(int64_t n, const float *x, float *y);
+int tsr_repro_softmax_f32  (int64_t m, int64_t n, const float *x, float *y);              /* row-wise */
+int tsr_repro_rmsnorm_f32  (int64_t m, int64_t n, const float *x, const float *gamma, float eps, float *y);
+int tsr_repro_layernorm_f32(int64_t m, int64_t n, const float *x, const float *gamma, const float *beta,
+                            float eps, float *y);
+/* The element-level definitions are header-only in tessero_repro_f32.h (shared with Talario). */
+
 /* ---- loop ufuncs (cbrt, erf, gamma, logaddexp, fmax, fmod, ...): ids are 0 .. tsr_ufunc_count()-1 ----
    tsr_ufunc_resolve() maps the promoted input dtype to the loop dtype (cast the inputs to it) and the output
    dtype. Returns 0: call tsr_ufunc; 1: identity on this dtype (copy the input); 2: use tsr_binary(native_op);
@@ -139,6 +159,13 @@ int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
    cblas_{s,d}axpy. Returns 0, TSR_EARG (-1) if n<0, or TSR_ETYPE (-4) for an unsupported dtype. */
 int tsr_axpy(int dtype, int64_t n, double alpha, const void *x, int64_t incx, void *y, int64_t incy);
 double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const double *y, int64_t incy);
+
+/* Canonical-form self-check (the runtime approval guard). Runs a frozen known-answer GEMM on the
+   library's dispatched path and on a no-clone explicit-fma reference, and compares both to the frozen
+   canonical digest. Returns 0 if the build is canonical; negative if it diverges (a non-canonical,
+   mock or non-FMA build must NOT be used silently -- the caller substitutes the reference or aborts).
+   -1 = fast clone diverged from the reference; -2 = the reference itself is not the frozen canonical. */
+int tsr_selfcheck(void);
 
 /* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);

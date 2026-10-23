@@ -12,6 +12,8 @@ the code; binaries built from this repository must carry this file and those tex
 | xsf (SciPy's special-function library) | commit 0d0a593 | BSD-3-Clause (`csrc/third_party/xsf/LICENSE`) | `csrc/third_party/xsf/` | `scipy.special` |
 | Boost.Math (the 178 headers used, standalone mode) | commit 5e088ff | Boost Software License 1.0 (`csrc/third_party/boost/LICENSE_1_0.txt`) | `csrc/third_party/boost/` | `scipy.special` (the functions SciPy takes from Boost) |
 | NumPy random distributions (`numpy/random/src/distributions/*`) | NumPy 2.4.4 | BSD-3-Clause (`csrc/third_party/numpy/LICENSE.txt`, `csrc/third_party/numpy/random/LICENSE.md`) | `csrc/third_party/numpy/random/` | `numpy.random.Generator` methods, `rvs` of `scipy.stats` distributions |
+| FITPACK (P. Dierckx), f2c translation of SciPy's `scipy/interpolate/fitpack/*.f` | SciPy 1.17.1 | BSD-3-Clause, as distributed in SciPy (`csrc/third_party/scipy/LICENSE.txt`); procedure in `csrc/third_party/scipy/fitpack/README.fitpack` | `csrc/third_party/scipy/fitpack/` | `scipy.interpolate` smoothing splines |
+| `f2c.h` and the libf2c-style helpers in `fitpack_support.c` | netlib f2c | f2c permission notice (AT&T, Lucent, Bellcore); the verbatim notice text from the netlib distribution still has to be added next to the code (tracked in the 2026-10 security review backlog) | `csrc/third_party/scipy/fitpack/` | runtime support for the translated FITPACK |
 
 Code written for Tessero that follows SciPy's or NumPy's Python/Cython code line by line (and therefore is a
 derived work under their BSD-3-Clause licence) says so in its header: `csrc/third_party/scipy/cython_ports.hpp`

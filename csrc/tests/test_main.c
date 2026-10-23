@@ -839,6 +839,86 @@ static void test_rfft(void)
     CHECK(worst < 1e-11 && worst_inv < 1e-12, "rfft matches the complex FFT (%.2g) and inverts (%.2g)", worst, worst_inv);
 }
 
+/* Regressions for the 2026-10 security review: each input used to crash the process, write out of bounds or
+   hit undefined behaviour. They run under ASan + UBSan in `make sanitize`. */
+static tsr_arg arg_str(const char *s) { tsr_arg a; memset(&a, 0, sizeof a); a.kind = 2; a.str = s; return a; }
+static tsr_arg arg_num(double v) { tsr_arg a; memset(&a, 0, sizeof a); a.kind = 1; a.num = v; return a; }
+static tsr_arg arg_arr(double *d, int32_t nd, const int64_t *shape)
+{
+    tsr_arg a; memset(&a, 0, sizeof a); a.kind = 3; tsr_array_init(&a.arr, TSR_F64, nd, shape, d); return a;
+}
+
+static void test_security_regressions(void)
+{
+    int64_t n2[1] = {2}, c8[1] = {8}, c4[1] = {4};
+    /* INT_MIN // -1 and INT_MIN % -1 trapped with SIGFPE; NumPy wraps the quotient and gives remainder 0 */
+    int64_t x64[2] = {INT64_MIN, 7}, m1[2] = {-1, -1}, q64[2], r64[2];
+    CHECK(tsr_binary(OP_FLOORDIV, TSR_I64, 1, n2, x64, c8, m1, c8, q64, c8) == 0 && q64[0] == INT64_MIN && q64[1] == -7,
+          "int64 MIN // -1 wraps");
+    CHECK(tsr_binary(OP_MOD, TSR_I64, 1, n2, x64, c8, m1, c8, r64, c8) == 0 && r64[0] == 0 && r64[1] == 0, "int64 MIN %% -1 == 0");
+    int32_t x32[2] = {INT32_MIN, 9}, m32[2] = {-1, -1}, q32[2];
+    CHECK(tsr_binary(OP_FLOORDIV, TSR_I32, 1, n2, x32, c4, m32, c4, q32, c4) == 0 && q32[0] == INT32_MIN && q32[1] == -9,
+          "int32 MIN // -1 wraps");
+    /* negation, abs and square of integers wrap like NumPy instead of overflowing (UB) */
+    int64_t neg[2], ab[2], sq[2], big[2] = {INT64_MIN, 3037000500LL};
+    tsr_unary(U_NEG, TSR_I64, 1, n2, big, c8, neg, c8);
+    tsr_unary(U_ABS, TSR_I64, 1, n2, big, c8, ab, c8);
+    tsr_unary(U_SQUARE, TSR_I64, 1, n2, big, c8, sq, c8);
+    CHECK(neg[0] == INT64_MIN && ab[0] == INT64_MIN && ab[1] == 3037000500LL, "int64 neg/abs wrap");
+    CHECK(sq[1] == (int64_t)((uint64_t)3037000500LL * (uint64_t)3037000500LL), "int64 square wraps");
+
+    /* einsum: a long or repeated explicit output overflowed fixed stack arrays */
+    double v[3] = {1, 2, 3};
+    int64_t sh3[1] = {3};
+    char sub[300] = "a->";
+    for (int i = 3; i < 280; i++) sub[i] = 'a';
+    sub[280] = 0;
+    int id = tsr_fn_find("np.einsum");
+    tsr_arg ea[2] = {arg_str(sub), arg_arr(v, 1, sh3)};
+    tsr_result er[1];
+    CHECK(id >= 0 && tsr_fn_routine(id, 2, ea, 1, er) == TSR_EARG, "einsum long output refused");
+    tsr_arg eb[2] = {arg_str("a->aa"), arg_arr(v, 1, sh3)};
+    CHECK(tsr_fn_routine(id, 2, eb, 1, er) == TSR_EARG, "einsum repeated output label refused");
+    tsr_arg ec[2] = {arg_str("a->a"), arg_arr(v, 1, sh3)};
+    if (tsr_fn_routine(id, 2, ec, 1, er) == 0) {
+        CHECK(((double *)er[0].arr.data)[2] == 3, "einsum identity still works");
+        tsr_free(er[0].arr.data, er[0].bytes);
+    } else CHECK(0, "einsum identity failed: %s", tsr_fn_error());
+
+    /* histogramdd: 32 dimensions of 2^20 bins wrapped the bin-count product and under-allocated the counts */
+    double sample[32];
+    for (int i = 0; i < 32; i++) sample[i] = i;
+    int64_t sh32[2] = {1, 32};
+    int hd = tsr_fn_find("np.histogramdd");
+    tsr_arg ha[2] = {arg_arr(sample, 2, sh32), arg_num(1048576.0)};
+    tsr_result hr[2];
+    CHECK(hd >= 0 && tsr_fn_routine(hd, 2, ha, 2, hr) == TSR_EARG, "histogramdd bin-count overflow refused");
+    tsr_arg hb[2] = {arg_arr(sample, 2, sh32), arg_num(NAN)};
+    CHECK(tsr_fn_routine(hd, 2, hb, 2, hr) == TSR_EARG, "histogramdd NaN bins refused");
+    int h2 = tsr_fn_find("np.histogram2d");
+    tsr_arg h2a[3] = {arg_arr(v, 1, sh3), arg_arr(v, 1, sh3), arg_num(4e9)};
+    tsr_result h2r[3];
+    CHECK(h2 >= 0 && tsr_fn_routine(h2, 3, h2a, 3, h2r) == TSR_EARG, "histogram2d bin-count overflow refused");
+
+    /* a routine called with fewer arguments than it declares must not read past the argument array */
+    tsr_arg one[1] = {arg_arr(sample, 2, sh32)};
+    const int rc = tsr_fn_routine(hd, 1, one, 2, hr);
+    if (rc == 0) { tsr_result *e = (tsr_result *)hr[1].arr.data;
+                   tsr_free(hr[0].arr.data, hr[0].bytes);
+                   for (int64_t k = 0; k < hr[1].arr.shape[0]; k++) tsr_free(e[k].arr.data, e[k].bytes);
+                   tsr_free(hr[1].arr.data, hr[1].bytes); }
+    CHECK(rc == 0 || rc == TSR_EARG, "short argument list handled (rc %d)", rc);
+
+    /* CSR kernels refuse an indptr that decreases or does not start at 0 */
+    int64_t bad_ip[3] = {0, 5, 2}, neg_ip[3] = {-4, 1, 2}, ix[2] = {0, 1};
+    double dd[2] = {1, 1}, xx[2] = {1, 1}, yy[2];
+    CHECK(tsr_csr_matvec(2, bad_ip, ix, dd, xx, yy) == TSR_EINDEX, "csr matvec decreasing indptr refused");
+    CHECK(tsr_csr_matvec(2, neg_ip, ix, dd, xx, yy) == TSR_EINDEX, "csr matvec negative indptr refused");
+    int64_t ok_ip[3] = {0, 1, 2}, far_ix[2] = {0, 9};
+    double res = 0;
+    CHECK(tsr_csr_cg(2, ok_ip, far_ix, dd, xx, yy, 1e-10, 0, 10, &res) == TSR_EINDEX, "csr cg column outside matrix refused");
+}
+
 static void test_size_overflow(void)
 {
     /* shapes whose element count wraps around int64 must never describe a small buffer */
@@ -882,6 +962,7 @@ int main(void)
     test_vmath();
     test_rfft();
     test_size_overflow();
+    test_security_regressions();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);
     return failures ? 1 : 0;

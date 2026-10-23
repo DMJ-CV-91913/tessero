@@ -78,9 +78,13 @@
 FLOAT_BINARY(bin_f64, double, pow, atan2, hypot, fmod, floor)
 FLOAT_BINARY(bin_f32, float, powf, atan2f, hypotf, fmodf, floorf)
 
-/* Python semantics for integer floor division and modulo; division by zero gives 0 (NumPy does too, with a warning). */
-#define IFLOORDIV(x, y) ((y) == 0 ? 0 : (((x) / (y)) - ((((x) % (y)) != 0) && (((x) < 0) != ((y) < 0)))))
-#define IMOD(x, y) ((y) == 0 ? 0 : ((((x) % (y)) != 0 && (((x) % (y)) < 0) != ((y) < 0)) ? ((x) % (y)) + (y) : ((x) % (y))))
+/*
+ * Python semantics for integer floor division and modulo; division by zero gives 0 (NumPy does too, with a warning).
+ * y == -1 is answered without dividing: MIN / -1 overflows, which is undefined behaviour and raises SIGFPE on x86
+ * (killing the PHP process). NumPy gives the wrapped negation for floor_divide and 0 for remainder.
+ */
+#define IFLOORDIV(x, y) ((y) == 0 ? 0 : (y) == -1 ? TSR_WSUB(__typeof__(x), 0, x) : (((x) / (y)) - ((((x) % (y)) != 0) && (((x) < 0) != ((y) < 0)))))
+#define IMOD(x, y) ((y) == 0 || (y) == -1 ? 0 : ((((x) % (y)) != 0 && (((x) % (y)) < 0) != ((y) < 0)) ? ((x) % (y)) + (y) : ((x) % (y))))
 
 #define INT_BINARY(NAME, T)                                                                             \
     TSR_CLONES static int NAME(int op, int64_t n, const char *a, int64_t sa, const char *b, int64_t sb, \
@@ -243,9 +247,9 @@ FLOAT_UNARY(un_f32, float, f)
     TSR_CLONES static int NAME(int op, int64_t n, const char *a, int64_t sa, char *o, int64_t so)       \
     {                                                                                                   \
         switch (op) {                                                                                   \
-        case U_NEG: URUN(T, T, -x); return TSR_OK;                                                      \
+        case U_NEG: URUN(T, T, TSR_WSUB(T, 0, x)); return TSR_OK;                                       \
         case U_ABS: URUN(T, T, ABS); return TSR_OK;                                                     \
-        case U_SQUARE: URUN(T, T, x * x); return TSR_OK;                                                \
+        case U_SQUARE: URUN(T, T, TSR_WMUL(T, x, x)); return TSR_OK;                                    \
         case U_SIGN: URUN(T, T, (x > 0) - (x < 0)); return TSR_OK;                                      \
         case U_NOT: URUN(T, T, ~x); return TSR_OK;                                                      \
         case U_ISNAN: case U_ISINF: URUN(T, uint8_t, 0); return TSR_OK;                                 \
@@ -254,8 +258,9 @@ FLOAT_UNARY(un_f32, float, f)
         }                                                                                               \
     }
 
-INT_UNARY(un_i64, int64_t, x < 0 ? -x : x)
-INT_UNARY(un_i32, int32_t, x < 0 ? -x : x)
+/* negation and abs wrap like NumPy (abs(MIN) == MIN) instead of overflowing, which is undefined behaviour */
+INT_UNARY(un_i64, int64_t, x < 0 ? TSR_WSUB(int64_t, 0, x) : x)
+INT_UNARY(un_i32, int32_t, x < 0 ? TSR_WSUB(int32_t, 0, x) : x)
 INT_UNARY(un_u8, uint8_t, x)
 
 static int un_bool(int op, int64_t n, const char *a, int64_t sa, char *o, int64_t so)
