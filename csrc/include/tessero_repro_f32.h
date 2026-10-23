@@ -98,6 +98,8 @@
 #define TSR_TANH_C11      -8.8632355299E-3f
 #define TSR_GELU_C        0.7978845608028654f
 #define TSR_GELU_A        0.044715f
+#define TSR_GELU_DA       0.134145f
+#define TSR_TWO_RSQRTPI   1.1283791670955126f
 /* END TSR_REPRO_CONSTANTS */
 
 /* ---- exact bit reinterpretation (no aliasing hazard) ---- */
@@ -398,6 +400,115 @@ static inline void tsr__layernorm_row_f32(const float *x, const float *gamma, co
     const float rstd = tsr__rrsqrt_f32(var + eps);
     for (int64_t j = 0; j < n; ++j)
         y[j] = tsr__canon_f32(tsr__canon_f32(gamma[j]) * ((tsr__canon_f32(x[j]) - mu) * rstd) + tsr__canon_f32(beta[j]));
+}
+
+/* ==========================================================================
+ * Backward composites (vector-Jacobian products). Each returns / writes the
+ * ACCUMULATED gradient dx_new = dx + dy * f'(.), in one fixed operation order,
+ * loads and stores canonicalized like the forward composites.
+ * ======================================================================== */
+
+/* tanh-GELU: dx + dy * gelu'(x), gelu'(x) = 0.5(1+t) + 0.5x(1-t^2) c(1 + 3a x^2) */
+static inline float tsr__gelu_tanh_bwd_f32(float dx, float dy, float x) {
+    const float xv     = tsr__canon_f32(x);
+    const float dyv    = tsr__canon_f32(dy);
+    const float dxv    = tsr__canon_f32(dx);
+    const float inner  = TSR_GELU_C * (xv + TSR_GELU_A * xv * xv * xv);
+    const float t      = tsr__tanh_f32(inner);
+    const float xx     = xv * xv;
+    const float dinner = TSR_GELU_C * fmaf(TSR_GELU_DA, xx, 1.0f);
+    const float h      = tsr__canon_f32(0.5f * xv);
+    const float a      = tsr__canon_f32(h * (1.0f - t * t));
+    const float g      = tsr__canon_f32(fmaf(a, dinner, 0.5f * (1.0f + t)));
+    const float prod   = tsr__canon_f32(dyv * g);
+    return tsr__canon_f32(dxv + prod);
+}
+
+/* erf: dx + dy * (2/sqrt(pi)) * exp(-x^2) */
+static inline float tsr__erf_bwd_f32(float dx, float dy, float x) {
+    const float xv   = tsr__canon_f32(x);
+    const float dyv  = tsr__canon_f32(dy);
+    const float dxv  = tsr__canon_f32(dx);
+    const float e    = tsr__exp_f32(-(xv * xv));
+    const float prod = tsr__canon_f32((dyv * TSR_TWO_RSQRTPI) * e);
+    return tsr__canon_f32(dxv + prod);
+}
+
+/* sigmoid / tanh from the forward OUTPUT y: dx + dy*y*(1-y), dx + dy*(1-y^2) */
+static inline float tsr__sigmoid_bwd_f32(float dx, float dy, float y) { return dx + dy * y * (1.0f - y); }
+static inline float tsr__tanh_bwd_f32(float dx, float dy, float y)    { return dx + dy * (1.0f - y * y); }
+
+/* row statistics shared by the forward and backward norms (same order as the forward rows) */
+static inline float tsr__rrms_row_f32(const float *x, float eps, int64_t n) {
+    const float invn = tsr__recip_f32((float)n);
+    float ms = 0.0f;
+    for (int64_t j = 0; j < n; ++j) { const float v = tsr__canon_f32(x[j]); ms += v * v; }
+    ms = ms * invn;
+    return tsr__rrsqrt_f32(ms + eps);
+}
+static inline void tsr__ln_stats_row_f32(const float *x, float eps, int64_t n, float *mu_out, float *rstd_out) {
+    const float invn = tsr__recip_f32((float)n);
+    float mu = 0.0f;
+    for (int64_t j = 0; j < n; ++j) mu += tsr__canon_f32(x[j]);
+    mu = mu * invn;
+    float var = 0.0f;
+    for (int64_t j = 0; j < n; ++j) { const float d = tsr__canon_f32(x[j]) - mu; var += d * d; }
+    var = var * invn;
+    *mu_out = mu;
+    *rstd_out = tsr__rrsqrt_f32(var + eps);
+}
+
+/* rmsnorm xhat = x * rrms (dgamma helper) */
+static inline void tsr__rmsnorm_xhat_row_f32(const float *x, float eps, float *o, int64_t n) {
+    const float rrms = tsr__rrms_row_f32(x, eps, n);
+    for (int64_t j = 0; j < n; ++j) o[j] = tsr__canon_f32(tsr__canon_f32(x[j]) * rrms);
+}
+
+/* rmsnorm dx += rrms*a - rrms^3 * x * mean(a*x), a = dy*gamma */
+static inline void tsr__rmsnorm_dx_row_f32(const float *dy, const float *x, const float *gamma, float eps,
+                                           float *dx, int64_t n) {
+    const float invn  = tsr__recip_f32((float)n);
+    const float rrms  = tsr__rrms_row_f32(x, eps, n);
+    const float rrms3 = rrms * rrms * rrms;
+    float mean_ax = 0.0f;
+    for (int64_t j = 0; j < n; ++j) mean_ax += (tsr__canon_f32(dy[j]) * tsr__canon_f32(gamma[j])) * tsr__canon_f32(x[j]);
+    mean_ax = mean_ax * invn;
+    for (int64_t j = 0; j < n; ++j) {
+        const float a = tsr__canon_f32(dy[j]) * tsr__canon_f32(gamma[j]);
+        dx[j] = tsr__canon_f32(tsr__canon_f32(dx[j]) + (rrms * a - rrms3 * tsr__canon_f32(x[j]) * mean_ax));
+    }
+}
+
+/* layernorm xhat = (x - mu) * rstd */
+static inline void tsr__layernorm_xhat_row_f32(const float *x, float eps, float *xh, int64_t n) {
+    float mu, rstd;
+    tsr__ln_stats_row_f32(x, eps, n, &mu, &rstd);
+    for (int64_t j = 0; j < n; ++j) xh[j] = tsr__canon_f32((tsr__canon_f32(x[j]) - mu) * rstd);
+}
+
+/* layernorm dx += rstd * (g - mean(g) - xh * mean(g*xh)), g = dy*gamma */
+static inline void tsr__layernorm_dx_row_f32(const float *dy, const float *x, const float *gamma, float eps,
+                                             float *dx, int64_t n) {
+    const float invn = tsr__recip_f32((float)n);
+    float mu, rstd;
+    tsr__ln_stats_row_f32(x, eps, n, &mu, &rstd);
+    float mean_g = 0.0f, mean_gx = 0.0f;
+    for (int64_t j = 0; j < n; ++j) {
+        const float g = tsr__canon_f32(dy[j]) * tsr__canon_f32(gamma[j]), xv = (tsr__canon_f32(x[j]) - mu) * rstd;
+        mean_g += g; mean_gx += g * xv;
+    }
+    mean_g = mean_g * invn; mean_gx = mean_gx * invn;
+    for (int64_t j = 0; j < n; ++j) {
+        const float g = tsr__canon_f32(dy[j]) * tsr__canon_f32(gamma[j]), xv = (tsr__canon_f32(x[j]) - mu) * rstd;
+        dx[j] = tsr__canon_f32(tsr__canon_f32(dx[j]) + rstd * (g - mean_g - xv * mean_gx));
+    }
+}
+
+/* layernorm/rmsnorm dgamma column j over an m x n row-major pair: dg + sum_i dy[i,j]*xh[i,j] */
+static inline float tsr__norm_dgamma_col_f32(const float *dy, const float *xh, int64_t m, int64_t n, int64_t j, float dg) {
+    float s = 0.0f;
+    for (int64_t i = 0; i < m; ++i) s += tsr__canon_f32(dy[i * n + j]) * tsr__canon_f32(xh[i * n + j]);
+    return tsr__canon_f32(tsr__canon_f32(dg) + s);
 }
 
 #endif /* TESSERO_REPRO_F32_H */

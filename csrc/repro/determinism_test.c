@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "../include/tessero.h"
+#include "../include/tessero_repro_f32.h"   /* header-level composites (backward) */
 
 #define N ((int64_t)1 << 20)   /* 1,048,576 elements, matches the rsqrt golden */
 
@@ -82,6 +83,8 @@ static void gen_input(const char *fn, float *x) {
     else if (!strcmp(fn, "tanh"))  gen_tanh(x);
     else if (!strcmp(fn, "sigmoid") || !strcmp(fn, "gelu_tanh")) gen_span(x, -12.0f, 12.0f);
     else if (!strcmp(fn, "softmax") || !strcmp(fn, "rmsnorm") || !strcmp(fn, "layernorm")) gen_span(x, -8.0f, 8.0f);
+    else if (!strcmp(fn, "gelu_tanh_bwd") || !strcmp(fn, "erf_bwd") || !strcmp(fn, "sigmoid_bwd") || !strcmp(fn, "tanh_bwd")) gen_span(x, -6.0f, 6.0f);
+    else if (!strcmp(fn, "rmsnorm_bwd") || !strcmp(fn, "layernorm_bwd")) gen_span(x, -8.0f, 8.0f);
     else { fprintf(stderr, "unknown fn: %s\n", fn); exit(2); }
 }
 
@@ -94,6 +97,27 @@ static int run_fn(const char *fn, int64_t n, const float *x, float *y) {
     if (!strcmp(fn, "tanh"))  return tsr_repro_tanh_f32(n, x, y);
     if (!strcmp(fn, "sigmoid"))   return tsr_repro_sigmoid_f32(n, x, y);
     if (!strcmp(fn, "gelu_tanh")) return tsr_repro_gelu_tanh_f32(n, x, y);
+    if (!strcmp(fn, "gelu_tanh_bwd") || !strcmp(fn, "erf_bwd") || !strcmp(fn, "sigmoid_bwd") || !strcmp(fn, "tanh_bwd")) {
+        for (int64_t i = 0; i < n; ++i) {
+            const float dy = 0.5f + (float)(i % 13) * 0.0625f;
+            if      (!strcmp(fn, "gelu_tanh_bwd")) y[i] = tsr__gelu_tanh_bwd_f32(0.0f, dy, x[i]);
+            else if (!strcmp(fn, "erf_bwd"))       y[i] = tsr__erf_bwd_f32(0.0f, dy, x[i]);
+            else if (!strcmp(fn, "sigmoid_bwd"))   y[i] = tsr__sigmoid_bwd_f32(0.0f, dy, tsr__sigmoid_f32(x[i]));
+            else                                   y[i] = tsr__tanh_bwd_f32(0.0f, dy, tsr__tanh_f32(x[i]));
+        }
+        return 0;
+    }
+    if (!strcmp(fn, "rmsnorm_bwd") || !strcmp(fn, "layernorm_bwd")) {
+        static float g[1024], dyr[1024];
+        for (int j = 0; j < 1024; ++j) { g[j] = 0.5f + (float)(j % 17) * 0.0625f; dyr[j] = 0.25f + (float)(j % 11) * 0.125f; }
+        int64_t rows = n / 1024, cols = (n >= 1024) ? 1024 : n; if (rows == 0) rows = 1;
+        for (int64_t i = 0; i < n; ++i) y[i] = 0.0f;
+        for (int64_t r = 0; r < rows; ++r) {
+            if (!strcmp(fn, "rmsnorm_bwd")) tsr__rmsnorm_dx_row_f32(dyr, x + r * cols, g, 1.0e-5f, y + r * cols, cols);
+            else                            tsr__layernorm_dx_row_f32(dyr, x + r * cols, g, 1.0e-5f, y + r * cols, cols);
+        }
+        return 0;
+    }
     if (!strcmp(fn, "softmax") || !strcmp(fn, "rmsnorm") || !strcmp(fn, "layernorm")) {
         /* fixed 1024 x 1024 row-major matrix; gamma/beta pure functions of the column */
         static float g[1024], b[1024];

@@ -269,6 +269,29 @@ matrix from a linear spread over [-8, 8], gamma[j] = 0.5 + (j mod 17) / 16, beta
 | rmsnorm   | `cee10b51cf07b010ce97a888ff1e8ac4eec2c56a6ad29b381225cfa8aeba5254` |
 | layernorm | `94a4721637fd2be28cd8e27f1b1315874a0b4b71ad0e80a56af40ecf6d16405f` |
 
+### Backward composites (2026-10-23)
+
+`tsr__gelu_tanh_bwd_f32`, `tsr__erf_bwd_f32`, `tsr__sigmoid_bwd_f32`, `tsr__tanh_bwd_f32` (elementwise, return the
+accumulated dx), `tsr__rmsnorm_xhat_row_f32`, `tsr__rmsnorm_dx_row_f32`, `tsr__layernorm_xhat_row_f32`,
+`tsr__layernorm_dx_row_f32`, `tsr__norm_dgamma_col_f32` (header). Moved verbatim from Talario's CPU backend: a
+bit-for-bit comparison of the old and new code over 2,000,000 randomized elementwise samples per function (normal,
+tiny, subnormal, large, zero and NaN inputs) and 12,800 norm rows found 0 mismatches. Constants `TSR_GELU_DA`
+(0.134145 = 3a) and `TSR_TWO_RSQRTPI` (2/sqrt(pi)) joined the shared block.
+
+Inputs: elementwise x linear over [-6, 6], dy[i] = 0.5 + (i mod 13) / 16, dx = 0 (sigmoid/tanh take y = forward(x));
+row-wise 1024 x 1024 x linear over [-8, 8], dy[j] = 0.25 + (j mod 11) / 8, gamma as above, eps = 1e-5, dx = 0.
+
+**CANDIDATE goldens (dev box; approve on the reference host):**
+
+| backward composite | CANDIDATE SHA-256 |
+|--------------------|-------------------|
+| gelu_tanh_bwd | `3e9a3aba2f8716f0a7c4ed0d811bcc4ffb69ecf79f77c7297ec8c035d460db5e` |
+| erf_bwd       | `8ee5b5e496c953d546924fcaada045d3ae90b16aad5b068943e7c400b0d41c70` |
+| sigmoid_bwd   | `7e1f867f861fb194ac1a510d5da88965223cdfb7182d3cf47ea6335d029359d5` |
+| tanh_bwd      | `9d3f168942a5bbaa41785c02d94640ac556d4f0653e7307f5d2376d43e0e4127` |
+| rmsnorm_bwd   | `4936bad3c94b516f776c58e7c0dba694085475e248e2bc4bcd212568acfdcddb` |
+| layernorm_bwd | `6e7ccc1157b019d2ed95b5c6889fe47120e588abcdc77ebaed50c3bf9b85b385` |
+
 ## What this PROVES
 
 On x86 with AVX2+FMA, all four primitives are bit-identical across SIMD width (scalar ==
