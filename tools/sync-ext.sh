@@ -4,6 +4,8 @@
 # ../csrc), and write the kernel source lists into ext/config.m4 and
 # ext/config.w32. CI runs this with --check and fails on drift.
 set -euo pipefail
+# the generated source lists follow `ls` order: pin the collation so every machine writes the same lists
+export LC_ALL=C
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DST="$ROOT/ext/libtessero"
 
