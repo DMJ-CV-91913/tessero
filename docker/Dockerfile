@@ -33,6 +33,8 @@ RUN docker-php-ext-enable tessero
 COPY docker/tessero.ini /usr/local/etc/php/conf.d/zz-tessero.ini
 # the FFI package (normally vendor/tessero/tessero from composer)
 COPY src/ /opt/tessero/src/
+# the FFI binding reads the C declarations from the header at run time (Native\Library)
+COPY csrc/include/ /opt/tessero/csrc/include/
 COPY bin/ /opt/tessero/bin/
 COPY resources/ /opt/tessero/resources/
 COPY tests/autoload.php /opt/tessero/tests/autoload.php
