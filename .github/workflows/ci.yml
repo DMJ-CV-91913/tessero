@@ -25,7 +25,7 @@ jobs:
           - { platform: linux-musl-x86_64, runner: ubuntu-latest, container: 'alpine:3.20' }
           # tier 2: no LAPACK linkage on these targets yet (csrc/Makefile), so they cannot block a release
           - { platform: darwin-arm64,      runner: macos-14,       tier2: true }
-          - { platform: darwin-x86_64,     runner: macos-13,       tier2: true }
+          - { platform: darwin-x86_64,     runner: macos-15-intel, tier2: true }   # macos-13 is retired: jobs on it never start
           - { platform: windows-x86_64,    runner: windows-latest, tier2: true }
     continue-on-error: ${{ matrix.tier2 == true }}
     defaults:
