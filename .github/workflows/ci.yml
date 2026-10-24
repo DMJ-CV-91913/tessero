@@ -57,11 +57,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - if: matrix.platform == 'windows-x86_64'
         uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
-        with: { msystem: MINGW64, install: 'make mingw-w64-x86_64-gcc' }
+        with: { msystem: MINGW64, install: 'make mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas' }
+      - if: runner.os == 'macOS'
+        run: brew install openblas      # LAPACK + LAPACKE + cblas (Accelerate has no LAPACKE)
       - name: build
         run: make -C csrc
       - name: C unit tests
         run: make -C csrc test
+      - name: bundle the MinGW runtime DLLs next to tessero.dll (OpenBLAS, gfortran, winpthread)
+        if: matrix.platform == 'windows-x86_64'
+        run: |
+          ldd lib/windows-x86_64/tessero.dll | awk '/mingw64/ {print $3}' | sort -u | xargs -r -I{} cp {} lib/windows-x86_64/
+          ls lib/windows-x86_64
       - name: hardening present in libtessero (RELRO, BIND_NOW, non-executable stack, stack protector)
         if: runner.os == 'Linux' && !matrix.container
         run: |
