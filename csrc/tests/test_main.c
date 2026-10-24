@@ -2426,6 +2426,187 @@ static void test_numerics_review(void)
     } else CHECK(0, "logsumexp axis=1 failed: %s", tsr_fn_error());
 }
 
+/* The registry's input gate (fn_gate.c, ADR 0016): every tsr_fn_* entry point refuses structurally invalid
+   input before any routine, loop or core reads it, and still accepts the edge cases that are valid (empty
+   arrays with no data, reversed views whose offset points at the end of the block, broadcast strides). */
+void fn_results_free(tsr_result *res, int n);   /* fn.h */
+int fn_gate_array(const tsr_array *a, int with_data, const char *what, int k);   /* fn.h */
+static int fn_gate_array_for_test(const tsr_array *a) { return fn_gate_array(a, 2, "output", 0); }
+static int gate_routine(int id, tsr_arg a)
+{
+    tsr_result r[4];
+    const int rc = tsr_fn_routine(id, 1, &a, 4, r);
+    if (rc >= 0) fn_results_free(r, 4);
+    return rc;
+}
+
+static void test_arg_gate(void)
+{
+    const int uq = tsr_fn_find("np.unique");
+    CHECK(uq >= 0, "np.unique is registered");
+    double v[4] = {3.0, 1.0, 2.0, 1.0};
+    const int64_t s4[1] = {4};
+    tsr_arg ok = arg_arr(v, 1, s4);
+    CHECK(gate_routine(uq, ok) == 0, "a valid array passes the gate");
+
+    tsr_arg a = ok; a.kind = 9;
+    CHECK(gate_routine(uq, a) == TSR_EARG && strstr(tsr_fn_error(), "argument 0"), "unknown kind (%s)", tsr_fn_error());
+    a = arg_num(1.0); a.flags = 4;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "undefined flag bits on a number");
+    a = arg_int(3); a.num = 4.0;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "integer and double disagree");
+    a = arg_str("x"); a.str = NULL;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "NULL string");
+    a = arg_none(); a.kind = 4; a.flags = 1;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "flag bits on a bool");
+    a = ok; a.flags = 1;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "undefined flag bit on an array");
+    a = ok; a.arr.dtype = 99;
+    CHECK(gate_routine(uq, a) == TSR_ETYPE, "unknown dtype");
+    a = ok; a.arr.ndim = 33;
+    CHECK(gate_routine(uq, a) == TSR_EDIM, "ndim above 32");
+    a = ok; a.arr.ndim = -1;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "negative ndim");
+    a = ok; a.arr.shape[0] = -4;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "negative dimension");
+    a = ok; a.arr.ndim = 2; a.arr.shape[0] = (int64_t)1 << 40; a.arr.shape[1] = (int64_t)1 << 40; a.arr.strides[1] = 0;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "element count overflow");
+    a = ok; a.arr.data = NULL;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "NULL data with elements");
+    a = ok; a.arr.strides[0] = -8;
+    CHECK(gate_routine(uq, a) == TSR_EARG && strstr(tsr_fn_error(), "before the start"), "reversed view reaching before its block (%s)", tsr_fn_error());
+    a = ok; a.arr.offset = 3;
+    CHECK(gate_routine(uq, a) == TSR_EARG && strstr(tsr_fn_error(), "aligned"), "misaligned float64 elements");
+    a = ok; a.arr.strides[0] = INT64_MAX / 2;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "stride extent overflow");
+    a = ok; a.arr.offset = INT64_MAX - 8;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "offset overflow");
+    tsr_arg nest[5];
+    for (int k = 0; k < 5; k++) { nest[k] = arg_none(); nest[k].kind = 5; nest[k].count = 1; nest[k].items = k < 4 ? &nest[k + 1] : &ok; }
+    CHECK(gate_routine(uq, nest[0]) == TSR_EARG, "sequences nested deeper than 4");
+    a = arg_none(); a.kind = 5; a.count = 2; a.items = NULL;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "sequence items NULL");
+    a.count = -1; a.items = &ok;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "negative sequence length");
+    tsr_result r[2];
+    CHECK(tsr_fn_routine(uq, -1, &ok, 2, r) == TSR_EARG, "negative argument count");
+
+    /* valid edge cases still pass */
+    const int64_t s0[1] = {0};
+    a = arg_arr(NULL, 1, s0);
+    CHECK(gate_routine(uq, a) == 0, "an empty array may have no data");
+    a = ok; a.arr.offset = 24; a.arr.strides[0] = -8;            /* v[::-1] */
+    tsr_result rr[4];
+    int rc = tsr_fn_routine(uq, 1, &a, 4, rr);
+    CHECK(rc == 0 && rr[0].kind == 3 && rr[0].arr.shape[0] == 3, "a reversed view with its offset at the end passes (%d)", rc);
+    if (rc == 0) fn_results_free(rr, 4);
+
+    /* ufunc: the strided operand set */
+    const int erf = tsr_fn_find("special.erf");
+    double x[4] = {0.0, 0.5, 1.0, 2.0}, y[4];
+    void *data[2] = {x, y};
+    int64_t shape[1] = {4}, strides[2] = {8, 8};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == 0, "ufunc: valid operands pass");
+    shape[0] = -4;
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == TSR_EARG, "ufunc: negative dimension");
+    shape[0] = 4; strides[0] = INT64_MAX / 2;
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == TSR_EARG, "ufunc: stride overflow");
+    strides[0] = 0;                                               /* broadcast input: valid */
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == 0, "ufunc: a broadcast (stride 0) input passes");
+    int64_t big[2] = {(int64_t)1 << 40, (int64_t)1 << 40}, st2[4] = {0, 0, 0, 0};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 2, big, 2, data, st2) == TSR_EARG, "ufunc: element count overflow");
+    /* an empty operand set visits no element, so the gate accepts any stride; the element loop must not do
+       stride arithmetic on it either (fuzz_abi: INT64_MAX * 8 in the dimension-merge test, signed overflow) */
+    int64_t zsh[2] = {0, 8}, zst[4] = {8, INT64_MAX, 8, INT64_MAX};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 2, zsh, 2, data, zst) == 0, "ufunc: a zero-length axis with an extreme stride is a no-op");
+    /* operands are loaded through typed pointers: misaligned steps or first elements are refused (fuzz_abi: rvs) */
+    int64_t mst[2] = {4, 8};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, mst) == TSR_EARG && strstr(tsr_fn_error(), "aligned"),
+          "ufunc: a misaligned float64 step (%s)", tsr_fn_error());
+    void *mdata[2] = {(char *)x + 1, y};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 0, NULL, 2, mdata, NULL) == TSR_EARG, "ufunc: a misaligned 0-d operand");
+    /* outputs may not alias through a zero stride (write races, unbounded work); inputs may (broadcast) */
+    int64_t ost[2] = {8, 0};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, ost) == TSR_EARG && strstr(tsr_fn_error(), "alias"),
+          "ufunc: a zero-stride output is refused (%s)", tsr_fn_error());
+    int64_t one4[1] = {1}, ost1[2] = {8, 0};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, one4, 2, data, ost1) == 0, "ufunc: a zero stride on a length-1 output axis is fine");
+
+    /* gufunc: input and output arrays */
+    const int med = tsr_fn_find("np.median");
+    tsr_array in, out;
+    tsr_array_init(&in, TSR_F64, 1, s4, v);
+    double m = 0.0;
+    tsr_array_init(&out, TSR_F64, 0, NULL, &m);
+    const uint64_t axm[1] = {1};
+    CHECK(tsr_fn_gufunc(med, 1, &in, axm, 0, NULL, 1, &out) == 0 && m == 1.5, "gufunc: valid arrays pass (median %g)", m);
+    tsr_array bad = in; bad.dtype = 42;
+    CHECK(tsr_fn_gufunc(med, 1, &bad, axm, 0, NULL, 1, &out) == TSR_ETYPE, "gufunc: unknown input dtype");
+    bad = in; bad.shape[0] = -1;
+    CHECK(tsr_fn_gufunc(med, 1, &bad, axm, 0, NULL, 1, &out) == TSR_EARG, "gufunc: negative input dimension");
+    tsr_array bo = out; bo.offset = 4;
+    CHECK(tsr_fn_gufunc(med, 1, &in, axm, 0, NULL, 1, &bo) == TSR_EARG, "gufunc: misaligned output");
+    bo = out; bo.data = NULL;
+    CHECK(tsr_fn_gufunc(med, 1, &in, axm, 0, NULL, 1, &bo) == TSR_EARG, "gufunc: NULL output data");
+    {
+        tsr_array ob;                                             /* a length-3 output with stride 0 */
+        const int64_t s3[1] = {3};
+        double m3 = 0.0;
+        tsr_array_init(&ob, TSR_F64, 1, s3, &m3);
+        ob.strides[0] = 0;
+        CHECK(fn_gate_array_for_test(&ob) == TSR_EARG, "gufunc: a zero-stride output array is refused");
+    }
+    CHECK(tsr_fn_gufunc(med, 2, &in, axm, 0, NULL, 1, &out) == TSR_EARG, "gufunc: wrong input count");
+    /* empty core slices: two loop iterations over an input with no elements, NULL data and a negative offset (all
+       valid for an empty array). The gather must form no address from NULL (fuzz_abi; the sanitize build checks it). */
+    tsr_array em;
+    const int64_t s20[2] = {2, 0};
+    tsr_array_init(&em, TSR_F64, 2, s20, NULL);
+    em.offset = -16;
+    em.strides[0] = INT64_MIN;                                   /* any stride is valid on an empty array */
+    double m2[2] = {0.0, 0.0};
+    const int64_t s2[1] = {2};
+    tsr_array out2;
+    tsr_array_init(&out2, TSR_F64, 1, s2, m2);
+    const uint64_t ax1[1] = {2};
+    const int rce = tsr_fn_gufunc(med, 1, &em, ax1, 0, NULL, 1, &out2);
+    CHECK(rce == 0 || rce == TSR_EARG, "gufunc: median over empty slices of a NULL-data array returns cleanly (%d)", rce);
+    int32_t ond[1];
+    int64_t osh[32];
+    bad = in; bad.ndim = 40;
+    CHECK(tsr_fn_gufunc_shape(med, 1, &bad, axm, 0, NULL, ond, osh) == TSR_EDIM, "gufunc_shape: ndim above 32");
+    bad = in; bad.data = NULL;
+    CHECK(tsr_fn_gufunc_shape(med, 1, &bad, axm, 0, NULL, ond, osh) == 0, "gufunc_shape reads no data");
+
+    /* random and rvs */
+    const int sn = tsr_fn_find("random.standard_normal");
+    uint64_t st[6];
+    tsr_pcg64_seed(st, 0, 7, 0, 1);
+    double g[4];
+    void *gd[1] = {g};
+    int64_t gs[1] = {4}, gst[1] = {8};
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, TSR_F64) == 0, "random: valid output passes");
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, 7) == TSR_ETYPE, "random: unknown output dtype");
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 0, gd, gst, TSR_F64) == TSR_EARG, "random: no operands");
+    gs[0] = -2;
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, TSR_F64) == TSR_EARG, "random: negative dimension");
+    gs[0] = (int64_t)1 << 40; gst[0] = 0;                         /* 2^40 draws into one slot: refused, not run */
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, TSR_F64) == TSR_EARG, "random: a zero-stride output is refused");
+    gs[0] = 4; gst[0] = 8;
+    const int norm = tsr_fn_find("stats.norm");
+    double loc = 0.0, scale = 1.0, z[4];
+    void *nd[3] = {&loc, &scale, z};
+    int64_t ns[1] = {4}, nst[3] = {0, 0, 8};
+    CHECK(tsr_fn_rvs(norm, st, 1, ns, 3, nd, nst) == 0, "rvs: valid operands pass");
+    nd[1] = NULL;
+    CHECK(tsr_fn_rvs(norm, st, 1, ns, 3, nd, nst) == TSR_EARG, "rvs: NULL operand");
+    nd[1] = &scale;
+    ns[0] = INT64_MAX / 16;                                       /* the scratch size (np + 1) * n * 8 overflowed */
+    nst[2] = 8;                                                   /* a real output step: the gate passes, the scratch size overflows */
+    CHECK(tsr_fn_rvs(norm, st, 1, ns, 3, nd, nst) == TSR_ENOMEM, "rvs: scratch size overflow is refused");
+    CHECK(tsr_allocated() == 0, "the gate leaks nothing (%lld bytes)", (long long)tsr_allocated());
+}
+
 /* Memory ownership (ADR 0015): the layer that allocates memory frees it. The teardown of routine results is
    the kernel's own (tsr_fn_results_free), every failed tsr_fn_routine leaves its result slots empty, and in an
    ownership-checked build (make sanitize) each kind of violation is a hard, reported failure. */
@@ -2554,6 +2735,7 @@ int main(void)
     test_fuzz_batch_d();
     test_ci_regressions();
     test_abi_runtime();
+    test_arg_gate();
     test_ownership();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);

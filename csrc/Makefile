@@ -266,7 +266,7 @@ FUZZ_TARGETS := slice npy mmap_plan json npy_write
 FUZZ_SRC := $(filter-out src/gen_%_table.c src/np_%.c src/scipy_%.c third_party/scipy/cdflib.c $(NPRAND) $(SCIPYC),$(SRC))
 # registry targets drive public routines (tsr_fn_routine): they link the whole kernel (C + C++ + LAPACK),
 # compiled once per mode into $(BUILD)/fuzzobj_lf (libFuzzer, clang) or $(BUILD)/fuzzobj_sa (standalone, $(CC))
-FUZZ_REG_TARGETS := einsum hist textio dtype routines
+FUZZ_REG_TARGETS := einsum hist textio dtype routines abi
 FUZZ_TIME ?= 60
 FUZZ_RUNS ?= 200000
 FUZZ_TIMEOUT ?= 25
