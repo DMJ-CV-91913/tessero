@@ -66,6 +66,44 @@ int tsr_get_threads(void);
  */
 #define TSR_RFMA(T, a, b, c) (_Generic((T)0, float: fmaf, double: fma, default: fma)((a), (b), (c)))
 
+/*
+ * Float -> integer conversion with NumPy's x86-64 results and no undefined behaviour. C leaves the
+ * conversion of NaN, +-Inf or an out-of-range value undefined (C11 6.3.1.4); x86-64 cvttsd2si returns the
+ * "integer indefinite" value there, which is what NumPy produces, so these helpers return exactly that:
+ * INT64_MIN for int64, INT32_MIN for int32, and for uint8 the low byte of the int32 conversion (NumPy
+ * casts float -> uint8 through a 32-bit truncation: 300.0 -> 44, -1.0 -> 255, 1e10 -> 0). In-range values
+ * truncate toward zero exactly as the plain cast does. No branch in loops: on x86-64 the int64 forms ARE the
+ * cvttsd2si / cvttss2si instruction (an intrinsic has defined semantics, unlike the C cast), elsewhere a
+ * compare pair + select; the int32 forms are compare + select, which the vectoriser keeps vectorised. The
+ * ...f variants take float (comparing in float keeps float loops vectorised).
+ */
+#if defined(__x86_64__) || defined(_M_X64)
+#include <emmintrin.h>
+static inline int64_t tsr_f2i64(double x) { return _mm_cvttsd_si64(_mm_set_sd(x)); }
+static inline int64_t tsr_f2i64f(float x) { return _mm_cvttss_si64(_mm_set_ss(x)); }
+#else
+static inline int64_t tsr_f2i64(double x)
+{
+    return (x >= -9223372036854775808.0 && x < 9223372036854775808.0) ? (int64_t)x : INT64_MIN;
+}
+static inline int64_t tsr_f2i64f(float x)
+{
+    return (x >= -9223372036854775808.0f && x < 9223372036854775808.0f) ? (int64_t)x : INT64_MIN;
+}
+#endif
+/* int32: an invalid input is replaced by -2^31 BEFORE the (then always defined) cast, a select in the float
+   domain that keeps the packed cvttpd2dq / cvttps2dq conversion */
+static inline int32_t tsr_f2i32(double x) { return (int32_t)((x > -2147483649.0 && x < 2147483648.0) ? x : -2147483648.0); }
+static inline int32_t tsr_f2i32f(float x) { return (int32_t)((x >= -2147483648.0f && x < 2147483648.0f) ? x : -2147483648.0f); }
+static inline uint8_t tsr_f2u8(double x) { return (uint8_t)(uint32_t)tsr_f2i32(x); }
+static inline uint8_t tsr_f2u8f(float x) { return (uint8_t)(uint32_t)tsr_f2i32f(x); }
+
+/* 1 when every dimension fits LAPACKE's lapack_int, else 0 with the error message set (np_linalg.c). Call it
+   before handing int64 dimensions to LAPACKE: TSR_LA_FIT("eigsh", n) or TSR_LA_FIT("svds", m, n). */
+int tsr_la_dims_fit(const char *who, const int64_t *dims, size_t n);
+#define TSR_LA_FIT(who, ...) \
+    tsr_la_dims_fit((who), (const int64_t[]){__VA_ARGS__}, sizeof((const int64_t[]){__VA_ARGS__}) / sizeof(int64_t))
+
 /* Element count of a shape, or -1 if negative or if the count (or count * 16 bytes) would overflow int64.
    Every size that becomes an allocation or a loop bound goes through this. */
 static inline int64_t tsr_shape_size(int32_t ndim, const int64_t *shape)

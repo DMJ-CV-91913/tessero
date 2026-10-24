@@ -170,6 +170,29 @@ double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const double *y, in
    -1 = fast clone diverged from the reference; -2 = the reference itself is not the frozen canonical. */
 int tsr_selfcheck(void);
 
+/* ---- numerics review (2026-10): FP-environment gate and KAT sensitivity ----
+   tsr_selfcheck codes, complete: 0 canonical; -1 fast clone != reference; -2 reference != frozen digest;
+   -3 libm fmaf not correctly rounded; -4 subnormals flushed (FTZ/DAZ behaviour); -5 signed zero broken;
+   -6 FP control register non-canonical (tsr_fpenv_check != 0; checked first, before any probe arithmetic).
+   tsr_fpenv_check: reads the FP control state on the calling thread AND every OpenMP worker (x86-64 MXCSR
+   FTZ bit 15 = 0, DAZ bit 6 = 0, RC bits 14:13 = 00, exception masks bits 12:7 all 1; aarch64 FPCR FZ bit 24
+   = 0, FZ16 bit 19 = 0, RMode bits 23:22 = 00, trap enables bits 8-12/15 = 0; every arch fegetround() ==
+   FE_TONEAREST). Returns 0 when canonical, else a bitmask: 1 FTZ/FZ, 2 DAZ, 4 rounding-mode bits, 8 traps
+   unmasked, 16 fegetround != nearest, 32 FZ16, 64 = the offending state is on an OpenMP worker. Writes a
+   human-readable reason naming the bits into buf (NUL-terminated, truncated to cap; buf may be NULL).
+   tsr_fpenv_check_thread: the same for the calling thread only (no OpenMP region: safe before fork(), e.g.
+   in a PHP module's MINIT). tsr_fpenv_canonicalize: opt-in repair of the calling thread and the OpenMP
+   workers (round-to-nearest, FTZ/DAZ off, exceptions masked); returns tsr_fpenv_check afterwards. Never
+   called implicitly. tsr_selfcheck_digest: FNV-1a digest of the KAT gemm output computed by variant
+   0 = canonical fmaf reference, 1 = the dispatched tsr_gemm, 2 = separate mul+add (non-FMA, deliberately
+   wrong), 3 = reversed k order (deliberately wrong); 0 for an unknown variant. tsr_selfcheck_canonical:
+   the frozen digest variants 0 and 1 must equal (0 = bootstrap build). */
+int tsr_fpenv_check(char *buf, int64_t cap);
+int tsr_fpenv_check_thread(char *buf, int64_t cap);
+int tsr_fpenv_canonicalize(void);
+uint64_t tsr_selfcheck_digest(int variant);
+uint64_t tsr_selfcheck_canonical(void);
+
 /* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);
 /* real input: rows x n float64 -> rows x (n/2 + 1) complex128 (half the work of tsr_fft); irfft is the inverse

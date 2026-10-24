@@ -1113,6 +1113,192 @@ static void test_abi_runtime(void)
     }
 }
 
+/* Regressions for the 2026-10 numerical-correctness review (docs/reference/numerical-guarantees.md). Every
+   expected value below is NumPy 2.4.4 / SciPy 1.17.1 output on x86-64. Deterministic: fixed inputs, no timing,
+   and the OpenMP part asserts only on the OR over all workers. */
+#include <fenv.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+#if defined(__x86_64__)
+static uint32_t nr_csr_get(void) { uint32_t c; __asm__ volatile("stmxcsr %0" : "=m"(c)); return c; }
+static void nr_csr_set(uint32_t c) { __asm__ volatile("ldmxcsr %0" : : "m"(c)); }
+#endif
+static int nr_bits_eq(double a, double b) { return memcmp(&a, &b, sizeof a) == 0; }
+static int nr_bits_eqf(float a, float b) { return memcmp(&a, &b, sizeof a) == 0; }
+static double nr_routine_num(const char *name, int nargs, const tsr_arg *args)
+{
+    tsr_result r[1];
+    const int id = tsr_fn_find(name);
+    if (id < 0 || tsr_fn_routine(id, nargs, args, 1, r) != 0) return -12345.0;
+    double v = r[0].kind == 3 ? ((double *)r[0].arr.data)[0] : r[0].num;
+    if (r[0].kind == 3) tsr_free(r[0].arr.data, r[0].bytes);
+    return v;
+}
+
+static void test_numerics_review(void)
+{
+    /* (1) selfcheck sensitivity: full-mantissa KAT. The canonical digest must not survive a two-rounding
+       mul+add or a reordered k sum (the old k/64 KAT was exact in f32 and could not see either). */
+    const uint64_t d0 = tsr_selfcheck_digest(0), d1 = tsr_selfcheck_digest(1);
+    CHECK(d0 == tsr_selfcheck_digest(0), "KAT digest is deterministic");
+    CHECK(tsr_selfcheck_canonical() == 0 || d0 == tsr_selfcheck_canonical(), "KAT reference == frozen %016llx", (unsigned long long)d0);
+    CHECK(d1 == d0, "dispatched tsr_gemm == fmaf reference");
+    CHECK(tsr_selfcheck_digest(2) != d0, "KAT detects a non-FMA (mul then add) build");
+    CHECK(tsr_selfcheck_digest(3) != d0, "KAT detects a reordered reduction");
+    CHECK(tsr_selfcheck_digest(99) == 0, "unknown KAT variant");
+    CHECK(tsr_selfcheck() == 0, "selfcheck canonical (rc %d)", tsr_selfcheck());
+
+    /* (2) FP environment gate */
+    char why[256];
+    CHECK(tsr_fpenv_check(why, sizeof why) == 0 && strcmp(why, "canonical") == 0, "fpenv canonical: %s", why);
+    CHECK(tsr_fpenv_check_thread(NULL, 0) == 0, "fpenv thread canonical");
+    fesetround(FE_UPWARD);
+    const int up = tsr_fpenv_check(why, sizeof why);
+    const int sc_up = tsr_selfcheck();
+    fesetround(FE_TONEAREST);
+    CHECK((up & 16) && strstr(why, "fegetround") != NULL, "fpenv sees round-upward (%d: %s)", up, why);
+    CHECK(sc_up == -6, "selfcheck refuses a non-canonical FP environment (rc %d)", sc_up);
+#if defined(__x86_64__)
+    const uint32_t csr0 = nr_csr_get();
+    nr_csr_set(csr0 | (1u << 15) | (1u << 6));                         /* FTZ + DAZ, what -ffast-math sets */
+    const int ftz = tsr_fpenv_check(why, sizeof why);
+    CHECK(ftz == 3 && strstr(why, "FTZ") && strstr(why, "DAZ"), "fpenv names FTZ/DAZ (%d: %s)", ftz, why);
+    nr_csr_set(csr0 & ~(1u << 9));                                     /* unmask divide-by-zero */
+    CHECK(tsr_fpenv_check_thread(why, sizeof why) == 8 && strstr(why, "masks"), "fpenv sees unmasked traps: %s", why);
+    nr_csr_set(csr0 | (1u << 15));
+    CHECK(tsr_fpenv_canonicalize() == 0 && nr_csr_get() == csr0, "canonicalize restores MXCSR");
+#endif
+#ifdef _OPENMP
+    const int th = tsr_get_threads();
+    tsr_set_threads(4);
+#pragma omp parallel num_threads(4)
+    {
+#if defined(__x86_64__)
+        if (omp_get_thread_num() != 0) nr_csr_set(nr_csr_get() | (1u << 15));
+#else
+        if (omp_get_thread_num() != 0) fesetround(FE_UPWARD);
+#endif
+    }
+    const int wk = tsr_fpenv_check(why, sizeof why);
+    CHECK(tsr_fpenv_check_thread(NULL, 0) == 0, "caller unaffected by worker state");
+    CHECK(omp_get_max_threads() < 1 || (wk & 64), "fpenv checks OpenMP workers (%d: %s)", wk, why);
+    CHECK(tsr_fpenv_canonicalize() == 0, "canonicalize repairs the workers");
+    tsr_set_threads(th);
+#endif
+    CHECK(tsr_fpenv_check(NULL, 0) == 0, "fpenv canonical again");
+
+    /* (3) float -> int casts: NumPy's x86-64 results, defined where the plain C cast is undefined behaviour */
+    double fv[10] = {NAN, INFINITY, -INFINITY, 1e300, -1.0, 300.0, -2.5, 9223372036854775808.0, 1e10, 2147483648.0};
+    int64_t n10[1] = {10}, s8[1] = {8}, s4[1] = {4}, s1[1] = {1};
+    int64_t i64[10]; int32_t i32[10]; uint8_t u8[10];
+    tsr_copy(TSR_F64, TSR_I64, 1, n10, fv, s8, i64, s8);
+    tsr_copy(TSR_F64, TSR_I32, 1, n10, fv, s8, i32, s4);
+    tsr_copy(TSR_F64, TSR_U8, 1, n10, fv, s8, u8, s1);
+    CHECK(i64[0] == INT64_MIN && i64[1] == INT64_MIN && i64[2] == INT64_MIN && i64[3] == INT64_MIN && i64[4] == -1
+          && i64[5] == 300 && i64[6] == -2 && i64[7] == INT64_MIN && i64[8] == 10000000000LL && i64[9] == 2147483648LL,
+          "f64 -> int64 saturates like cvttsd2si");
+    CHECK(i32[0] == INT32_MIN && i32[3] == INT32_MIN && i32[5] == 300 && i32[6] == -2 && i32[8] == INT32_MIN
+          && i32[9] == INT32_MIN, "f64 -> int32 saturates like cvttsd2si");
+    CHECK(u8[0] == 0 && u8[4] == 255 && u8[5] == 44 && u8[6] == 254 && u8[8] == 0, "f64 -> uint8 via int32 as NumPy");
+    float ff[3] = {NAN, 3e9f, -300.0f};
+    tsr_copy(TSR_F32, TSR_I32, 1, (int64_t[]){3}, ff, s4, i32, s4);
+    tsr_copy(TSR_F32, TSR_U8, 1, (int64_t[]){3}, ff, s4, u8, s1);
+    CHECK(i32[0] == INT32_MIN && i32[1] == INT32_MIN && i32[2] == -300 && u8[2] == 212, "f32 -> int32/uint8");
+    double cz[2] = {NAN, 1.0};
+    tsr_copy(TSR_C128, TSR_I64, 1, s1, cz, (int64_t[]){16}, i64, s8);
+    CHECK(i64[0] == INT64_MIN, "complex(NaN) -> int64");
+    double big2[2] = {1e300, 1e300};
+    int64_t rsum = 0;
+    CHECK(tsr_reduce(R_SUM, TSR_F64, 1, (int64_t[]){2}, big2, s8, 0, TSR_I64, &rsum, s8) == 0 && rsum == INT64_MIN,
+          "float sum stored to int64 saturates");
+    tsr_arange(TSR_I64, 2, NAN, 1.0, i64);
+    CHECK(i64[0] == INT64_MIN && i64[1] == INT64_MIN + 1, "arange from a NaN start is defined");
+
+    /* (4) complex division: Smith's method (NumPy) instead of |y|^2, which overflowed */
+    double cx[4] = {1, 1, 1, 1}, cy[4] = {1e200, 1e200, 1e-200, 1e-200}, cq[4];
+    int64_t s16[1] = {16}, n2[1] = {2};
+    tsr_binary(OP_DIV, TSR_C128, 1, n2, cx, s16, cy, s16, cq, s16);
+    CHECK(CLOSE(cq[0], 1e-200, 1e-15) && cq[1] == 0.0, "(1+1j)/(1e200+1e200j) = %g%+gj", cq[0], cq[1]);
+    CHECK(CLOSE(cq[2], 1e200, 1e-15) && cq[3] == 0.0, "(1+1j)/(1e-200+1e-200j) = %g%+gj", cq[2], cq[3]);
+
+    /* (5) float floor_divide / remainder = npy_divmod: 1.0 // 0.1 == 9, signs, zero divisor, infinities */
+    double fa[9] = {1.0, -1.0, -2.0, 2.0, 1.0, 0.0, 1.0, -1.0, INFINITY};
+    double fb[9] = {0.1, 0.1, 1.0, -1.0, 0.0, 0.0, INFINITY, INFINITY, 1.0};
+    double fq[9], fm[9];
+    int64_t n9[1] = {9};
+    tsr_binary(OP_FLOORDIV, TSR_F64, 1, n9, fa, s8, fb, s8, fq, s8);
+    tsr_binary(OP_MOD, TSR_F64, 1, n9, fa, s8, fb, s8, fm, s8);
+    CHECK(fq[0] == 9.0 && nr_bits_eq(fm[0], 0x1.9999999999996p-4), "1.0 // 0.1 = %g, %% = %a", fq[0], fm[0]);
+    CHECK(fq[1] == -10.0 && fm[1] == 0x1p-54, "-1.0 // 0.1 = %g, %% = %a", fq[1], fm[1]);
+    CHECK(fq[2] == -2.0 && nr_bits_eq(fm[2], 0.0) && fq[3] == -2.0 && nr_bits_eq(fm[3], -0.0), "zero remainder takes the divisor's sign");
+    CHECK(fq[4] == INFINITY && isnan(fm[4]) && isnan(fq[5]) && isnan(fm[5]), "division by zero: inf/nan, remainder nan");
+    CHECK(nr_bits_eq(fq[6], 0.0) && fm[6] == 1.0 && fq[7] == -1.0 && fm[7] == INFINITY, "infinite divisor");
+    CHECK(isnan(fq[8]) && isnan(fm[8]), "inf // 1 is nan");
+    for (int i = 0; i < 4; i++) CHECK(CLOSE(fq[i] * fb[i] + fm[i], fa[i], 1e-15), "x == (x // y) * y + x %% y at %d", i);
+    float ga[3] = {1.0f, -7.5f, 0.0f}, gb[3] = {0.1f, 2.0f, -3.0f}, gq[3], gm[3];
+    tsr_binary(OP_FLOORDIV, TSR_F32, 1, (int64_t[]){3}, ga, s4, gb, s4, gq, s4);
+    tsr_binary(OP_MOD, TSR_F32, 1, (int64_t[]){3}, ga, s4, gb, s4, gm, s4);
+    CHECK(gq[0] == 9.0f && nr_bits_eqf(gm[0], 0x1.999996p-4f) && gq[1] == -4.0f && gm[1] == 0.5f
+          && nr_bits_eqf(gq[2], -0.0f) && nr_bits_eqf(gm[2], -0.0f), "float32 floor_divide / remainder");
+
+    /* (6) norm(ord=+-inf) propagates NaN like abs(x).max() / .min() */
+    double nv[3] = {1.0, NAN, 3.0};
+    int64_t sh3[1] = {3};
+    CHECK(isnan(nr_routine_num("linalg.norm", 2, (tsr_arg[]){arg_arr(nv, 1, sh3), arg_num(INFINITY)})), "norm inf NaN");
+    CHECK(isnan(nr_routine_num("linalg.norm", 2, (tsr_arg[]){arg_arr(nv, 1, sh3), arg_num(-INFINITY)})), "norm -inf NaN");
+    tsr_arg vn[4] = {arg_arr(nv, 1, sh3), {0}, {0}, arg_num(INFINITY)};
+    CHECK(isnan(nr_routine_num("linalg.vector_norm", 4, vn)), "vector_norm inf NaN");
+    double mv[4] = {1.0, 2.0, NAN, 0.5};
+    int64_t sh22[2] = {2, 2};
+    CHECK(isnan(nr_routine_num("linalg.norm", 2, (tsr_arg[]){arg_arr(mv, 2, sh22), arg_num(INFINITY)})), "matrix norm inf NaN");
+    CHECK(isnan(nr_routine_num("linalg.norm", 3, (tsr_arg[]){arg_arr(mv, 2, sh22), arg_num(-INFINITY), arg_num(0)})), "axis norm -inf NaN");
+    CHECK(nr_routine_num("linalg.norm", 2, (tsr_arg[]){arg_arr((double[]){1, -4, 3}, 1, sh3), arg_num(INFINITY)}) == 4.0, "norm inf finite");
+
+    /* (7) LAPACK lapack_int guard: a 2^31 x 0 matrix holds no data but its dimension would wrap in (lapack_int) */
+    int64_t huge[2] = {(int64_t)1 << 31, 0};
+    double dummy = 0;
+    tsr_result lr[2];
+    const int qr = tsr_fn_find("linalg.qr");
+    CHECK(qr >= 0 && tsr_fn_routine(qr, 1, (tsr_arg[]){arg_arr(&dummy, 2, huge)}, 2, lr) == TSR_EARG
+          && strstr(tsr_fn_error(), "LAPACK") != NULL, "qr refuses a dimension above INT32_MAX: %s", tsr_fn_error());
+    CHECK(tsr_fn_routine(tsr_fn_find("linalg.norm"), 2, (tsr_arg[]){arg_arr(&dummy, 2, huge), arg_num(2)}, 1, lr) == TSR_EARG,
+          "norm(ord=2) SVD path guarded");
+    CHECK(tsr_fn_routine(tsr_fn_find("splinalg.svds"), 1, (tsr_arg[]){arg_arr(&dummy, 2, huge)}, 1, lr) == TSR_EARG,
+          "svds guarded");
+    double id2[4] = {2, 0, 0, 2};
+    CHECK(nr_routine_num("linalg.det", 1, (tsr_arg[]){arg_arr(id2, 2, sh22)}) == 4.0, "guarded det still works");
+
+    /* (8) nan_policy='omit' on paired samples of unequal length is refused before compaction reads past y */
+    const int sp = tsr_fn_find("stats.spearmanrho");
+    double px[5] = {1, 2, NAN, 4, 5}, py[5] = {2, 1, 4, NAN, 3}, ro = 0, po = 0;
+    tsr_array pin[2], pout[2];
+    tsr_array_init(&pin[0], TSR_F64, 1, (int64_t[]){5}, px);
+    tsr_array_init(&pin[1], TSR_F64, 1, (int64_t[]){3}, py);
+    tsr_array_init(&pout[0], TSR_F64, 0, s1, &ro);
+    tsr_array_init(&pout[1], TSR_F64, 0, s1, &po);
+    const uint64_t axm[2] = {1, 1};
+    const double omit[2] = {0, 1};
+    CHECK(sp >= 0 && tsr_fn_gufunc(sp, 2, pin, axm, 0, omit, 2, pout) == TSR_EARG, "paired omit refuses unequal lengths");
+    tsr_array_init(&pin[1], TSR_F64, 1, (int64_t[]){5}, py);
+    CHECK(tsr_fn_gufunc(sp, 2, pin, axm, 0, omit, 2, pout) == 0 && CLOSE(ro, 0.5, 1e-14), "paired omit drops NaN pairs (rho %g)", ro);
+
+    /* (9) logsumexp: scipy gives NaN for any NaN (also beside -inf only) and -inf for an all -inf row */
+    CHECK(isnan(nr_routine_num("special.logsumexp", 1, (tsr_arg[]){arg_arr((double[]){NAN, -INFINITY}, 1, (int64_t[]){2})})), "logsumexp [nan,-inf]");
+    CHECK(isnan(nr_routine_num("special.logsumexp", 1, (tsr_arg[]){arg_arr((double[]){NAN, NAN}, 1, (int64_t[]){2})})), "logsumexp [nan,nan]");
+    CHECK(nr_routine_num("special.logsumexp", 1, (tsr_arg[]){arg_arr((double[]){-INFINITY, -INFINITY}, 1, (int64_t[]){2})}) == -INFINITY, "logsumexp all -inf");
+    CHECK(nr_routine_num("special.logsumexp", 1, (tsr_arg[]){arg_arr((double[]){INFINITY, -INFINITY}, 1, (int64_t[]){2})}) == INFINITY, "logsumexp [inf,-inf]");
+    CHECK(CLOSE(nr_routine_num("special.logsumexp", 1, (tsr_arg[]){arg_arr((double[]){1, 2}, 1, (int64_t[]){2})}), 2.3132616875182228, 1e-15), "logsumexp [1,2] finite path");
+    double lm[4] = {NAN, -INFINITY, -INFINITY, -INFINITY};
+    tsr_result lres[1];
+    tsr_arg ax1 = arg_num(1); ax1.flags = 1; ax1.ival = 1;
+    if (tsr_fn_routine(tsr_fn_find("special.logsumexp"), 2, (tsr_arg[]){arg_arr(lm, 2, sh22), ax1}, 1, lres) == 0) {
+        const double *o = (const double *)lres[0].arr.data;
+        CHECK(isnan(o[0]) && o[1] == -INFINITY, "logsumexp axis=1 rows: %g %g", o[0], o[1]);
+        tsr_free(lres[0].arr.data, lres[0].bytes);
+    } else CHECK(0, "logsumexp axis=1 failed: %s", tsr_fn_error());
+}
+
 int main(void)
 {
     test_alloc();
@@ -1136,6 +1322,7 @@ int main(void)
     test_vmath();
     test_rfft();
     test_size_overflow();
+    test_numerics_review();
     test_security_regressions();
     test_abi_runtime();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
