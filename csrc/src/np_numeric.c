@@ -1353,6 +1353,8 @@ static int r_cumulative_simpson(const void *ctx, const tsr_arg *args, int nargs,
     int ax;
     if ((rc = norm_axis(a64, nd, &ax)) < 0) { own_free(&ysrc); return rc; }
     const int64_t N = y->shape[ax];
+    /* scipy; with initial set, the empty axis wrote out[0] into a 0-element result */
+    if (N < 1) { own_free(&ysrc); fn_set_error("At least one point is required along `axis`."); return TSR_EARG; }
     double dx = 1.0;
     own xsrc; int have_x = 0, x_is_1d = 0; const tsr_array *x = NULL;
     const tsr_arg *xa = argk(args, nargs, 1);
@@ -1364,6 +1366,8 @@ static int r_cumulative_simpson(const void *ctx, const tsr_arg *args, int nargs,
         if (x->ndim == 1) { x_is_1d = 1; if (x->shape[0] != N) { own_free(&ysrc); own_free(&xsrc); fn_set_error("If given, length of x along axis must be the same as y."); return TSR_EARG; } }
         else if (x->ndim != nd) { own_free(&ysrc); own_free(&xsrc); fn_set_error("If given, shape of x must be 1-D or the same as y."); return TSR_EARG; }
         else if (x->shape[ax] != N) { own_free(&ysrc); own_free(&xsrc); fn_set_error("If given, length of x along axis must be the same as y."); return TSR_EARG; }
+        else for (int d = 0; d < nd; d++)                 /* x lanes are read with y's geometry */
+            if (x->shape[d] != y->shape[d]) { own_free(&ysrc); own_free(&xsrc); fn_set_error("If given, shape of x must be 1-D or the same as y."); return TSR_EARG; }
     } else {
         const tsr_arg *da = argk(args, nargs, 2);
         if (!is_none(da) && (rc = num_param(da, "dx", &dx)) < 0) { own_free(&ysrc); return rc; }
@@ -1776,6 +1780,8 @@ static int r_gradient(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
         const int ax = axes[i];
         const int64_t n = f->shape[ax];
         if (n < eo + 1) { fn_set_error("Shape of array too small to calculate a numerical gradient, at least (edge_order + 1) elements are required."); rc = TSR_EARG; break; }
+        /* edge_order < 1 takes NumPy's second-order branch, which reads f[1] and f[2] (an IndexError there) */
+        if (eo < 1 && n < 3) { fn_set_error("index %d is out of bounds for axis 0 with size %lld", n < 2 ? 1 : 2, (long long)n); rc = TSR_EINDEX; break; }
         if (f->dtype == TSR_BOOL) { int t; rc = op_dtype(OP_SUB, TSR_BOOL, &t); break; }
         if ((rc = own_new(&outs[i], otype, N, f->shape)) < 0) break;
         /* each lane along ax */
@@ -2330,6 +2336,8 @@ static int r_polyint(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         harr hk;
         if ((rc = get_arr(ka, &hk, "k")) < 0) { tsr_free(kv, kb); return rc; }
         tsr_array k1 = at1d(&hk.a);
+        /* k is read as a vector of len values: a 2-D k (len rows, maybe 0 columns) was read past its data */
+        if (k1.ndim != 1) { tsr_free(kv, kb); fn_set_error("k must be a scalar or a rank-1 array of length 1 or >m."); return TSR_EARG; }
         kdt = k1.dtype;
         const int64_t len = k1.shape[0];
         if (len == 1 && m > 1) { const double v = rd_f64(elem0(&k1), k1.dtype); for (int64_t i = 0; i < m; i++) kv[i] = v; kdt = TSR_F64; }
@@ -3913,27 +3921,39 @@ static double bz_eval(int kind, double nu, double x, double *deriv)
     *deriv = -fp / x - (1.0 - nu * nu / (x * x)) * fo; return fp;
 }
 
+/* the value bz_eval returns, without the derivative (the scan only needs signs) */
+static double bz_value(int kind, double nu, double x)
+{
+    double in[2] = {nu, x}, o[1];
+    if (kind == 0) tsr_special_jv(NULL, in, o);
+    else if (kind == 1) tsr_special_yv(NULL, in, o);
+    else if (kind == 2) tsr_special_jvp(NULL, in, o);
+    else tsr_special_yvp(NULL, in, o);
+    return o[0];
+}
+
 static int bessel_zeros(int kind, double nu, int64_t nt, double *out)
 {
     const double h = 0.05;
-    /* the scan stops at x = 1e5, below which there are fewer than 1e5 / pi + 2 zeros (they are about pi
-       apart): a larger nt cannot succeed, so refuse it before scanning 2e6 points */
-    if (nt > 40000) { fn_set_error("*_zeros: nt must be <= 40000"); return TSR_EARG; }
+    /* zeros are found by scanning in steps of 0.05 and refining each bracket (about 63 steps per zero, two
+       Bessel evaluations each): bound the work at 1000 zeros (jnyn_zeros runs four such scans) */
+    if (nt > 1000) { fn_set_error("*_zeros: nt must be <= 1000"); return TSR_EARG; }
     /* every zero of J_nu, Y_nu and their derivatives lies beyond |nu| (j'_{nu,1} >= nu): for a large order start
        the scan just below it instead of stepping through the zero-free stretch (orders below 100 keep the
        original grid, so their results are unchanged) */
-    double x = fabs(nu) >= 100.0 ? fabs(nu) - 1.0 : 1e-6, dprev, pf = bz_eval(kind, nu, x, &dprev);
+    /* the scan evaluates values only, and f(a) is carried through the refinement (it is f(r) of the step that
+       moved a): the same numbers as before with half the Bessel evaluations */
+    double x = fabs(nu) >= 100.0 ? fabs(nu) - 1.0 : 1e-6, pf = bz_value(kind, nu, x);
     int64_t got = 0;
     while (got < nt && x < 1.0e5) {
-        double x2 = x + h, d2, f2 = bz_eval(kind, nu, x2, &d2);
+        double x2 = x + h, f2 = bz_value(kind, nu, x2);
         if (pf == 0.0) { pf = f2; x = x2; continue; }
         if ((pf < 0.0) != (f2 < 0.0)) {
-            double a = x, b = x2, r = 0.5 * (a + b);
+            double a = x, b = x2, r = 0.5 * (a + b), fa = pf;
             for (int it = 0; it < 100; it++) {
                 double dr, fr = bz_eval(kind, nu, r, &dr);
                 if (fr == 0.0) break;
-                double da, fa = bz_eval(kind, nu, a, &da);
-                if ((fa < 0.0) != (fr < 0.0)) b = r; else a = r;
+                if ((fa < 0.0) != (fr < 0.0)) b = r; else { a = r; fa = fr; }
                 double rn = (dr != 0.0) ? r - fr / dr : 0.5 * (a + b);
                 if (rn <= a || rn >= b) rn = 0.5 * (a + b);
                 if (rn == r || (rn - r < 1e-15 && r - rn < 1e-15)) { r = rn; break; }
@@ -4093,9 +4113,12 @@ static int r_multigammaln(const void *c, const tsr_arg *args, int nargs, tsr_res
     (void)c; (void)nres;
     int64_t d = (nargs > 1 && args[1].kind == 1) ? fn_num_i64(&args[1], 0) : 0;
     if (d < 1) { fn_set_error("multigammaln: d must be a positive integer"); return TSR_EARG; }
+    /* d terms per element (SciPy sums a list of d arrays): bound the work */
+    if (d > 65536) { fn_set_error("multigammaln: d must be <= 65536"); return TSR_EARG; }
     const double c0 = 0.25 * (double)d * (double)(d - 1) * log(M_PI);
     if (args[0].kind == 1) {
         double a = args[0].flags & 1 ? (double)args[0].ival : args[0].num, mg = c0;
+        if (a <= 0.5 * (double)(d - 1)) { fn_set_error("condition a (%f) > 0.5 * (d-1) (%f) not met", a, 0.5 * (double)(d - 1)); return TSR_EARG; }   /* scipy */
         for (int64_t j = 1; j <= d; j++) mg += lgamma(a + 0.5 * (1.0 - (double)j));
         fn_result_num(&res[0], mg);
         return TSR_OK;
@@ -4105,6 +4128,12 @@ static int r_multigammaln(const void *c, const tsr_arg *args, int nargs, tsr_res
     if (!a) return TSR_ENOMEM;
     double *out = (double *)fn_result_array(&res[0], TSR_F64, args[0].arr.ndim, args[0].arr.shape);
     if (!out) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < na; i++)
+        if (a[i] <= 0.5 * (double)(d - 1)) {                /* scipy checks every element first */
+            fn_set_error("condition a (%f) > 0.5 * (d-1) (%f) not met", a[i], 0.5 * (double)(d - 1));
+            fn_free_doubles(a, na);
+            return TSR_EARG;
+        }
     for (int64_t i = 0; i < na; i++) {
         double mg = c0;
         for (int64_t j = 1; j <= d; j++) mg += lgamma(a[i] + 0.5 * (1.0 - (double)j));
@@ -4310,6 +4339,7 @@ static int r_lmbda(const void *c, const tsr_arg *a, int na, tsr_result *r, int n
 static int yzero_run(tsr_result *r, int bzkind, double nu, int valkind, int64_t nt)
 {
     if (nt < 1) { fn_set_error("y*_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > 1000) { fn_set_error("y*_zeros: nt must be <= 1000"); return TSR_EARG; }   /* bessel_zeros' bound, before the malloc */
     double *tmp = (double *)malloc((size_t)nt * sizeof(double));
     if (!tmp) return TSR_ENOMEM;
     int rc = bessel_zeros(bzkind, nu, nt, tmp);
