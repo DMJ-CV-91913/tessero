@@ -31,6 +31,22 @@
 
 #include "../include/tessero_repro_f32.h"
 
+/* Thread count of the parallel loops: the kernel's tsr_set_threads setting (1 = serial, the default), so these
+ * regions follow tessero.threads like every other kernel loop instead of OMP_NUM_THREADS (all cores in a php-fpm
+ * worker). The count cannot change a result (see below). csrc/repro/run_determinism.sh compiles this file alone,
+ * without alloc.c: there the weak reference is null and the loops fall back to OpenMP's default, so its
+ * OMP_NUM_THREADS=1 vs 4 comparison still exercises the threaded path. */
+#ifdef _OPENMP
+#  include <omp.h>
+#  if defined(__GNUC__) && !defined(_WIN32)
+int tsr_get_threads(void) __attribute__((weak));
+static inline int tsr_repro_threads(void) { return tsr_get_threads ? tsr_get_threads() : omp_get_max_threads(); }
+#  else
+int tsr_get_threads(void);
+static inline int tsr_repro_threads(void) { return tsr_get_threads(); }
+#  endif
+#endif
+
 /* --------------------------------------------------------------------------
  * Public ABI. Contiguous f32 arrays, length n. Returns 0, or -1 on a bad
  * argument (negative n, or null pointer with n > 0). n == 0 is a no-op.
@@ -44,7 +60,7 @@ int tsr_repro_rsqrt_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) {
         y[i] = tsr__rrsqrt_f32(x[i]);       /* deterministic seed + fma Newton */
@@ -56,7 +72,7 @@ int tsr_repro_exp2_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) {
         y[i] = tsr__exp2_f32(x[i]);
@@ -68,7 +84,7 @@ int tsr_repro_exp_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) {
         y[i] = tsr__exp_f32(x[i]);
@@ -80,7 +96,7 @@ int tsr_repro_erf_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) {
         y[i] = tsr__erf_f32(x[i]);
@@ -92,7 +108,7 @@ int tsr_repro_recip_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) {
         y[i] = tsr__recip_f32(x[i]);        /* guarded: any f32 input */
@@ -104,7 +120,7 @@ int tsr_repro_sigmoid_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) y[i] = tsr__sigmoid_f32(x[i]);
     return 0;
@@ -114,7 +130,7 @@ int tsr_repro_gelu_tanh_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) y[i] = tsr__gelu_tanh_f32(x[i]);
     return 0;
@@ -127,7 +143,7 @@ int tsr_repro_softmax_f32(int64_t m, int64_t n, const float *x, float *y) {
     if (m > 0 && n > 0 && (!x || !y)) return -1;
     if (n == 0) return 0;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t r = 0; r < m; ++r) tsr__softmax_row_f32(x + r * n, y + r * n, n);
     return 0;
@@ -138,7 +154,7 @@ int tsr_repro_rmsnorm_f32(int64_t m, int64_t n, const float *x, const float *gam
     if (m > 0 && n > 0 && (!x || !gamma || !y)) return -1;
     if (n == 0) return 0;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t r = 0; r < m; ++r) tsr__rmsnorm_row_f32(x + r * n, gamma, eps, y + r * n, n);
     return 0;
@@ -150,7 +166,7 @@ int tsr_repro_layernorm_f32(int64_t m, int64_t n, const float *x, const float *g
     if (m > 0 && n > 0 && (!x || !gamma || !beta || !y)) return -1;
     if (n == 0) return 0;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t r = 0; r < m; ++r) tsr__layernorm_row_f32(x + r * n, gamma, beta, eps, y + r * n, n);
     return 0;
@@ -160,7 +176,7 @@ int tsr_repro_tanh_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
 #endif
     for (int64_t i = 0; i < n; ++i) {
         y[i] = tsr__tanh_f32(x[i]);

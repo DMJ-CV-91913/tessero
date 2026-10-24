@@ -159,6 +159,8 @@ final class TesseroManager
      * larger than RAM can be processed. Modes as numpy.memmap: 'r', 'r+', 'w+',
      * 'c'. Mapped bytes are not counted against memory_budget; info() reports
      * them as memory_mapped. Both backends share libtessero's mapping code.
+     * Paths must be local files (stream wrappers are refused) and must never
+     * come from request input; see docs/operations/security.md.
      *
      * @param list<int>|null $shape null = 1-D, inferred from the file size
      */
@@ -169,7 +171,7 @@ final class TesseroManager
             : FfiArray::memmap($filename, $mode, $shape, $dtype, $offset);
     }
 
-    /** Read a .npy file (numpy.load); with $mmapMode ('r', 'r+', 'c') it is memory-mapped instead. */
+    /** Read a .npy file (numpy.load); with $mmapMode ('r', 'r+', 'c') it is memory-mapped instead. Never pass a path from request input. */
     public function load(string $path, ?string $mmapMode = null): ExtArray|FfiArray
     {
         return $this->backend() === 'ext' ? ExtArray::load($path, $mmapMode) : FfiArray::load($path, $mmapMode);

@@ -1,0 +1,18 @@
+/* libtessero exports exactly its public C ABI, the tsr_ functions declared in include/tessero.h (ADR 0014).
+   Everything else stays local: the vendored FITPACK / numpy random / cdflib / QUADPACK routines, the C++ runtime
+   linked in statically, and the internal tsr_ helpers named below, so none of them can interpose on, or be
+   interposed by, another copy in the same process (the Zend extension, Talario, a numpy/scipy build).
+   `make abi-check` fails when the exports and tessero.h disagree. The node name is the release that introduced
+   this ABI generation (TSR_ABI_VERSION 2); an incompatible change starts a new node with a new soname. */
+TESSERO_0.2 {
+  global:
+    tsr_*;
+  local:
+    tsr_cdflib_runaway;
+    tsr_effective_cpus;
+    tsr_pcg64_bitgen;
+    tsr_physical_bytes;
+    tsr_psum;
+    tsr_random_run;
+    *;
+};

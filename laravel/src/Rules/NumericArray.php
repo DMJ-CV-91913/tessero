@@ -13,14 +13,22 @@ use Illuminate\Contracts\Validation\ValidationRule;
  *
  *   $request->validate(['prices' => ['required', new NumericArray(ndim: 1, maxElements: 8784)]]);
  *   $request->validate(['matrix' => ['required', new NumericArray(shape: [null, 3])]]);   // n x 3
+ *
+ * Without $maxElements the cap is config('tessero.max_elements') (TESSERO_MAX_ELEMENTS, default 1,000,000).
  */
 final class NumericArray implements ValidationRule
 {
-    /** @param list<int|null>|null $shape null entries match any length */
+    /** Deepest nesting accepted (NDArray's limit): deeper input is refused before it is walked. */
+    public const MAX_NDIM = 32;
+
+    /** Cap used when none is given and no Laravel config is available. */
+    public const DEFAULT_MAX_ELEMENTS = 1_000_000;
+
+    /** @param list<int|null>|null $shape null entries match any length; $maxElements null: config('tessero.max_elements') */
     public function __construct(
         private readonly ?int $ndim = null,
         private readonly ?array $shape = null,
-        private readonly int $maxElements = 1_000_000,
+        private readonly ?int $maxElements = null,
         private readonly bool $allowBool = false,
     ) {
     }
@@ -34,8 +42,9 @@ final class NumericArray implements ValidationRule
     }
 
     /** @return string|null the problem, or null when valid (usable outside Laravel) */
-    public static function check(mixed $value, ?int $ndim = null, ?array $shape = null, int $maxElements = 1_000_000, bool $allowBool = false): ?string
+    public static function check(mixed $value, ?int $ndim = null, ?array $shape = null, ?int $maxElements = null, bool $allowBool = false): ?string
     {
+        $maxElements ??= self::configuredMaxElements();
         if (! is_array($value)) {
             return 'must be an array of numbers.';
         }
@@ -46,6 +55,9 @@ final class NumericArray implements ValidationRule
                 return 'must use list arrays (no string keys).';
             }
             $dims[] = count($probe);
+            if (count($dims) > self::MAX_NDIM) {
+                return 'must have at most ' . self::MAX_NDIM . ' dimensions.';
+            }
             if ($probe === []) {
                 break;
             }
@@ -89,5 +101,22 @@ final class NumericArray implements ValidationRule
         }
 
         return null;
+    }
+
+    /** config('tessero.max_elements') when running inside Laravel, else DEFAULT_MAX_ELEMENTS. */
+    public static function configuredMaxElements(): int
+    {
+        if (function_exists('config')) {                         // Laravel's helper
+            try {
+                $v = config('tessero.max_elements');
+                if (is_numeric($v) && (int) $v > 0) {
+                    return (int) $v;
+                }
+            } catch (\Throwable) {
+                // no application container (the rule used outside a booted app)
+            }
+        }
+
+        return self::DEFAULT_MAX_ELEMENTS;
     }
 }

@@ -6,6 +6,9 @@
 UNAME_S := $(shell uname -s)
 UNAME_M := $(shell uname -m)
 LIBNAME := libtessero
+# the C ABI generation, from the single version source (include/tessero_version.h, ADR 0014): the soname
+# libtessero.so.<abi> changes only when the ABI does
+TSR_ABI := $(shell sed -n 's/^\#define TSR_ABI_VERSION \([0-9][0-9]*\).*/\1/p' include/tessero_version.h)
 # LAPACKE (row-major C LAPACK) and cblas back numpy.linalg / scipy.linalg and the float matmul in the kernel.
 #   Linux:   liblapacke + the system BLAS (OpenBLAS via the alternatives system).
 #   macOS:   Homebrew OpenBLAS, which ships LAPACK, LAPACKE (lapacke.h) and cblas in one library (Apple's
@@ -43,7 +46,9 @@ else
   MUSL := $(shell ldd --version 2>&1 | grep -qi musl && echo -musl)
   PLATFORM := linux$(MUSL)-$(UNAME_M)
   EXT := so
-  SHARED := -shared -Wl,-soname,libtessero.so
+  # the file keeps its name (the FFI loader opens lib/<platform>/libtessero.so by path); the soname carries the ABI
+  SONAME := libtessero.so.$(TSR_ABI)
+  SHARED := -shared -Wl,-soname,$(SONAME)
   LAPACK := -llapacke -lblas
 endif
 
@@ -72,7 +77,13 @@ else
 endif
 WARN := -Wall -Wextra -Wno-unused-parameter -Wshadow -Wno-sign-compare -Wno-type-limits -Wno-missing-field-initializers
 OPENMP ?= -fopenmp
-CFLAGS ?= -O3 -std=gnu11 -fPIC -fno-math-errno -fno-trapping-math -fvisibility=default $(OPENMP) $(WARN)
+CFLAGS ?= -O3 -std=gnu11 -fPIC -fno-math-errno -fno-trapping-math $(OPENMP) $(WARN)
+# Hidden by default: only the declarations of include/tessero.h are given default visibility (TSR_EXPORT_ABI,
+# src/internal.h), and the version script below exports exactly the tsr_ ABI. Vendored code (FITPACK, numpy
+# random, cdflib), internal helpers and the statically linked C++ runtime stay private, so they can neither
+# interpose on nor be interposed by another copy in the process (ADR 0014). Appended in the compile rules, so a
+# CFLAGS given on the command line keeps it.
+VIS := -fvisibility=hidden -DTSR_EXPORT_ABI
 LDLIBS := -lm $(LAPACK)
 CFLAGS += $(LAPACK_INC) $(PLATFORM_DEFS)
 CXXFLAGS += $(LAPACK_INC) $(PLATFORM_DEFS)
@@ -99,53 +110,79 @@ ifeq ($(HARDEN),1)
   LDLIBS += $(HARDEN_LD)
 endif
 
+# exports: the version script (GNU ld, gold, lld; probed, so another linker just skips it) keeps every symbol
+# that is not tsr_* local, plus the tsr_ helpers listed in it that are internal
+VERSION_SCRIPT := $(call try_so,-Wl$(comma)--version-script=$(CURDIR)/libtessero.map)
+# The library's own calls to its exported functions (tsr_alloc, tsr_free, tsr_get_threads, ...) bind inside it.
+# Without this a second libtessero already in the global scope (Talario's, loaded by its PHP extension) captured
+# them: arrays came from the other instance's allocator and budget, and errors went to its slots.
+VERSION_SCRIPT += $(call try_so,-Wl$(comma)-Bsymbolic-functions)
+LDLIBS += $(call try_so,-ldl)
+
 all: $(OUT)/$(LIBNAME).$(EXT)
 
 $(BUILD)/cxx/%.cpp.o: cxx/%.cpp cxx/*.hpp src/fn.h
 	@mkdir -p $(BUILD)/cxx
-	$(CXX) $(CXXFLAGS) $(TP_INC) -MMD -MP -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(VIS) $(TP_INC) -MMD -MP -c -o $@ $<
 
 $(BUILD)/cxx/%.cpp.o: cxx/wip/%.cpp cxx/*.hpp src/fn.h
 	@mkdir -p $(BUILD)/cxx
-	$(CXX) $(CXXFLAGS) $(TP_INC) -Icxx -MMD -MP -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(VIS) $(TP_INC) -Icxx -MMD -MP -c -o $@ $<
 
 $(BUILD)/cxx/wright.cc.o: third_party/scipy/wright.cc
 	@mkdir -p $(BUILD)/cxx
-	$(CXX) $(CXXFLAGS) $(TP_INC) -MMD -MP -c -o $@ $<
+	$(CXX) $(CXXFLAGS) $(VIS) $(TP_INC) -MMD -MP -c -o $@ $<
 
 OBJ_C = $(patsubst %.c,$(BUILD)/c/%.o,$(notdir $(SRC)))
-$(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h
+$(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h include/tessero_version.h
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -Ithird_party/numpy/include -c -o $@ $<
+	$(CC) $(CFLAGS) $(VIS) -Ithird_party/numpy/include -c -o $@ $<
 # repro_f32.c: the reproducible-f32 primitives MUST compile with contraction and fast-math OFF so
 # the compiler cannot contract or reassociate the non-fma arithmetic. This is what keeps the result
 # bit-identical across SIMD level, thread count and compiler (see csrc/repro/GOLDENS.md). The flags
 # follow $(CFLAGS) so they override anything inherited. This explicit target beats the generic rule.
 $(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h include/tessero_repro_f32.h
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -fno-fast-math -ffp-contract=off -Ithird_party/numpy/include -c -o $@ $<
+	$(CC) $(CFLAGS) -fno-fast-math -ffp-contract=off -fvisibility=default -Ithird_party/numpy/include -c -o $@ $<
 $(BUILD)/c/%.o: third_party/numpy/random/src/%.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) $(VIS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/%.o: third_party/scipy/quadpack/%.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/%.o: third_party/scipy/fitpack/%.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/%.o: third_party/scipy/zeros/%.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/_cosine.o: third_party/scipy/_cosine.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/cdflib.o: third_party/scipy/cdflib.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<
 
-$(OUT)/$(LIBNAME).$(EXT): $(OBJ_C) $(OBJ_CXX)
+$(OUT)/$(LIBNAME).$(EXT): $(OBJ_C) $(OBJ_CXX) libtessero.map
 	@mkdir -p $(OUT)
-	$(CXX) $(CFLAGS) $(OBJ_C) $(OBJ_CXX) $(SHARED) $(CXXLINK) -o $@ $(LDLIBS)
+	$(CXX) $(CFLAGS) $(OBJ_C) $(OBJ_CXX) $(SHARED) $(VERSION_SCRIPT) $(CXXLINK) -o $@ $(LDLIBS)
+ifneq ($(SONAME),)
+	@# programs linked with -ltessero record the soname: give the loader a file of that name next to the library
+	ln -sf $(LIBNAME).$(EXT) $(OUT)/$(SONAME)
+endif
+
+# The exported dynamic symbols must be exactly the functions declared in include/tessero.h (ifunc resolvers of
+# exported multiversioned functions aside). Fails on any extra or missing export.
+abi-check: $(OUT)/$(LIBNAME).$(EXT)
+	@mkdir -p $(BUILD)
+	@$(CC) -E -P -x c include/tessero.h | grep -oE '\btsr_[a-z0-9_]+[[:space:]]*\(' | sed 's/[[:space:]]*(//' | sort -u > $(BUILD)/abi.header
+	@nm -D --defined-only $< | awk '{print $$3}' | sed 's/@.*//' | grep -v -e '^TESSERO_' -e '\.resolver$$' | sort -u > $(BUILD)/abi.exported
+	@diff -u $(BUILD)/abi.header $(BUILD)/abi.exported && echo "abi-check: $$(wc -l < $(BUILD)/abi.exported) exported symbols == tessero.h declarations" \
+	    && readelf -d $< | grep -q 'SONAME.*$(SONAME)' && echo "abi-check: soname $(SONAME)"
+	@# a second copy already in the global scope (Talario's) must not capture this library's internal calls
+	@$(CC) -O1 -o $(BUILD)/abi_interpose tests/abi_interpose.c $(call try_so,-ldl)
+	@cp $< $(BUILD)/libtessero-other-copy.$(EXT)
+	@$(BUILD)/abi_interpose $(abspath $(BUILD))/libtessero-other-copy.$(EXT) $(abspath $<)
 
 # header dependencies of the C++ and vendored objects (-MMD)
 -include $(wildcard $(BUILD)/cxx/*.d $(BUILD)/c/*.d)
@@ -184,7 +221,7 @@ sanitize: $(BUILD)/test_san
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all portable test sanitize clean fuzz fuzz-standalone
+.PHONY: all portable test sanitize clean fuzz fuzz-standalone abi-check
 
 # ---- fuzzing (see csrc/fuzz/): coverage-guided with libFuzzer (clang + compiler-rt), or the standalone
 #      mutation driver under ASan + UBSan anywhere. Corpora live in fuzz/corpus/<target>.
