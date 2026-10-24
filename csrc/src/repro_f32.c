@@ -29,6 +29,7 @@
  */
 #include <stdint.h>
 
+#include "fmaf_ro.h"   /* before the header: its fmaf calls are correctly rounded on MinGW too (PD-16) */
 #include "../include/tessero_repro_f32.h"
 
 /* Thread count of the parallel loops: the kernel's tsr_set_threads setting (1 = serial, the default), so these
