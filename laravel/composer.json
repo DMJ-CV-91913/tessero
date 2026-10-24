@@ -6,8 +6,8 @@
     "require": {
         "php": "^8.2",
         "tessero/tessero": "^0.2",
-        "illuminate/support": "^12.0 || ^13.0",
-        "illuminate/contracts": "^12.0 || ^13.0"
+        "illuminate/support": "^12.0",
+        "illuminate/contracts": "^12.0"
     },
     "suggest": {
         "ext-tessero": "Native backend: no FFI configuration, 30x lower call overhead"
