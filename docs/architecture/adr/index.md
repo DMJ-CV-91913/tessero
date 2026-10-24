@@ -19,6 +19,7 @@ a new record that supersedes the old one.
 | [0011](0011-kernel-function-registry.md) | One function registry in the kernel, interpreted by both bindings | Accepted |
 | [0012](0012-pinned-reference-environment.md) | Reference fixtures are generated in a pinned numerical environment | Accepted (amends 0002) |
 | [0013](0013-registry-sequences-and-in-place-routines.md) | Registry routines take sequences, variadic and in-place arguments | Accepted (amends 0011, 0004) |
+| [0014](0014-abi-stability.md) | A versioned C ABI: exported surface, soname, capability query and process settings | Proposed (amends 0004, 0006) |
 
 To propose a decision, copy the template below into a new file with the next
 number and open a pull request. Discussion happens on the pull request.

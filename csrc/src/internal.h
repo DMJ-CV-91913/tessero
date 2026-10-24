@@ -6,7 +6,14 @@
 #include <stddef.h>
 #include <string.h>
 #include <math.h>
+/* libtessero is built hidden-by-default (csrc/Makefile VIS): the public ABI is exactly what tessero.h declares */
+#if defined(TSR_EXPORT_ABI) && defined(__GNUC__)
+#  pragma GCC visibility push(default)
+#endif
 #include "../include/tessero.h"
+#if defined(TSR_EXPORT_ABI) && defined(__GNUC__)
+#  pragma GCC visibility pop
+#endif
 
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846
@@ -166,5 +173,55 @@ static inline int tsr_iter_init(tsr_iter *it, int nop, int32_t ndim, const int64
 /* numpy bit-generator view of a PCG64 state (rng.c), for the numpy/random distributions */
 struct bitgen;
 void tsr_pcg64_bitgen(uint64_t *state, struct bitgen *bg);
+
+/*
+ * Checked allocation sizes (ADR 0014). A size that is the product of two INDEPENDENT lengths (n*n, rows*cols,
+ * count*itemsize) goes through these instead of a bare multiply: a negative operand or an int64 overflow gives
+ * -1 / NULL, so a huge argument becomes a MemoryError instead of a short buffer.
+ *   tsr_count_mul(a, b)        a*b, or -1
+ *   tsr_bytes_n(n, el, pad)    n*el + pad, or -1
+ *   tsr_alloc_n(n, el, pad)    counted tsr_alloc() of tsr_bytes_n() bytes (tessero.h); free it with
+ *                              tsr_free(p, tsr_bytes_n(n, el, pad))
+ *   tsr_scratch_n(n, el)       raw malloc of n*el bytes (at least 1) for scratch released with free()
+ *   tsr_scratch0_n(n, el)      the zero-filled (calloc) variant
+ * The raw helpers are NOT counted against the budget (see ADR 0014 for the counted-allocator plan).
+ * tsr_effective_cpus (alloc.c): CPUs this process may use (affinity mask and cgroup quota), cached, >= 1.
+ */
+#include <stdlib.h>
+int tsr_effective_cpus(void);
+static inline int tsr_mul_overflows(int64_t a, int64_t b, int64_t *out)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_mul_overflow(a, b, out);
+#else
+    if (a != 0 && b != 0 && (a > INT64_MAX / b)) return 1;   /* operands are non-negative here */
+    *out = a * b;
+    return 0;
+#endif
+}
+static inline int64_t tsr_count_mul(int64_t a, int64_t b)
+{
+    int64_t r;
+    if (a < 0 || b < 0 || tsr_mul_overflows(a, b, &r)) return -1;
+    return r;
+}
+static inline int64_t tsr_bytes_n(int64_t n, int64_t elsize, int64_t pad)
+{
+    const int64_t b = tsr_count_mul(n, elsize);
+    if (b < 0 || pad < 0 || b > INT64_MAX - pad) return -1;
+    return b + pad;
+}
+static inline void *tsr_scratch_n(int64_t n, int64_t elsize)
+{
+    const int64_t b = tsr_bytes_n(n, elsize, 0);
+    if (b < 0 || (uint64_t)b > (uint64_t)SIZE_MAX) return NULL;
+    return malloc(b > 0 ? (size_t)b : 1);
+}
+static inline void *tsr_scratch0_n(int64_t n, int64_t elsize)
+{
+    const int64_t b = tsr_bytes_n(n, elsize, 0);
+    if (b < 0 || (uint64_t)b > (uint64_t)SIZE_MAX) return NULL;
+    return b > 0 ? calloc((size_t)n, (size_t)elsize) : calloc(1, 1);
+}
 
 #endif
