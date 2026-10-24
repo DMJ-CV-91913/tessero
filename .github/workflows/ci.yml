@@ -100,13 +100,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
-      # `make fuzz` runs libFuzzer for a fixed wall time; it does not pass -seed yet (csrc/Makefile is owned by the
-      # kernel workstream: the proposal is `-seed=$${FUZZ_SEED:-1}` next to -max_total_time). The standalone driver
-      # below is fully deterministic: fixed seed, fixed number of runs.
-      - name: coverage-guided (clang + compiler-rt) - slice parser, .npy header, memmap planning, JSON writer
-        run: make -C csrc fuzz FUZZ_TIME=60 BUILD=./build-fuzz
+      # `make fuzz` passes -seed=$${FUZZ_SEED:-1} to libFuzzer and the standalone driver is fully deterministic
+      # (fixed seed, fixed run count). FUZZ_DEFS=-DFUZZ_SKIP_KNOWN steers the registry targets past the already-
+      # filed findings (fuzz/README.md) so CI fails only on a new or reintroduced crash.
+      - name: coverage-guided (clang + compiler-rt) - parsers + registry-routine targets
+        run: FUZZ_SEED=1 make -C csrc fuzz FUZZ_TIME=60 FUZZ_DEFS=-DFUZZ_SKIP_KNOWN BUILD=./build-fuzz
       - name: standalone mutation driver under gcc ASan + UBSan (the harness used where libFuzzer is missing)
-        run: FUZZ_SEED=1 make -C csrc fuzz-standalone FUZZ_RUNS=200000 BUILD=./build-fuzzsa
+        run: FUZZ_SEED=1 make -C csrc fuzz-standalone FUZZ_RUNS=200000 FUZZ_DEFS=-DFUZZ_SKIP_KNOWN BUILD=./build-fuzzsa
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: fuzz-crashes, path: 'csrc/crash-*' }

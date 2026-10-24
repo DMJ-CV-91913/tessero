@@ -28,9 +28,21 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      # TODO(ci): add the new fuzz targets here once the kernel workstream lands them in csrc/fuzz and
-      # FUZZ_TARGETS (csrc/Makefile); a target listed before its harness exists fails the build.
-      matrix: { target: [slice, npy, mmap_plan, json] }
+      # Parser targets run through FUZZ_TARGETS; registry targets (full kernel link) through FUZZ_REG_TARGETS
+      # with FUZZ_DEFS=-DFUZZ_SKIP_KNOWN so the run explores past the already-filed findings (fuzz/README.md)
+      # while still failing on a new one.
+      matrix:
+        include:
+          - { target: slice,     args: "FUZZ_TARGETS=slice" }
+          - { target: npy,       args: "FUZZ_TARGETS=npy" }
+          - { target: mmap_plan, args: "FUZZ_TARGETS=mmap_plan" }
+          - { target: json,      args: "FUZZ_TARGETS=json" }
+          - { target: npy_write, args: "FUZZ_TARGETS=npy_write" }
+          - { target: einsum,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=einsum FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: hist,      args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=hist FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: textio,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=textio FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: dtype,     args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=dtype FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: routines,  args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=routines FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -40,7 +52,7 @@ jobs:
           key: fuzz-${{ matrix.target }}-${{ github.run_id }}
           restore-keys: fuzz-${{ matrix.target }}-
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
-      - run: make -C csrc fuzz FUZZ_TARGETS=${{ matrix.target }} FUZZ_TIME=1800 BUILD=./build-fuzz
+      - run: make -C csrc fuzz ${{ matrix.args }} FUZZ_TIME=1800 BUILD=./build-fuzz
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
