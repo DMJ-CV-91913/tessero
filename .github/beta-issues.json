@@ -858,6 +858,22 @@
     "Tier-2 and Tier-3 items tracked as sub-issues",
     "The coverage page reflects each capability as it lands"
    ]
+  },
+  {
+   "id": "TSR-208",
+   "priority": "P2",
+   "title": "Retire PHP 8.2 and 8.3 support",
+   "labels": [
+    "tooling",
+    "tech-debt"
+   ],
+   "estimate": "1",
+   "context": "Owner decision 2026-10-24: support for PHP 8.2 and 8.3 is to be rolled off as future technical debt (not urgent). Today every branch from 8.2 is supported at its security-patched release (8.2.35, 8.3.36, 8.4.27, 8.5.12). Upstream security support ends for 8.2 on 2026-12-31 and for 8.3 on 2027-12-31.",
+   "acceptance": [
+    "composer.json, laravel/composer.json and ext/composer.json require ~8.4.27 || ^8.5.12 (or the then-current patched floors)",
+    "Library::phpPatched(), the extension MINIT check and its #error refuse 8.2 and 8.3; tests/Unit/PhpSecurityTest.php updated",
+    "CI matrices, the ASan PHP build and the README drop 8.2 and 8.3; version-conditional code for PHP < 8.4 in ext/ is removed"
+   ]
   }
  ]
 }
