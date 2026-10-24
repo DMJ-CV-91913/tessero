@@ -56,18 +56,12 @@ Build and CI:
 
 ## CI status after this tranche
 
-Now green on GitHub: Linux x86-64, aarch64 and musl builds; C tests under ASan + UBSan; libFuzzer; the
-`ext/libtessero` sync check; reproducible f32 on both ISAs; FPM-style preload; the reference Docker image.
-
-The downstream jobs ran for the first time ever and expose a second layer of pre-existing problems, none caused
-by these changes (the reference host passes the same suites):
-* FFI parity, the PHP matrix, docs and bench on `ubuntu-22.04`: that runner's LAPACK/OpenBLAS fails
-  `eigvals` ("illegal value in argument 10"), `tf2zpk` root solves, `eig_banded`, `subspace_angles`. Move these
-  jobs to the runner image whose LAPACK matches the reference host, or pin OpenBLAS.
-* `tessero/laravel unit tests`: the job never enables FFI (`ffi.enable=1`) or installs OpenBLAS.
-* `ext-tessero under ASan + UBSan`: `make test` runs without loading the module ("Required extension missing").
-* macOS and Windows: no LAPACK linkage (tier 2, non-blocking). `macos-13` was retired; the leg now uses
-  `macos-15-intel` (it had left every `ci` run on `main` queued forever).
+All four second-layer problems the first CI runs exposed are resolved; the final PR #55 run (2026-10-24) was
+green on every Linux, macOS and Windows lane. The jobs that execute linear algebra moved from `ubuntu-22.04` to
+`ubuntu-24.04` (LAPACK 3.12); the LAPACK 3.10 lane stays on 22.04 as an informational check. The Laravel jobs
+enable FFI and install OpenBLAS. The extension ASan job loads the module and asserts it. macOS and Windows link
+LAPACK (platform-debt PD-1 to PD-3, closed). The CI libFuzzer job went red on csgraph findings and a routines
+timeout found after #55; batch D fixes them (PR #57).
 
 ## PHP security floor (2026-10-24)
 
@@ -105,37 +99,51 @@ structure it classifies invalid to a random routine and fails if the call is acc
 
 ## Backlog (prioritised)
 
+Status as validated on 2026-10-24 (read-only audit of main plus PR #57). Done means implemented and covered by a
+test or a CI job.
+
 P0
-* Fix the second-layer CI jobs above, then merge; cut a release only once CI is green.
-* Add the verbatim f2c permission notice next to `f2c.h`; SHA-pin third-party actions (`softprops`,
-  `shivammathur`, `msys2`) and add Dependabot for actions and composer.
+* Done: fix the second-layer CI jobs, then merge (PR #55 merged with every lane green; see above). A release is
+  cut once PR #57 is in.
+* Done: the verbatim f2c permission notice (`csrc/third_party/scipy/fitpack/LICENSE.f2c`); every third-party
+  action pinned to a commit SHA; Dependabot for actions, composer, pip and docker.
 
 P1
-* `tsr_selfcheck` is never called and its gemm probe uses exactly representable inputs, so it cannot detect a
-  non-FMA build. Use full-mantissa inputs, prove sensitivity in CI, and call it at MINIT / FFI load.
-* Runtime FP-environment gate (MXCSR FTZ/DAZ/rounding on x86, FPCR on aarch64), checked on every OpenMP
-  thread before bit-exact routines.
-* Float-to-int casts of NaN/Inf/out-of-range values (cast loops, reductions stored to int) are UB: one
-  saturating helper with NumPy's results.
-* Cap OpenBLAS threads in the extension (`tessero.blas_threads`, default 1 outside the CLI); today only the
-  FFI path caps them, so php-fpm workers oversubscribe the CPU.
-* `-fvisibility=hidden` plus a version script for `libtessero.so`, a versioned soname, `tsr_abi_version()` /
-  feature query, and an ABI diff in CI (Talario and Kinetix link the C ABI directly).
-* Native memory budget derived from `memory_limit` by default; route the ~1000 raw `malloc` sites through a
-  counted, checked allocator (`tsr_alloc_n`).
-* Document `tsr_matmul` (OpenBLAS, tolerance) versus `tsr_gemm` (canonical, bit-exact) and publish a per-op
-  numerical-guarantees table.
-* PHP readers (`src/Io/*`): decompression caps, declared-count checks before loops, `readsav` record-pointer
-  loop, stream-wrapper refusal; `TESSERO_LIB`/`TESSERO_BLAS` read with `local_only` and absolute paths only.
-* New fuzz targets: einsum subscripts, histogram bins, text I/O, `.npy` header writer, NDArray
-  `__unserialize`/`fromBytes`, sparse constructors.
+* Done: `tsr_selfcheck` with a full-mantissa KAT, sensitivity proven in the C tests, called at MINIT and from
+  the FFI loader; golden `0x86bbab2bc87f8e3b` approved.
+* Done: the runtime FP-environment gate (`csrc/src/fpenv.c`, MXCSR/FPCR, OpenMP workers), with C tests.
+* Done: float-to-int UB. The checked helpers in `csrc/src/fn.h`, applied in fuzz-fix batches A to D.
+* Done: `tessero.blas_threads` in the extension, defaulting to 1 outside the CLI.
+* Done: hidden visibility, the `TESSERO_0.2` version script, soname `libtessero.so.2`, `tsr_abi_version()` /
+  `tsr_feature()`, and `make abi-check` in CI (ADR 0014).
+* Partial: the native budget derives from `memory_limit`, and the ownership lint checks that every raw `malloc`
+  is freed by the same layer (ADR 0015), but about 730 raw `malloc` sites in `csrc/src` are not yet counted
+  against the budget.
+* Done: `tsr_matmul` versus `tsr_gemm` documented, with the per-op table in
+  `docs/reference/numerical-guarantees.md`.
+* Done: the PHP readers. `IoGuard` (stream-wrapper refusal, size caps), declared-count checks, the `readsav`
+  loop guard, `TESSERO_LIB` read with `getenv(..., true)` and absolute paths only; `IoHardeningTest`.
+* Done: new fuzz targets (dtype, einsum, hist, textio, npy_write, routines, abi).
 
 P2
-* SBOM (CycloneDX), build provenance attestation, cosign-signed checksums, CodeQL, OpenSSF Scorecard.
-* Nightly TSan for the OpenMP kernels, Valgrind over the release-flag build, gcov coverage.
-* Complex division (Smith's algorithm), float `floor_divide` via `npy_divmod`, NaN-propagating `norm(inf)`,
-  signed-zero checks in the parity comparator, documented `long double` platform dependence.
-* Thread-local error state in the C++ distribution layer; LAPACK 32-bit dimension guards.
+* Done: SBOM, build provenance, cosign-signed checksums, CodeQL and OpenSSF Scorecard.
+* Done: nightly TSan and Valgrind. Open: a gcov coverage job.
+* Done: Smith complex division, `floor_divide` via `npy_divmod`, NaN-propagating `norm(inf)`, the documented
+  `long double` dependence. Partial: signed zero is documented and C-tested, but the PHP parity comparator does
+  not check it.
+* Done: thread-local error state in the C++ distribution layer; LAPACK 32-bit dimension guards (`TSR_LA_FIT`).
+
+Added by the 2026-10-24 validation
+* Done (PR #57): CodeQL triage. 10 real alerts fixed (int multiplications widened before conversion, the
+  `tsr_npy_write_header` snprintf bounds, two overflow checks rewritten); the rest are documented false positives
+  for the owner to dismiss.
+* Done (PR #57): Valgrind memcheck runs the FFI parity subset with `pcre.jit=0` (PCRE2's JIT read 1 byte past a
+  PHP string; not Tessero).
+* Done (PR #57): exact per-architecture pins for the batch D Wallenius and radial c = -inf checks on aarch64.
+* Done (PR #57): the security contact is security@tessero.org (GitHub private vulnerability reporting stays
+  disabled by owner decision).
+* Open (owner): point the "protect: main" ruleset at the default branch; its branch condition is empty, so main is
+  not protected against force pushes.
 
 ## The outside advisory ("omni-panel")
 
