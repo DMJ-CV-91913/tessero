@@ -2015,6 +2015,17 @@ static double sl_binom(int64_t n, int64_t k)
     return floor(r + 0.5);
 }
 
+/* Row k of sl_binom with its exact arithmetic: for i <= k/2, sl_binom(k, i) is floor(r_i + 0.5) where r_i is the
+   running product after i steps, so one O(k) pass gives the same bits as k separate O(k) calls (b has k+1 slots). */
+static void sl_binom_row(int64_t k, double *b)
+{
+    double r = 1.0;
+    b[0] = 1.0;
+    const int64_t h = k / 2;
+    for (int64_t i = 0; i < h; i++) { r = r * (double)(k - i) / (double)(i + 1); b[i + 1] = floor(r + 0.5); }
+    for (int64_t i = h + 1; i <= k; i++) b[i] = b[k - i];
+}
+
 /* pascal(n, kind='symmetric'): the n x n Pascal matrix. symmetric S[i][j] = C(i+j, i); lower L[i][j] = C(i, j)
    (0 for j > i); upper U[i][j] = C(j, i) (scipy.linalg.pascal). */
 static int r_pascal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -2052,18 +2063,44 @@ static int r_invpascal(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
         else if (!strcmp(args[1].str, "upper")) kind = 2;
         else if (strcmp(args[1].str, "symmetric") != 0) { fn_set_error("invpascal: kind must be 'symmetric', 'lower' or 'upper'"); return TSR_EARG; }
     }
+    /* the symmetric inverse sums n terms per entry (n^3/6 multiply-adds): beyond 2^30 of them the work is out of
+       reach (and every entry past n ~ 1030 is inf/nan in float64 anyway). Fuzzing timed out here (CI, seed 1). */
+    if (kind == 0 && n > 1860) {
+        fn_set_error("invpascal: n=%lld is too large for kind='symmetric' (at most 1860)", (long long)n);
+        return TSR_EARG;
+    }
     int64_t osh[2] = {n, n};
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
     if (!out) return TSR_ENOMEM;
-    for (int64_t i = 0; i < n; i++)
-        for (int64_t j = 0; j < n; j++) {
-            const double sign = ((i + j) & 1) ? -1.0 : 1.0;
-            double v;
-            if (kind == 1) v = sign * sl_binom(i, j);
-            else if (kind == 2) v = sign * sl_binom(j, i);
-            else { double s = 0.0; for (int64_t k = (i > j ? i : j); k < n; k++) s += sl_binom(k, i) * sl_binom(k, j); v = sign * s; }
-            out[i * n + j] = v;
+    double *b = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));      /* one binomial row */
+    if (!b) return TSR_ENOMEM;                                     /* res[0] is released by tsr_fn_routine */
+    /* every entry is computed from the same binomials as before (sl_binom_row is bit-identical to sl_binom), the
+       symmetric sums in the same ascending-k order: results are unchanged, the work is O(n^2) / O(n^3) instead of
+       O(n^3) / O(n^4) */
+    if (kind == 1 || kind == 2) {
+        for (int64_t k = 0; k < n; k++) {
+            sl_binom_row(k, b);
+            for (int64_t t = 0; t < n; t++) {
+                const int64_t i = kind == 1 ? k : t, j = kind == 1 ? t : k;   /* lower: C(i, j); upper: C(j, i) */
+                const double sign = ((i + j) & 1) ? -1.0 : 1.0;
+                out[i * n + j] = sign * (t <= k ? b[t] : 0.0);
+            }
         }
+    } else {
+        for (int64_t q = 0; q < n * n; q++) out[q] = 0.0;
+        for (int64_t k = 0; k < n; k++) {                          /* s(i, j) += C(k, i) C(k, j), k ascending */
+            sl_binom_row(k, b);
+            for (int64_t i = 0; i <= k; i++)
+                for (int64_t j = i; j <= k; j++) out[i * n + j] += b[i] * b[j];
+        }
+        for (int64_t i = 0; i < n; i++)
+            for (int64_t j = i; j < n; j++) {
+                const double sign = ((i + j) & 1) ? -1.0 : 1.0, s = out[i * n + j];
+                out[i * n + j] = sign * s;
+                out[j * n + i] = sign * s;
+            }
+    }
+    free(b);
     return TSR_OK;
 }
 

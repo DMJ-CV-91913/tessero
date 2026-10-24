@@ -10,6 +10,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* A node-index argument (i_start): a Python int in [0, n). Unchecked, it indexed the one-byte-per-node visited
+   block and the predecessor arrays out of bounds (fuzz findings C-O1 and the CI csg_bfs_pred overflow). */
+static int csg_node_arg(const tsr_arg *a, int64_t n, const char *what, int64_t *out)
+{
+    if (n <= 0) { fn_set_error("%s out of range: the graph has no nodes", what); return TSR_EARG; }
+    return fn_arg_i64(a, 0, 0, n - 1, what, out);
+}
+/* An integer argument converted without undefined behaviour; range checks stay with the caller. */
+static int csg_int_arg(const tsr_arg *a, const char *what, int64_t *out)
+{
+    return fn_arg_i64(a, 0, INT64_MIN, INT64_MAX, what, out);
+}
+
 static int r_connected_components(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -166,7 +179,8 @@ static int r_breadth_first_order(const void *ctx, const tsr_arg *args, int nargs
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2) { fn_set_error("breadth_first_order: graph (square) and i_start required"); return TSR_EARG; }
     int64_t n = args[0].arr.shape[0];
-    int64_t start = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int64_t start;
+    { const int src = csg_node_arg(&args[1], n, "breadth_first_order: i_start", &start); if (src < 0) return src; }
     int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
     int64_t tot; double *A = fn_arg_doubles(&args[0], &tot); if (!A) return TSR_ENOMEM;
     int64_t *order = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
@@ -200,7 +214,8 @@ static int r_depth_first_order(const void *ctx, const tsr_arg *args, int nargs, 
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2) { fn_set_error("depth_first_order: graph (square) and i_start required"); return TSR_EARG; }
     int64_t n = args[0].arr.shape[0];
-    int64_t start = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int64_t start;
+    { const int src = csg_node_arg(&args[1], n, "depth_first_order: i_start", &start); if (src < 0) return src; }
     int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
     int64_t tot; double *A = fn_arg_doubles(&args[0], &tot); if (!A) return TSR_ENOMEM;
     int64_t *order = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
@@ -324,13 +339,17 @@ static int r_construct_dist_matrix(const void *ctx, const tsr_arg *args, int nar
     int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
     int64_t ta, tp; double *A = fn_arg_doubles(&args[0], &ta); if (!A) return TSR_ENOMEM;
     double *P = fn_arg_doubles(&args[1], &tp); if (!P) { fn_free_doubles(A, ta); return TSR_ENOMEM; }
+    if (args[1].arr.shape[0] != n || args[1].arr.shape[1] != n) {          /* read past P otherwise */
+        fn_free_doubles(A, ta); fn_free_doubles(P, tp);
+        fn_set_error("construct_dist_matrix: predecessors must have the shape of the graph"); return TSR_EARG;
+    }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
     if (!out) { fn_free_doubles(A, ta); fn_free_doubles(P, tp); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) {
         if (i == j) { out[i * n + j] = 0.0; continue; }
         double d = 0.0; int64_t cur = j, steps = 0, ok = 0;
         while (steps++ <= n) {
-            int64_t p = (int64_t)P[i * n + cur];
+            int64_t p = fn_dbl_i64(P[i * n + cur], -1);
             if (p < 0 || p >= n) break;                                   /* -9999 sentinel: no path */
             double w = A[p * n + cur] != 0.0 ? A[p * n + cur] : (!directed ? A[cur * n + p] : 0.0);
             d += w; cur = p;
@@ -350,10 +369,14 @@ static int r_reconstruct_path(const void *ctx, const tsr_arg *args, int nargs, t
     int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
     int64_t ta, tp; double *A = fn_arg_doubles(&args[0], &ta); if (!A) return TSR_ENOMEM;
     double *P = fn_arg_doubles(&args[1], &tp); if (!P) { fn_free_doubles(A, ta); return TSR_ENOMEM; }
+    if (args[1].arr.ndim != 1 || tp != n) {                                 /* read past P otherwise */
+        fn_free_doubles(A, ta); fn_free_doubles(P, tp);
+        fn_set_error("reconstruct_path: predecessors must be 1-D with one entry per node"); return TSR_EARG;
+    }
     int64_t *pred = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
     if (!pred || !out) { free(pred); fn_free_doubles(A, ta); fn_free_doubles(P, tp); return TSR_ENOMEM; }
-    for (int64_t j = 0; j < n; j++) { int64_t p = (int64_t)P[j]; pred[j] = (p >= 0 && p < n) ? p : -1; }
+    for (int64_t j = 0; j < n; j++) { int64_t p = fn_dbl_i64(P[j], -1); pred[j] = (p >= 0 && p < n) ? p : -1; }
     csg_emit_tree(A, n, directed, pred, out);
     free(pred); fn_free_doubles(A, ta); fn_free_doubles(P, tp);
     return TSR_OK;
@@ -363,7 +386,8 @@ static int r_first_tree(const tsr_arg *args, int nargs, tsr_result *res, int bfs
 {
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1] || nargs < 2) { fn_set_error("*_tree: graph (square) and i_start required"); return TSR_EARG; }
     int64_t n = args[0].arr.shape[0];
-    int64_t start = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    int64_t start;
+    { const int src = csg_node_arg(&args[1], n, "*_first_tree: i_start", &start); if (src < 0) return src; }
     int directed = !(nargs > 2 && args[2].kind == 4 && args[2].num == 0.0);
     int64_t ta; double *A = fn_arg_doubles(&args[0], &ta); if (!A) return TSR_ENOMEM;
     int64_t *pred = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
@@ -428,6 +452,14 @@ static int r_min_weight_full_bipartite_matching(const void *ctx, const tsr_arg *
     int64_t n = args[0].arr.shape[0], tot; double *A = fn_arg_doubles(&args[0], &tot);
     if (!A) return TSR_ENOMEM;
     const double BIG = 1e15;
+    /* NaN/inf weights (or weights near BIG) broke the potentials: no column was ever chosen (j1 = -1) and the
+       unmatched p[j] = 0 wrote the result at index -1 (fuzz). Weights must be finite and below the no-edge cost. */
+    for (int64_t q = 0; q < n * n; q++)
+        if (!(fabs(A[q]) < BIG)) {
+            fn_free_doubles(A, tot);
+            fn_set_error("min_weight_full_bipartite_matching: edge weights must be finite (and below 1e15 in magnitude)");
+            return TSR_EARG;
+        }
     double *u = (double *)calloc((size_t)(n + 1), sizeof(double));
     double *v = (double *)calloc((size_t)(n + 1), sizeof(double));
     double *minv = (double *)malloc((size_t)(n + 1) * sizeof(double));
@@ -451,10 +483,22 @@ static int r_min_weight_full_bipartite_matching(const void *ctx, const tsr_arg *
                 if (used[j]) { u[p[j]] += delta; v[j] -= delta; }
                 else minv[j] -= delta;
             }
+            if (j1 < 0) {                                             /* numerical breakdown: never index with -1 */
+                free(u); free(v); free(minv); free(p); free(way); free(used); fn_free_doubles(A, tot);
+                fn_set_error("min_weight_full_bipartite_matching: no full matching exists");
+                return TSR_EARG;
+            }
             j0 = j1;
         } while (p[j0] != 0);
         do { int64_t j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0);
     }
+    /* a perfect matching that has to use a missing edge (the BIG cost) is not a full matching: SciPy's ValueError */
+    for (int64_t j = 1; j <= n; j++)
+        if (p[j] < 1 || p[j] > n || A[(p[j] - 1) * n + (j - 1)] == 0.0) {
+            free(u); free(v); free(minv); free(p); free(way); free(used); fn_free_doubles(A, tot);
+            fn_set_error("min_weight_full_bipartite_matching: no full matching exists");
+            return TSR_EARG;
+        }
     int64_t sh[1] = {n};
     int64_t *ri = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, sh);
     int64_t *ci = (int64_t *)fn_result_array(&res[1], TSR_I64, 1, sh);
@@ -531,12 +575,17 @@ static int r_maximum_flow(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     }
     if (nargs < 3) { fn_set_error("maximum_flow: source and sink are required"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0];
-    const int64_t s = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
-    const int64_t t = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    int64_t s, t;
+    { int ir = csg_int_arg(&args[1], "maximum_flow: source", &s); if (ir < 0) return ir;
+      ir = csg_int_arg(&args[2], "maximum_flow: sink", &t); if (ir < 0) return ir; }
     if (s < 0 || s >= n || t < 0 || t >= n) { fn_set_error("maximum_flow: source/sink out of range"); return TSR_EARG; }
 
     int64_t tot; double *A = fn_arg_doubles(&args[0], &tot);
     if (!A) return TSR_ENOMEM;
+    for (int64_t i = 0; i < n * n; i++)               /* SciPy: integer capacities; also no cast of NaN/huge */
+        if (!(A[i] == floor(A[i])) || !fn_dbl_fits_i64(A[i])) {
+            fn_free_doubles(A, tot); fn_set_error("maximum_flow: graph capacities must be integers"); return TSR_EARG;
+        }
 
     int64_t *cap = (int64_t *)malloc((size_t)(n * n) * sizeof(int64_t));
     int64_t *orig = (int64_t *)malloc((size_t)(n * n) * sizeof(int64_t));
@@ -796,9 +845,10 @@ static int r_yen(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     }
     if (nargs < 4) { fn_set_error("yen: source, sink and K are required"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0];
-    const int64_t src  = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
-    const int64_t sink = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
-    const int64_t K    = (args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num;
+    int64_t src, sink, K;
+    { int ir = csg_int_arg(&args[1], "yen: source", &src); if (ir < 0) return ir;
+      ir = csg_int_arg(&args[2], "yen: sink", &sink); if (ir < 0) return ir;
+      ir = csg_int_arg(&args[3], "yen: K", &K); if (ir < 0) return ir; }
     const int directed = csg_flag(args, nargs, 4, 1);
     if (src < 0 || src >= n || sink < 0 || sink >= n) { fn_set_error("yen: source/sink out of range"); return TSR_EARG; }
     if (K <= 0) { fn_set_error("yen: K must be positive"); return TSR_EARG; }
@@ -964,8 +1014,10 @@ static int r_csgraph_to_dense(const void *ctx, const tsr_arg *args, int nargs, t
         fn_set_error("csgraph_to_dense: data, indices, indptr and n_nodes are required");
         return TSR_EARG;
     }
-    const int64_t n = (args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num;
+    int64_t n;
+    { const int ir = csg_int_arg(&args[3], "csgraph_to_dense: n_nodes", &n); if (ir < 0) return ir; }
     if (n < 0) { fn_set_error("csgraph_to_dense: n_nodes must be non-negative"); return TSR_EARG; }
+    if (n > 3037000499LL) { fn_set_error("csgraph_to_dense: n_nodes is too large"); return TSR_EARG; }
     const double null_value = (nargs > 4 && args[4].kind != 0) ? args[4].num : 0.0;
     int64_t ndat, nind, nptr;
     double *data = fn_arg_doubles(&args[0], &ndat);
@@ -979,6 +1031,17 @@ static int r_csgraph_to_dense(const void *ctx, const tsr_arg *args, int nargs, t
         fn_free_doubles(data, ndat); fn_free_doubles(indices, nind); fn_free_doubles(indptr, nptr);
         fn_set_error("csgraph_to_dense: indptr must have n_nodes+1 entries"); return TSR_EARG;
     }
+    /* indptr indexes data and indices: it must start at 0, never decrease and stay within both (as a CSR
+       matrix requires); unchecked, it read past them */
+    const int64_t nnz = ndat < nind ? ndat : nind;
+    for (int64_t i = 0; i <= n; i++) {
+        const int64_t v = fn_dbl_i64(indptr[i], -1), prev = i ? fn_dbl_i64(indptr[i - 1], -1) : 0;
+        if (v < 0 || v > nnz || v < prev || (i == 0 && v != 0) || indptr[i] != floor(indptr[i])) {
+            fn_free_doubles(data, ndat); fn_free_doubles(indices, nind); fn_free_doubles(indptr, nptr);
+            fn_set_error("csgraph_to_dense: indptr must start at 0, be non-decreasing and not exceed the data length");
+            return TSR_EARG;
+        }
+    }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
     char *seen = (char *)calloc((size_t)(n * n > 0 ? n * n : 1), 1);
     if (!out || !seen) {
@@ -990,7 +1053,7 @@ static int r_csgraph_to_dense(const void *ctx, const tsr_arg *args, int nargs, t
     for (int64_t i = 0; i < n; i++) {
         const int64_t lo = (int64_t)indptr[i], hi = (int64_t)indptr[i + 1];
         for (int64_t k = lo; k < hi; k++) {
-            const int64_t j = (int64_t)indices[k];
+            const int64_t j = fn_dbl_i64(indices[k], -1);
             if (j < 0 || j >= n) continue;
             const double v = data[k];
             const int64_t p = i * n + j;
