@@ -43,6 +43,9 @@ if test "$PHP_TESSERO" != "no"; then
   TESSERO_HARDEN=""
   if test "$PHP_TESSERO_HARDEN" != "no"; then
     for f in "-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3" -fstack-protector-strong -fstack-clash-protection              -fcf-protection=full -mbranch-protection=standard -ftrivial-auto-var-init=zero              -fno-delete-null-pointer-checks; do
+      dnl not on macOS: the arm64 (non-arm64e) unwinder does not follow pac-ret, so C++ exceptions could not
+      dnl unwind (csrc/Makefile has the details)
+      case "$host_os:$f" in darwin*:-mbranch-protection*) continue ;; esac
       tessero_save_CFLAGS=$CFLAGS; CFLAGS="$CFLAGS -O2 -Werror $f"
       AC_LINK_IFELSE([AC_LANG_PROGRAM([], [])], [TESSERO_HARDEN="$TESSERO_HARDEN $f"])
       CFLAGS=$tessero_save_CFLAGS

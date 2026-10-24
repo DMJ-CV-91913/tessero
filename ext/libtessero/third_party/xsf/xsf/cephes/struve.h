@@ -292,7 +292,12 @@ namespace cephes {
         }
 
         XSF_HOST_DEVICE inline double struve_hl(double v, double z, int is_h) {
-            double value[4], err[4], tmp;
+            /* Tessera local modification: value[] initialised. With the asymptotic branch skipped (err[0] = inf) and
+               NaN error estimates from both series, n stays 0 and value[0] was read uninitialised (Valgrind). The
+               comparison involving it is false for every value, so results are unchanged. */
+            double value[4] = {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+                               std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()},
+                   err[4], tmp;
             int n;
 
             if (z < 0) {
