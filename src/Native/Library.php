@@ -204,6 +204,13 @@ final class Library
         if ($budget !== null) {
             $ffi->tsr_set_budget($budget);
         }
+        // A non-canonical FP environment (flush-to-zero, directed rounding, unmasked traps: e.g. set by another
+        // library linked with -ffast-math) silently changes results: warn once, never fail the load. Calling thread
+        // only: an OpenMP region here, before php-fpm forks its workers, would break libgomp in the children.
+        $buf = $ffi->new('char[256]');
+        if ($ffi->tsr_fpenv_check_thread($buf, 256) !== 0) {
+            trigger_error('Tessero: non-canonical floating-point environment: ' . \FFI::string($buf), E_USER_WARNING);
+        }
         // The BLAS libtessero links (used by matmul) gets the same web-SAPI default as the extension's
         // tessero.blas_threads=auto: one thread per worker, since php-fpm already runs a worker per core.
         $threads = self::defaultBlasThreads(PHP_SAPI, getenv('TESSERO_BLAS_THREADS', true));

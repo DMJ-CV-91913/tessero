@@ -30,6 +30,15 @@ final class AbiFeatureTest extends TestCase
         }
     }
 
+    public function testSelfcheckOnACanonicalHost(): void
+    {
+        $r = Tessero::selfcheck();
+        $this->assertSame(0, $r['fpenv'], $r['fpenv_reason']);
+        $this->assertSame(0, $r['selfcheck']);
+        $this->assertTrue($r['canonical']);
+        $this->assertTrue(Tessero::feature('fpenv_check'));
+    }
+
     public function testBlasThreadDefaults(): void
     {
         $this->assertNull(Library::defaultBlasThreads('cli', false));
