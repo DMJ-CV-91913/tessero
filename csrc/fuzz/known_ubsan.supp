@@ -6,7 +6,8 @@
 # Suppressing the cast itself keeps the x86 result (INT64_MIN) flowing, so any memory error it leads to
 # downstream is still reported. The class is fixed (checked conversions, fn_arg_i64 / fn_dbl_i64 in src/fn.h) in
 # np_numeric.c, np_io.c, np_sets.c, scipy_ndimage.c, scipy_sparse.c, scipy_fft.c, spatial_distance.c, mmap.c,
-# stats_fn_desc.cpp and stats_fn_tests.cpp, which are therefore not listed: casts there are reported.
+# stats_fn_desc.cpp and stats_fn_tests.cpp (batch A) and scipy_interpolate.c and scipy_cluster_hier.c (batch C),
+# which are therefore not listed: casts there are reported.
 float-cast-overflow:cxx/dist_basic.cpp
 float-cast-overflow:cxx/dist_cont1.cpp
 float-cast-overflow:cxx/dist_cont2.cpp
@@ -47,9 +48,7 @@ float-cast-overflow:src/reduce.c
 float-cast-overflow:src/repro_f32.c
 float-cast-overflow:src/rng.c
 float-cast-overflow:src/scipy_cluster.c
-float-cast-overflow:src/scipy_cluster_hier.c
 float-cast-overflow:src/scipy_csgraph.c
-float-cast-overflow:src/scipy_interpolate.c
 float-cast-overflow:src/scipy_signal.c
 float-cast-overflow:src/scipy_sparse_linalg.c
 float-cast-overflow:src/selfcheck.c
