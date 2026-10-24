@@ -2,3 +2,7 @@
 # libgomp allocates its thread-pool descriptor once at initialisation and never frees it
 leak:libgomp.so
 leak:gomp_
+# ext-tessero builds its function registry (arginfo, the routine table, the Generator class) in MINIT with
+# persistent allocations and does not free them in MSHUTDOWN: one-time, process-lifetime, reported at exit.
+# Tracked for the extension owners (free them in MSHUTDOWN, then drop this line); per-request leaks still fail.
+leak:zm_startup_tessero
