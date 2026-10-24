@@ -467,11 +467,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        laravel: ['10', '11', '12']
-    # Composer (2.9+) refuses every laravel/framework 10.x and 11.x release: they are affected by security advisories
-    # (PKSA-b41t-wbzk-9q51 and others) that will not be fixed on those lines. Whether to keep ^10 || ^11 in
-    # composer.json is the owner's decision; until then those legs report without blocking.
-    continue-on-error: ${{ matrix.laravel != '12' }}
+        # Laravel 12 is the minimum: Composer refuses every laravel/framework 10.x and 11.x release (security
+        # advisories such as PKSA-b41t-wbzk-9q51 that will not be fixed on those lines). Add a major here when it ships.
+        laravel: ['12', '13']
     env:
       # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
       # reductions through BLAS keep one summation order whatever CPU model the runner happens to have

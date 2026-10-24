@@ -1188,9 +1188,14 @@ static void test_ci_regressions(void)
     tsr_special_yn(NULL, y5, &o5); tsr_special_yn(NULL, y6, &o6);
     tsr_special_yn__int(NULL, y5, &i5); tsr_special_yn__int(NULL, y6, &i6);
     CHECK(o5 == i5 && o6 == i6, "yn of an integral double order is the integer-order kernel %.17g %.17g", o5, o6);
-#if !defined(__APPLE__)
-    /* bits recorded with glibc, musl and MinGW, which agree. yn is tier B (built on libm sin/cos/log, see
-       docs/reference/numerical-guarantees.md): Apple's libm lands 1 to 2 ulp away, so the pin is not portable */
+    /* yn is tier B (built on libm sin/cos/log, docs/reference/numerical-guarantees.md), so the bits are pinned per
+       platform (PD-20): glibc, musl and MinGW agree; Apple's libm lands 1 ulp away in one value or the other */
+#if defined(__APPLE__) && defined(__aarch64__)
+    CHECK(o5 == -7946.3014788074743 && o6 == 0.029480196281661417, "yn finite orders unchanged %.17g %.17g", o5, o6);
+#elif defined(__APPLE__)
+    CHECK(o5 == -7946.3014788074752 && o6 == 0.029480196281661424, "yn finite orders unchanged %.17g %.17g", o5, o6);
+#else
+    /* glibc, musl and MinGW */
     CHECK(o5 == -7946.3014788074752 && o6 == 0.029480196281661417, "yn finite orders unchanged %.17g %.17g", o5, o6);
 #endif
     double sm[2] = {INFINITY, 0.5}, so;
