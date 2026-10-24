@@ -80,10 +80,14 @@ if test "$PHP_TESSERO" != "no"; then
   case $host_os in
     linux*|*gnu*|freebsd*)
       TESSERO_SHARED_LIBADD="$TESSERO_SHARED_LIBADD -Wl,--version-script=$ext_srcdir/tessero.map"
-      dnl never unloaded at shutdown: unloading could take libgomp away while OpenMP worker threads are alive
-      TESSERO_SHARED_LIBADD="$TESSERO_SHARED_LIBADD -Wl,-z,nodelete"
       ;;
   esac
+  dnl -z nodelete (probed): the module is never unmapped by dlclose() at PHP shutdown, so OpenMP worker threads
+  dnl of libgomp can finish without executing unmapped code. A preventive measure, not a reproduction-tested fix
+  dnl (docs/architecture/adr/0014-abi-stability.md). Engine::feature('nodelete') reports whether it was applied.
+  tessero_save_LDFLAGS=$LDFLAGS; LDFLAGS="$LDFLAGS -Werror -Wl,-z,nodelete"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([], [])], [TESSERO_SHARED_LIBADD="$TESSERO_SHARED_LIBADD -Wl,-z,nodelete"])
+  LDFLAGS=$tessero_save_LDFLAGS
 
   PHP_ADD_EXTENSION_DEP(tessero, json)
   PHP_ADD_EXTENSION_DEP(tessero, spl)

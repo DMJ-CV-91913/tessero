@@ -167,3 +167,22 @@ The per-call sink above removes that last shared slot.
 - Renaming the file to `libtessero.so.2` with a `libtessero.so` symlink: breaks Windows checkouts and the FFI
   path on systems that do not preserve symlinks.
 - Making `Engine::setMaxThreads` throw under ZTS: breaks the Laravel provider, which calls it at boot.
+
+## Process lifetime: linked with -z nodelete
+
+`libtessero.so` and the extension `tessero.so` are linked with `-Wl,-z,nodelete` when the linker supports it
+(probed in `csrc/Makefile` and `ext/config.m4`; skipped where it is unsupported, e.g. macOS ld64 and MSVC). The
+dynamic linker then never unmaps them on `dlclose()`.
+
+Why: PHP unloads extensions at shutdown, and PHP FFI releases the libraries it loaded. If the library is
+unmapped while libgomp's OpenMP worker threads still exist (any run with `tessero.threads` > 1), those threads
+can execute unmapped code and the process crashes on exit.
+
+Status: a preventive, architectural measure, NOT a reproduction-tested fix. The crash was reported once during
+the 2026-10 review (about one exit in three, `php -n` with the extension, 4 threads, on a heavily loaded host) and
+did not reproduce in 210 runs on the integrated tree afterwards. The flag costs nothing at run time and changes no
+result; the only effect is that the library stays mapped until the process exits, which a PHP worker does anyway.
+
+Check: `tsr_feature("nodelete")` (and `Engine::feature('nodelete')` / `Tessero::feature('nodelete')`) is 1 when
+the loaded object really carries `DF_1_NODELETE`; it reads the object's own ELF dynamic section, so it reports what
+the linker did. Linux CI asserts it.

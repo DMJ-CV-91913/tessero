@@ -115,8 +115,9 @@ VERSION_SCRIPT := $(call try_so,-Wl$(comma)--version-script=$(CURDIR)/libtessero
 # Without this a second libtessero already in the global scope (Talario's, loaded by its PHP extension) captured
 # them: arrays came from the other instance's allocator and budget, and errors went to its slots.
 VERSION_SCRIPT += $(call try_so,-Wl$(comma)-Bsymbolic-functions)
-# never unloaded (PHP FFI releases its libraries at shutdown): unloading could take libgomp away while OpenMP
-# worker threads are still alive, a crash at process exit
+# -z nodelete (probed): never unmapped by dlclose() (PHP FFI releases its libraries at shutdown), so libgomp's
+# OpenMP worker threads can finish without executing unmapped code. Preventive, not reproduction-tested
+# (ADR 0014); tsr_feature("nodelete") reports whether the linker applied it.
 VERSION_SCRIPT += $(call try_so,-Wl$(comma)-z$(comma)nodelete)
 LDLIBS += $(call try_so,-ldl)
 

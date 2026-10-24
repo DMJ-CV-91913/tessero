@@ -214,6 +214,22 @@ int tsr_get_blas_threads(void)
     return g_blas_get ? g_blas_get() : 0;
 }
 
+#if defined(__linux__) && defined(__ELF__)
+#  include <elf.h>
+#  include <link.h>
+/* 1 when this shared object was linked with -z nodelete (DF_1_NODELETE in its own DT_FLAGS_1), else 0 */
+static int tsr_linked_nodelete(void)
+{
+    extern ElfW(Dyn) _DYNAMIC[] __attribute__((weak));
+    if (!_DYNAMIC) return 0;
+    for (const ElfW(Dyn) *d = _DYNAMIC; d->d_tag != DT_NULL; d++)
+        if (d->d_tag == DT_FLAGS_1) return (d->d_un.d_val & DF_1_NODELETE) != 0;
+    return 0;
+}
+#else
+static int tsr_linked_nodelete(void) { return 0; }
+#endif
+
 int tsr_feature(const char *name)
 {
     if (!name) return 0;
@@ -229,6 +245,7 @@ int tsr_feature(const char *name)
     if (strcmp(name, "openblas_threads") == 0) { tsr_blas_resolve(); return g_blas_set != NULL; }
     if (strcmp(name, "openmp") == 0) return tsr_openmp();
     if (strcmp(name, "fpenv_check") == 0) return 1;     /* fpenv.c: tsr_fpenv_check / tsr_fpenv_check_thread */
+    if (strcmp(name, "nodelete") == 0) return tsr_linked_nodelete();   /* linked -z nodelete (ADR 0014) */
     return 0;
 }
 
