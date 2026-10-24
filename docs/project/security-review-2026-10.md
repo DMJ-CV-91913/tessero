@@ -131,3 +131,19 @@ It would add another FFI surface, it is not thread-safe, it accepts any pointer 
 registered block (not the block it belongs to), its uint32 dimension limit would break large tensors, and its
 64-byte alignment requirement rejects ordinary `FFI::new` buffers. Tessero already tracks every allocation by
 ownership (`Native\Buffer`, the extension's object handlers), which is the right place for these checks.
+
+## Memory ownership (ADR 0015)
+
+Owner directive: the layer that allocates memory must own its deallocation. The contract per ABI call, the rules
+per layer (kernel, OpenMP workers, extension, FFI binding) and the gates are in
+[ADR 0015](../architecture/adr/0015-memory-ownership.md). In short:
+
+* Runtime gate `-DTSR_OWNERSHIP_CHECK` (sanitizer, fuzz and ASan CI builds): `free()` of a kernel block is an
+  invalid free, and `tsr_free` aborts on a foreign pointer, a double free or a wrong size. The full parity suite
+  (1845 functions, both bindings), the C tests, phpt and the PHP unit suites run clean under it.
+* Static gate `tools/check-ownership.sh` (with a self-test that plants one violation per rule) in CI. Run against
+  the tree before the fuzz fixes it reports the `signal.stft` defect (free() of `tsr_alloc` blocks) at all four sites.
+* Defects fixed: the extension did not release kind 2 (string) routine results on the failure path of a
+  multi-result routine; `tsr_fn_routine` returned before initialising its result slots on argument errors; a
+  thread-local in the BiasedUrn distributions kept the caller's generator after the call.
+* New ABI (additive, TESSERO_0.2): `tsr_fn_results_free`, `tsr_ownership_check`.

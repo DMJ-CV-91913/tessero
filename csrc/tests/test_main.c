@@ -2274,6 +2274,102 @@ static void test_numerics_review(void)
     } else CHECK(0, "logsumexp axis=1 failed: %s", tsr_fn_error());
 }
 
+/* Memory ownership (ADR 0015): the layer that allocates memory frees it. The teardown of routine results is
+   the kernel's own (tsr_fn_results_free), every failed tsr_fn_routine leaves its result slots empty, and in an
+   ownership-checked build (make sanitize) each kind of violation is a hard, reported failure. */
+#if !defined(_WIN32)
+#  include <sys/wait.h>
+/* run `violate` in a child with stderr captured; 1 when the child died (did not exit 0), and the captured
+   text in `msg` */
+static int own_child_dies(void (*violate)(void), char *msg, size_t cap)
+{
+    int fd[2];
+    if (pipe(fd) != 0) return 0;
+    fflush(NULL);
+    const pid_t pid = fork();
+    if (pid == 0) {
+        dup2(fd[1], 2);
+        close(fd[0]);
+        violate();
+        _exit(0);                                    /* survived: the violation went unnoticed */
+    }
+    close(fd[1]);
+    size_t n = 0;
+    ssize_t r;
+    while (n + 1 < cap && (r = read(fd[0], msg + n, cap - 1 - n)) > 0) n += (size_t)r;
+    msg[n] = '\0';
+    char sink[256];
+    while (read(fd[0], sink, sizeof sink) > 0) {
+    }
+    close(fd[0]);
+    int status = 0;
+    if (pid < 0 || waitpid(pid, &status, 0) != pid) return 0;
+    return !(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+}
+static void own_free_libc(void) { void *p = tsr_alloc(100); free(p); }                         /* (i) */
+static void own_free_foreign(void) { void *p = malloc(100); tsr_free(p, 100); }               /* (ii) */
+static void own_free_wrong_size(void) { void *p = tsr_alloc(100); tsr_free(p, 64); }          /* (iii) */
+static void own_free_twice(void) { void *p = tsr_alloc(100); tsr_free(p, 100); tsr_free(p, 100); }   /* (iv) */
+#endif
+
+static void test_ownership(void)
+{
+    const int64_t base = tsr_allocated();
+    /* a kind 6 sequence holding a kind 2 string and a kind 3 array, as a routine would return it */
+    tsr_result r[2];
+    memset(r, 0, sizeof r);
+    tsr_result *items = tsr_calloc(2 * (int64_t)sizeof(tsr_result));
+    CHECK(items != NULL, "sequence block");
+    if (items) {
+        r[0].kind = 6; r[0].bytes = 2 * (int64_t)sizeof(tsr_result); r[0].arr.data = items;
+        r[0].arr.ndim = 1; r[0].arr.shape[0] = 2;
+        items[0].kind = 2; items[0].bytes = 8; items[0].arr.data = tsr_alloc(8);
+        if (items[0].arr.data) memcpy(items[0].arr.data, "float64", 8);
+        items[1].kind = 3; items[1].bytes = 64; items[1].arr.data = tsr_alloc(64);
+        r[1].kind = 2; r[1].bytes = 4; r[1].arr.data = tsr_alloc(4);
+        CHECK(tsr_allocated() > base, "results allocated");
+        tsr_fn_results_free(r, 2);
+        CHECK(tsr_allocated() == base && r[0].kind == 0 && r[1].kind == 0,
+              "tsr_fn_results_free releases strings, arrays and sequences with their items (%lld bytes left)",
+              (long long)(tsr_allocated() - base));
+        tsr_fn_results_free(r, 2);                    /* reset to kind 0: a second call is a no-op */
+        CHECK(tsr_allocated() == base, "tsr_fn_results_free twice is a no-op");
+    }
+    tsr_fn_results_free(NULL, 3);
+
+    /* a failing routine leaves every slot empty (also an unknown id, which fails before any work) */
+    tsr_result g[3];
+    memset(g, 0x5a, sizeof g);
+    CHECK(tsr_fn_routine(-1, 0, NULL, 3, g) < 0 && g[0].kind == 0 && g[1].kind == 0 && g[2].kind == 0,
+          "an unknown routine id fails with empty results");
+    const int tk = tsr_fn_find("windows.tukey");
+    if (tk >= 0) {
+        tsr_arg ta[2];
+        memset(ta, 0, sizeof ta);
+        ta[0].kind = 1; ta[0].num = -3.0; ta[1].kind = 1; ta[1].num = 0.5;
+        memset(g, 0x5a, sizeof g);
+        const int rc = tsr_fn_routine(tk, 2, ta, 1, g);
+        CHECK(rc < 0 && g[0].kind == 0 && tsr_allocated() == base,
+              "a routine that fails frees its partial results itself (rc %d, %lld bytes left)", rc,
+              (long long)(tsr_allocated() - base));
+        tsr_fn_results_free(g, 1);
+    }
+
+    CHECK(tsr_feature("ownership_check") == tsr_ownership_check(), "feature(\"ownership_check\") matches the build");
+#if !defined(_WIN32)
+    if (tsr_ownership_check()) {
+        char msg[4096];
+        CHECK(own_child_dies(own_free_libc, msg, sizeof msg), "free() of a tsr_alloc block is caught");
+        CHECK(own_child_dies(own_free_foreign, msg, sizeof msg) && strstr(msg, "ownership violation") &&
+              strstr(msg, "did not return"), "tsr_free of a malloc block is caught: %.200s", msg);
+        CHECK(own_child_dies(own_free_wrong_size, msg, sizeof msg) && strstr(msg, "byte count"),
+              "tsr_free with the wrong size is caught: %.200s", msg);
+        CHECK(own_child_dies(own_free_twice, msg, sizeof msg) && strstr(msg, "already freed"),
+              "a double tsr_free is caught: %.200s", msg);
+    }
+#endif
+}
+
 int main(void)
 {
     test_alloc();
@@ -2305,6 +2401,7 @@ int main(void)
     test_fuzz_batch_c();
     test_ci_regressions();
     test_abi_runtime();
+    test_ownership();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);
     return failures ? 1 : 0;

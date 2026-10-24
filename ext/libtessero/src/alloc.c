@@ -245,6 +245,7 @@ int tsr_feature(const char *name)
     if (strcmp(name, "openblas_threads") == 0) { tsr_blas_resolve(); return g_blas_set != NULL; }
     if (strcmp(name, "openmp") == 0) return tsr_openmp();
     if (strcmp(name, "fpenv_check") == 0) return 1;     /* fpenv.c: tsr_fpenv_check / tsr_fpenv_check_thread */
+    if (strcmp(name, "ownership_check") == 0) return tsr_ownership_check();   /* -DTSR_OWNERSHIP_CHECK build (ADR 0015) */
     if (strcmp(name, "nodelete") == 0) return tsr_linked_nodelete();   /* linked -z nodelete (ADR 0014) */
     return 0;
 }
@@ -318,6 +319,99 @@ int64_t tsr_physical_bytes(void)
     return v;
 }
 
+/* ---------------------------------------------------------------- ownership check (ADR 0015)
+   Built with -DTSR_OWNERSHIP_CHECK (make sanitize, the fuzz builds, the ASan CI jobs; never the release build),
+   every tsr_alloc block carries a 64-byte header in front of the pointer handed out, and every live block is
+   recorded with its size. That turns the golden rule (the layer that allocates memory owns its deallocation)
+   into hard failures:
+     - free()/efree()/_aligned_free() of a tsr_alloc pointer is an invalid free (the pointer is 64 bytes into the
+       allocator's block): ASan and the C library abort;
+     - tsr_free() of a pointer tsr_alloc did not return, or a second tsr_free() of the same pointer: abort;
+     - tsr_free() with a byte count other than the one allocated (the budget would drift): abort.
+   The release build compiles none of this. */
+#ifdef TSR_OWNERSHIP_CHECK
+#define TSR_OWN_HDR 64
+#define TSR_OWN_MAGIC 0x6b636f6c6c615354ull   /* "TSalloc k" */
+#define TSR_OWN_DEAD 0x6565726664616544ull    /* "Deadfree" */
+typedef struct { uint64_t magic; int64_t bytes; } tsr_own_hdr;
+
+static struct { void **key; int64_t *bytes; size_t cap, used; } g_own;
+#ifdef _WIN32
+static SRWLOCK g_own_lock = SRWLOCK_INIT;
+#  define OWN_LOCK() AcquireSRWLockExclusive(&g_own_lock)
+#  define OWN_UNLOCK() ReleaseSRWLockExclusive(&g_own_lock)
+#else
+static pthread_mutex_t g_own_lock = PTHREAD_MUTEX_INITIALIZER;
+#  define OWN_LOCK() pthread_mutex_lock(&g_own_lock)
+#  define OWN_UNLOCK() pthread_mutex_unlock(&g_own_lock)
+#endif
+#define OWN_TOMB ((void *)1)
+
+static size_t own_slot(void *p, size_t cap) { return (size_t)(((uintptr_t)p >> 6) * 0x9E3779B97F4A7C15ull) & (cap - 1); }
+
+static void own_fail(const char *what, const void *p, int64_t bytes, int64_t recorded)
+{
+    fprintf(stderr, "libtessero ownership violation: %s (pointer %p, tsr_free bytes %lld, allocated bytes %lld). "
+                    "Memory from tsr_alloc must be released with tsr_free and the allocated size, by the layer that "
+                    "allocated it (ADR 0015).\n", what, p, (long long)bytes, (long long)recorded);
+    fflush(stderr);
+    abort();
+}
+
+static void own_grow(void)   /* caller holds the lock; raw libc memory: the registry is not tsr_alloc's own client */
+{
+    const size_t cap = g_own.cap ? g_own.cap * 2 : 4096;
+    void **key = calloc(cap, sizeof *key);
+    int64_t *bytes = calloc(cap, sizeof *bytes);
+    if (key == NULL || bytes == NULL) own_fail("ownership registry out of memory", NULL, 0, 0);
+    for (size_t i = 0; i < g_own.cap; i++)
+        if (g_own.key[i] != NULL && g_own.key[i] != OWN_TOMB) {
+            size_t j = own_slot(g_own.key[i], cap);
+            while (key[j] != NULL) j = (j + 1) & (cap - 1);
+            key[j] = g_own.key[i]; bytes[j] = g_own.bytes[i];
+        }
+    free(g_own.key); free(g_own.bytes);
+    g_own.key = key; g_own.bytes = bytes; g_own.cap = cap;
+    size_t used = 0;
+    for (size_t i = 0; i < cap; i++) used += key[i] != NULL;
+    g_own.used = used;
+}
+
+static void own_record(void *p, int64_t bytes)
+{
+    OWN_LOCK();
+    if ((g_own.used + 1) * 2 > g_own.cap) own_grow();
+    size_t i = own_slot(p, g_own.cap);
+    while (g_own.key[i] != NULL && g_own.key[i] != OWN_TOMB) i = (i + 1) & (g_own.cap - 1);
+    if (g_own.key[i] == NULL) g_own.used++;
+    g_own.key[i] = p; g_own.bytes[i] = bytes;
+    OWN_UNLOCK();
+}
+
+static void own_release(void *p, int64_t bytes)
+{
+    OWN_LOCK();
+    size_t i = g_own.cap ? own_slot(p, g_own.cap) : 0;
+    if (g_own.cap)
+        while (g_own.key[i] != NULL && g_own.key[i] != p) i = (i + 1) & (g_own.cap - 1);
+    if (g_own.cap == 0 || g_own.key[i] != p) {
+        OWN_UNLOCK();
+        own_fail("tsr_free of a pointer that tsr_alloc did not return, or that was already freed", p, bytes, -1);
+    }
+    const int64_t recorded = g_own.bytes[i];
+    if (recorded != bytes) {
+        OWN_UNLOCK();
+        own_fail("tsr_free with a byte count other than the allocated size", p, bytes, recorded);
+    }
+    g_own.key[i] = OWN_TOMB;
+    OWN_UNLOCK();
+}
+
+int tsr_ownership_check(void) { return 1; }
+#else
+int tsr_ownership_check(void) { return 0; }
+#endif
+
 void *tsr_alloc(int64_t bytes)
 {
     if (bytes < 0) return NULL;
@@ -333,7 +427,17 @@ void *tsr_alloc(int64_t bytes)
         atomic_fetch_sub(&g_allocated, bytes);
         return NULL;
     }
+#ifdef TSR_OWNERSHIP_CHECK
+    char *base = aligned(bytes + TSR_OWN_HDR);
+    void *p = base == NULL ? NULL : base + TSR_OWN_HDR;
+    if (p != NULL) {
+        tsr_own_hdr h = {TSR_OWN_MAGIC, bytes};
+        memcpy(base, &h, sizeof h);
+        own_record(p, bytes);
+    }
+#else
     void *p = aligned(bytes);
+#endif
     if (p == NULL) {
         atomic_fetch_sub(&g_allocated, bytes);
         return NULL;
@@ -354,6 +458,13 @@ void *tsr_calloc(int64_t bytes)
 void tsr_free(void *p, int64_t bytes)
 {
     if (p == NULL) return;
+#ifdef TSR_OWNERSHIP_CHECK
+    own_release(p, bytes);
+    char *base = (char *)p - TSR_OWN_HDR;
+    const tsr_own_hdr dead = {TSR_OWN_DEAD, bytes};
+    memcpy(base, &dead, sizeof dead);
+    p = base;
+#endif
     atomic_fetch_sub(&g_allocated, bytes);
 #ifdef _WIN32
     _aligned_free(p);
