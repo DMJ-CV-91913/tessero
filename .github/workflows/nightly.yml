@@ -47,6 +47,7 @@ jobs:
           - { target: textio,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=textio FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
           - { target: dtype,     args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=dtype FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
           - { target: routines,  args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=routines FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: abi,       args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=abi FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -201,8 +202,10 @@ jobs:
         # functions that use it. The parity gate itself runs natively in ci.yml.
         run: |
           set +e
+          # pcre.jit=0: PCRE2's JIT code (unsymbolised ??? frames) scans with 16-byte loads that can read past the end
+          # of a PHP string, a known Valgrind false positive no suppression can match; Tessero frames stay fully checked
           valgrind --error-exitcode=99 --track-origins=yes --leak-check=no \
-            "$(command -v php)" -d ffi.enable=1 -d memory_limit=8G -d opcache.enable_cli=0 \
+            "$(command -v php)" -d ffi.enable=1 -d memory_limit=8G -d opcache.enable_cli=0 -d pcre.jit=0 \
             tools/parity/run-tests.php --backend=ffi --no-record --module=special 2>&1 | tee valgrind-ffi.log
           rc=${PIPESTATUS[0]}
           set -e
