@@ -43,13 +43,15 @@ int tsr_la_dims_fit(const char *who, const int64_t *dims, size_t n)
         }
     return 1;
 }
-static int la_guard_args(const tsr_arg *args, int nargs)
+static inline int la_guard_args(const tsr_arg *args, int nargs)
 {
-    for (int i = 0; i < nargs; i++) {
+    if (sizeof(lapack_int) >= sizeof(int64_t)) return 1;
+    for (int i = 0; i < nargs; i++) {                         /* fast path: one compare per matrix axis */
         if (args[i].kind != 3) continue;
         const tsr_array *a = &args[i].arr;
         const int32_t lo = a->ndim > 2 ? a->ndim - 2 : 0;
-        if (!tsr_la_dims_fit("linalg", a->shape + lo, (size_t)(a->ndim - lo))) return 0;
+        for (int32_t d = lo; d < a->ndim; d++)
+            if (a->shape[d] > (int64_t)INT32_MAX) return tsr_la_dims_fit("linalg", a->shape + lo, (size_t)(a->ndim - lo));
     }
     return 1;
 }
@@ -815,6 +817,20 @@ static int la_int(const tsr_arg *a, int64_t *out)
    (every later comparison against it is false) */
 #define LA_NMAX(acc, v) (((v) > (acc) || (v) != (v)) ? (v) : (acc))
 #define LA_NMIN(acc, v) (((v) < (acc) || (v) != (v)) ? (v) : (acc))
+/* abs(x).max() / abs(x).min() of a contiguous vector with NumPy's NaN propagation: the extremum and a NaN flag
+   are accumulated separately so the loop stays a vectorisable max/min (empty: 0 / +inf, as the callers expect) */
+static double la_absmax(const double *x, int64_t n)
+{
+    double m = 0.0; int nan = 0;
+    for (int64_t i = 0; i < n; i++) { const double v = fabs(x[i]); m = v > m ? v : m; nan |= v != v; }
+    return nan ? FN_NAN : m;
+}
+static double la_absmin(const double *x, int64_t n)
+{
+    double m = FN_INF; int nan = 0;
+    for (int64_t i = 0; i < n; i++) { const double v = fabs(x[i]); m = v < m ? v : m; nan |= v != v; }
+    return nan ? FN_NAN : m;
+}
 
 /* ---- norm: parse the ord argument ---- */
 enum { ORD_NONE, ORD_NUM, ORD_FRO, ORD_NUC, ORD_PINF, ORD_NINF };
@@ -859,8 +875,8 @@ static int r_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
                 double acc = 0.0;
                 if (p == 0.0) { int64_t c = 0; for (int64_t i = 0; i < total; i++) if (x[i] != 0.0) c++; out = (double)c; }
                 else { for (int64_t i = 0; i < total; i++) acc += pow(fabs(x[i]), p); out = pow(acc, 1.0 / p); }
-            } else if (nd <= 1 && okind == ORD_PINF) { out = 0.0; for (int64_t i = 0; i < total; i++) out = LA_NMAX(out, fabs(x[i])); }
-            else if (nd <= 1 && okind == ORD_NINF) { out = FN_INF; for (int64_t i = 0; i < total; i++) out = LA_NMIN(out, fabs(x[i])); if (total == 0) out = 0.0; }
+            } else if (nd <= 1 && okind == ORD_PINF) { out = la_absmax(x, total); }
+            else if (nd <= 1 && okind == ORD_NINF) { out = la_absmin(x, total); if (total == 0) out = 0.0; }
             else { double acc = 0.0; for (int64_t i = 0; i < total; i++) acc += x[i] * x[i]; out = sqrt(acc); }  /* frobenius / 2-norm */
         } else if (nd == 2) {
             const int64_t m = X->shape[0], n = X->shape[1];
@@ -1216,8 +1232,8 @@ static int r_vector_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     const int64_t total = tsr_shape_size(args[0].arr.ndim, args[0].arr.shape);
     if (!x && total > 0) { fn_set_error("vector_norm: out of memory"); return TSR_ENOMEM; }
     double out;
-    if (okind == ORD_PINF) { out = 0.0; for (int64_t i = 0; i < total; i++) out = LA_NMAX(out, fabs(x[i])); }
-    else if (okind == ORD_NINF) { out = FN_INF; for (int64_t i = 0; i < total; i++) out = LA_NMIN(out, fabs(x[i])); if (total == 0) out = 0.0; }
+    if (okind == ORD_PINF) { out = la_absmax(x, total); }
+    else if (okind == ORD_NINF) { out = la_absmin(x, total); if (total == 0) out = 0.0; }
     else if (okind == ORD_NUM && p == 0.0) { int64_t c = 0; for (int64_t i = 0; i < total; i++) if (x[i] != 0.0) c++; out = (double)c; }
     else if (okind == ORD_NUM && p != 2.0) { double acc = 0.0; for (int64_t i = 0; i < total; i++) acc += pow(fabs(x[i]), p); out = pow(acc, 1.0 / p); }
     else { double acc = 0.0; for (int64_t i = 0; i < total; i++) acc += x[i] * x[i]; out = sqrt(acc); }
