@@ -65,6 +65,9 @@ final class HarwellBoeing
 
         $l3 = $lines[2];
         $mxtype = strtoupper(substr($l3, 0, 3));
+        if (strlen($mxtype) !== 3) {
+            throw new TesseroException('hb_read: missing matrix type on line 3');
+        }
         if ($mxtype[0] !== 'R' && $mxtype[0] !== 'I') {
             throw new TesseroException("hb_read: only real/integer matrices supported (got {$mxtype})");
         }
@@ -99,6 +102,11 @@ final class HarwellBoeing
         if ($valFmt['kind'] === 'int') {
             $data = array_map(static fn ($v) => (int) $v, $data);
         }
+        // CSC: one pointer per column + 1, row indices inside the matrix (the arrays feed sparse kernels)
+        if ($nnz !== count($data)) {
+            throw new \Tessero\Exceptions\ShapeError("hb_read: header declares {$nnz} values, the file holds " . count($data) . '.');
+        }
+        \Tessero\Sparse\CsrStructure::validate($indptr, $indices, $nnz, $ncols, $nrows, 'hb_read');
 
         return [
             'nrows' => $nrows, 'ncols' => $ncols, 'nnz' => $nnz,

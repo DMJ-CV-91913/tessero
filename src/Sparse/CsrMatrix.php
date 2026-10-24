@@ -108,15 +108,7 @@ final class CsrMatrix
             throw new ShapeError('CSR column index outside the matrix.');
         }
         // the kernels index data/indices by indptr: it must start at 0 and never decrease
-        $pl = $p->toList();
-        if ($pl[0] !== 0) {
-            throw new ShapeError('CSR indptr must start at 0.');
-        }
-        for ($i = 0; $i < $m; $i++) {
-            if ($pl[$i + 1] < $pl[$i]) {
-                throw new ShapeError('CSR indptr must be non-decreasing.');
-            }
-        }
+        CsrStructure::validate($p->toList(), null, $ix->size(), $m, $n, 'CSR');
 
         return new self($p, $ix, $d, $m, $n);
     }
@@ -247,12 +239,19 @@ final class CsrMatrix
             throw new ShapeError('b must be a vector with one entry per row.');
         }
         $x = $x0 === null ? NDArray::zeros([$this->rows]) : NDArray::asArray($x0)->astype(DType::Float64, true)->contiguous();
+        if ($x->shape() !== [$this->rows]) {
+            throw new ShapeError('x0 must be a vector with one entry per row.');      // the kernel reads and writes n entries
+        }
         $ffi = Library::ffi();
         $res = $ffi->new('double');
+        // The kernel returns -iterations on non-convergence and a negative TSR_E* code on error, so the two
+        // overlap (-2 is both "2 iterations" and TSR_EINDEX). It writes the residual (a norm: >= 0 or NaN) on
+        // every non-error path, so a residual still at the negative sentinel marks an error code.
+        $res->cdata = -1.0;
         $it = $ffi->{$fn}($this->rows, self::i($this->indptr), self::i($this->indices), self::d($this->data), self::d($B), self::d($x),
             $rtol, $atol, $maxiter, \FFI::addr($res));
-        if ($it === -3) {
-            Library::check(-3, $fn);
+        if ($it < 0 && $res->cdata === -1.0) {
+            Library::check($it, $fn);
         }
         $info = $it >= 0 ? 0 : -$it;
         if ($info !== 0 && $throw) {
