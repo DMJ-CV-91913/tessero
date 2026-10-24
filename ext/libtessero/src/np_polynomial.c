@@ -127,6 +127,7 @@ static int npoly_eval_routine(const tsr_arg *args, tsr_result *res, int basis, i
 {
     if (args[xidx].kind != 3 || args[cidx].kind != 3 || args[cidx].arr.ndim != 1) { fn_set_error("npoly: coefficients must be a 1-D array and x an array"); return TSR_EARG; }
     const int64_t nc = args[cidx].arr.shape[0];
+    if (nc == 0) { fn_set_error("npoly: index -1 is out of bounds for axis 0 with size 0"); return TSR_EINDEX; }   /* NumPy: c[-1] */
     int64_t lx, lc; double *x = fn_arg_doubles(&args[xidx], &lx), *c = x ? fn_arg_doubles(&args[cidx], &lc) : NULL;
     const tsr_array *xa = &args[xidx].arr;
     double *out = c ? (double *)fn_result_array(&res[0], TSR_F64, xa->ndim, xa->shape) : NULL;
@@ -163,11 +164,105 @@ NPOLY_CLASS(r_cls_hermitee, NB_HERME)
 
 /* ---- numpy.polynomial.polynomial: power-basis arithmetic and calculus ---------------------------------- */
 
-/* optional scalar argument idx (NumPy integer/float), else default. */
-static int64_t npoly_opt_int(const tsr_arg *a, int n, int idx, int64_t dflt)
-{ if (idx >= n || a[idx].kind != 1) return dflt; return (a[idx].flags & 1) ? a[idx].ival : (int64_t)a[idx].num; }
+/* ---- argument validation (every size, order and degree is checked before it indexes or allocates) ---------
+   Bound on the element-steps of the quadratic loops (repeated integration, powers): NumPy runs them unbounded,
+   here an order that large is refused instead of running for minutes. */
+#define NPOLY_WORK_MAX ((int64_t)1 << 28)
+
+/* integer value of a number argument as NumPy's operator.index / pu._as_int sees it: an integer passes, a
+   float only when finite, integral and inside int64 (the bindings may hand an integral PHP float). Returns 0
+   and sets *out, or -1. */
+static int npoly_as_int(const tsr_arg *a, int64_t *out)
+{
+    if (a->flags & 1) { *out = a->ival; return 0; }
+    const double v = a->num;
+    if (!(v >= -9223372036854775808.0 && v < 9223372036854775808.0) || v != floor(v)) return -1;
+    *out = (int64_t)v;
+    return 0;
+}
+/* optional integer argument idx (dflt when absent or not a number), checked: a non-integer is NumPy's TypeError
+   "<what> must be an integer", a value below lo NumPy's ValueError `lowmsg`, a value above hi (a size or an
+   amount of work this implementation will not attempt) a refusal. TSR_OK and *out, or the error code. */
+static int npoly_int(const tsr_arg *a, int n, int idx, int64_t dflt, int64_t lo, int64_t hi,
+                     const char *who, const char *what, const char *lowmsg, int64_t *out)
+{
+    int64_t v = dflt;
+    if (idx < n && (a[idx].kind == 1 || a[idx].kind == 4) && npoly_as_int(&a[idx], &v) != 0) {
+        fn_set_error("%s: %s must be an integer, received %g", who, what, a[idx].num);
+        return TSR_ETYPE;
+    }
+    if (v < lo) { fn_set_error("%s: %s", who, lowmsg); return TSR_EARG; }
+    if (v > hi) { fn_set_error("%s: %s is too large for this implementation", who, what); return TSR_EARG; }
+    *out = v;
+    return TSR_OK;
+}
+/* element-steps of raising an nc-term series to the power pw by repeated multiplication (result (nc-1)*pw+1) */
+static double npoly_pow_work(int64_t nc, int64_t pw) { return (double)pw * ((double)(nc - 1) * (double)pw + 1.0) * (double)nc; }
+/* element-steps of m repeated integrations of an nc-term series (each step grows it by one) */
+static double npoly_int_work(int64_t nc, int64_t m) { return (double)m * ((double)nc + (double)m); }
 static double npoly_opt_num(const tsr_arg *a, int n, int idx, double dflt)
 { if (idx >= n || a[idx].kind != 1) return dflt; return a[idx].num; }
+
+/* a coefficient-series argument as float64 values (NumPy pu.as_series): an empty series is NumPy's ValueError.
+   NULL with the error set (TSR_EARG) or TSR_ENOMEM in *rc. */
+static double *npoly_series(const tsr_arg *a, int64_t *n, const char *who, int *rc)
+{
+    double *c = fn_arg_doubles(a, n);
+    if (!c) { *rc = TSR_ENOMEM; return NULL; }
+    if (*n == 0) { fn_free_doubles(c, *n); fn_set_error("%s: Coefficient array is empty", who); *rc = TSR_EARG; return NULL; }
+    *rc = TSR_OK;
+    return c;
+}
+
+/* raw scratch of n doubles, refused (NULL) when n*8 bytes would not fit the budget or the machine: a size taken
+   from an argument never reaches malloc unchecked */
+static double *npoly_scratch(int64_t n)
+{ return (n >= 0 && tsr_fits((double)n * 8.0)) ? (double *)tsr_scratch_n(n, sizeof(double)) : NULL; }
+
+/* an m x m eigenproblem (Gauss quadrature nodes): its few m*m scratch matrices must fit, and m must suit LAPACK */
+static int npoly_square_fits(int64_t m, const char *who)
+{
+    if (m <= INT32_MAX && tsr_fits(4.0 * (double)m * (double)m * 8.0)) return 1;
+    fn_set_error("%s: the degree is too large", who);
+    return 0;
+}
+
+/* the points of a multi-dimensional evaluation must have one shape (NumPy: "x, y are incompatible") */
+static int npoly_same_shape(const tsr_arg *a, int k, const char *who)
+{
+    for (int i = 1; i < k; i++) {
+        int same = a[i].arr.ndim == a[0].arr.ndim;
+        for (int d = 0; same && d < a[0].arr.ndim; d++) same = a[i].arr.shape[d] == a[0].arr.shape[d];
+        if (!same) { fn_set_error("%s: %s are incompatible", who, k == 2 ? "x, y" : "x, y, z"); return TSR_EARG; }
+    }
+    return TSR_OK;
+}
+
+/* a coefficient tensor with an empty axis indexes c[-1] in NumPy (IndexError) */
+static int npoly_nonempty_axes(const tsr_array *c, const char *who)
+{
+    for (int d = 0; d < c->ndim; d++)
+        if (c->shape[d] == 0) { fn_set_error("%s: index -1 is out of bounds for axis 0 with size 0", who); return TSR_EINDEX; }
+    return TSR_OK;
+}
+
+/* the degrees of a 2-D / 3-D Vandermonde matrix: exactly k non-negative integers (NumPy _vander_nd_flat), and a
+   column count (prod(deg+1)) that does not overflow. TSR_OK or the error code. */
+static int npoly_degrees(const double *dg, int64_t ld, int k, const char *who, int64_t *deg, int64_t *ncol)
+{
+    if (ld != k) { fn_set_error("%s: Expected %d dimensions of degrees, got %lld", who, k, (long long)ld); return TSR_EARG; }
+    int64_t cols = 1;
+    for (int i = 0; i < k; i++) {
+        const double v = dg[i];
+        if (!(v >= 0.0 && v < 9223372036854775807.0) || v != floor(v)) {
+            fn_set_error("%s: degrees must be non-negative integers", who); return v != v || v != floor(v) ? TSR_ETYPE : TSR_EARG; }
+        deg[i] = (int64_t)v;
+        cols = deg[i] < INT64_MAX ? tsr_count_mul(cols, deg[i] + 1) : -1;
+        if (cols < 0) { fn_set_error("%s: degrees are too large", who); return TSR_ENOMEM; }
+    }
+    *ncol = cols;
+    return TSR_OK;
+}
 
 /* allocate a 1-D float64 result of length m, return its buffer (NULL on failure). */
 static double *npoly_out1(tsr_result *r, int64_t m)
@@ -182,9 +277,9 @@ static int npoly_addsub(const tsr_arg *a, int n, tsr_result *r, int sign)
 {
     (void)n;
     if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly: coefficients must be arrays"); return TSR_EARG; }
-    int64_t n1, n2; double *c1 = fn_arg_doubles(&a[0], &n1), *c2 = c1 ? fn_arg_doubles(&a[1], &n2) : NULL;
+    int rc; int64_t n1 = 0, n2 = 0; double *c1 = npoly_series(&a[0], &n1, "npoly.add", &rc), *c2 = c1 ? npoly_series(&a[1], &n2, "npoly.add", &rc) : NULL;
     int64_t m = n1 > n2 ? n1 : n2; double *out = c2 ? npoly_out1(r, m) : NULL;
-    int rc = (!c1 || !c2 || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK && !out) rc = TSR_ENOMEM;
     if (rc == TSR_OK) for (int64_t i = 0; i < m; i++) out[i] = (i < n1 ? c1[i] : 0.0) + sign * (i < n2 ? c2[i] : 0.0);
     fn_free_doubles(c1, n1); fn_free_doubles(c2, n2);
     return rc;
@@ -197,9 +292,9 @@ static int r_polymul(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly: coefficients must be arrays"); return TSR_EARG; }
-    int64_t n1, n2; double *c1 = fn_arg_doubles(&a[0], &n1), *c2 = c1 ? fn_arg_doubles(&a[1], &n2) : NULL;
+    int rc; int64_t n1 = 0, n2 = 0; double *c1 = npoly_series(&a[0], &n1, "npoly.polymul", &rc), *c2 = c1 ? npoly_series(&a[1], &n2, "npoly.polymul", &rc) : NULL;
     int64_t m = (n1 && n2) ? n1 + n2 - 1 : 0; double *out = c2 ? npoly_out1(r, m > 0 ? m : 1) : NULL;
-    int rc = (!c1 || !c2 || !out) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK && !out) rc = TSR_ENOMEM;
     if (rc == TSR_OK) { if (m <= 0) out[0] = 0.0; else { for (int64_t i = 0; i < m; i++) out[i] = 0.0;
         for (int64_t i = 0; i < n1; i++) for (int64_t j = 0; j < n2; j++) out[i + j] += c1[i] * c2[j]; } }
     fn_free_doubles(c1, n1); fn_free_doubles(c2, n2);
@@ -211,8 +306,7 @@ static int r_polymulx(const void *x, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.polymulx", &rc);
     if (rc == TSR_OK) {
         if (nc == 1 && c[0] == 0.0) { double *out = npoly_out1(r, 1); if (!out) rc = TSR_ENOMEM; else out[0] = 0.0; }
         else { double *out = npoly_out1(r, nc + 1); if (!out) rc = TSR_ENOMEM; else { out[0] = 0.0; for (int64_t i = 0; i < nc; i++) out[i + 1] = c[i]; } }
@@ -226,11 +320,13 @@ static int r_polypow(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
 {
     (void)x; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t pw = npoly_opt_int(a, n, 1, 0), maxp = npoly_opt_int(a, n, 2, 16);
-    if (pw < 0) { fn_set_error("npoly.polypow: Power must be non-negative"); return TSR_EARG; }
+    int64_t pw = 0, maxp = 16;
+    int rc = npoly_int(a, n, 1, 0, 0, INT64_MAX, "npoly.polypow", "pow", "Power must be non-negative", &pw);
+    if (rc == TSR_OK) rc = npoly_int(a, n, 2, 16, INT64_MIN, INT64_MAX, "npoly.polypow", "maxpower", "", &maxp);
+    if (rc != TSR_OK) return rc;
     if (pw > maxp) { fn_set_error("npoly.polypow: Power is too large"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.polypow", &rc);
+    if (rc == TSR_OK && npoly_pow_work(nc, pw) > (double)NPOLY_WORK_MAX) { fn_set_error("npoly.polypow: pow is too large for this implementation"); rc = TSR_EARG; }
     if (rc == TSR_OK) {
         if (pw == 0) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = 1.0; }
         else {
@@ -260,8 +356,7 @@ static int r_polydiv(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly: coefficients must be arrays"); return TSR_EARG; }
-    int64_t n1, n2; double *c1 = fn_arg_doubles(&a[0], &n1), *c2 = c1 ? fn_arg_doubles(&a[1], &n2) : NULL;
-    int rc = c2 ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t n1 = 0, n2 = 0; double *c1 = npoly_series(&a[0], &n1, "npoly.polydiv", &rc), *c2 = c1 ? npoly_series(&a[1], &n2, "npoly.polydiv", &rc) : NULL;
     double *w = NULL;
     if (rc == TSR_OK && c2[n2 - 1] == 0.0) { fn_set_error("npoly.polydiv: division by zero"); rc = TSR_EARG; }
     if (rc == TSR_OK) {
@@ -293,10 +388,12 @@ static int r_polyder(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
 {
     (void)x; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t m = npoly_opt_int(a, n, 1, 1); double scl = npoly_opt_num(a, n, 2, 1.0);
-    if (m < 0) { fn_set_error("npoly.polyder: The order of derivation must be non-negative"); return TSR_EARG; }
+    int64_t m = 1; double scl = npoly_opt_num(a, n, 2, 1.0);
+    int rc = npoly_int(a, n, 1, 1, 0, INT64_MAX, "npoly.polyder", "the order of derivation", "The order of derivation must be non-negative", &m);
+    if (rc != TSR_OK) return rc;
     int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && nc == 0) { double *o = npoly_out1(r, 0); if (!o) rc = TSR_ENOMEM; fn_free_doubles(c, nc); return rc; }   /* NumPy: [] */
     if (rc == TSR_OK) {
         int64_t len = nc;
         for (int64_t it = 0; it < m && len > 0; it++) {
@@ -316,10 +413,13 @@ static int r_polyint(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
 {
     (void)x; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t m = npoly_opt_int(a, n, 1, 1); double kc = npoly_opt_num(a, n, 2, 0.0), lbnd = npoly_opt_num(a, n, 3, 0.0), scl = npoly_opt_num(a, n, 4, 1.0);
-    if (m < 0) { fn_set_error("npoly.polyint: The order of integration must be non-negative"); return TSR_EARG; }
+    int64_t m = 1; double kc = npoly_opt_num(a, n, 2, 0.0), lbnd = npoly_opt_num(a, n, 3, 0.0), scl = npoly_opt_num(a, n, 4, 1.0);
+    int rc = npoly_int(a, n, 1, 1, 0, INT64_MAX, "npoly.polyint", "the order of integration", "The order of integration must be non-negative", &m);
+    if (rc != TSR_OK) return rc;
     int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && nc == 0 && m > 0) { fn_set_error("npoly.polyint: index 0 is out of bounds for axis 0 with size 0"); rc = TSR_EINDEX; }   /* NumPy: c[0] */
+    if (rc == TSR_OK && npoly_int_work(nc, m) > (double)NPOLY_WORK_MAX) { fn_set_error("npoly.polyint: the order of integration is too large for this implementation"); rc = TSR_EARG; }
     double *buf = NULL;
     if (rc == TSR_OK) {
         int64_t len = nc; buf = malloc((nc + m + 1) * sizeof(double)); if (!buf) rc = TSR_ENOMEM;
@@ -376,8 +476,7 @@ static int r_polytrim(const void *x, const tsr_arg *a, int n, tsr_result *r, int
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
     double tol = npoly_opt_num(a, n, 1, 0.0);
     if (tol < 0.0) { fn_set_error("npoly.polytrim: tol must be non-negative"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.polytrim", &rc);
     if (rc == TSR_OK) { int64_t len = npoly_trimlen(c, nc, tol); double *o = npoly_out1(r, len);
         if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < len; i++) o[i] = c[i]; }
     fn_free_doubles(c, nc);
@@ -389,8 +488,9 @@ static int r_polyvander(const void *x, const tsr_arg *a, int n, tsr_result *r, i
 {
     (void)x; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: x must be an array"); return TSR_EARG; }
-    int64_t deg = npoly_opt_int(a, n, 1, 0);
-    if (deg < 0) { fn_set_error("npoly.polyvander: deg must be non-negative"); return TSR_EARG; }
+    int64_t deg = 0;
+    int rc0 = npoly_int(a, n, 1, 0, 0, INT64_MAX - 1, "npoly.polyvander", "deg", "deg must be non-negative", &deg);
+    if (rc0 != TSR_OK) return rc0;
     int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
     int rc = xs ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) { int64_t sh[2] = {lx, deg + 1}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh);
@@ -420,6 +520,7 @@ static int r_polyval2d(const void *vx, const tsr_arg *a, int n, tsr_result *r, i
 {
     (void)vx; (void)n; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[2].arr.ndim != 2) { fn_set_error("npoly.polyval2d: x, y arrays and c a 2-D array"); return TSR_EARG; }
+    { int rc0 = npoly_same_shape(a, 2, "npoly.polyval2d"); if (rc0 == TSR_OK) rc0 = npoly_nonempty_axes(&a[2].arr, "npoly.polyval2d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *c = ys ? fn_arg_doubles(&a[2], &lc) : NULL;
     const int64_t nx = a[2].arr.shape[0], ny = a[2].arr.shape[1];
     const tsr_array *xa = &a[0].arr; double *out = c ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
@@ -437,6 +538,7 @@ static int r_polyval3d(const void *vx, const tsr_arg *a, int n, tsr_result *r, i
 {
     (void)vx; (void)n; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3 || a[3].arr.ndim != 3) { fn_set_error("npoly.polyval3d: x, y, z arrays and c a 3-D array"); return TSR_EARG; }
+    { int rc0 = npoly_same_shape(a, 3, "npoly.polyval3d"); if (rc0 == TSR_OK) rc0 = npoly_nonempty_axes(&a[3].arr, "npoly.polyval3d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lz, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL,
         *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *c = zs ? fn_arg_doubles(&a[3], &lc) : NULL;
     const int64_t nx = a[3].arr.shape[0], ny = a[3].arr.shape[1], nz = a[3].arr.shape[2];
@@ -459,6 +561,7 @@ static int r_polygrid2d(const void *vx, const tsr_arg *a, int n, tsr_result *r, 
 {
     (void)vx; (void)n; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[2].arr.ndim != 2) { fn_set_error("npoly.polygrid2d: x, y arrays and c a 2-D array"); return TSR_EARG; }
+    { const int rc0 = npoly_nonempty_axes(&a[2].arr, "npoly.polygrid2d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *c = ys ? fn_arg_doubles(&a[2], &lc) : NULL;
     const int64_t nx = a[2].arr.shape[0], ny = a[2].arr.shape[1];
     int64_t sh[2] = {lx, ly}; double *out = c ? (double *)fn_result_array(r, TSR_F64, 2, sh) : NULL;
@@ -476,6 +579,7 @@ static int r_polygrid3d(const void *vx, const tsr_arg *a, int n, tsr_result *r, 
 {
     (void)vx; (void)n; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3 || a[3].arr.ndim != 3) { fn_set_error("npoly.polygrid3d: x, y, z arrays and c a 3-D array"); return TSR_EARG; }
+    { const int rc0 = npoly_nonempty_axes(&a[3].arr, "npoly.polygrid3d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lz, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL,
         *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *c = zs ? fn_arg_doubles(&a[3], &lc) : NULL;
     const int64_t nx = a[3].arr.shape[0], ny = a[3].arr.shape[1], nz = a[3].arr.shape[2];
@@ -499,9 +603,11 @@ static int r_polyvander2d(const void *vx, const tsr_arg *a, int n, tsr_result *r
     (void)vx; (void)n; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3) { fn_set_error("npoly.polyvander2d: x, y and a 2-element deg"); return TSR_EARG; }
     int64_t lx, ly, ld; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *dg = ys ? fn_arg_doubles(&a[2], &ld) : NULL;
-    int rc = dg ? TSR_OK : TSR_ENOMEM;
+    int rc = dg ? npoly_same_shape(a, 2, "npoly.polyvander2d") : TSR_ENOMEM;
+    int64_t dd[2] = {0, 0}, ncol = 0;
+    if (rc == TSR_OK) rc = npoly_degrees(dg, ld, 2, "npoly.polyvander2d", dd, &ncol);
     if (rc == TSR_OK) {
-        int64_t dx = (int64_t)dg[0], dy = (int64_t)dg[1], ncol = (dx + 1) * (dy + 1);
+        const int64_t dx = dd[0], dy = dd[1];
         int64_t sh[2] = {lx, ncol}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh);
         if (!V) rc = TSR_ENOMEM;
         else for (int64_t i = 0; i < lx; i++) { double xp = 1.0;
@@ -520,9 +626,11 @@ static int r_polyvander3d(const void *vx, const tsr_arg *a, int n, tsr_result *r
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3) { fn_set_error("npoly.polyvander3d: x, y, z and a 3-element deg"); return TSR_EARG; }
     int64_t lx, ly, lz, ld; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL,
         *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *dg = zs ? fn_arg_doubles(&a[3], &ld) : NULL;
-    int rc = dg ? TSR_OK : TSR_ENOMEM;
+    int rc = dg ? npoly_same_shape(a, 3, "npoly.polyvander3d") : TSR_ENOMEM;
+    int64_t dd[3] = {0, 0, 0}, ncol = 0;
+    if (rc == TSR_OK) rc = npoly_degrees(dg, ld, 3, "npoly.polyvander3d", dd, &ncol);
     if (rc == TSR_OK) {
-        int64_t dx = (int64_t)dg[0], dy = (int64_t)dg[1], dz = (int64_t)dg[2], ncol = (dx + 1) * (dy + 1) * (dz + 1);
+        const int64_t dx = dd[0], dy = dd[1], dz = dd[2];
         int64_t sh[2] = {lx, ncol}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh);
         if (!V) rc = TSR_ENOMEM;
         else for (int64_t i = 0; i < lx; i++) { double xp = 1.0;
@@ -541,8 +649,7 @@ static int r_polycompanion(const void *vx, const tsr_arg *a, int n, tsr_result *
 {
     (void)vx; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.polycompanion", &rc);
     if (rc == TSR_OK && nc < 2) { fn_set_error("npoly.polycompanion: Series must have maximum degree of at least 1"); rc = TSR_EARG; }
     if (rc == TSR_OK) {
         int64_t m = nc - 1; int64_t sh[2] = {m, m}; double *M = (double *)fn_result_array(r, TSR_F64, 2, sh);
@@ -562,8 +669,7 @@ static int r_polyroots(const void *vx, const tsr_arg *a, int n, tsr_result *r, i
 {
     (void)vx; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.polyroots", &rc);
     if (rc == TSR_OK) {
         if (nc <= 1) { int64_t sh[1] = {0}; if (!fn_result_array(r, TSR_F64, 1, sh)) rc = TSR_ENOMEM; }
         else if (nc == 2) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = -c[0] / c[1]; }
@@ -591,15 +697,19 @@ static int r_polyfit(const void *vx, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)vx; (void)nr;
     if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly.polyfit: x and y must be arrays"); return TSR_EARG; }
-    int64_t deg = npoly_opt_int(a, n, 2, 0);
-    if (deg < 0) { fn_set_error("npoly.polyfit: expected deg >= 0"); return TSR_EARG; }
+    int64_t deg = 0;
+    int rc0 = npoly_int(a, n, 2, 0, 0, INT32_MAX - 1, "npoly.polyfit", "deg", "expected deg >= 0", &deg);
+    if (rc0 != TSR_OK) return rc0;
     int64_t lx, ly; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL;
     int rc = ys ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK && lx != ly) { fn_set_error("npoly.polyfit: expected x and y to have same length"); rc = TSR_EARG; }
+    if (rc == TSR_OK && lx == 0) { fn_set_error("npoly.polyfit: expected non-empty vector for x"); rc = TSR_ETYPE; }
+    if (rc == TSR_OK && !TSR_LA_FIT("npoly.polyfit", lx)) rc = TSR_EARG;
+    if (rc == TSR_OK && !tsr_fits(((double)lx + 3.0) * (double)(deg + 1) * 8.0)) { fn_set_error("npoly.polyfit: deg is too large"); rc = TSR_ENOMEM; }
     if (rc == TSR_OK) {
         int p = (int)deg + 1; int64_t mb = lx > p ? lx : p;
-        double *V = malloc((size_t)lx * p * sizeof(double)), *b = malloc((size_t)mb * sizeof(double)),
-               *s = malloc((size_t)p * sizeof(double)), *scale = malloc((size_t)p * sizeof(double));
+        double *V = tsr_scratch_n(tsr_count_mul(lx, p), sizeof(double)), *b = tsr_scratch_n(mb, sizeof(double)),
+               *s = tsr_scratch_n(p, sizeof(double)), *scale = tsr_scratch_n(p, sizeof(double));
         if (!V || !b || !s || !scale) rc = TSR_ENOMEM;
         else {
             for (int k = 0; k < p; k++) { double sq = 0.0; for (int64_t i = 0; i < lx; i++) { double e = pow(xs[i], (double)k); sq += e * e; } scale[k] = sq > 0.0 ? sqrt(sq) : 1.0; }
@@ -635,8 +745,7 @@ static int rb_mulx(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int 
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.mulx", &rc);
     if (rc == TSR_OK) { double *sc = malloc((nc + 1) * sizeof(double)); if (!sc) rc = TSR_ENOMEM;
         else { int64_t m = B->mulx(c, nc, sc); double *o = npoly_out1(r, m); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < m; i++) o[i] = sc[i]; free(sc); } }
     fn_free_doubles(c, nc);
@@ -646,8 +755,7 @@ static int rb_mul(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int n
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly: coefficients must be arrays"); return TSR_EARG; }
-    int64_t n1, n2; double *c1 = fn_arg_doubles(&a[0], &n1), *c2 = c1 ? fn_arg_doubles(&a[1], &n2) : NULL;
-    int rc = c2 ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t n1 = 0, n2 = 0; double *c1 = npoly_series(&a[0], &n1, "npoly.mul", &rc), *c2 = c1 ? npoly_series(&a[1], &n2, "npoly.mul", &rc) : NULL;
     if (rc == TSR_OK) { int64_t cap = n1 + n2 - 1; double *buf = malloc(cap * sizeof(double)); if (!buf) rc = TSR_ENOMEM;
         else { int64_t m = B->mul(c1, n1, c2, n2, buf); if (m < 0) rc = TSR_ENOMEM; else { double *o = npoly_out1(r, m); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < m; i++) o[i] = buf[i]; } free(buf); } }
     fn_free_doubles(c1, n1); fn_free_doubles(c2, n2);
@@ -657,11 +765,13 @@ static int rb_pow(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int n
 {
     (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t pw = npoly_opt_int(a, n, 1, 0), maxp = npoly_opt_int(a, n, 2, 16);
-    if (pw < 0) { fn_set_error("npoly.pow: Power must be non-negative"); return TSR_EARG; }
+    int64_t pw = 0, maxp = 16;
+    int rc = npoly_int(a, n, 1, 0, 0, INT64_MAX, "npoly.pow", "pow", "Power must be non-negative", &pw);
+    if (rc == TSR_OK) rc = npoly_int(a, n, 2, 16, INT64_MIN, INT64_MAX, "npoly.pow", "maxpower", "", &maxp);
+    if (rc != TSR_OK) return rc;
     if (pw > maxp) { fn_set_error("npoly.pow: Power is too large"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.pow", &rc);
+    if (rc == TSR_OK && npoly_pow_work(nc, pw) > (double)NPOLY_WORK_MAX) { fn_set_error("npoly.pow: pow is too large for this implementation"); rc = TSR_EARG; }
     if (rc == TSR_OK) {
         if (pw == 0) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = 1.0; }
         else {
@@ -680,8 +790,7 @@ static int rb_div(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int n
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly: coefficients must be arrays"); return TSR_EARG; }
-    int64_t n1, n2; double *c1 = fn_arg_doubles(&a[0], &n1), *c2 = c1 ? fn_arg_doubles(&a[1], &n2) : NULL;
-    int rc = c2 ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t n1 = 0, n2 = 0; double *c1 = npoly_series(&a[0], &n1, "npoly.div", &rc), *c2 = c1 ? npoly_series(&a[1], &n2, "npoly.div", &rc) : NULL;
     if (rc == TSR_OK && c2[n2 - 1] == 0.0) { fn_set_error("npoly.div: division by zero"); rc = TSR_EARG; }
     if (rc == TSR_OK && n2 == 1) { double *q = npoly_out1(&r[0], n1), *rem = q ? npoly_out1(&r[1], 1) : NULL;
         if (!q || !rem) rc = TSR_ENOMEM; else { for (int64_t i = 0; i < n1; i++) q[i] = c1[i] / c2[0]; rem[0] = 0.0; } }
@@ -714,15 +823,21 @@ static int rb_der(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int n
 {
     (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t m = npoly_opt_int(a, n, 1, 1); double scl = npoly_opt_num(a, n, 2, 1.0);
-    if (m < 0) { fn_set_error("npoly.der: order must be non-negative"); return TSR_EARG; }
+    int64_t m = 1; double scl = npoly_opt_num(a, n, 2, 1.0);
+    int rc = npoly_int(a, n, 1, 1, 0, INT64_MAX, "npoly.der", "the order of derivation", "The order of derivation must be non-negative", &m);
+    if (rc != TSR_OK) return rc;
     int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && nc == 0) { if (!npoly_out1(r, 0)) rc = TSR_ENOMEM; fn_free_doubles(c, nc); return rc; }   /* NumPy: [] */
     if (rc == TSR_OK) { double *cur = malloc(nc * sizeof(double)), *nxt = malloc(nc * sizeof(double));
         if (!cur || !nxt) rc = TSR_ENOMEM;
         else { int64_t len = nc; for (int64_t i = 0; i < nc; i++) cur[i] = c[i];
-            for (int64_t it = 0; it < m; it++) { int64_t nl = B->der(cur, len, scl, nxt); double *t = cur; cur = nxt; nxt = t; len = nl; }
-            double *o = npoly_out1(r, len); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < len; i++) o[i] = cur[i]; }
+            /* a length-1 series differentiates to [0] and stays there: at most nc steps whatever m is */
+            for (int64_t it = 0; it < m && rc == TSR_OK; it++) {
+                if (len == 1) { cur[0] = 0.0; break; }
+                int64_t nl = B->der(cur, len, scl, nxt); if (nl < 0) { rc = TSR_ENOMEM; break; }
+                double *t = cur; cur = nxt; nxt = t; len = nl; }
+            double *o = rc == TSR_OK ? npoly_out1(r, len) : NULL; if (rc == TSR_OK && !o) rc = TSR_ENOMEM; else if (o) for (int64_t i = 0; i < len; i++) o[i] = cur[i]; }
         free(cur); free(nxt); }
     fn_free_doubles(c, nc);
     return rc;
@@ -731,15 +846,20 @@ static int rb_int(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int n
 {
     (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t m = npoly_opt_int(a, n, 1, 1); double scl = npoly_opt_num(a, n, 4, 1.0);
-    if (m < 0) { fn_set_error("npoly.int: order must be non-negative"); return TSR_EARG; }
+    int64_t m = 1; double scl = npoly_opt_num(a, n, 4, 1.0);
+    int rc = npoly_int(a, n, 1, 1, 0, INT64_MAX, "npoly.int", "the order of integration", "The order of integration must be non-negative", &m);
+    if (rc != TSR_OK) return rc;
     int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
-    if (rc == TSR_OK) { double *cur = malloc((nc + m) * sizeof(double)), *nxt = malloc((nc + m) * sizeof(double));
+    rc = c ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK && nc == 0 && m > 0) { fn_set_error("npoly.int: index 0 is out of bounds for axis 0 with size 0"); rc = TSR_EINDEX; }   /* NumPy: c[0] */
+    if (rc == TSR_OK && npoly_int_work(nc, m) > (double)NPOLY_WORK_MAX) { fn_set_error("npoly.int: the order of integration is too large for this implementation"); rc = TSR_EARG; }
+    if (rc == TSR_OK) { double *cur = tsr_scratch_n(nc + m, sizeof(double)), *nxt = tsr_scratch_n(nc + m, sizeof(double));
         if (!cur || !nxt) rc = TSR_ENOMEM;
         else { int64_t len = nc; for (int64_t i = 0; i < nc; i++) cur[i] = c[i];
-            for (int64_t it = 0; it < m; it++) { int64_t nl = B->integ(cur, len, scl, nxt); double *t = cur; cur = nxt; nxt = t; len = nl; }
-            double *o = npoly_out1(r, len); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < len; i++) o[i] = cur[i]; }
+            for (int64_t it = 0; it < m && rc == TSR_OK; it++) {
+                int64_t nl = B->integ(cur, len, scl, nxt); if (nl < 0) { rc = TSR_ENOMEM; break; }
+                double *t = cur; cur = nxt; nxt = t; len = nl; }
+            double *o = rc == TSR_OK ? npoly_out1(r, len) : NULL; if (rc == TSR_OK && !o) rc = TSR_ENOMEM; else if (o) for (int64_t i = 0; i < len; i++) o[i] = cur[i]; }
         free(cur); free(nxt); }
     fn_free_doubles(c, nc);
     return rc;
@@ -775,8 +895,9 @@ static int rb_vander(const void *ctx, const tsr_arg *a, int n, tsr_result *r, in
 {
     (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3) { fn_set_error("npoly: x must be an array"); return TSR_EARG; }
-    int64_t deg = npoly_opt_int(a, n, 1, 0);
-    if (deg < 0) { fn_set_error("npoly.vander: deg must be non-negative"); return TSR_EARG; }
+    int64_t deg = 0;
+    int rc0 = npoly_int(a, n, 1, 0, 0, INT64_MAX - 1, "npoly.vander", "deg", "deg must be non-negative", &deg);
+    if (rc0 != TSR_OK) return rc0;
     int64_t lx; double *xs = fn_arg_doubles(&a[0], &lx);
     int rc = xs ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) { int64_t sh[2] = {lx, deg + 1}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh); if (!V) rc = TSR_ENOMEM; else B->vander(xs, lx, deg, V); }
@@ -789,6 +910,7 @@ static int rb_val2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[2].arr.ndim != 2) { fn_set_error("npoly.val2d: x, y arrays and c 2-D"); return TSR_EARG; }
+    { int rc0 = npoly_same_shape(a, 2, "npoly.val2d"); if (rc0 == TSR_OK) rc0 = npoly_nonempty_axes(&a[2].arr, "npoly.val2d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *c = ys ? fn_arg_doubles(&a[2], &lc) : NULL;
     const int64_t nx = a[2].arr.shape[0], ny = a[2].arr.shape[1];
     const tsr_array *xa = &a[0].arr; double *out = c ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
@@ -805,6 +927,7 @@ static int rb_val3d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3 || a[3].arr.ndim != 3) { fn_set_error("npoly.val3d: x, y, z arrays and c 3-D"); return TSR_EARG; }
+    { int rc0 = npoly_same_shape(a, 3, "npoly.val3d"); if (rc0 == TSR_OK) rc0 = npoly_nonempty_axes(&a[3].arr, "npoly.val3d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lz, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *c = zs ? fn_arg_doubles(&a[3], &lc) : NULL;
     const int64_t nx = a[3].arr.shape[0], ny = a[3].arr.shape[1], nz = a[3].arr.shape[2];
     const tsr_array *xa = &a[0].arr; double *out = c ? (double *)fn_result_array(r, TSR_F64, xa->ndim, xa->shape) : NULL;
@@ -822,6 +945,7 @@ static int rb_grid2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, in
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[2].arr.ndim != 2) { fn_set_error("npoly.grid2d: x, y arrays and c 2-D"); return TSR_EARG; }
+    { const int rc0 = npoly_nonempty_axes(&a[2].arr, "npoly.grid2d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *c = ys ? fn_arg_doubles(&a[2], &lc) : NULL;
     const int64_t nx = a[2].arr.shape[0], ny = a[2].arr.shape[1];
     int64_t sh[2] = {lx, ly}; double *out = c ? (double *)fn_result_array(r, TSR_F64, 2, sh) : NULL;
@@ -838,6 +962,7 @@ static int rb_grid3d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, in
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3 || a[3].arr.ndim != 3) { fn_set_error("npoly.grid3d: x, y, z arrays and c 3-D"); return TSR_EARG; }
+    { const int rc0 = npoly_nonempty_axes(&a[3].arr, "npoly.grid3d"); if (rc0 != TSR_OK) return rc0; }
     int64_t lx, ly, lz, lc; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *c = zs ? fn_arg_doubles(&a[3], &lc) : NULL;
     const int64_t nx = a[3].arr.shape[0], ny = a[3].arr.shape[1], nz = a[3].arr.shape[2];
     int64_t sh[3] = {lx, ly, lz}; double *out = c ? (double *)fn_result_array(r, TSR_F64, 3, sh) : NULL;
@@ -858,11 +983,13 @@ static int rb_vander2d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, 
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3) { fn_set_error("npoly.vander2d: x, y and 2-element deg"); return TSR_EARG; }
     int64_t lx, ly, ld; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *dg = ys ? fn_arg_doubles(&a[2], &ld) : NULL;
-    int rc = dg ? TSR_OK : TSR_ENOMEM;
+    int rc = dg ? npoly_same_shape(a, 2, "npoly.vander2d") : TSR_ENOMEM;
     double *VX = NULL, *VY = NULL;
+    int64_t dd[2] = {0, 0}, ncol = 0;
+    if (rc == TSR_OK) rc = npoly_degrees(dg, ld, 2, "npoly.vander2d", dd, &ncol);
     if (rc == TSR_OK) {
-        int64_t dx = (int64_t)dg[0], dy = (int64_t)dg[1], ncol = (dx + 1) * (dy + 1);
-        VX = malloc(lx * (dx + 1) * sizeof(double)); VY = malloc(lx * (dy + 1) * sizeof(double));
+        const int64_t dx = dd[0], dy = dd[1];
+        VX = npoly_scratch(tsr_count_mul(lx, dx + 1)); VY = VX ? npoly_scratch(tsr_count_mul(lx, dy + 1)) : NULL;
         if (!VX || !VY) rc = TSR_ENOMEM;
         else { B->vander(xs, lx, dx, VX); B->vander(ys, lx, dy, VY);
             int64_t sh[2] = {lx, ncol}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh);
@@ -876,11 +1003,13 @@ static int rb_vander3d(const void *ctx, const tsr_arg *a, int n, tsr_result *r, 
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3 || a[2].kind != 3 || a[3].kind != 3) { fn_set_error("npoly.vander3d: x, y, z and 3-element deg"); return TSR_EARG; }
     int64_t lx, ly, lz, ld; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL, *zs = ys ? fn_arg_doubles(&a[2], &lz) : NULL, *dg = zs ? fn_arg_doubles(&a[3], &ld) : NULL;
-    int rc = dg ? TSR_OK : TSR_ENOMEM;
+    int rc = dg ? npoly_same_shape(a, 3, "npoly.vander3d") : TSR_ENOMEM;
     double *VX = NULL, *VY = NULL, *VZ = NULL;
+    int64_t dd[3] = {0, 0, 0}, ncol = 0;
+    if (rc == TSR_OK) rc = npoly_degrees(dg, ld, 3, "npoly.vander3d", dd, &ncol);
     if (rc == TSR_OK) {
-        int64_t dx = (int64_t)dg[0], dy = (int64_t)dg[1], dz = (int64_t)dg[2], ncol = (dx + 1) * (dy + 1) * (dz + 1);
-        VX = malloc(lx * (dx + 1) * sizeof(double)); VY = malloc(lx * (dy + 1) * sizeof(double)); VZ = malloc(lx * (dz + 1) * sizeof(double));
+        const int64_t dx = dd[0], dy = dd[1], dz = dd[2];
+        VX = npoly_scratch(tsr_count_mul(lx, dx + 1)); VY = VX ? npoly_scratch(tsr_count_mul(lx, dy + 1)) : NULL; VZ = VY ? npoly_scratch(tsr_count_mul(lx, dz + 1)) : NULL;
         if (!VX || !VY || !VZ) rc = TSR_ENOMEM;
         else { B->vander(xs, lx, dx, VX); B->vander(ys, lx, dy, VY); B->vander(zs, lx, dz, VZ);
             int64_t sh[2] = {lx, ncol}; double *V = (double *)fn_result_array(r, TSR_F64, 2, sh);
@@ -893,8 +1022,7 @@ static int rb_companion(const void *ctx, const tsr_arg *a, int n, tsr_result *r,
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.companion", &rc);
     if (rc == TSR_OK && nc < 2) { fn_set_error("npoly.companion: series must have degree >= 1"); rc = TSR_EARG; }
     if (rc == TSR_OK) { int64_t m = nc - 1; int64_t sh[2] = {m, m}; double *M = (double *)fn_result_array(r, TSR_F64, 2, sh); if (!M) rc = TSR_ENOMEM; else B->companion(c, nc, M); }
     fn_free_doubles(c, nc);
@@ -904,8 +1032,7 @@ static int rb_roots(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)n; (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.roots", &rc);
     if (rc == TSR_OK) {
         if (nc <= 1) { int64_t sh[1] = {0}; if (!fn_result_array(r, TSR_F64, 1, sh)) rc = TSR_ENOMEM; }
         else if (nc == 2) { double M1; B->companion(c, 2, &M1); double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = M1; }
@@ -925,14 +1052,18 @@ static int rb_fit(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int n
 {
     (void)nr; const pbasis *B = ctx;
     if (a[0].kind != 3 || a[1].kind != 3) { fn_set_error("npoly.fit: x and y must be arrays"); return TSR_EARG; }
-    int64_t deg = npoly_opt_int(a, n, 2, 0);
-    if (deg < 0) { fn_set_error("npoly.fit: expected deg >= 0"); return TSR_EARG; }
+    int64_t deg = 0;
+    int rc0 = npoly_int(a, n, 2, 0, 0, INT32_MAX - 1, "npoly.fit", "deg", "expected deg >= 0", &deg);
+    if (rc0 != TSR_OK) return rc0;
     int64_t lx, ly; double *xs = fn_arg_doubles(&a[0], &lx), *ys = xs ? fn_arg_doubles(&a[1], &ly) : NULL;
     int rc = ys ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK && lx != ly) { fn_set_error("npoly.fit: x and y must have the same length"); rc = TSR_EARG; }
+    if (rc == TSR_OK && lx == 0) { fn_set_error("npoly.fit: expected non-empty vector for x"); rc = TSR_ETYPE; }
+    if (rc == TSR_OK && !TSR_LA_FIT("npoly.fit", lx)) rc = TSR_EARG;
+    if (rc == TSR_OK && !tsr_fits(((double)lx + 3.0) * (double)(deg + 1) * 8.0)) { fn_set_error("npoly.fit: deg is too large"); rc = TSR_ENOMEM; }
     if (rc == TSR_OK) {
         int p = (int)deg + 1; int64_t mb = lx > p ? lx : p;
-        double *V = malloc((size_t)lx * p * sizeof(double)), *b = malloc((size_t)mb * sizeof(double)), *s = malloc((size_t)p * sizeof(double)), *scale = malloc((size_t)p * sizeof(double));
+        double *V = tsr_scratch_n(tsr_count_mul(lx, p), sizeof(double)), *b = tsr_scratch_n(mb, sizeof(double)), *s = tsr_scratch_n(p, sizeof(double)), *scale = tsr_scratch_n(p, sizeof(double));
         if (!V || !b || !s || !scale) rc = TSR_ENOMEM;
         else { B->vander(xs, lx, deg, V);                      /* row-major (lx, p) */
             for (int k = 0; k < p; k++) { double sq = 0.0; for (int64_t i = 0; i < lx; i++) { double e = V[i * p + k]; sq += e * e; } scale[k] = sq > 0.0 ? sqrt(sq) : 1.0; }
@@ -953,8 +1084,7 @@ static int r_cheb2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, in
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.cheb2poly", &rc);
     if (rc == TSR_OK) {
         if (nc < 3) { double *o = npoly_out1(r, nc); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < nc; i++) o[i] = c[i]; }
         else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
@@ -986,8 +1116,7 @@ static int r_poly2cheb(const void *x, const tsr_arg *a, int n, tsr_result *r, in
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
-    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *pol = npoly_series(&a[0], &nc, "npoly.poly2cheb", &rc);
     if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
         if (!res || !mx) rc = TSR_ENOMEM;
         else { int64_t lr = 1; res[0] = 0.0;
@@ -1003,8 +1132,8 @@ static int r_poly2cheb(const void *x, const tsr_arg *a, int n, tsr_result *r, in
 }
 static int r_chebpts1(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
-    if (m < 1) { fn_set_error("npoly.chebpts1: npts must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, nn, 0, 0, 1, INT64_MAX, "npoly.chebpts1", "npts", "npts must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
     double *o = npoly_out1(r, m); if (!o) return TSR_ENOMEM;
     /* numpy: 0.5*pi/m * arange(-m+1, m+1, 2), then sin (so the midpoint is sin(0) = 0 exactly) */
     for (int64_t i = 0; i < m; i++) o[i] = sin(0.5 * M_PI / (double)m * (double)(-m + 1 + 2 * i));
@@ -1012,8 +1141,8 @@ static int r_chebpts1(const void *x, const tsr_arg *a, int nn, tsr_result *r, in
 }
 static int r_chebpts2(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
-    if (m < 2) { fn_set_error("npoly.chebpts2: npts must be >= 2"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, nn, 0, 0, 2, INT64_MAX, "npoly.chebpts2", "npts", "npts must be >= 2", &m); if (rc0 != TSR_OK) return rc0; }
     double *o = npoly_out1(r, m); if (!o) return TSR_ENOMEM;
     for (int64_t i = 0; i < m; i++) o[i] = cos(M_PI * (double)(m - 1 - i) / (double)(m - 1));
     return TSR_OK;
@@ -1021,8 +1150,8 @@ static int r_chebpts2(const void *x, const tsr_arg *a, int nn, tsr_result *r, in
 /* chebgauss: nodes cos(pi*(2k+1)/(2n)), equal weights pi/n. */
 static int r_chebgauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
-    if (m < 1) { fn_set_error("npoly.chebgauss: deg must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, nn, 0, 0, 1, INT64_MAX, "npoly.chebgauss", "deg", "deg must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
     double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
     if (!xo || !wo) return TSR_ENOMEM;
     for (int64_t k = 0; k < m; k++) { xo[k] = cos(M_PI * (double)(2 * k + 1) / (2.0 * (double)m)); wo[k] = M_PI / (double)m; }
@@ -1136,8 +1265,7 @@ static int r_leg2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.leg2poly", &rc);
     if (rc == TSR_OK) {
         if (nc < 3) { double *o = npoly_out1(r, nc); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < nc; i++) o[i] = c[i]; }
         else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
@@ -1169,8 +1297,7 @@ static int r_poly2leg(const void *x, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
-    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *pol = npoly_series(&a[0], &nc, "npoly.poly2leg", &rc);
     if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
         if (!res || !mx) rc = TSR_ENOMEM;
         else { int64_t lr = 1; res[0] = 0.0;
@@ -1183,8 +1310,9 @@ static int r_poly2leg(const void *x, const tsr_arg *a, int n, tsr_result *r, int
 /* leggauss: nodes = eigenvalues of the symmetric companion of P_deg, one Newton step, symmetrized weights. */
 static int r_leggauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
-    if (m < 1) { fn_set_error("npoly.leggauss: deg must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, nn, 0, 0, 1, 3037000499, "npoly.leggauss", "deg", "deg must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "npoly.leggauss")) return TSR_ENOMEM;
     double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
     if (!xo || !wo) return TSR_ENOMEM;
     double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
@@ -1313,8 +1441,7 @@ static int r_lag2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.lag2poly", &rc);
     if (rc == TSR_OK) {
         if (nc == 1) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = c[0]; }
         else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
@@ -1347,8 +1474,7 @@ static int r_poly2lag(const void *x, const tsr_arg *a, int n, tsr_result *r, int
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
-    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *pol = npoly_series(&a[0], &nc, "npoly.poly2lag", &rc);
     if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
         if (!res || !mx) rc = TSR_ENOMEM;
         else { int64_t lr = 1; res[0] = 0.0;
@@ -1361,8 +1487,9 @@ static int r_poly2lag(const void *x, const tsr_arg *a, int n, tsr_result *r, int
 /* laggauss: eigenvalues of the symmetric companion, one Newton step, weights normalized to sum 1. */
 static int r_laggauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
-    if (m < 1) { fn_set_error("npoly.laggauss: deg must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, nn, 0, 0, 1, 3037000499, "npoly.laggauss", "deg", "deg must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "npoly.laggauss")) return TSR_ENOMEM;
     double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
     if (!xo || !wo) return TSR_ENOMEM;
     double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
@@ -1491,8 +1618,7 @@ static int r_herm2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, in
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.herm2poly", &rc);
     if (rc == TSR_OK) {
         if (nc == 1) { double *o = npoly_out1(r, 1); if (!o) rc = TSR_ENOMEM; else o[0] = c[0]; }
         else if (nc == 2) { double *o = npoly_out1(r, 2); if (!o) rc = TSR_ENOMEM; else { o[0] = c[0]; o[1] = c[1] * 2.0; } }
@@ -1524,8 +1650,7 @@ static int r_poly2herm(const void *x, const tsr_arg *a, int n, tsr_result *r, in
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
-    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *pol = npoly_series(&a[0], &nc, "npoly.poly2herm", &rc);
     if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
         if (!res || !mx) rc = TSR_ENOMEM;
         else { int64_t lr = 1; res[0] = 0.0;
@@ -1538,8 +1663,9 @@ static int r_poly2herm(const void *x, const tsr_arg *a, int n, tsr_result *r, in
 /* hermgauss: eigenvalues of the companion, one Newton step using the normalized Hermite, symmetrized weights. */
 static int r_hermgauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
-    if (m < 1) { fn_set_error("npoly.hermgauss: deg must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, nn, 0, 0, 1, 3037000499, "npoly.hermgauss", "deg", "deg must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "npoly.hermgauss")) return TSR_ENOMEM;
     double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
     if (!xo || !wo) return TSR_ENOMEM;
     double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
@@ -1667,8 +1793,7 @@ static int r_herme2poly(const void *x, const tsr_arg *a, int n, tsr_result *r, i
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *c = fn_arg_doubles(&a[0], &nc);
-    int rc = c ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.herme2poly", &rc);
     if (rc == TSR_OK) {
         if (nc < 3) { double *o = npoly_out1(r, nc); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < nc; i++) o[i] = c[i]; }
         else { int64_t cap = nc + 1; double *c0 = calloc(cap, sizeof(double)), *c1 = calloc(cap, sizeof(double)), *tmp = calloc(cap, sizeof(double)), *mx = calloc(cap, sizeof(double));
@@ -1699,8 +1824,7 @@ static int r_poly2herme(const void *x, const tsr_arg *a, int n, tsr_result *r, i
 {
     (void)x; (void)n; (void)nr;
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
-    int64_t nc; double *pol = fn_arg_doubles(&a[0], &nc);
-    int rc = pol ? TSR_OK : TSR_ENOMEM;
+    int rc; int64_t nc = 0; double *pol = npoly_series(&a[0], &nc, "npoly.poly2herme", &rc);
     if (rc == TSR_OK) { double *res = calloc(nc + 1, sizeof(double)), *mx = calloc(nc + 1, sizeof(double));
         if (!res || !mx) rc = TSR_ENOMEM;
         else { int64_t lr = 1; res[0] = 0.0;
@@ -1753,21 +1877,24 @@ static int roots_jacobi_like(int64_t n, double a, double b, tsr_result *res)
 
 static int r_roots_jacobi(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
-    if (m < 1) { fn_set_error("roots_jacobi: n must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, n, 0, 0, 1, 3037000499, "roots_jacobi", "n", "n must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "roots_jacobi")) return TSR_ENOMEM;
     return roots_jacobi_like(m, roots_dbl(a, n, 1, 0.0), roots_dbl(a, n, 2, 0.0), r);
 }
 static int r_roots_gegenbauer(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
-    if (m < 1) { fn_set_error("roots_gegenbauer: n must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, n, 0, 0, 1, 3037000499, "roots_gegenbauer", "n", "n must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "roots_gegenbauer")) return TSR_ENOMEM;
     double lam = roots_dbl(a, n, 1, 0.0);
     return roots_jacobi_like(m, lam - 0.5, lam - 0.5, r);
 }
 static int r_roots_genlaguerre(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
-    if (m < 1) { fn_set_error("roots_genlaguerre: n must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, n, 0, 0, 1, 3037000499, "roots_genlaguerre", "n", "n must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "roots_genlaguerre")) return TSR_ENOMEM;
     double al = roots_dbl(a, n, 1, 0.0);
     double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
     double *d = (double *)malloc((size_t)m * sizeof(double)), *e = (double *)malloc((size_t)(m > 1 ? m - 1 : 1) * sizeof(double));
@@ -1792,22 +1919,25 @@ static int roots_shifted(int64_t m, double a, double b, double wscale, tsr_resul
 }
 static int r_roots_sh_legendre(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
-    if (m < 1) { fn_set_error("roots_sh_legendre: n must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, n, 0, 0, 1, 3037000499, "roots_sh_legendre", "n", "n must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "roots_sh_legendre")) return TSR_ENOMEM;
     return roots_shifted(m, 0.0, 0.0, 2.0, r);
 }
 static int r_roots_sh_jacobi(const void *x, const tsr_arg *a, int n, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, n, 0, 0);
-    if (m < 1) { fn_set_error("roots_sh_jacobi: n must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, n, 0, 0, 1, 3037000499, "roots_sh_jacobi", "n", "n must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "roots_sh_jacobi")) return TSR_ENOMEM;
     double p1 = roots_dbl(a, n, 1, 0.0), q1 = roots_dbl(a, n, 2, 0.0);
     return roots_shifted(m, p1 - q1, q1 - 1.0, pow(2.0, p1), r);
 }
 
 static int r_hermegauss(const void *x, const tsr_arg *a, int nn, tsr_result *r, int nr)
 {
-    (void)x; (void)nr; int64_t m = npoly_opt_int(a, nn, 0, 0);
-    if (m < 1) { fn_set_error("npoly.hermegauss: deg must be >= 1"); return TSR_EARG; }
+    (void)x; (void)nr; int64_t m = 0;
+    { const int rc0 = npoly_int(a, nn, 0, 0, 1, 3037000499, "npoly.hermegauss", "deg", "deg must be >= 1", &m); if (rc0 != TSR_OK) return rc0; }
+    if (!npoly_square_fits(m, "npoly.hermegauss")) return TSR_ENOMEM;
     double *xo = npoly_out1(&r[0], m), *wo = xo ? npoly_out1(&r[1], m) : NULL;
     if (!xo || !wo) return TSR_ENOMEM;
     double *c = calloc(m + 1, sizeof(double)); if (c) c[m] = 1.0;
