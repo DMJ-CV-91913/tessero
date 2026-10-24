@@ -469,8 +469,10 @@ jobs:
         run: |
           composer create-project laravel/laravel:^${{ matrix.laravel }}.0 app --no-interaction --prefer-dist
           cd app
-          composer config repositories.tessero path ../tessero
-          composer config repositories.tessero-laravel path ../tessero/laravel
+          # a pull-request checkout is a detached merge commit, so composer cannot apply the 0.2.x-dev branch alias
+          # and tessero/laravel's "tessero/tessero": "^0.2" would not match dev-<sha>: state the version explicitly
+          composer config repositories.tessero '{"type": "path", "url": "../tessero", "options": {"versions": {"tessero/tessero": "0.2.x-dev"}}}'
+          composer config repositories.tessero-laravel '{"type": "path", "url": "../tessero/laravel", "options": {"versions": {"tessero/laravel": "0.2.x-dev"}}}'
           composer require tessero/tessero:@dev tessero/laravel:@dev --no-interaction
       - name: provider boots, config publishes, doctor and macro work
         run: |
