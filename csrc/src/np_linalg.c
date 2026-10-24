@@ -2716,6 +2716,9 @@ static int r_invhilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     int64_t n; int rc = sl_int(&args[0], "n", &n);
     if (rc < 0) return rc;
     if (n < 0) { fn_set_error("invhilbert: n must be a non-negative integer"); return TSR_EARG; }
+    /* each entry takes three O(n) binomials (about 3n^3 multiplies in all): beyond 2^30 the work is out of reach
+       (CI fuzz timeout). Entries overflow to inf in double well before that (near n = 270), as SciPy's do */
+    if (n > 700) { fn_set_error("invhilbert: n=%lld is too large (at most 700)", (long long)n); return TSR_EARG; }
     int64_t osh[2] = {n, n};
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
     if (!out) return TSR_ENOMEM;
