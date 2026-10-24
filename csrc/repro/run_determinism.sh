@@ -27,8 +27,14 @@ COMMON="-fno-fast-math -ffp-contract=off -fopenmp"   # -lm goes AFTER the source
 echo "== compiling (all with -fno-fast-math -ffp-contract=off) =="
 echo "-- scalar (no vectorization) --"
 $CC -O2 -std=gnu11 -fno-tree-vectorize $COMMON "$IMPL" "$TEST" -o "$TMP/dt_scalar" -lm
-echo "-- AVX2 + FMA --"
-$CC -O3 -std=gnu11 -mavx2 -mfma        $COMMON "$IMPL" "$TEST" -o "$TMP/dt_avx2" -lm
+# the vectorised build: AVX2 + FMA on x86-64, the host's NEON/SVE (which always has FMA) elsewhere.
+# The output name stays dt_avx2 so the comparison below is the same on every ISA.
+case "$(uname -m)" in
+  x86_64|amd64) SIMD_FLAGS="-mavx2 -mfma"; SIMD_NAME="AVX2 + FMA" ;;
+  *)            SIMD_FLAGS="-march=native"; SIMD_NAME="$(uname -m) native SIMD" ;;
+esac
+echo "-- $SIMD_NAME --"
+$CC -O3 -std=gnu11 $SIMD_FLAGS        $COMMON "$IMPL" "$TEST" -o "$TMP/dt_avx2" -lm
 
 HAVE_AVX512=0
 if grep -q avx512f /proc/cpuinfo 2>/dev/null; then

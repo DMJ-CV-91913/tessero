@@ -63,6 +63,41 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $this->shape = array_values($shape);
         $this->size = self::checkedSize($this->shape);
         $this->strides = $strides === null ? self::cStrides($this->shape, $dtype->itemsize()) : array_values($strides);
+        if ($strides !== null || $offset !== 0) {
+            self::checkExtent($buffer, $this->shape, $this->strides, $offset, $dtype->itemsize());
+        }
+    }
+
+    /**
+     * Every element a view can address must lie inside its buffer: the kernels trust shape, strides and offset,
+     * so a view reaching past the block (the constructor is public) would read or write outside it.
+     *
+     * @param list<int> $shape
+     * @param list<int> $strides
+     */
+    private static function checkExtent(Buffer $buffer, array $shape, array $strides, int $offset, int $itemsize): void
+    {
+        if (count($strides) !== count($shape)) {
+            throw new ShapeError('strides must have one entry per dimension.');
+        }
+        if (in_array(0, $shape, true)) {
+            return;                                   // an empty view addresses nothing
+        }
+        $lo = $hi = $offset;
+        foreach ($shape as $d => $len) {
+            $span = ($len - 1) * $strides[$d];
+            if (is_float($span)) {
+                throw new IndexError('View exceeds its buffer (stride arithmetic overflows).');
+            }
+            if ($span < 0) {
+                $lo += $span;
+            } else {
+                $hi += $span;
+            }
+        }
+        if (is_float($lo) || is_float($hi) || $lo < 0 || $hi + $itemsize > $buffer->bytes) {
+            throw new IndexError('View exceeds its buffer.');
+        }
     }
 
     // ------------------------------------------------------------------ creation
@@ -132,7 +167,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $step = $div > 0 ? ($stop - $start) / $div : 0.0;
         $out = self::empty([$num], DType::Float64);
         if ($num > 0) {
-            Library::ffi()->tsr_arange(0, $num, $start, $step, $out->ptr());
+            if (($rc = Library::ffi()->tsr_arange(0, $num, $start, $step, $out->ptr())) !== 0) {
+                Library::check($rc, 'linspace');
+            }
             if ($endpoint && $num > 1) {
                 $out->buffer->write(($num - 1) * 8, pack('d', $stop));
             }
@@ -519,8 +556,13 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if ($need === 0) {
             return '';
         }
+        if ($need < 0) {
+            Library::check((int) $need, 'toJson');
+        }
         $buf = Buffer::allocate($need);
-        $ffi->tsr_array_json(FFI::addr($meta), $buf->ptr(), $need);
+        if ($ffi->tsr_array_json(FFI::addr($meta), $buf->ptr(), $need) !== $need) {
+            throw new TesseroException('toJson: the kernel wrote an unexpected length.');
+        }
 
         return $buf->read(0, $need);
     }
@@ -953,9 +995,14 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $ffi = Library::ffi();
         $mp = $ffi->cast('uint8_t*', $m->ptr());
         $n = $ffi->tsr_count_true($m->size, $mp);
+        if ($n < 0) {
+            Library::check($n, 'filter');
+        }
         $out = self::empty([$n], $this->dtype);
-        if ($n > 0) {
-            $ffi->tsr_compress($this->dtype->itemsize(), $src->size, $src->ptr(), $mp, $out->ptr());
+        // tsr_compress writes one element per true mask entry: it must agree with the count the output was sized by
+        if ($n > 0 && ($k = $ffi->tsr_compress($this->dtype->itemsize(), $src->size, $src->ptr(), $mp, $out->ptr())) !== $n) {
+            Library::check($k, 'filter');
+            throw new TesseroException('filter: mask changed between counting and compressing.');
         }
 
         return $out;
@@ -1708,7 +1755,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         }
         if ($k === 0) {
             $zero = Buffer::allocate(16, true);
-            Library::ffi()->tsr_fill($dt->value, $m * $n, $c->ptr($co), $zero->ptr());
+            Library::check(Library::ffi()->tsr_fill($dt->value, $m * $n, $c->ptr($co), $zero->ptr()), 'matmul');
 
             return;
         }

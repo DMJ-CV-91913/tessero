@@ -15,8 +15,8 @@ static int r_gbs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
 {
     (void)ctx; (void)nres;
     int64_t rank = 2, conn = 1;
-    if (nargs > 0 && args[0].kind == 1) rank = args[0].ival ? args[0].ival : (int64_t)args[0].num;
-    if (nargs > 1 && args[1].kind == 1) conn = args[1].ival ? args[1].ival : (int64_t)args[1].num;
+    if (nargs > 0 && args[0].kind == 1) rank = fn_num_i64(&args[0], 0);              /* NaN etc.: refused below */
+    if (nargs > 1 && args[1].kind == 1) conn = fn_num_i64(&args[1], INT64_MIN);      /* NaN: nothing <= conn */
     if (rank < 1 || rank > 6) { fn_set_error("generate_binary_structure: rank must be 1..6"); return TSR_EARG; }
     int64_t sh[6]; int64_t total = 1;
     for (int d = 0; d < rank; d++) { sh[d] = 3; total *= 3; }
@@ -97,6 +97,13 @@ static int64_t bmap(int64_t p, int64_t n, int mode)
 {
     if (p >= 0 && p < n) return p;
     if (n <= 0) return -1;
+    /* mirror and reflect are periodic (2n - 2 and 2n): a far tap is folded into one period first, then the loops
+       below take at most two steps (they used to step one period per iteration: |p| / n of them, minutes for a
+       long filter on a short line) */
+    if ((mode == ND_MIRROR || (mode != ND_NEAREST && mode != ND_WRAP && mode != ND_CONSTANT)) && (p < -2 * n || p >= 3 * n)) {
+        const int64_t per = mode == ND_MIRROR ? 2 * n - 2 : 2 * n;
+        if (per > 0) { p %= per; if (p < 0) p += per; }
+    }
     switch (mode) {
     case ND_NEAREST: return p < 0 ? 0 : n - 1;
     case ND_WRAP: { p %= n; if (p < 0) p += n; return p; }
@@ -268,6 +275,7 @@ static int r_iterate_structure(const void *ctx, const tsr_arg *args, int nargs, 
         fn_set_error("iterate_structure: a 3x3 structure is required"); return TSR_EARG;
     }
     const int64_t iterations = arg_int(nargs > 1 ? &args[1] : NULL, 1);
+    if (iterations > ((int64_t)1 << 20)) { fn_set_error("iterate_structure: too many iterations"); return TSR_ENOMEM; }   /* (2i+1)^2 */
     uint8_t s[9]; se_mask3(&args[0], s);
     if (iterations < 2) {
         const int64_t sh[2] = {3, 3};
@@ -326,6 +334,7 @@ static int r_binary_propagation(const void *ctx, const tsr_arg *args, int nargs,
     if (nargs > 2 && args[2].kind == 3) {
         int64_t tm; double *mk = fn_arg_doubles(&args[2], &tm);
         if (!mk) { fn_free_doubles(in, ti); free(seed); free(mask); return TSR_ENOMEM; }
+        if (tm != total) { fn_free_doubles(mk, tm); fn_free_doubles(in, ti); free(seed); free(mask); fn_set_error("mask and input must have equal sizes"); return TSR_EARG; }
         for (int64_t i = 0; i < total; i++) mask[i] = mk[i] != 0.0;
         fn_free_doubles(mk, tm);
     } else for (int64_t i = 0; i < total; i++) mask[i] = 1;     /* no mask: unconstrained */
@@ -359,8 +368,41 @@ static const int OP_MIN = 0, OP_MAX = 1, OP_MEDIAN = 2;
 static int64_t arg_int(const tsr_arg *a, int64_t dflt)
 {
     if (!a || a->kind != 1) return dflt;
-    return (a->flags & 1) ? a->ival : (int64_t)a->num;
+    return fn_num_i64(a, dflt);                           /* NaN, infinity, beyond int64: the default */
 }
+
+/* the longest 1-D filter accepted (2^20 taps) and the largest window volume of the order-statistic filters (2^18
+   elements, each sorted once per output sample): the work per sample, not the memory, bounds them */
+#define ND_MAXW ((int64_t)1 << 20)
+#define ND_MAXV ((int64_t)1 << 18)
+/* SciPy's origin rule for a window of length w >= 1: -(w // 2) <= origin <= (w - 1) // 2 ("invalid origin").
+   Checking it also keeps the boundary index arithmetic (position + offset - origin) inside int64. */
+static int nd_origin_ok(int64_t origin, int64_t w) { return w < 1 || (origin >= -(w / 2) && origin <= (w - 1) / 2); }
+/* the window volume prod(size) with every size >= 1, refused beyond ND_MAXV */
+static int nd_window(const int64_t *size, int32_t nd, const char *who, int64_t *V)
+{
+    int64_t v = 1;
+    for (int d = 0; d < nd; d++) {
+        if (size[d] < 1) { fn_set_error("%s: size must be >= 1", who); return TSR_EARG; }
+        if (size[d] > ND_MAXV / v) { fn_set_error("%s: the window may hold at most %lld elements", who, (long long)ND_MAXV); return TSR_EARG; }
+        v *= size[d];
+    }
+    *V = v;
+    return TSR_OK;
+}
+/* the Gaussian kernel radius int(truncate * sigma + 0.5) (as SciPy, refusing NaN / infinity as int() does) */
+static int nd_radius(double v, int64_t *lw)
+{
+    if (v != v) { fn_set_error("cannot convert float NaN to integer"); return TSR_EARG; }
+    if (v == INFINITY || v == -INFINITY) { fn_set_error("cannot convert float infinity to integer"); return TSR_EARG; }
+    /* every output sample sums 2 * radius + 1 taps: beyond 2^16 the work, not the memory, is out of reach */
+    if (v > 65536.0) { fn_set_error("gaussian filter: kernel radius must be <= 65536"); return TSR_EARG; }
+    *lw = v < 0 ? 0 : (int64_t)v;
+    return TSR_OK;
+}
+/* a label / index value as an integer; NaN, infinity or beyond int64 never matches (distinct sentinels) */
+static inline int64_t nd_lab(double v) { return fn_dbl_i64(v, INT64_MIN); }
+static inline int64_t nd_want(double v) { return fn_dbl_i64(v, INT64_MAX); }
 
 static int cmp_double(const void *a, const void *b) { const double x = *(const double *)a, y = *(const double *)b; return (x > y) - (x < y); }
 
@@ -368,23 +410,27 @@ static int cmp_double(const void *a, const void *b) { const double x = *(const d
 static int perax_i(const tsr_arg *a, int32_t nd, int64_t dflt, int64_t *out)
 {
     if (!a || a->kind == 0) { for (int d = 0; d < nd; d++) out[d] = dflt; return TSR_OK; }
-    if (a->kind == 1) { const int64_t v = (a->flags & 1) ? a->ival : (int64_t)a->num; for (int d = 0; d < nd; d++) out[d] = v; return TSR_OK; }
-    if (a->kind == 5 && a->count == nd) { for (int d = 0; d < nd; d++) out[d] = (a->items[d].flags & 1) ? a->items[d].ival : (int64_t)a->items[d].num; return TSR_OK; }
+    /* NaN, infinity or a float beyond int64 reads as 0, which the callers refuse (size must be >= 1) */
+    if (a->kind == 1) { const int64_t v = fn_num_i64(a, 0); for (int d = 0; d < nd; d++) out[d] = v; return TSR_OK; }
+    if (a->kind == 5 && a->count == nd) { for (int d = 0; d < nd; d++) out[d] = a->items[d].kind == 1 ? fn_num_i64(&a->items[d], 0) : 0; return TSR_OK; }
     if (a->kind == 3 && a->arr.ndim == 1 && a->arr.shape[0] == nd) {
         int64_t t; double *p = fn_arg_doubles(a, &t); if (!p) return TSR_ENOMEM;
-        for (int d = 0; d < nd; d++) out[d] = (int64_t)p[d];
+        for (int d = 0; d < nd; d++) out[d] = fn_dbl_i64(p[d], 0);
         fn_free_doubles(p, t); return TSR_OK;
     }
     fn_set_error("filter: size must be a scalar or one value per axis"); return TSR_EARG;
 }
 
 /* mode@mi, cval@mi+1, origin@mi+2 (scalar origin, applied to every axis). */
-static int rank_tail(const tsr_arg *args, int nargs, int32_t nd, int mi, int *mode, double *cval, int64_t *origin)
+static int rank_tail(const tsr_arg *args, int nargs, int32_t nd, const int64_t *size, int mi, int *mode, double *cval, int64_t *origin)
 {
     int rc; if ((rc = nd_mode(nargs > mi ? &args[mi] : NULL, mode)) < 0) return rc;
     *cval = (nargs > mi + 1 && args[mi + 1].kind == 1) ? ((args[mi + 1].flags & 1) ? (double)args[mi + 1].ival : args[mi + 1].num) : 0.0;
     const int64_t o = arg_int(nargs > mi + 2 ? &args[mi + 2] : NULL, 0);
-    for (int d = 0; d < nd; d++) origin[d] = o;
+    for (int d = 0; d < nd; d++) {
+        if (!nd_origin_ok(o, size[d])) { fn_set_error("invalid origin"); return TSR_EARG; }
+        origin[d] = o;
+    }
     return TSR_OK;
 }
 
@@ -395,7 +441,7 @@ static int windowed_rank_buf(const double *in, double *out, const int64_t *shape
     int64_t stride[8], center[8], total = 1, V = 1;
     for (int d = 0; d < nd; d++) { total *= shape[d]; V *= size[d]; center[d] = size[d] / 2; }
     if (total == 0 || V == 0) return TSR_OK;
-    stride[nd - 1] = 1;
+    if (nd > 0) stride[nd - 1] = 1;                       /* a 0-d input is one element with a 1-element window */
     for (int d = nd - 2; d >= 0; d--) stride[d] = stride[d + 1] * shape[d + 1];
     if (pick < 0) pick = 0;
     if (pick >= V) pick = V - 1;
@@ -444,9 +490,9 @@ static int r_order_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     if (nd > 8) { fn_set_error("order filter: at most 8 dimensions"); return TSR_EDIM; }
     int64_t size[8], origin[8]; int rc = perax_i(nargs > 1 ? &args[1] : NULL, nd, 3, size);
     if (rc < 0) return rc;
-    int64_t V = 1; for (int d = 0; d < nd; d++) { if (size[d] < 1) { fn_set_error("order filter: size must be >= 1"); return TSR_EARG; } V *= size[d]; }
+    int64_t V; if ((rc = nd_window(size, nd, "order filter", &V)) < 0) return rc;
     int mode; double cval;
-    if ((rc = rank_tail(args, nargs, nd, 2, &mode, &cval, origin)) < 0) return rc;
+    if ((rc = rank_tail(args, nargs, nd, size, 2, &mode, &cval, origin)) < 0) return rc;
     const int64_t pick = op == OP_MAX ? V - 1 : op == OP_MEDIAN ? V / 2 : 0;
     return windowed_rank(&args[0], size, origin, mode, cval, pick, &res[0]);
 }
@@ -461,11 +507,11 @@ static int r_rank_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     int64_t rank = arg_int(&args[1], 0);
     int64_t size[8], origin[8]; int rc = perax_i(nargs > 2 ? &args[2] : NULL, nd, 3, size);
     if (rc < 0) return rc;
-    int64_t V = 1; for (int d = 0; d < nd; d++) { if (size[d] < 1) { fn_set_error("rank_filter: size must be >= 1"); return TSR_EARG; } V *= size[d]; }
+    int64_t V; if ((rc = nd_window(size, nd, "rank_filter", &V)) < 0) return rc;
     if (rank < 0) rank += V;
     if (rank < 0 || rank >= V) { fn_set_error("rank_filter: rank is out of range"); return TSR_EARG; }
     int mode; double cval;
-    if ((rc = rank_tail(args, nargs, nd, 3, &mode, &cval, origin)) < 0) return rc;
+    if ((rc = rank_tail(args, nargs, nd, size, 3, &mode, &cval, origin)) < 0) return rc;
     return windowed_rank(&args[0], size, origin, mode, cval, rank, &res[0]);
 }
 
@@ -478,13 +524,13 @@ static int r_percentile_filter(const void *ctx, const tsr_arg *args, int nargs, 
     if (nd > 8) { fn_set_error("percentile_filter: at most 8 dimensions"); return TSR_EDIM; }
     double pct = args[1].num;
     if (pct < 0.0) pct += 100.0;
-    if (pct < 0.0 || pct > 100.0) { fn_set_error("percentile_filter: percentile must be in [-100, 100]"); return TSR_EARG; }
+    if (!(pct >= 0.0 && pct <= 100.0)) { fn_set_error("percentile_filter: percentile must be in [-100, 100]"); return TSR_EARG; }
     int64_t size[8], origin[8]; int rc = perax_i(nargs > 2 ? &args[2] : NULL, nd, 3, size);
     if (rc < 0) return rc;
-    int64_t V = 1; for (int d = 0; d < nd; d++) { if (size[d] < 1) { fn_set_error("percentile_filter: size must be >= 1"); return TSR_EARG; } V *= size[d]; }
+    int64_t V; if ((rc = nd_window(size, nd, "percentile_filter", &V)) < 0) return rc;
     const int64_t pick = pct == 100.0 ? V - 1 : (int64_t)((double)V * pct / 100.0);
     int mode; double cval;
-    if ((rc = rank_tail(args, nargs, nd, 3, &mode, &cval, origin)) < 0) return rc;
+    if ((rc = rank_tail(args, nargs, nd, size, 3, &mode, &cval, origin)) < 0) return rc;
     return windowed_rank(&args[0], size, origin, mode, cval, pick, &res[0]);
 }
 
@@ -499,9 +545,9 @@ static int r_grey_morph(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     if (nd > 8) { fn_set_error("grey morphology: at most 8 dimensions"); return TSR_EDIM; }
     int64_t size[8], origin[8]; int rc = perax_i(nargs > 1 ? &args[1] : NULL, nd, 3, size);
     if (rc < 0) return rc;
-    int64_t V = 1; for (int d = 0; d < nd; d++) { if (size[d] < 1) { fn_set_error("grey morphology: size must be >= 1"); return TSR_EARG; } V *= size[d]; }
+    int64_t V; if ((rc = nd_window(size, nd, "grey morphology", &V)) < 0) return rc;
     int mode; double cval;
-    if ((rc = rank_tail(args, nargs, nd, 2, &mode, &cval, origin)) < 0) return rc;
+    if ((rc = rank_tail(args, nargs, nd, size, 2, &mode, &cval, origin)) < 0) return rc;
     if (dilate) for (int d = 0; d < nd; d++) origin[d] = -origin[d] - (size[d] % 2 == 0 ? 1 : 0);   /* reflect the footprint */
     return windowed_rank(&args[0], size, origin, mode, cval, dilate ? V - 1 : 0, &res[0]);
 }
@@ -518,10 +564,11 @@ static int r_grey_openclose(const void *ctx, const tsr_arg *args, int nargs, tsr
     if (nd > 8) { fn_set_error("grey opening/closing: at most 8 dimensions"); return TSR_EDIM; }
     int64_t size[8], origin[8]; int rc = perax_i(nargs > 1 ? &args[1] : NULL, nd, 3, size);
     if (rc < 0) return rc;
-    int64_t V = 1, total = 1;
-    for (int d = 0; d < nd; d++) { if (size[d] < 1) { fn_set_error("grey opening/closing: size must be >= 1"); return TSR_EARG; } V *= size[d]; total *= args[0].arr.shape[d]; }
+    int64_t V, total = 1;
+    if ((rc = nd_window(size, nd, "grey opening/closing", &V)) < 0) return rc;
+    for (int d = 0; d < nd; d++) total *= args[0].arr.shape[d];
     int mode; double cval;
-    if ((rc = rank_tail(args, nargs, nd, 2, &mode, &cval, origin)) < 0) return rc;
+    if ((rc = rank_tail(args, nargs, nd, size, 2, &mode, &cval, origin)) < 0) return rc;
     int64_t ero_o[8], dil_o[8];
     for (int d = 0; d < nd; d++) { ero_o[d] = origin[d]; dil_o[d] = -origin[d] - (size[d] % 2 == 0 ? 1 : 0); }
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
@@ -556,10 +603,11 @@ static int r_grey_tophat(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     if (nd > 8) { fn_set_error("tophat/morphology: at most 8 dimensions"); return TSR_EDIM; }
     int64_t size[8], origin[8]; int rc = perax_i(nargs > 1 ? &args[1] : NULL, nd, 3, size);
     if (rc < 0) return rc;
-    int64_t V = 1, total = 1;
-    for (int d = 0; d < nd; d++) { if (size[d] < 1) { fn_set_error("tophat/morphology: size must be >= 1"); return TSR_EARG; } V *= size[d]; total *= args[0].arr.shape[d]; }
+    int64_t V, total = 1;
+    if ((rc = nd_window(size, nd, "tophat/morphology", &V)) < 0) return rc;
+    for (int d = 0; d < nd; d++) total *= args[0].arr.shape[d];
     int mode; double cval;
-    if ((rc = rank_tail(args, nargs, nd, 2, &mode, &cval, origin)) < 0) return rc;
+    if ((rc = rank_tail(args, nargs, nd, size, 2, &mode, &cval, origin)) < 0) return rc;
     int64_t ero_o[8], dil_o[8];
     for (int d = 0; d < nd; d++) { ero_o[d] = origin[d]; dil_o[d] = -origin[d] - (size[d] % 2 == 0 ? 1 : 0); }
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
@@ -681,6 +729,7 @@ static int r_correlate1d(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     int ax, mode; double cval; int64_t origin;
     int rc = filter_tail(args, nargs, nd, 2, &ax, &mode, &cval, &origin);
     if (rc < 0) { fn_free_doubles(w, tw); return rc; }
+    if (!nd_origin_ok(origin, W)) { fn_free_doubles(w, tw); fn_set_error("invalid origin"); return TSR_EARG; }
     double *rev = NULL, *wk = w;
     if (convolve) {                                   /* reverse weights, flip origin (and -1 for even length) */
         rev = (double *)malloc((size_t)(W > 0 ? W : 1) * sizeof(double));
@@ -701,6 +750,7 @@ static int r_correlate1d(const void *ctx, const tsr_arg *args, int nargs, tsr_re
 static int run_corr1d(const tsr_arg *input, const double *w, int64_t W, int ax, int mode, double cval, int64_t origin, tsr_result *res)
 {
     const int32_t nd = input->arr.ndim;
+    if (!nd_origin_ok(origin, W)) { fn_set_error("invalid origin"); return TSR_EARG; }
     int64_t ti; double *in = fn_arg_doubles(input, &ti);
     double *out = in ? (double *)fn_result_array(res, TSR_F64, nd, input->arr.shape) : NULL;
     if (!in || !out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
@@ -717,6 +767,7 @@ static int r_uniform_filter1d(const void *ctx, const tsr_arg *args, int nargs, t
     if (args[0].kind != 3) { fn_set_error("uniform_filter1d: input must be an array"); return TSR_EARG; }
     const int64_t size = arg_int(nargs > 1 ? &args[1] : NULL, 0);
     if (size < 1) { fn_set_error("uniform_filter1d: size must be >= 1"); return TSR_EARG; }
+    if (size > ND_MAXW) { fn_set_error("uniform_filter1d: size must be <= 1048576"); return TSR_EARG; }
     int ax, mode; double cval; int64_t origin;
     int rc = filter_tail(args, nargs, args[0].arr.ndim, 2, &ax, &mode, &cval, &origin);
     if (rc < 0) return rc;
@@ -737,8 +788,8 @@ static int r_gaussian_filter1d(const void *ctx, const tsr_arg *args, int nargs, 
     const int64_t order = arg_int(nargs > 3 ? &args[3] : NULL, 0);
     if (order != 0) { fn_set_error("gaussian_filter1d: only order=0 is supported"); return TSR_EARG; }
     const double truncate = (nargs > 6 && args[6].kind == 1) ? args[6].num : 4.0;
-    int64_t lw = (nargs > 7 && args[7].kind == 1) ? arg_int(&args[7], 0) : (int64_t)(truncate * sigma + 0.5);
-    if (lw < 0) lw = 0;
+    int64_t lw;
+    { int rr = nd_radius((nargs > 7 && args[7].kind == 1) ? (double)arg_int(&args[7], 0) : truncate * sigma + 0.5, &lw); if (rr < 0) return rr; }
     const int64_t W = 2 * lw + 1;
     /* axis@2, order@3, mode@4, cval@5 (no origin argument). */
     int64_t a = arg_int(nargs > 2 ? &args[2] : NULL, -1);
@@ -765,10 +816,12 @@ static int r_minmax_filter1d(const void *ctx, const tsr_arg *args, int nargs, ts
     if (args[0].kind != 3) { fn_set_error("minimum/maximum_filter1d: input must be an array"); return TSR_EARG; }
     const int64_t size = arg_int(nargs > 1 ? &args[1] : NULL, 0);
     if (size < 1) { fn_set_error("minimum/maximum_filter1d: size must be >= 1"); return TSR_EARG; }
+    if (size > ND_MAXW) { fn_set_error("minimum/maximum_filter1d: size must be <= 1048576"); return TSR_EARG; }
     const int32_t nd = args[0].arr.ndim;
     int ax, mode; double cval; int64_t origin;
     int rc = filter_tail(args, nargs, nd, 2, &ax, &mode, &cval, &origin);
     if (rc < 0) return rc;
+    if (!nd_origin_ok(origin, size)) { fn_set_error("invalid origin"); return TSR_EARG; }
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti);
     double *out = in ? (double *)fn_result_array(&res[0], TSR_F64, nd, args[0].arr.shape) : NULL;
     if (!in || !out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
@@ -831,8 +884,9 @@ static int r_gaussian_filter(const void *ctx, const tsr_arg *args, int nargs, ts
     const int has_radius = nargs > 6 && args[6].kind == 1;
     double *kern[8]; int64_t W[8];
     for (int d = 0; d < nd; d++) {
-        int64_t lw = has_radius ? arg_int(&args[6], 0) : (int64_t)(truncate * sigma[d] + 0.5);
-        if (lw < 0) lw = 0;
+        int64_t lw;
+        rc = nd_radius(has_radius ? (double)arg_int(&args[6], 0) : truncate * sigma[d] + 0.5, &lw);
+        if (rc < 0) { for (int e = 0; e < d; e++) free(kern[e]); return rc; }
         W[d] = 2 * lw + 1;
         kern[d] = (double *)malloc((size_t)W[d] * sizeof(double));
         if (!kern[d]) { for (int e = 0; e < d; e++) free(kern[e]); return TSR_ENOMEM; }
@@ -861,8 +915,10 @@ static int r_uniform_filter(const void *ctx, const tsr_arg *args, int nargs, tsr
     const int64_t origin0 = arg_int(nargs > 4 ? &args[4] : NULL, 0);
     double *kern[8]; int64_t W[8], orig[8];
     for (int d = 0; d < nd; d++) {
-        const int64_t sz = (int64_t)sized[d];
+        const int64_t sz = fn_dbl_i64(sized[d], 0);
         if (sz < 1) { for (int e = 0; e < d; e++) free(kern[e]); fn_set_error("uniform_filter: size must be >= 1"); return TSR_EARG; }
+        if (sz > ND_MAXW) { for (int e = 0; e < d; e++) free(kern[e]); fn_set_error("uniform_filter: size must be <= 1048576"); return TSR_EARG; }
+        if (!nd_origin_ok(origin0, sz)) { for (int e = 0; e < d; e++) free(kern[e]); fn_set_error("invalid origin"); return TSR_EARG; }
         W[d] = sz; orig[d] = origin0;
         kern[d] = (double *)malloc((size_t)sz * sizeof(double));
         if (!kern[d]) { for (int e = 0; e < d; e++) free(kern[e]); return TSR_ENOMEM; }
@@ -940,7 +996,9 @@ static int r_gaussian_deriv_combine(const void *ctx, const tsr_arg *args, int na
     int64_t total = 1; for (int d = 0; d < nd; d++) total *= args[0].arr.shape[d] > 0 ? args[0].arr.shape[d] : 0;
     int64_t W[8]; double *k0[8], *kd[8];     /* per-axis order-0 and high-order (1 or 2) kernels */
     for (int d = 0; d < nd; d++) {
-        int64_t lw = (int64_t)(truncate * sigma[d] + 0.5); if (lw < 0) lw = 0;
+        int64_t lw;
+        rc = nd_radius(truncate * sigma[d] + 0.5, &lw);
+        if (rc < 0) { for (int e = 0; e < d; e++) { free(k0[e]); free(kd[e]); } return rc; }
         W[d] = 2 * lw + 1;
         k0[d] = (double *)malloc((size_t)W[d] * sizeof(double));
         kd[d] = (double *)malloc((size_t)W[d] * sizeof(double));
@@ -1080,6 +1138,7 @@ static int r_measure(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int64_t it_in; double *in = fn_arg_doubles(&args[0], &it_in); if (!in) return TSR_ENOMEM;
     int64_t it_lab = 0; double *lab = NULL;
     if (has_labels) { lab = fn_arg_doubles(&args[1], &it_lab); if (!lab) { fn_free_doubles(in, it_in); return TSR_ENOMEM; } }
+    if (has_labels && it_lab != N) { fn_free_doubles(in, it_in); fn_free_doubles(lab, it_lab); fn_set_error("input and labels must have the same shape"); return TSR_EARG; }
     double *scratch = (double *)malloc((size_t)(N > 0 ? N : 1) * sizeof(double));
     if (!scratch) { fn_free_doubles(in, it_in); if (lab) fn_free_doubles(lab, it_lab); return TSR_ENOMEM; }
     int rc = TSR_OK;
@@ -1091,9 +1150,9 @@ static int r_measure(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         if (!idx || !out) { rc = TSR_ENOMEM; if (idx) fn_free_doubles(idx, it_ix); }
         else {
             for (int64_t k = 0; k < m; k++) {
-                const int64_t want = (int64_t)idx[k];
+                const int64_t want = nd_want(idx[k]);
                 int64_t n = 0;
-                for (int64_t i = 0; i < N; i++) if ((int64_t)lab[i] == want) scratch[n++] = in[i];
+                for (int64_t i = 0; i < N; i++) if (nd_lab(lab[i]) == want) scratch[n++] = in[i];
                 out[k] = reduce_region(op, scratch, n);
             }
             fn_free_doubles(idx, it_ix);
@@ -1101,8 +1160,8 @@ static int r_measure(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     } else {                                                     /* scalar result */
         int64_t n = 0;
         if (ix) { const int64_t want = arg_int(ix, 0);
-            for (int64_t i = 0; i < N; i++) if ((int64_t)lab[i] == want) scratch[n++] = in[i]; }
-        else if (has_labels) { for (int64_t i = 0; i < N; i++) if ((int64_t)lab[i] != 0) scratch[n++] = in[i]; }
+            for (int64_t i = 0; i < N; i++) if (nd_lab(lab[i]) == want) scratch[n++] = in[i]; }
+        else if (has_labels) { for (int64_t i = 0; i < N; i++) if (nd_lab(lab[i]) != 0) scratch[n++] = in[i]; }
         else { for (int64_t i = 0; i < N; i++) scratch[n++] = in[i]; }
         fn_result_num(&res[0], reduce_region(op, scratch, n));
     }
@@ -1120,7 +1179,8 @@ static void unravel(int64_t i, const int64_t *shape, int32_t nd, int64_t *coords
  * (labels given) or every position (no labels). */
 static inline int in_region(const double *lab, int has_labels, int have_idx, int64_t want, int64_t i)
 {
-    return have_idx ? ((int64_t)lab[i] == want) : (has_labels ? ((int64_t)lab[i] != 0) : 1);
+    if (!has_labels) return 1;                            /* no labels: an index selects nothing to compare */
+    return have_idx ? (nd_lab(lab[i]) == want) : (nd_lab(lab[i]) != 0);
 }
 
 /* center_of_mass: input-weighted centroid per labeled region. Result (nd,) for a scalar/None index, (m, nd) for
@@ -1141,6 +1201,7 @@ static int r_center_of_mass(const void *ctx, const tsr_arg *args, int nargs, tsr
     int64_t it_in; double *in = fn_arg_doubles(&args[0], &it_in); if (!in) return TSR_ENOMEM;
     int64_t it_lab = 0; double *lab = NULL;
     if (has_labels) { lab = fn_arg_doubles(&args[1], &it_lab); if (!lab) { fn_free_doubles(in, it_in); return TSR_ENOMEM; } }
+    if (has_labels && it_lab != N) { fn_free_doubles(in, it_in); fn_free_doubles(lab, it_lab); fn_set_error("input and labels must have the same shape"); return TSR_EARG; }
     if (array_idx) { for (int d = 0; d < ix->arr.ndim; d++) m *= ix->arr.shape[d]; idx = fn_arg_doubles(ix, &it_ix);
         if (!idx) { fn_free_doubles(in, it_in); if (lab) fn_free_doubles(lab, it_lab); return TSR_ENOMEM; } }
     const int64_t sh2[2] = { m, nd }, sh1[1] = { nd };
@@ -1149,7 +1210,7 @@ static int r_center_of_mass(const void *ctx, const tsr_arg *args, int nargs, tsr
     if (!out) { fn_free_doubles(in, it_in); if (lab) fn_free_doubles(lab, it_lab); if (idx) fn_free_doubles(idx, it_ix); return TSR_ENOMEM; }
     int64_t coords[8];
     for (int64_t k = 0; k < m; k++) {
-        const int64_t want = array_idx ? (int64_t)idx[k] : (ix ? arg_int(ix, 0) : 0);
+        const int64_t want = array_idx ? nd_want(idx[k]) : (ix ? arg_int(ix, 0) : 0);
         double mass = 0, num[8]; for (int d = 0; d < nd; d++) num[d] = 0.0;
         for (int64_t i = 0; i < N; i++) {
             if (!in_region(lab, has_labels, array_idx || ix != NULL, want, i)) continue;
@@ -1184,6 +1245,7 @@ static int r_minmax_position(const void *ctx, const tsr_arg *args, int nargs, ts
     int64_t it_in; double *in = fn_arg_doubles(&args[0], &it_in); if (!in) return TSR_ENOMEM;
     int64_t it_lab = 0; double *lab = NULL;
     if (has_labels) { lab = fn_arg_doubles(&args[1], &it_lab); if (!lab) { fn_free_doubles(in, it_in); return TSR_ENOMEM; } }
+    if (has_labels && it_lab != N) { fn_free_doubles(in, it_in); fn_free_doubles(lab, it_lab); fn_set_error("input and labels must have the same shape"); return TSR_EARG; }
     if (array_idx) { for (int d = 0; d < ix->arr.ndim; d++) m *= ix->arr.shape[d]; idx = fn_arg_doubles(ix, &it_ix);
         if (!idx) { fn_free_doubles(in, it_in); if (lab) fn_free_doubles(lab, it_lab); return TSR_ENOMEM; } }
     const int64_t sh2[2] = { m, nd }, sh1[1] = { nd };
@@ -1192,7 +1254,7 @@ static int r_minmax_position(const void *ctx, const tsr_arg *args, int nargs, ts
     if (!out) { fn_free_doubles(in, it_in); if (lab) fn_free_doubles(lab, it_lab); if (idx) fn_free_doubles(idx, it_ix); return TSR_ENOMEM; }
     int64_t coords[8];
     for (int64_t k = 0; k < m; k++) {
-        const int64_t want = array_idx ? (int64_t)idx[k] : (ix ? arg_int(ix, 0) : 0);
+        const int64_t want = array_idx ? nd_want(idx[k]) : (ix ? arg_int(ix, 0) : 0);
         int64_t best_i = -1; double best = 0;
         for (int64_t i = 0; i < N; i++) {
             if (!in_region(lab, has_labels, array_idx || ix != NULL, want, i)) continue;
@@ -1226,6 +1288,7 @@ static int r_histogram(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
     int64_t tl = 0; double *lab = NULL;
     if (has_labels) { lab = fn_arg_doubles(&args[4], &tl); if (!lab) { fn_free_doubles(in, ti); return TSR_ENOMEM; } }
+    if (has_labels && tl != N) { fn_free_doubles(in, ti); fn_free_doubles(lab, tl); fn_set_error("input and labels must have the same shape"); return TSR_EARG; }
     const int64_t want = ix ? arg_int(ix, 0) : 0;
     const int64_t bsh[1] = { bins };
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, bsh);
@@ -1235,7 +1298,7 @@ static int r_histogram(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
         if (!in_region(lab, has_labels, ix != NULL, want, i)) continue;
         const double v = in[i];
         if (!(v >= lo && v <= hi)) continue;
-        int64_t b = (int64_t)((v - lo) / (hi - lo) * (double)bins);
+        int64_t b = fn_dbl_i64((v - lo) / (hi - lo) * (double)bins, -1);
         if (b == bins) b = bins - 1;
         if (b >= 0 && b < bins) out[b] += 1.0;
     }
@@ -1262,6 +1325,7 @@ static int r_extrema(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
     int64_t tl = 0; double *lab = NULL;
     if (has_labels) { lab = fn_arg_doubles(&args[1], &tl); if (!lab) { fn_free_doubles(in, ti); return TSR_ENOMEM; } }
+    if (has_labels && tl != N) { fn_free_doubles(in, ti); fn_free_doubles(lab, tl); fn_set_error("input and labels must have the same shape"); return TSR_EARG; }
     if (array_idx) { for (int d = 0; d < ix->arr.ndim; d++) m *= ix->arr.shape[d]; idx = fn_arg_doubles(ix, &it_ix);
         if (!idx) { fn_free_doubles(in, ti); if (lab) fn_free_doubles(lab, tl); return TSR_ENOMEM; } }
     const int64_t sh1[1] = { nd }, shm[1] = { m }, sh2[2] = { m, nd };
@@ -1278,7 +1342,7 @@ static int r_extrema(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     if ((array_idx && (!mn || !mx)) || !mnp || !mxp) { fn_free_doubles(in, ti); if (lab) fn_free_doubles(lab, tl); if (idx) fn_free_doubles(idx, it_ix); return TSR_ENOMEM; }
     int64_t coord[8];
     for (int64_t k = 0; k < m; k++) {
-        const int64_t want = array_idx ? (int64_t)idx[k] : (ix ? arg_int(ix, 0) : 0);
+        const int64_t want = array_idx ? nd_want(idx[k]) : (ix ? arg_int(ix, 0) : 0);
         double vmin = 0, vmax = 0; int64_t imin = -1, imax = -1;
         for (int64_t i = 0; i < N; i++) {
             if (!in_region(lab, has_labels, array_idx || ix != NULL, want, i)) continue;
@@ -1309,17 +1373,24 @@ static int r_find_objects(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     int64_t N = 1; for (int d = 0; d < nd; d++) N *= shape[d] > 0 ? shape[d] : 0;
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
     int64_t L = arg_int(nargs > 1 ? &args[1] : NULL, 0);
-    if (L <= 0) { L = 0; for (int64_t i = 0; i < N; i++) { const int64_t v = (int64_t)in[i]; if (v > L) L = v; } }
+    if (L <= 0) {                                         /* the largest label; NaN never compares greater */
+        double mx = 0.0;
+        for (int64_t i = 0; i < N; i++) if (in[i] > mx) mx = in[i];
+        L = mx < 4294967296.0 ? (int64_t)mx : ((int64_t)1 << 32);
+    }
+    if (L > ((int64_t)1 << 31)) { fn_free_doubles(in, ti); fn_set_error("find_objects: max_label is too large"); return TSR_ENOMEM; }
     const int64_t sh[3] = { L, nd, 2 };
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 3, sh);
+    if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }   /* before the L-sized scratch below */
     int64_t *lo = (L > 0) ? (int64_t *)malloc((size_t)(L * nd) * sizeof(int64_t)) : NULL;
     int64_t *hi = (L > 0) ? (int64_t *)malloc((size_t)(L * nd) * sizeof(int64_t)) : NULL;
     uint8_t *present = (L > 0) ? (uint8_t *)calloc((size_t)(L > 0 ? L : 1), 1) : NULL;
     if (!out || (L > 0 && (!lo || !hi || !present))) { fn_free_doubles(in, ti); free(lo); free(hi); free(present); return TSR_ENOMEM; }
     int64_t coord[8];
     for (int64_t i = 0; i < N; i++) {
-        const int64_t l = (int64_t)in[i];
-        if (l < 1 || l > L) continue;
+        const double lv = in[i];
+        if (!(lv >= 1.0 && lv < (double)L + 1.0)) continue;   /* NaN and out-of-range values are background */
+        const int64_t l = (int64_t)lv;
         unravel(i, shape, nd, coord);
         const int64_t base = (l - 1) * nd;
         if (!present[l - 1]) { for (int d = 0; d < nd; d++) { lo[base + d] = coord[d]; hi[base + d] = coord[d]; } present[l - 1] = 1; }
@@ -1347,7 +1418,7 @@ static void edt_line(const double *f, double *d, int64_t n, const void *vc)
         double s;
         for (;;) {
             s = ((f[q] + w2 * (double)(q * q)) - (f[v[k]] + w2 * (double)(v[k] * v[k]))) / (2.0 * w2 * (double)(q - v[k]));
-            if (s <= z[k]) k--; else break;   /* z[0] = -inf stops this at k = 0 */
+            if (k > 0 && s <= z[k]) k--; else break;   /* stop at k = 0: z[0] = -inf did not when s = -inf (sampling 0) */
         }
         k++; v[k] = q; z[k] = s; z[k + 1] = INFINITY;
     }
@@ -1688,6 +1759,8 @@ static double geom_interp(const double *in, const int64_t *si, int32_t nd, const
     double cc[8];
     for (int d = 0; d < nd; d++) {
         const double c = coord[d];
+        if (!isfinite(c)) return cval;                    /* NaN / infinity: no sample (and no float->int cast) */
+        if (si[d] <= 0) return cval;                      /* an empty input has nothing to sample (it read in[0]) */
         if (con) { if (c < 0.0 || c > (double)(si[d] - 1)) return cval; cc[d] = c; }
         else cc[d] = map_coord(c, si[d], mode);
     }
@@ -1747,10 +1820,11 @@ static int r_map_coordinates(const void *ctx, const tsr_arg *args, int nargs, ts
     int64_t osh[8], M = 1; for (int d = 0; d < ond; d++) { osh[d] = args[1].arr.shape[d + 1]; M *= osh[d]; }
     int64_t ti, tc; double *in = fn_arg_doubles(&args[0], &ti);
     double *co = in ? fn_arg_doubles(&args[1], &tc) : NULL;
-    double *out = co ? (double *)fn_result_array(&res[0], TSR_F64, ond, ond > 0 ? osh : NULL) : NULL;
-    if (!out && !(ond == 0 && co)) { fn_free_doubles(in, ti); if (co) fn_free_doubles(co, tc); return TSR_ENOMEM; }
-    double *dst = (ond == 0) ? &res[0].num : out;
-    if (ond == 0) res[0].kind = 1;
+    /* (nd,) coordinates give a scalar: no 0-d result block (one was allocated and then overwritten, a leak) */
+    double *out = (co && ond > 0) ? (double *)fn_result_array(&res[0], TSR_F64, ond, osh) : NULL;
+    if (!co || (ond > 0 && !out)) { fn_free_doubles(in, ti); if (co) fn_free_doubles(co, tc); return TSR_ENOMEM; }
+    double scalar = 0.0;
+    double *dst = (ond == 0) ? &scalar : out;
     const int con = (mode == ND_CONSTANT);
     const double *src = in; double *coeff = NULL;
     if (order >= 2) {
@@ -1767,6 +1841,7 @@ static int r_map_coordinates(const void *ctx, const tsr_arg *args, int nargs, ts
         for (int d = 0; d < nd; d++) coord[d] = co[(int64_t)d * M + m];
         dst[m] = geom_interp(src, si, nd, istride, coord, (int)order, mode, cval, con);
     }
+    if (ond == 0) fn_result_num(&res[0], scalar);
     free(coeff); fn_free_doubles(in, ti); fn_free_doubles(co, tc);
     return TSR_OK;
 }
@@ -1821,8 +1896,19 @@ static int r_affine_transform(const void *ctx, const tsr_arg *args, int nargs, t
     if (nargs > 2 && args[2].kind == 3) { int rc = perax_d(&args[2], nd, off); if (rc < 0) return rc; }
     else { const double v = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? (double)args[2].ival : args[2].num) : 0.0; for (int d = 0; d < nd; d++) off[d] = v; }
     int64_t osh[8]; int32_t ond = nd;
-    if (nargs > 3 && args[3].kind == 3) { int64_t to; double *os = fn_arg_doubles(&args[3], &to); if (!os) return TSR_ENOMEM; for (int d = 0; d < nd; d++) osh[d] = (int64_t)os[d]; fn_free_doubles(os, to); }
+    if (nargs > 3 && args[3].kind == 3) {
+        int64_t to; double *os = fn_arg_doubles(&args[3], &to); if (!os) return TSR_ENOMEM;
+        if (to != nd) { fn_free_doubles(os, to); fn_set_error("affine_transform: output_shape must have one entry per axis"); return TSR_EARG; }
+        for (int d = 0; d < nd; d++) osh[d] = os[d] == floor(os[d]) ? fn_dbl_i64(os[d], -1) : -1;
+        fn_free_doubles(os, to);
+        for (int d = 0; d < nd; d++) if (osh[d] < 0) { fn_set_error("affine_transform: output_shape must be non-negative integers"); return TSR_EARG; }
+        if (tsr_shape_size(nd, osh) < 0) { fn_set_error("affine_transform: output_shape is too large"); return TSR_ENOMEM; }
+    }
     else for (int d = 0; d < nd; d++) osh[d] = args[0].arr.shape[d];
+    {
+        int64_t mn = 1; for (int d = 0; d < args[1].arr.ndim; d++) mn *= args[1].arr.shape[d];
+        if (mn < (mat2d ? (int64_t)nd * nd : nd)) { fn_set_error("affine_transform: matrix must be (ndim, ndim) or (ndim,)"); return TSR_EARG; }
+    }
     const int64_t order = arg_int(nargs > 4 ? &args[4] : NULL, 3);
     if (order < 0 || order > 5) { fn_set_error("affine_transform: order must be 0..5"); return TSR_EARG; }
     int mode; int rc = nd_mode(nargs > 5 ? &args[5] : NULL, &mode); if (rc < 0) return rc;
@@ -1876,7 +1962,13 @@ static int r_zoom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     const double cval = (nargs > 4 && args[4].kind == 1) ? ((args[4].flags & 1) ? (double)args[4].ival : args[4].num) : 0.0;
     const int64_t *si = args[0].arr.shape;
     int64_t osh[8], otot = 1; double scale[8];
-    for (int d = 0; d < nd; d++) { osh[d] = (int64_t)floor((double)si[d] * zm[d] + 0.5); if (osh[d] < 1) osh[d] = 1; otot *= osh[d]; scale[d] = osh[d] > 1 ? (double)(si[d] - 1) / (double)(osh[d] - 1) : 0.0; }
+    for (int d = 0; d < nd; d++) {
+        const double o = floor((double)si[d] * zm[d] + 0.5);
+        if (!(o < 4294967296.0)) { fn_set_error("zoom: the output shape is too large"); return o != o ? TSR_EARG : TSR_ENOMEM; }   /* NaN too */
+        osh[d] = o < 1.0 ? 1 : (int64_t)o;
+        if (osh[d] > INT64_MAX / otot) { fn_set_error("zoom: the output shape is too large"); return TSR_ENOMEM; }
+        otot *= osh[d]; scale[d] = osh[d] > 1 ? (double)(si[d] - 1) / (double)(osh[d] - 1) : 0.0;
+    }
     int64_t istride[8], ostride[8]; istride[nd - 1] = 1; ostride[nd - 1] = 1;
     for (int d = nd - 2; d >= 0; d--) { istride[d] = istride[d + 1] * si[d + 1]; ostride[d] = ostride[d + 1] * osh[d + 1]; }
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
@@ -1915,7 +2007,8 @@ static int r_rotate(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     int a0 = 1, a1 = 0;
     if (nargs > 2 && args[2].kind == 3 && args[2].arr.ndim == 1 && args[2].arr.shape[0] == 2) {
         int64_t ta; double *ax = fn_arg_doubles(&args[2], &ta); if (!ax) return TSR_ENOMEM;
-        a0 = (int)ax[0]; a1 = (int)ax[1]; fn_free_doubles(ax, ta);
+        a0 = (int)fn_dbl_i64(ax[0] < -64 ? -64 : ax[0] > 64 ? 64 : ax[0], 64); a1 = (int)fn_dbl_i64(ax[1] < -64 ? -64 : ax[1] > 64 ? 64 : ax[1], 64);   /* NaN -> 64: out of range */
+        fn_free_doubles(ax, ta);
     }
     if (a0 < 0) a0 += nd; if (a1 < 0) a1 += nd;
     if (a0 > a1) { int t = a0; a0 = a1; a1 = t; }
@@ -1936,7 +2029,8 @@ static int r_rotate(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
             const double ry = c * cy[k] + s * cx[k], rx = -s * cy[k] + c * cx[k];
             if (ry < y0) y0 = ry; if (ry > y1) y1 = ry; if (rx < x0) x0 = rx; if (rx > x1) x1 = rx;
         }
-        op0 = (int64_t)(y1 - y0 + 0.5); op1 = (int64_t)(x1 - x0 + 0.5);
+        op0 = fn_dbl_i64(y1 - y0 + 0.5, 0); op1 = fn_dbl_i64(x1 - x0 + 0.5, 0);   /* a NaN angle leaves the extent undefined */
+        if (op0 > ((int64_t)1 << 32) || op1 > ((int64_t)1 << 32)) { fn_set_error("rotate: the output shape is too large"); return TSR_ENOMEM; }
     } else { op0 = si[a0]; op1 = si[a1]; }
     if (op0 < 1) op0 = 1; if (op1 < 1) op1 = 1;
     const double ocy = ((double)op0 - 1) / 2.0, ocx = ((double)op1 - 1) / 2.0;
@@ -1989,6 +2083,7 @@ static int r_correlate_nd(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     const double cval = (nargs > 3 && args[3].kind == 1) ? ((args[3].flags & 1) ? (double)args[3].ival : args[3].num) : 0.0;
     const int64_t origin0 = arg_int(nargs > 4 ? &args[4] : NULL, 0);
     int64_t istride[8], wstride[8], center[8], total = 1, W = 1;
+    for (int d = 0; d < nd; d++) if (!nd_origin_ok(origin0, wshape[d])) { fn_set_error("invalid origin"); return TSR_EARG; }
     for (int d = 0; d < nd; d++) { total *= shape[d]; W *= wshape[d]; center[d] = wshape[d] / 2; }
     istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * shape[d + 1];
     wstride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) wstride[d] = wstride[d + 1] * wshape[d + 1];
@@ -2120,7 +2215,16 @@ static int r_watershed(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     int32_t *lab = (int32_t *)fn_result_array(&res[0], TSR_I32, ndim, shape);
     if (!lab) { fn_free_doubles(in, ti); fn_free_doubles(mk, tm); return TSR_ENOMEM; }
     int64_t maxval = 0;
-    for (int64_t j = 0; j < size; j++) { int64_t v = (int64_t)in[j]; if (v > maxval) maxval = v; }
+    for (int64_t j = 0; j < size; j++) {
+        /* SciPy accepts only uint8 / uint16 input: a negative or larger value made the cost difference exceed the
+           queue count (first[]/last[] are indexed by cost), and a NaN or huge one was an undefined cast */
+        if (!(in[j] >= 0.0 && in[j] <= 65535.0) || !(mk[j] >= -2147483648.0 && mk[j] <= 2147483647.0)) {
+            fn_free_doubles(in, ti); fn_free_doubles(mk, tm);
+            fn_set_error("watershed_ift: only 8 and 16 unsigned inputs (0..65535) and int32 markers are supported");
+            return TSR_ETYPE;
+        }
+        const int64_t v = (int64_t)in[j]; if (v > maxval) maxval = v;
+    }
     int32_t *iin = (int32_t *)malloc(sizeof(int32_t) * (size_t)(size > 0 ? size : 1));
     int64_t *cost = (int64_t *)malloc(sizeof(int64_t) * (size_t)(size > 0 ? size : 1));
     int64_t *nxt = (int64_t *)malloc(sizeof(int64_t) * (size_t)(size > 0 ? size : 1));

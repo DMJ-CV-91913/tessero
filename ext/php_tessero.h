@@ -33,7 +33,9 @@
 extern zend_module_entry tessero_module_entry;
 #define phpext_tessero_ptr &tessero_module_entry
 
-#define PHP_TESSERO_VERSION "0.2.0"
+/* one version source for the kernel and the extension (csrc/include/tessero_version.h, synced into libtessero/) */
+#include "libtessero/include/tessero_version.h"
+#define PHP_TESSERO_VERSION TSR_VERSION_STRING
 
 #if defined(ZTS) && defined(COMPILE_DL_TESSERO)
 ZEND_TSRMLS_CACHE_EXTERN()
@@ -42,7 +44,10 @@ ZEND_TSRMLS_CACHE_EXTERN()
 /* Per-thread (ZTS) / per-process (NTS) settings; libtessero itself is process-wide. */
 ZEND_BEGIN_MODULE_GLOBALS(tessero)
     zend_long threads;          /* applied to libtessero at request start (tessero.threads) */
-    zend_long memory_budget;    /* bytes, 0 = unlimited (tessero.memory_budget) */
+    zend_long memory_budget;    /* bytes; 0 = automatic (unlimited in the CLI, else derived from memory_limit),
+                                   -1 = unlimited (tessero.memory_budget) */
+    zend_long blas_threads;     /* BLAS pool size; -1 = automatic (1 outside the CLI), 0 = leave the BLAS alone
+                                   (tessero.blas_threads) */
     double epsilon;             /* default tolerance for iterative solvers (tessero.epsilon) */
 ZEND_END_MODULE_GLOBALS(tessero)
 
@@ -119,6 +124,8 @@ extern zend_class_entry *tsr_ce_special, *tsr_ce_stats, *tsr_ce_np, *tsr_ce_dist
 void tsr_register_generator(const zend_function_entry *registry_methods, int n);
 uint64_t *tsr_generator_state(zval *obj);
 void tsr_register_fn(void);
+void tsr_unregister_fn(void);   /* MSHUTDOWN: frees what tsr_register_fn allocated */
+void *tsr_pkeep(void *p);       /* records a persistent MINIT allocation for tsr_unregister_fn to free */
 void tsr_fn_dist_call(int id, int method, zval *args, int nargs, zval *rv);
 void tsr_fn_call_routine(const char *name, zval *args, int nargs, zval *rv);
 void tsr_fn_call_gufunc(const char *name, zval *args, int nargs, zval *rv);

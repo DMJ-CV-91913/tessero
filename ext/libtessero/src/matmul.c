@@ -1,4 +1,11 @@
-/* Cache-blocked matrix product used when no BLAS library is available. */
+/* Matrix products. Two entry points with DIFFERENT numerical contracts (tessero.h):
+ *   tsr_matmul  the fast path: F64/F32 go to the linked BLAS (cblas_dgemm/cblas_sgemm, OpenBLAS on Linux)
+ *               whenever every dimension and leading dimension fits an int, else to the blocked kernel
+ *               below. BLAS results depend on the BLAS build, its SIMD kernel and its thread count, so
+ *               they agree with NumPy to a tolerance, not bit for bit. I64 always uses the blocked kernel.
+ *   tsr_gemm    the canonical entry point: never calls BLAS; every product is accumulated in a fixed
+ *               order with an explicit round-once FMA (TSR_RFMA), so the bits are identical across
+ *               compiler, SIMD clone, thread count and CPU. Use it when results must be reproducible. */
 #include "internal.h"
 #include <limits.h>
 
@@ -36,7 +43,10 @@ extern void cblas_sgemm(int Order, int TransA, int TransB, int M, int N, int K,
                 }                                                                               \
     }
 
-#define FFMA(T, c, a, b) ((c) + (a) * (b))
+/* Float/double accumulate as an explicit round-once FMA (c + a*b, one rounding) so the
+   result is canonical across compiler, -ffp-contract and SIMD clone (see TSR_RFMA). The
+   integer path keeps NumPy wrap-around semantics. */
+#define FFMA(T, c, a, b) TSR_RFMA(T, a, b, c)
 #define IFMA(T, c, a, b) TSR_WADD(T, c, TSR_WMUL(T, a, b))
 MATMUL(mm_f64, double, FFMA)
 MATMUL(mm_f32, float, FFMA)
@@ -78,8 +88,8 @@ int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_
             else if (beta != (T)1) { for (int64_t j = 0; j < n; j++) ci[j] = beta * ci[j]; }             \
             for (int64_t p = 0; p < k; p++) {                                                            \
                 T s = alpha * (ta ? a[p * lda + i] : a[i * lda + p]);                                    \
-                if (tb) { for (int64_t j = 0; j < n; j++) ci[j] += s * b[j * ldb + p]; }                 \
-                else { const T *bp = b + p * ldb; for (int64_t j = 0; j < n; j++) ci[j] += s * bp[j]; }  \
+                if (tb) { for (int64_t j = 0; j < n; j++) ci[j] = TSR_RFMA(T, s, b[j * ldb + p], ci[j]); }\
+                else { const T *bp = b + p * ldb; for (int64_t j = 0; j < n; j++) ci[j] = TSR_RFMA(T, s, bp[j], ci[j]); } \
             }                                                                                            \
         }                                                                                                \
     }
@@ -104,9 +114,9 @@ int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
 #define AXPY(NAME, T)                                                                               \
     TSR_CLONES static void NAME(int64_t n, T alpha, const T *x, int64_t incx, T *y, int64_t incy)   \
     {                                                                                               \
-        if (incx == 1 && incy == 1) { for (int64_t i = 0; i < n; i++) y[i] += alpha * x[i]; return; } \
+        if (incx == 1 && incy == 1) { for (int64_t i = 0; i < n; i++) y[i] = TSR_RFMA(T, alpha, x[i], y[i]); return; } \
         int64_t ix = incx < 0 ? (1 - n) * incx : 0, iy = incy < 0 ? (1 - n) * incy : 0;             \
-        for (int64_t i = 0; i < n; i++) { y[iy] += alpha * x[ix]; ix += incx; iy += incy; }         \
+        for (int64_t i = 0; i < n; i++) { y[iy] = TSR_RFMA(T, alpha, x[ix], y[iy]); ix += incx; iy += incy; } \
     }
 AXPY(axpy_f64, double)
 AXPY(axpy_f32, float)
@@ -128,9 +138,9 @@ TSR_CLONES double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const do
     int64_t i = 0;
     if (incx == 1 && incy == 1) {
         for (; i + 4 <= n; i += 4)
-            for (int j = 0; j < 4; j++) s[j] += x[i + j] * y[i + j];
+            for (int j = 0; j < 4; j++) s[j] = TSR_RFMA(double, x[i + j], y[i + j], s[j]);
     }
     double r = (s[0] + s[1]) + (s[2] + s[3]);
-    for (; i < n; i++) r += x[i * incx] * y[i * incy];
+    for (; i < n; i++) r = TSR_RFMA(double, x[i * incx], y[i * incy], r);
     return r;
 }

@@ -11,9 +11,19 @@ The native extension provides the same class as Tessero\Ext\Np.
 
 | Name | Value |
 |---|---|
-| `FUNCTIONS` | `{"append":"append","argpartition":"argpartition","argwhere":"argwhere","array_equal":"arrayEqual","array_equiv":"arrayEquiv","array_split":"arraySplit","atleast_1d":"atleast1d","atleast_2d":"atleast2d","atleast_3d":"atleast3d","average":"average","bartlett":"bartlett","bincount":"bincount","blackman":"blackman","broadcast_arrays":"broadcastArrays","broadcast_shapes":"broadcastShapes","broadcast_to":"broadcastTo","choose":"choose","column_stack":"columnStack","compress":"compress","concat":"concat","concatenate":"concatenate","convolve":"convolve","copyto":"copyto","corrcoef":"corrcoef","correlate":"correlate","count_nonzero":"countNonzero","cov":"cov","cross":"cross","cumulative_prod":"cumulativeProd","cumulative_sum":"cumulativeSum","delete":"delete","diag":"diag","diag_indices":"diagIndices","diag_indices_from":"diagIndicesFrom","diagflat":"diagflat","diagonal":"diagonal","diff":"diff","digitize":"digitize","dsplit":"dsplit","dstack":"dstack","ediff1d":"ediff1d","empty_like":"emptyLike","expand_dims":"expandDims","extract":"extract","fill_diagonal":"fillDiagonal","flatnonzero":"flatnonzero","flip":"flip","fliplr":"fliplr","flipud":"flipud","full_like":"fullLike","geomspace":"geomspace","gradient":"gradient","hamming":"hamming","hanning":"hanning","histogram":"histogram","histogram_bin_edges":"histogramBinEdges","hsplit":"hsplit","hstack":"hstack","i0":"i0","identity":"identity","indices":"indices","inner":"inner","insert":"insert","interp":"interp","intersect1d":"intersect1d","iscomplex":"iscomplex","iscomplexobj":"iscomplexobj","isin":"isin","isneginf":"isneginf","isposinf":"isposinf","isreal":"isreal","isrealobj":"isrealobj","ix_":"ix_","kaiser":"kaiser","kron":"kron","lexsort":"lexsort","logspace":"logspace","matrix_transpose":"matrixTranspose","median":"median","meshgrid":"meshgrid","moveaxis":"moveaxis","nan_to_num":"nanToNum","nanargmax":"nanargmax","nanargmin":"nanargmin","nancumprod":"nancumprod","nancumsum":"nancumsum","nanmax":"nanmax","nanmean":"nanmean","nanmedian":"nanmedian","nanmin":"nanmin","nanpercentile":"nanpercentile","nanprod":"nanprod","nanquantile":"nanquantile","nanstd":"nanstd","nansum":"nansum","nanvar":"nanvar","ndim":"ndim","nonzero":"nonzero","ones_like":"onesLike","outer":"outer","pad":"pad","partition":"partition","percentile":"percentile","place":"place","polyadd":"polyadd","polyder":"polyder","polydiv":"polydiv","polyint":"polyint","polymul":"polymul","polysub":"polysub","polyval":"polyval","ptp":"ptp","put":"put","put_along_axis":"putAlongAxis","putmask":"putmask","quantile":"quantile","ravel_multi_index":"ravelMultiIndex","real_if_close":"realIfClose","repeat":"repeat","resize":"resize","roll":"roll","rollaxis":"rollaxis","rot90":"rot90","searchsorted":"searchsorted","select":"select","setdiff1d":"setdiff1d","setxor1d":"setxor1d","shape":"shape","sinc":"sinc","size":"size","split":"split","squeeze":"squeeze","stack":"stack","swapaxes":"swapaxes","take":"take","take_along_axis":"takeAlongAxis","tensordot":"tensordot","tile":"tile","trace":"trace","trapezoid":"trapezoid","tri":"tri","tril":"tril","tril_indices":"trilIndices","tril_indices_from":"trilIndicesFrom","trim_zeros":"trimZeros","triu":"triu","triu_indices":"triuIndices","triu_indices_from":"triuIndicesFrom","union1d":"union1d","unique":"unique","unique_all":"uniqueAll","unique_counts":"uniqueCounts","unique_inverse":"uniqueInverse","unique_values":"uniqueValues","unravel_index":"unravelIndex","unstack":"unstack","unwrap":"unwrap","vander":"vander","vdot":"vdot","vsplit":"vsplit","vstack":"vstack","zeros_like":"zerosLike"}` |
+| `FUNCTIONS` | `{"allclose":"allclose","append":"append","argpartition":"argpartition","argwhere":"argwhere","around":"around","array_equal":"arrayEqual","array_equiv":"arrayEquiv","array_split":"arraySplit","asarray_chkfinite":"asarrayChkfinite","ascontiguousarray":"ascontiguousarray","asfortranarray":"asfortranarray","atleast_1d":"atleast1d","atleast_2d":"atleast2d","atleast_3d":"atleast3d","average":"average","bartlett":"bartlett","bincount":"bincount","bitwise_and":"bitwiseAnd","bitwise_count":"bitwiseCount","bitwise_or":"bitwiseOr","bitwise_xor":"bitwiseXor","blackman":"blackman","broadcast_arrays":"broadcastArrays","broadcast_shapes":"broadcastShapes","broadcast_to":"broadcastTo","can_cast":"canCast","choose":"choose","column_stack":"columnStack","compress":"compress","concat":"concat","concatenate":"concatenate","convolve":"convolve","copyto":"copyto","corrcoef":"corrcoef","correlate":"correlate","count_nonzero":"countNonzero","cov":"cov","cross":"cross","cumulativeSimpson":"cumulativeSimpson","cumulativeTrapezoid":"cumulativeTrapezoid","cumulative_prod":"cumulativeProd","cumulative_sum":"cumulativeSum","delete":"delete","diag":"diag","diag_indices":"diagIndices","diag_indices_from":"diagIndicesFrom","diagflat":"diagflat","diagonal":"diagonal","diff":"diff","digitize":"digitize","divmod":"divmod","dsplit":"dsplit","dstack":"dstack","e":"e","ediff1d":"ediff1d","einsum":"einsum","empty_like":"emptyLike","euler_gamma":"eulerGamma","expand_dims":"expandDims","extract":"extract","fabs":"fabs","fill_diagonal":"fillDiagonal","finfo":"finfo","flatnonzero":"flatnonzero","flip":"flip","fliplr":"fliplr","flipud":"flipud","frexp":"frexp","fromfile":"fromfile","fromiter":"fromiter","full_like":"fullLike","genfromtxt":"genfromtxt","geomspace":"geomspace","gradient":"gradient","hamming":"hamming","hanning":"hanning","histogram":"histogram","histogram2d":"histogram2d","histogram_bin_edges":"histogramBinEdges","histogramdd":"histogramdd","hsplit":"hsplit","hstack":"hstack","i0":"i0","identity":"identity","iinfo":"iinfo","indices":"indices","inf":"inf","inner":"inner","insert":"insert","interp":"interp","intersect1d":"intersect1d","isclose":"isclose","iscomplex":"iscomplex","iscomplexobj":"iscomplexobj","isin":"isin","isneginf":"isneginf","isposinf":"isposinf","isreal":"isreal","isrealobj":"isrealobj","ix_":"ix_","kaiser":"kaiser","kron":"kron","ldexp":"ldexp","left_shift":"leftShift","lexsort":"lexsort","loadtxt":"loadtxt","logspace":"logspace","matrix_transpose":"matrixTranspose","matvec":"matvec","median":"median","meshgrid":"meshgrid","modf":"modf","moveaxis":"moveaxis","nan":"nan","nan_to_num":"nanToNum","nanargmax":"nanargmax","nanargmin":"nanargmin","nancumprod":"nancumprod","nancumsum":"nancumsum","nanmax":"nanmax","nanmean":"nanmean","nanmedian":"nanmedian","nanmin":"nanmin","nanpercentile":"nanpercentile","nanprod":"nanprod","nanquantile":"nanquantile","nanstd":"nanstd","nansum":"nansum","nanvar":"nanvar","ndim":"ndim","newton_cotes":"newtonCotes","nonzero":"nonzero","ones_like":"onesLike","outer":"outer","packbits":"packbits","pad":"pad","partition":"partition","percentile":"percentile","pi":"pi","place":"place","poly":"poly","polyadd":"polyadd","polyder":"polyder","polydiv":"polydiv","polyfit":"polyfit","polyint":"polyint","polymul":"polymul","polysub":"polysub","polyval":"polyval","positive":"positive","promote_types":"promoteTypes","ptp":"ptp","put":"put","put_along_axis":"putAlongAxis","putmask":"putmask","quantile":"quantile","ravel_multi_index":"ravelMultiIndex","real_if_close":"realIfClose","repeat":"repeat","resize":"resize","result_type":"resultType","right_shift":"rightShift","roll":"roll","rollaxis":"rollaxis","romb":"romb","roots":"roots","rot90":"rot90","round":"round","savetxt":"savetxt","searchsorted":"searchsorted","select":"select","setdiff1d":"setdiff1d","setxor1d":"setxor1d","shape":"shape","simpson":"simpson","sinc":"sinc","size":"size","sort_complex":"sortComplex","spacing":"spacing","split":"split","squeeze":"squeeze","stack":"stack","swapaxes":"swapaxes","take":"take","take_along_axis":"takeAlongAxis","tensordot":"tensordot","tile":"tile","trace":"trace","trapezoid":"trapezoid","tri":"tri","tril":"tril","tril_indices":"trilIndices","tril_indices_from":"trilIndicesFrom","trim_zeros":"trimZeros","triu":"triu","triu_indices":"triuIndices","triu_indices_from":"triuIndicesFrom","union1d":"union1d","unique":"unique","unique_all":"uniqueAll","unique_counts":"uniqueCounts","unique_inverse":"uniqueInverse","unique_values":"uniqueValues","unpackbits":"unpackbits","unravel_index":"unravelIndex","unstack":"unstack","unwrap":"unwrap","vander":"vander","vdot":"vdot","vecdot":"vecdot","vecmat":"vecmat","vsplit":"vsplit","vstack":"vstack","zeros_like":"zerosLike"}` |
 
 ## Methods
+
+### allclose
+
+```php
+static allclose(mixed $a, mixed $b, mixed $rtol = 1.0E-5, mixed $atol = 1.0E-8, mixed $equalNan = false): mixed
+```
+
+True when two arrays are element-wise equal within a tolerance (numpy.allclose).
+
+numpy.allclose
 
 ### append
 
@@ -53,6 +63,16 @@ Indices of the non-zero elements, one row per element (numpy.argwhere).
 
 numpy.argwhere
 
+### around
+
+```php
+static around(mixed $a, mixed $decimals = 0): mixed
+```
+
+Round to the given number of decimals, half to even (numpy.around; an alias of round).
+
+numpy.around
+
 ### arrayEqual
 
 ```php
@@ -82,6 +102,36 @@ static arraySplit(mixed $ary, mixed $indicesOrSections, mixed $axis = 0): mixed
 Split into sections of nearly equal size (numpy.array_split).
 
 numpy.array_split
+
+### asarrayChkfinite
+
+```php
+static asarrayChkfinite(mixed $a, mixed $dtype = null, mixed $order = null): mixed
+```
+
+Convert to array, raising if it contains NaN or Inf (numpy.asarray_chkfinite).
+
+numpy.asarray_chkfinite
+
+### ascontiguousarray
+
+```php
+static ascontiguousarray(mixed $a, mixed $dtype = null): mixed
+```
+
+A C-contiguous array (ndim >= 1) of the given dtype (numpy.ascontiguousarray).
+
+numpy.ascontiguousarray
+
+### asfortranarray
+
+```php
+static asfortranarray(mixed $a, mixed $dtype = null): mixed
+```
+
+A contiguous array (ndim >= 1); Tessero has no Fortran memory order, so the values, shape and dtype match numpy.asfortranarray but the memory layout is C order.
+
+numpy.asfortranarray
 
 ### atleast1d
 
@@ -143,6 +193,46 @@ Count (or sum weights of) each non-negative integer (numpy.bincount).
 
 numpy.bincount
 
+### bitwiseAnd
+
+```php
+static bitwiseAnd(mixed $x1, mixed $x2): mixed
+```
+
+Element-wise bitwise AND of two integer arrays (numpy.bitwise_and).
+
+numpy.bitwise_and
+
+### bitwiseCount
+
+```php
+static bitwiseCount(mixed $x): mixed
+```
+
+The number of 1-bits in the absolute value of each integer element, as uint8 (numpy.bitwise_count).
+
+numpy.bitwise_count
+
+### bitwiseOr
+
+```php
+static bitwiseOr(mixed $x1, mixed $x2): mixed
+```
+
+Element-wise bitwise OR of two integer arrays (numpy.bitwise_or).
+
+numpy.bitwise_or
+
+### bitwiseXor
+
+```php
+static bitwiseXor(mixed $x1, mixed $x2): mixed
+```
+
+Element-wise bitwise XOR of two integer arrays (numpy.bitwise_xor).
+
+numpy.bitwise_xor
+
 ### blackman
 
 ```php
@@ -182,6 +272,16 @@ static broadcastTo(mixed $array, mixed $shape): mixed
 Broadcast an array to a shape (numpy.broadcast_to).
 
 numpy.broadcast_to
+
+### canCast
+
+```php
+static canCast(mixed $from_, mixed $to, mixed $casting = 'safe'): mixed
+```
+
+Whether a cast between two dtypes is allowed under a casting rule (numpy.can_cast).
+
+numpy.can_cast
 
 ### choose
 
@@ -313,6 +413,16 @@ Cumulative product, optionally starting with 1 (numpy.cumulative_prod).
 
 numpy.cumulative_prod
 
+### cumulativeSimpson
+
+```php
+static cumulativeSimpson(mixed $y, mixed $x = null, mixed $dx = 1.0, mixed $axis = -1, mixed $initial = null): mixed
+```
+
+Running integral by the composite Simpson's rule (scipy.integrate.cumulative_simpson).
+
+numpy.cumulativeSimpson
+
 ### cumulativeSum
 
 ```php
@@ -322,6 +432,16 @@ static cumulativeSum(mixed $x, ?int $axis = null, int|float|bool|null $includeIn
 Cumulative sum, optionally starting with 0 (numpy.cumulative_sum).
 
 numpy.cumulative_sum
+
+### cumulativeTrapezoid
+
+```php
+static cumulativeTrapezoid(mixed $y, mixed $x = null, mixed $dx = 1.0, mixed $axis = -1, mixed $initial = null): mixed
+```
+
+Running integral by the trapezoidal rule (scipy.integrate.cumulative_trapezoid).
+
+numpy.cumulativeTrapezoid
 
 ### delete
 
@@ -403,6 +523,16 @@ Indices of the bins to which each value belongs (numpy.digitize).
 
 numpy.digitize
 
+### divmod
+
+```php
+static divmod(mixed $x1, mixed $x2): mixed
+```
+
+The element-wise floor-division quotient and remainder as a pair (numpy.divmod).
+
+numpy.divmod
+
 ### dsplit
 
 ```php
@@ -423,6 +553,16 @@ Stack arrays depth-wise, along the third axis (numpy.dstack).
 
 numpy.dstack
 
+### e
+
+```php
+static e(): mixed
+```
+
+Euler's number e (numpy.e).
+
+numpy.e
+
 ### ediff1d
 
 ```php
@@ -433,6 +573,18 @@ Differences between consecutive elements of the flattened array (numpy.ediff1d).
 
 numpy.ediff1d
 
+### einsum
+
+```php
+static einsum(mixed ...$operands): mixed
+```
+
+Einstein summation over the operands (numpy.einsum); real float64 operands.
+
+numpy.einsum: the positional arguments are numpy's *operands.
+
+Named options: $subscripts.
+
 ### emptyLike
 
 ```php
@@ -442,6 +594,16 @@ static emptyLike(mixed $a, mixed $dtype = null, mixed $shape = null): mixed
 An array with the shape and dtype of another; Tessero fills it with zeros (numpy.empty_like).
 
 numpy.empty_like
+
+### eulerGamma
+
+```php
+static eulerGamma(): mixed
+```
+
+The Euler-Mascheroni constant (numpy.euler_gamma).
+
+numpy.euler_gamma
 
 ### expandDims
 
@@ -463,6 +625,16 @@ Elements where the condition holds, flattened (numpy.extract).
 
 numpy.extract
 
+### fabs
+
+```php
+static fabs(mixed $x): mixed
+```
+
+Element-wise absolute value as float64 (numpy.fabs).
+
+numpy.fabs
+
 ### fillDiagonal
 
 ```php
@@ -472,6 +644,16 @@ static fillDiagonal(mixed $a, mixed $val, mixed $wrap = false): mixed
 Fill the main diagonal, in place (numpy.fill_diagonal).
 
 numpy.fill_diagonal
+
+### finfo
+
+```php
+static finfo(mixed $dtype): mixed
+```
+
+The machine limits of a floating-point dtype as a dict of the common fields (numpy.finfo).
+
+numpy.finfo
 
 ### flatnonzero
 
@@ -513,6 +695,36 @@ Reverse the order along axis 0 (numpy.flipud).
 
 numpy.flipud
 
+### frexp
+
+```php
+static frexp(mixed $x): mixed
+```
+
+The normalised mantissa and integer exponent of each element as a (mantissa, exponent) pair (numpy.frexp).
+
+numpy.frexp
+
+### fromfile
+
+```php
+static fromfile(mixed $fname, mixed $dtype = null, mixed $count = -1, mixed $sep = null, mixed $offset = 0): mixed
+```
+
+Read a binary or text file into a 1-D array of the given dtype (numpy.fromfile).
+
+numpy.fromfile
+
+### fromiter
+
+```php
+static fromiter(mixed $iterable, mixed $dtype, mixed $count = -1): mixed
+```
+
+A 1-D array built from the first count elements of an iterable, cast to dtype (numpy.fromiter).
+
+numpy.fromiter
+
 ### fullLike
 
 ```php
@@ -522,6 +734,16 @@ static fullLike(mixed $a, mixed $fillValue, mixed $dtype = null, mixed $shape = 
 An array of fill_value with the shape and dtype of another (numpy.full_like).
 
 numpy.full_like
+
+### genfromtxt
+
+```php
+static genfromtxt(mixed $fname, mixed $delimiter = null, mixed $skipHeader = 0, mixed $skipFooter = 0, mixed $comments = null, mixed $usecols = null): mixed
+```
+
+Load a text file of numbers into a float64 array, missing fields as NaN (numpy.genfromtxt).
+
+numpy.genfromtxt
 
 ### geomspace
 
@@ -575,6 +797,16 @@ Histogram of the data: counts (or density) and bin edges (numpy.histogram).
 
 numpy.histogram
 
+### histogram2d
+
+```php
+static histogram2d(mixed $x, mixed $y, mixed $bins = 10, mixed $range = null, mixed $density = false, mixed $weights = null): mixed
+```
+
+The 2-D histogram of a set of points: counts (or density) and the bin edges (numpy.histogram2d).
+
+numpy.histogram2d
+
 ### histogramBinEdges
 
 ```php
@@ -584,6 +816,16 @@ static histogramBinEdges(mixed $a, mixed $bins = 10, mixed $range = null, mixed 
 Bin edges numpy.histogram would use (numpy.histogram_bin_edges).
 
 numpy.histogram_bin_edges
+
+### histogramdd
+
+```php
+static histogramdd(mixed $sample, mixed $bins = 10, mixed $range = null, mixed $density = false, mixed $weights = null): mixed
+```
+
+The D-dimensional histogram of a set of points: counts (or density) and the per-axis bin edges (numpy.histogramdd).
+
+numpy.histogramdd
 
 ### hsplit
 
@@ -625,6 +867,16 @@ The identity matrix (numpy.identity).
 
 numpy.identity
 
+### iinfo
+
+```php
+static iinfo(mixed $dtype): mixed
+```
+
+The limits of an integer dtype as a dict (min, max, bits) (numpy.iinfo).
+
+numpy.iinfo
+
 ### indices
 
 ```php
@@ -634,6 +886,16 @@ static indices(mixed $dimensions, mixed $dtype = 'int64', mixed $sparse = false)
 An array of grid indices (numpy.indices); sparse=True gives a list of arrays.
 
 numpy.indices
+
+### inf
+
+```php
+static inf(): mixed
+```
+
+IEEE 754 positive infinity (numpy.inf).
+
+numpy.inf
 
 ### inner
 
@@ -674,6 +936,16 @@ static intersect1d(mixed $ar1, mixed $ar2, mixed $assumeUnique = false, mixed $r
 Sorted unique values in both arrays (numpy.intersect1d).
 
 numpy.intersect1d
+
+### isclose
+
+```php
+static isclose(mixed $a, mixed $b, mixed $rtol = 1.0E-5, mixed $atol = 1.0E-8, mixed $equalNan = false): mixed
+```
+
+Element-wise test for approximate equality within a tolerance (numpy.isclose).
+
+numpy.isclose
 
 ### iscomplex
 
@@ -775,6 +1047,26 @@ Kronecker product (numpy.kron).
 
 numpy.kron
 
+### ldexp
+
+```php
+static ldexp(mixed $x1, mixed $x2): mixed
+```
+
+x1 * 2**x2 element-wise, with an integer exponent (numpy.ldexp).
+
+numpy.ldexp
+
+### leftShift
+
+```php
+static leftShift(mixed $x1, mixed $x2): mixed
+```
+
+Shift the bits of each integer left by the per-element count (numpy.left_shift).
+
+numpy.left_shift
+
 ### lexsort
 
 ```php
@@ -784,6 +1076,16 @@ static lexsort(mixed $keys): mixed
 Indirect stable sort on several keys, the last key primary (numpy.lexsort).
 
 numpy.lexsort
+
+### loadtxt
+
+```php
+static loadtxt(mixed $fname, mixed $delimiter = null, mixed $skiprows = 0, mixed $comments = null, mixed $usecols = null): mixed
+```
+
+Load a text file of numbers into a float64 array (numpy.loadtxt).
+
+numpy.loadtxt
 
 ### logspace
 
@@ -804,6 +1106,16 @@ static matrixTranspose(mixed $x): mixed
 Transpose the last two axes (numpy.matrix_transpose).
 
 numpy.matrix_transpose
+
+### matvec
+
+```php
+static matvec(mixed $x1, mixed $x2): mixed
+```
+
+Matrix-vector product over the last two axes of x1 and the last axis of x2 (numpy.matvec).
+
+numpy.matvec
 
 ### median
 
@@ -827,6 +1139,16 @@ numpy.meshgrid: the positional arguments are numpy's *xi.
 
 Named options: $copy = true, $sparse = false, $indexing = 'xy'.
 
+### modf
+
+```php
+static modf(mixed $x): mixed
+```
+
+The fractional and integral parts of each element as a (frac, intpart) pair, both carrying the sign of x (numpy.modf).
+
+numpy.modf
+
 ### moveaxis
 
 ```php
@@ -836,6 +1158,16 @@ static moveaxis(mixed $a, mixed $source, mixed $destination): mixed
 Move axes to new positions (numpy.moveaxis).
 
 numpy.moveaxis
+
+### nan
+
+```php
+static nan(): mixed
+```
+
+IEEE 754 not-a-number (numpy.nan).
+
+numpy.nan
 
 ### nanToNum
 
@@ -997,6 +1329,16 @@ Number of dimensions (numpy.ndim).
 
 numpy.ndim
 
+### newtonCotes
+
+```php
+static newtonCotes(mixed $rn, mixed $equal = 0): mixed
+```
+
+Equally-spaced Newton-Cotes quadrature weights for rn intervals (scipy.integrate.newton_cotes).
+
+numpy.newton_cotes
+
 ### nonzero
 
 ```php
@@ -1026,6 +1368,16 @@ static outer(mixed $a, mixed $b): mixed
 Outer product of two vectors (numpy.outer).
 
 numpy.outer
+
+### packbits
+
+```php
+static packbits(mixed $a, mixed $axis = null, mixed $bitorder = 'big'): mixed
+```
+
+Pack binary-valued array elements into uint8, MSB-first (numpy.packbits).
+
+numpy.packbits
 
 ### pad
 
@@ -1057,6 +1409,16 @@ q-th percentiles along the given axes, q in [0, 100] (numpy.percentile).
 
 numpy.percentile
 
+### pi
+
+```php
+static pi(): mixed
+```
+
+The constant pi (numpy.pi).
+
+numpy.pi
+
 ### place
 
 ```php
@@ -1066,6 +1428,16 @@ static place(mixed $arr, mixed $mask, mixed $vals): mixed
 Write successive values where the mask holds, in place (numpy.place).
 
 numpy.place
+
+### poly
+
+```php
+static poly(mixed $seq): mixed
+```
+
+Coefficients of the polynomial with the given roots (numpy.poly).
+
+numpy.poly
 
 ### polyadd
 
@@ -1096,6 +1468,16 @@ static polydiv(mixed $u, mixed $v): mixed
 Quotient and remainder of polynomial division (numpy.polydiv).
 
 numpy.polydiv
+
+### polyfit
+
+```php
+static polyfit(mixed $x, mixed $y, mixed $deg): mixed
+```
+
+Least-squares polynomial fit, highest-degree coefficient first (numpy.polyfit).
+
+numpy.polyfit
 
 ### polyint
 
@@ -1136,6 +1518,26 @@ static polyval(mixed $p, mixed $x): mixed
 Evaluate a polynomial at x (numpy.polyval).
 
 numpy.polyval
+
+### positive
+
+```php
+static positive(mixed $x): mixed
+```
+
+Unary plus; a copy of the input (numpy.positive).
+
+numpy.positive
+
+### promoteTypes
+
+```php
+static promoteTypes(mixed $type1, mixed $type2): mixed
+```
+
+The smallest dtype both arguments can be safely cast to (numpy.promote_types).
+
+numpy.promote_types
 
 ### ptp
 
@@ -1227,6 +1629,26 @@ A new array of the given shape, repeating the data cyclically (numpy.resize).
 
 numpy.resize
 
+### resultType
+
+```php
+static resultType(mixed ...$arraysAndDtypes): mixed
+```
+
+The dtype resulting from NumPy's type-promotion rules (numpy.result_type).
+
+numpy.result_type: the positional arguments are numpy's *arraysAndDtypes.
+
+### rightShift
+
+```php
+static rightShift(mixed $x1, mixed $x2): mixed
+```
+
+Shift the bits of each integer right by the per-element count (numpy.right_shift).
+
+numpy.right_shift
+
 ### roll
 
 ```php
@@ -1247,6 +1669,26 @@ Roll an axis backwards to a position (numpy.rollaxis).
 
 numpy.rollaxis
 
+### romb
+
+```php
+static romb(mixed $y, mixed $dx = 1.0): mixed
+```
+
+Romberg integration of 2**k+1 equally-spaced samples (scipy.integrate.romb).
+
+numpy.romb
+
+### roots
+
+```php
+static roots(mixed $p): mixed
+```
+
+Roots of a polynomial, complex128 sorted by (re, im) (numpy.roots).
+
+numpy.roots
+
 ### rot90
 
 ```php
@@ -1256,6 +1698,26 @@ static rot90(mixed $m, mixed $k = 1, mixed $axes = null): mixed
 Rotate by 90 degrees in the plane of two axes, default (0, 1) (numpy.rot90).
 
 numpy.rot90
+
+### round
+
+```php
+static round(mixed $a, mixed $decimals = 0): mixed
+```
+
+Round to the given number of decimals, half to even (numpy.round).
+
+numpy.round
+
+### savetxt
+
+```php
+static savetxt(mixed $fname, mixed $X, mixed $fmt = null, mixed $delimiter = null, mixed $newline = null, mixed $header = null, mixed $footer = null, mixed $comments = null): mixed
+```
+
+Save an array to a text file (numpy.savetxt).
+
+numpy.savetxt
 
 ### searchsorted
 
@@ -1307,6 +1769,16 @@ The shape of an array (numpy.shape).
 
 numpy.shape
 
+### simpson
+
+```php
+static simpson(mixed $y, mixed $x = null, mixed $dx = 1.0, mixed $axis = -1): mixed
+```
+
+Integral by the composite Simpson's rule (scipy.integrate.simpson).
+
+numpy.simpson
+
 ### sinc
 
 ```php
@@ -1326,6 +1798,26 @@ static size(mixed $a, mixed $axis = null): mixed
 Number of elements, in total or along axes (numpy.size).
 
 numpy.size
+
+### sortComplex
+
+```php
+static sortComplex(mixed $a): mixed
+```
+
+A complex copy of a sorted by real then imaginary part (numpy.sort_complex).
+
+numpy.sort_complex
+
+### spacing
+
+```php
+static spacing(mixed $x): mixed
+```
+
+The signed distance from each element to the adjacent representable float (numpy.spacing).
+
+numpy.spacing
 
 ### split
 
@@ -1567,6 +2059,16 @@ Unique values; NaNs are not merged (numpy.unique_values).
 
 numpy.unique_values
 
+### unpackbits
+
+```php
+static unpackbits(mixed $a, mixed $axis = null, mixed $count = null, mixed $bitorder = 'big'): mixed
+```
+
+Unpack uint8 array elements into bits, MSB-first (numpy.unpackbits).
+
+numpy.unpackbits
+
 ### unravelIndex
 
 ```php
@@ -1616,6 +2118,26 @@ static vdot(mixed $a, mixed $b): mixed
 Dot product of the flattened arrays (numpy.vdot).
 
 numpy.vdot
+
+### vecdot
+
+```php
+static vecdot(mixed $x1, mixed $x2, mixed $axis = -1): mixed
+```
+
+Vector dot product over the last axis (numpy.vecdot).
+
+numpy.vecdot
+
+### vecmat
+
+```php
+static vecmat(mixed $x1, mixed $x2): mixed
+```
+
+Vector-matrix product; x1 is (..., N), x2 is (..., N, M) (numpy.vecmat).
+
+numpy.vecmat
 
 ### vsplit
 

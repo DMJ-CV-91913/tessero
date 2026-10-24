@@ -2,8 +2,12 @@ name: nightly
 
 # Long-running hardening that does not fit in a pull request: coverage-guided
 # fuzzing for 30 minutes per target, 5.5-hour soak runs of both backends in one
-# process each, and the property tests with 50x more random cases.
+# process each, the property tests with 50x more random cases, ThreadSanitizer
+# over the OpenMP kernels and Valgrind memcheck.
 # A 24-72 hour soak before each release is run by hand (docs/operations/soak-testing.md).
+#
+# A pull request that edits this file runs the TSan and Valgrind jobs once (the long jobs stay nightly-only),
+# so a change to them is tested before it lands.
 
 on:
   schedule:
@@ -11,31 +15,58 @@ on:
   workflow_dispatch:
     inputs:
       soak_seconds: { description: 'soak duration per backend (s)', default: '19800' }
+  pull_request:
+    paths: ['.github/workflows/nightly.yml', '.github/tsan.supp']
+
+permissions:
+  contents: read
+
+# setup-php: upgrade a preinstalled PHP to the latest patch release (security floor; see ci.yml)
+env:
+  update: true
 
 jobs:
   fuzz:
     name: fuzz ${{ matrix.target }} (30 min)
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
-      matrix: { target: [slice, npy, mmap_plan, json] }
+      # Parser targets run through FUZZ_TARGETS; registry targets (full kernel link) through FUZZ_REG_TARGETS
+      # with FUZZ_DEFS=-DFUZZ_SKIP_KNOWN so the run explores past the already-filed findings (fuzz/README.md)
+      # while still failing on a new one.
+      matrix:
+        include:
+          - { target: slice,     args: "FUZZ_TARGETS=slice" }
+          - { target: npy,       args: "FUZZ_TARGETS=npy" }
+          - { target: mmap_plan, args: "FUZZ_TARGETS=mmap_plan" }
+          - { target: json,      args: "FUZZ_TARGETS=json" }
+          - { target: npy_write, args: "FUZZ_TARGETS=npy_write" }
+          - { target: einsum,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=einsum FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: hist,      args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=hist FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: textio,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=textio FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: dtype,     args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=dtype FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
+          - { target: routines,  args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=routines FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: csrc/build-fuzz/corpus_${{ matrix.target }}
           key: fuzz-${{ matrix.target }}-${{ github.run_id }}
           restore-keys: fuzz-${{ matrix.target }}-
-      - run: make -C csrc fuzz FUZZ_TARGETS=${{ matrix.target }} FUZZ_TIME=1800 BUILD=./build-fuzz
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
+      - run: make -C csrc fuzz ${{ matrix.args }} FUZZ_TIME=1800 BUILD=./build-fuzz
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: crash-${{ matrix.target }}
           path: csrc/crash-*
 
   soak:
     name: soak ${{ matrix.backend }} (${{ matrix.jit }})
-    runs-on: ubuntu-22.04
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
     timeout-minutes: 350
     strategy:
       fail-fast: false
@@ -44,33 +75,140 @@ jobs:
           - { backend: ext, jit: 'jit off', ini: '' }
           - { backend: ffi, jit: 'tracing JIT', ini: '-d opcache.enable_cli=1 -d opcache.jit=tracing -d opcache.jit_buffer_size=64M' }
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.4', extensions: ffi, tools: phpize }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - run: make -C csrc
       - name: build ext-tessero
         if: matrix.backend == 'ext'
         run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
       - name: soak
+        env:
+          SOAK_SECONDS: ${{ github.event.inputs.soak_seconds || '19800' }}
         run: |
           EXT=""; [ "${{ matrix.backend }}" = ext ] && EXT="-d extension=$PWD/ext/modules/tessero.so"
           php $EXT -d ffi.enable=1 ${{ matrix.ini }} tools/soak.php --backend=${{ matrix.backend }} \
-            --duration=${{ github.event.inputs.soak_seconds || '19800' }} --interval=60 --log=soak.jsonl
+            --duration="$SOAK_SECONDS" --interval=60 --log=soak.jsonl
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: soak-${{ matrix.backend }}
           path: soak.jsonl
 
   properties:
     name: property tests x50
-    runs-on: ubuntu-22.04
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.4', extensions: ffi, tools: phpize }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.4', extensions: ffi, tools: 'phpize, composer:2.10.3' }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - run: make -C csrc
       - run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
       - run: composer install --no-interaction --no-progress
       - run: TESSERO_PROPERTY_CASES=2000 php -d ffi.enable=1 vendor/bin/phpunit --filter PropertyTest
       - run: php -d extension=$PWD/ext/modules/tessero.so -d ffi.enable=1 vendor/bin/phpunit --filter BackendParityTest
+
+  # ThreadSanitizer over the C tests with 4 OpenMP threads (test_threads, the threaded ufunc/elementwise loops).
+  # clang + LLVM libomp with the Archer tool: libomp tells TSan about its barriers and task synchronisation, so a
+  # report is a real race (blocking). gcc + libgomp is informational: libgomp is not TSan-instrumented, so every
+  # `#pragma omp parallel` whose workers read a variable the main thread wrote before the region is reported
+  # (measured: 14 reports in src/elementwise.c and src/ufunc.c, all of that shape, none between workers).
+  tsan:
+    name: TSan OpenMP kernels (${{ matrix.toolchain }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    continue-on-error: ${{ matrix.toolchain == 'gcc-libgomp' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [clang-libomp-archer, gcc-libgomp]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev clang libomp-18-dev
+      # TSan's shadow memory layout does not fit the 32 random mmap bits of the 6.x runner kernels (start-up crash)
+      - run: sudo sysctl -w vm.mmap_rnd_bits=28
+      - name: build the C tests with -fsanitize=thread -fopenmp
+        run: |
+          if [ "${{ matrix.toolchain }}" = clang-libomp-archer ]; then export CC=clang CXX=clang++; else export CC=gcc CXX=g++; fi
+          make -C csrc ./build-tsan/test_opt BUILD=./build-tsan HARDEN=0 \
+            CFLAGS="-O1 -g -std=gnu11 -fPIC -fno-math-errno -fno-trapping-math -fopenmp -fsanitize=thread -DTSR_NO_CLONES" \
+            CXXFLAGS="-O1 -g -std=c++17 -fPIC -fno-math-errno -DBOOST_MATH_STANDALONE -fopenmp -fsanitize=thread -w"
+      - name: run with OMP_NUM_THREADS=4
+        env:
+          OMP_NUM_THREADS: '4'
+          OPENBLAS_NUM_THREADS: '1'
+          TSAN_OPTIONS: 'halt_on_error=1 second_deadlock_stack=1 history_size=4'
+        run: |
+          if [ "${{ matrix.toolchain }}" = clang-libomp-archer ]; then
+            OMP_TOOL_LIBRARIES="$(ls /usr/lib/llvm-*/lib/libarcher.so | head -1)"; export OMP_TOOL_LIBRARIES
+            test -n "$OMP_TOOL_LIBRARIES" || { echo "::error::libarcher.so not found"; exit 1; }
+            export ARCHER_OPTIONS='verbose=1'
+            # the Archer setup LLVM documents: libomp's own (uninstrumented) internals are not reported; the
+            # synchronisation they implement reaches TSan through the OMPT callbacks
+            export TSAN_OPTIONS="$TSAN_OPTIONS ignore_noninstrumented_modules=1"
+          fi
+          cd csrc && ./build-tsan/test_opt
+
+  # Valgrind memcheck over the C tests built with the release flags (no sanitizer), and over a small FFI parity
+  # subset (scipy.special) through PHP. HARDEN=0 drops -ftrivial-auto-var-init=zero, which would hide exactly the
+  # uninitialised reads memcheck looks for.
+  valgrind:
+    name: Valgrind memcheck (C tests + FFI parity subset)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev valgrind
+      - run: make -C csrc -j"$(nproc)" HARDEN=0 && make -C csrc ./build/test_opt HARDEN=0
+      - name: memcheck over the C tests
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '1'
+        # memcheck findings exit 99 and fail the job. A numerical check of the test binary may differ under
+        # Valgrind's floating-point emulation (measured: the exp/log bound of test_main.c reports exactly 1.000 ulp);
+        # that is a warning when memcheck itself found nothing. Any other exit status fails.
+        shell: bash
+        run: |
+          cd csrc
+          set +e
+          valgrind --error-exitcode=99 --track-origins=yes --leak-check=full --errors-for-leak-kinds=definite \
+            --show-leak-kinds=definite ./build/test_opt 2>&1 | tee valgrind.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" = 0 ]; then exit 0; fi
+          if [ "$rc" = 1 ] && grep -q 'ERROR SUMMARY: 0 errors' valgrind.log && grep -Eq 'checks, [0-9]+ failures' valgrind.log; then
+            echo "::warning::memcheck clean; checks that differ under Valgrind's FP emulation: $(grep '^FAIL' valgrind.log | tr '\n' ' ')"
+            exit 0
+          fi
+          echo "::error::valgrind exit status $rc"; exit 1
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.4', extensions: ffi, tools: 'composer:2.10.3' }
+      - name: memcheck over FFI parity (--module=special)
+        env:
+          USE_ZEND_ALLOC: '0'
+          ZEND_DONT_UNLOAD_MODULES: '1'
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '1'
+        # a memcheck error fails the job; a parity mismatch alone (exit 1 with 0 memcheck errors) is a warning:
+        # Valgrind evaluates x87 long double at double precision, which moves the low bits of the few special
+        # functions that use it. The parity gate itself runs natively in ci.yml.
+        run: |
+          set +e
+          valgrind --error-exitcode=99 --track-origins=yes --leak-check=no \
+            "$(command -v php)" -d ffi.enable=1 -d memory_limit=8G -d opcache.enable_cli=0 \
+            tools/parity/run-tests.php --backend=ffi --no-record --module=special 2>&1 | tee valgrind-ffi.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" = 0 ]; then exit 0; fi
+          if [ "$rc" = 1 ] && grep -q 'ERROR SUMMARY: 0 errors' valgrind-ffi.log; then
+            echo "::warning::memcheck clean; parity values that differ under Valgrind's FP emulation: $(grep '^FAIL' valgrind-ffi.log | tr '\n' ' ')"
+            exit 0
+          fi
+          echo "::error::valgrind exit status $rc"; exit 1

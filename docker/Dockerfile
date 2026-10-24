@@ -6,12 +6,13 @@
 #
 # CI builds this image and runs the checks at the end on every commit.
 
-ARG PHP_VERSION=8.4
+# Base images are pinned by digest (reproducible builds; Dependabot's docker ecosystem proposes digest updates).
+# To move to another PHP version, change both tags and their digests together.
 
 # ---------------------------------------------------------------- build stage
-FROM php:${PHP_VERSION}-cli-bookworm AS build
+FROM php:8.4.27-cli-bookworm@sha256:a2d10c137d6ec9a41331e8e03e9d5468c85bfa8b1971436ffb2ad4f19d890e27 AS build
 RUN apt-get update \
- && apt-get install -y --no-install-recommends $PHPIZE_DEPS libffi-dev \
+ && apt-get install -y --no-install-recommends $PHPIZE_DEPS libffi-dev liblapacke-dev libopenblas-dev \
  && rm -rf /var/lib/apt/lists/*
 COPY csrc/ /src/csrc/
 COPY ext/ /src/ext/
@@ -23,7 +24,7 @@ RUN cd /src/ext && phpize && ./configure --enable-tessero && make -j"$(nproc)" \
  && make install
 
 # ---------------------------------------------------------------- runtime stage
-FROM php:${PHP_VERSION}-fpm-bookworm
+FROM php:8.4.27-fpm-bookworm@sha256:e0005a213080e1c580c961e47bc6fdd9bebd3b7bb484e80479507af41547cffa
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libgomp1 libopenblas0-pthread liblapacke libffi-dev \
  && docker-php-ext-install ffi opcache \
@@ -33,6 +34,8 @@ RUN docker-php-ext-enable tessero
 COPY docker/tessero.ini /usr/local/etc/php/conf.d/zz-tessero.ini
 # the FFI package (normally vendor/tessero/tessero from composer)
 COPY src/ /opt/tessero/src/
+# the FFI binding reads the C declarations from the header at run time (Native\Library)
+COPY csrc/include/ /opt/tessero/csrc/include/
 COPY bin/ /opt/tessero/bin/
 COPY resources/ /opt/tessero/resources/
 COPY tests/autoload.php /opt/tessero/tests/autoload.php

@@ -1,0 +1,51 @@
+FITPACK (Dierckx) — vendored into Tessero
+=========================================
+
+Source
+------
+These C files are an f2c translation of the Fortran FITPACK sources shipped in
+scipy 1.17.1 at scipy/interpolate/fitpack/*.f (P. Dierckx's FITPACK; the real*8
+"ddierckx" variant prepared for scipy by Pearu Peterson).  scipy 1.17.1 still
+builds and calls these Fortran routines as the _dfitpack extension; its smoothing
+spline API (splrep s>0, UnivariateSpline, bisplrep, SmoothBivariateSpline,
+SmoothSphereBivariateSpline, LSQSphereBivariateSpline, RectBivariateSpline(s>0),
+RectSphereBivariateSpline) routes through them.
+
+Why f2c (not a hand C port)
+---------------------------
+FITPACK's auto-knot smoothing runs a rational p-root iteration (fprati) and a
+rank-revealing Givens/Housholder least-squares build (fprank/fpgivs/fprota)
+whose results depend on floating-point ACCUMULATION ORDER.  A hand C translation
+reorders those sums and diverges 5-17% from scipy at the tie-breaks.  f2c
+preserves the Fortran source-level arithmetic order exactly, so the compiled C
+is BIT-EXACT (0 ULP) vs scipy's gfortran build across the whole smoothing regime,
+active p-iteration included.  See the pkg14 de-risk harnesses.
+
+Translation procedure (reproducible)
+------------------------------------
+1. Extract scipy-1.17.1/scipy/interpolate/fitpack/*.f.
+2. Strip the Fortran-90 `recursive` keyword that scipy added (f2c is an F77
+   translator): `sed -E 's/^(\s*)recursive\s+//I'`.  4 files that also use the
+   F90 `function ... result(x)` form (dblint, evapol, fprati, splint) were
+   rewritten to the F77 `real*8 function` form.
+3. f2c -A  (ANSI C output).  f2c built from the barak/f2c github mirror with the
+   host gcc (no gfortran / no apt needed).
+
+fitpack_support.c
+-----------------
+A tiny libf2c shim providing ONLY the intrinsics the smoothing routines
+reference: d_sign, pow_dd, and no-op list-directed WRITE stubs (s_wsle/do_lio/
+e_wsle — used only in surfit's invalid-input diagnostic branch, ier>=10, which
+the PHP facades never reach after validation).  Everything else resolves to
+libm.  This keeps the vendored tree self-contained with no libf2c dependency,
+mirroring the hand-maintained quadpack.c precedent.
+
+License: BSD-style (FITPACK/Dierckx + scipy).  See scipy LICENSE.txt.
+
+Licences
+--------
+FITPACK itself is distributed with scipy under scipy's BSD-3-Clause licence
+(csrc/third_party/scipy/LICENSE.txt).  f2c.h and the libf2c-style helpers in
+fitpack_support.c are covered by the f2c permission notice of AT&T, Lucent and
+Bellcore, reproduced verbatim in LICENSE.f2c (the file `Notice` of
+https://www.netlib.org/f2c/libf2c.zip).  See also THIRD_PARTY_NOTICES.md.

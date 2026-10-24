@@ -7,6 +7,43 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+/* getline() with POSIX semantics (returns the line length, -1 at end of file or on error, grows *line as needed).
+   POSIX systems use the C library's; Windows (MinGW, MSVC) has none, so it is implemented here. */
+#ifdef _WIN32
+#if defined(_MSC_VER) && !defined(ssize_t)
+typedef long long ssize_t;
+#endif
+static long long tsr_getline(char **line, size_t *cap, FILE *fp)
+{
+    if (!line || !cap || !fp) return -1;
+    if (!*line || *cap == 0) {
+        size_t c = 128;
+        char *p = (char *)realloc(*line, c);
+        if (!p) return -1;
+        *line = p;
+        *cap = c;
+    }
+    size_t n = 0;
+    int ch;
+    while ((ch = fgetc(fp)) != EOF) {
+        if (n + 2 > *cap) {
+            if (*cap > ((size_t)-1) / 2) return -1;
+            size_t c = *cap * 2;
+            char *p = (char *)realloc(*line, c);
+            if (!p) return -1;
+            *line = p;
+            *cap = c;
+        }
+        (*line)[n++] = (char)ch;
+        if (ch == '\n') break;
+    }
+    if (n == 0) return -1;
+    (*line)[n] = '\0';
+    return (long long)n;
+}
+#else
+#define tsr_getline getline
+#endif
 
 static int push(double **d, int64_t *cap, int64_t *cnt, double v)
 {
@@ -27,14 +64,14 @@ static int r_loadtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     const char *fname = args[0].str;
     const char *delim = (nargs > 1 && args[1].kind == 2 && args[1].str && args[1].str[0]) ? args[1].str : NULL;
     int64_t skiprows = 0;
-    if (nargs > 2 && args[2].kind == 1) skiprows = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    if (nargs > 2 && args[2].kind == 1) { int rc0 = fn_arg_i64(&args[2], 1, INT64_MIN, INT64_MAX, "skiprows", &skiprows); if (rc0 < 0) return rc0; }
     const char *comments = (nargs > 3 && args[3].kind == 2 && args[3].str) ? args[3].str : "#";
 
     FILE *fp = fopen(fname, "r");
     if (!fp) { fn_set_error("loadtxt: could not open '%s'", fname); return TSR_EARG; }
     double *data = NULL; int64_t cap = 0, cnt = 0, nrows = 0, ncols = -1;
     char *line = NULL; size_t lcap = 0; ssize_t len; int64_t lineno = 0; int rc = TSR_OK;
-    while ((len = getline(&line, &lcap, fp)) != -1) {
+    while ((len = tsr_getline(&line, &lcap, fp)) != -1) {
         if (lineno++ < skiprows) continue;
         if (comments && comments[0]) { char *h = strstr(line, comments); if (h) *h = '\0'; }
         int64_t rowcols = 0;
@@ -80,7 +117,7 @@ static int r_loadtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     else { ond = 2; osh[0] = nrows; osh[1] = ncols; }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, ond, osh);
     if (!out) { free(data); return TSR_ENOMEM; }
-    memcpy(out, data, sizeof(double) * (size_t)(nrows * ncols));
+    if (nrows * ncols > 0) memcpy(out, data, sizeof(double) * (size_t)(nrows * ncols));   /* data is NULL when empty */
     free(data);
     return TSR_OK;
 }
@@ -99,14 +136,18 @@ static int io_dtype(const char *s, int *dt, int *isz)
     return TSR_EARG;
 }
 
-static void io_store(void *buf, int64_t i, int dt, double v)
+static int io_is_int(int dt) { return dt == TSR_I64 || dt == TSR_I32 || dt == TSR_U8; }
+
+/* store a parsed text value: a float dtype takes the double; an integer dtype the integer NumPy's text reader
+   parsed (base 10, wrapped to the item width as NumPy does: "300" -> 44 for uint8) -- never a float->int cast */
+static void io_store(void *buf, int64_t i, int dt, double v, int64_t iv)
 {
     switch (dt) {
     case TSR_F64: ((double *)buf)[i] = v; break;
     case TSR_F32: ((float *)buf)[i] = (float)v; break;
-    case TSR_I64: ((int64_t *)buf)[i] = (int64_t)v; break;
-    case TSR_I32: ((int32_t *)buf)[i] = (int32_t)v; break;
-    case TSR_U8: ((uint8_t *)buf)[i] = (uint8_t)v; break;
+    case TSR_I64: ((int64_t *)buf)[i] = iv; break;
+    case TSR_I32: ((int32_t *)buf)[i] = (int32_t)(uint32_t)(uint64_t)iv; break;
+    case TSR_U8: ((uint8_t *)buf)[i] = (uint8_t)(uint64_t)iv; break;
     default: ((double *)buf)[i] = v; break;
     }
 }
@@ -121,16 +162,23 @@ static int r_fromfile(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int dt = TSR_F64, isz = 8, rc;
     if (nargs > 1 && args[1].kind == 2 && args[1].str && (rc = io_dtype(args[1].str, &dt, &isz)) < 0) return rc;
     int64_t count = -1;
-    if (nargs > 2 && args[2].kind == 1) count = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    if (nargs > 2 && args[2].kind == 1 && (rc = fn_arg_i64(&args[2], 1, INT64_MIN, INT64_MAX, "count", &count)) < 0) return rc;
     const char *sep = (nargs > 3 && args[3].kind == 2 && args[3].str && args[3].str[0]) ? args[3].str : NULL;
     int64_t offset = 0;
-    if (nargs > 4 && args[4].kind == 1) offset = (args[4].flags & 1) ? args[4].ival : (int64_t)args[4].num;
+    if (nargs > 4 && args[4].kind == 1 && (rc = fn_arg_i64(&args[4], 1, INT64_MIN, INT64_MAX, "offset", &offset)) < 0) return rc;
+    if (offset < 0) { fn_set_error("fromfile: [Errno 22] Invalid argument (offset)"); return TSR_EARG; }   /* numpy: OSError */
 
     if (!sep) {                                               /* binary */
         FILE *fp = fopen(fname, "rb");
         if (!fp) { fn_set_error("fromfile: could not open '%s'", fname); return TSR_EARG; }
         fseek(fp, 0, SEEK_END);
         const long fsz = ftell(fp);
+        /* offset >= 0 and fsz >= 0, so the difference cannot overflow; past the end NumPy's count=-1 read size
+           is negative ("negative dimensions are not allowed") */
+        if (fsz < 0 || offset > (int64_t)fsz) {
+            if (count < 0) { fclose(fp); fn_set_error("negative dimensions are not allowed"); return TSR_EARG; }
+            offset = fsz < 0 ? 0 : (int64_t)fsz;
+        }
         int64_t avail = ((int64_t)fsz - offset) / isz;
         if (avail < 0) avail = 0;
         int64_t n = (count < 0) ? avail : (count < avail ? count : avail);
@@ -150,19 +198,35 @@ static int r_fromfile(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     size_t got = fread(text, 1, (size_t)(fsz > 0 ? fsz : 0), fp); text[got] = '\0'; fclose(fp);
     int ws = 1; for (const char *p = sep; *p; p++) if (*p != ' ' && *p != '\t' && *p != '\n') { ws = 0; break; }
     double *vals = NULL; int64_t cap = 0, cnt = 0;
+    const int isint = io_is_int(dt);
     char *s = text;
     while (*s && (count < 0 || cnt < count)) {
         while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r' || (!ws && *s == sep[0])) s++;
         if (!*s) break;
-        char *ep; double v = strtod(s, &ep);
-        if (ep == s) break;
+        char *ep; double v;
+        if (isint) {
+            /* integer dtypes parse integers (NumPy: "2.7" reads 2 and then fails on ".7"); the int64 is kept
+               bit for bit in the double slot, so no value is ever converted from floating point */
+            const long long iv = strtoll(s, &ep, 10);
+            const int64_t i64 = (int64_t)iv;
+            memcpy(&v, &i64, sizeof v);
+        } else v = strtod(s, &ep);
+        if (ep == s) {                                    /* NumPy 2: unparsable data raises */
+            free(text); free(vals);
+            fn_set_error("string or file could not be read to its end due to unmatched data");
+            return TSR_EARG;
+        }
         if (push(&vals, &cap, &cnt, v) < 0) { free(text); free(vals); return TSR_ENOMEM; }
         s = ep;
     }
     free(text);
     void *out = fn_result_array(&res[0], dt, 1, (int64_t[]){cnt});
     if (!out) { free(vals); return TSR_ENOMEM; }
-    for (int64_t i = 0; i < cnt; i++) io_store(out, i, dt, vals[i]);
+    for (int64_t i = 0; i < cnt; i++) {
+        int64_t iv = 0;
+        if (isint) memcpy(&iv, &vals[i], sizeof iv);
+        io_store(out, i, dt, vals[i], iv);
+    }
     free(vals);
     return TSR_OK;
 }
@@ -177,15 +241,16 @@ static int r_genfromtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     const char *fname = args[0].str;
     const char *delim = (nargs > 1 && args[1].kind == 2 && args[1].str && args[1].str[0]) ? args[1].str : NULL;
     int64_t skip_header = 0, skip_footer = 0;
-    if (nargs > 2 && args[2].kind == 1) skip_header = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
-    if (nargs > 3 && args[3].kind == 1) skip_footer = (args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num;
+    int rc0;
+    if (nargs > 2 && args[2].kind == 1 && (rc0 = fn_arg_i64(&args[2], 1, INT64_MIN, INT64_MAX, "skip_header", &skip_header)) < 0) return rc0;
+    if (nargs > 3 && args[3].kind == 1 && (rc0 = fn_arg_i64(&args[3], 1, INT64_MIN, INT64_MAX, "skip_footer", &skip_footer)) < 0) return rc0;
     const char *comments = (nargs > 4 && args[4].kind == 2 && args[4].str) ? args[4].str : "#";
 
     FILE *fp = fopen(fname, "r");
     if (!fp) { fn_set_error("genfromtxt: could not open '%s'", fname); return TSR_EARG; }
     double *data = NULL; int64_t cap = 0, cnt = 0, nrows = 0, ncols = -1;
     char *line = NULL; size_t lcap = 0; ssize_t len; int64_t lineno = 0; int rc = TSR_OK;
-    while ((len = getline(&line, &lcap, fp)) != -1) {
+    while ((len = tsr_getline(&line, &lcap, fp)) != -1) {
         (void)len;
         if (lineno++ < skip_header) continue;
         if (comments && comments[0]) { char *h = strstr(line, comments); if (h) *h = '\0'; }
@@ -243,7 +308,7 @@ static int r_genfromtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     else { ond = 2; osh[0] = nrows; osh[1] = ncols; }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, ond, osh);
     if (!out) { free(data); return TSR_ENOMEM; }
-    memcpy(out, data, sizeof(double) * (size_t)(nrows * ncols));
+    if (nrows * ncols > 0) memcpy(out, data, sizeof(double) * (size_t)(nrows * ncols));   /* data is NULL when empty */
     free(data);
     return TSR_OK;
 }

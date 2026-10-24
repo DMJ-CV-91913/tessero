@@ -1,0 +1,56 @@
+name: codeql
+
+# Static analysis of the C/C++ kernel and the extension (manual build, so CodeQL sees exactly what ships) and of
+# the workflows themselves. Vendored third-party code is excluded from the results; it is tracked through
+# THIRD_PARTY_NOTICES.md and the quarterly re-sync in RELEASING.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '41 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  analyze:
+    # needs a public repository (or GitHub Advanced Security): skipped while the repository is private
+    if: ${{ !github.event.repository.private }}
+    name: CodeQL ${{ matrix.language }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      security-events: write   # upload the SARIF results
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { language: c-cpp, build-mode: manual }
+          - { language: actions, build-mode: none }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - csrc/third_party
+              - ext/libtessero
+      - if: matrix.build-mode == 'manual'
+        run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
+      - if: matrix.build-mode == 'manual'
+        name: build libtessero (serial OpenMP-free build; the analysis does not depend on threading)
+        run: make -C csrc OPENMP= -j4
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          category: /language:${{ matrix.language }}

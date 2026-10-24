@@ -42,9 +42,15 @@ final class Registry
             $reg = [];
             for ($id = 0; $id < $n; $id++) {
                 $len = $ffi->tsr_fn_info($id, $buf, 16384);
+                if ($len < 0) {                               // FFI::string with a negative length reads out of bounds
+                    throw new TesseroException("libtessero: tsr_fn_info({$id}) failed ({$len}).");
+                }
                 if ($len >= 16384) {
                     $big = $ffi->new('char[' . ($len + 1) . ']');
-                    $ffi->tsr_fn_info($id, $big, $len + 1);
+                    $len2 = $ffi->tsr_fn_info($id, $big, $len + 1);
+                    if ($len2 !== $len) {
+                        throw new TesseroException("libtessero: tsr_fn_info({$id}) changed length ({$len} then {$len2}).");
+                    }
                     $json = FFI::string($big, $len);
                 } else {
                     $json = FFI::string($buf, $len);
@@ -451,37 +457,49 @@ final class Registry
                 throw new \ValueError("{$label}(): assignment destination is read-only");
             }
         }
-        foreach (array_values($args) as $k => $v) {
-            if (isset($seq[$k]) && is_array($v)) {
-                // a sequence argument (numpy's `arrays`, `*args`): one tsr_arg per item
-                $items = array_values($v);
-                $sub = $ffi->new('tsr_arg[' . max(1, count($items)) . ']');
-                $hold[] = $sub;                       // owned by PHP: released with the variable
-                foreach ($items as $j => $item) {
-                    self::routineArg($ffi, $sub[$j], $item, $keep, $label);
-                }
-                $cargs[$k]->kind = 5;
-                $cargs[$k]->count = count($items);
-                $cargs[$k]->items = $ffi->cast('tsr_arg*', FFI::addr($sub[0]));
-                continue;
-            }
-            self::routineArg($ffi, $cargs[$k], $v, $keep, $label);
-        }
         $nres = max(1, $info['nout']);
         $res = $ffi->new("tsr_result[{$nres}]");
-        $rc = $ffi->tsr_fn_routine($info['id'], $n, $cargs, $nres, $res);
-        foreach ($keep as $b) {
-            if ($b instanceof CData) {
-                FFI::free($b);                        // the unmanaged string buffers
+        try {
+            foreach (array_values($args) as $k => $v) {
+                if (isset($seq[$k]) && is_array($v)) {
+                    // a sequence argument (numpy's `arrays`, `*args`): one tsr_arg per item
+                    $items = array_values($v);
+                    $sub = $ffi->new('tsr_arg[' . max(1, count($items)) . ']');
+                    $hold[] = $sub;                       // owned by PHP: released with the variable
+                    foreach ($items as $j => $item) {
+                        self::routineArg($ffi, $sub[$j], $item, $keep, $label);
+                    }
+                    $cargs[$k]->kind = 5;
+                    $cargs[$k]->count = count($items);
+                    $cargs[$k]->items = $ffi->cast('tsr_arg*', FFI::addr($sub[0]));
+                    continue;
+                }
+                self::routineArg($ffi, $cargs[$k], $v, $keep, $label);
             }
+            $rc = $ffi->tsr_fn_routine($info['id'], $n, $cargs, $nres, $res);
+        } finally {
+            // the unmanaged string buffers, also when a later argument threw before the call
+            foreach ($keep as $b) {
+                if ($b instanceof CData) {
+                    FFI::free($b);
+                }
+            }
+            unset($keep, $hold);
         }
-        unset($keep, $hold);
         self::check($rc, $label);
         $out = [];
         for ($k = 0; $k < $nres; $k++) {
             $r = $res[$k];
-            if ($r->kind !== 0) {
-                $out[$info['outs'][$k] ?? "r{$k}"] = self::resultValue($ffi, $r);
+            if ($r->kind === 0) {
+                continue;
+            }
+            try {
+                $out[$info['outs'][$k] ?? "r{$k}"] = self::resultValue($ffi, $r);   // consumes $res[$k] even when it throws
+            } catch (\Throwable $e) {
+                for ($j = $k + 1; $j < $nres; $j++) {
+                    self::release($ffi, $res[$j]);       // results not yet adopted would leak
+                }
+                throw $e;
             }
         }
 
@@ -597,22 +615,26 @@ final class Registry
         }
     }
 
-    /** A kernel result as a PHP value (kind 6, a sequence, becomes a list). */
+    /**
+     * A kernel result as a PHP value (kind 6, a sequence, becomes a list). Always consumes the result: every
+     * block it owns is either adopted by a Buffer or freed here, also when this throws, and never both.
+     */
     private static function resultValue(FFI $ffi, CData $r): mixed
     {
         if ($r->kind === 6) {
             $n = $r->arr->shape[0];
+            if ($n < 0 || $n * FFI::sizeof($ffi->type('tsr_result')) > $r->bytes) {
+                self::release($ffi, $r, false);              // a malformed sequence: free only its own block
+                throw new TesseroException("libtessero returned a malformed result sequence ({$n} items).");
+            }
             $items = $ffi->cast('tsr_result*', $r->arr->data);
             $list = [];
             $failed = null;
             for ($j = 0; $j < $n; $j++) {
                 try {
-                    $list[] = self::resultValue($ffi, $items[$j]);
+                    $list[] = self::resultValue($ffi, $items[$j]);   // consumes item j whatever happens
                 } catch (\Throwable $e) {
                     $failed ??= $e;
-                    if ($items[$j]->kind === 3) {
-                        $ffi->tsr_free($items[$j]->arr->data, $items[$j]->bytes);
-                    }
                 }
             }
             $ffi->tsr_free($r->arr->data, $r->bytes);
@@ -639,17 +661,62 @@ final class Registry
         };
     }
 
-    /** Take ownership of a result block allocated by the kernel. */
+    /** @var \Closure(int, int): Buffer|null */
+    private static ?\Closure $adopter = null;
+
+    /**
+     * Take ownership of a result block allocated by the kernel. Everything that can fail is checked BEFORE
+     * the Buffer exists (dtype, ndim, shape, size within the block); on failure the block is freed here and
+     * nothing else frees it. Once the Buffer exists it is the only owner.
+     */
     private static function adopt(CData $r): NDArray
     {
         $a = $r->arr;
+        $bytes = $r->bytes;
+        $dtype = DType::tryFrom($a->dtype);
+        $ndim = $a->ndim;
         $shape = [];
-        for ($d = 0; $d < $a->ndim; $d++) {
-            $shape[] = $a->shape[$d];
+        $ok = $dtype !== null && $ndim >= 0 && $ndim <= 32 && $bytes >= 0;
+        $size = 1;
+        for ($d = 0; $ok && $d < $ndim; $d++) {
+            $len = $a->shape[$d];
+            if ($len < 0 || ($len > 0 && $size > intdiv(PHP_INT_MAX, $len))) {
+                $ok = false;
+                break;
+            }
+            $size *= $len;
+            $shape[] = $len;
         }
-        $buffer = Buffer::adopt(Library::address($a->data), $r->bytes);
+        if ($ok && $size > intdiv($bytes, $dtype->itemsize())) {
+            $ok = false;                                         // the array would reach past its block
+        }
+        if (! $ok) {
+            self::release(Library::ffi(), $r, false);
+            throw new TesseroException('libtessero returned a malformed array result.');
+        }
+        self::$adopter ??= Buffer::adopter();
+        $buffer = (self::$adopter)(Library::address($a->data), $bytes);
 
-        return new NDArray($buffer, DType::from($a->dtype), $shape);
+        return new NDArray($buffer, $dtype, $shape);
+    }
+
+    /** Free a result that will not be adopted (kind 2/3 blocks, kind 6 sequences with their items). */
+    private static function release(FFI $ffi, CData $r, bool $recurse = true): void
+    {
+        $kind = $r->kind;
+        if ($kind === 6 && $recurse) {
+            $n = $r->arr->shape[0];
+            if ($n > 0 && $n * FFI::sizeof($ffi->type('tsr_result')) <= $r->bytes) {
+                $items = $ffi->cast('tsr_result*', $r->arr->data);
+                for ($j = 0; $j < $n; $j++) {
+                    self::release($ffi, $items[$j]);
+                }
+            }
+        }
+        if ($kind === 2 || $kind === 3 || $kind === 6) {
+            $ffi->tsr_free($r->arr->data, $r->bytes);               // tsr_free(NULL) is a no-op
+        }
+        $r->kind = 0;                                            // never released twice
     }
 
     /**

@@ -2,3 +2,7 @@
 # libgomp allocates its thread-pool descriptor once at initialisation and never frees it
 leak:libgomp.so
 leak:gomp_
+# PHP 8.2's FFI::cdef leaks one declaration (56 bytes) each time a declared C function does not resolve, and
+# Native\Blas probes candidate libraries that way (Ubuntu's libopenblas.so.0 has no LAPACKE). PHP's own
+# allocation, not Tessero's; PHP 8.4 does not leak it.
+leak:zend_ffi_declare

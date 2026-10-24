@@ -15,6 +15,8 @@
 #  define BOOST_MATH_STANDALONE 1
 #endif
 
+#include "boost_error_format.hpp"   /* first: Boost's error messages formatted without iostreams */
+
 #include <cmath>
 #include <complex>
 #include <limits>
@@ -87,18 +89,63 @@ extern "C" void tsr_mathieu_coef(int kd, int m, double q, double *fc)
 }
 
 /* Complex zeros of erf (cerzo) and of the Fresnel integrals (fcszo: kf=1 C, kf=2 S); written interleaved
-   [re, im, ...] into out (np_numeric.c r_erf_zeros / r_fresnel*_zeros). nt is small (fixtures <= ~16). */
-extern "C" void tsr_cerzo(int nt, double *out)
+   [re, im, ...] into out (np_numeric.c r_erf_zeros / r_fresnel*_zeros). The zeros are found in nt-sized work
+   storage on the heap (a fixed [260] stack array overflowed for nt > 260). Returns 0, or -1 when out of memory. */
+#include <vector>
+extern "C" int tsr_cerzo(int nt, double *out)
 {
-    std::complex<double> zo[260];
-    xsf::specfun::cerzo(nt, zo);
-    for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
+    try {
+        std::vector<std::complex<double>> zo((size_t)nt);
+        xsf::specfun::cerzo(nt, zo.data());
+        for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
+    } catch (...) { return -1; }
+    return 0;
 }
-extern "C" void tsr_fcszo(int kf, int nt, double *out)
+extern "C" int tsr_fcszo(int kf, int nt, double *out)
 {
-    std::complex<double> zo[260];
-    xsf::fcszo(kf, nt, zo);
-    for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
+    try {
+        std::vector<std::complex<double>> zo((size_t)nt);
+        xsf::fcszo(kf, nt, zo.data());
+        for (int i = 0; i < nt; i++) { out[2 * i] = zo[i].real(); out[2 * i + 1] = zo[i].imag(); }
+    } catch (...) { return -1; }
+    return 0;
+}
+
+/* Bernoulli / Euler numbers 0..n (scipy.special.bernoulli / euler): xsf's specfun bernob / eulerb on n1 = max(n, 2)
+   entries, zero-initialised (the odd entries they leave unset are 0, as in SciPy), the first n + 1 copied out.
+   Returns 0, or -1 when out of memory. */
+extern "C" int tsr_bernob_eulerb(int euler, int n, double *out)
+{
+    const int n1 = n < 2 ? 2 : n;
+    try {
+        std::vector<double> w((size_t)n1 + 1, 0.0);
+        if (euler) xsf::specfun::eulerb(n1, w.data()); else xsf::specfun::bernob(n1, w.data());
+        for (int i = 0; i <= n; i++) out[i] = w[(size_t)i];
+    } catch (...) { return -1; }
+    return 0;
+}
+
+/* Parabolic cylinder sequences (scipy.special.pbdv_seq / pbvv_seq): xsf's specfun recurrence for order v1 in one
+   call, as SciPy's _specfun.pbdv / pbvv wrapper returns it, and the first len entries of DV / VV and their
+   derivatives (np_numeric.c pb_seq; v1 = n1 + v0 with |v0| < 1, n1 >= 1). The work arrays get xsf's own size,
+   |int(v1)| + 2. A NaN x gives NaN, as xsf::pbdv / pbvv do. Returns 0, or -1 when out of memory. */
+#include "xsf/par_cyl.h"
+extern "C" int tsr_pb_seq(int vv, double v1, double x, int64_t len, double *dv, double *dp)
+{
+    if (std::isnan(x)) {
+        for (int64_t k = 0; k < len; k++) dv[k] = dp[k] = std::numeric_limits<double>::quiet_NaN();
+        return 0;
+    }
+    const int64_t num = (int64_t)std::abs((int)v1) + 2;
+    if (len > num) return -1;
+    try {
+        std::vector<double> w((size_t)(2 * num), 0.0);
+        double pf, pd;
+        if (vv) xsf::detail::pbvv(x, v1, w.data(), w.data() + num, &pf, &pd);
+        else xsf::detail::pbdv(x, v1, w.data(), w.data() + num, &pf, &pd);
+        for (int64_t k = 0; k < len; k++) { dv[k] = w[(size_t)k]; dp[k] = w[(size_t)(num + k)]; }
+    } catch (...) { return -1; }
+    return 0;
 }
 
 /* Zeros of Jn and Jn' arranged by magnitude (scipy.special.jnjnp_zeros), via xsf's jdzo -- the same
@@ -116,12 +163,16 @@ extern "C" void tsr_jdzo(int nt, double *zoOut, int64_t *nOut, int64_t *mOut, in
 
 /* Complex parabolic cylinder functions D_n(z) and D_n'(z) for orders 0..n (scipy.special.pbdn_seq),
    written interleaved into bOut / dOut. */
-extern "C" void tsr_cpbdn(int n, double zre, double zim, double *bOut, double *dOut)
+extern "C" int tsr_cpbdn(int n, double zre, double zim, double *bOut, double *dOut)
 {
-    std::complex<double> cpb[300], cpd[300];
-    xsf::specfun::cpbdn(n, std::complex<double>(zre, zim), cpb, cpd);
-    for (int i = 0; i <= n; i++) {
-        bOut[2 * i] = cpb[i].real(); bOut[2 * i + 1] = cpb[i].imag();
-        dOut[2 * i] = cpd[i].real(); dOut[2 * i + 1] = cpd[i].imag();
-    }
+    /* n + 1 entries on the heap (a fixed [300] stack array overflowed for n >= 300); 0, or -1 out of memory */
+    try {
+        std::vector<std::complex<double>> cpb((size_t)n + 2), cpd((size_t)n + 2);
+        xsf::specfun::cpbdn(n, std::complex<double>(zre, zim), cpb.data(), cpd.data());
+        for (int i = 0; i <= n; i++) {
+            bOut[2 * i] = cpb[i].real(); bOut[2 * i + 1] = cpb[i].imag();
+            dOut[2 * i] = cpd[i].real(); dOut[2 * i + 1] = cpd[i].imag();
+        }
+    } catch (...) { return -1; }
+    return 0;
 }

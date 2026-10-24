@@ -10,6 +10,12 @@
 static agm($a, $b, $out = null)
 ```
 
+### aiZeros
+
+```php
+static aiZeros($nt)
+```
+
 ### airy
 
 ```php
@@ -20,6 +26,12 @@ static airy($z, $out = null)
 
 ```php
 static airye($z, $out = null)
+```
+
+### assocLaguerre
+
+```php
+static assocLaguerre($x, $n, $k, $out = null)
 ```
 
 ### bdtr
@@ -58,10 +70,22 @@ static bdtrin($k, $y, $p, $out = null)
 static bei($x, $out = null)
 ```
 
+### beiZeros
+
+```php
+static beiZeros($nt)
+```
+
 ### beip
 
 ```php
 static beip($x, $out = null)
+```
+
+### beipZeros
+
+```php
+static beipZeros($nt)
 ```
 
 ### ber
@@ -70,10 +94,28 @@ static beip($x, $out = null)
 static ber($x, $out = null)
 ```
 
+### berZeros
+
+```php
+static berZeros($nt)
+```
+
+### bernoulli
+
+```php
+static bernoulli($n)
+```
+
 ### berp
 
 ```php
 static berp($x, $out = null)
+```
+
+### berpZeros
+
+```php
+static berpZeros($nt)
 ```
 
 ### besselpoly
@@ -118,6 +160,12 @@ static betaincinv($a, $b, $y, $out = null)
 static betaln($a, $b, $out = null)
 ```
 
+### biZeros
+
+```php
+static biZeros($nt)
+```
+
 ### binom
 
 ```php
@@ -148,10 +196,22 @@ static btdtria($p, $b, $x, $out = null)
 static btdtrib($x0, $x1, $x2, $out = null)
 ```
 
+### cRoots
+
+```php
+static cRoots($n, $mu = false)
+```
+
 ### cbrt
 
 ```php
 static cbrt($x, $out = null)
+```
+
+### cgRoots
+
+```php
+static cgRoots($n, $alpha, $mu = false)
 ```
 
 ### chdtr
@@ -202,6 +262,12 @@ static chndtrinc($x, $df, $p, $out = null)
 static chndtrix($p, $df, $nc, $out = null)
 ```
 
+### comb
+
+```php
+static comb($N, $k, $out = null)
+```
+
 ### cosdg
 
 ```php
@@ -230,6 +296,30 @@ static dawsn($x, $out = null)
 
 ```php
 static digamma($z, $out = null)
+```
+
+### diric
+
+```php
+static diric($x, $n, $out = null)
+```
+
+### ellipHarm
+
+```php
+static ellipHarm($h2, $k2, $n, $p, $s)
+```
+
+### ellipHarm2
+
+```php
+static ellipHarm2($h2, $k2, $n, $p, $s)
+```
+
+### ellipNormal
+
+```php
+static ellipNormal($h2, $k2, $n, $p)
 ```
 
 ### ellipe
@@ -310,6 +400,12 @@ static entr($x, $out = null)
 static erf($z, $out = null)
 ```
 
+### erfZeros
+
+```php
+static erfZeros($nt)
+```
+
 ### erfc
 
 ```php
@@ -338,6 +434,12 @@ static erfi($z, $out = null)
 
 ```php
 static erfinv($y, $out = null)
+```
+
+### euler
+
+```php
+static euler($n)
 ```
 
 ### evalChebyc
@@ -478,6 +580,24 @@ static expn($n, $x, $out = null)
 static exprel($x, $out = null)
 ```
 
+### factorial
+
+```php
+static factorial($n, $out = null)
+```
+
+### factorial2
+
+```php
+static factorial2($n)
+```
+
+### factorialk
+
+```php
+static factorialk($n, $k)
+```
+
 ### fdtr
 
 ```php
@@ -506,6 +626,24 @@ static fdtridfd($dfn, $p, $x, $out = null)
 
 ```php
 static fresnel($z, $out = null)
+```
+
+### fresnelZeros
+
+```php
+static fresnelZeros($nt)
+```
+
+### fresnelcZeros
+
+```php
+static fresnelcZeros($nt)
+```
+
+### fresnelsZeros
+
+```php
+static fresnelsZeros($nt)
 ```
 
 ### gamma
@@ -578,6 +716,54 @@ static gdtrib($a, $p, $x, $out = null)
 
 ```php
 static gdtrix($a, $b, $p, $out = null)
+```
+
+### h1vp
+
+```php
+static h1vp($v, $z, $n = 1)
+```
+
+### h2vp
+
+```php
+static h2vp($v, $z, $n = 1)
+```
+
+### hRoots
+
+```php
+static hRoots($n, $mu = false)
+```
+
+### hankel1
+
+```php
+static hankel1($v, $z)
+```
+
+### hankel1e
+
+```php
+static hankel1e($v, $z)
+```
+
+### hankel2
+
+```php
+static hankel2($v, $z)
+```
+
+### hankel2e
+
+```php
+static hankel2e($v, $z)
+```
+
+### heRoots
+
+```php
+static heRoots($n, $mu = false)
 ```
 
 ### huber
@@ -706,6 +892,12 @@ static iv($v, $z, $out = null)
 static ive($v, $z, $out = null)
 ```
 
+### ivp
+
+```php
+static ivp($v, $z, $out = null)
+```
+
 ### j0
 
 ```php
@@ -718,10 +910,46 @@ static j0($x, $out = null)
 static j1($x, $out = null)
 ```
 
+### jRoots
+
+```php
+static jRoots($n, $alpha, $beta, $mu = false)
+```
+
 ### jn
 
 ```php
 static jn($n, $z, $out = null)
+```
+
+### jnZeros
+
+```php
+static jnZeros($n, $nt)
+```
+
+### jnjnpZeros
+
+```php
+static jnjnpZeros($nt)
+```
+
+### jnpZeros
+
+```php
+static jnpZeros($n, $nt)
+```
+
+### jnynZeros
+
+```php
+static jnynZeros($n, $nt)
+```
+
+### jsRoots
+
+```php
+static jsRoots($n, $p1, $q1, $mu = false)
 ```
 
 ### jv
@@ -734,6 +962,12 @@ static jv($v, $z, $out = null)
 
 ```php
 static jve($v, $z, $out = null)
+```
+
+### jvp
+
+```php
+static jvp($v, $z, $out = null)
 ```
 
 ### k0
@@ -766,10 +1000,34 @@ static k1e($x, $out = null)
 static kei($x, $out = null)
 ```
 
+### keiZeros
+
+```php
+static keiZeros($nt)
+```
+
 ### keip
 
 ```php
 static keip($x, $out = null)
+```
+
+### keipZeros
+
+```php
+static keipZeros($nt)
+```
+
+### kelvin
+
+```php
+static kelvin($x)
+```
+
+### kelvinZeros
+
+```php
+static kelvinZeros($nt)
 ```
 
 ### ker
@@ -778,10 +1036,22 @@ static keip($x, $out = null)
 static ker($x, $out = null)
 ```
 
+### kerZeros
+
+```php
+static kerZeros($nt)
+```
+
 ### kerp
 
 ```php
 static kerp($x, $out = null)
+```
+
+### kerpZeros
+
+```php
+static kerpZeros($nt)
 ```
 
 ### klDiv
@@ -820,6 +1090,36 @@ static kv($v, $z, $out = null)
 static kve($v, $z, $out = null)
 ```
 
+### kvp
+
+```php
+static kvp($v, $z, $out = null)
+```
+
+### lRoots
+
+```php
+static lRoots($n, $mu = false)
+```
+
+### laRoots
+
+```php
+static laRoots($n, $alpha, $mu = false)
+```
+
+### lambertw
+
+```php
+static lambertw($z, $k = 0, $tol = 1.0E-8)
+```
+
+### lmbda
+
+```php
+static lmbda($v, $x)
+```
+
 ### log1p
 
 ```php
@@ -838,6 +1138,12 @@ static logExpit($x, $out = null)
 static logNdtr($x, $out = null)
 ```
 
+### logSoftmax
+
+```php
+static logSoftmax($x, $axis = null)
+```
+
 ### logWrightBessel
 
 ```php
@@ -854,6 +1160,12 @@ static loggamma($z, $out = null)
 
 ```php
 static logit($x, $out = null)
+```
+
+### logsumexp
+
+```php
+static logsumexp($a, $axis = null, $keepdims = false)
 ```
 
 ### lpmv
@@ -880,6 +1192,12 @@ static mathieuB($m, $q, $out = null)
 static mathieuCem($m, $q, $x, $out = null)
 ```
 
+### mathieuEvenCoef
+
+```php
+static mathieuEvenCoef($m, $q)
+```
+
 ### mathieuModcem1
 
 ```php
@@ -904,16 +1222,40 @@ static mathieuModsem1($m, $q, $x, $out = null)
 static mathieuModsem2($m, $q, $x, $out = null)
 ```
 
+### mathieuOddCoef
+
+```php
+static mathieuOddCoef($m, $q)
+```
+
 ### mathieuSem
 
 ```php
 static mathieuSem($m, $q, $x, $out = null)
 ```
 
+### modfresnelm
+
+```php
+static modfresnelm($x)
+```
+
+### modfresnelp
+
+```php
+static modfresnelp($x)
+```
+
 ### modstruve
 
 ```php
 static modstruve($v, $x, $out = null)
+```
+
+### multigammaln
+
+```php
+static multigammaln($a, $d)
 ```
 
 ### nbdtr
@@ -1048,6 +1390,12 @@ static oblAng1Cv($m, $n, $c, $cv, $x, $out = null)
 static oblCv($m, $n, $c, $out = null)
 ```
 
+### oblCvSeq
+
+```php
+static oblCvSeq($m, $n, $c)
+```
+
 ### oblRad1
 
 ```php
@@ -1078,16 +1426,40 @@ static oblRad2Cv($m, $n, $c, $cv, $x, $out = null)
 static owensT($h, $a, $out = null)
 ```
 
+### pRoots
+
+```php
+static pRoots($n, $mu = false)
+```
+
+### pbdnSeq
+
+```php
+static pbdnSeq($n, $z)
+```
+
 ### pbdv
 
 ```php
 static pbdv($v, $x, $out = null)
 ```
 
+### pbdvSeq
+
+```php
+static pbdvSeq($v, $x)
+```
+
 ### pbvv
 
 ```php
 static pbvv($v, $x, $out = null)
+```
+
+### pbvvSeq
+
+```php
+static pbvvSeq($v, $x)
 ```
 
 ### pbwa
@@ -1120,10 +1492,22 @@ static pdtri($k, $y, $out = null)
 static pdtrik($p, $m, $out = null)
 ```
 
+### perm
+
+```php
+static perm($N, $k, $out = null)
+```
+
 ### poch
 
 ```php
 static poch($z, $m, $out = null)
+```
+
+### polygamma
+
+```php
+static polygamma($n, $x, $out = null)
 ```
 
 ### powm1
@@ -1150,6 +1534,12 @@ static proAng1Cv($m, $n, $c, $cv, $x, $out = null)
 static proCv($m, $n, $c, $out = null)
 ```
 
+### proCvSeq
+
+```php
+static proCvSeq($m, $n, $c)
+```
+
 ### proRad1
 
 ```php
@@ -1172,6 +1562,12 @@ static proRad2($m, $n, $c, $x, $out = null)
 
 ```php
 static proRad2Cv($m, $n, $c, $cv, $x, $out = null)
+```
+
+### psRoots
+
+```php
+static psRoots($n, $mu = false)
 ```
 
 ### pseudoHuber
@@ -1204,10 +1600,106 @@ static relEntr($x, $y, $out = null)
 static rgamma($z, $out = null)
 ```
 
+### rootsChebyc
+
+```php
+static rootsChebyc($n, $mu = false)
+```
+
+### rootsChebys
+
+```php
+static rootsChebys($n, $mu = false)
+```
+
+### rootsChebyt
+
+```php
+static rootsChebyt($n, $mu = false)
+```
+
+### rootsChebyu
+
+```php
+static rootsChebyu($n, $mu = false)
+```
+
+### rootsGegenbauer
+
+```php
+static rootsGegenbauer($n, $alpha, $mu = false)
+```
+
+### rootsGenlaguerre
+
+```php
+static rootsGenlaguerre($n, $alpha, $mu = false)
+```
+
+### rootsHermite
+
+```php
+static rootsHermite($n, $mu = false)
+```
+
+### rootsHermitenorm
+
+```php
+static rootsHermitenorm($n, $mu = false)
+```
+
+### rootsJacobi
+
+```php
+static rootsJacobi($n, $alpha, $beta, $mu = false)
+```
+
+### rootsLaguerre
+
+```php
+static rootsLaguerre($n, $mu = false)
+```
+
+### rootsLegendre
+
+```php
+static rootsLegendre($n, $mu = false)
+```
+
+### rootsShChebyt
+
+```php
+static rootsShChebyt($n, $mu = false)
+```
+
+### rootsShChebyu
+
+```php
+static rootsShChebyu($n, $mu = false)
+```
+
+### rootsShJacobi
+
+```php
+static rootsShJacobi($n, $p1, $q1, $mu = false)
+```
+
+### rootsShLegendre
+
+```php
+static rootsShLegendre($n, $mu = false)
+```
+
 ### round
 
 ```php
 static round($x, $out = null)
+```
+
+### sRoots
+
+```php
+static sRoots($n, $mu = false)
 ```
 
 ### shichi
@@ -1220,6 +1712,12 @@ static shichi($x, $out = null)
 
 ```php
 static sici($x, $out = null)
+```
+
+### sinc
+
+```php
+static sinc($x, $out = null)
 ```
 
 ### sindg
@@ -1240,10 +1738,52 @@ static smirnov($n, $d, $out = null)
 static smirnovi($n, $p, $out = null)
 ```
 
+### softmax
+
+```php
+static softmax($x, $axis = null)
+```
+
+### softplus
+
+```php
+static softplus($x, $out = null)
+```
+
 ### spence
 
 ```php
 static spence($z, $out = null)
+```
+
+### sphHarmY
+
+```php
+static sphHarmY($n, $m, $theta, $phi)
+```
+
+### sphericalIn
+
+```php
+static sphericalIn($n, $z, $derivative, $out = null)
+```
+
+### sphericalJn
+
+```php
+static sphericalJn($n, $z, $derivative, $out = null)
+```
+
+### sphericalKn
+
+```php
+static sphericalKn($n, $z, $derivative, $out = null)
+```
+
+### sphericalYn
+
+```php
+static sphericalYn($n, $z, $derivative, $out = null)
 ```
 
 ### stdtr
@@ -1270,6 +1810,12 @@ static stdtrit($df, $p, $out = null)
 static struve($v, $x, $out = null)
 ```
 
+### tRoots
+
+```php
+static tRoots($n, $mu = false)
+```
+
 ### tandg
 
 ```php
@@ -1282,10 +1828,34 @@ static tandg($x, $out = null)
 static tklmbda($x, $lmbda, $out = null)
 ```
 
+### tsRoots
+
+```php
+static tsRoots($n, $mu = false)
+```
+
+### uRoots
+
+```php
+static uRoots($n, $mu = false)
+```
+
+### usRoots
+
+```php
+static usRoots($n, $mu = false)
+```
+
 ### voigtProfile
 
 ```php
 static voigtProfile($x, $sigma, $gamma, $out = null)
+```
+
+### wofz
+
+```php
+static wofz($z)
 ```
 
 ### wrightBessel
@@ -1318,16 +1888,46 @@ static xlogy($x, $y, $out = null)
 static y0($x, $out = null)
 ```
 
+### y0Zeros
+
+```php
+static y0Zeros($nt)
+```
+
 ### y1
 
 ```php
 static y1($x, $out = null)
 ```
 
+### y1Zeros
+
+```php
+static y1Zeros($nt)
+```
+
+### y1pZeros
+
+```php
+static y1pZeros($nt)
+```
+
 ### yn
 
 ```php
 static yn($n, $x, $out = null)
+```
+
+### ynZeros
+
+```php
+static ynZeros($n, $nt)
+```
+
+### ynpZeros
+
+```php
+static ynpZeros($n, $nt)
 ```
 
 ### yv
@@ -1340,6 +1940,18 @@ static yv($v, $z, $out = null)
 
 ```php
 static yve($v, $z, $out = null)
+```
+
+### yvp
+
+```php
+static yvp($v, $z, $out = null)
+```
+
+### zeta
+
+```php
+static zeta($x, $q, $out = null)
 ```
 
 ### zetac

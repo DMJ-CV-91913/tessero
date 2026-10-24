@@ -40,9 +40,11 @@ static void store(int dt, char *o, double d, int64_t i, int use_int)
     switch (dt) {
     case TSR_F64: *(double *)o = use_int ? (double)i : d; break;
     case TSR_F32: *(float *)o = (float)(use_int ? (double)i : d); break;
-    case TSR_I64: *(int64_t *)o = use_int ? i : (int64_t)d; break;
-    case TSR_I32: *(int32_t *)o = (int32_t)(use_int ? i : (int64_t)d); break;
-    case TSR_U8: case TSR_BOOL: *(uint8_t *)o = (uint8_t)(use_int ? i : (int64_t)d); break;
+    /* a float result goes through tsr_f2i64 (NaN/Inf/out-of-range -> INT64_MIN, never C's undefined cast);
+       narrower integer outputs then wrap from int64, as before */
+    case TSR_I64: *(int64_t *)o = use_int ? i : tsr_f2i64(d); break;
+    case TSR_I32: *(int32_t *)o = (int32_t)(use_int ? i : tsr_f2i64(d)); break;
+    case TSR_U8: case TSR_BOOL: *(uint8_t *)o = (uint8_t)(use_int ? i : tsr_f2i64(d)); break;
     default: break;
     }
 }
