@@ -14,12 +14,6 @@ static const char *const EST[] = {"auto", "fd", "doane", "scott", "stone", "rice
 static tsr_arg bins_arg(fz_in *in, fz_pool *pool, char *sbuf)
 {
     const uint8_t k = fz_u8(in);
-#ifdef FUZZ_SKIP_KNOWN
-    /* open finding F7: an integer bins >= 2^60 makes hist_edges compute (bins + 1) * 8 in int64, which wraps
-       to a small allocation that the edge loop then overruns. Keep integer bins below 2^40. */
-    if (k % 6 == 1) { const int64_t v = (int64_t)fz_u64(in); return fz_arg_int(v > ((int64_t)1 << 40) ? (int64_t)1 << 40 : v); }
-    if (k % 6 == 2) { const double v = fz_double(in); return fz_arg_num(v > 1099511627776.0 && v < 9.2e18 ? 1099511627776.0 : v); }
-#endif
     switch (k % 6) {
     case 0: return fz_arg_int((int64_t)(fz_u8(in) % 40) - 2);
     case 1: return fz_arg_int((int64_t)fz_u64(in));
@@ -125,24 +119,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
     /* sometimes drop trailing arguments: the dispatcher pads them as absent */
     if (nargs > 1 && (sel & 0x80)) nargs = 1 + fz_u8(&in) % nargs;
-#ifdef FUZZ_SKIP_KNOWN
-    /* open finding F9: with an estimator name as bins, hist_edges casts ceil((last - first) / width) to int64
-       unchecked, and a huge or infinite quotient then yields a bogus edge count. Keep estimator samples at 0 or
-       with magnitude in [1e-6, 1e6] (subnormal spreads also give a huge quotient). */
-    if (which <= 1 && nargs > 1 && args[1].kind == 2 && args[0].kind == 3) {
-        if (nargs > 2) args[2] = fz_arg_none();          /* a huge range gives the same quotient */
-        const int64_t cnt = tsr_array_size(&args[0].arr);
-        for (int64_t i = 0; i < cnt; i++) {
-            if (args[0].arr.dtype == 0) {
-                double *v = (double *)args[0].arr.data + i;
-                if (!(fabs(*v) >= 1e-6 && fabs(*v) <= 1e6)) *v = 0.0;
-            } else {
-                int64_t *v = (int64_t *)args[0].arr.data + i;
-                if (*v < -1000000 || *v > 1000000) *v = 0;
-            }
-        }
-    }
-#endif
     fz_call(ids[which], nargs, args);
 done:
     fz_release(&pool);

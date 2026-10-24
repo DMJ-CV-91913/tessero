@@ -736,7 +736,7 @@ static double estimator_width(int est, double *x, int64_t n, double first, doubl
     }
     case EST_STONE: {
         const double ptp = ptp_of(x, n);
-        if (n <= 1 || ptp == 0) return 0;
+        if (n <= 1 || ptp == 0 || !isfinite(last - first)) return 0;   /* an infinite spread has no finite bins */
         int64_t upper = (int64_t)sqrt(N);
         if (upper < 100) upper = 100;
         double best = 0;
@@ -856,13 +856,19 @@ static int hist_edges(double *a, int64_t n, const tsr_arg *bins, const tsr_arg *
             if (err != TSR_OK) return err;
             if (width != 0 && width == width) {
                 if (int_input && width < 1) width = 1;
-                nb = (int64_t)ceil((last - first) / width);
+                /* numpy: int(np.ceil((last - first) / width)); a huge or infinite quotient (subnormal width,
+                   overflowing spread) must not reach the int64 cast */
+                const double q = ceil((last - first) / width);
+                if (q != q) { fn_set_error("cannot convert float NaN to integer"); return TSR_EARG; }
+                if (q == INFINITY) { fn_set_error("cannot convert float infinity to integer"); return TSR_EARG; }
+                if (!(q < 9223372036854775808.0)) { fn_set_error("array is too big; `arr.size * arr.dtype.itemsize` is larger than the maximum possible size."); return TSR_EARG; }
+                nb = (int64_t)q;
             } else {
                 nb = 1;
             }
         }
     } else if (bins->kind == 1 || bins->kind == 4) {
-        if (bins->num != floor(bins->num) || !(bins->num < 9.2e18)) { fn_set_error("`bins` must be an integer, a string, or an array"); return TSR_ETYPE; }
+        if (bins->num != floor(bins->num) || !(fabs(bins->num) < 9.2e18)) {   /* -inf passed floor() == itself */ fn_set_error("`bins` must be an integer, a string, or an array"); return TSR_ETYPE; }
         nb = (int64_t)bins->num;
         if (nb < 1) { fn_set_error("`bins` must be positive, when an integer"); return TSR_EARG; }
         if ((rc = outer_edges(a, n, range, &first, &last)) != TSR_OK) return rc;
@@ -880,7 +886,8 @@ static int hist_edges(double *a, int64_t n, const tsr_arg *bins, const tsr_arg *
         fn_set_error("`bins` must be an integer, a string, or an array");
         return TSR_ETYPE;
     }
-    /* numpy.linspace(first, last, nb + 1) */
+    /* numpy.linspace(first, last, nb + 1); (nb + 1) * 8 bytes must fit int64 (it wrapped to a small block) */
+    if (nb > INT64_MAX / 8 - 2) { fn_set_error("array is too big; `arr.size * arr.dtype.itemsize` is larger than the maximum possible size."); return TSR_EARG; }
     const int64_t k = nb + 1;
     double *e = (double *)tsr_alloc(k > 8 ? k * 8 : 64);
     if (!e) return TSR_ENOMEM;

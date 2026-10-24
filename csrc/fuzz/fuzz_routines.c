@@ -39,20 +39,12 @@ static int denied(const char *name, const char *info)
 /* open findings: routines skipped at call time (not removed from the table, so slot numbers and therefore
    corpus files keep their meaning). Remove an entry once its fix lands. */
 static const char *const KNOWN[] = {
-    "special.ellip_harm", "special.ellip_harm_2", "special.ellip_normal",  /* F2: p < 1 indexes z[-1] */
-    "np.einsum",                                                            /* F5: 0-length label overread */
-    "np.histogram", "np.histogram_bin_edges",                               /* F7: bins * 8 wraps */
-    "stats.boxcox_normplot", "stats.yeojohnson_normplot", "stats.probplot",  /* F13: offset on a NULL pointer in stat_osm */
-    "stats.ecdf",                                                           /* F18: 2-D input runs unbounded */
-    "sparse.diags", "sparse.eye_array", "sparse.eye", "sparse.spdiags",      /* F31/F33: dimension product overflow */
-    "special.mathieu_odd_coef", "special.mathieu_even_coef",                /* F23: index 256 in mathieu_coef_run */
-    "stats.chisquare", "stats.power_divergence",                            /* F34: null f_exp dereference in stats_fn_tests */
-    "distance.minkowski_distance",                                          /* F36: 0-d input indexes shape[-1] (same class as F15) */
+    NULL,   /* none open: add "routine.name", with the finding id, while a fix is pending */
 };
 
 static int known(const char *name)
 {
-    for (size_t i = 0; i < sizeof KNOWN / sizeof KNOWN[0]; i++) if (strcmp(name, KNOWN[i]) == 0) return 1;
+    for (size_t i = 0; i < sizeof KNOWN / sizeof KNOWN[0]; i++) if (KNOWN[i] && strcmp(name, KNOWN[i]) == 0) return 1;
     return 0;
 }
 #endif
@@ -174,16 +166,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (verbose) fprintf(stderr, "routine: %s nargs %d\n", tsr_fn_name(g_ids[slot]), nargs);
 #ifdef FUZZ_SKIP_KNOWN
     if (known(tsr_fn_name(g_ids[slot]))) { fz_release(&pool); return 0; }
-    /* F20: special.*_seq / order-like integer arguments drive O(n) to O(n^2) work and memory with no cap
-       (special.pbvv_seq(n=2^20) ran past the timeout). Clamp integer arguments of special.* to 1000. */
-    if (strncmp(tsr_fn_name(g_ids[slot]), "special.", 8) == 0)
-        for (int i = 0; i < nargs; i++)
-            if (args[i].kind == 1 && (args[i].ival > 1000 || args[i].num > 1000.0)) args[i] = fz_arg_int(1000);
-    /* F15: the ndimage rank/morphology filters (windowed_rank_buf) index stride[-1] for a 0-d input */
-    if (strncmp(tsr_fn_name(g_ids[slot]), "ndimage.", 8) == 0 && nargs > 0 && args[0].kind == 3 && args[0].arr.ndim == 0) {
-        fz_release(&pool);
-        return 0;
-    }
 #endif
     fz_call(g_ids[slot], nargs, nargs ? args : NULL);
     fz_release(&pool);
