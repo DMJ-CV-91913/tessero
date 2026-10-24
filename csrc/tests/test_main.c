@@ -1324,6 +1324,15 @@ static void test_fuzz_batch_a(void)
     rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
     CHECK(rc == 0 && !isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(2, 1, ...) still computed (rc %d)", rc);
     if (rc == 0) fa_free(r, 1);
+    /* xsf's int recurrence coefficients overflow beyond |n| = 645 (CI fuzz, legendre.h:584): 645 computes, 646 is NaN */
+    sy[0] = arg_int(645);
+    rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
+    CHECK(rc == 0 && !isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(645, 1, ...) computed (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    sy[0] = arg_int(646);
+    rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
+    CHECK(rc == 0 && isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(646, 1, ...) is NaN, not an int overflow (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
     tsr_arg lw[2] = {arg_num(1.0), arg_num(NAN)};
     CHECK(fa_call("special.lambertw", 2, lw, r, 1) < 0, "lambertw with k = NaN refused");
     lw[1] = arg_num(1e300);
