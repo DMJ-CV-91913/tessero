@@ -60,20 +60,28 @@ final class Buffer
         return new self(Library::address($raw), $bytes, true);
     }
 
+    /*
+     * There is deliberately no public way to build a Buffer over an arbitrary address: a Buffer frees its
+     * block in __destruct, so such a factory is a free-anything primitive (and, under ffi.enable=preload,
+     * a preloaded one reachable from request code). Kernel-allocated routine results are adopted by
+     * Registry through adopter(), which is bound to Registry alone.
+     */
+
     /**
-     * Take ownership of a tsr_alloc() block the kernel returned (routine results): freed with tsr_free($bytes).
+     * A closure that takes ownership of a tsr_alloc() block (freed with tsr_free($bytes)), handed out to
+     * Tessero\Native\Registry only. PHP has no friend classes, so the caller is checked once here, not on
+     * every call; Registry caches the closure.
      *
      * @internal
      */
-    public static function adopt(int $address, int $bytes): self
+    public static function adopter(): \Closure
     {
-        return new self($address, $bytes, true);
-    }
+        $caller = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['class'] ?? null;
+        if ($caller !== Registry::class) {
+            throw new \LogicException('Tessero\Native\Buffer::adopter() is internal to Tessero.');
+        }
 
-    /** Wrap memory owned by someone else (e.g. an FFI array); $keepAlive keeps it reachable. */
-    public static function wrap(int $address, int $bytes, mixed $keepAlive): self
-    {
-        return new self($address, $bytes, false, $keepAlive);
+        return static fn (int $address, int $bytes): self => new self($address, $bytes, true);
     }
 
     /**
@@ -111,7 +119,7 @@ final class Buffer
             return;
         }
         $ffi = Library::ffi();
-        if ($ffi->tsr_mmap_flush(Library::ptr($this->mapHandle), $sync ? 1 : 0) !== 0) {
+        if ($ffi->tsr_mmap_flush(self::raw($this->mapHandle), $sync ? 1 : 0) !== 0) {
             throw new TesseroException('memmap: ' . $ffi->tsr_mmap_error() . " ({$this->mapPath})");
         }
     }
@@ -131,7 +139,7 @@ final class Buffer
             throw new TesseroException('Buffer used after release.');
         }
 
-        return Library::ptr($this->address + $offset);
+        return self::raw($this->address + $offset);
     }
 
     /** Read-only memory (a memory map opened with mode 'r'): arrays over it refuse writes. */
@@ -179,13 +187,13 @@ final class Buffer
             $this->released = true;
             $handle = $this->mapHandle;
             $this->mapHandle = 0;                     // flush() after this point is a no-op, never a use-after-free
-            Library::ffi()->tsr_mmap_close(Library::ptr($handle));
+            Library::ffi()->tsr_mmap_close(self::raw($handle));
 
             return;
         }
         if ($this->owned && ! $this->released) {
             $this->released = true;
-            Library::ffi()->tsr_free(Library::ptr($this->address), $this->bytes);
+            Library::ffi()->tsr_free(self::raw($this->address), $this->bytes);
         }
     }
 
@@ -208,6 +216,12 @@ final class Buffer
     public function __unserialize(array $data): void
     {
         throw new \LogicException('Tessero\Native\Buffer cannot be unserialized.');
+    }
+
+    /** char* at an absolute address (private: only a live Buffer turns its own address into a pointer). */
+    private static function raw(int $address): CData
+    {
+        return Library::ffi()->cast('char*', $address);
     }
 
     private static function human(int $bytes): string
