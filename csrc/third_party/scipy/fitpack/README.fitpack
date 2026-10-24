@@ -41,3 +41,11 @@ libm.  This keeps the vendored tree self-contained with no libf2c dependency,
 mirroring the hand-maintained quadpack.c precedent.
 
 License: BSD-style (FITPACK/Dierckx + scipy).  See scipy LICENSE.txt.
+
+Licences
+--------
+FITPACK itself is distributed with scipy under scipy's BSD-3-Clause licence
+(csrc/third_party/scipy/LICENSE.txt).  f2c.h and the libf2c-style helpers in
+fitpack_support.c are covered by the f2c permission notice of AT&T, Lucent and
+Bellcore, reproduced verbatim in LICENSE.f2c (the file `Notice` of
+https://www.netlib.org/f2c/libf2c.zip).  See also THIRD_PARTY_NOTICES.md.
