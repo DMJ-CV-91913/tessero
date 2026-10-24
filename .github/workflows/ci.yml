@@ -175,6 +175,7 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: ffi, opcache, zip
           tools: composer:2.10.3
+          coverage: none   # a coverage driver overrides zend_execute_ex, and opcache then disables the JIT under test
           ini-values: >-
             ffi.enable=1, opcache.enable_cli=1, memory_limit=1G,
             opcache.jit=${{ matrix.jit == 'off' && 'disable' || matrix.jit }}, opcache.jit_buffer_size=${{ matrix.jit == 'off' && '0' || '128M' }}
@@ -184,7 +185,12 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke; fi
           if [ "$RUNNER_OS" = "macOS" ]; then brew install openblas; fi
       - run: composer install --no-interaction --no-progress
-      - run: php bin/tessero doctor || true
+      - name: environment (the JIT must really be on in the jit legs)
+        shell: bash
+        run: |
+          php -m
+          php -r 'var_dump(function_exists("opcache_get_status") ? (opcache_get_status(false)["jit"] ?? null) : null);'
+          php bin/tessero doctor || true
       - run: vendor/bin/phpunit
 
   preload:
@@ -265,7 +271,7 @@ jobs:
 
   extension:
     name: ext-tessero PHP ${{ matrix.php }} ${{ matrix.ts }}
-    needs: [native, sync]
+    needs: [sync]
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -277,12 +283,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         env: { phpts: "${{ matrix.ts == 'zts' && 'ts' || 'nts' }}" }
         with: { php-version: '${{ matrix.php }}', extensions: ffi, tools: 'phpize, php-config, composer:2.10.3' }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
+      # BackendParityTest compares the two backends byte for byte, so both come from the same compiler: the FFI
+      # library is built here rather than taken from the ubuntu-22.04 artifact (gcc 11 and gcc 13 builds differ by
+      # one ulp in a few float32 loops, e.g. logaddexp2).
+      - name: build libtessero (FFI backend) with this runner's compiler
+        run: make -C csrc -j"$(nproc)"
       - name: build
         run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
       - name: hardening present in the module (RELRO, BIND_NOW, non-executable stack, stack protector)
@@ -310,20 +319,28 @@ jobs:
   # LD_PRELOAD: PHP opens extensions with RTLD_DEEPBIND, which the sanitizer runtime refuses (the module then
   # silently fails to load and every phpt is skipped as "Required extension missing"). php-src turns DEEPBIND off
   # when PHP itself is built with --enable-address-sanitizer, so this job builds PHP that way (cached per version).
+  # PHP 8.2 is included because the plain PHP 8.2 extension job aborts with a glibc "double free" in the phpunit
+  # ext suite; under ASan the report names the allocation and both frees.
   extension-asan:
-    name: ext-tessero under ASan + UBSan
-    needs: [native, sync]
+    name: ext-tessero under ASan + UBSan (PHP ${{ matrix.php }})
+    needs: [sync]
     runs-on: ubuntu-24.04
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:   # sha256 of the php.net tarball, from https://www.php.net/releases/index.php?json&version=X
+          - { php: '8.4.27', sha256: 'dcf93923b0e38e0d5252b25b796520b5a47761a08b3488b6d0b5d1115764d3f0' }
+          - { php: '8.2.35', sha256: '5737b98601fe5ab1b8c5db0c82ed3158acb9283ed3081ffe2faffb9ac81455e6' }
     env:
-      PHP_ASAN_VERSION: '8.4.27'
-      PHP_ASAN_SHA256: 'dcf93923b0e38e0d5252b25b796520b5a47761a08b3488b6d0b5d1115764d3f0'   # php.net releases JSON
+      PHP_ASAN_VERSION: ${{ matrix.php }}
+      PHP_ASAN_SHA256: ${{ matrix.sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev libxml2-dev libonig-dev libffi-dev pkg-config
+      - name: build libtessero (FFI backend, compared byte for byte with the extension) with this runner's compiler
+        run: make -C csrc -j"$(nproc)"
       - id: php-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -352,7 +369,7 @@ jobs:
             LDFLAGS="-fsanitize=address,undefined"
           make -j"$(nproc)"
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
-        with: { php-version: '8.4', tools: 'composer:2.10.3' }   # only to resolve vendor/; the tests run on the ASan PHP
+        with: { php-version: "${{ startsWith(matrix.php, '8.2') && '8.2' || '8.4' }}", tools: 'composer:2.10.3' }   # only to resolve vendor/; the tests run on the ASan PHP
       - run: composer install --no-interaction --no-progress
       - name: phpt + phpunit + extension parity under ASan
         env:
@@ -469,7 +486,9 @@ jobs:
   # machine measured (35 ms on a GitHub runner, 64 ms on the reference host). The blocking gate compares against
   # numbers measured on the GitHub ubuntu-24.04 x86-64 runner (.github/bench-baseline.json): a case fails when it
   # is more than 2x its baseline + 1 ms, and the run fails when the geometric mean of all ratios exceeds 1.35.
-  # Run-to-run noise on shared runners is about +-15% per case and a few percent on the geometric mean.
+  # Noise measured between two runner samples: most cases within +-15%, allocation-bound ones up to 1.5x
+  # (add, solve), and the PHP-list conversion 3.5x between the 22.04 and 24.04 images; the baseline takes the
+  # slower sample per case, and the geometric mean (0.92 against it) is the stable signal.
   bench:
     name: benchmark gates
     needs: native
