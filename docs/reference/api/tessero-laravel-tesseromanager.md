@@ -72,7 +72,7 @@ scipy.optimize.linprog. Returns x, fun, success, status, message, nit, ineqlin, 
 load(string $path, ?string $mmapMode = null): Tessero\Ext\NDArray|Tessero\NDArray
 ```
 
-Read a .npy file (numpy.load); with $mmapMode ('r', 'r+', 'c') it is memory-mapped instead.
+Read a .npy file (numpy.load); with $mmapMode ('r', 'r+', 'c') it is memory-mapped instead. Never pass a path from request input.
 
 ### memmap
 
@@ -84,6 +84,8 @@ A memory-mapped array: the file's pages are the array's memory, so files
 larger than RAM can be processed. Modes as numpy.memmap: 'r', 'r+', 'w+',
 'c'. Mapped bytes are not counted against memory_budget; info() reports
 them as memory_mapped. Both backends share libtessero's mapping code.
+Paths must be local files (stream wrappers are refused) and must never
+come from request input; see docs/operations/security.md.
 
 ### milp
 
