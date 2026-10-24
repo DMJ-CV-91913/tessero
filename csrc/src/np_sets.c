@@ -736,7 +736,7 @@ static double estimator_width(int est, double *x, int64_t n, double first, doubl
     }
     case EST_STONE: {
         const double ptp = ptp_of(x, n);
-        if (n <= 1 || ptp == 0) return 0;
+        if (n <= 1 || ptp == 0 || !isfinite(last - first)) return 0;   /* an infinite spread has no finite bins */
         int64_t upper = (int64_t)sqrt(N);
         if (upper < 100) upper = 100;
         double best = 0;
@@ -856,13 +856,19 @@ static int hist_edges(double *a, int64_t n, const tsr_arg *bins, const tsr_arg *
             if (err != TSR_OK) return err;
             if (width != 0 && width == width) {
                 if (int_input && width < 1) width = 1;
-                nb = (int64_t)ceil((last - first) / width);
+                /* numpy: int(np.ceil((last - first) / width)); a huge or infinite quotient (subnormal width,
+                   overflowing spread) must not reach the int64 cast */
+                const double q = ceil((last - first) / width);
+                if (q != q) { fn_set_error("cannot convert float NaN to integer"); return TSR_EARG; }
+                if (q == INFINITY) { fn_set_error("cannot convert float infinity to integer"); return TSR_EARG; }
+                if (!(q < 9223372036854775808.0)) { fn_set_error("array is too big; `arr.size * arr.dtype.itemsize` is larger than the maximum possible size."); return TSR_EARG; }
+                nb = (int64_t)q;
             } else {
                 nb = 1;
             }
         }
     } else if (bins->kind == 1 || bins->kind == 4) {
-        if (bins->num != floor(bins->num) || !(bins->num < 9.2e18)) { fn_set_error("`bins` must be an integer, a string, or an array"); return TSR_ETYPE; }
+        if (bins->num != floor(bins->num) || !(fabs(bins->num) < 9.2e18)) {   /* -inf passed floor() == itself */ fn_set_error("`bins` must be an integer, a string, or an array"); return TSR_ETYPE; }
         nb = (int64_t)bins->num;
         if (nb < 1) { fn_set_error("`bins` must be positive, when an integer"); return TSR_EARG; }
         if ((rc = outer_edges(a, n, range, &first, &last)) != TSR_OK) return rc;
@@ -880,7 +886,8 @@ static int hist_edges(double *a, int64_t n, const tsr_arg *bins, const tsr_arg *
         fn_set_error("`bins` must be an integer, a string, or an array");
         return TSR_ETYPE;
     }
-    /* numpy.linspace(first, last, nb + 1) */
+    /* numpy.linspace(first, last, nb + 1); (nb + 1) * 8 bytes must fit int64 (it wrapped to a small block) */
+    if (nb > INT64_MAX / 8 - 2) { fn_set_error("array is too big; `arr.size * arr.dtype.itemsize` is larger than the maximum possible size."); return TSR_EARG; }
     const int64_t k = nb + 1;
     double *e = (double *)tsr_alloc(k > 8 ? k * 8 : 64);
     if (!e) return TSR_ENOMEM;
@@ -1011,6 +1018,10 @@ static int64_t hist2d_bin(const double *e, int64_t ne, double v)
     return c;                                /* 1..nb is a real bin; <=0 under, >nb over */
 }
 
+/* a user bin count as an integer; 0 (rejected by the callers) for NaN, Inf or more than 2^40 bins (casting a
+   non-finite or huge double to int64_t is undefined behaviour, and (nb + 1) * 8 must not overflow) */
+static int64_t bin_count(double v) { return (v >= 1.0 && v <= 1099511627776.0) ? (int64_t)v : 0; }
+
 static int hist2d_edges(double lo, double hi, int64_t nb, double *e)
 {
     const double step = (hi - lo) / (double)nb;
@@ -1035,16 +1046,17 @@ static int r_histogram2d(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     y = fn_arg_doubles(&args[1], &ny);
     if (!y) { rc = TSR_ENOMEM; goto done; }
     if (nx != ny) { rc = TSR_EARG; fn_set_error("x and y must have the same length."); goto done; }
-    if (nargs > 2 && args[2].kind == 1) { nbx = nby = (int64_t)args[2].num; }
+    if (nargs > 2 && args[2].kind == 1) { nbx = nby = bin_count(args[2].num); }
     else if (nargs > 2 && args[2].kind == 3) {
         int64_t k; double *b = fn_arg_doubles(&args[2], &k);
         if (!b) { rc = TSR_ENOMEM; goto done; }
-        if (k == 1) { nbx = nby = (int64_t)b[0]; }
-        else if (k == 2) { nbx = (int64_t)b[0]; nby = (int64_t)b[1]; }
+        if (k == 1) { nbx = nby = bin_count(b[0]); }
+        else if (k == 2) { nbx = bin_count(b[0]); nby = bin_count(b[1]); }
         else { fn_free_doubles(b, k); rc = TSR_EARG; fn_set_error("bins must be an int or a pair of ints (explicit edge arrays are not supported)."); goto done; }
         fn_free_doubles(b, k);
     }
     if (nbx < 1 || nby < 1) { rc = TSR_EARG; fn_set_error("`bins` must be positive."); goto done; }
+    if (nbx > (INT64_MAX / 16) / nby) { rc = TSR_EARG; fn_set_error("histogram2d: too many bins (the bin count overflows)."); goto done; }
     double x0 = 0, x1 = 0, y0 = 0, y1 = 0; int have_range = 0;
     if (nargs > 3 && args[3].kind == 3) {
         int64_t k; double *r = fn_arg_doubles(&args[3], &k);
@@ -1134,12 +1146,12 @@ static int r_histogramdd(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     if (D < 1 || D > 32) { rc = TSR_EARG; fn_set_error("histogramdd: unsupported number of dimensions"); goto done; }
     for (int64_t d = 0; d < D; d++) nb[d] = 10;
     /* bins */
-    if (nargs > 1 && args[1].kind == 1) { for (int64_t d = 0; d < D; d++) nb[d] = (int64_t)args[1].num; }
+    if (nargs > 1 && args[1].kind == 1) { for (int64_t d = 0; d < D; d++) nb[d] = bin_count(args[1].num); }
     else if (nargs > 1 && args[1].kind == 3) {
         int64_t k; double *b = fn_arg_doubles(&args[1], &k);
         if (!b) { rc = TSR_ENOMEM; goto done; }
-        if (k == 1) { for (int64_t d = 0; d < D; d++) nb[d] = (int64_t)b[0]; }
-        else if (k == D) { for (int64_t d = 0; d < D; d++) nb[d] = (int64_t)b[d]; }
+        if (k == 1) { for (int64_t d = 0; d < D; d++) nb[d] = bin_count(b[0]); }
+        else if (k == D) { for (int64_t d = 0; d < D; d++) nb[d] = bin_count(b[d]); }
         else { fn_free_doubles(b, k); rc = TSR_EARG; fn_set_error("histogramdd: bins must be an int or a length-D list of ints (edge arrays are not supported)."); goto done; }
         fn_free_doubles(b, k);
     }
@@ -1172,6 +1184,8 @@ static int r_histogramdd(const void *ctx, const tsr_arg *args, int nargs, tsr_re
         edges[d] = (double *)tsr_alloc((nb[d] + 1) * 8 + 64);
         if (!edges[d]) { rc = TSR_ENOMEM; goto done; }
         if (hist2d_edges(lo[d], hi[d], nb[d], edges[d]) != 0) { rc = TSR_EARG; fn_set_error("histogramdd: too many bins for data range."); goto done; }
+        /* up to 32 user bin counts: a wrapped product would under-allocate cnt and the fill loops would overrun it */
+        if (Hsize > (INT64_MAX / 16) / nb[d]) { rc = TSR_EARG; fn_set_error("histogramdd: too many bins (the bin count overflows)."); goto done; }
         Hsize *= nb[d];
     }
     cnt = (double *)tsr_alloc((Hsize > 0 ? Hsize : 1) * 8 + 64);

@@ -7,6 +7,7 @@ namespace Tessero\Io;
 use Tessero\DType;
 use Tessero\Exceptions\TesseroException;
 use Tessero\NDArray;
+use Tessero\Sparse\CsrStructure;
 use ZipArchive;
 
 /**
@@ -38,6 +39,7 @@ final class SparseNpz
      */
     public static function save(string $path, array $csr, bool $isArray = true, bool $compress = true): void
     {
+        IoGuard::localPath($path, 'save_npz');
         self::requireZip();
         $data = self::asArray($csr['data'], DType::Float64);
         $indices = self::asArray($csr['indices'], DType::Int32);
@@ -72,22 +74,20 @@ final class SparseNpz
     /**
      * scipy.sparse.load_npz: read a CSR .npz (scipy's or Tessero's own).
      *
+     * The archive may inflate to at most $maxBytes (default 256 MiB, checked before decompressing), and the
+     * CSR structure is validated (indptr starts at 0, never decreases and ends at nnz; indices inside the
+     * matrix), so the arrays are safe to hand to the sparse kernels. $path must be a local file.
+     *
      * @return array{data:NDArray,indices:NDArray,indptr:NDArray,shape:array{0:int,1:int},format:string,is_array:bool}
      */
-    public static function load(string $path): array
+    public static function load(string $path, int $maxBytes = IoGuard::DEFAULT_MAX_BYTES): array
     {
+        IoGuard::localPath($path, 'load_npz');
         self::requireZip();
-        $zip = new ZipArchive();
-        if ($zip->open($path) !== true) {
-            throw new TesseroException("load_npz: could not open {$path}.");
-        }
         $raw = [];
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = (string) $zip->getNameIndex($i);
-            $key = preg_replace('/\.npy$/', '', $name);
-            $raw[$key] = (string) $zip->getFromIndex($i);
+        foreach (IoGuard::zipMembers($path, $maxBytes, 'load_npz') as $name => $bytes) {
+            $raw[preg_replace('/\.npy$/', '', $name)] = $bytes;
         }
-        $zip->close();
 
         foreach (['data', 'indices', 'indptr', 'shape', 'format'] as $req) {
             if (! isset($raw[$req])) {
@@ -100,14 +100,26 @@ final class SparseNpz
         }
         $shapeArr = Npy::decode($raw['shape'], 'shape.npy');
         $shapeList = array_map('intval', $shapeArr->toList());
-        if (count($shapeList) !== 2) {
+        if (count($shapeList) !== 2 || $shapeList[0] < 0 || $shapeList[1] < 0) {
             throw new TesseroException('load_npz: shape entry is not 2-D.');
         }
+        $data = Npy::decode($raw['data'], 'data.npy');
+        $indices = Npy::decode($raw['indices'], 'indices.npy');
+        $indptr = Npy::decode($raw['indptr'], 'indptr.npy');
+        foreach (['indices' => $indices, 'indptr' => $indptr] as $what => $arr) {
+            if (! $arr->dtype()->isInteger() || count($arr->shape()) !== 1) {
+                throw new TesseroException("load_npz: '{$what}' must be a 1-D integer array.");
+            }
+        }
+        if (count($data->shape()) !== 1) {
+            throw new TesseroException("load_npz: 'data' must be a 1-D array.");
+        }
+        CsrStructure::validate($indptr->toList(), $indices->toList(), $data->size(), $shapeList[0], $shapeList[1], 'load_npz');
 
         return [
-            'data' => Npy::decode($raw['data'], 'data.npy'),
-            'indices' => Npy::decode($raw['indices'], 'indices.npy'),
-            'indptr' => Npy::decode($raw['indptr'], 'indptr.npy'),
+            'data' => $data,
+            'indices' => $indices,
+            'indptr' => $indptr,
             'shape' => [$shapeList[0], $shapeList[1]],
             'format' => 'csr',
             'is_array' => isset($raw['_is_array']) ? self::decodeBoolScalar($raw['_is_array']) : false,
@@ -185,6 +197,9 @@ final class SparseNpz
     private static function decodeBoolScalar(string $bytes): bool
     {
         [$descr, $start] = self::scalarHeader($bytes, '_is_array.npy');
+        if ($start >= strlen($bytes)) {
+            throw new TesseroException("load_npz: '_is_array.npy' is truncated.");
+        }
 
         return $bytes[$start] !== "\x00";
     }
@@ -192,7 +207,7 @@ final class SparseNpz
     /** @return array{0:string,1:int} [descr, data-start offset] for a 0-d scalar .npy. */
     private static function scalarHeader(string $bytes, string $what): array
     {
-        if (strncmp($bytes, self::MAGIC, 6) !== 0) {
+        if (strlen($bytes) < 12 || strncmp($bytes, self::MAGIC, 6) !== 0) {
             throw new TesseroException("load_npz: '{$what}' is not a .npy entry.");
         }
         $major = ord($bytes[6]);
@@ -203,8 +218,11 @@ final class SparseNpz
             $hlen = unpack('V', substr($bytes, 8, 4))[1];
             $hstart = 12;
         }
+        if ($hstart + $hlen > strlen($bytes)) {
+            throw new TesseroException("load_npz: '{$what}' header is truncated.");
+        }
         $header = substr($bytes, $hstart, $hlen);
-        if (! preg_match("/'descr'\\s*:\\s*'([^']+)'/", $header, $m)) {
+        if (! preg_match("/'descr'\\s*:\\s*'([^']{2,})'/", $header, $m)) {
             throw new TesseroException("load_npz: cannot parse '{$what}' header.");
         }
 

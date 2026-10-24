@@ -255,6 +255,9 @@ int tsr_random_run(const fn_def *d, uint64_t *state, const double *params, int32
     double p[16];
     for (int k = 0; k < np && nin + k < 16; k++) p[nin + k] = params ? params[k] : 0.0;
     int64_t idx[TSR_MAXDIM];
+    /* the message buffers live outside the element loop: declared inside it, -ftrivial-auto-var-init=zero
+       (csrc/Makefile HARDEN) zero-filled 192 bytes per element and made normal() about 35% slower */
+    char msg[160], name[32];
     /* pass 1: check every element's parameters (numpy raises before drawing) */
     if (nin > 0) {
         memset(idx, 0, sizeof idx);
@@ -264,9 +267,7 @@ int tsr_random_run(const fn_def *d, uint64_t *state, const double *params, int32
                 for (int32_t a = 0; a < ndim; a++) q += idx[a] * strides[o * ndim + a];
                 p[o] = *(const double *)q;
             }
-            char msg[160];
             for (int o = 0; o < nin; o++) {
-                char name[32];
                 arg_name(d->args, o, name, sizeof name);
                 if (d->cons && d->cons[o] && check_cons(d->cons[o], p[o], name, msg, sizeof msg)) {
                     fn_set_error("%s", msg);

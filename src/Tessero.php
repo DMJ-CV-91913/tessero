@@ -15,6 +15,9 @@ final class Tessero
 {
     public const VERSION = '0.2.0';
 
+    /** The libtessero C ABI generation this package is written against (csrc/include/tessero_version.h, ADR 0014). */
+    public const ABI_VERSION = 2;
+
     /**
      * Cap native memory for this process (0 = unlimited). Allocations over the
      * cap throw MemoryError instead of letting a web worker grow without bound;
@@ -40,9 +43,47 @@ final class Tessero
         return Library::ffi()->tsr_peak();
     }
 
+    /**
+     * Cap the BLAS thread pools: the BLAS this package loads over FFI (Linalg) and the one libtessero links
+     * (matmul). Web SAPIs default to 1 (TESSERO_BLAS_THREADS overrides), since php-fpm runs a worker per core.
+     */
     public static function setBlasThreads(int $threads): void
     {
         Blas::setThreads($threads);
+        Library::ffi()->tsr_set_blas_threads(max(1, $threads));
+    }
+
+    /**
+     * Numerical self-check of the loaded libtessero (docs/reference/numerical-guarantees.md): the FP control state
+     * of this thread and the OpenMP workers, then the known-answer tests. fpenv is 0 when the FP environment is
+     * canonical (round to nearest, no flush-to-zero, traps masked), else a bitmask named in fpenv_reason;
+     * selfcheck is 0 when every probe matches, a negative code otherwise (tessero.h).
+     *
+     * @return array{fpenv: int, fpenv_reason: string, selfcheck: int, canonical: bool}
+     */
+    public static function selfcheck(): array
+    {
+        $ffi = Library::ffi();
+        $buf = $ffi->new('char[256]');
+        $fpenv = $ffi->tsr_fpenv_check($buf, 256);
+        $code = $ffi->tsr_selfcheck();
+
+        return ['fpenv' => $fpenv, 'fpenv_reason' => \FFI::string($buf), 'selfcheck' => $code, 'canonical' => $fpenv === 0 && $code === 0];
+    }
+
+    /** The C ABI generation of the loaded libtessero. */
+    public static function abiVersion(): int
+    {
+        return Library::ffi()->tsr_abi_version();
+    }
+
+    /**
+     * Whether the loaded build has a capability: "repro_f32", "gemm_canonical", "lapack", "openblas_threads",
+     * "openmp" or "fpenv_check". Unknown names give false.
+     */
+    public static function feature(string $name): bool
+    {
+        return Library::ffi()->tsr_feature($name) === 1;
     }
 
     /**
@@ -74,6 +115,12 @@ final class Tessero
         return [
             'tessero' => self::VERSION,
             'libtessero' => (string) $ffi->tsr_version(),
+            'abi' => $ffi->tsr_abi_version(),
+            'features' => array_values(array_filter(
+                ['repro_f32', 'gemm_canonical', 'lapack', 'openblas_threads', 'openmp', 'fpenv_check'],
+                static fn (string $f): bool => $ffi->tsr_feature($f) === 1,
+            )),
+            'blas_threads' => $ffi->tsr_get_blas_threads(),
             'library' => Library::path(),
             'load_mode' => Library::mode(),
             'platform' => Library::platform(),

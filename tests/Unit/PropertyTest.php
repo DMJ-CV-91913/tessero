@@ -137,7 +137,7 @@ final class PropertyTest extends TestCase
             $this->assertSame($s->toBytes(), $a->take($idx)->toBytes(), "{$label} take(argsort) = sort");
             $ids = $idx->toList();
             sort($ids);
-            $this->assertSame(range(0, $a->size() - 1), $a->size() ? $ids : [], "{$label} argsort is a permutation");
+            $this->assertSame($a->size() ? range(0, $a->size() - 1) : [], $ids, "{$label} argsort is a permutation");   // range(0, -1) counts down
             if ($a->size() > 0 && $a->dtype()->isFloat()) {
                 $x = $a->astype(DType::Float64);
                 $back = Fft::ifft(Fft::fft($x))->real();

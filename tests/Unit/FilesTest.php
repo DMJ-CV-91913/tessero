@@ -220,12 +220,14 @@ final class FilesTest extends TestCase
         NDArray::memmap($f, 'w+', [2])->flush();
         $root = dirname(__DIR__, 2);
         $script = $this->dir . '/ob.php';
-        file_put_contents($script, '<?php require ' . var_export($root . '/tests/autoload.php', true) . ';
+        // set in the child, not with -d: on Windows the separator is ";", which starts a comment in an INI value.
+        // The file outside the allowed paths is the PHP binary, which exists on every OS.
+        file_put_contents($script, '<?php ini_set("open_basedir", ' . var_export($this->dir . PATH_SEPARATOR . $root, true) . ');
+            require ' . var_export($root . '/tests/autoload.php', true) . ';
             echo json_encode(Tessero\NDArray::memmap(' . var_export($f, true) . ', "r")->shape()), "\n";
-            try { Tessero\NDArray::memmap("/etc/hostname", "r", null, "uint8"); echo "ALLOWED\n"; }
+            try { Tessero\NDArray::memmap(' . var_export(PHP_BINARY, true) . ', "r", null, "uint8"); echo "ALLOWED\n"; }
             catch (Tessero\Exceptions\TesseroException $e) { echo "refused\n"; }');
-        $cmd = escapeshellarg(PHP_BINARY) . ' -d ffi.enable=1 -d open_basedir=' . escapeshellarg($this->dir . PATH_SEPARATOR . $root)
-            . ' ' . escapeshellarg($script) . ' 2>&1';
+        $cmd = escapeshellarg(PHP_BINARY) . ' -d ffi.enable=1 ' . escapeshellarg($script) . ' 2>&1';
         $out = (string) shell_exec($cmd);
         $this->assertSame("[2]\nrefused\n", $out, $out);
     }

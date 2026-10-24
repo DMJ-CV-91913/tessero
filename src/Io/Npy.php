@@ -20,15 +20,19 @@ final class Npy
 {
     private const MAGIC = "\x93NUMPY";
 
+    /** $path must be a local file (stream wrappers are refused); never build it from request input. */
     public static function save(string $path, NDArray $array): void
     {
+        IoGuard::localPath($path, 'npy');
         if (file_put_contents($path, self::encode($array)) === false) {
             throw new TesseroException("Could not write {$path}.");
         }
     }
 
+    /** $path must be a local file (stream wrappers are refused); never build it from request input. */
     public static function load(string $path): NDArray
     {
+        IoGuard::localPath($path, 'npy');
         $bytes = @file_get_contents($path);
         if ($bytes === false) {
             throw new TesseroException("npy: cannot open '{$path}'");
@@ -76,6 +80,7 @@ final class Npy
     /** @param array<string, NDArray> $arrays */
     public static function saveZ(string $path, array $arrays, bool $compress = true): void
     {
+        IoGuard::localPath($path, 'npz');
         self::requireZip();
         $zip = new ZipArchive();
         if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
@@ -89,20 +94,20 @@ final class Npy
         $zip->close();
     }
 
-    /** @return array<string, NDArray> */
-    public static function loadZ(string $path): array
+    /**
+     * Read every array of a .npz archive. The archive may inflate to at most $maxBytes in total
+     * (default 256 MiB, checked before decompressing) and hold at most IoGuard::MAX_ZIP_ENTRIES members.
+     *
+     * @return array<string, NDArray>
+     */
+    public static function loadZ(string $path, int $maxBytes = IoGuard::DEFAULT_MAX_BYTES): array
     {
+        IoGuard::localPath($path, 'npz');
         self::requireZip();
-        $zip = new ZipArchive();
-        if ($zip->open($path) !== true) {
-            throw new TesseroException("Could not open {$path}.");
-        }
         $out = [];
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = (string) $zip->getNameIndex($i);
-            $out[preg_replace('/\.npy$/', '', $name)] = self::decode((string) $zip->getFromIndex($i));
+        foreach (IoGuard::zipMembers($path, $maxBytes, 'npz') as $name => $bytes) {
+            $out[preg_replace('/\.npy$/', '', $name)] = self::decode($bytes, $name);
         }
-        $zip->close();
 
         return $out;
     }

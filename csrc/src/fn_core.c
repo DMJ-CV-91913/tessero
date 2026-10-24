@@ -17,6 +17,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #if defined(_MSC_VER)
@@ -989,6 +990,11 @@ int tsr_fn_gufunc(int id, int nin, const tsr_array *in, const uint64_t *axmask, 
             if (has_nan && nanpol == 2) { fn_set_error("The input contains nan values"); r = TSR_EARG; break; }
             if (has_nan && nanpol == 1) {
                 if (d->nanpolicy == 2 && nin >= 2) {      /* paired samples: drop a position if any is NaN */
+                    /* the walk below indexes every input by input 0's length: unequal pairs must be refused
+                       first (the core's own n[0] == n[1] check runs only after compaction) */
+                    int mismatch = 0;
+                    for (int i = 1; i < nin; i++) if (n[i] != n[0]) mismatch = 1;
+                    if (mismatch) { fn_set_error("Array shapes are incompatible for broadcasting."); r = TSR_EARG; break; }
                     int64_t k = 0;
                     for (int64_t t = 0; t < n[0]; t++) {
                         int bad = 0;
@@ -1088,6 +1094,12 @@ void fn_results_free(tsr_result *res, int n)
     }
 }
 
+void tsr_fn_results_free(tsr_result *res, int64_t n)
+{
+    if (!res || n <= 0) return;
+    fn_results_free(res, n > INT32_MAX ? INT32_MAX : (int)n);
+}
+
 tsr_result *fn_result_seq(tsr_result *r, int64_t n)
 {
     if (n < 0 || n > ((int64_t)1 << 40) / (int64_t)sizeof(tsr_result)) { fn_set_error("Maximum allowed size exceeded"); return NULL; }
@@ -1128,11 +1140,26 @@ void fn_free_doubles(double *p, int64_t n) { if (p) tsr_free(p, n > 8 ? n * 8 : 
 
 int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result *res)
 {
+    /* every result slot is empty before any return, so a caller may always hand res to tsr_fn_results_free */
+    if (res) for (int k = 0; k < nres; k++) memset(&res[k], 0, sizeof res[k]);
     const fn_def *d = def_of(id);
     if (!d || d->kind != FN_ROUTINE || !res || nres < d->nout || (nargs > 0 && !args)) return TSR_EARG;
     g_err[0] = '\0';
-    for (int k = 0; k < nres; k++) memset(&res[k], 0, sizeof res[k]);
+    /* routines read their declared positional slots without checking nargs (the PHP bindings always pass them
+       all); a direct C caller passing fewer would make them read past `args`. Pad the missing trailing slots
+       with kind 0 ("absent"), which every routine already treats as the default. */
+    int declared = 0;
+    if (d->args && d->args[0]) { declared = 1; for (const char *c = d->args; *c; c++) declared += *c == ','; }
+    tsr_arg *padded = NULL;
+    if (nargs < declared) {
+        padded = (tsr_arg *)calloc((size_t)declared, sizeof *padded);
+        if (!padded) return TSR_ENOMEM;
+        if (nargs > 0) memcpy(padded, args, (size_t)nargs * sizeof *padded);
+        args = padded;
+        nargs = declared;
+    }
     const int rc = fn_call_routine(d->routine, d->ctx, args, nargs, res, nres);
+    free(padded);
     if (rc < 0) fn_results_free(res, nres);
     return rc;
 }

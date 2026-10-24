@@ -95,7 +95,7 @@ static const math_ufunc NATIVE[] = {
     {"power", UF_NATIVE2, OP_POW, "x ** y"},
     {"mod", UF_NATIVE2, OP_MOD, "remainder with the sign of y (Python %)"},
     {"remainder", UF_NATIVE2, OP_MOD, "alias of mod"},
-    {"floorDivide", UF_NATIVE2, OP_FLOORDIV, "floor(x / y)"},
+    {"floorDivide", UF_NATIVE2, OP_FLOORDIV, "x // y (NumPy floor_divide: the floor of the exact quotient)"},
     {"maximum", UF_NATIVE2, OP_MAX, "element-wise maximum, NaN propagates"},
     {"minimum", UF_NATIVE2, OP_MIN, "element-wise minimum, NaN propagates"},
     {"arctan2", UF_NATIVE2, OP_ATAN2, "angle of (x=y2, y=x1): atan2(x1, x2)"},

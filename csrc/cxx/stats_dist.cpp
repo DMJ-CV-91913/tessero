@@ -15,6 +15,10 @@
 
 #include "../src/fn.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 extern "C" {
 #include "quadpack/quadpack.h"
 #include "zeros/zeros.h"
@@ -53,17 +57,33 @@ double physical_memory_bytes()
 
 /* ---------------------------------------------------------------- errors */
 
-/* process-wide (the element loops may run on OpenMP worker threads); the registry reads and clears it after
-   each call. Concurrent calls from several PHP threads share it: the first message wins. */
+/* The failure SciPy would raise for the current call; the registry reads and clears it after each call.
+   Per calling thread: concurrent calls from several PHP threads (ZTS) each see only their own message. The one
+   exception is a failure raised on an OpenMP WORKER thread of a parallel element loop (tessero.threads > 1):
+   that thread has no link to the caller's thread-local slot, so it goes to the process-wide slot below, which
+   the caller collects after the loop (the first message wins). Concurrent ZTS requests that both run threaded
+   element loops can still see each other's worker failure there; ADR 0014 describes the per-call sink that
+   removes this. */
+static thread_local char t_fail[256];
+static thread_local int t_failed = 0;
 static char g_fail[256];
 static std::atomic<int> g_failed{0};
 
 void fail(const char *msg)
 {
-    int expected = 0;
-    if (g_failed.compare_exchange_strong(expected, 2)) {
-        std::snprintf(g_fail, sizeof g_fail, "%s", msg);
-        g_failed.store(1);
+#ifdef _OPENMP
+    if (omp_in_parallel() && omp_get_thread_num() != 0) {      /* a worker: the caller cannot see our TLS */
+        int expected = 0;
+        if (g_failed.compare_exchange_strong(expected, 2)) {
+            std::snprintf(g_fail, sizeof g_fail, "%s", msg);
+            g_failed.store(1);
+        }
+        return;
+    }
+#endif
+    if (!t_failed) {
+        std::snprintf(t_fail, sizeof t_fail, "%s", msg);
+        t_failed = 1;
     }
 }
 
@@ -789,10 +809,17 @@ void dist_method(const fn_dist *fd, int method, const double *in, double *out)
 const char *dist_take_error(void)
 {
     static thread_local char copy[256];
-    if (tsd::g_failed.load() != 1) return nullptr;
-    std::memcpy(copy, tsd::g_fail, sizeof copy);
-    tsd::g_failed.store(0);
-    return copy;
+    const bool mine = tsd::t_failed != 0;
+    if (mine) {
+        std::memcpy(copy, tsd::t_fail, sizeof copy);
+        tsd::t_failed = 0;
+    }
+    if (tsd::g_failed.load() == 1) {                 /* a worker-thread failure: also cleared here */
+        if (!mine) std::memcpy(copy, tsd::g_fail, sizeof copy);
+        tsd::g_failed.store(0);
+        return copy;
+    }
+    return mine ? copy : nullptr;
 }
 
 /* rvs: n variates; params[k][i] holds the shape parameters, loc (and scale) broadcast to n */

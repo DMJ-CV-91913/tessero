@@ -39,7 +39,13 @@ final class MathTest extends TestCase
         $args = array_map(static fn (array $a) => self::arr($a), $c['args']);
         $r = Math::{$c['f']}(...$args);
         $this->assertSame($c['expect']['dtype'], $r->dtype()->name(), $c['f'] . ': dtype');
-        $this->same($c['expect'], $r, $c['f'], (float) ($c['tol'] ?? 1e-13));
+        $tol = (float) ($c['tol'] ?? 1e-13);
+        if ($c['f'] === 'cbrt' && PHP_OS_FAMILY !== 'Linux') {
+            // the fixtures record glibc's cbrt (ADR 0012); Apple's and MinGW's are correctly rounded, within 1 ulp of it
+            // (tier B, docs/reference/numerical-guarantees.md; PD-17)
+            $tol = max($tol, PHP_FLOAT_EPSILON);
+        }
+        $this->same($c['expect'], $r, $c['f'], $tol);
         $out = NDArray::zeros($r->shape(), $r->dtype());
         $this->assertSame($out, Math::{$c['f']}(...[...$args, $out]));
         $this->assertSame($r->toBytes(), $out->toBytes(), $c['f'] . ': out=');
@@ -84,8 +90,8 @@ final class MathTest extends TestCase
     {
         $i = NDArray::array([1, -8, 27], DType::Int32);
         $this->assertSame(DType::Float64, Math::cbrt($i)->dtype());
-        // NumPy's value in the reference environment (ADR 0012): the C library's cbrt, 1 ulp above 3 for 27
-        $this->assertSame([1.0, -2.0, 3.0000000000000004], Math::cbrt($i)->toList());
+        // NumPy's value is the C library's cbrt (ADR 0012), so it is per platform (PD-17): see cbrt27()
+        $this->assertSame([1.0, -2.0, self::cbrt27()], Math::cbrt($i)->toList());
         $this->assertSame(DType::Int32, Math::trunc($i)->dtype(), 'identity on integers');
         $this->assertNotSame($i->buffer(), Math::trunc($i)->buffer(), 'identity copies');
         $this->assertSame(DType::Int32, Math::fmax($i, 2)->dtype(), 'fmax on integers is maximum');
@@ -123,7 +129,7 @@ final class MathTest extends TestCase
         // in place
         $a = NDArray::array([1.0, 8.0, 27.0]);
         $this->assertSame($a, Math::cbrt($a, $a));
-        $this->assertSame([1.0, 2.0, 3.0000000000000004], $a->toList(), 'numpy.cbrt([1., 8., 27.]) (ADR 0012)');
+        $this->assertSame([1.0, 2.0, self::cbrt27()], $a->toList(), 'numpy.cbrt([1., 8., 27.]) (ADR 0012, PD-17)');
         // apply('sin', $x, $out)
         $o = NDArray::zeros([1]);
         $this->assertSame($o, Math::apply('exp2', [3.0], $o));
@@ -171,6 +177,15 @@ final class MathTest extends TestCase
             return;
         }
         $this->fail("expected {$class} {$what}");
+    }
+
+    /**
+     * numpy.cbrt(27.0) on this platform (PD-17): NumPy calls the C library's cbrt (ADR 0012). glibc's result is 1 ulp
+     * above 3; Apple's libm and MinGW's return the correctly rounded 3.0.
+     */
+    private static function cbrt27(): float
+    {
+        return PHP_OS_FAMILY === 'Linux' ? 3.0000000000000004 : 3.0;
     }
 
     private static function arr(array $enc): NDArray
