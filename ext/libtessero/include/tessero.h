@@ -144,13 +144,16 @@ int tsr_cumulative(int op, int dtype, int64_t outer, int64_t len, int64_t inner,
 int tsr_sort(int dtype, int64_t n, void *data);                       /* ascending, NaN last */
 int tsr_argsort(int dtype, int64_t n, const void *data, int64_t *out); /* stable */
 
-/* ---- dense matrix product fallback (row-major, used when no BLAS is loaded) ---- */
+/* ---- dense matrix product (row-major). F64/F32 are computed by the linked BLAS (cblas_{d,s}gemm) whenever all
+   dimensions fit an int, else by a blocked kernel; I64 always by the blocked kernel. BLAS results depend on the
+   BLAS build and thread count (tolerance-level agreement). tsr_gemm below is the canonical, bit-exact entry
+   point (no BLAS, explicit round-once FMA, identical on every CPU and thread count). ---- */
 int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_t lda,
                const void *b, int64_t ldb, void *c, int64_t ldc);
 /* General matrix multiply, the BLAS xgemm contract (F64/F32): C = alpha*op(A)*op(B) + beta*C, row-major.
    transa/transb: 0 (or CBLAS 111) = no transpose, nonzero (e.g. 1 or CBLAS 112) = transpose. op(A) is m x k,
    op(B) is k x n, C is m x n. beta == 0 overwrites C without reading it. Mirrors cblas_{s,d}gemm so callers can
-   use this fallback and a loaded BLAS interchangeably. */
+   swap it with a loaded BLAS; unlike tsr_matmul it never calls BLAS and is bit-exact (canonical FMA order). */
 int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
              double alpha, const void *a, int64_t lda, const void *b, int64_t ldb,
              double beta, void *c, int64_t ldc);
@@ -298,3 +301,22 @@ int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result 
    (invalid parameters do not fail: an out-of-domain probability gives NaN results, as SciPy does). */
 int tsr_poisson_binom(int method, const double *xv, int64_t nx, const double *p, int64_t n, double loc, double *out);
 int tsr_poisson_binom_rvs(uint64_t *state, const double *p, int64_t n, double loc, int64_t nsamp, double *out);
+
+/* ---- ABI, capabilities and runtime settings (ADR 0014) ----
+   tsr_abi_version: the C ABI generation (2 for 0.2.x). It changes only on an incompatible change (a removed or
+     changed function, struct layout or constant), and the soname libtessero.so.<abi> changes with it. A binding
+     checks it once at load and refuses a library it was not written for.
+   tsr_feature: 1 when the named capability is present in THIS build/process, 0 otherwise (unknown names give 0):
+     "repro_f32" tsr_repro_*, "gemm_canonical" bit-exact tsr_gemm/tsr_axpy, "lapack" linalg through LAPACKE,
+     "openblas_threads" a BLAS whose thread pool tsr_set_blas_threads controls, "openmp" OpenMP threads,
+     "fpenv_check" runtime floating-point-environment checks. New names are compatible additions.
+   tsr_set_blas_threads: caps the thread pool of the BLAS loaded in the process (OpenBLAS / MKL, found by name, no
+     link dependency). Returns 0, -1 for n < 1, or -4 when no controllable BLAS is loaded. Process-wide.
+   tsr_get_blas_threads: the BLAS pool size, 0 when unknown.
+   tsr_alloc_n: tsr_alloc(n*elsize + pad) with the size computed overflow-checked; NULL when it overflows or is
+     negative. Free with tsr_free(p, n*elsize + pad). */
+int tsr_abi_version(void);
+int tsr_feature(const char *name);
+int tsr_set_blas_threads(int n);
+int tsr_get_blas_threads(void);
+void *tsr_alloc_n(int64_t n, int64_t elsize, int64_t pad);

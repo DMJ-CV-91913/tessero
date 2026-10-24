@@ -1,6 +1,12 @@
+/* sched_getaffinity / CPU_COUNT and dladdr / RTLD_DEFAULT are GNU extensions (glibc, musl) */
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE
+#endif
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdatomic.h>
 #include "internal.h"
+#include "../include/tessero_version.h"
 
 #ifdef _WIN32
 #  include <malloc.h>
@@ -11,9 +17,12 @@
 #  include <windows.h>
 #else
 #  include <unistd.h>
+#  include <dlfcn.h>
+#  include <pthread.h>
 #endif
 #if defined(__linux__)
 #  include <sys/mman.h>
+#  include <sched.h>
 #endif
 
 /* Blocks this large are 2 MiB aligned and marked for transparent huge pages
@@ -27,18 +36,89 @@ static _Atomic int64_t g_allocated = 0;
 static _Atomic int64_t g_peak = 0;
 static _Atomic int64_t g_budget = 0;
 
-const char *tsr_version(void) { return "0.2.0"; }
+/* ---------------------------------------------------------------- version and capabilities (ADR 0014) */
+
+const char *tsr_version(void) { return TSR_VERSION_STRING; }
+int tsr_abi_version(void) { return TSR_ABI_VERSION; }
 
 #ifdef _OPENMP
 #  include <omp.h>
 #endif
 static _Atomic int g_threads = 1;
 
+/* The CPU quota of this process's cgroup (docker --cpus, Kubernetes limits), rounded up; 0 when there is none. */
+static int tsr_cgroup_cpus(void)
+{
+#if defined(__linux__)
+    long long quota = -1, period = 0;
+    char path[512], line[256];
+    FILE *f = NULL;
+    /* cgroup v2: <mount>/<own cgroup>/cpu.max holds "max 100000" or "200000 100000"; a namespaced container
+       sees its own cgroup at the mount root */
+    FILE *cg = fopen("/proc/self/cgroup", "r");
+    if (cg) {
+        while (fgets(line, sizeof line, cg)) {
+            if (strncmp(line, "0::", 3) == 0) {
+                line[strcspn(line, "\n")] = '\0';
+                snprintf(path, sizeof path, "/sys/fs/cgroup%s/cpu.max", line + 3);
+                f = fopen(path, "r");
+                break;
+            }
+        }
+        fclose(cg);
+    }
+    if (!f) f = fopen("/sys/fs/cgroup/cpu.max", "r");
+    if (f) {
+        char q[32] = {0};
+        if (fscanf(f, "%31s %lld", q, &period) == 2 && strcmp(q, "max") != 0) quota = atoll(q);
+        fclose(f);
+    } else if ((f = fopen("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", "r")) != NULL) {   /* cgroup v1 */
+        if (fscanf(f, "%lld", &quota) != 1) quota = -1;
+        fclose(f);
+        if ((f = fopen("/sys/fs/cgroup/cpu/cpu.cfs_period_us", "r")) != NULL) {
+            if (fscanf(f, "%lld", &period) != 1) period = 0;
+            fclose(f);
+        }
+    }
+    if (quota > 0 && period > 0) {
+        const long long n = (quota + period - 1) / period;
+        return n < 1 ? 1 : (n > (1 << 20) ? (1 << 20) : (int)n);
+    }
+#endif
+    return 0;
+}
+
+/* The CPUs this process may actually run on, computed once: the scheduler affinity mask (taskset, cpusets,
+   the Kubernetes static CPU manager) and the cgroup CPU quota, whichever is smaller, at least 1.
+   omp_get_num_procs() sees the affinity mask libgomp started with but not a quota. */
+int tsr_effective_cpus(void)
+{
+    static _Atomic int cached = 0;
+    int v = atomic_load(&cached);
+    if (v > 0) return v;
+    v = 0;
+#if defined(__linux__)
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    if (sched_getaffinity(0, sizeof set, &set) == 0) v = CPU_COUNT(&set);
+#endif
+#ifdef _OPENMP
+    if (v <= 0) v = omp_get_num_procs();
+#elif !defined(_WIN32) && defined(_SC_NPROCESSORS_ONLN)
+    if (v <= 0) v = (int)sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+    const int q = tsr_cgroup_cpus();
+    if (q > 0 && (v <= 0 || q < v)) v = q;
+    if (v < 1) v = 1;
+    atomic_store(&cached, v);
+    return v;
+}
+
 void tsr_set_threads(int n)
 {
     if (n < 1) n = 1;
 #ifdef _OPENMP
-    int max = omp_get_num_procs();
+    const int max = tsr_effective_cpus();
     if (n > max * 4) n = max * 4;
 #else
     n = 1;
@@ -46,7 +126,124 @@ void tsr_set_threads(int n)
     atomic_store(&g_threads, n);
 }
 
-int tsr_get_threads(void) { return atomic_load(&g_threads); }
+/* set once a kernel has asked for (and so may have started) a multi-threaded OpenMP region in this process */
+static _Atomic int g_threaded = 0;
+
+int tsr_get_threads(void)
+{
+    const int n = atomic_load(&g_threads);
+    if (n > 1 && !atomic_load_explicit(&g_threaded, memory_order_relaxed))
+        atomic_store_explicit(&g_threaded, 1, memory_order_relaxed);
+    return n;
+}
+
+/* Fork safety: the child of a process that ran multi-threaded OpenMP regions must not start another one (libgomp's
+   worker pool belongs to the parent and is not recreated, so the child can deadlock). Such a child therefore runs
+   serial until the thread count is set again explicitly: the extension's RINIT does that per request (NTS), an
+   FFI caller calls tsr_set_threads. A parent that only configured threads and never computed with them (a
+   php-fpm or Apache master after MINIT) is safe to fork and its children keep the setting. Running Tessero
+   compute in a process that forks afterwards (opcache preload, a master process) is not supported. */
+#if !defined(_WIN32) && defined(__GNUC__)
+static void tsr_atfork_child(void)
+{
+    if (atomic_load(&g_threaded)) {
+        atomic_store(&g_threads, 1);
+        atomic_store(&g_threaded, 0);
+    }
+}
+__attribute__((constructor)) static void tsr_install_atfork(void) { pthread_atfork(NULL, NULL, tsr_atfork_child); }
+#endif
+
+/* ---------------------------------------------------------------- BLAS thread pool (ADR 0014) */
+
+/* The BLAS in the process (OpenBLAS through liblapacke/libblas on Linux, or MKL) is found by name at first use,
+   so the kernel has no link-time dependency on a particular BLAS. This library's own dependency tree is searched
+   first (an FFI dlopen without RTLD_GLOBAL keeps libblas out of the global scope), then the global scope. */
+typedef void (*tsr_blas_set_fn)(int);
+typedef int (*tsr_blas_get_fn)(void);
+static tsr_blas_set_fn g_blas_set;
+static tsr_blas_get_fn g_blas_get;
+static _Atomic int g_blas_state = 0;     /* 0 unresolved, 1 resolving, 2 resolved */
+
+#if !defined(_WIN32)
+static void *tsr_blas_sym(void *self, const char *name)
+{
+    void *p = self ? dlsym(self, name) : NULL;
+    if (!p) p = dlsym(RTLD_DEFAULT, name);
+    return p;
+}
+#endif
+
+static void tsr_blas_resolve(void)
+{
+    if (atomic_load_explicit(&g_blas_state, memory_order_acquire) == 2) return;
+    int expected = 0;
+    if (!atomic_compare_exchange_strong(&g_blas_state, &expected, 1)) {
+        while (atomic_load_explicit(&g_blas_state, memory_order_acquire) != 2) { }
+        return;
+    }
+#if !defined(_WIN32)
+    void *self = NULL;
+    Dl_info info;
+    if (dladdr((void *)&tsr_blas_resolve, &info) && info.dli_fname) self = dlopen(info.dli_fname, RTLD_LAZY | RTLD_NOLOAD);
+    static const char *const setters[] = {"openblas_set_num_threads", "goto_set_num_threads", "MKL_Set_Num_Threads"};
+    static const char *const getters[] = {"openblas_get_num_threads", NULL, "MKL_Get_Max_Threads"};
+    for (size_t i = 0; i < sizeof setters / sizeof setters[0] && !g_blas_set; i++) {
+        void *s = tsr_blas_sym(self, setters[i]);
+        if (!s) continue;
+        g_blas_set = (tsr_blas_set_fn)s;
+        if (getters[i]) g_blas_get = (tsr_blas_get_fn)tsr_blas_sym(self, getters[i]);
+    }
+    if (self) dlclose(self);   /* drops the reference RTLD_NOLOAD took; the object itself stays loaded */
+#endif
+    atomic_store_explicit(&g_blas_state, 2, memory_order_release);
+}
+
+int tsr_set_blas_threads(int n)
+{
+    if (n < 1) return TSR_EARG;
+    tsr_blas_resolve();
+    if (!g_blas_set) return TSR_ETYPE;
+    g_blas_set(n);
+    return TSR_OK;
+}
+
+int tsr_get_blas_threads(void)
+{
+    tsr_blas_resolve();
+    return g_blas_get ? g_blas_get() : 0;
+}
+
+int tsr_feature(const char *name)
+{
+    if (!name) return 0;
+    if (strcmp(name, "repro_f32") == 0) return 1;        /* tsr_repro_* (csrc/repro/GOLDENS.md) */
+    if (strcmp(name, "gemm_canonical") == 0) return 1;   /* tsr_gemm / tsr_axpy: explicit round-once FMA */
+    if (strcmp(name, "lapack") == 0) {
+#ifdef TSR_NO_LAPACK
+        return 0;
+#else
+        return 1;                                         /* linalg.* through LAPACKE (np_linalg.c) */
+#endif
+    }
+    if (strcmp(name, "openblas_threads") == 0) { tsr_blas_resolve(); return g_blas_set != NULL; }
+    if (strcmp(name, "openmp") == 0) return tsr_openmp();
+    if (strcmp(name, "fpenv_check") == 0) {
+#ifdef TSR_HAVE_FPENV
+        return 1;
+#else
+        return 0;
+#endif
+    }
+    return 0;
+}
+
+/* n*elsize + pad bytes (tsr_bytes_n, internal.h), counted like tsr_alloc; NULL on a negative size or overflow */
+void *tsr_alloc_n(int64_t n, int64_t elsize, int64_t pad)
+{
+    const int64_t bytes = tsr_bytes_n(n, elsize, pad);
+    return bytes < 0 ? NULL : tsr_alloc(bytes);
+}
 
 int tsr_openmp(void)
 {
