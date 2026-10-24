@@ -21,6 +21,58 @@ extern int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, doubl
 extern int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);                /* real FFT -> n/2+1 bins */
 extern int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);               /* inverse real FFT (1/n) */
 
+/* ---- integer-valued arguments. The C cast of a double to an integer is undefined for NaN, the infinities and
+   values outside the type, so no routine here casts an argument directly: sig_i64 / sig_i32 convert a number
+   argument (an integer exactly; a float truncated toward zero, as Python's int()) and map NaN, the infinities
+   and out-of-range values to INT64_MIN / INT32_MIN. That sentinel is below every lower bound the routines
+   check for a size, order, count or index, so an invalid argument takes the routine's error path. Sizes taken
+   from arguments are additionally bounded before they reach an allocation (sig_alloc_ok). */
+static inline int64_t sig_i64(const tsr_arg *a)
+{
+    if (a->kind == 1 && (a->flags & 1)) return a->ival;
+    const double v = a->num;
+    return (v >= -9223372036854775808.0 && v < 9223372036854775808.0) ? (int64_t)v : INT64_MIN;
+}
+static inline int sig_i32(const tsr_arg *a)
+{
+    const int64_t v = sig_i64(a);
+    return (v >= INT32_MIN && v <= INT32_MAX) ? (int)v : INT32_MIN;
+}
+/* a double that is about to become a size or index (not an argument itself): the same mapping */
+static inline int64_t sig_d2i64(double v) { return (v >= -9223372036854775808.0 && v < 9223372036854775808.0) ? (int64_t)v : INT64_MIN; }
+/* 1 when `count` elements of `elsize` bytes (a size derived from an argument) may be allocated: non-negative,
+   no overflow, and within the budget or the machine (tsr_fits); else 0 with "<who>: ... too large" set */
+static int sig_alloc_ok(int64_t count, int64_t elsize, const char *who)
+{
+    const int64_t b = tsr_bytes_n(count, elsize, 0);
+    if (b >= 0 && tsr_fits((double)b)) return 1;
+    fn_set_error("%s: the requested size is too large", who);
+    return 0;
+}
+/* a filter order computed in floating point (SciPy: int(ceil(x))): NaN and the infinities are Python's errors;
+   an order outside int is refused. TSR_OK and *ord, or TSR_EARG. */
+static int sig_order_of(double x, const char *who, int *ord)
+{
+    const double c = ceil(x);
+    if (c != c) { fn_set_error("%s: cannot convert float NaN to integer", who); return TSR_EARG; }
+    if (!(c >= -2147483648.0 && c <= 2147483647.0)) { fn_set_error("%s: the filter order %g is out of range", who, c); return TSR_EARG; }
+    *ord = (int)c;
+    return TSR_OK;
+}
+
+/* the segment parameters of the Welch-type estimators, as SciPy's _spectral_helper checks them: nperseg >= 1,
+   noverlap < nperseg (and not so negative that the step overflows), nfft >= nperseg; then every per-segment
+   buffer (a few times nfft doubles) must be allocatable. TSR_OK or the error. */
+static int sig_seg_params(const char *who, int64_t nperseg, int64_t noverlap, int64_t nfft)
+{
+    if (nperseg < 1) { fn_set_error("%s: nperseg must be a positive integer", who); return TSR_EARG; }
+    if (noverlap >= nperseg) { fn_set_error("%s: noverlap must be less than nperseg.", who); return TSR_EARG; }
+    if (noverlap < -(INT64_MAX / 4)) { fn_set_error("%s: noverlap is out of range", who); return TSR_EARG; }
+    if (nfft < nperseg) { fn_set_error("%s: nfft must be greater than or equal to nperseg.", who); return TSR_EARG; }
+    if (!sig_alloc_ok(nfft, 8 * sizeof(double), who)) return TSR_ENOMEM;
+    return TSR_OK;
+}
+
 static int parse_mode(const tsr_arg *a, int *mode)
 {
     if (!a || a->kind == 0) { *mode = CONV_FULL; return TSR_OK; }
@@ -39,6 +91,8 @@ static int r_convolve(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("convolve: a and v must be 1-D arrays"); return TSR_EARG; }
     int mode, rc; if ((rc = parse_mode(nargs > 2 ? &args[2] : NULL, &mode)) < 0) return rc;
     const int64_t M = args[0].arr.shape[0], N = args[1].arr.shape[0];
+    /* SciPy: an empty v is an error, an empty a too except in 'same' mode (an empty result) */
+    if (N == 0 || (M == 0 && mode != CONV_SAME)) { fn_set_error("convolve: %s cannot be empty", N == 0 ? "v" : "a"); return TSR_EARG; }
     int64_t ta, tv; double *a = fn_arg_doubles(&args[0], &ta); if (!a) return TSR_ENOMEM;
     double *v = fn_arg_doubles(&args[1], &tv); if (!v) { fn_free_doubles(a, ta); return TSR_ENOMEM; }
     const int64_t L = (M > 0 && N > 0) ? M + N - 1 : 0;
@@ -92,10 +146,11 @@ static int r_freqz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("freqz: b and a must be 1-D arrays"); return TSR_EARG; }
-    const int64_t N = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 512;
+    const int64_t N = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : 512;
     const int whole = (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) ? args[3].num != 0 : 0;
     if (N <= 0) { fn_set_error("freqz: worN must be positive"); return TSR_EARG; }
     const int64_t nb = args[0].arr.shape[0], na = args[1].arr.shape[0];
+    if (nb < 1 || na < 1) { fn_set_error("freqz: b and a must be non-empty"); return TSR_EARG; }
     int64_t tb, ta; double *b = fn_arg_doubles(&args[0], &tb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &ta); if (!a) { fn_free_doubles(b, tb); return TSR_ENOMEM; }
     int64_t sh[1] = {N};
@@ -157,24 +212,43 @@ static int zpk2tf_real(const double complex *z, int nz, const double complex *p,
 }
 
 /* read a 1-D array argument (real or complex128) into a freshly-allocated double complex buffer */
+/* one element of a numeric array as a complex value */
+static inline double complex read_c1(int dtype, const char *pp)
+{
+    switch (dtype) {
+    case TSR_C128: return *(const double *)pp + I * (*(const double *)(pp + 8));
+    case TSR_F64: return *(const double *)pp;
+    case TSR_F32: return *(const float *)pp;
+    case TSR_I64: return (double)*(const int64_t *)pp;
+    case TSR_I32: return (double)*(const int32_t *)pp;
+    case TSR_U8: case TSR_BOOL: return (double)*(const uint8_t *)pp;
+    default: return 0;
+    }
+}
+/* an N-d array (ndim >= 2) flattened in C order through every dimension's stride, as numpy's ravel */
+static void read_carr_nd(const tsr_array *x, int64_t sz, double complex *out)
+{
+    int64_t idx[TSR_MAXDIM] = {0};
+    for (int64_t i = 0; i < sz; i++) {
+        const char *pp = (const char *)x->data + x->offset;
+        for (int32_t d = 0; d < x->ndim; d++) pp += idx[d] * x->strides[d];
+        out[i] = read_c1(x->dtype, pp);
+        for (int32_t d = x->ndim - 1; d >= 0; d--) { if (++idx[d] < x->shape[d]) break; idx[d] = 0; }
+    }
+}
 static double complex *read_carr(const tsr_arg *arg, int64_t *n)
 {
     if (arg->kind != 3) { *n = 0; return NULL; }
     const tsr_array *x = &arg->arr;
-    int64_t sz = 1; for (int d = 0; d < x->ndim; d++) sz *= x->shape[d];
+    const int64_t sz = tsr_shape_size(x->ndim, x->shape);
+    if (sz < 0 || x->ndim > TSR_MAXDIM) { *n = 0; return NULL; }
     *n = sz;
     double complex *out = (double complex *)malloc((size_t)(sz > 0 ? sz : 1) * sizeof(double complex));
     if (!out) return NULL;
-    const int64_t stride = x->ndim ? x->strides[0] : 0;
-    for (int64_t i = 0; i < sz; i++) {
-        const char *pp = (const char *)x->data + x->offset + i * stride;
-        if (x->dtype == TSR_C128) out[i] = *(const double *)pp + I * (*(const double *)(pp + 8));
-        else if (x->dtype == TSR_F64) out[i] = *(const double *)pp;
-        else if (x->dtype == TSR_F32) out[i] = *(const float *)pp;
-        else if (x->dtype == TSR_I64) out[i] = (double)*(const int64_t *)pp;
-        else if (x->dtype == TSR_I32) out[i] = (double)*(const int32_t *)pp;
-        else out[i] = 0;
-    }
+    if (x->ndim > 1) { read_carr_nd(x, sz, out); return out; }
+    const int64_t st0 = x->ndim == 1 ? x->strides[0] : 0;     /* 0-d and 1-D, the usual case: one stride */
+    const char *base = (const char *)x->data + x->offset;
+    for (int64_t i = 0; i < sz; i++) out[i] = read_c1(x->dtype, base + i * st0);
     return out;
 }
 
@@ -313,6 +387,7 @@ static int zpk2sos_core(const double complex *zin, int64_t nz0, const double com
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n_sections, 6});
     if (!out) { rc = TSR_ENOMEM; goto done; }
     for (int si = n_sections - 1; si >= 0; si--) {
+        if (pn <= 0) { fn_set_error("zpk2sos: cannot pair the poles into sections"); rc = TSR_EARG; goto done; }
         int p1i = zs_idx_worst(pc, pn);
         double complex p1 = pc[p1i]; zs_del(pc, &pn, p1i);
         double *row = &out[si * 6];
@@ -325,6 +400,7 @@ static int zpk2sos_core(const double complex *zin, int64_t nz0, const double com
             zs_section(zz, 2, pp, 2, row);                   /* [z1,0], [p1,0] */
         } else if (pn + 1 == zn && !ZS_ISREAL(p1) && zs_countreal(pc, pn) == 1 && zs_countreal(zc, zn) == 1) {
             int z1i = zs_nearest(zc, zn, p1, 2);             /* must pair with a complex zero */
+            if (z1i < 0) { fn_set_error("zpk2sos: cannot pair the zeros into sections"); rc = TSR_EARG; goto done; }
             double complex z1 = zc[z1i]; zs_del(zc, &zn, z1i);
             zz[0] = z1; zz[1] = conj(z1); pp[0] = p1; pp[1] = conj(p1);
             zs_section(zz, 2, pp, 2, row);
@@ -333,6 +409,7 @@ static int zpk2sos_core(const double complex *zin, int64_t nz0, const double com
             if (ZS_ISREAL(p1)) {                             /* worst remaining real pole */
                 int bi = -1; double bd = 0.0;
                 for (int i = 0; i < pn; i++) if (ZS_ISREAL(pc[i])) { double d = fabs(1.0 - cabs(pc[i])); if (bi < 0 || d < bd) { bd = d; bi = i; } }
+                if (bi < 0) { fn_set_error("zpk2sos: cannot pair the poles into sections"); rc = TSR_EARG; goto done; }
                 p2 = pc[bi]; zs_del(pc, &pn, bi);
             } else p2 = conj(p1);
             pp[0] = p1; pp[1] = p2;
@@ -342,6 +419,7 @@ static int zpk2sos_core(const double complex *zin, int64_t nz0, const double com
                 if (!ZS_ISREAL(z1)) { zz[0] = z1; zz[1] = conj(z1); zs_section(zz, 2, pp, 2, row); }
                 else if (zn > 0) {
                     int z2i = zs_nearest(zc, zn, p1, 1);
+                    if (z2i < 0) { fn_set_error("zpk2sos: cannot pair the zeros into sections"); rc = TSR_EARG; goto done; }   /* SciPy asserts a real z2 */
                     zz[0] = z1; zz[1] = zc[z2i]; zs_del(zc, &zn, z2i);
                     zs_section(zz, 2, pp, 2, row);
                 } else { zz[0] = z1; zs_section(zz, 1, pp, 2, row); }
@@ -374,6 +452,7 @@ static int r_tf2sos(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("tf2sos: b and a must be arrays (a 1-D)"); return TSR_EARG; }
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("tf2sos: b and a must be non-empty"); return TSR_EARG; }
     double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
     int rc = TSR_OK;
     if (sig_normalize(b, nb, a, na, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("tf2sos: normalize failed"); fn_free_doubles(b, nb); fn_free_doubles(a, na); return TSR_EARG; }
@@ -446,8 +525,10 @@ static int r_iircomb(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int peak;
     if (!strcmp(ftype, "notch")) peak = 0; else if (!strcmp(ftype, "peak")) peak = 1; else { fn_set_error("iircomb: ftype must be either notch or peak"); return TSR_EARG; }
     if (!(w0in > 0.0 && w0in < fs / 2.0)) { fn_set_error("iircomb: w0 must be between 0 and fs/2 (Nyquist)"); return TSR_EARG; }
-    const int64_t N = (int64_t)rint(fs / w0in);
-    if (N < 1) { fn_set_error("iircomb: invalid order"); return TSR_EARG; }
+    const double Nd = rint(fs / w0in);
+    if (!(Nd >= 1.0 && Nd < 9.2e18)) { fn_set_error("iircomb: invalid order"); return TSR_EARG; }
+    const int64_t N = (int64_t)Nd;
+    if (!sig_alloc_ok(N + 1, 2 * sizeof(double), "iircomb")) return TSR_ENOMEM;
     if (fabs(w0in - fs / (double)N) / fs > 1e-14) { fn_set_error("iircomb: fs must be divisible by w0"); return TSR_EARG; }
     const double w0 = (2.0 * M_PI * w0in) / fs, w_delta = w0 / Q;
     const double G0 = peak ? 0.0 : 1.0, G = peak ? 1.0 : 0.0;
@@ -467,7 +548,7 @@ static int r_iircomb(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 static int r_butter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    const int64_t N = (args[0].kind == 1) ? (int64_t)args[0].num : 0;
+    const int64_t N = (args[0].kind == 1) ? sig_i64(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("butter: order N must be between 1 and 64"); return TSR_EARG; }
     if (!(args[1].kind == 1)) { fn_set_error("butter: only a scalar Wn (lowpass/highpass) is supported"); return TSR_EARG; }
     const double Wn = args[1].num;
@@ -581,7 +662,7 @@ done:
 static int r_cheby1(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    const int N = (args[0].kind == 1) ? (int)args[0].num : 0;
+    const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("cheby1: order N must be between 1 and 64"); return TSR_EARG; }
     if (!(args[1].kind == 1) || !(args[2].kind == 1)) { fn_set_error("cheby1: rp and a scalar Wn are required"); return TSR_EARG; }
     const double rp = args[1].num, Wn = args[2].num;
@@ -606,7 +687,7 @@ static int r_cheby1(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 static int r_cheby2(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    const int N = (args[0].kind == 1) ? (int)args[0].num : 0;
+    const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("cheby2: order N must be between 1 and 64"); return TSR_EARG; }
     if (!(args[1].kind == 1) || !(args[2].kind == 1)) { fn_set_error("cheby2: rs and a scalar Wn are required"); return TSR_EARG; }
     const double rs = args[1].num, Wn = args[2].num;
@@ -691,6 +772,7 @@ static void df2t_filter(const double *b, const double *a, int K, const double *x
    (I - companion(a)^T) zi = b[1:] - a[1:]*b[0], with a, b normalised by a[0] and zero-padded to length K. */
 static int lfilter_zi_into(const double *bin, int64_t nb, const double *ain, int64_t na, int K, double *zi)
 {
+    if (nb < 1 || na < 1) { fn_set_error("lfilter_zi: b and a must be non-empty"); return TSR_EARG; }
     const double a0 = ain[0];
     double *a = (double *)calloc((size_t)K, sizeof(double));
     double *b = (double *)calloc((size_t)K, sizeof(double));
@@ -735,6 +817,7 @@ static int r_filtfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 || args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("filtfilt: b, a and x must be 1-D arrays"); return TSR_EARG; }
     const int64_t nb = args[0].arr.shape[0], na = args[1].arr.shape[0], n = args[2].arr.shape[0];
+    if (nb < 1 || na < 1) { fn_set_error("filtfilt: b and a must be non-empty"); return TSR_EARG; }
     const int K = (int)(na > nb ? na : nb);
     const int64_t edge = 3 * K;
     if (n <= edge) { fn_set_error("filtfilt: the length of the input vector x must be greater than padlen, which is %lld", (long long)edge); return TSR_EARG; }
@@ -887,6 +970,10 @@ static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse
     }
     { int64_t acc = 1; for (int32_t d = nd - 1; d >= 0; d--) { fst[d] = acc; acc *= f[d]; } }
     { int64_t acc = 1; for (int32_t d = nd - 1; d >= 0; d--) { vst[d] = acc; acc *= s2[d]; } }
+    /* SciPy: an empty in2 is an error, an empty in1 too except in 'same' mode (an empty result): with an empty
+       axis the full result has no cells for the 'same' window to read */
+    int64_t na_ = 1, nv_ = 1; for (int32_t d = 0; d < nd; d++) { na_ *= s1[d]; nv_ *= s2[d]; }
+    if (nv_ == 0 || (na_ == 0 && mode != CONV_SAME)) { fn_set_error("%s: %s array argument cannot be empty", who, nv_ == 0 ? "second" : "first"); return TSR_EARG; }
 
     int64_t n1, n2;
     double *a = fn_arg_doubles(A, &n1); if (!a) { fn_set_error("%s: in1 must be a real numeric array", who); return TSR_ENOMEM; }
@@ -998,6 +1085,10 @@ static int gesolve(int n, double *A, double *b)
 static int savgol_coeffs_into(int64_t wl, int64_t po, int64_t deriv, double delta, double pos, int use_conv, double *out)
 {
     if (wl <= 0 || po < 0 || po >= wl) { fn_set_error("savgol_coeffs: require 0 <= polyorder < window_length"); return TSR_EARG; }
+    if (deriv < 0) { fn_set_error("savgol_coeffs: deriv must be non-negative"); return TSR_EARG; }
+    if (deriv > po) { for (int64_t j = 0; j < wl; j++) out[j] = 0.0; return TSR_OK; }   /* SciPy: zeros(window_length) */
+    if (!TSR_LA_FIT("savgol_coeffs", wl, po + 1)) return TSR_EARG;
+    if (!sig_alloc_ok(tsr_count_mul(po + 1, wl), sizeof(double), "savgol_coeffs")) return TSR_ENOMEM;
     const int p = (int)po + 1;                                /* rows of A (polynomial terms); cols = wl */
     double fact = 1.0; for (int64_t k = 2; k <= deriv; k++) fact *= (double)k;
     double dp = 1.0; for (int64_t k = 0; k < deriv; k++) dp *= delta;
@@ -1026,8 +1117,8 @@ static int r_savgol_coeffs(const void *ctx, const tsr_arg *args, int nargs, tsr_
 {
     (void)ctx; (void)nres;
     int err; int64_t wl = win_len(args, nargs, &err); if (err) return TSR_EARG;   /* reuse the length parser */
-    int64_t po = (nargs > 1 && args[1].kind == 1) ? (int64_t)args[1].num : 0;
-    int64_t deriv = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 0;
+    int64_t po = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : 0;
+    int64_t deriv = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : 0;
     double delta = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
     int64_t halflen = wl / 2, rem = wl % 2;
     double pos = (nargs > 4 && args[4].kind == 1) ? args[4].num : (rem == 0 ? (double)halflen - 0.5 : (double)halflen);
@@ -1100,9 +1191,9 @@ static int r_savgol_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("savgol_filter: x must be a 1-D array"); return TSR_EARG; }
-    int64_t wl = (nargs > 1 && args[1].kind == 1) ? (int64_t)args[1].num : 0;
-    int64_t po = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 0;
-    int64_t deriv = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 0;
+    int64_t wl = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : 0;
+    int64_t po = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : 0;
+    int64_t deriv = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : 0;
     double delta = (nargs > 4 && args[4].kind == 1) ? args[4].num : 1.0;
     const char *modes = (nargs > 6 && args[6].kind == 2 && args[6].str) ? args[6].str : "interp";
     double cval = (nargs > 7 && args[7].kind == 1) ? args[7].num : 0.0;
@@ -1164,7 +1255,7 @@ static int r_detrend(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     if (args[0].kind != 3) { fn_set_error("detrend: data must be an array"); return TSR_EARG; }
     const int32_t nd = args[0].arr.ndim;
     if (nd < 1) { fn_set_error("detrend: data must have at least one dimension"); return TSR_EARG; }
-    int64_t ax = (nargs > 1 && args[1].kind == 1) ? (int64_t)args[1].num : -1;
+    int64_t ax = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : -1;
     if (ax < 0) ax += nd;
     if (ax < 0 || ax >= nd) { fn_set_error("detrend: axis out of range"); return TSR_EARG; }
     int linear = 1;
@@ -1177,9 +1268,9 @@ static int r_detrend(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int64_t bpbuf[64]; int nbp = 0; bpbuf[nbp++] = 0;
     if (nargs > 3 && args[3].kind == 3 && args[3].arr.ndim >= 1) {
         int64_t tb; double *bv = fn_arg_doubles(&args[3], &tb);
-        if (bv) { for (int64_t i = 0; i < tb && nbp < 62; i++) { int64_t b = (int64_t)bv[i]; if (b > 0 && b < N) bpbuf[nbp++] = b; } fn_free_doubles(bv, tb); }
+        if (bv) { for (int64_t i = 0; i < tb && nbp < 62; i++) { int64_t b = sig_d2i64(bv[i]); if (b > 0 && b < N) bpbuf[nbp++] = b; } fn_free_doubles(bv, tb); }
     } else if (nargs > 3 && args[3].kind == 1 && args[3].num != 0) {
-        int64_t b = (int64_t)args[3].num; if (b > 0 && b < N) bpbuf[nbp++] = b;
+        int64_t b = sig_i64(&args[3]); if (b > 0 && b < N) bpbuf[nbp++] = b;
     }
     bpbuf[nbp++] = N;
     /* sort/unique the break points */
@@ -1231,8 +1322,10 @@ static int64_t win_len(const tsr_arg *args, int nargs, int *err)
     *err = 0;
     if (nargs < 1) { *err = 1; return 0; }
     const tsr_arg *a = &args[0];
-    int64_t M = (a->kind == 1 && (a->flags & 1)) ? a->ival : (a->kind == 1 ? (int64_t)a->num : -1);
+    int64_t M = (a->kind == 1) ? sig_i64(a) : -1;
     if (M < 0) { fn_set_error("window length M must be a non-negative integer"); *err = 1; }
+    /* the window itself (M doubles) must be allocatable; this also keeps M + 1 and M * 8 defined below */
+    else if (!tsr_fits((double)M * 8.0)) { fn_set_error("window length M is too large"); *err = 1; }
     return M;
 }
 
@@ -1530,6 +1623,7 @@ static int r_win_kbd(const void *ctx, const tsr_arg *args, int nargs, tsr_result
    taper normalization: 2 (l2, the default when Kmax is given), 'approximate' (max-norm then the
    M^2/(M^2+NW) even-length correction, the default when Kmax is None), or 'subsample' (max-norm then an
    FFT-subsample-shift correction, here evaluated as a direct DFT sum). */
+#define DPSS_FULL_MAX 1024   /* above this many points dpss computes only the Kmax eigenpairs it returns */
 static int r_win_dpss(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -1538,7 +1632,7 @@ static int r_win_dpss(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int singleton = 1; int64_t Kmax = 1;                 /* Kmax=None -> a single taper */
     if (nargs > 2 && args[2].kind == 1) {
         singleton = 0;
-        Kmax = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+        Kmax = sig_i64(&args[2]);
     }
     int sym = win_sym(args, nargs, 3);
     int norm_l2, norm_subsample = 0;                     /* default: 'approximate' (singleton) else l2 (2) */
@@ -1556,24 +1650,39 @@ static int r_win_dpss(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int64_t Mc = sym ? M0 : M0 + 1;                      /* _extend: periodic form computes length M+1 */
     double mc = (double)Mc;
     double cw = cos(2.0 * M_PI * NW / mc);
+    if (!TSR_LA_FIT("dpss", Mc)) return TSR_EARG;
+    /* up to DPSS_FULL_MAX points: every eigenpair (dstev), as before; above it only the Kmax wanted ones
+       (dstevx by index, bisection + inverse iteration as SciPy's eigh_tridiagonal(select='i')): the full
+       O(Mc^3) solve and its Mc x Mc matrix ran past the fuzzer's timeout at Mc = 4096 */
+    const int full = Mc <= DPSS_FULL_MAX;
+    /* inverse iteration for Kmax vectors (with reorthogonalisation in clusters) costs up to Kmax * Mc^2 */
+    if (!full && (double)Kmax * (double)Mc * (double)Mc > (double)((int64_t)1 << 32)) { fn_set_error("dpss: Kmax * M^2 is too large for this implementation"); return TSR_EARG; }
+    if (!sig_alloc_ok(tsr_count_mul(Mc, full ? Mc + Kmax : 2 * Kmax), sizeof(double), "dpss")) return TSR_ENOMEM;   /* z, wins */
     double *d = (double *)malloc((size_t)Mc * sizeof(double));
     double *e = (double *)malloc((size_t)(Mc > 1 ? Mc - 1 : 1) * sizeof(double));
-    double *z = (double *)malloc((size_t)Mc * (size_t)Mc * sizeof(double));
-    if (!d || !e || !z) { free(d); free(e); free(z); return TSR_ENOMEM; }
+    double *z = (double *)malloc((size_t)Mc * (size_t)(full ? Mc : Kmax) * sizeof(double));
+    double *wv = full ? NULL : (double *)malloc((size_t)Mc * sizeof(double));
+    lapack_int *ifail = full ? NULL : (lapack_int *)malloc((size_t)Mc * sizeof(lapack_int));
+    if (!d || !e || !z || (!full && (!wv || !ifail))) { free(d); free(e); free(z); free(wv); free(ifail); return TSR_ENOMEM; }
     for (int64_t t = 0; t < Mc; t++) { double h = ((double)(Mc - 1 - 2 * t)) / 2.0; d[t] = h * h * cw; }
     for (int64_t t = 1; t < Mc; t++) e[t - 1] = (double)t * (double)(Mc - t) / 2.0;
-    if (LAPACKE_dstev(LAPACK_ROW_MAJOR, 'V', (lapack_int)Mc, d, e, z, (lapack_int)Mc) != 0) {
+    lapack_int nfound = (lapack_int)Kmax;
+    const lapack_int info = full ? LAPACKE_dstev(LAPACK_ROW_MAJOR, 'V', (lapack_int)Mc, d, e, z, (lapack_int)Mc)
+                                 : LAPACKE_dstevx(LAPACK_COL_MAJOR, 'V', 'I', (lapack_int)Mc, d, e, 0.0, 0.0, (lapack_int)(Mc - Kmax + 1),
+                                                  (lapack_int)Mc, 0.0, &nfound, wv, z, (lapack_int)Mc, ifail);
+    free(wv); free(ifail);
+    if (info != 0 || nfound != (lapack_int)Kmax) {
         free(d); free(e); free(z);
         fn_set_error("dpss: tridiagonal eigenvalue computation failed");
         return TSR_EARG;
     }
-    /* dstev returns ascending eigenvalues; eigenvector j is column j (z[i*Mc+j]). Keep the top Kmax,
-       largest eigenvalue first. */
+    /* both return ascending eigenvalues. dstev: eigenvector j is column j of the row-major z (z[i*Mc+j]);
+       dstevx: the Kmax largest, vector j at z[j*Mc+i] (column-major). Keep the top Kmax, largest first. */
     double *wins = (double *)malloc((size_t)Kmax * (size_t)Mc * sizeof(double));
     if (!wins) { free(d); free(e); free(z); return TSR_ENOMEM; }
     for (int64_t k = 0; k < Kmax; k++) {
-        int64_t col = Mc - 1 - k;
-        for (int64_t i = 0; i < Mc; i++) wins[k * Mc + i] = z[i * Mc + col];
+        if (full) { const int64_t col = Mc - 1 - k; for (int64_t i = 0; i < Mc; i++) wins[k * Mc + i] = z[i * Mc + col]; }
+        else { const int64_t col = Kmax - 1 - k; for (int64_t i = 0; i < Mc; i++) wins[k * Mc + i] = z[col * Mc + i]; }
     }
     free(d); free(e); free(z);
     double thresh = 1.0 / mc; if (thresh < 1e-7) thresh = 1e-7;
@@ -1635,11 +1744,13 @@ static int r_win_taylor(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     (void)ctx; (void)nres;
     int err; int64_t M = win_len(args, nargs, &err); if (err) return TSR_EARG;
     int rc; if (win_guard(M, &res[0], &rc)) return rc;
-    int64_t nbar = (int64_t)win_dbl(args, nargs, 1, 4.0);
+    int64_t nbar = sig_d2i64(win_dbl(args, nargs, 1, 4.0));
     double sll = win_dbl(args, nargs, 2, 30.0);
     int norm = win_sym(args, nargs, 3);
     int64_t Mext = win_sym(args, nargs, 4) ? M : M + 1;
     if (nbar < 1) { fn_set_error("taylor: nbar must be >= 1"); return TSR_EARG; }
+    /* the coefficients cost (nbar-1)^2 steps and the window M*(nbar-1): refuse what would run for minutes */
+    if ((double)(nbar - 1) * ((double)(nbar - 1) + (double)M) > (double)((int64_t)1 << 28)) { fn_set_error("taylor: nbar is too large for this implementation"); return TSR_EARG; }
     int64_t sh[1] = {M};
     double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
     if (!w) return TSR_ENOMEM;
@@ -1674,6 +1785,7 @@ static int r_win_taylor(const void *ctx, const tsr_arg *args, int nargs, tsr_res
 }
 
 /* chebwin(M, at, sym=True): Dolph-Chebyshev window. Re(fft(p)) computed as a direct O(M^2) cosine sum. */
+#define CHEBWIN_DIRECT_MAX 4096   /* above this length the frequency samples come from the FFT, not the direct sum */
 static int r_win_chebwin(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -1696,11 +1808,26 @@ static int r_win_chebwin(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     double *fr = (double *)tsr_alloc(n * 8 + 64);
     double *wv = (double *)tsr_alloc(M * 8 + 64);
     if (!fr || !wv) { tsr_free(p, M * 8 + 64); if (fr) tsr_free(fr, n * 8 + 64); if (wv) tsr_free(wv, M * 8 + 64); return TSR_ENOMEM; }
-    for (int64_t j = 0; j < n; j++) {
-        double acc = 0.0;
-        if (M % 2) for (int64_t k = 0; k < M; k++) acc += p[k] * cos(2.0 * M_PI * (double)j * (double)k / (double)M);
-        else       for (int64_t k = 0; k < M; k++) acc += p[k] * cos(M_PI * (double)k * (double)(2 * j - 1) / (double)M);
-        fr[j] = acc;
+    if (M <= CHEBWIN_DIRECT_MAX) {
+        for (int64_t j = 0; j < n; j++) {
+            double acc = 0.0;
+            if (M % 2) for (int64_t k = 0; k < M; k++) acc += p[k] * cos(2.0 * M_PI * (double)j * (double)k / (double)M);
+            else       for (int64_t k = 0; k < M; k++) acc += p[k] * cos(M_PI * (double)k * (double)(2 * j - 1) / (double)M);
+            fr[j] = acc;
+        }
+    } else {
+        /* SciPy's form, Re(fft(p)) (even M: p * exp(i*pi*k/M) first), in O(M log M): the direct cosine sum is
+           O(M^2) and ran for minutes on a large M */
+        double *zi = (double *)tsr_alloc(M * 16 + 64), *zo = zi ? (double *)tsr_alloc(M * 16 + 64) : NULL;
+        if (!zi || !zo) { if (zi) tsr_free(zi, M * 16 + 64); tsr_free(p, M * 8 + 64); tsr_free(fr, n * 8 + 64); tsr_free(wv, M * 8 + 64); return TSR_ENOMEM; }
+        for (int64_t k = 0; k < M; k++) {
+            if (M % 2) { zi[2 * k] = p[k]; zi[2 * k + 1] = 0.0; }
+            else { const double ang = M_PI * (double)k / (double)M; zi[2 * k] = p[k] * cos(ang); zi[2 * k + 1] = p[k] * sin(ang); }
+        }
+        const int frc = tsr_fft(M, 1, 0, zi, zo);
+        for (int64_t j = 0; j < n; j++) fr[j] = zo[2 * j];
+        tsr_free(zi, M * 16 + 64); tsr_free(zo, M * 16 + 64);
+        if (frc != 0) { tsr_free(p, M * 8 + 64); tsr_free(fr, n * 8 + 64); tsr_free(wv, M * 8 + 64); return TSR_ENOMEM; }
     }
     if (M % 2) {
         for (int64_t i = 0; i < n - 1; i++) wv[i] = fr[n - 1 - i];
@@ -1781,6 +1908,7 @@ static int r_win_tukey(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     double alpha = win_dbl(args, nargs, 1, 0.5);
     int sym = win_sym(args, nargs, 2);
     int64_t Mext = sym ? M : M + 1;
+    if (alpha != alpha) { fn_set_error("tukey: cannot convert float NaN to integer"); return TSR_EARG; }   /* SciPy: int(floor(nan)) */
     /* alpha >= 1 is the Hann window, which allocates its own result: decide before allocating this one */
     if (alpha >= 1.0) { static const double a[] = {0.5, 0.5}; return win_cosine_sum(M, a, 2, sym, &res[0]); }
     int64_t sh[1] = {M};
@@ -1788,7 +1916,7 @@ static int r_win_tukey(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     if (!w) return TSR_ENOMEM;
     if (alpha <= 0.0) { for (int64_t i = 0; i < M; i++) w[i] = 1.0; return TSR_OK; }
     double den = (double)(Mext - 1);
-    int64_t width = (int64_t)(alpha * den / 2.0);          /* floor */
+    int64_t width = sig_d2i64(alpha * den / 2.0);          /* floor (alpha is in (0, 1) here: in range) */
     for (int64_t i = 0; i < M; i++) {
         if (i <= width)
             w[i] = 0.5 * (1.0 + cos(M_PI * (-1.0 + 2.0 * (double)i / (alpha * den))));
@@ -1911,12 +2039,12 @@ static int r_unit_impulse(const void *ctx, const tsr_arg *args, int nargs, tsr_r
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1) { fn_set_error("unit_impulse: shape must be an integer length"); return TSR_EARG; }
-    const int64_t n = (int64_t)args[0].num;
+    const int64_t n = sig_i64(&args[0]);
     if (n < 0) { fn_set_error("unit_impulse: shape must be non-negative"); return TSR_EARG; }
     int64_t idx = 0;
     if (nargs > 1) {
         if (args[1].kind == 2 && args[1].str && !strcmp(args[1].str, "mid")) idx = n / 2;
-        else if (args[1].kind == 1) { idx = (int64_t)args[1].num; if (idx < 0) idx += n; }   /* numpy negative indexing */
+        else if (args[1].kind == 1) { idx = sig_i64(&args[1]); if (idx < 0) idx += n; }   /* numpy negative indexing */
     }
     double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
     if (!y) return TSR_ENOMEM;
@@ -1948,6 +2076,7 @@ static double *sig_polyroots(const double *p, int64_t m, int64_t *nz)
     int64_t s = 0; while (s < m && p[s] == 0.0) s++;         /* strip leading zeros */
     const int64_t n = (m - s) - 1;
     if (n <= 0) { *nz = 0; return NULL; }
+    if (!sig_alloc_ok(tsr_count_mul(n, n), sizeof(double), "roots")) { *nz = -1; return NULL; }   /* the n x n companion */
     double *comp = (double *)calloc((size_t)(n * n), sizeof(double));
     double *wr = (double *)malloc(sizeof(double) * (size_t)n), *wi = (double *)malloc(sizeof(double) * (size_t)n);
     double *pairs = (double *)malloc(sizeof(double) * (size_t)(2 * n));
@@ -1971,6 +2100,7 @@ static double *sig_polyroots(const double *p, int64_t m, int64_t *nz)
 static int sig_normalize(const double *b, int64_t nb, const double *a, int64_t na,
                          double **b2, int64_t *nb2, double **a2, int64_t *na2)
 {
+    if (na < 1 || nb < 1) return -1;                      /* empty b or a: nothing to normalize by */
     int64_t as = 0; while (as < na - 1 && a[as] == 0.0) as++;
     const double a0 = a[as];
     if (a0 == 0.0) return -1;
@@ -1997,6 +2127,7 @@ static int r_signal_normalize(const void *ctx, const tsr_arg *args, int nargs, t
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("normalize: b and a must be arrays (a 1-D)"); return TSR_EARG; }
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("normalize: b and a must be non-empty"); return TSR_EARG; }
     double *b2 = NULL, *a2 = NULL; int64_t nb2 = 0, na2 = 0;
     int rc = TSR_OK;
     if (sig_normalize(b, nb, a, na, &b2, &nb2, &a2, &na2) != 0) { fn_set_error("normalize: denominator has no nonzero element"); rc = TSR_EARG; }
@@ -2039,6 +2170,7 @@ static int r_tf2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("tf2zpk: b and a must be arrays (a 1-D)"); return TSR_EARG; }
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("tf2zpk: b and a must be non-empty"); return TSR_EARG; }
     int rc = sig_tf2zpk_emit(b, nb, a, na, res);
     fn_free_doubles(b, nb); fn_free_doubles(a, na);
     return rc;
@@ -2266,7 +2398,7 @@ static int r_ss2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n ||
         args[1].arr.shape[1] != p || args[2].arr.shape[0] != q) { fn_set_error("ss2tf: inconsistent state-space shapes"); return TSR_EARG; }
     int64_t inp = 0;
-    if (nargs > 4 && args[4].kind == 1) inp = (int64_t)args[4].num;
+    if (nargs > 4 && args[4].kind == 1) inp = sig_i64(&args[4]);
     if (inp < 0 || inp >= p) { fn_set_error("ss2tf: system does not have the input specified"); return TSR_EARG; }
     int64_t na_, nb_, nc_, nd_;
     double *A = fn_arg_doubles(&args[0], &na_); double *B = fn_arg_doubles(&args[1], &nb_);
@@ -2310,7 +2442,7 @@ static int r_ss2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n ||
         args[1].arr.shape[1] != p || args[2].arr.shape[0] != q) { fn_set_error("ss2zpk: inconsistent state-space shapes"); return TSR_EARG; }
     if (q != 1) { fn_set_error("ss2zpk: only single-output systems are supported"); return TSR_EARG; }
-    int64_t inp = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : 0;
+    int64_t inp = (nargs > 4 && args[4].kind == 1) ? sig_i64(&args[4]) : 0;
     if (inp < 0 || inp >= p) { fn_set_error("ss2zpk: system does not have the input specified"); return TSR_EARG; }
     int64_t na_, nb_, nc_, nd_;
     double *A = fn_arg_doubles(&args[0], &na_); double *B = fn_arg_doubles(&args[1], &nb_);
@@ -2679,9 +2811,10 @@ static int r_dimpulse(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("dimpulse: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
     if (args[4].kind != 1) { fn_set_error("dimpulse: dt must be a number"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], m = args[1].arr.shape[1], p = args[2].arr.shape[0];
-    const int64_t ns = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : 100;
+    const int64_t ns = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5]) : 100;
     if (m != 1) { fn_set_error("dimpulse: single-input systems only"); return TSR_EARG; }
     if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n || args[3].arr.shape[0] != p || args[3].arr.shape[1] != m || ns < 1) { fn_set_error("dimpulse: inconsistent shapes"); return TSR_EARG; }
+    if (!sig_alloc_ok(tsr_count_mul(ns, n + p + m), sizeof(double), "dimpulse")) return TSR_ENOMEM;   /* U, xout, yout */
     const double dt = args[4].num;
     int64_t la, lb, lc, ld;
     double *A = fn_arg_doubles(&args[0], &la), *B = fn_arg_doubles(&args[1], &lb), *C = fn_arg_doubles(&args[2], &lc), *D = fn_arg_doubles(&args[3], &ld);
@@ -2707,9 +2840,10 @@ static int r_dstep(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("dstep: A, B, C, D must be 2-D arrays"); return TSR_EARG; }
     if (args[4].kind != 1) { fn_set_error("dstep: dt must be a number"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], m = args[1].arr.shape[1], p = args[2].arr.shape[0];
-    const int64_t ns = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : 100;
+    const int64_t ns = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5]) : 100;
     if (m != 1) { fn_set_error("dstep: single-input systems only"); return TSR_EARG; }
     if (args[0].arr.shape[1] != n || args[1].arr.shape[0] != n || args[2].arr.shape[1] != n || args[3].arr.shape[0] != p || args[3].arr.shape[1] != m || ns < 1) { fn_set_error("dstep: inconsistent shapes"); return TSR_EARG; }
+    if (!sig_alloc_ok(tsr_count_mul(ns, n + p + m), sizeof(double), "dstep")) return TSR_ENOMEM;   /* U, xout, yout */
     const double dt = args[4].num;
     int64_t la, lb, lc, ld;
     double *A = fn_arg_doubles(&args[0], &la), *B = fn_arg_doubles(&args[1], &lb), *C = fn_arg_doubles(&args[2], &lc), *D = fn_arg_doubles(&args[3], &ld);
@@ -3278,6 +3412,7 @@ static int r_lp2lp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     (void)ctx; (void)nres;
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("lp2lp: b and a must be non-empty"); return TSR_EARG; }
     const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     const int64_t M = na > nb ? na : nb;
     const int64_t start1 = nb > na ? nb - na : 0, start2 = na > nb ? na - nb : 0;
@@ -3300,6 +3435,7 @@ static int r_lp2hp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     (void)ctx; (void)nres;
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("lp2hp: b and a must be non-empty"); return TSR_EARG; }
     const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     const int64_t M = na > nb ? na : nb;
     double *pwo = (double *)malloc(sizeof(double) * (size_t)M);
@@ -3329,6 +3465,7 @@ static int r_lp2bp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     (void)ctx; (void)nres;
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("lp2bp: b and a must be non-empty"); return TSR_EARG; }
     const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     const double bw = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
     const int64_t N = nb - 1, D = na - 1, ma = N > D ? N : D, Np = N + ma, Dp = D + ma;
@@ -3355,6 +3492,7 @@ static int r_lp2bs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     (void)ctx; (void)nres;
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("lp2bs: b and a must be non-empty"); return TSR_EARG; }
     const double wo = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     const double bw = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
     const int64_t N = nb - 1, D = na - 1, M = N > D ? N : D, Np = 2 * M, Dp = 2 * M;
@@ -3444,6 +3582,7 @@ static int r_freqs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     if (args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("freqs: worN must be a 1-D array of frequencies"); return TSR_EARG; }
     int64_t nb, na, nw; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("freqs: b and a must be non-empty"); return TSR_EARG; }
     double *wv = fn_arg_doubles(&args[2], &nw); if (!wv) { fn_free_doubles(b, nb); fn_free_doubles(a, na); return TSR_ENOMEM; }
     double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw});
     double *h = w ? (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){nw}) : NULL;
@@ -3492,7 +3631,7 @@ static int r_freqs_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
 static int r_freqz_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    const int64_t N = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 512;
+    const int64_t N = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : 512;
     const int whole = (nargs > 4 && (args[4].kind == 1 || args[4].kind == 4)) ? args[4].num != 0 : 0;
     if (N <= 0) { fn_set_error("freqz_zpk: worN must be positive"); return TSR_EARG; }
     int64_t nz, np_; double complex *z = read_carr(&args[0], &nz); if (!z) return TSR_ENOMEM;
@@ -3547,6 +3686,7 @@ static int r_bode(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("bode: w must be a 1-D array of frequencies"); return TSR_EARG; }
     int64_t nb, na, nw; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("bode: b and a must be non-empty"); return TSR_EARG; }
     double *wv = fn_arg_doubles(&args[2], &nw); if (!wv) { fn_free_doubles(b, nb); fn_free_doubles(a, na); return TSR_ENOMEM; }
     double *w   = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nw});
     double *mag = w ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){nw}) : NULL;
@@ -3577,8 +3717,9 @@ static int r_bode(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 static int r_dbode(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("dbode: num and den must be 1-D arrays"); return TSR_EARG; }
-    const int64_t N = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 512;
+    if (args[0].kind != 3 || args[1].kind != 3 || args[0].arr.ndim != 1 || args[1].arr.ndim != 1) { fn_set_error("dbode: num and den must be 1-D arrays"); return TSR_EARG; }
+    if (args[0].arr.shape[0] == 0 || args[1].arr.shape[0] == 0) { fn_set_error("dbode: num and den must be non-empty"); return TSR_EARG; }
+    const int64_t N = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : 512;
     const int whole = (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) ? args[3].num != 0 : 0;
     if (N <= 0) { fn_set_error("dbode: worN must be positive"); return TSR_EARG; }
     const int64_t nb = args[0].arr.shape[0], na = args[1].arr.shape[0];
@@ -3616,7 +3757,7 @@ static int r_sosfreqz(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[1] != 6) { fn_set_error("sosfreqz: sos must be an (n, 6) array"); return TSR_EARG; }
     const int64_t nsec = args[0].arr.shape[0];
-    const int64_t N = (nargs > 1 && args[1].kind == 1) ? (int64_t)args[1].num : 512;
+    const int64_t N = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : 512;
     const int whole = (nargs > 2 && (args[2].kind == 1 || args[2].kind == 4)) ? args[2].num != 0 : 0;
     if (N <= 0) { fn_set_error("sosfreqz: worN must be positive"); return TSR_EARG; }
     int64_t ns; double *sos = fn_arg_doubles(&args[0], &ns); if (!sos) return TSR_ENOMEM;
@@ -3650,11 +3791,12 @@ static int r_group_delay(const void *ctx, const tsr_arg *args, int nargs, tsr_re
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("group_delay: b and a must be 1-D arrays"); return TSR_EARG; }
-    const int64_t N = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 512;
+    const int64_t N = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : 512;
     const int whole = (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) ? args[3].num != 0 : 0;
     if (N <= 0) { fn_set_error("group_delay: w must be positive"); return TSR_EARG; }
     int64_t nb, na; double *b = fn_arg_doubles(&args[0], &nb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &na); if (!a) { fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nb < 1 || na < 1) { fn_free_doubles(b, nb); fn_free_doubles(a, na); fn_set_error("group_delay: b and a must be non-empty"); return TSR_EARG; }
     const int64_t nc = nb + na - 1;                          /* c = convolve(b, reverse(a)) */
     double *c = (double *)calloc((size_t)nc, sizeof(double));
     double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){N});
@@ -3686,9 +3828,10 @@ static int r_hilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("hilbert: x must be a 1-D real array"); return TSR_EARG; }
     int64_t n0; double *x = fn_arg_doubles(&args[0], &n0); if (!x) return TSR_ENOMEM;
-    const int64_t N = (nargs > 1 && args[1].kind == 1) ? (int64_t)args[1].num : n0;
+    const int64_t N = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : n0;
     int rc = TSR_OK;
     if (N <= 0) { fn_free_doubles(x, n0); fn_set_error("hilbert: N must be positive"); return TSR_EARG; }
+    if (!sig_alloc_ok(N, 4 * sizeof(double), "hilbert")) { fn_free_doubles(x, n0); return TSR_ENOMEM; }
     double *in = (double *)calloc((size_t)(2 * N), sizeof(double));
     double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * N));
     double *out = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){N});
@@ -3721,7 +3864,8 @@ static int r_periodogram(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     int64_t N0; double *x = fn_arg_doubles(&args[0], &N0); if (!x) return TSR_ENOMEM;
     const double fs = (nargs > 1 && args[1].kind == 1) ? args[1].num : 1.0;
     int64_t nperseg = N0, fftlen = N0;
-    if (nargs > 3 && args[3].kind == 1) { const int64_t nf = (int64_t)args[3].num; if (nf < N0) { nperseg = nf; fftlen = nf; } else { fftlen = nf; } }
+    if (nargs > 3 && args[3].kind == 1) { const int64_t nf = sig_i64(&args[3]); if (nf < 1) { fn_free_doubles(x, N0); fn_set_error("periodogram: nfft must be a positive integer"); return TSR_EARG; } if (nf < N0) { nperseg = nf; fftlen = nf; } else { fftlen = nf; } }
+    if (!sig_alloc_ok(fftlen, 6 * sizeof(double), "periodogram")) { fn_free_doubles(x, N0); return TSR_ENOMEM; }
     int det = 1;                                             /* 1 constant, 2 linear, 0 none */
     if (nargs > 4) { if (args[4].kind == 2 && args[4].str) { det = !strcmp(args[4].str, "linear") ? 2 : (!strcmp(args[4].str, "constant") ? 1 : 1); } else if (args[4].kind == 4 && args[4].num == 0.0) det = 0; }
     const int onesided = (nargs > 5 && args[5].kind == 4) ? (args[5].num != 0.0) : 1;
@@ -3796,16 +3940,19 @@ static int r_welch(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     /* window: array, or a name (boxcar / hann[_periodic], the default) */
     int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
     int win_boxcar = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "boxcar"));
-    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (warr ? nwin : (nx < 256 ? nx : 256));
+    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : (warr ? nwin : (nx < 256 ? nx : 256));
     if (nperseg > nx) nperseg = nx;
-    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : nperseg / 2;
-    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg;
+    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? sig_i64(&args[4]) : nperseg / 2;
+    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5]) : nperseg;
     int det = 1;
     if (nargs > 6) { if (args[6].kind == 2 && args[6].str) det = !strcmp(args[6].str, "linear") ? 2 : 1; else if (args[6].kind == 4 && args[6].num == 0.0) det = 0; }
     const int onesided = (nargs > 7 && args[7].kind == 4) ? (args[7].num != 0.0) : 1;
     const int density = !(nargs > 8 && args[8].kind == 2 && args[8].str && !strcmp(args[8].str, "spectrum"));
     /* args[9] is axis (1-D only, ignored); average is args[10] to match scipy's parameter order */
     const int median = (nargs > 10 && args[10].kind == 2 && args[10].str && !strcmp(args[10].str, "median"));
+    { int rc0 = sig_seg_params("welch", nperseg, noverlap, nfft);
+      if (rc0 == TSR_OK && median && !sig_alloc_ok(tsr_count_mul(1 + nx / (nperseg - noverlap), nfft + 1), sizeof(double), "welch")) rc0 = TSR_ENOMEM;
+      if (rc0 != TSR_OK) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); return rc0; } }
     const int64_t nstep = nperseg - noverlap;
     int rc = TSR_OK;
     if (nstep <= 0) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); fn_set_error("welch: noverlap must be less than nperseg"); return TSR_EARG; }
@@ -3877,10 +4024,12 @@ static int r_csd(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     const double fs = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     int64_t nwin = 0; double *warr = (nargs > 3 && args[3].kind == 3) ? fn_arg_doubles(&args[3], &nwin) : NULL;
     const int win_boxcar = (nargs > 3 && args[3].kind == 2 && args[3].str && !strcmp(args[3].str, "boxcar"));
-    int64_t nperseg = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : (warr ? nwin : (nmin < 256 ? nmin : 256));
+    int64_t nperseg = (nargs > 4 && args[4].kind == 1) ? sig_i64(&args[4]) : (warr ? nwin : (nmin < 256 ? nmin : 256));
     if (nperseg > nmin) nperseg = nmin;
-    const int64_t noverlap = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg / 2;
-    const int64_t nfft = (nargs > 6 && args[6].kind == 1) ? (int64_t)args[6].num : nperseg;
+    const int64_t noverlap = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5]) : nperseg / 2;
+    const int64_t nfft = (nargs > 6 && args[6].kind == 1) ? sig_i64(&args[6]) : nperseg;
+    { const int rc0 = sig_seg_params("csd", nperseg, noverlap, nfft);
+      if (rc0 != TSR_OK) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); fn_free_doubles(y, ny); return rc0; } }
     int det = 1;
     if (nargs > 7) { if (args[7].kind == 2 && args[7].str) det = !strcmp(args[7].str, "linear") ? 2 : 1; else if (args[7].kind == 4 && args[7].num == 0.0) det = 0; }
     const int onesided = (nargs > 8 && args[8].kind == 4) ? (args[8].num != 0.0) : 1;
@@ -3955,10 +4104,12 @@ static int r_coherence(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     const double fs = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     int64_t nwin = 0; double *warr = (nargs > 3 && args[3].kind == 3) ? fn_arg_doubles(&args[3], &nwin) : NULL;
     const int win_boxcar = (nargs > 3 && args[3].kind == 2 && args[3].str && !strcmp(args[3].str, "boxcar"));
-    int64_t nperseg = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : (warr ? nwin : (nmin < 256 ? nmin : 256));
+    int64_t nperseg = (nargs > 4 && args[4].kind == 1) ? sig_i64(&args[4]) : (warr ? nwin : (nmin < 256 ? nmin : 256));
     if (nperseg > nmin) nperseg = nmin;
-    const int64_t noverlap = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg / 2;
-    const int64_t nfft = (nargs > 6 && args[6].kind == 1) ? (int64_t)args[6].num : nperseg;
+    const int64_t noverlap = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5]) : nperseg / 2;
+    const int64_t nfft = (nargs > 6 && args[6].kind == 1) ? sig_i64(&args[6]) : nperseg;
+    { const int rc0 = sig_seg_params("coherence", nperseg, noverlap, nfft);
+      if (rc0 != TSR_OK) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); fn_free_doubles(y, ny); return rc0; } }
     int det = 1;
     if (nargs > 7) { if (args[7].kind == 2 && args[7].str) det = !strcmp(args[7].str, "linear") ? 2 : 1; else if (args[7].kind == 4 && args[7].num == 0.0) det = 0; }
     const int64_t nstep = nperseg - noverlap;
@@ -4014,8 +4165,9 @@ static int r_resample(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("resample: x must be a 1-D real array"); return TSR_EARG; }
     if (nargs < 2 || args[1].kind != 1) { fn_set_error("resample: num must be an integer"); return TSR_EARG; }
-    const int64_t num = (int64_t)args[1].num;
+    const int64_t num = sig_i64(&args[1]);
     if (num <= 0) { fn_set_error("resample: num must be positive"); return TSR_EARG; }
+    if (!sig_alloc_ok(num, 4 * sizeof(double), "resample")) return TSR_ENOMEM;
     if (nargs > 4 && args[4].kind != 0 && !(args[4].kind == 4 && args[4].num == 0.0)) { fn_set_error("resample: only window=None is supported"); return TSR_EARG; }
     int64_t Nx; double *x = fn_arg_doubles(&args[0], &Nx); if (!x) return TSR_ENOMEM;
     const int64_t nxb = Nx / 2 + 1, nyb = num / 2 + 1;
@@ -4079,6 +4231,7 @@ static int r_kaiserord(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     if (A < 8.0) { fn_set_error("kaiserord: ripple attenuation is too small for the Kaiser formula"); return TSR_EARG; }
     const double beta = sig_kaiser_beta(A);
     const double nt = (A - 7.95) / 2.285 / (M_PI * width) + 1.0;
+    if (!(nt > -9.2e18 && nt < 9.2e18)) { fn_set_error(nt != nt ? "kaiserord: cannot convert float NaN to integer" : "kaiserord: cannot convert float infinity to integer"); return TSR_EARG; }   /* SciPy: int(ceil(numtaps)) */
     fn_result_int(&res[0], (int64_t)ceil(nt));
     fn_result_num(&res[1], beta);
     return TSR_OK;
@@ -4122,7 +4275,7 @@ static int r_buttord(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int rc = sig_ord_prep(args, nargs, &ft, &pb, &nat, &analog, &fsv); if (rc != TSR_OK) return rc;
     const double gpass = args[2].num, gstop = args[3].num;
     const double GSTOP = pow(10.0, 0.1 * fabs(gstop)), GPASS = pow(10.0, 0.1 * fabs(gpass));
-    const int ord = (int)ceil(log10((GSTOP - 1.0) / (GPASS - 1.0)) / (2.0 * log10(nat)));
+    int ord; if ((rc = sig_order_of(log10((GSTOP - 1.0) / (GPASS - 1.0)) / (2.0 * log10(nat)), "buttord", &ord)) != TSR_OK) return rc;
     const double W0 = pow(GPASS - 1.0, -1.0 / (2.0 * (double)ord));
     const double WN = (ft == 1) ? W0 * pb : pb / W0;
     fn_result_int(&res[0], ord);
@@ -4140,7 +4293,7 @@ static int r_cheb1ord(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     const double gpass = args[2].num, gstop = args[3].num;
     const double GSTOP = pow(10.0, 0.1 * fabs(gstop)), GPASS = pow(10.0, 0.1 * fabs(gpass));
     const double v = acosh(sqrt((GSTOP - 1.0) / (GPASS - 1.0)));
-    const int ord = (int)ceil(v / acosh(nat));
+    int ord; if ((rc = sig_order_of(v / acosh(nat), "cheb1ord", &ord)) != TSR_OK) return rc;
     fn_result_int(&res[0], ord);
     fn_result_num(&res[1], sig_postprocess_wn(pb, analog, fsv));   /* natural freq = passband edge */
     return TSR_OK;
@@ -4156,7 +4309,7 @@ static int r_cheb2ord(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     const double gpass = args[2].num, gstop = args[3].num;
     const double GSTOP = pow(10.0, 0.1 * fabs(gstop)), GPASS = pow(10.0, 0.1 * fabs(gpass));
     const double v = acosh(sqrt((GSTOP - 1.0) / (GPASS - 1.0)));
-    const int ord = (int)ceil(v / acosh(nat));
+    int ord; if ((rc = sig_order_of(v / acosh(nat), "cheb2ord", &ord)) != TSR_OK) return rc;
     const double new_freq = 1.0 / cosh((1.0 / (double)ord) * v);
     const double WN = (ft == 1) ? pb / new_freq : pb * new_freq;
     fn_result_int(&res[0], ord);
@@ -4177,7 +4330,7 @@ static int r_ellipord(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     double k0, km1_0, k1, km1_1;
     tsr_special_ellipk(NULL, &m0, &k0); tsr_special_ellipkm1(NULL, &m0, &km1_0);
     tsr_special_ellipk(NULL, &arg1_sq, &k1); tsr_special_ellipkm1(NULL, &arg1_sq, &km1_1);
-    const int ord = (int)ceil(k0 * km1_1 / (km1_0 * k1));
+    int ord; if ((rc = sig_order_of(k0 * km1_1 / (km1_0 * k1), "ellipord", &ord)) != TSR_OK) return rc;
     fn_result_int(&res[0], ord);
     fn_result_num(&res[1], sig_postprocess_wn(pb, analog, fsv));
     return TSR_OK;
@@ -4191,8 +4344,9 @@ static int r_firwin(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1) { fn_set_error("firwin: numtaps must be an integer"); return TSR_EARG; }
-    const int64_t M = (int64_t)args[0].num;
+    const int64_t M = sig_i64(&args[0]);
     if (M < 1) { fn_set_error("firwin: numtaps must be >= 1"); return TSR_EARG; }
+    if (!sig_alloc_ok(M, 3 * sizeof(double), "firwin")) return TSR_ENOMEM;
     if (args[1].kind != 3) { fn_set_error("firwin: cutoff must be an array"); return TSR_EARG; }
     int64_t nc; double *cut0 = fn_arg_doubles(&args[1], &nc); if (!cut0) return TSR_ENOMEM;
     const int pass_zero = (nargs > 3 && args[3].kind == 4) ? (args[3].num != 0.0) : 1;
@@ -4248,7 +4402,8 @@ static int r_firwin2(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("firwin2: numtaps int, freq and gain arrays"); return TSR_EARG; }
-    const int64_t M = (int64_t)args[0].num;
+    const int64_t M = sig_i64(&args[0]);
+    if (M >= 1 && !sig_alloc_ok(M, 6 * sizeof(double), "firwin2")) return TSR_ENOMEM;   /* also keeps 1 << ceil(log2(M)) defined */
     const double fs = (nargs > 6 && args[6].kind == 1) ? args[6].num : 2.0;
     const double nyq = 0.5 * fs;
     if (nargs > 5 && args[5].kind == 4 && args[5].num != 0.0) { fn_set_error("firwin2: antisymmetric=True is not yet supported"); return TSR_EARG; }
@@ -4262,12 +4417,15 @@ static int r_firwin2(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     else if (freq[0] != 0.0 || fabs(freq[nf - 1] - nyq) > 1e-12 * nyq) { rc = TSR_EARG; fn_set_error("firwin2: freq must start at 0 and end at fs/2"); }
     else if (warr && nwin != M) { rc = TSR_EARG; fn_set_error("firwin2: window length must equal numtaps"); }
     else {
-        int64_t nfreqs = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 1 + (1LL << (int)ceil(log2((double)M)));
-        const int64_t nfull = 2 * (nfreqs - 1);
-        double *fx2 = (double *)malloc(sizeof(double) * (size_t)(2 * nfreqs));
-        double *outf = (double *)malloc(sizeof(double) * (size_t)nfull);
-        double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){M});
-        if (!fx2 || !outf || !out) rc = TSR_ENOMEM;
+        int64_t nfreqs = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : 1 + (1LL << (int)ceil(log2((double)M)));
+        /* SciPy: numtaps < nfreqs (the inverse FFT of the 2*(nfreqs-1)-point mesh must hold numtaps samples) */
+        const int ok = nfreqs > M ? sig_alloc_ok(nfreqs, 4 * sizeof(double), "firwin2") : (fn_set_error("firwin2: ntaps must be less than nfreqs"), 0);
+        const int64_t nfull = ok ? 2 * (nfreqs - 1) : 0;
+        double *fx2 = ok ? (double *)malloc(sizeof(double) * (size_t)(2 * nfreqs)) : NULL;
+        double *outf = ok ? (double *)malloc(sizeof(double) * (size_t)nfull) : NULL;
+        double *out = ok ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){M}) : NULL;
+        if (!ok) rc = nfreqs > M ? TSR_ENOMEM : TSR_EARG;
+        else if (!fx2 || !outf || !out) rc = TSR_ENOMEM;
         else {
             int64_t seg = 0;
             for (int64_t i = 0; i < nfreqs; i++) {
@@ -4321,6 +4479,7 @@ static int r_lp2lp_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     const double k = (args[2].kind == 1) ? args[2].num : 1.0;
     const double wo = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
     const int64_t degree = np_ - nz;
+    if (degree < 0) { free(z); free(p); fn_set_error("lp2lp_zpk: Improper transfer function. Must have at least as many poles as zeros."); return TSR_EARG; }
     for (int64_t i = 0; i < nz; i++) z[i] *= wo;
     for (int64_t i = 0; i < np_; i++) p[i] *= wo;
     int rc = sig_emit_zpk(z, nz, p, np_, k * pow(wo, (double)degree), res);
@@ -4337,6 +4496,7 @@ static int r_lp2hp_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     const double k = (args[2].kind == 1) ? args[2].num : 1.0;
     const double wo = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
     const int64_t degree = np_ - nz;
+    if (degree < 0) { free(z); free(p); fn_set_error("lp2hp_zpk: Improper transfer function. Must have at least as many poles as zeros."); return TSR_EARG; }
     double complex pz = 1.0, pp = 1.0;
     for (int64_t i = 0; i < nz; i++) pz *= -z[i];
     for (int64_t i = 0; i < np_; i++) pp *= -p[i];
@@ -4364,6 +4524,7 @@ static int r_bilinear_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     const double fs = (args[3].kind == 1) ? args[3].num : 1.0;
     const double fs2 = 2.0 * fs;
     const int64_t degree = np_ - nz;
+    if (degree < 0) { free(z); free(p); fn_set_error("bilinear_zpk: Improper transfer function. Must have at least as many poles as zeros."); return TSR_EARG; }
     double complex pz = 1.0, pp = 1.0;
     for (int64_t i = 0; i < nz; i++) pz *= (fs2 - z[i]);
     for (int64_t i = 0; i < np_; i++) pp *= (fs2 - p[i]);
@@ -4401,12 +4562,53 @@ static int r_correlate2d(const void *ctx, const tsr_arg *args, int nargs, tsr_re
    with mode='constant', cval=0). The footprint is centred over each pixel (fshape[d] must be odd). For each
    output pixel the selected neighbours (footprint nonzero; out-of-bounds taken as 0) are sorted ascending and
    the rank-th (0-based) element is returned. Backs scipy.signal.order_filter/medfilt/medfilt2d. */
+/* the rank-th order statistic over a full (all-ones) zero-padded box of ftot cells: only the in-bounds part is
+   read and sorted, the ftot - m padding cells are zeros merged in at their sorted place -- the same multiset, so the
+   same value, as sorting the whole window, but a kernel larger than the array costs no more than the array */
+static int sig_box_filter_nd(const double *a, const int64_t *shape, int32_t nd, const int64_t *fshape, int64_t ftot,
+                             int64_t rank, const char *who, tsr_result *res)
+{
+    if (rank < 0) rank += ftot;
+    if (rank < 0 || rank >= ftot) { fn_set_error("%s: rank is out of range", who); return TSR_EARG; }
+    int64_t total = 1, wmax = 1;
+    for (int32_t d = 0; d < nd; d++) { total *= shape[d]; wmax *= fshape[d] < shape[d] ? fshape[d] : shape[d]; }
+    double *out = (double *)fn_result_array(res, TSR_F64, nd, (int64_t *)shape);
+    if (!out) return TSR_ENOMEM;
+    double *win = (double *)malloc(sizeof(double) * (size_t)(wmax > 0 ? wmax : 1));
+    if (!win) return TSR_ENOMEM;
+    int64_t ist[TSR_MAXDIM], c[TSR_MAXDIM], O[TSR_MAXDIM], lo[TSR_MAXDIM], hi[TSR_MAXDIM], K[TSR_MAXDIM];
+    { int64_t acc = 1; for (int32_t d = nd - 1; d >= 0; d--) { ist[d] = acc; acc *= shape[d]; } }
+    for (int32_t d = 0; d < nd; d++) { c[d] = fshape[d] / 2; O[d] = 0; }
+    for (int64_t idx = 0; idx < total; idx++) {
+        int64_t m = 1;
+        for (int32_t d = 0; d < nd; d++) {
+            lo[d] = O[d] - c[d] < 0 ? 0 : O[d] - c[d];
+            hi[d] = O[d] - c[d] + fshape[d] - 1; if (hi[d] > shape[d] - 1) hi[d] = shape[d] - 1;
+            m *= hi[d] - lo[d] + 1; K[d] = lo[d];
+        }
+        for (int64_t w = 0; w < m; w++) {
+            int64_t off = 0; for (int32_t d = 0; d < nd; d++) off += K[d] * ist[d];
+            win[w] = a[off];
+            for (int32_t d = nd - 1; d >= 0; d--) { if (++K[d] <= hi[d]) break; K[d] = lo[d]; }
+        }
+        qsort(win, (size_t)m, sizeof(double), cmp_double_sig);
+        const int64_t nz = ftot - m;
+        int64_t neg = 0; while (neg < m && win[neg] < 0.0) neg++;
+        out[idx] = rank < neg ? win[rank] : (rank < neg + nz ? 0.0 : win[rank - nz]);
+        for (int32_t d = nd - 1; d >= 0; d--) { if (++O[d] < shape[d]) break; O[d] = 0; }
+    }
+    free(win);
+    return TSR_OK;
+}
+
 static int sig_order_filter_nd(const double *a, const int64_t *shape, int32_t nd,
                                const int64_t *fshape, const unsigned char *fp, int64_t rank,
                                const char *who, tsr_result *res)
 {
     int64_t total = 1, ftot = 1, fcount = 0;
-    for (int32_t d = 0; d < nd; d++) { total *= shape[d]; ftot *= fshape[d]; }
+    for (int32_t d = 0; d < nd; d++) { total *= shape[d]; ftot = tsr_count_mul(ftot, fshape[d]); }
+    if (ftot < 0) { fn_set_error("%s: kernel_size is too large", who); return TSR_EARG; }
+    if (!fp) return sig_box_filter_nd(a, shape, nd, fshape, ftot, rank, who, res);
     for (int64_t i = 0; i < ftot; i++) if (fp[i]) fcount++;
     if (fcount == 0) { fn_set_error("%s: footprint has no nonzero element", who); return TSR_EARG; }
     if (rank < 0) rank += fcount;
@@ -4445,10 +4647,10 @@ static int sig_order_filter_nd(const double *a, const int64_t *shape, int32_t nd
 static int sig_perax_odd(const tsr_arg *a, int32_t nd, int64_t dflt, int64_t *out, const char *who)
 {
     if (!a || a->kind == 0) { for (int32_t d = 0; d < nd; d++) out[d] = dflt; }
-    else if (a->kind == 1) { const int64_t v = (int64_t)a->num; for (int32_t d = 0; d < nd; d++) out[d] = v; }
+    else if (a->kind == 1) { const int64_t v = sig_i64(a); for (int32_t d = 0; d < nd; d++) out[d] = v; }
     else if (a->kind == 3 && a->arr.ndim == 1 && a->arr.shape[0] == nd) {
         int64_t t; double *p = fn_arg_doubles(a, &t); if (!p) return TSR_ENOMEM;
-        for (int32_t d = 0; d < nd; d++) out[d] = (int64_t)p[d]; fn_free_doubles(p, t);
+        for (int32_t d = 0; d < nd; d++) out[d] = sig_d2i64(p[d]); fn_free_doubles(p, t);
     } else { fn_set_error("%s: kernel_size must be a scalar or a length-%d sequence", who, (int)nd); return TSR_EARG; }
     for (int32_t d = 0; d < nd; d++) if ((out[d] % 2) != 1) { fn_set_error("%s: each element of kernel_size should be odd", who); return TSR_EARG; }
     return TSR_OK;
@@ -4464,14 +4666,12 @@ static int r_medfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int64_t ks[TSR_MAXDIM];
     int rc = sig_perax_odd(nargs > 1 ? &args[1] : NULL, nd, 3, ks, "medfilt");
     if (rc != TSR_OK) return rc;
-    int64_t V = 1; for (int32_t d = 0; d < nd; d++) V *= ks[d];
-    unsigned char *fp = (unsigned char *)malloc((size_t)V);
-    if (!fp) return TSR_ENOMEM;
-    memset(fp, 1, (size_t)V);
+    int64_t V = 1; for (int32_t d = 0; d < nd && V >= 0; d++) V = tsr_count_mul(V, ks[d]);
+    if (V < 0) { fn_set_error("medfilt: kernel_size is too large"); return TSR_EARG; }
     int64_t na; double *a = fn_arg_doubles(&args[0], &na);
-    if (!a) { free(fp); return TSR_ENOMEM; }
-    rc = sig_order_filter_nd(a, args[0].arr.shape, nd, ks, fp, V / 2, "medfilt", &res[0]);
-    free(fp); fn_free_doubles(a, na);
+    if (!a) return TSR_ENOMEM;
+    rc = sig_order_filter_nd(a, args[0].arr.shape, nd, ks, NULL, V / 2, "medfilt", &res[0]);   /* the full box */
+    fn_free_doubles(a, na);
     return rc;
 }
 
@@ -4483,14 +4683,12 @@ static int r_medfilt2d(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     int64_t ks[2];
     int rc = sig_perax_odd(nargs > 1 ? &args[1] : NULL, 2, 3, ks, "medfilt2d");
     if (rc != TSR_OK) return rc;
-    const int64_t V = ks[0] * ks[1];
-    unsigned char *fp = (unsigned char *)malloc((size_t)V);
-    if (!fp) return TSR_ENOMEM;
-    memset(fp, 1, (size_t)V);
+    const int64_t V = tsr_count_mul(ks[0], ks[1]);
+    if (V < 0) { fn_set_error("medfilt2d: kernel_size is too large"); return TSR_EARG; }
     int64_t na; double *a = fn_arg_doubles(&args[0], &na);
-    if (!a) { free(fp); return TSR_ENOMEM; }
-    rc = sig_order_filter_nd(a, args[0].arr.shape, 2, ks, fp, V / 2, "medfilt2d", &res[0]);
-    free(fp); fn_free_doubles(a, na);
+    if (!a) return TSR_ENOMEM;
+    rc = sig_order_filter_nd(a, args[0].arr.shape, 2, ks, NULL, V / 2, "medfilt2d", &res[0]);   /* the full box */
+    fn_free_doubles(a, na);
     return rc;
 }
 
@@ -4507,7 +4705,7 @@ static int r_order_filter_sig(const void *ctx, const tsr_arg *args, int nargs, t
         fshape[d] = args[1].arr.shape[d]; ftot *= fshape[d];
         if ((fshape[d] % 2) != 1) { fn_set_error("order_filter: each dimension of domain should have an odd number of elements"); return TSR_EARG; }
     }
-    const int64_t rank = (args[2].kind == 1) ? (int64_t)args[2].num : 0;
+    const int64_t rank = (args[2].kind == 1) ? sig_i64(&args[2]) : 0;
     int64_t nd2; double *dom = fn_arg_doubles(&args[1], &nd2);
     if (!dom) return TSR_ENOMEM;
     unsigned char *fp = (unsigned char *)malloc((size_t)(ftot > 0 ? ftot : 1));
@@ -4529,7 +4727,7 @@ static int r_argrel(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     (void)nres;
     const int want_max = ctx && *(const int *)ctx > 0;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("argrel: data must be a 1-D array"); return TSR_EARG; }
-    const int64_t order = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 1;
+    const int64_t order = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : 1;
     if (order < 1) { fn_set_error("argrel: order must be an int >= 1"); return TSR_EARG; }
     int64_t n; double *a = fn_arg_doubles(&args[0], &n); if (!a) return TSR_ENOMEM;
     int64_t *idx = (int64_t *)malloc(sizeof(int64_t) * (size_t)(n > 0 ? n : 1));
@@ -4539,7 +4737,7 @@ static int r_argrel(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         int64_t cnt = 0;
         for (int64_t i = 0; i < n; i++) {
             int ext = 1;
-            for (int64_t s = 1; s <= order && ext; s++) {
+            for (int64_t s = 1; s <= order && s <= n && ext; s++) {   /* s > n repeats the s = n comparisons */
                 int64_t ip = i + s, im = i - s;                 /* clip boundary */
                 if (ip > n - 1) ip = n - 1; if (im < 0) im = 0;
                 const double hi = a[i];
@@ -4570,7 +4768,7 @@ static int r_argrelextrema(const void *ctx, const tsr_arg *args, int nargs, tsr_
     else if (strcmp(args[1].str, "greater_equal") == 0) cmp = 2;
     else if (strcmp(args[1].str, "less_equal") == 0) cmp = 3;
     else { fn_set_error("argrelextrema: comparator must be greater/less/greater_equal/less_equal"); return TSR_EARG; }
-    const int64_t order = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 1;
+    const int64_t order = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : 1;
     if (order < 1) { fn_set_error("argrelextrema: order must be an int >= 1"); return TSR_EARG; }
     const int wrap = (nargs > 4 && args[4].kind == 2 && args[4].str && strcmp(args[4].str, "wrap") == 0);
     int64_t n; double *a = fn_arg_doubles(&args[0], &n); if (!a) return TSR_ENOMEM;
@@ -4581,7 +4779,7 @@ static int r_argrelextrema(const void *ctx, const tsr_arg *args, int nargs, tsr_
         int64_t cnt = 0;
         for (int64_t i = 0; i < n; i++) {
             int ext = 1;
-            for (int64_t s = 1; s <= order && ext; s++) {
+            for (int64_t s = 1; s <= order && s <= n && ext; s++) {   /* s > n repeats the s = n comparisons */
                 int64_t ip = i + s, im = i - s;
                 if (wrap) { ip = ((ip % n) + n) % n; im = ((im % n) + n) % n; }
                 else { if (ip > n - 1) ip = n - 1; if (im < 0) im = 0; }
@@ -4815,7 +5013,7 @@ static int remez_core(int numtaps, int numband, const double *bands /*2*numband,
         /* err[k] = (A(k) - des_g[k]) * wt_g[k] */
         /* Search for alternation set of size nz with max |err|. */
         /* Candidate collection: grid endpoints + interior sign-change-of-slope. */
-        int *chosen = (int*)malloc((size_t)(ngrid) * sizeof(int));
+        int *chosen = (int*)malloc((size_t)(ngrid + 2) * sizeof(int));   /* both endpoints even when ngrid == 1 */
         double *cerr = (double*)malloc((size_t)(ngrid) * sizeof(double));
         if (!chosen || !cerr) { free(chosen); free(cerr); break; }
         /* compute err on grid */
@@ -4935,8 +5133,9 @@ static int r_remez(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1) { fn_set_error("remez: numtaps must be an integer"); return TSR_EARG; }
-    const int64_t numtaps = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    const int64_t numtaps = sig_i64(&args[0]);
     if (numtaps < 1) { fn_set_error("remez: numtaps must be >= 1"); return TSR_EARG; }
+    if (!sig_alloc_ok(numtaps, 64 * sizeof(double), "remez")) return TSR_ENOMEM;   /* the dense grid (16 points per tap) */
     if (args[1].kind != 3 || args[2].kind != 3) { fn_set_error("remez: bands and desired must be arrays"); return TSR_EARG; }
 
     /* type (arg 4): 'bandpass'(default)/'differentiator'/'hilbert' */
@@ -4959,6 +5158,10 @@ static int r_remez(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     double *desired = fn_arg_doubles(&args[2], &nd); if (!desired) { fn_free_doubles(bands, nb); return TSR_ENOMEM; }
     if (nb % 2 != 0 || nd != nb / 2) { fn_set_error("remez: bands must be an even-length edge sequence and desired half that length"); fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); return TSR_EARG; }
     const int numband = (int)(nb / 2);
+    /* the edges, normalised by fs, must be finite, increasing and inside [0, 1/2]: they size the dense grid */
+    int edges_ok = numband >= 1;
+    for (int64_t i = 0; edges_ok && i < nb; i++) { const double e = bands[i] / fs; edges_ok = e >= 0.0 && e <= 0.5 && (i == 0 || bands[i] >= bands[i - 1]); }
+    if (!edges_ok) { fn_set_error("remez: band edges must be increasing and lie in [0, fs/2]"); fn_free_doubles(bands, nb); fn_free_doubles(desired, nd); return TSR_EARG; }
 
     /* weight (arg 3): default None -> all ones */
     double *weight = NULL; int64_t nw = 0; int own_w = 0;
@@ -4991,8 +5194,9 @@ static int r_firls(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1) { fn_set_error("firls: numtaps must be an integer"); return TSR_EARG; }
-    const int64_t numtaps = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    const int64_t numtaps = sig_i64(&args[0]);
     if (numtaps < 1 || numtaps % 2 == 0) { fn_set_error("firls: numtaps must be odd and >= 1"); return TSR_EARG; }
+    if (!sig_alloc_ok(tsr_count_mul(numtaps / 2 + 2, numtaps / 2 + 2), sizeof(double), "firls")) return TSR_ENOMEM;   /* the normal equations */
     if (args[1].kind != 3 || args[2].kind != 3) { fn_set_error("firls: bands and desired must be arrays"); return TSR_EARG; }
     double nyq = 1.0;
     if (nargs > 4 && args[4].kind == 1) { double fs = args[4].num; if (fs <= 0.0) { fn_set_error("firls: fs must be positive"); return TSR_EARG; } nyq = 0.5 * fs; }
@@ -5067,6 +5271,7 @@ static double bspl_quad(double x) { x = fabs(x); if (x < 0.5) return 0.75 - x * 
 /* 1-D symmetric exponential spline coefficient filter into out[K] (yp scratch len>=K). */
 static void spline1d_filter_buf(const double *s, int64_t K, double zi, double scale, double *out, double *yp)
 {
+    if (K == 0) return;                                       /* an empty signal has no coefficients */
     if (K == 1) { out[0] = zi / (zi - 1.0) * (s[0] + zi * s[0]); return; }
     double Y0 = 0.0, p = 1.0;
     for (int64_t k = 0; k < K; k++) { Y0 += p * s[k]; p *= zi; }
@@ -5146,7 +5351,19 @@ static int spline1d_eval(const tsr_arg *args, int nargs, tsr_result *res, int cu
         const double half = cubic ? 2.0 : 1.5;
         for (int64_t i = 0; i < M; i++) {
             double x = (nx[i] - x0) / dx;
-            for (;;) { if (x < 0.0) x = -x; else if (x > (double)(N - 1)) x = 2.0 * (double)(N - 1) - x; else break; }
+            if (!isfinite(x)) { out[i] = FN_NAN; continue; }      /* no mirror position (SciPy recurses forever) */
+            /* mirror into [0, N-1]: a few direct reflections (the usual case, SciPy's arithmetic), then fold by
+               the period 2(N-1) so a far-away x cannot loop forever (and N == 1 maps everything to 0) */
+            int refl = 0;
+            for (;;) {
+                if (x < 0.0) x = -x; else if (x > (double)(N - 1)) x = 2.0 * (double)(N - 1) - x; else break;
+                if (++refl > 8) {
+                    if (N == 1) { x = 0.0; break; }
+                    const double per = 2.0 * (double)(N - 1);
+                    x = fmod(fabs(x), per); if (x > (double)(N - 1)) x = per - x;
+                    break;
+                }
+            }
             int64_t jlower = (int64_t)floor(x - half) + 1;
             double s = 0.0;
             for (int t = 0; t < ntaps; t++) {
@@ -5172,6 +5389,7 @@ static double symiir_prec(double p) { return (p <= 0.0 || p > 1.0) ? 1e-11 : p; 
    (|z1^k| stays above sqrt(prec2) for all k < N). */
 static int symiir1_filter_buf(const double *x, int64_t N, double c0, double z1, double prec2, double *out, double *y)
 {
+    if (N < 1) return -1;                                     /* SciPy: an empty signal "did not converge" */
     double y0 = x[0], powz1 = 1.0, err; int64_t k = 0;
     do { powz1 *= z1; y0 += powz1 * x[k]; err = powz1 * powz1; k++; } while (err > prec2 && k < N);
     if (err > prec2) return -1;
@@ -5227,6 +5445,8 @@ static int r_symiirorder2(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     if (r >= 1.0) { fn_set_error("symiirorder2: r must be < 1"); return TSR_EARG; }
     double prec = symiir_prec((nargs > 3 && args[3].kind == 1) ? args[3].num : -1.0), prec2 = prec * prec;
     int64_t N; double *x = fn_arg_doubles(&args[0], &N); if (!x) return TSR_ENOMEM;
+    /* the two causal initial values read x[0] and x[1]: SciPy reports fewer than two samples as non-convergent */
+    if (N < 2) { fn_free_doubles(x, N); fn_set_error("symiirorder2: Sum to find symmetric boundary conditions did not converge."); return TSR_EARG; }
     const double rsq = r * r, a2 = 2.0 * r * cos(omega), a3 = -rsq, cs = 1.0 - 2.0 * r * cos(omega) + rsq;
     const double cssq = cs * cs;
     /* hc(k): causal step weights; hs(k): backward steady-state weights */
@@ -5371,8 +5591,9 @@ static int r_czt(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
 {
     (void)ctx; (void)nres;
     int64_t n; double complex *x = read_carr(&args[0], &n); if (!x) return TSR_ENOMEM;
-    int64_t m = (nargs > 1 && args[1].kind == 1) ? ((args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num) : n;
+    int64_t m = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : n;
     if (m < 1 || n < 1) { free(x); fn_set_error("czt: m and len(x) must be >= 1"); return TSR_EARG; }
+    if (!sig_alloc_ok(m > n ? m : n, 16 * sizeof(double complex), "czt")) { free(x); return TSR_ENOMEM; }   /* the chirp buffers and the FFT of length >= m + n - 1 */
     const int w_none = (nargs <= 2 || args[2].kind == 0);
     double complex w = read_cscalar(nargs > 2 ? &args[2] : NULL, 0.0);
     double complex a = read_cscalar(nargs > 3 ? &args[3] : NULL, 1.0);
@@ -5406,10 +5627,11 @@ static int r_zoom_fft(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     double f1 = 0.0, f2 = 0.0;
     if (nargs > 1 && args[1].kind == 3) { int64_t nf; double complex *fv = read_carr(&args[1], &nf); if (fv && nf >= 2) { f1 = creal(fv[0]); f2 = creal(fv[1]); } else if (fv && nf == 1) { f1 = 0.0; f2 = creal(fv[0]); } free(fv); }
     else if (nargs > 1 && args[1].kind == 1) { f1 = 0.0; f2 = args[1].num; }
-    int64_t m = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : n;
+    int64_t m = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : n;
     double fs = (nargs > 3 && args[3].kind == 1) ? args[3].num : 2.0;
     int endpoint = (nargs > 4 && (args[4].kind == 4 || args[4].kind == 1)) ? (args[4].num != 0.0) : 0;
     if (m < 1 || n < 1) { free(x); fn_set_error("zoom_fft: m and len(x) must be >= 1"); return TSR_EARG; }
+    if (!sig_alloc_ok(m > n ? m : n, 16 * sizeof(double complex), "zoom_fft")) { free(x); return TSR_ENOMEM; }
     double scale = endpoint ? ((f2 - f1) * (double)m) / (fs * (double)(m - 1)) : (f2 - f1) / fs;
     int64_t maxmn = m > n ? m : n;
     double complex *wk2 = (double complex *)malloc((size_t)maxmn * sizeof(double complex));
@@ -5470,8 +5692,9 @@ static int r_cheb1ap(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 {
     (void)ctx; (void)nres; (void)nargs;
     if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("cheb1ap: N and rp must be numbers"); return TSR_EARG; }
-    const int64_t N = (int64_t)args[0].num; const double rp = args[1].num;
+    const int64_t N = sig_i64(&args[0]); const double rp = args[1].num;
     if (N < 0) { fn_set_error("cheb1ap: filter order must be nonnegative"); return TSR_EARG; }
+    if (!sig_alloc_ok(N, 4 * sizeof(double complex), "cheb1ap")) return TSR_ENOMEM;
     if (N == 0) { double *z = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0}); double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){0}); if (!z || !p) return TSR_ENOMEM; fn_result_num(&res[2], pow(10.0, -rp / 20.0)); return TSR_OK; }
     const double eps = sqrt(pow(10.0, 0.1 * rp) - 1.0);
     const double mu = asinh(1.0 / eps) / (double)N;
@@ -5496,8 +5719,9 @@ static int r_cheb2ap(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 {
     (void)ctx; (void)nres; (void)nargs;
     if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("cheb2ap: N and rs must be numbers"); return TSR_EARG; }
-    const int64_t N = (int64_t)args[0].num; const double rs = args[1].num;
+    const int64_t N = sig_i64(&args[0]); const double rs = args[1].num;
     if (N < 0) { fn_set_error("cheb2ap: filter order must be nonnegative"); return TSR_EARG; }
+    if (!sig_alloc_ok(N, 4 * sizeof(double complex), "cheb2ap")) return TSR_ENOMEM;
     if (N == 0) { double *z = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0}); double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){0}); if (!z || !p) return TSR_ENOMEM; fn_result_num(&res[2], 1.0); return TSR_OK; }
     const double de = 1.0 / sqrt(pow(10.0, 0.1 * rs) - 1.0);
     const double mu = asinh(1.0 / de) / (double)N;
@@ -5528,6 +5752,7 @@ static int r_lp2bp_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     const double wo = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
     const double bw = (nargs > 4 && args[4].kind == 1) ? args[4].num : 1.0;
     const int64_t degree = np_ - nz;
+    if (degree < 0) { free(z); free(p); fn_set_error("lp2bp_zpk: Improper transfer function. Must have at least as many poles as zeros."); return TSR_EARG; }
     double complex *zo = (double complex *)malloc(sizeof(double complex) * (size_t)((2 * nz + degree) ? (2 * nz + degree) : 1));
     double complex *po = (double complex *)malloc(sizeof(double complex) * (size_t)((2 * np_) ? (2 * np_) : 1));
     int rc;
@@ -5552,6 +5777,7 @@ static int r_lp2bs_zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     const double wo = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1.0;
     const double bw = (nargs > 4 && args[4].kind == 1) ? args[4].num : 1.0;
     const int64_t degree = np_ - nz;
+    if (degree < 0) { free(z); free(p); fn_set_error("lp2bs_zpk: Improper transfer function. Must have at least as many poles as zeros."); return TSR_EARG; }
     double complex pz = 1.0, pp = 1.0;
     for (int64_t i = 0; i < nz; i++) pz *= -z[i];
     for (int64_t i = 0; i < np_; i++) pp *= -p[i];
@@ -5575,8 +5801,9 @@ static int r_buttap(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 {
     (void)ctx; (void)nres; (void)nargs;
     if (args[0].kind != 1) { fn_set_error("buttap: N must be an integer"); return TSR_EARG; }
-    const int64_t N = (int64_t)args[0].num;
+    const int64_t N = sig_i64(&args[0]);
     if (N < 0) { fn_set_error("buttap: filter order must be nonnegative"); return TSR_EARG; }
+    if (!sig_alloc_ok(N, 4 * sizeof(double complex), "buttap")) return TSR_ENOMEM;
     double *z = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0});
     double *p = (double *)fn_result_array(&res[1], TSR_C128, 1, (int64_t[]){N});
     if ((N > 0 && !p) || !z) return TSR_ENOMEM;
@@ -5629,7 +5856,9 @@ static int r_correlation_lags(const void *ctx, const tsr_arg *args, int nargs, t
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("correlation_lags: in1_len and in2_len must be integers"); return TSR_EARG; }
-    const int64_t n1 = (int64_t)args[0].num, n2 = (int64_t)args[1].num;
+    const int64_t n1 = sig_i64(&args[0]), n2 = sig_i64(&args[1]);
+    if (n1 < -(INT64_MAX / 4) || n1 > INT64_MAX / 4 || n2 < -(INT64_MAX / 4) || n2 > INT64_MAX / 4) {   /* keeps n1 + n2 defined */
+        fn_set_error("correlation_lags: in1_len and in2_len are out of range"); return TSR_EARG; }
     int mode = 0;                                            /* 0 full, 1 same, 2 valid */
     if (nargs > 2 && args[2].kind == 2 && args[2].str) {
         if (!strcmp(args[2].str, "same")) mode = 1; else if (!strcmp(args[2].str, "valid")) mode = 2;
@@ -5674,10 +5903,12 @@ static int r_spectrogram(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
     const int win_boxcar = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "boxcar"));
     const int win_hann = (nargs > 2 && args[2].kind == 2 && args[2].str && !strcmp(args[2].str, "hann"));
-    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (warr ? nwin : (nx < 256 ? nx : 256));
+    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : (warr ? nwin : (nx < 256 ? nx : 256));
     if (nperseg > nx) nperseg = nx;
-    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : nperseg / 8;
-    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg;
+    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? sig_i64(&args[4]) : nperseg / 8;
+    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5]) : nperseg;
+    { const int rc0 = sig_seg_params("spectrogram", nperseg, noverlap, nfft);
+      if (rc0 != TSR_OK) { if (warr) fn_free_doubles(warr, nwin); fn_free_doubles(x, nx); return rc0; } }
     int det = 1;
     if (nargs > 6) { if (args[6].kind == 2 && args[6].str) det = !strcmp(args[6].str, "linear") ? 2 : 1; else if (args[6].kind == 4 && args[6].num == 0.0) det = 0; }
     const int onesided = (nargs > 7 && args[7].kind == 4) ? (args[7].num != 0.0) : 1;
@@ -5745,7 +5976,8 @@ static int r_hilbert2(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("hilbert2: x must be a 2-D real array"); return TSR_EARG; }
     const int64_t r0 = args[0].arr.shape[0], c0 = args[0].arr.shape[1];
     int64_t N0 = r0, N1 = c0;
-    if (nargs > 1 && args[1].kind == 1) { N0 = N1 = (int64_t)args[1].num; if (N0 <= 0) { fn_set_error("hilbert2: N must be positive"); return TSR_EARG; } }
+    if (nargs > 1 && args[1].kind == 1) { N0 = N1 = sig_i64(&args[1]); if (N0 <= 0) { fn_set_error("hilbert2: N must be positive"); return TSR_EARG; } }
+    if (!sig_alloc_ok(tsr_count_mul(N0, N1), 6 * sizeof(double), "hilbert2")) return TSR_ENOMEM;
     int64_t nx; double *x = fn_arg_doubles(&args[0], &nx); if (!x) return TSR_ENOMEM;
     const size_t sz = (size_t)(2 * N0 * N1);
     double *a = (double *)calloc(sz, sizeof(double));
@@ -5829,7 +6061,7 @@ static int r_get_window(const void *ctx, const tsr_arg *args, int nargs, tsr_res
 {
     (void)ctx; (void)nres;
     if (nargs < 2 || args[1].kind != 1) { fn_set_error("get_window: Nx must be an integer"); return TSR_EARG; }
-    const int64_t Nx = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    const int64_t Nx = sig_i64(&args[1]);
     int sym = 1;                                    /* fftbins default True -> sym = False */
     if (nargs > 2 && (args[2].kind == 4 || args[2].kind == 1)) sym = (args[2].num != 0.0) ? 0 : 1;
     else if (nargs <= 2 || args[2].kind == 0) sym = 0;
@@ -5937,7 +6169,7 @@ static int r_besselap(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1) { fn_set_error("besselap: N must be an integer order"); return TSR_EARG; }
-    const int N = (args[0].flags & 1) ? (int)args[0].ival : (int)args[0].num;
+    const int N = sig_i32(&args[0]);
     if (N < 1 || N > 25) { fn_set_error("besselap: order N must be between 1 and 25"); return TSR_EARG; }
     const char *norm = (nargs > 1 && args[1].kind == 2 && args[1].str) ? args[1].str : "phase";
     int is_phase;
@@ -5979,7 +6211,7 @@ static int r_ellipap(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 {
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 1 || args[1].kind != 1 || args[2].kind != 1) { fn_set_error("ellipap: N, rp, rs must be numbers"); return TSR_EARG; }
-    const int N = (args[0].flags & 1) ? (int)args[0].ival : (int)args[0].num;
+    const int N = sig_i32(&args[0]);
     const double rp = args[1].num, rs = args[2].num;
     if (N < 1 || N > 25) { fn_set_error("ellipap: order N must be between 1 and 25"); return TSR_EARG; }
     const double EPS = 2e-16;
@@ -6103,7 +6335,7 @@ static int ea_ellipap_core(int N, double rp, double rs, double complex *z, int *
 static int r_ellip(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    const int N = (args[0].kind == 1) ? (int)args[0].num : 0;
+    const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 25) { fn_set_error("ellip: order N must be between 1 and 25"); return TSR_EARG; }
     if (!(args[1].kind == 1) || !(args[2].kind == 1) || !(args[3].kind == 1)) { fn_set_error("ellip: rp, rs and a scalar Wn (lowpass/highpass) are required"); return TSR_EARG; }
     const double rp = args[1].num, rs = args[2].num, Wn = args[3].num;
@@ -6147,7 +6379,7 @@ static int ea_besselap_poles(int N, double complex *p, double *k)
 static int r_bessel(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    const int N = (args[0].kind == 1) ? (int)args[0].num : 0;
+    const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 25) { fn_set_error("bessel: order N must be between 1 and 25"); return TSR_EARG; }
     if (!(args[1].kind == 1)) { fn_set_error("bessel: a scalar Wn (lowpass/highpass) is required"); return TSR_EARG; }
     const double Wn = args[1].num;
@@ -6201,7 +6433,7 @@ static int r_findfreqs(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 1) { fn_set_error("findfreqs: num, den must be arrays and N an integer"); return TSR_EARG; }
-    const int64_t Nout = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
+    const int64_t Nout = sig_i64(&args[2]);
     const char *kind = (nargs > 3 && args[3].kind == 2 && args[3].str) ? args[3].str : "ba";
     int64_t nep = 0, ntz = 0; double complex *ep = NULL, *tz = NULL; int rc = TSR_OK;
     if (strcmp(kind, "zp") == 0) {
@@ -6211,9 +6443,9 @@ static int r_findfreqs(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
         int64_t ld, ln; double *den = fn_arg_doubles(&args[1], &ld), *num = fn_arg_doubles(&args[0], &ln);
         if (!den || !num) rc = TSR_ENOMEM;
         else {
-            double *rep = sig_polyroots(den, args[1].arr.shape[0], &nep);
-            double *rtz = sig_polyroots(num, args[0].arr.shape[0], &ntz);
-            if (nep < 0 || ntz < 0) rc = TSR_ECONVERGE;
+            double *rep = sig_polyroots(den, ld, &nep);           /* the flattened lengths (shape[0] is not one for a 0-d array) */
+            double *rtz = sig_polyroots(num, ln, &ntz);
+            if (nep < 0 || ntz < 0) { fn_set_error("findfreqs: root finding failed"); rc = TSR_ECONVERGE; }
             else {
                 ep = (double complex *)malloc((size_t)((nep > 0 ? nep : 1)) * sizeof(double complex));
                 tz = (double complex *)malloc((size_t)((ntz > 0 ? ntz : 1)) * sizeof(double complex));
@@ -6227,7 +6459,7 @@ static int r_findfreqs(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     }
     if (rc == TSR_OK) {
         double complex lone = -1000.0;
-        if (nep == 0) { ep = &lone; nep = 1; }                    /* empty poles -> [-1000] */
+        if (nep == 0) { free(ep); ep = &lone; nep = 1; }          /* empty poles -> [-1000] (the 1-slot buffer is released) */
         double hmax = -INFINITY, lmin = INFINITY;
         for (int64_t i = 0; i < nep; i++) if (cimag(ep[i]) >= 0.0) {
             const double ig = (cabs(ep[i]) < 1e-10) ? 1.0 : 0.0;
@@ -6264,7 +6496,7 @@ static int r_wiener(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("wiener: im must be a 1-D array"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0];
-    int64_t m = (nargs > 1 && args[1].kind == 1) ? ((args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num) : 3;
+    int64_t m = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : 3;
     if (m < 1) m = 1;
     const int have_noise = (nargs > 2 && args[2].kind == 1);
     double noise = have_noise ? args[2].num : 0.0;
@@ -6364,16 +6596,23 @@ static int r_max_len_seq(const void *ctx, const tsr_arg *args, int nargs, tsr_re
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 1) { fn_set_error("max_len_seq: nbits must be an integer"); return TSR_EARG; }
-    const int n = (args[0].flags & 1) ? (int)args[0].ival : (int)args[0].num;
+    const int n = sig_i32(&args[0]);
     if (n < 2 || n > 32) { fn_set_error("max_len_seq: nbits must be between 2 and 32"); return TSR_EARG; }
     int taps[32], ntaps;
     int64_t ltp = 0; double *tp = NULL;
     if (nargs > 3 && args[3].kind == 3 && args[3].arr.ndim == 1) {
-        tp = fn_arg_doubles(&args[3], &ltp); ntaps = (int)args[3].arr.shape[0];
+        tp = fn_arg_doubles(&args[3], &ltp);
         if (!tp) return TSR_ENOMEM;
-        for (int i = 0; i < ntaps && i < 32; i++) taps[i] = (int)tp[i];
+        /* SciPy: taps must be non-empty with values in [0, nbits]; at most nbits + 1 distinct ones are useful,
+           and this implementation keeps up to 32 */
+        int ok = ltp >= 1 && ltp <= 32;
+        for (int64_t i = 0; ok && i < ltp; i++) ok = tp[i] >= 0.0 && tp[i] <= (double)n;
+        if (!ok) { fn_free_doubles(tp, ltp); fn_set_error("max_len_seq: taps must be non-empty with values between zero and nbits (inclusive)"); return TSR_EARG; }
+        ntaps = (int)ltp;
+        for (int i = 0; i < ntaps; i++) taps[i] = (int)tp[i];
     } else { ntaps = mls_taps[n][0]; for (int i = 0; i < ntaps; i++) taps[i] = mls_taps[n][1 + i]; }
-    const int64_t length = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : (((int64_t)1 << n) - 1);
+    const int64_t length = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : (((int64_t)1 << n) - 1);
+    if (length < 0) { if (tp) fn_free_doubles(tp, ltp); fn_set_error("max_len_seq: length must be greater than or equal to 0"); return TSR_EARG; }
     int *state = (int *)malloc((size_t)n * sizeof(int));
     int64_t lst = 0; double *sarg = NULL;
     int rc = state ? TSR_OK : TSR_ENOMEM;
@@ -6407,9 +6646,10 @@ static int r_upfirdn(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("upfirdn: h and x must be 1-D arrays"); return TSR_EARG; }
     const int64_t nh = args[0].arr.shape[0], nx = args[1].arr.shape[0];
-    const int64_t up = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : 1;
-    const int64_t down = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : 1;
+    const int64_t up = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : 1;
+    const int64_t down = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : 1;
     if (up < 1 || down < 1) { fn_set_error("upfirdn: up and down must be positive"); return TSR_EARG; }
+    if (nx > 0 && up > (INT64_MAX / 4 - nh) / nx) { fn_set_error("upfirdn: up is too large"); return TSR_EARG; }   /* keeps (nx-1)*up + nh defined */
     int64_t lh, lx;
     double *h = fn_arg_doubles(&args[0], &lh), *x = h ? fn_arg_doubles(&args[1], &lx) : NULL;
     int rc = (!h || !x) ? TSR_ENOMEM : TSR_OK;
@@ -6442,9 +6682,9 @@ static int r_gammatone(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     if (!(nargs > 1 && args[1].kind == 2 && args[1].str && strcmp(args[1].str, "fir") == 0)) { fn_set_error("gammatone: only ftype='fir' is supported here"); return TSR_EARG; }
     if (!(nargs > 4 && args[4].kind == 1)) { fn_set_error("gammatone: fs is required"); return TSR_EARG; }
     const double freq = args[0].num, fs = args[4].num;
-    const int order = (nargs > 2 && args[2].kind == 1) ? (int)args[2].num : 4;
+    const int order = (nargs > 2 && args[2].kind == 1) ? sig_i32(&args[2]) : 4;
     if (order < 1 || order > 24) { fn_set_error("gammatone: order must be between 1 and 24"); return TSR_EARG; }
-    int64_t numtaps = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (int64_t)(fs * 0.015);
+    int64_t numtaps = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : sig_d2i64(fs * 0.015);
     if (!(nargs > 3 && args[3].kind == 1) && numtaps < 15) numtaps = 15;
     double *b = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){numtaps});
     double *a = b ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){1}) : NULL;
@@ -6470,7 +6710,7 @@ static int check_cola_nola(const tsr_arg *args, int nargs, tsr_result *res, int 
 {
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("check_COLA/NOLA: window must be a 1-D array"); return TSR_EARG; }
     if (args[1].kind != 1 || args[2].kind != 1) { fn_set_error("check_COLA/NOLA: nperseg and noverlap must be integers"); return TSR_EARG; }
-    const int64_t nperseg = (int64_t)args[1].num, noverlap = (int64_t)args[2].num;
+    const int64_t nperseg = sig_i64(&args[1]), noverlap = sig_i64(&args[2]);
     const double tol = (nargs > 3 && args[3].kind == 1) ? args[3].num : 1e-10;
     if (nperseg < 1) { fn_set_error("check_COLA/NOLA: nperseg must be positive"); return TSR_EARG; }
     if (noverlap >= nperseg || noverlap < 0) { fn_set_error("check_COLA/NOLA: noverlap must be in [0, nperseg)"); return TSR_EARG; }
@@ -6518,7 +6758,7 @@ static int r_band_stop_obj(const void *ctx, const tsr_arg *args, int nargs, tsr_
 {
     (void)ctx; (void)nargs; (void)nres;
     if (args[2].kind != 3 || args[3].kind != 3 || args[6].kind != 2 || !args[6].str) { fn_set_error("band_stop_obj: passb/stopb must be arrays and type a string"); return TSR_EARG; }
-    const double wp = args[0].num; const int64_t ind = (int64_t)args[1].num;
+    const double wp = args[0].num; const int64_t ind = sig_i64(&args[1]);
     const double gpass = args[4].num, gstop = args[5].num; const char *typ = args[6].str;
     int64_t lp, ls; double *passb = fn_arg_doubles(&args[2], &lp), *stopb = passb ? fn_arg_doubles(&args[3], &ls) : NULL;
     int rc = (!passb || !stopb) ? TSR_ENOMEM : TSR_OK;
@@ -6613,7 +6853,7 @@ static int r_czt_points(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     (void)ctx; (void)nres;
     if (args[0].kind != 1) { fn_set_error("czt_points: m must be an integer"); return TSR_EARG; }
     if (nargs > 1 && args[1].kind != 0) { fn_set_error("czt_points: only the default w (None) is supported here"); return TSR_EARG; }
-    const int64_t m = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    const int64_t m = sig_i64(&args[0]);
     const double a = (nargs > 2 && args[2].kind == 1) ? args[2].num : 1.0;
     if (m < 1) { fn_set_error("czt_points: m must be positive"); return TSR_EARG; }
     double *out = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){m});
@@ -6628,6 +6868,17 @@ static int r_czt_points(const void *ctx, const tsr_arg *args, int nargs, tsr_res
 /* compute prominences, left and right bases for each peak into caller buffers (scipy _peak_prominences, wlen=-1):
    scan outward from each peak until a sample >= x[peak]; the base is the lowest sample in that interval; the
    prominence is x[peak] minus the higher of the two base minima. */
+/* SciPy (_arg_peaks_as_expected, _peak_prominences): every peak is an integer index into x, 0 <= peak < len(x).
+   TSR_OK, or TSR_EARG with SciPy's message. Checked before peak_prom_core indexes x with them. */
+static int peak_indices_ok(const double *pk, int64_t P, int64_t n, const char *who)
+{
+    for (int64_t pn = 0; pn < P; pn++) {
+        const double v = pk[pn];
+        if (!(v >= 0.0 && v < (double)n) || v != floor(v)) { fn_set_error("%s: peak %g is not a valid index for `x`", who, v); return TSR_EARG; }
+    }
+    return TSR_OK;
+}
+
 static void peak_prom_core(const double *x, int64_t n, const double *pk, int64_t P, double *prom, int64_t *lb, int64_t *rb)
 {
     for (int64_t pn = 0; pn < P; pn++) {
@@ -6652,6 +6903,7 @@ static int r_peak_prominences(const void *ctx, const tsr_arg *args, int nargs, t
     int64_t *lb = prom ? (int64_t *)fn_result_array(&res[1], TSR_I64, 1, (int64_t[]){P}) : NULL;
     int64_t *rb = lb ? (int64_t *)fn_result_array(&res[2], TSR_I64, 1, (int64_t[]){P}) : NULL;
     int rc = (!x || !pk || !prom || !lb || !rb) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) rc = peak_indices_ok(pk, P, n, "peak_prominences");
     if (rc == TSR_OK) peak_prom_core(x, n, pk, P, prom, lb, rb);
     fn_free_doubles(x, lx); fn_free_doubles(pk, lp);
     return rc;
@@ -6665,6 +6917,7 @@ static int r_peak_widths(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("peak_widths: x and peaks must be 1-D arrays"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], P = args[1].arr.shape[0];
     const double rel = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.5;
+    if (rel < 0.0) { fn_set_error("peak_widths: `rel_height` must be greater or equal to 0.0"); return TSR_EARG; }
     int64_t lx, lp; double *x = fn_arg_doubles(&args[0], &lx), *pk = x ? fn_arg_doubles(&args[1], &lp) : NULL;
     double *prom = pk ? (double *)malloc((size_t)(P ? P : 1) * sizeof(double)) : NULL;
     int64_t *lb = prom ? (int64_t *)malloc((size_t)(P ? P : 1) * sizeof(int64_t)) : NULL;
@@ -6674,6 +6927,7 @@ static int r_peak_widths(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     double *lip = wh ? (double *)fn_result_array(&res[2], TSR_F64, 1, (int64_t[]){P}) : NULL;
     double *rip = lip ? (double *)fn_result_array(&res[3], TSR_F64, 1, (int64_t[]){P}) : NULL;
     int rc = (!x || !pk || !prom || !lb || !rb || !w || !wh || !lip || !rip) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK) rc = peak_indices_ok(pk, P, n, "peak_widths");
     if (rc == TSR_OK) {
         peak_prom_core(x, n, pk, P, prom, lb, rb);
         for (int64_t pn = 0; pn < P; pn++) {
@@ -6705,13 +6959,21 @@ static int r_resample_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("resample_poly: x must be a 1-D array"); return TSR_EARG; }
     if (args[1].kind != 1 || args[2].kind != 1) { fn_set_error("resample_poly: up and down must be integers"); return TSR_EARG; }
-    int64_t up = (int64_t)args[1].num, down = (int64_t)args[2].num;
+    int64_t up = sig_i64(&args[1]), down = sig_i64(&args[2]);
     if (up < 1 || down < 1) { fn_set_error("resample_poly: up and down must be >= 1"); return TSR_EARG; }
     int64_t ga = up, gb = down; while (gb) { const int64_t t = ga % gb; ga = gb; gb = t; }
     up /= ga; down /= ga;
+    const int64_t n_in = args[0].arr.shape[0];
+    {   /* the filter has 20*max(up, down)+1 taps and the output n_in*up/down samples: both must be allocatable */
+        const int64_t mr0 = up > down ? up : down;
+        if (mr0 > INT64_MAX / 64 || (n_in > 0 && up > (INT64_MAX / 4) / n_in) ||
+            !sig_alloc_ok(20 * mr0 + 1, sizeof(double), "resample_poly") || !sig_alloc_ok(tsr_count_mul(n_in, up) / down + 1, sizeof(double), "resample_poly")) {
+            if (mr0 > INT64_MAX / 64 || (n_in > 0 && up > (INT64_MAX / 4) / n_in)) fn_set_error("resample_poly: up or down is too large");
+            return TSR_ENOMEM;
+        }
+    }
     int64_t lx; double *x = fn_arg_doubles(&args[0], &lx);
     if (!x) return TSR_ENOMEM;
-    const int64_t n_in = args[0].arr.shape[0];
     int rc = TSR_OK;
     if (up == 1 && down == 1) {
         double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_in});
@@ -6745,9 +7007,13 @@ static int r_resample_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_
         else for (int64_t oi = 0; oi < n_out; oi++) {
             const int64_t mm = (oi + nrem) * down;           /* full-convolution index */
             double acc = 0.0;
-            for (int64_t jj = 0; jj < N; jj++) {             /* h is nonzero only over the N taps at offset npre */
-                const int64_t p = mm - (npre + jj);
-                if (p >= 0 && p < L && p % up == 0) acc += h[jj] * x[p / up];
+            /* h is nonzero only over the N taps at offset npre; only taps with p = mm - npre - jj a stuffed sample
+               (p % up == 0) contribute, so start at the first such jj and step by up (same terms, same order) */
+            const int64_t base = mm - npre;
+            int64_t jj = base % up; if (jj < 0) jj += up;
+            for (; jj < N; jj += up) {
+                const int64_t p = base - jj;
+                if (p >= 0 && p < L) acc += h[jj] * x[p / up];
             }
             out[oi] = acc;
         }
@@ -6771,7 +7037,8 @@ static double fp_arr_at(const tsr_array *x, int64_t i)   /* element i of a 1-D n
     if (x->dtype == TSR_F32) return *(const float *)p;
     if (x->dtype == TSR_I64) return (double)*(const int64_t *)p;
     if (x->dtype == TSR_I32) return (double)*(const int32_t *)p;
-    return *(const double *)p;
+    if (x->dtype == TSR_U8 || x->dtype == TSR_BOOL) return (double)*(const uint8_t *)p;   /* one byte: not a double */
+    return *(const double *)p;                               /* float64, or the real part of a complex128 */
 }
 
 static fp_cond fp_read_cond(const tsr_arg *a)
@@ -6819,10 +7086,14 @@ static int r_find_peaks(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     const tsr_arg *a_relh   = nargs > 7 ? &args[7] : NULL;
     const tsr_arg *a_plat   = nargs > 8 ? &args[8] : NULL;
     double distance = (a_dist && a_dist->kind == 1) ? a_dist->num : 0.0;
-    if (fp_given(a_dist) && distance < 1.0) { fn_set_error("find_peaks: distance must be >= 1"); return TSR_EARG; }
+    if (fp_given(a_dist) && !(distance >= 1.0)) { fn_set_error("find_peaks: distance must be >= 1"); return TSR_EARG; }
+    if (fp_given(a_dist) && !(distance < 9.2e18)) { fn_set_error("find_peaks: cannot convert float infinity to integer"); return TSR_EARG; }   /* SciPy: math.ceil(distance) */
     double rel_height = (a_relh && a_relh->kind == 1) ? a_relh->num : 0.5;
     int64_t wlen = -1;
-    if (a_wlen && a_wlen->kind == 1 && a_wlen->num > 1.0) wlen = (int64_t)ceil(a_wlen->num);
+    if (a_wlen && a_wlen->kind == 1 && a_wlen->num > 1.0) {
+        if (!(a_wlen->num < 9.2e18)) { fn_set_error("find_peaks: cannot convert float infinity to integer"); return TSR_EARG; }   /* SciPy: math.ceil(wlen) */
+        wlen = (int64_t)ceil(a_wlen->num);
+    }
     int64_t N; double *x = fn_arg_doubles(&args[0], &N); if (!x) return TSR_ENOMEM;
     int rc = TSR_OK;
     int64_t cap = N > 0 ? N : 1;
@@ -6959,8 +7230,9 @@ static int r_minimum_phase(const void *ctx, const tsr_arg *args, int nargs, tsr_
     int half = (nargs > 3 && (args[3].kind == 4 || args[3].kind == 1)) ? (args[3].num != 0.0) : 1;
     if (hilbert && !half) { fn_free_doubles(h, n); fn_set_error("minimum_phase: half=False is only supported for method='homomorphic'"); return TSR_EARG; }
     int64_t n_half = n / 2;
-    int64_t n_fft = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : mp_default_nfft(n);
+    int64_t n_fft = (nargs > 2 && args[2].kind == 1) ? sig_i64(&args[2]) : mp_default_nfft(n);
     if (n_fft < n) { fn_free_doubles(h, n); fn_set_error("minimum_phase: n_fft must be at least len(h)"); return TSR_EARG; }
+    if (!sig_alloc_ok(n_fft, 5 * sizeof(double), "minimum_phase")) { fn_free_doubles(h, n); return TSR_ENOMEM; }
 
     int rc = TSR_OK;
     double *a = (double *)calloc((size_t)(2 * n_fft), sizeof(double));   /* work buffer A (interleaved) */
@@ -7065,10 +7337,11 @@ static int r_decimate(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("decimate: x must be a 1-D array"); return TSR_EARG; }
     if (args[1].kind != 1) { fn_set_error("decimate: q must be an integer"); return TSR_EARG; }
-    const int64_t q = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    const int64_t q = sig_i64(&args[1]);
     if (q < 1) { fn_set_error("decimate: q must be >= 1"); return TSR_EARG; }
     const int have_n = (nargs > 2 && args[2].kind == 1);
-    const int64_t n_user = have_n ? ((args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num) : 0;
+    const int64_t n_user = have_n ? sig_i64(&args[2]) : 0;
+    if (q > INT64_MAX / 64 || (have_n && (n_user < 0 || n_user > INT64_MAX / 2))) { fn_set_error("decimate: q or n is out of range"); return TSR_EARG; }
     const char *ftype = (nargs > 3 && args[3].kind == 2 && args[3].str) ? args[3].str : "iir";
     const int zero_phase = (nargs > 5 && (args[5].kind == 4 || args[5].kind == 1)) ? (args[5].num != 0.0) : 1;
     const int64_t n_in = args[0].arr.shape[0];
@@ -7167,12 +7440,14 @@ static int r_stft(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     /* window: array (kind 3) or a name (hann/hann_periodic default, boxcar, hamming, blackman) */
     int64_t nwin = 0; double *warr = (nargs > 2 && args[2].kind == 3) ? fn_arg_doubles(&args[2], &nwin) : NULL;
     const char *wname = (nargs > 2 && args[2].kind == 2 && args[2].str) ? args[2].str : "hann";
-    int64_t nx; double *x = fn_arg_doubles(&args[0], &nx);
-    if (!x || (nargs > 2 && args[2].kind == 3 && !warr)) { free(x); if (warr) fn_free_doubles(warr, nwin); return TSR_ENOMEM; }
-    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : (warr ? nwin : 256);
+    int64_t nx = 0; double *x = fn_arg_doubles(&args[0], &nx);   /* a tsr_alloc block: fn_free_doubles, never free() */
+    if (!x || (nargs > 2 && args[2].kind == 3 && !warr)) { fn_free_doubles(x, nx); if (warr) fn_free_doubles(warr, nwin); return TSR_ENOMEM; }
+    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : (warr ? nwin : 256);
     if (!warr && nperseg > nx) nperseg = nx;
-    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : nperseg / 2;
-    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num : nperseg;
+    const int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? sig_i64(&args[4]) : nperseg / 2;
+    const int64_t nfft = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5]) : nperseg;
+    { const int rc0 = sig_seg_params("stft", nperseg, noverlap, nfft);
+      if (rc0 != TSR_OK) { fn_free_doubles(x, nx); if (warr) fn_free_doubles(warr, nwin); return rc0; } }
     int det = 0;                                       /* stft default detrend=False */
     if (nargs > 6) { if (args[6].kind == 2 && args[6].str) det = !strcmp(args[6].str, "linear") ? 2 : 1; else if ((args[6].kind == 4 || args[6].kind == 1) && args[6].num != 0.0) det = 1; }
     const int onesided = (nargs > 7 && (args[7].kind == 4 || args[7].kind == 1)) ? (args[7].num != 0.0) : 1;
@@ -7190,8 +7465,8 @@ static int r_stft(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     const int density = (nargs > 11 && args[11].kind == 2 && args[11].str && !strcmp(args[11].str, "psd"));
     int rc = TSR_OK;
     const int64_t nstep = nperseg - noverlap;
-    if (nstep <= 0 || nperseg < 1) { fn_set_error("stft: noverlap must be less than nperseg"); free(x); if (warr) fn_free_doubles(warr, nwin); return TSR_EARG; }
-    if (warr && nwin != nperseg) { fn_set_error("stft: window length must equal nperseg"); free(x); fn_free_doubles(warr, nwin); return TSR_EARG; }
+    if (nstep <= 0 || nperseg < 1) { fn_set_error("stft: noverlap must be less than nperseg"); fn_free_doubles(x, nx); if (warr) fn_free_doubles(warr, nwin); return TSR_EARG; }
+    if (warr && nwin != nperseg) { fn_set_error("stft: window length must equal nperseg"); fn_free_doubles(x, nx); fn_free_doubles(warr, nwin); return TSR_EARG; }
     const int64_t p = nperseg / 2;
     /* extend (boundary) then pad to an integer number of segments; cap covers both + a full segment of padding */
     int64_t cap = nx + (bmode >= 0 ? 2 * p : 0) + nperseg + 1;
@@ -7241,7 +7516,7 @@ static int r_stft(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
         }
     }
 done:
-    free(xe); free(win); free(seg); free(in); free(Xf); free(x); if (warr) fn_free_doubles(warr, nwin);
+    free(xe); free(win); free(seg); free(in); free(Xf); fn_free_doubles(x, nx); if (warr) fn_free_doubles(warr, nwin);
     return rc;
 }
 
@@ -7304,7 +7579,7 @@ static double complex iir_prodneg(const double complex *v, int64_t n) { double c
 static int r_iirfilter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    const int64_t N = (args[0].kind == 1) ? ((args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num) : 0;
+    const int64_t N = (args[0].kind == 1) ? sig_i64(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("iirfilter: order N must be between 1 and 64"); return TSR_EARG; }
     double rp = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.0;
     double rs = (nargs > 3 && args[3].kind == 1) ? args[3].num : 0.0;
@@ -7401,9 +7676,21 @@ static int iid_iirdesign(const void *ctx, const tsr_arg *args, int nargs, tsr_re
 {
     (void)ctx;
     const tsr_arg *wp = &args[0], *ws = &args[1];
-    const int nwp = (wp->kind == 3) ? (int)wp->arr.shape[0] : 1;
-    const double wp0 = (wp->kind == 3) ? ((const double *)wp->arr.data)[0] : wp->num;
-    const double ws0 = (ws->kind == 3) ? ((const double *)ws->arr.data)[0] : ws->num;
+    /* wp, ws: numbers or arrays read through their dtype and strides; SciPy wants one or two elements each and
+       the same shape for both */
+    int64_t lwp = 1, lws = 1; double wp0 = 0.0, ws0 = 0.0;
+    for (int k = 0; k < 2; k++) {
+        const tsr_arg *a = k ? ws : wp; int64_t *len = k ? &lws : &lwp; double *first = k ? &ws0 : &wp0;
+        if (a->kind == 1) *first = a->num;
+        else if (a->kind == 3) {
+            if (a->arr.dtype == TSR_C128) { fn_set_error("iirdesign: wp and ws must be real"); return TSR_EARG; }
+            double *v = fn_arg_doubles(a, len); if (!v) return TSR_ENOMEM;
+            *first = *len > 0 ? v[0] : 0.0; fn_free_doubles(v, *len);
+            if (a->arr.ndim != 1) *len = -1;
+        } else { fn_set_error("iirdesign: wp and ws must be numbers or arrays"); return TSR_EARG; }
+    }
+    if (lwp != lws || lwp < 1 || lwp > 2) { fn_set_error("iirdesign: wp and ws must have one or two elements each, and the same shape"); return TSR_EARG; }
+    const int nwp = (int)lwp;
     int band_type = 2 * (nwp - 1) + 1;                        /* 1 lp, 3 bs base */
     if (wp0 >= ws0) band_type += 1;                           /* -> 2 hp, 4 bp */
     const char *btype = band_type == 1 ? "low" : band_type == 2 ? "high"   /* r_iirfilter's short tokens */
@@ -7426,11 +7713,11 @@ static int iid_iirdesign(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     if (rc != TSR_OK) { fn_results_free(ro, 2); return rc; }
     tsr_arg fa[9]; memset(fa, 0, sizeof fa);
     fa[0].kind = 1; fa[0].flags = 1;
-    fa[0].ival = (ro[0].kind == 5) ? ro[0].ival : (int64_t)ro[0].num;
+    fa[0].ival = (ro[0].kind == 5) ? ro[0].ival : sig_d2i64(ro[0].num);
     fa[0].num = (double)fa[0].ival;                           /* N */
     if (nwp == 1) {                                           /* lp/hp: Wn must be a SCALAR (ord may return a 1-array) */
         fa[1].kind = 1;
-        fa[1].num = (ro[1].kind == 3) ? ((const double *)ro[1].arr.data)[0] : ro[1].num;
+        fa[1].num = (ro[1].kind == 3 && ro[1].arr.ndim >= 1 && ro[1].arr.shape[0] > 0 && ro[1].arr.dtype == TSR_F64) ? ((const double *)ro[1].arr.data)[0] : ro[1].num;
     } else { fa[1].kind = 3; fa[1].arr = ro[1].arr; }         /* bp/bs: 2-element Wn array */
     fa[2] = args[2]; fa[3] = args[3];                         /* rp=gpass, rs=gstop */
     fa[4].kind = 2; fa[4].str = btype;                        /* iirfilter: btype at arg 4 */
@@ -7454,14 +7741,15 @@ static int env_ifft_padded(const double *a, int64_t L, int64_t n_out, double *ou
     free(buf);
     return 0;
 }
-static int env_irfft(const double *Z, int64_t n_out, double *out_real)
+/* irfft(Z, n=n_out) of the nz-bin spectrum Z (interleaved): bins past the end of Z are zero, as NumPy pads */
+static int env_irfft(const double *Z, int64_t nz, int64_t n_out, double *out_real)
 {
     double *full = (double *)malloc((size_t)(2 * n_out) * sizeof(double));
     double *tmp = (double *)malloc((size_t)(2 * n_out) * sizeof(double));
     if (!full || !tmp) { free(full); free(tmp); return -1; }
     int64_t half = n_out / 2;
-    for (int64_t k = 0; k <= half; k++) { full[2 * k] = Z[2 * k]; full[2 * k + 1] = Z[2 * k + 1]; }
-    for (int64_t k = half + 1; k < n_out; k++) { int64_t s = n_out - k; full[2 * k] = Z[2 * s]; full[2 * k + 1] = -Z[2 * s + 1]; }
+    for (int64_t k = 0; k <= half; k++) { full[2 * k] = k < nz ? Z[2 * k] : 0.0; full[2 * k + 1] = k < nz ? Z[2 * k + 1] : 0.0; }
+    for (int64_t k = half + 1; k < n_out; k++) { int64_t s = n_out - k; full[2 * k] = s < nz ? Z[2 * s] : 0.0; full[2 * k + 1] = s < nz ? -Z[2 * s + 1] : 0.0; }
     tsr_fft(n_out, 1, 1, full, tmp);
     for (int64_t i = 0; i < n_out; i++) out_real[i] = tmp[2 * i];
     free(full); free(tmp);
@@ -7492,9 +7780,15 @@ static int r_envelope(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int64_t n; double complex *z = read_carr(&args[0], &n); if (!z) return TSR_ENOMEM;
     const int64_t n2 = n / 2, nph = (n + 1) / 2;
     int64_t start = 1, stop = nph;                            /* bp_in default (1, None) */
-    if (nargs > 1) { if (args[1].kind == 1) start = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num; else if (args[1].kind == 0) start = -n2; }
-    if (nargs > 2 && args[2].kind == 1) stop = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
-    int64_t n_out = (nargs > 3 && args[3].kind == 1) ? ((args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num) : n;
+    if (nargs > 1) { if (args[1].kind == 1) start = sig_i64(&args[1]); else if (args[1].kind == 0) start = -n2; }
+    if (nargs > 2 && args[2].kind == 1) stop = sig_i64(&args[2]);
+    int64_t n_out = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : n;
+    /* SciPy: a non-empty z, n_out > 0 and -n//2 <= bp_in[0] < bp_in[1] <= (n+1)//2 (Python floor division) */
+    if (n < 1) { free(z); fn_set_error("envelope: z.shape[axis] not > 0"); return TSR_EARG; }
+    if (n_out < 1) { free(z); fn_set_error("envelope: n_out is not a positive integer or None"); return TSR_EARG; }
+    if (!(-((n + 1) / 2) <= start && start < stop && stop <= nph)) {
+        free(z); fn_set_error("envelope: `-n//2 <= bp_in[0] < bp_in[1] <= (n+1)//2` does not hold for n=%lld", (long long)n); return TSR_EARG; }
+    if (!sig_alloc_ok(n_out, 6 * sizeof(double), "envelope")) { free(z); return TSR_ENOMEM; }
     const int squared = (nargs > 4 && (args[4].kind == 4 || args[4].kind == 1)) ? (args[4].num != 0.0) : 0;
     int residual = 1;                                         /* 0 none, 1 lowpass, 2 all */
     if (nargs > 5) { const tsr_arg *r = &args[5]; if (r->kind == 0) residual = 0; else if (r->kind == 2 && r->str) residual = (strcmp(r->str, "all") == 0) ? 2 : 1; }
@@ -7549,7 +7843,7 @@ static int r_envelope(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
         int64_t m = n < n_out ? n : n_out;
         if (n_out != n && m % 2 == 0) { int64_t h = m / 2; double f = (n_out < n) ? 2.0 : 0.5; Z[2 * h] *= f; Z[2 * h + 1] *= f; }
         double *rr = (double *)malloc((size_t)(n_out > 0 ? n_out : 1) * sizeof(double));
-        if (!rr || env_irfft(Z, n_out, rr) != 0) { free(rr); rc = TSR_ENOMEM; goto edone; }
+        if (!rr || env_irfft(Z, n, n_out, rr) != 0) { free(rr); rc = TSR_ENOMEM; goto edone; }
         double *o = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){2, n_out});
         if (!o) { free(rr); rc = TSR_ENOMEM; goto edone; }
         for (int64_t i = 0; i < n_out; i++) o[i] = zenv[i];
@@ -7587,6 +7881,7 @@ static int fw2_firwin(int64_t M, double fc, const char *window, double fs, doubl
 static double fw2_interp(double x, const double *fp, int64_t n)
 {
     if (n == 1) return fp[0];
+    if (x != x) return x;
     if (x <= 0.0) return fp[0];
     if (x >= 1.0) return fp[n - 1];
     double t = x * (double)(n - 1);
@@ -7598,14 +7893,14 @@ static double fw2_interp(double x, const double *fp, int64_t n)
 static int fw2_read_hsize(const tsr_arg *a, int64_t *h0, int64_t *h1)
 {
     if (a->kind == 5 && a->count >= 2) {
-        *h0 = (a->items[0].flags & 1) ? a->items[0].ival : (int64_t)a->items[0].num;
-        *h1 = (a->items[1].flags & 1) ? a->items[1].ival : (int64_t)a->items[1].num;
+        if (a->items[0].kind != 1 || a->items[1].kind != 1) return -1;
+        *h0 = sig_i64(&a->items[0]); *h1 = sig_i64(&a->items[1]);
         return 0;
     }
     if (a->kind == 3 && a->arr.ndim == 1 && a->arr.shape[0] >= 2) {
         int64_t nn; double *v = fn_arg_doubles(a, &nn);
         if (!v) return -1;
-        *h0 = (int64_t)v[0]; *h1 = (int64_t)v[1]; fn_free_doubles(v, nn);
+        *h0 = sig_d2i64(v[0]); *h1 = sig_d2i64(v[1]); fn_free_doubles(v, nn);
         return 0;
     }
     return -1;
@@ -7615,6 +7910,7 @@ static int r_firwin_2d(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     (void)ctx; (void)nres;
     int64_t h0, h1;
     if (fw2_read_hsize(&args[0], &h0, &h1) != 0 || h0 < 1 || h1 < 1) { fn_set_error("firwin_2d: hsize must be a 2-element integer sequence"); return TSR_EARG; }
+    if (!sig_alloc_ok(tsr_count_mul(h0, h1), 8 * sizeof(double), "firwin_2d")) return TSR_ENOMEM;   /* the h0 x h1 result (and 8*max(h) taps) */
     if (nargs < 3 || args[2].kind != 1) { fn_set_error("firwin_2d: fc is required"); return TSR_EARG; }
     const double fc = args[2].num;
     const double fs = (nargs > 3 && args[3].kind == 1) ? args[3].num : 2.0;
@@ -7685,15 +7981,17 @@ static int r_istft(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     const int boundary = (nargs > 7 && args[7].kind == 4) ? (args[7].num != 0.0) : 1;
     const int psd = (nargs > 10 && args[10].kind == 2 && args[10].str && !strcmp(args[10].str, "psd"));
     const int64_t n_default = onesided ? 2 * (F - 1) : F;
-    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? (int64_t)args[3].num : n_default;
+    int64_t nperseg = (nargs > 3 && args[3].kind == 1) ? sig_i64(&args[3]) : n_default;
     if (nperseg < 1) { fn_set_error("istft: nperseg must be positive"); return TSR_EARG; }
-    int64_t nfft = (nargs > 5 && args[5].kind == 1) ? (int64_t)args[5].num
+    int64_t nfft = (nargs > 5 && args[5].kind == 1) ? sig_i64(&args[5])
                    : ((onesided && nperseg == n_default + 1) ? nperseg : n_default);
     if (nfft < nperseg) { fn_set_error("istft: nfft must be >= nperseg"); return TSR_EARG; }
-    int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? (int64_t)args[4].num : nperseg / 2;
+    int64_t noverlap = (nargs > 4 && args[4].kind == 1) ? sig_i64(&args[4]) : nperseg / 2;
     if (noverlap >= nperseg) { fn_set_error("istft: noverlap must be less than nperseg"); return TSR_EARG; }
+    if (noverlap < 0) { fn_set_error("istft: noverlap must be non-negative"); return TSR_EARG; }
+    if (!sig_alloc_ok(nfft, 8 * sizeof(double), "istft")) return TSR_ENOMEM;
     const int64_t nstep = nperseg - noverlap;
-    /* read the 2-D Zxx into row-major zc[f*nseg + t] respecting its strides (read_carr is 1-D only). */
+    /* read the 2-D Zxx into row-major zc[f*nseg + t] respecting its strides. */
     double complex *zc = (double complex *)malloc((size_t)(F * nseg) * sizeof(double complex));
     if (!zc) return TSR_ENOMEM;
     { const tsr_array *za = &args[0].arr; const char *base = (const char *)za->data + za->offset;
