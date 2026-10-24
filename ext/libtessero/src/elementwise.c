@@ -479,6 +479,65 @@ int tsr_unary(int op, int dtype, int32_t ndim, const int64_t *shape, const void 
     default: return TSR_EARG;                                                         \
     }
 
+#if defined(__x86_64__) || defined(_M_X64)
+/* Contiguous float -> int32 / uint8 casts with the packed cvtt instructions written out: cvttpd2dq / cvttps2dq
+   return exactly the "integer indefinite" INT32_MIN for NaN and out-of-range lanes, i.e. tsr_f2i32 / tsr_f2u8
+   (NumPy's x86-64 results), and the explicit form keeps the vector width the plain cast had (the select-based
+   helpers made GCC drop to narrower vectors). uint8 keeps the low byte: mask, then two exact packs. */
+static inline __m128i cvt4_pd(const double *p)
+{
+    return _mm_unpacklo_epi64(_mm_cvttpd_epi32(_mm_loadu_pd(p)), _mm_cvttpd_epi32(_mm_loadu_pd(p + 2)));
+}
+static inline __m128i low_bytes16(__m128i a, __m128i b, __m128i c, __m128i d)
+{
+    const __m128i m = _mm_set1_epi32(0xFF);
+    a = _mm_and_si128(a, m); b = _mm_and_si128(b, m); c = _mm_and_si128(c, m); d = _mm_and_si128(d, m);
+    return _mm_packus_epi16(_mm_packs_epi32(a, b), _mm_packs_epi32(c, d));
+}
+#if defined(__GNUC__) && !defined(__clang__) && defined(__x86_64__)
+#include <immintrin.h>
+/* float64 -> int32 with 256-bit vcvttpd2dq (4 lanes per instruction, same "integer indefinite" result) */
+__attribute__((target("avx2"))) static void cvt_pd_i32_avx2(const double *A, int32_t *O, int64_t n)
+{
+    int64_t i = 0;
+    for (; i + 8 <= n; i += 8) {
+        _mm_storeu_si128((__m128i *)(O + i), _mm256_cvttpd_epi32(_mm256_loadu_pd(A + i)));
+        _mm_storeu_si128((__m128i *)(O + i + 4), _mm256_cvttpd_epi32(_mm256_loadu_pd(A + i + 4)));
+    }
+    for (; i < n; i++) O[i] = tsr_f2i32(A[i]);
+}
+#define TSR_HAVE_AVX2_CVT 1
+#endif
+TSR_CLONES static int cast_sse(int din, int dout, int64_t n, const char *a, char *o)
+{
+    int64_t i = 0;
+    if (din == TSR_F64 && dout == TSR_I32) {
+        const double *A = (const double *)a; int32_t *O = (int32_t *)o;
+#ifdef TSR_HAVE_AVX2_CVT
+        if (__builtin_cpu_supports("avx2")) { cvt_pd_i32_avx2(A, O, n); return 1; }
+#endif
+        for (; i + 4 <= n; i += 4) _mm_storeu_si128((__m128i *)(O + i), cvt4_pd(A + i));
+        for (; i < n; i++) O[i] = tsr_f2i32(A[i]);
+    } else if (din == TSR_F64 && dout == TSR_U8) {
+        const double *A = (const double *)a; uint8_t *O = (uint8_t *)o;
+        for (; i + 16 <= n; i += 16)
+            _mm_storeu_si128((__m128i *)(O + i), low_bytes16(cvt4_pd(A + i), cvt4_pd(A + i + 4), cvt4_pd(A + i + 8), cvt4_pd(A + i + 12)));
+        for (; i < n; i++) O[i] = tsr_f2u8(A[i]);
+    } else if (din == TSR_F32 && dout == TSR_I32) {
+        const float *A = (const float *)a; int32_t *O = (int32_t *)o;
+        for (; i + 4 <= n; i += 4) _mm_storeu_si128((__m128i *)(O + i), _mm_cvttps_epi32(_mm_loadu_ps(A + i)));
+        for (; i < n; i++) O[i] = tsr_f2i32f(A[i]);
+    } else if (din == TSR_F32 && dout == TSR_U8) {
+        const float *A = (const float *)a; uint8_t *O = (uint8_t *)o;
+        for (; i + 16 <= n; i += 16)
+            _mm_storeu_si128((__m128i *)(O + i), low_bytes16(_mm_cvttps_epi32(_mm_loadu_ps(A + i)), _mm_cvttps_epi32(_mm_loadu_ps(A + i + 4)),
+                                                             _mm_cvttps_epi32(_mm_loadu_ps(A + i + 8)), _mm_cvttps_epi32(_mm_loadu_ps(A + i + 12))));
+        for (; i < n; i++) O[i] = tsr_f2u8f(A[i]);
+    } else return 0;
+    return 1;
+}
+#endif
+
 TSR_CLONES static int cast_run(int din, int dout, int64_t n, const char *a, int64_t sa, char *o, int64_t so)
 {
     int64_t isz = tsr_itemsize(din);
@@ -487,6 +546,9 @@ TSR_CLONES static int cast_run(int din, int dout, int64_t n, const char *a, int6
         for (int64_t i = 0; i < n; i++) memcpy(o + i * so, a + i * sa, (size_t)isz);
         return TSR_OK;
     }
+#if defined(__x86_64__) || defined(_M_X64)
+    if (sa == isz && so == tsr_itemsize(dout) && cast_sse(din, dout, n, a, o)) return TSR_OK;
+#endif
     switch (din) {
     case TSR_F64: CAST_TO(double)
     case TSR_F32: CAST_TO(float)

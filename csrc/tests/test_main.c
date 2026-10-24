@@ -1214,6 +1214,16 @@ static void test_numerics_review(void)
           "float sum stored to int64 saturates");
     tsr_arange(TSR_I64, 2, NAN, 1.0, i64);
     CHECK(i64[0] == INT64_MIN && i64[1] == INT64_MIN + 1, "arange from a NaN start is defined");
+    /* the packed (SSE) contiguous paths agree with the scalar helpers, NaN / out-of-range lanes included */
+    double vd[37]; float vf[37]; int32_t vi[37]; uint8_t vu[37]; int okv = 1;
+    for (int i = 0; i < 37; i++) { vd[i] = i % 5 == 0 ? NAN : i % 7 == 0 ? 3e9 : i % 11 == 0 ? -1e300 : (i - 18) * 37.75; vf[i] = (float)vd[i]; }
+    tsr_copy(TSR_F64, TSR_I32, 1, (int64_t[]){37}, vd, s8, vi, s4);
+    tsr_copy(TSR_F64, TSR_U8, 1, (int64_t[]){37}, vd, s8, vu, s1);
+    for (int i = 0; i < 37; i++) okv &= vi[i] == tsr_f2i32(vd[i]) && vu[i] == tsr_f2u8(vd[i]);
+    tsr_copy(TSR_F32, TSR_I32, 1, (int64_t[]){37}, vf, s4, vi, s4);
+    tsr_copy(TSR_F32, TSR_U8, 1, (int64_t[]){37}, vf, s4, vu, s1);
+    for (int i = 0; i < 37; i++) okv &= vi[i] == tsr_f2i32f(vf[i]) && vu[i] == tsr_f2u8f(vf[i]);
+    CHECK(okv && vi[0] == INT32_MIN && vu[19] == (uint8_t)(int32_t)37.75, "packed casts == scalar helpers");
 
     /* (4) complex division: Smith's method (NumPy) instead of |y|^2, which overflowed */
     double cx[4] = {1, 1, 1, 1}, cy[4] = {1e200, 1e200, 1e-200, 1e-200}, cq[4];
