@@ -446,7 +446,7 @@ jobs:
 
   laravel-app:
     name: service provider in Laravel ${{ matrix.laravel }}
-    needs: [native, extension]
+    needs: native   # FFI backend only: it does not wait for (or get skipped by) the extension matrix
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
