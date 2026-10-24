@@ -21,6 +21,20 @@ static int failures = 0, checks = 0;
     } while (0)
 #define CLOSE(a, b, tol) (fabs((a) - (b)) <= (tol) * (1.0 + fabs(b)))
 
+/* the platform's temporary directory: TEMP/TMP on Windows (there is no /tmp), TMPDIR or /tmp elsewhere */
+static const char *test_tmpdir(void)
+{
+#ifdef _WIN32
+    const char *d = getenv("TEMP");
+    if (!d || !*d) d = getenv("TMP");
+    if (!d || !*d) d = ".";
+#else
+    const char *d = getenv("TMPDIR");
+    if (!d || !*d) d = "/tmp";
+#endif
+    return d;
+}
+
 static void test_alloc(void)
 {
     int64_t before = tsr_allocated();
@@ -709,7 +723,8 @@ static void test_mmap_npy(void)
     CHECK(tsr_mmap_plan(TSR_F64, 1, &nd, sh, 0, 0, 4096, &bytes, &start, &len, &ns) == TSR_ESHAPE, "empty");
 
     /* open / write / reopen / flush */
-    char path[] = "/tmp/tsr_mmap_test_XXXXXX";
+    char path[1024];
+    snprintf(path, sizeof path, "%s/tsr_mmap_test_XXXXXX", test_tmpdir());
     int fd = mkstemp(path);
     CHECK(fd >= 0, "mkstemp");
     if (fd >= 0) close(fd);
@@ -739,7 +754,7 @@ static void test_mmap_npy(void)
     unlink(path);
     CHECK(tsr_mmap_open(path, 0, TSR_F64, &nd, sh, 0, &h, &data) == TSR_EIO && h == NULL, "missing file: %s", tsr_mmap_error());
     CHECK(tsr_mmap_open("php://memory", 0, TSR_F64, &nd, sh, 0, &h, &data) == TSR_EARG, "wrapper refused");
-    CHECK(tsr_mmap_open("/tmp", 0, TSR_F64, &nd, sh, 0, &h, &data) != 0, "directory refused");
+    CHECK(tsr_mmap_open(test_tmpdir(), 0, TSR_F64, &nd, sh, 0, &h, &data) != 0, "directory refused");
 
     /* .npy header round trip */
     char hb[256];
@@ -780,9 +795,62 @@ static void test_slice_blanks(void)
           && v.offset == 2 * 32 + 8, "huge negative step");
 }
 
+/* double-double arithmetic for an exp/log reference that does not depend on long double: long double is plain
+   double on Apple ARM64 and MSVC, and Valgrind evaluates x87 code at double precision, so there a long double
+   "reference" is itself rounded to double and every result looks exactly 0 or 1 ulp off */
+typedef struct { double hi, lo; } dd_t;
+static dd_t dd_two_sum(double a, double b) { const double s = a + b, bb = s - a; return (dd_t){s, (a - (s - bb)) + (b - bb)}; }
+static dd_t dd_add(dd_t a, dd_t b) { const dd_t s = dd_two_sum(a.hi, b.hi); return dd_two_sum(s.hi, s.lo + a.lo + b.lo); }
+static dd_t dd_mul(dd_t a, dd_t b)
+{
+    const double p = a.hi * b.hi, e = fma(a.hi, b.hi, -p) + (a.hi * b.lo + a.lo * b.hi);
+    return dd_two_sum(p, e);
+}
+static dd_t dd_div_d(dd_t a, double d) { const double q = a.hi / d; return dd_two_sum(q, (fma(-q, d, a.hi) + a.lo) / d); }
+/* e^x = 2^k * m, m a double-double near [0.7, 1.42] (relative error about 2^-100): x = k ln2 + r, Taylor in r */
+static dd_t dd_exp(double x, int *k)
+{
+    const double ln2_hi = 0x1.62e42fefa39efp-1, ln2_lo = 0x1.abc9e3b39803fp-56;
+    const double kd = nearbyint(x / ln2_hi);
+    const double p = kd * ln2_hi, pe = fma(kd, ln2_hi, -p), q = kd * ln2_lo, qe = fma(kd, ln2_lo, -q);
+    dd_t r = dd_add(dd_two_sum(x, -p), (dd_t){-pe, 0});
+    r = dd_add(r, (dd_t){-q, -qe});
+    dd_t s = {1, 0};
+    for (int n = 27; n >= 1; n--) s = dd_add((dd_t){1, 0}, dd_div_d(dd_mul(r, s), n));
+    *k = (int)kd;
+    return s;
+}
+/* error of e = exp(x) in ulps of e, against dd_exp (e normal) */
+static double dd_exp_err(double x, double e)
+{
+    int k;
+    const dd_t m = dd_exp(x, &k);
+    const double u = ldexp(nextafter(e, INFINITY) - e, -k);
+    return fabs((ldexp(e, -k) - m.hi) - m.lo) / u;
+}
+/* error of l = log(y) in ulps of l: one Newton step on e^t = y from libm's log, with e^t in double-double */
+static double dd_log_err(double y, double l)
+{
+    const double t0 = log(y);
+    int k;
+    const dd_t m = dd_exp(t0, &k);
+    const double ys = ldexp(y, -k), c = ((ys - m.hi) - m.lo) / m.hi;   /* exact scaling; ys - m.hi is exact */
+    const double u = nextafter(fabs(l), INFINITY) - fabs(l);
+    return fabs((l - t0) - c) / u;
+}
+/* 1 when long double arithmetic really carries more precision than double, as evaluated here */
+static int long_double_is_wider(void)
+{
+    volatile long double one = 1.0L, tiny = 0x1p-60L;
+    return one + tiny != one;
+}
+
 static void test_vmath(void)
 {
-    /* vectorised exp/log (vmath.h) against long double references: < 1 ulp */
+    /* vectorised exp/log (vmath.h): < 1 ulp, against long double references where long double is wider, and
+       always against the double-double reference (which must agree with long double where both exist) */
+    const int wide = long_double_is_wider();
+    double dd_e = 0, dd_l = 0, agree = 0;
     double worst_e = 0, worst_l = 0;
     for (int i = 0; i < 200000; i++) {
         const double x = -745.0 + 1455.0 * i / 200000.0 + 1e-7 * (i % 13);
@@ -790,19 +858,27 @@ static void test_vmath(void)
         const long double re = expl((long double)x);
         if (isfinite(e) && e > 0x1p-1022) {
             const double u = nextafter(e, INFINITY) - e;
-            const double err = (double)(fabsl((long double)e - re) / u);
+            const double err = (double)(fabsl((long double)e - re) / u), derr = dd_exp_err(x, e);
             if (err > worst_e) worst_e = err;
+            if (derr > dd_e) dd_e = derr;
+            if (wide && fabs(err - derr) > agree) agree = fabs(err - derr);
         }
         const double y = ldexp(1.0 + (i % 997) / 997.0, (i % 2098) - 1074);
         const double l = tsr_log(y);
         const long double rl = logl((long double)y);
         if (l != 0) {
             const double u = nextafter(fabs(l), INFINITY) - fabs(l);
-            const double err = (double)(fabsl((long double)l - rl) / u);
+            const double err = (double)(fabsl((long double)l - rl) / u), derr = dd_log_err(y, l);
             if (err > worst_l) worst_l = err;
+            if (derr > dd_l) dd_l = derr;
+            if (wide && fabs(err - derr) > agree) agree = fabs(err - derr);
         }
     }
-    CHECK(worst_e < 1.0 && worst_l < 1.0, "exp/log max error %.3f / %.3f ulp", worst_e, worst_l);
+    CHECK(dd_e < 1.0 && dd_l < 1.0, "exp/log max error %.3f / %.3f ulp (double-double reference)", dd_e, dd_l);
+    if (wide) {
+        CHECK(worst_e < 1.0 && worst_l < 1.0, "exp/log max error %.3f / %.3f ulp (long double reference)", worst_e, worst_l);
+        CHECK(agree < 0.01, "double-double and long double references agree (max difference %.2g ulp)", agree);
+    }
     CHECK(tsr_exp(0) == 1 && tsr_exp(-INFINITY) == 0 && isinf(tsr_exp(INFINITY)) && isnan(tsr_exp(NAN)), "exp specials");
     CHECK(isinf(tsr_exp(709.79)) && tsr_exp(-745.14) == 0 && tsr_exp(-745.13) > 0, "exp overflow/underflow");
     CHECK(tsr_log(1) == 0 && isinf(tsr_log(0)) && tsr_log(0) < 0 && isnan(tsr_log(-1)) && isinf(tsr_log(INFINITY)), "log specials");
@@ -1000,6 +1076,7 @@ static void free_results(tsr_result *r, int n)
 }
 
 void tsr_special_yn(const void *, const double *, double *);
+void tsr_special_yn__int(const void *, const double *, double *);
 void tsr_special_pbdv(const void *, const double *, double *);
 void tsr_special_pbvv(const void *, const double *, double *);
 void tsr_special_betainccinv(const void *, const double *, double *);
@@ -1071,9 +1148,15 @@ static void test_ci_regressions(void)
         tsr_special_yn(NULL, y1, &o1); tsr_special_yn(NULL, y2, &o2); tsr_special_yn(NULL, y3, &o3); tsr_special_yn(NULL, y4, &o4);
         CHECK(o1 == -INFINITY && o2 == -INFINITY && isnan(o3) && isnan(o4), "yn(%g, x) = %g %g %g %g", ns[k], o1, o2, o3, o4);
     }
-    double y5[2] = {5.0, 0.5}, y6[2] = {-5.0, 100.0}, o5, o6;
+    double y5[2] = {5.0, 0.5}, y6[2] = {-5.0, 100.0}, o5, o6, i5, i6;
     tsr_special_yn(NULL, y5, &o5); tsr_special_yn(NULL, y6, &o6);
+    tsr_special_yn__int(NULL, y5, &i5); tsr_special_yn__int(NULL, y6, &i6);
+    CHECK(o5 == i5 && o6 == i6, "yn of an integral double order is the integer-order kernel %.17g %.17g", o5, o6);
+#if !defined(__APPLE__)
+    /* bits recorded with glibc, musl and MinGW, which agree. yn is tier B (built on libm sin/cos/log, see
+       docs/reference/numerical-guarantees.md): Apple's libm lands 1 to 2 ulp away, so the pin is not portable */
     CHECK(o5 == -7946.3014788074752 && o6 == 0.029480196281661417, "yn finite orders unchanged %.17g %.17g", o5, o6);
+#endif
     double sm[2] = {INFINITY, 0.5}, so;
     tsr_special_smirnov(NULL, sm, &so);
     CHECK(isnan(so), "smirnov(inf, 0.5) = %g (SciPy: NaN)", so);
@@ -1473,15 +1556,23 @@ static void test_numerics_review(void)
     fesetround(FE_TONEAREST);
     CHECK((up & 16) && strstr(why, "fegetround") != NULL, "fpenv sees round-upward (%d: %s)", up, why);
     CHECK(sc_up == -6, "selfcheck refuses a non-canonical FP environment (rc %d)", sc_up);
+    int fp_modelled = 1;   /* 0 under an emulator that ignores FP control writes (Valgrind keeps only the rounding mode) */
 #if defined(__x86_64__)
     const uint32_t csr0 = nr_csr_get();
     nr_csr_set(csr0 | (1u << 15) | (1u << 6));                         /* FTZ + DAZ, what -ffast-math sets */
-    const int ftz = tsr_fpenv_check(why, sizeof why);
-    CHECK(ftz == 3 && strstr(why, "FTZ") && strstr(why, "DAZ"), "fpenv names FTZ/DAZ (%d: %s)", ftz, why);
-    nr_csr_set(csr0 & ~(1u << 9));                                     /* unmask divide-by-zero */
-    CHECK(tsr_fpenv_check_thread(why, sizeof why) == 8 && strstr(why, "masks"), "fpenv sees unmasked traps: %s", why);
-    nr_csr_set(csr0 | (1u << 15));
-    CHECK(tsr_fpenv_canonicalize() == 0 && nr_csr_get() == csr0, "canonicalize restores MXCSR");
+    fp_modelled = (nr_csr_get() & ((1u << 15) | (1u << 6))) == ((1u << 15) | (1u << 6));
+    if (fp_modelled) {
+        const int ftz = tsr_fpenv_check(why, sizeof why);
+        CHECK(ftz == 3 && strstr(why, "FTZ") && strstr(why, "DAZ"), "fpenv names FTZ/DAZ (%d: %s)", ftz, why);
+        nr_csr_set(csr0 & ~(1u << 9));                                 /* unmask divide-by-zero */
+        CHECK(tsr_fpenv_check_thread(why, sizeof why) == 8 && strstr(why, "masks"), "fpenv sees unmasked traps: %s", why);
+        nr_csr_set(csr0 | (1u << 15));
+        CHECK(tsr_fpenv_canonicalize() == 0 && nr_csr_get() == csr0, "canonicalize restores MXCSR");
+    } else {
+        nr_csr_set(csr0);
+        fprintf(stderr, "note: MXCSR FTZ/DAZ/mask writes do not take effect here (an emulator such as Valgrind): "
+                        "FTZ/DAZ/trap checks not applicable\n");
+    }
 #endif
 #ifdef _OPENMP
     const int th = tsr_get_threads();
@@ -1496,7 +1587,22 @@ static void test_numerics_review(void)
     }
     const int wk = tsr_fpenv_check(why, sizeof why);
     CHECK(tsr_fpenv_check_thread(NULL, 0) == 0, "caller unaffected by worker state");
-    CHECK(omp_get_max_threads() < 1 || (wk & 64), "fpenv checks OpenMP workers (%d: %s)", wk, why);
+    /* does a worker's change persist into the next parallel region? libgomp keeps each worker's MXCSR/FPCR;
+       libomp loads the caller's FP control into every worker at each region start (KMP_INHERIT_FP_CONTROL), so a
+       worker cannot drift there. The gate must report exactly what the library's own parallel loops would see. */
+    int drift = 0;
+#pragma omp parallel num_threads(4) reduction(| : drift)
+    {
+#if defined(__x86_64__)
+        if (omp_get_thread_num() != 0) drift |= (int)((nr_csr_get() >> 15) & 1u);
+#else
+        if (omp_get_thread_num() != 0) drift |= fegetround() != FE_TONEAREST;
+#endif
+    }
+    CHECK(((wk & 64) != 0) == (drift != 0), "fpenv reports OpenMP worker drift exactly when it persists (%d: %s; drift %d)", wk, why, drift);
+#if defined(__GNUC__) && !defined(__clang__)
+    CHECK(!fp_modelled || drift, "libgomp keeps worker FP state, so the worker check is exercised (drift %d)", drift);
+#endif
     CHECK(tsr_fpenv_canonicalize() == 0, "canonicalize repairs the workers");
     tsr_set_threads(th);
 #endif

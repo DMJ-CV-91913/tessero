@@ -192,7 +192,19 @@ jobs:
           ZEND_DONT_UNLOAD_MODULES: '1'
           OMP_NUM_THREADS: '2'
           OPENBLAS_NUM_THREADS: '1'
+        # a memcheck error fails the job; a parity mismatch alone (exit 1 with 0 memcheck errors) is a warning:
+        # Valgrind evaluates x87 long double at double precision, which moves the low bits of the few special
+        # functions that use it. The parity gate itself runs natively in ci.yml.
         run: |
-          valgrind --error-exitcode=1 --track-origins=yes --leak-check=no \
+          set +e
+          valgrind --error-exitcode=99 --track-origins=yes --leak-check=no \
             "$(command -v php)" -d ffi.enable=1 -d memory_limit=8G -d opcache.enable_cli=0 \
-            tools/parity/run-tests.php --backend=ffi --no-record --module=special
+            tools/parity/run-tests.php --backend=ffi --no-record --module=special 2>&1 | tee valgrind-ffi.log
+          rc=${PIPESTATUS[0]}
+          set -e
+          if [ "$rc" = 0 ]; then exit 0; fi
+          if [ "$rc" = 1 ] && grep -q 'ERROR SUMMARY: 0 errors' valgrind-ffi.log; then
+            echo "::warning::memcheck clean; parity values that differ under Valgrind's FP emulation: $(grep '^FAIL' valgrind-ffi.log | tr '\n' ' ')"
+            exit 0
+          fi
+          echo "::error::valgrind exit status $rc"; exit 1
