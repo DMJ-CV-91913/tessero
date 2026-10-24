@@ -59,12 +59,21 @@ static int linkage_impl(const tsr_arg *a, tsr_result *res, int method)
 {
     if (a->kind != 3) { fn_set_error("linkage: y must be a 1-D condensed distance or 2-D observation array"); return TSR_EARG; }
     const int sq = method >= 4;
-    int64_t n; double *W = NULL; int rc = TSR_OK;
+    int64_t n, wbytes = 0; double *W = NULL; int rc = TSR_OK;   /* W: the n*n workspace, counted (tsr_alloc); every entry is written below */
     if (a->arr.ndim == 1) {
         int64_t L; double *y = fn_arg_doubles(a, &L);
         if (!y) return TSR_ENOMEM;
         n = (int64_t)((1.0 + sqrt(1.0 + 8.0 * (double)L)) / 2.0 + 0.5);
-        W = (double *)calloc((size_t)(n * n), sizeof(double));
+        /* the workspace and the fill loop below read n*(n-1)/2 entries of y: a length that is not a binomial
+           coefficient (e.g. 5) would read past it (SciPy raises the same ValueError) */
+        if (n < 1 || tsr_count_mul(n, n - 1) / 2 != L) {
+            fn_free_doubles(y, L);
+            fn_set_error("linkage: Length n of condensed distance matrix 'y' must be a binomial coefficient, i.e. "
+                         "there must be a k such that (k \\choose 2)=n)!");
+            return TSR_EARG;
+        }
+        wbytes = tsr_bytes_n(tsr_count_mul(n, n), sizeof(double), 0);
+        W = (double *)tsr_alloc(wbytes);
         if (!W) { fn_free_doubles(y, L); return TSR_ENOMEM; }
         int64_t idx = 0;
         for (int64_t i = 0; i < n; i++) for (int64_t j = i + 1; j < n; j++) { double d = y[idx++]; if (sq) d *= d; W[i * n + j] = W[j * n + i] = d; }
@@ -72,7 +81,7 @@ static int linkage_impl(const tsr_arg *a, tsr_result *res, int method)
     } else if (a->arr.ndim == 2) {
         int64_t m = a->arr.shape[0], dim = a->arr.shape[1], lo; double *obs = fn_arg_doubles(a, &lo);
         if (!obs) return TSR_ENOMEM;
-        n = m; W = (double *)calloc((size_t)(n * n), sizeof(double));
+        n = m; wbytes = tsr_bytes_n(tsr_count_mul(n, n), sizeof(double), 0); W = (double *)tsr_alloc(wbytes);
         if (!W) { fn_free_doubles(obs, lo); return TSR_ENOMEM; }
         for (int64_t i = 0; i < n; i++) for (int64_t j = i + 1; j < n; j++) {
             double s = 0.0; for (int64_t c = 0; c < dim; c++) { double df = obs[i * dim + c] - obs[j * dim + c]; s += df * df; }
@@ -83,7 +92,7 @@ static int linkage_impl(const tsr_arg *a, tsr_result *res, int method)
     for (int64_t i = 0; i < n; i++) W[i * n + i] = INFINITY;
     double *Z = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n - 1, 4});
     if (!Z) rc = TSR_ENOMEM; else hier_core(W, n, method, Z);
-    free(W);
+    tsr_free(W, wbytes);
     return rc;
 }
 static int hier_method_code(const char *m)
@@ -528,16 +537,17 @@ static int r_fclusterdata(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     int64_t n = args[0].arr.shape[0], dim = args[0].arr.shape[1], lo; double *X = fn_arg_doubles(&args[0], &lo);
     if (!X) return TSR_ENOMEM;
     const int sq = method >= 4;
-    double *W = (double *)calloc((size_t)(n * n), sizeof(double));
-    double *Z = (double *)malloc((size_t)((n - 1) * 4) * sizeof(double));
-    if (!W || !Z) { free(W); free(Z); fn_free_doubles(X, lo); return TSR_ENOMEM; }
+    const int64_t wbytes = tsr_bytes_n(tsr_count_mul(n, n), sizeof(double), 0);   /* counted n*n workspace */
+    double *W = (double *)tsr_alloc(wbytes);
+    double *Z = (double *)tsr_scratch_n(tsr_count_mul(n - 1, 4), sizeof(double));
+    if (!W || !Z) { tsr_free(W, wbytes); free(Z); fn_free_doubles(X, lo); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n; i++) for (int64_t j = i + 1; j < n; j++) {
         double s = 0.0; for (int64_t c = 0; c < dim; c++) { double df = X[i * dim + c] - X[j * dim + c]; s += df * df; }
         double d = sq ? s : sqrt(s); W[i * n + j] = W[j * n + i] = d;
     }
     for (int64_t i = 0; i < n; i++) W[i * n + i] = INFINITY;
     hier_core(W, n, method, Z);
-    fn_free_doubles(X, lo); free(W);
+    fn_free_doubles(X, lo); tsr_free(W, wbytes);
     int64_t sh[1] = {n};
     int64_t *T = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, sh);
     int rc = T ? fcluster_core(Z, n - 1, T, t, crit, depth, NULL) : TSR_ENOMEM;
@@ -730,13 +740,14 @@ static int r_optimal_leaf_ordering(const void *ctx, const tsr_arg *args, int nar
     if (!Z) return TSR_ENOMEM;
 
     /* full n-by-n distance matrix D (double) from y */
-    double *D = (double *)malloc((size_t)(n * n) * sizeof(double));
+    const int64_t dbytes = tsr_bytes_n(tsr_count_mul(n, n), sizeof(double), 0);   /* counted n*n distances */
+    double *D = (double *)tsr_alloc(dbytes);
     if (!D) { fn_free_doubles(Z, zl); return TSR_ENOMEM; }
     int rc = TSR_OK;
     if (args[1].kind == 3 && args[1].arr.ndim == 2) {
         int64_t nn = args[1].arr.shape[0], dim = args[1].arr.shape[1], yl; double *Y = fn_arg_doubles(&args[1], &yl);
-        if (!Y) { free(D); fn_free_doubles(Z, zl); return TSR_ENOMEM; }
-        if (nn != n) { fn_set_error("optimal_leaf_ordering: observation count does not match Z"); free(D); fn_free_doubles(Y, yl); fn_free_doubles(Z, zl); return TSR_EARG; }
+        if (!Y) { tsr_free(D, dbytes); fn_free_doubles(Z, zl); return TSR_ENOMEM; }
+        if (nn != n) { fn_set_error("optimal_leaf_ordering: observation count does not match Z"); tsr_free(D, dbytes); fn_free_doubles(Y, yl); fn_free_doubles(Z, zl); return TSR_EARG; }
         for (int64_t i = 0; i < n; i++) { D[i * n + i] = 0.0;
             for (int64_t j = i + 1; j < n; j++) { double s = 0.0;
                 for (int64_t c = 0; c < dim; c++) { double df = Y[i * dim + c] - Y[j * dim + c]; s += df * df; }
@@ -744,14 +755,14 @@ static int r_optimal_leaf_ordering(const void *ctx, const tsr_arg *args, int nar
         fn_free_doubles(Y, yl);
     } else if (args[1].kind == 3 && args[1].arr.ndim == 1) {
         int64_t yl; double *Y = fn_arg_doubles(&args[1], &yl);
-        if (!Y) { free(D); fn_free_doubles(Z, zl); return TSR_ENOMEM; }
+        if (!Y) { tsr_free(D, dbytes); fn_free_doubles(Z, zl); return TSR_ENOMEM; }
         int64_t nc = n * (n - 1) / 2;
-        if (args[1].arr.shape[0] != nc) { fn_set_error("optimal_leaf_ordering: condensed distance length does not match Z"); free(D); fn_free_doubles(Y, yl); fn_free_doubles(Z, zl); return TSR_EARG; }
+        if (args[1].arr.shape[0] != nc) { fn_set_error("optimal_leaf_ordering: condensed distance length does not match Z"); tsr_free(D, dbytes); fn_free_doubles(Y, yl); fn_free_doubles(Z, zl); return TSR_EARG; }
         int64_t p = 0;
         for (int64_t i = 0; i < n; i++) { D[i * n + i] = 0.0;
             for (int64_t j = i + 1; j < n; j++) { double d = Y[p++]; D[i * n + j] = D[j * n + i] = d; } }
         fn_free_doubles(Y, yl);
-    } else { fn_set_error("optimal_leaf_ordering: y must be a condensed distance vector or an observation matrix"); free(D); fn_free_doubles(Z, zl); return TSR_EARG; }
+    } else { fn_set_error("optimal_leaf_ordering: y must be a condensed distance vector or an observation matrix"); tsr_free(D, dbytes); fn_free_doubles(Z, zl); return TSR_EARG; }
 
     /* sorted_leaves = leaves_list(Z) (left-first pre-order); map original leaf -> sorted position */
     int64_t *sl = (int64_t *)malloc((size_t)n * sizeof(int64_t));
@@ -767,9 +778,9 @@ static int r_optimal_leaf_ordering(const void *ctx, const tsr_arg *args, int nar
       for (int64_t s = 0; s < n; s++) o2s[sl[s]] = (int)s; }
 
     /* sorted_Z: children relabelled to sorted leaf positions; sorted_D permuted by sorted_leaves (float32) */
-    szl = (int *)malloc((size_t)(m * 2) * sizeof(int));                 /* [v_l, v_r] per row */
-    sD = (float *)malloc((size_t)(n * n) * sizeof(float));
-    cr = (int *)malloc((size_t)((2 * n - 1) * 2) * sizeof(int));        /* cluster_ranges */
+    szl = (int *)tsr_scratch_n(tsr_count_mul(m, 2), sizeof(int));                 /* [v_l, v_r] per row */
+    sD = (float *)tsr_scratch_n(tsr_count_mul(n, n), sizeof(float));
+    cr = (int *)tsr_scratch_n(tsr_count_mul(2 * n - 1, 2), sizeof(int));        /* cluster_ranges */
     if (!szl || !sD || !cr) { rc = TSR_ENOMEM; goto done; }
     for (int64_t i = 0; i < m; i++) {
         int64_t vl = (int64_t)Z[i * 4 + 0], vr = (int64_t)Z[i * 4 + 1];
@@ -781,8 +792,8 @@ static int r_optimal_leaf_ordering(const void *ctx, const tsr_arg *args, int nar
     for (int64_t li = 0; li < m; li++) { int64_t v = li + n; cr[v * 2 + 0] = cr[szl[li * 2 + 0] * 2 + 0]; cr[v * 2 + 1] = cr[szl[li * 2 + 1] * 2 + 1]; }
 
     /* identify_swaps: Bar-Joseph DP over the sorted tree, with M in float32 */
-    M = (float *)calloc((size_t)(n * n), sizeof(float));
-    ss = (int *)calloc((size_t)(n * n * 2), sizeof(int));               /* swap_status */
+    M = (float *)tsr_scratch0_n(tsr_count_mul(n, n), sizeof(float));
+    ss = (int *)tsr_scratch0_n(tsr_count_mul(tsr_count_mul(n, n), 2), sizeof(int));               /* swap_status */
     must_swap = (int *)calloc((size_t)m, sizeof(int));
     mvals = (float *)malloc((size_t)n * sizeof(float));
     midx = (int *)malloc((size_t)n * sizeof(int));
@@ -869,7 +880,7 @@ static int r_optimal_leaf_ordering(const void *ctx, const tsr_arg *args, int nar
 done:
     free(M); free(ss); free(must_swap); free(mvals); free(midx); free(kvals); free(kidx);
     free(szl); free(sD); free(cr);
-    free(sl); free(stack); free(o2s); free(D); fn_free_doubles(Z, zl);
+    free(sl); free(stack); free(o2s); tsr_free(D, dbytes); fn_free_doubles(Z, zl);
     return rc;
 }
 
