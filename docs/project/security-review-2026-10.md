@@ -84,6 +84,16 @@ Owner decision: Tessero supports PHP 8.2 and newer, but only releases that carry
 
 The reference Docker image pins `php:8.4.27` by digest.
 
+Supported range: PHP 8.2 to 8.5 only. PHP 8.6 is a pre-release and is refused like an unpatched build (Composer
+constraint tops out below 8.6, and both run-time checks say so); a new minor is added once it is stable and CI covers
+it. Retiring 8.2 and 8.3 is tracked as TSR-208.
+
+PHP informational advisory 2026-10-23 (CVE-2026-115560, full advisory with the next regular release): a residual RCE
+vector needs `session.serialize_handler` switched to `php` at run time with `ini_set()` before `session_start()`, with
+session upload progress enabled. Tessero does not use sessions, and the website uses Laravel's database session
+driver, not native PHP sessions. Mitigation as php.net advises: `session.upload_progress.enabled = 0`, now set in the
+reference image (`docker/tessero.ini`) and recommended for every production PHP-FPM until the next PHP release.
+
 ## Input sanitization gate (2026-10-24)
 
 Owner directive: sanitize inputs before code executes. Every registry entry point now runs a structural gate

@@ -21,6 +21,10 @@ on:
 permissions:
   contents: read
 
+# setup-php: upgrade a preinstalled PHP to the latest patch release (security floor; see ci.yml)
+env:
+  update: true
+
 jobs:
   fuzz:
     name: fuzz ${{ matrix.target }} (30 min)

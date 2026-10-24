@@ -15,7 +15,7 @@ final class PhpSecurityTest extends TestCase
 {
     private const FLOOR = ['8.2' => 80235, '8.3' => 80336, '8.4' => 80427, '8.5' => 80512];
 
-    private const CONSTRAINT = '~8.2.35 || ~8.3.36 || ~8.4.27 || ^8.5.12';
+    private const CONSTRAINT = '~8.2.35 || ~8.3.36 || ~8.4.27 || ~8.5.12';
 
     public function testEachBranchStartsAtItsSecurityRelease(): void
     {
@@ -28,8 +28,9 @@ final class PhpSecurityTest extends TestCase
         }
         $this->assertFalse(Library::phpPatched(80199), 'PHP 8.1 is below the supported range');
         $this->assertFalse(Library::phpPatched(70433));
-        $this->assertTrue(Library::phpPatched(80600), 'a newer branch carries the fixes');
-        $this->assertTrue(Library::phpPatched(90000));
+        $this->assertFalse(Library::phpPatched(80600), 'PHP 8.6 is a pre-release: not supported yet');
+        $this->assertFalse(Library::phpPatched(80612));
+        $this->assertFalse(Library::phpPatched(90000));
     }
 
     public function testTheRunningPhpIsPatched(): void
@@ -52,5 +53,7 @@ final class PhpSecurityTest extends TestCase
             $this->assertMatchesRegularExpression("/PHP_VERSION_ID < {$floor}\\b/", $c, "{$branch}: compile-time floor");
             $this->assertStringContainsString("v >= {$floor};", $c, "{$branch}: run-time floor");
         }
+        $this->assertMatchesRegularExpression('/PHP_VERSION_ID >= 80600\b/', $c, '8.6 refused at compile time');
+        $this->assertStringContainsString('if (v < 80600) return v >= 80512;', $c, '8.5 is the last branch at run time');
     }
 }
