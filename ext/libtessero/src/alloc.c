@@ -228,13 +228,7 @@ int tsr_feature(const char *name)
     }
     if (strcmp(name, "openblas_threads") == 0) { tsr_blas_resolve(); return g_blas_set != NULL; }
     if (strcmp(name, "openmp") == 0) return tsr_openmp();
-    if (strcmp(name, "fpenv_check") == 0) {
-#ifdef TSR_HAVE_FPENV
-        return 1;
-#else
-        return 0;
-#endif
-    }
+    if (strcmp(name, "fpenv_check") == 0) return 1;     /* fpenv.c: tsr_fpenv_check / tsr_fpenv_check_thread */
     return 0;
 }
 

@@ -80,6 +80,8 @@ if test "$PHP_TESSERO" != "no"; then
   case $host_os in
     linux*|*gnu*|freebsd*)
       TESSERO_SHARED_LIBADD="$TESSERO_SHARED_LIBADD -Wl,--version-script=$ext_srcdir/tessero.map"
+      dnl never unloaded at shutdown: unloading could take libgomp away while OpenMP worker threads are alive
+      TESSERO_SHARED_LIBADD="$TESSERO_SHARED_LIBADD -Wl,-z,nodelete"
       ;;
   esac
 

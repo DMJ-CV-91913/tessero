@@ -53,6 +53,24 @@ final class Tessero
         Library::ffi()->tsr_set_blas_threads(max(1, $threads));
     }
 
+    /**
+     * Numerical self-check of the loaded libtessero (docs/reference/numerical-guarantees.md): the FP control state
+     * of this thread and the OpenMP workers, then the known-answer tests. fpenv is 0 when the FP environment is
+     * canonical (round to nearest, no flush-to-zero, traps masked), else a bitmask named in fpenv_reason;
+     * selfcheck is 0 when every probe matches, a negative code otherwise (tessero.h).
+     *
+     * @return array{fpenv: int, fpenv_reason: string, selfcheck: int, canonical: bool}
+     */
+    public static function selfcheck(): array
+    {
+        $ffi = Library::ffi();
+        $buf = $ffi->new('char[256]');
+        $fpenv = $ffi->tsr_fpenv_check($buf, 256);
+        $code = $ffi->tsr_selfcheck();
+
+        return ['fpenv' => $fpenv, 'fpenv_reason' => \FFI::string($buf), 'selfcheck' => $code, 'canonical' => $fpenv === 0 && $code === 0];
+    }
+
     /** The C ABI generation of the loaded libtessero. */
     public static function abiVersion(): int
     {
