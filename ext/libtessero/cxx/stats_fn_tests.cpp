@@ -915,7 +915,7 @@ int power_divergence_impl(const tsr_arg *args, int nargs, tsr_result *res, int n
                 /* 1-D axis=None: f_obs and f_exp broadcast against each other */
                 const int64_t ne = b.n(i, 1);
                 if (ne != 1 && n != 1) fail("shape mismatch: objects cannot be broadcast to a single shape");
-                const int64_t m = std::max(n, ne);
+                const int64_t m = n == 1 ? ne : n;        /* NumPy broadcasting: 1 against 0 is 0 (max() read the empty side) */
                 vector<double> ov((size_t)m), ev((size_t)m);
                 for (int64_t j = 0; j < m; j++) { ov[j] = b.x(i, 0)[n == 1 ? 0 : j]; ev[j] = b.x(i, 1)[ne == 1 ? 0 : j]; }
                 power_div_slice(ov.data(), m, ev.data(), false, false, ddof, lam, sum_check, o);
@@ -1224,8 +1224,9 @@ int f_binomtest(const void *, const tsr_arg *args, int nargs, tsr_result *res, i
 {
     return guarded([&] {
         /* k, n, p=0.5, alternative='two-sided' */
-        if (args[0].kind != 1 || args[0].num != std::floor(args[0].num)) fail("`k` must be an integer.");
-        if (args[1].kind != 1 || args[1].num != std::floor(args[1].num)) fail("`n` must be an integer.");
+        /* an integer that fits int64 (an infinite or 1e19 "integer" was cast to int64 for the results) */
+        if (args[0].kind != 1 || args[0].num != std::floor(args[0].num) || !(std::fabs(args[0].num) < 9.2e18)) fail("`k` must be an integer.");
+        if (args[1].kind != 1 || args[1].num != std::floor(args[1].num) || !(std::fabs(args[1].num) < 9.2e18)) fail("`n` must be an integer.");
         const double k = args[0].num, n = args[1].num;
         if (k < 0) fail("k must be an integer not less than 0, but got %g.", k);
         if (n < 1) fail("n must be an integer not less than 1, but got %g.", n);
