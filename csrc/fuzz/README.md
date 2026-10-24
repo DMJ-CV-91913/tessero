@@ -47,15 +47,14 @@ Throughput measured on the shared host (gcc 13, ASan+UBSan, nice -19, 1 thread):
 
 ## Open findings
 
-Bytes are hex; run `printf '<hex>' | xxd -r -p > in && ./fuzzsa_routines in` (default routine table, no
-`TSR_FUZZ_ONLY`). Found by the batch A campaigns in files outside batch A, not fixed there:
+Bytes are hex; run `printf '<hex>' | xxd -r -p > in && ./fuzzsa_routines -runs=0 in` (default routine table,
+no `TSR_FUZZ_ONLY`). Found by the batch C campaign's first full-table replay, outside batch C, not fixed there:
 
 | id | routine | site | reproducer |
 |----|---------|------|------------|
-| A-N1 | `interpolate.splantider` | `r_splantider` scipy_interpolate.c:409 (heap read past the coefficients; use-after-free in another input) | `c2020107bd010480313a418055422dc24ee135b9` |
-| A-N2 | `hierarchy.fcluster` | `incon_collect` scipy_cluster_hier.c:228 (heap read out of bounds) | `bc030107ea010480418042804380440000000000` |
+| C-O1 | a `scipy_csgraph.c` routine | store past a 1-byte-per-node block at scipy_csgraph.c:215 (heap overflow) | default-table mutation, input not kept; reproduce with `make fuzz-standalone FUZZ_TARGETS= FUZZ_REG_TARGETS=routines FUZZ_RUNS=20000 FUZZ_DEFS=-DFUZZ_SKIP_KNOWN` |
 
-The float->int cast class (F11) is closed in the batch A and batch B files; `fuzz/known_ubsan.supp` keeps it
+The float->int cast class (F11) is closed in the batch A, batch B and batch C files; `fuzz/known_ubsan.supp` keeps it
 suppressed under `FUZZ_SKIP_KNOWN` per source file for every other file (it no longer has a blanket
 `float-cast-overflow:*`), so a cast in a fixed file is fatal in every run.
 
@@ -64,6 +63,21 @@ registry routines. Most are one systemic gap -- a public routine trusts an argum
 coefficient-array length, a rank, a NaN/Inf number) without validating it before using it to index or allocate.
 
 ## Fixed findings
+
+Batch C (`scipy_interpolate.c`, `scipy_cluster_hier.c`). Regression checks in `tests/test_main.c`
+(`test_fuzz_batch_c`); reproducers committed as `fuzz/corpus/routines/A-N*` and `C-N*` (default table) and
+replaying clean. Integer arguments in both files go through `fn_arg_i64` (a float is SciPy's TypeError; NaN, the
+infinities and out-of-range values never reach a cast), so both files are off the `float-cast-overflow` suppression
+list. Every routine that takes a linkage matrix validates it with SciPy's `_is_valid_linkage` checks first.
+
+| id | routine(s) | was | now (as SciPy) |
+|----|-----------|-----|----------------|
+| A-N1 | `interpolate.splantider` (and `splder`) | `(t, c, k)` sizes unchecked: the cumulative pass read `c` past its end (one recorded input also reached freed memory) | sizes checked against `len(t) - k - 1`; negative `n` is the other direction (SciPy); order 0 returns the input; repeated internal knots raise SciPy's "not differentiable" error; `n * len(t)` above 2^28 refused |
+| A-N2 | `hierarchy.fcluster` (and every routine that reads a linkage matrix: cophenet, correspond, cut_tree, inconsistent, is_monotonic, leaders, leaves_list, maxdists, num_obs_linkage, optimal_leaf_ordering, to_mlab_linkage, ...) | child ids taken from Z unchecked: `incon_collect` recursed through out-of-range or repeated ids, read past Z and its scratch buffer, and recursed once per level | SciPy's linkage refusals ("contains negative indices", "uses non-singleton cluster before it is formed", "uses the same cluster more than once", ...), plus finite ids; the depth walk is iterative and bounded by m |
+| C-N1 | `interpolate.BPoly` | `x` shorter than `c.shape[1] + 1` read past its end (`pp_interval`, `x[i+1]`); `m = 0` indexed `x[-1]` | SciPy's `_PPolyBase` checks: 1-D `x`, at least 2 breakpoints, `c.shape[1] == len(x) - 1`, monotonic `x` |
+| C-N2 | `interpolate.BPoly` | an empty first axis of `c` wrote `binom[0]` into a 0-byte block | "polynomial must be at least of order 0" |
+| C-N1 (same class) | `interpolate.PPoly` | the same unchecked `x` and `c` shapes | the same checks |
+| C-N3 | `hierarchy.cophenet` (any routine on a one-row Z) | a one-row Z joining a leaf with itself wrote the result at index -1 | "Linkage 'Z' uses the same cluster more than once." (SciPy leaves a one-row Z unchecked) |
 
 Batch B (`np_polynomial.c`, `np_poly.c`, `scipy_signal.c`). Each reproducer is committed as a `routines` corpus file
 (`fuzz/corpus/routines/<id>-*`) and now replays clean; its `FUZZ_SKIP_KNOWN` entry is gone. The systemic

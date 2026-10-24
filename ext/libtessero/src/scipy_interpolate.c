@@ -14,8 +14,16 @@
 #include "fn.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* an integer argument (degree, order, count) as a Python int in [lo, hi], or return its error: SciPy reads these
+   through operator.index or "i" argument parsing, so a float is a TypeError, and NaN, the infinities and values
+   outside int64 never reach a cast (fn.h) */
+#define IP_INT(var, a, lo, hi, name) \
+    int64_t var; \
+    do { const int rc_ = fn_arg_i64(&(a), 1, (lo), (hi), (name), &var); if (rc_ != TSR_OK) return rc_; } while (0)
 
 extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
 
@@ -180,7 +188,7 @@ static int r_barycentric(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     if (n < 1) { fn_set_error("barycentric_interpolate: need at least one sample point"); return TSR_EARG; }
     int64_t lx, ly, lq;
     double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL, *xq = y ? fn_arg_doubles(&args[2], &lq) : NULL;
-    double *w = xq ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
+    double *w = xq ? (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double)) : NULL;
     double *out = w ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
     int rc = (!x || !y || !xq || !w || !out) ? TSR_ENOMEM : TSR_OK;
     if (rc == TSR_OK) {
@@ -228,7 +236,8 @@ static int ip_bspline_eval(const tsr_arg *args, tsr_result *res, const char *nam
         args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("%s: t, c and x must be 1-D arrays", name); return TSR_EARG; }
     if (args[2].kind != 1) { fn_set_error("%s: k must be an integer degree", name); return TSR_EARG; }
     const int64_t nt = args[0].arr.shape[0], nc = args[1].arr.shape[0], q = args[3].arr.shape[0];
-    const int k = (int)args[2].num;
+    IP_INT(k64, args[2], INT32_MIN, INT32_MAX, name);
+    const int k = (int)k64;
     if (k < 0 || nc < k + 1 || nt < nc + k + 1) { fn_set_error("%s: inconsistent (t, c, k) sizes", name); return TSR_EARG; }
     int64_t lt, lc, lq;
     double *t = fn_arg_doubles(&args[0], &lt), *c = t ? fn_arg_doubles(&args[1], &lc) : NULL, *xq = c ? fn_arg_doubles(&args[3], &lq) : NULL;
@@ -270,8 +279,10 @@ static int r_pade(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("pade: an must be a 1-D array"); return TSR_EARG; }
     if (args[1].kind != 1) { fn_set_error("pade: m must be an integer"); return TSR_EARG; }
-    const int64_t L = args[0].arr.shape[0], m = (int64_t)args[1].num;
-    const int64_t n = (nargs > 2 && args[2].kind == 1) ? (int64_t)args[2].num : (L - 1 - m);
+    IP_INT(m, args[1], INT32_MIN, INT32_MAX, "pade: m");
+    const int64_t L = args[0].arr.shape[0];
+    int64_t n = L - 1 - m;
+    if (nargs > 2 && args[2].kind == 1) { IP_INT(n2, args[2], INT32_MIN, INT32_MAX, "pade: n"); n = n2; }
     if (m < 0 || n < 0) { fn_set_error("pade: m and n must be nonnegative"); return TSR_EARG; }
     const int64_t N = m + n;
     if (N > L - 1) { fn_set_error("pade: m + n must be smaller than len(an)"); return TSR_EARG; }
@@ -314,7 +325,8 @@ static int r_make_interp_spline(const void *ctx, const tsr_arg *args, int nargs,
         args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("make_interp_spline: x, y and xnew must be 1-D arrays"); return TSR_EARG; }
     if (args[2].kind != 1) { fn_set_error("make_interp_spline: k must be an integer degree"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], q = args[3].arr.shape[0];
-    const int k = (int)args[2].num;
+    IP_INT(k64, args[2], INT32_MIN, INT32_MAX, "make_interp_spline: k");
+    const int k = (int)k64;
     if (args[1].arr.shape[0] != n) { fn_set_error("make_interp_spline: x and y must have the same length"); return TSR_EARG; }
     if (n < 2) { fn_set_error("make_interp_spline: need at least two sample points"); return TSR_EARG; }
     if (k != 1 && k != 3) { fn_set_error("make_interp_spline: only k=1 and k=3 are supported"); return TSR_EARG; }
@@ -336,32 +348,90 @@ static int r_make_interp_spline(const void *ctx, const tsr_arg *args, int nargs,
     return rc;
 }
 
+/* splder / splantider repeat an O(len(t)) pass n times; SciPy runs any n, but n * len(t) beyond this is refused
+   rather than run (the work, not the memory, is out of reach) */
+#define SPL_WORK ((int64_t)1 << 28)
+
+/* k and n of splder / splantider: Python ints (a float k is a TypeError in SciPy's slicing) */
+static int spl_kn(const tsr_arg *args, int nargs, const char *fname, int64_t *k, int64_t *n)
+{
+    char what[40];
+    snprintf(what, sizeof what, "%s: k", fname);
+    int rc = fn_arg_i64(&args[2], 1, 0, INT32_MAX, what, k);
+    *n = 1;
+    if (rc == TSR_OK && nargs > 3 && args[3].kind != 0) {
+        snprintf(what, sizeof what, "%s: n", fname);
+        rc = fn_arg_i64(&args[3], 1, -INT32_MAX, INT32_MAX, what, n);
+    }
+    return rc;
+}
+
+/* the same (t, c, k) with order m: SciPy's splder(tck, -m) is splantider(tck, m) and vice versa */
+static int spl_flip(int (*fn)(const void *, const tsr_arg *, int, tsr_result *, int), const void *ctx,
+                    const tsr_arg *args, int64_t m, tsr_result *res, int nres)
+{
+    tsr_arg a2[4] = {args[0], args[1], args[2], args[2]};
+    memset(&a2[3], 0, sizeof a2[3]);
+    a2[3].kind = 1; a2[3].flags = 1; a2[3].ival = m; a2[3].num = (double)m;
+    return fn(ctx, a2, 4, res, nres);
+}
+
+/* order 0: (t, c, k) unchanged, as SciPy returns them */
+static int spl_identity(const tsr_arg *args, int64_t k, tsr_result *res)
+{
+    int64_t lt, lc;
+    double *t = fn_arg_doubles(&args[0], &lt), *c = t ? fn_arg_doubles(&args[1], &lc) : NULL;
+    double *rt = c ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){lt}) : NULL;
+    double *rcc = rt ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){lc}) : NULL;
+    int rc = rcc ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) { memcpy(rt, t, (size_t)lt * sizeof(double)); memcpy(rcc, c, (size_t)lc * sizeof(double)); fn_result_int(&res[2], k); }
+    if (t) fn_free_doubles(t, lt);
+    if (c) fn_free_doubles(c, lc);
+    return rc;
+}
+
+static int r_splantider(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+
 /* splder(t, c, k, n=1): derivative of a B-spline in FITPACK (t, c, k) form (scipy.interpolate.splder). c is the
    FITPACK-padded coefficient array (length len(t)). Each pass: c' = (c[1:]-c[:-1])*k/(t[k+1:-1]-t[1:-k-1]) padded
-   with k zeros, knots t[1:-1], degree k-1. Returns (t, c, k). */
+   with k zeros, knots t[1:-1], degree k-1. Returns (t, c, k). n < 0 is splantider(tck, -n), as in SciPy. */
 static int r_splder(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
-    (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("splder: t and c must be 1-D arrays"); return TSR_EARG; }
-    if (args[2].kind != 1) { fn_set_error("splder: k must be an integer degree"); return TSR_EARG; }
-    const int64_t nt = args[0].arr.shape[0];
-    int kk = (int)args[2].num;
-    const int nn = (nargs > 3 && args[3].kind == 1) ? (int)args[3].num : 1;
-    if (nn < 0 || nn > kk) { fn_set_error("splder: order of derivative must be 0 <= n <= k"); return TSR_EARG; }
+    int64_t kk, nn;
+    int rc = spl_kn(args, nargs, "splder", &kk, &nn);
+    if (rc != TSR_OK) return rc;
+    if (nn < 0) return spl_flip(r_splantider, ctx, args, -nn, res, nres);
+    if (nn > kk) { fn_set_error("Order of derivative (n = %lld) must be <= order of spline (k = %lld)", (long long)nn, (long long)kk); return TSR_EARG; }
+    if (nn == 0) return spl_identity(args, kk, res);
+    const int64_t nt = args[0].arr.shape[0], ncf = args[1].arr.shape[0];
+    /* the last pass reads t[k+1 .. len(t)-2] with its own (shorter) t and smaller k: nt - k - n - 1 >= 0; the first
+       pass reads c[0 .. nt-k-2] */
+    if (nt - kk - nn - 1 < 0 || ncf < nt - kk - 1) { fn_set_error("splder: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    if ((double)nn * (double)nt > (double)SPL_WORK) { fn_set_error("splder: n * len(t) is too large"); return TSR_EARG; }
     int64_t lt, lc;
     double *t0 = fn_arg_doubles(&args[0], &lt), *c0 = t0 ? fn_arg_doubles(&args[1], &lc) : NULL;
-    double *tcur = t0 ? (double *)malloc((size_t)nt * sizeof(double)) : NULL;
-    double *ccur = tcur ? (double *)malloc((size_t)(nt > args[1].arr.shape[0] ? nt : args[1].arr.shape[0]) * sizeof(double)) : NULL;
-    int rc = (!t0 || !c0 || !tcur || !ccur) ? TSR_ENOMEM : TSR_OK;
+    double *tcur = c0 ? (double *)malloc((size_t)nt * sizeof(double)) : NULL;
+    double *ccur = tcur ? (double *)malloc((size_t)ncf * sizeof(double)) : NULL;
+    rc = ccur ? TSR_OK : TSR_ENOMEM;
     int64_t tn = nt;
     if (rc == TSR_OK) {
         memcpy(tcur, t0, (size_t)nt * sizeof(double));
-        memcpy(ccur, c0, (size_t)args[1].arr.shape[0] * sizeof(double));
-        for (int j = 0; j < nn && rc == TSR_OK; j++) {
-            const int64_t ld = tn - kk - 2;                /* core length */
-            double *cnew = (double *)malloc((size_t)(tn - 2) * sizeof(double));
+        memcpy(ccur, c0, (size_t)ncf * sizeof(double));
+        for (int64_t j = 0; j < nn && rc == TSR_OK; j++) {
+            const int64_t ld = tn - kk - 2;                /* core length, >= 0 by the size check */
+            double *cnew = (double *)malloc((size_t)(tn - 2 > 0 ? tn - 2 : 1) * sizeof(double));
             if (!cnew) { rc = TSR_ENOMEM; break; }
-            for (int64_t i = 0; i < ld; i++) { const double dt = tcur[kk + 1 + i] - tcur[1 + i]; cnew[i] = (ccur[1 + i] - ccur[i]) * (double)kk / dt; }
+            for (int64_t i = 0; i < ld; i++) {
+                const double dt = tcur[kk + 1 + i] - tcur[1 + i];
+                if (dt == 0.0) {                           /* SciPy: np.errstate(divide/invalid='raise') */
+                    fn_set_error("The spline has internal repeated knots and is not differentiable %lld times", (long long)nn);
+                    rc = TSR_EARG;
+                    break;
+                }
+                cnew[i] = (ccur[1 + i] - ccur[i]) * (double)kk / dt;
+            }
+            if (rc != TSR_OK) { free(cnew); break; }
             for (int64_t i = ld; i < tn - 2; i++) cnew[i] = 0.0;   /* pad with k zeros */
             for (int64_t i = 0; i < tn - 2; i++) tcur[i] = tcur[i + 1];   /* t[1:-1] */
             tn -= 2; free(ccur); ccur = cnew; kk -= 1;
@@ -371,40 +441,47 @@ static int r_splder(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){tn});
         double *rcc = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){tn});
         if (!rt || !rcc) rc = TSR_ENOMEM;
-        else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)tn * sizeof(double)); fn_result_int(&res[2], (int64_t)kk); }
+        else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)tn * sizeof(double)); fn_result_int(&res[2], kk); }
     }
-    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc);
+    free(tcur); free(ccur);
+    if (t0) fn_free_doubles(t0, lt);
+    if (c0) fn_free_doubles(c0, lc);
     return rc;
 }
 
 /* splantider(t, c, k, n=1): antiderivative of a B-spline (scipy.interpolate.splantider). Inverse of splder:
-   c_new = [0, cumsum(c[:-k-1]*(t[k+1:]-t[:-k-1]))/(k+1), (last) x (k+2)], knots [t[0], t, t[-1]], degree k+1. */
+   c_new = [0, cumsum(c[:-k-1]*(t[k+1:]-t[:-k-1]))/(k+1), (last) x (k+2)], knots [t[0], t, t[-1]], degree k+1.
+   n < 0 is splder(tck, -n), as in SciPy. The first pass reads c[:len(t)-k-1]: a shorter c broadcasts only when
+   it has one element (NumPy), and with no core at all SciPy's c[-1] is an IndexError. */
 static int r_splantider(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
-    (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("splantider: t and c must be 1-D arrays"); return TSR_EARG; }
-    if (args[2].kind != 1) { fn_set_error("splantider: k must be an integer degree"); return TSR_EARG; }
-    const int64_t nt = args[0].arr.shape[0];
-    int kk = (int)args[2].num;
-    const int nn = (nargs > 3 && args[3].kind == 1) ? (int)args[3].num : 1;
-    if (nn < 0) { fn_set_error("splantider: order must be nonnegative"); return TSR_EARG; }
+    int64_t kk, nn;
+    int rc = spl_kn(args, nargs, "splantider", &kk, &nn);
+    if (rc != TSR_OK) return rc;
+    if (nn < 0) return spl_flip(r_splder, ctx, args, -nn, res, nres);
+    if (nn == 0) return spl_identity(args, kk, res);
+    const int64_t nt = args[0].arr.shape[0], ncf = args[1].arr.shape[0], ld0 = nt - kk - 1;
+    if (ld0 <= 0) { fn_set_error("index -1 is out of bounds for axis 0 with size 0"); return TSR_EINDEX; }
+    if (ncf < ld0 && ncf != 1) { fn_set_error("operands could not be broadcast together with shapes (%lld,) (%lld,)", (long long)ncf, (long long)ld0); return TSR_EARG; }
+    if ((double)nn * ((double)nt + (double)nn) > (double)SPL_WORK) { fn_set_error("splantider: n * len(t) is too large"); return TSR_EARG; }
     int64_t lt, lc;
     double *t0 = fn_arg_doubles(&args[0], &lt), *c0 = t0 ? fn_arg_doubles(&args[1], &lc) : NULL;
-    const int64_t cap = nt + 2 * (int64_t)nn + 2;
-    double *tcur = t0 ? (double *)malloc((size_t)cap * sizeof(double)) : NULL;
-    double *ccur = tcur ? (double *)malloc((size_t)cap * sizeof(double)) : NULL;
-    int rc = (!t0 || !c0 || !tcur || !ccur) ? TSR_ENOMEM : TSR_OK;
+    double *tcur = c0 ? (double *)malloc((size_t)nt * sizeof(double)) : NULL;
+    double *ccur = tcur ? (double *)malloc((size_t)ncf * sizeof(double)) : NULL;
+    rc = ccur ? TSR_OK : TSR_ENOMEM;
     int64_t tn = nt;
     if (rc == TSR_OK) {
         memcpy(tcur, t0, (size_t)nt * sizeof(double));
-        memcpy(ccur, c0, (size_t)args[1].arr.shape[0] * sizeof(double));
-        for (int j = 0; j < nn && rc == TSR_OK; j++) {
-            const int64_t ld = tn - kk - 1;                /* core length */
+        memcpy(ccur, c0, (size_t)ncf * sizeof(double));
+        for (int64_t j = 0; j < nn && rc == TSR_OK; j++) {
+            const int64_t ld = tn - kk - 1;                /* core length: ld0 on the first pass, then one more each */
+            const int64_t cs = (j == 0 && ncf < ld) ? 0 : 1;   /* a one-element c broadcasts on the first pass */
             double *cnew = (double *)malloc((size_t)(tn + 2) * sizeof(double));
             double *tnew = (double *)malloc((size_t)(tn + 2) * sizeof(double));
             if (!cnew || !tnew) { free(cnew); free(tnew); rc = TSR_ENOMEM; break; }
             cnew[0] = 0.0; double acc = 0.0;
-            for (int64_t i = 0; i < ld; i++) { const double dt = tcur[kk + 1 + i] - tcur[i]; acc += ccur[i] * dt; cnew[1 + i] = acc / (double)(kk + 1); }
+            for (int64_t i = 0; i < ld; i++) { const double dt = tcur[kk + 1 + i] - tcur[i]; acc += ccur[cs * i] * dt; cnew[1 + i] = acc / (double)(kk + 1); }
             const double last = cnew[ld];
             for (int64_t i = 0; i < kk + 2; i++) cnew[1 + ld + i] = last;
             tnew[0] = tcur[0];
@@ -417,9 +494,11 @@ static int r_splantider(const void *ctx, const tsr_arg *args, int nargs, tsr_res
         double *rt = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){tn});
         double *rcc = (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){tn});
         if (!rt || !rcc) rc = TSR_ENOMEM;
-        else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)tn * sizeof(double)); fn_result_int(&res[2], (int64_t)kk); }
+        else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)tn * sizeof(double)); fn_result_int(&res[2], kk); }
     }
-    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc);
+    free(tcur); free(ccur);
+    if (t0) fn_free_doubles(t0, lt);
+    if (c0) fn_free_doubles(c0, lc);
     return rc;
 }
 
@@ -434,7 +513,8 @@ static int r_splint(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     if (args[0].kind != 1 || args[1].kind != 1) { fn_set_error("splint: a and b must be numbers"); return TSR_EARG; }
     if (args[2].kind != 3 || args[2].arr.ndim != 1 || args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("splint: t and c must be 1-D arrays"); return TSR_EARG; }
     if (args[4].kind != 1) { fn_set_error("splint: k must be an integer degree"); return TSR_EARG; }
-    const int k = (int)args[4].num;
+    IP_INT(k64, args[4], INT32_MIN, INT32_MAX, "splint: k");
+    const int k = (int)k64;
     const int64_t nt = args[2].arr.shape[0], n = nt - k - 1;   /* n coefficients; base interval [t[k], t[n]] */
     if (k < 0 || n < 1 || args[3].arr.shape[0] < n) { fn_set_error("splint: inconsistent (t, c, k) sizes"); return TSR_EARG; }
     double a = (args[0].flags & 1) ? (double)args[0].ival : args[0].num;
@@ -486,9 +566,9 @@ static int r_splint(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 
 /* de Boor evaluation of a B-spline (knots t, nc coefficients, degree k) at a scalar x; x is clamped to the active
    interval exactly as ip_bspline_eval. k <= 3 here (sproot is cubic). */
-static double ip_deboor_scalar(const double *t, const double *c, int64_t nc, int k, double x)
+/* de Boor with caller scratch d[k+1]; ip_deboor_scalar is the k <= 7 form with a stack buffer */
+static double ip_deboor_buf(const double *t, const double *c, int64_t nc, int k, double x, double *d)
 {
-    double d[8];
     int64_t mu = k; while (mu < nc - 1 && t[mu + 1] <= x) mu++;
     for (int j = 0; j <= k; j++) d[j] = c[mu - k + j];
     for (int r = 1; r <= k; r++)
@@ -498,6 +578,11 @@ static double ip_deboor_scalar(const double *t, const double *c, int64_t nc, int
             d[j] = (1.0 - a) * d[j - 1] + a * d[j];
         }
     return d[k];
+}
+static double ip_deboor_scalar(const double *t, const double *c, int64_t nc, int k, double x)
+{
+    double d[8];
+    return ip_deboor_buf(t, c, nc, k, x, d);
 }
 
 static double ip_cub_eval(const double *a, double u) { return ((a[3] * u + a[2]) * u + a[1]) * u + a[0]; }
@@ -539,13 +624,15 @@ static int r_sproot(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1) { fn_set_error("sproot: t and c must be 1-D arrays"); return TSR_EARG; }
     if (args[2].kind != 1) { fn_set_error("sproot: k must be an integer degree"); return TSR_EARG; }
-    const int k = (int)args[2].num;
+    IP_INT(k64, args[2], INT32_MIN, INT32_MAX, "sproot: k");
+    const int k = (int)k64;
     if (k != 3) { fn_set_error("sproot works only for cubic (k=3) splines"); return TSR_EARG; }
     const int64_t nt = args[0].arr.shape[0];
     if (nt < 8) { fn_set_error("sproot: the number of knots must be >= 8"); return TSR_EARG; }
     const int64_t nc = nt - k - 1;
     if (args[1].arr.shape[0] < nc) { fn_set_error("sproot: inconsistent (t, c, k) sizes"); return TSR_EARG; }
-    const int64_t mest = (nargs > 3 && args[3].kind == 1) ? (args[3].flags & 1 ? args[3].ival : (int64_t)args[3].num) : 10;
+    int64_t mest = 10;
+    if (nargs > 3 && args[3].kind == 1) { IP_INT(m2, args[3], INT64_MIN, INT64_MAX, "sproot: mest"); mest = m2; }
     int64_t lt, lc;
     double *t = fn_arg_doubles(&args[0], &lt), *c = t ? fn_arg_doubles(&args[1], &lc) : NULL;
     const int64_t n4 = nt - 4, cap = 3 * (n4 - 3) + 8;      /* at most 3 roots per interval */
@@ -714,7 +801,8 @@ static int r_make_lsq_spline(const void *ctx, const tsr_arg *args, int nargs, ts
     if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 ||
         args[2].kind != 3 || args[2].arr.ndim != 1 || args[4].kind != 3 || args[4].arr.ndim != 1) { fn_set_error("make_lsq_spline: x, y, t and xnew must be 1-D arrays"); return TSR_EARG; }
     if (args[3].kind != 1) { fn_set_error("make_lsq_spline: k must be an integer degree"); return TSR_EARG; }
-    const int k = (int)args[3].num;
+    IP_INT(k64, args[3], INT32_MIN, INT32_MAX, "make_lsq_spline: k");
+    const int k = (int)k64;
     if (k < 1 || k > 7) { fn_set_error("make_lsq_spline: degree k must be between 1 and 7"); return TSR_EARG; }
     const int64_t m = args[0].arr.shape[0], nt = args[2].arr.shape[0], q = args[4].arr.shape[0], n = nt - k - 1;
     if (args[1].arr.shape[0] != m) { fn_set_error("make_lsq_spline: x and y must have the same length"); return TSR_EARG; }
@@ -837,13 +925,30 @@ static int64_t pp_interval(const double *x, int64_t m, double v)
     while (lo < hi) { int64_t mid = (lo + hi) / 2; if (x[mid + 1] <= v) lo = mid + 1; else hi = mid; }
     return lo < 0 ? 0 : (lo > m - 1 ? m - 1 : lo);
 }
+/* SciPy's _PPolyBase checks on (c, x), shared by PPoly and BPoly: x is 1-D with at least 2 breakpoints, c has
+   at least one coefficient row and one column per interval, and x is monotonic (NaN fails it). Every evaluation
+   below indexes x[i], x[i+1] and c[a*m + i] with i in [0, m-1], which these make in bounds. */
+static int pp_check(const tsr_arg *c, const tsr_arg *x, const double *xv)
+{
+    if (x->arr.ndim != 1) { fn_set_error("x must be 1-dimensional"); return TSR_EARG; }
+    const int64_t nx = x->arr.shape[0];
+    if (nx < 2) { fn_set_error("at least 2 breakpoints are needed"); return TSR_EARG; }
+    if (c->arr.shape[0] == 0) { fn_set_error("polynomial must be at least of order 0"); return TSR_EARG; }
+    if (c->arr.shape[1] != nx - 1) { fn_set_error("number of coefficients != len(x)-1"); return TSR_EARG; }
+    int up = 1, down = 1;
+    for (int64_t i = 0; i + 1 < nx; i++) { const double d = xv[i + 1] - xv[i]; if (!(d >= 0)) up = 0; if (!(d <= 0)) down = 0; }
+    if (!up && !down) { fn_set_error("`x` must be strictly increasing or decreasing."); return TSR_EARG; }
+    return TSR_OK;
+}
 /* PPoly(c, x)(xnew): piecewise polynomial, c shape (k+1, m) local power basis (descending), breakpoints x. */
 static int r_ppoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("PPoly: c must be 2-D, x and xnew 1-D arrays"); return TSR_EARG; }
     const int64_t k1 = args[0].arr.shape[0], m = args[0].arr.shape[1];
-    int64_t lc, lx, lq; double *c = fn_arg_doubles(&args[0], &lc), *x = c ? fn_arg_doubles(&args[1], &lx) : NULL, *xq = x ? fn_arg_doubles(&args[2], &lq) : NULL;
+    int64_t lc, lx, lq; double *c = fn_arg_doubles(&args[0], &lc), *x = c ? fn_arg_doubles(&args[1], &lx) : NULL;
+    if (x) { const int prc = pp_check(&args[0], &args[1], x); if (prc != TSR_OK) { fn_free_doubles(c, lc); fn_free_doubles(x, lx); return prc; } }
+    double *xq = x ? fn_arg_doubles(&args[2], &lq) : NULL;
     double *out = xq ? (double *)fn_result_array(&res[0], TSR_F64, args[2].arr.ndim, args[2].arr.shape) : NULL;
     int rc = (!c || !x || !xq || !out) ? TSR_ENOMEM : TSR_OK;
     if (rc == TSR_OK) for (int64_t t = 0; t < lq; t++) {
@@ -860,7 +965,9 @@ static int r_bpoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("BPoly: c must be 2-D, x and xnew 1-D arrays"); return TSR_EARG; }
     const int64_t k1 = args[0].arr.shape[0], m = args[0].arr.shape[1], k = k1 - 1;
-    int64_t lc, lx, lq; double *c = fn_arg_doubles(&args[0], &lc), *x = c ? fn_arg_doubles(&args[1], &lx) : NULL, *xq = x ? fn_arg_doubles(&args[2], &lq) : NULL;
+    int64_t lc, lx, lq; double *c = fn_arg_doubles(&args[0], &lc), *x = c ? fn_arg_doubles(&args[1], &lx) : NULL;
+    if (x) { const int prc = pp_check(&args[0], &args[1], x); if (prc != TSR_OK) { fn_free_doubles(c, lc); fn_free_doubles(x, lx); return prc; } }
+    double *xq = x ? fn_arg_doubles(&args[2], &lq) : NULL;
     double *binom = xq ? (double *)malloc((size_t)k1 * sizeof(double)) : NULL;
     double *out = binom ? (double *)fn_result_array(&res[0], TSR_F64, args[2].arr.ndim, args[2].arr.shape) : NULL;
     int rc = (!c || !x || !xq || !binom || !out) ? TSR_ENOMEM : TSR_OK;
@@ -882,11 +989,13 @@ static int r_floater_hormann(const void *ctx, const tsr_arg *args, int nargs, ts
     (void)ctx; (void)nres;
     for (int i = 0; i < 3; i++) if (args[i].kind != 3 || args[i].arr.ndim != 1) { fn_set_error("FloaterHormannInterpolator: xi, yi, x must be 1-D arrays"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], q = args[2].arr.shape[0];
-    int d = (nargs > 3 && args[3].kind == 1) ? (int)args[3].num : 3;
-    if (d > n - 1) d = (int)(n - 1);
+    int64_t d = 3;
+    if (nargs > 3 && args[3].kind == 1) { IP_INT(d2, args[3], INT64_MIN, INT64_MAX, "FloaterHormannInterpolator: d"); d = d2; }
+    if (d > n - 1) d = n - 1;
+    if (args[1].arr.shape[0] != n) { fn_set_error("FloaterHormannInterpolator: xi and yi must have the same length"); return TSR_EARG; }
     if (d < 0) d = 0;
     int64_t lx, ly, lq; double *x = fn_arg_doubles(&args[0], &lx), *y = x ? fn_arg_doubles(&args[1], &ly) : NULL, *xq = y ? fn_arg_doubles(&args[2], &lq) : NULL;
-    double *w = xq ? (double *)malloc((size_t)n * sizeof(double)) : NULL;
+    double *w = xq ? (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double)) : NULL;
     double *out = w ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){q}) : NULL;
     int rc = (!x || !y || !xq || !w || !out) ? TSR_ENOMEM : TSR_OK;
     if (rc == TSR_OK) {
@@ -908,22 +1017,40 @@ static int r_floater_hormann(const void *ctx, const tsr_arg *args, int nargs, ts
     free(w); fn_free_doubles(x, lx); fn_free_doubles(y, ly); fn_free_doubles(xq, lq);
     return rc;
 }
+/* FITPACK's knot interval for insert: the first l in [k, n-k-2] with x < t[l+1] (or the last one), refused when x
+   is outside [t[k], t[n-k-1]] or the interval is empty (insert.f: ier = 10, SciPy's "Invalid input data") */
+static int64_t ip_insert_interval(const double *t, int64_t n, int k, double x)
+{
+    const int64_t last = n - k - 2;
+    if (last < k || x < t[k] || x > t[n - k - 1]) return -1;
+    int64_t l = k;
+    while (!(x < t[l + 1]) && l < last) l++;
+    return t[l] >= t[l + 1] ? -1 : l;
+}
+
 /* insert(x, (t, c, k), m): Boehm knot insertion, inserting x into the B-spline m times. Outputs (t, c, k). */
 static int r_insert(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    if (args[0].kind != 1 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 1) { fn_set_error("insert: x scalar, t and c 1-D arrays, k int"); return TSR_EARG; }
-    const double xv = args[0].num; const int k = (int)args[3].num;
-    const int m = (nargs > 4 && args[4].kind == 1) ? (int)args[4].num : 1;
+    if (args[0].kind != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 || args[2].kind != 3 || args[2].arr.ndim != 1 || args[3].kind != 1) { fn_set_error("insert: x scalar, t and c 1-D arrays, k int"); return TSR_EARG; }
+    const double xv = (args[0].flags & 1) ? (double)args[0].ival : args[0].num;
+    IP_INT(k64, args[3], 0, INT32_MAX, "insert: k");
+    const int k = (int)k64;
+    int64_t m = 1;
+    if (nargs > 4 && args[4].kind == 1) { IP_INT(m2, args[4], 0, INT32_MAX, "insert: m"); m = m2; }
+    const int64_t nt = args[1].arr.shape[0], ncf = args[2].arr.shape[0];
+    if (nt < 2 * k64 + 2 || ncf < nt - k - 1) { fn_set_error("insert: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    if ((double)m * ((double)nt + (double)m) > (double)SPL_WORK) { fn_set_error("insert: m * len(t) is too large"); return TSR_EARG; }
     int64_t lt, lc; double *t0 = fn_arg_doubles(&args[1], &lt), *c0 = t0 ? fn_arg_doubles(&args[2], &lc) : NULL;
     int64_t tn = lt, cn = lc;
-    double *tcur = t0 ? (double *)malloc((size_t)(lt + m) * sizeof(double)) : NULL;
+    double *tcur = c0 ? (double *)malloc((size_t)(lt + m) * sizeof(double)) : NULL;
     double *ccur = tcur ? (double *)malloc((size_t)(lc + m) * sizeof(double)) : NULL;
-    int rc = (!t0 || !c0 || !tcur || !ccur) ? TSR_ENOMEM : TSR_OK;
+    int rc = ccur ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {
         memcpy(tcur, t0, (size_t)lt * sizeof(double)); memcpy(ccur, c0, (size_t)lc * sizeof(double));
-        for (int it = 0; it < m && rc == TSR_OK; it++) {
-            int64_t l = 0; for (int64_t i = 0; i + 1 < tn; i++) if (tcur[i] <= xv && xv < tcur[i + 1]) { l = i; break; }
+        for (int64_t it = 0; it < m && rc == TSR_OK; it++) {
+            const int64_t l = ip_insert_interval(tcur, tn, k, xv);
+            if (l < 0) { fn_set_error("Invalid input data"); rc = TSR_EARG; break; }
             double *nc = (double *)malloc((size_t)(cn + 1) * sizeof(double));
             if (!nc) { rc = TSR_ENOMEM; break; }
             for (int64_t i = 0; i < l - k + 1; i++) nc[i] = ccur[i];
@@ -941,29 +1068,41 @@ static int r_insert(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         if (!rt || !rcc) rc = TSR_ENOMEM;
         else { memcpy(rt, tcur, (size_t)tn * sizeof(double)); memcpy(rcc, ccur, (size_t)cm * sizeof(double)); fn_result_int(&res[2], (int64_t)k); }
     }
-    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc);
+    free(tcur); free(ccur);
+    if (t0) fn_free_doubles(t0, lt);
+    if (c0) fn_free_doubles(c0, lc);
     return rc;
 }
-/* spalde(t, c, k, x): all derivatives 0..k of the B-spline at each x; result row t is [f, f', ..., f^(k)]. */
+/* spalde(t, c, k, x): all derivatives 0..k of the B-spline at each x; result row t is [f, f', ..., f^(k)]. Each x
+   must lie in the base interval [t[k], t[n-k-1]] (SciPy's ValueError otherwise). */
 static int r_spalde(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nargs; (void)nres;
-    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 1 || args[3].kind != 3) { fn_set_error("spalde: t, c 1-D arrays, k int, x 1-D array"); return TSR_EARG; }
-    const int64_t nt = args[0].arr.shape[0], q = args[3].arr.shape[0]; const int k = (int)args[2].num;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 || args[2].kind != 1 || args[3].kind != 3 || args[3].arr.ndim != 1) { fn_set_error("spalde: t, c 1-D arrays, k int, x 1-D array"); return TSR_EARG; }
+    IP_INT(k64, args[2], 0, INT32_MAX, "spalde: k");
+    const int k = (int)k64;
+    const int64_t nt = args[0].arr.shape[0], ncf0 = args[1].arr.shape[0], q = args[3].arr.shape[0];
+    /* k derivative passes leave nt - 2k knots and nt - 2k - 1 >= 1 coefficients for degree 0 */
+    if (nt < 2 * k64 + 2 || ncf0 < nt - k - 1) { fn_set_error("spalde: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    if ((double)q * (double)(k + 1) * (double)(k + 1) + (double)k * (double)nt > (double)SPL_WORK) { fn_set_error("spalde: too much work for len(x) and k"); return TSR_EARG; }
     int64_t lt, lc, lq; double *t0 = fn_arg_doubles(&args[0], &lt), *c0 = t0 ? fn_arg_doubles(&args[1], &lc) : NULL, *xq = c0 ? fn_arg_doubles(&args[3], &lq) : NULL;
-    double *tcur = xq ? (double *)malloc((size_t)nt * sizeof(double)) : NULL;
+    int rc = xq ? TSR_OK : TSR_ENOMEM;
+    for (int64_t e = 0; e < q && rc == TSR_OK; e++)
+        if (!(t0[k] <= xq[e] && xq[e] <= t0[nt - k - 1])) { fn_set_error("Invalid input data. t(k)<=x<=t(n-k+1) must hold."); rc = TSR_EARG; }
+    double *tcur = rc == TSR_OK ? (double *)malloc((size_t)nt * sizeof(double)) : NULL;
     double *ccur = tcur ? (double *)malloc((size_t)(lc > nt ? lc : nt) * sizeof(double)) : NULL;
-    double *out = ccur ? (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){q, k + 1}) : NULL;
-    int rc = (!t0 || !c0 || !xq || !tcur || !ccur || !out) ? TSR_ENOMEM : TSR_OK;
+    double *d = ccur ? (double *)malloc((size_t)(k + 1) * sizeof(double)) : NULL;
+    double *out = d ? (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){q, k + 1}) : NULL;
+    if (rc == TSR_OK && !out) rc = TSR_ENOMEM;
     if (rc == TSR_OK) {
         memcpy(tcur, t0, (size_t)nt * sizeof(double)); memcpy(ccur, c0, (size_t)lc * sizeof(double));
         int64_t tn = nt; int kk = k;
         for (int nu = 0; nu <= k; nu++) {
             const int64_t ncf = tn - kk - 1;                  /* coefficients of the current derivative spline */
-            for (int64_t e = 0; e < q; e++) out[e * (k + 1) + nu] = ip_deboor_scalar(tcur, ccur, ncf, kk, xq[e]);
+            for (int64_t e = 0; e < q; e++) out[e * (k + 1) + nu] = ip_deboor_buf(tcur, ccur, ncf, kk, xq[e], d);
             if (nu < k) {                                     /* differentiate once more (as in splder) */
                 const int64_t ld = tn - kk - 2;
-                double *cnew = (double *)malloc((size_t)ld * sizeof(double));
+                double *cnew = (double *)malloc((size_t)(ld > 0 ? ld : 1) * sizeof(double));
                 if (!cnew) { rc = TSR_ENOMEM; break; }
                 for (int64_t i = 0; i < ld; i++) { const double dt = tcur[kk + 1 + i] - tcur[1 + i]; cnew[i] = (ccur[1 + i] - ccur[i]) * (double)kk / dt; }
                 for (int64_t i = 0; i < tn - 2; i++) tcur[i] = tcur[i + 1];
@@ -971,16 +1110,22 @@ static int r_spalde(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
             }
         }
     }
-    free(tcur); free(ccur); fn_free_doubles(t0, lt); fn_free_doubles(c0, lc); fn_free_doubles(xq, lq);
+    free(tcur); free(ccur); free(d);
+    if (t0) fn_free_doubles(t0, lt);
+    if (c0) fn_free_doubles(c0, lc);
+    if (xq) fn_free_doubles(xq, lq);
     return rc;
 }
 
-/* NdPPoly(c, (xb, yb))(xi): 2-D tensor piecewise polynomial, c shape (kx+1, ky+1, mx, my), nested Horner. */
+/* NdPPoly(c, (xb, yb))(xi): 2-D tensor piecewise polynomial, c shape (kx+1, ky+1, mx, my), nested Horner. The
+   breakpoints have mx+1 and my+1 entries and xi is (n, 2). */
 static int r_ndppoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nargs; (void)nres;
-    if (args[0].kind != 3 || args[0].arr.ndim != 4 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 3 || args[3].arr.ndim != 2) { fn_set_error("NdPPoly: c 4-D, xb/yb 1-D, xi (n,2)"); return TSR_EARG; }
+    if (args[0].kind != 3 || args[0].arr.ndim != 4 || args[1].kind != 3 || args[1].arr.ndim != 1 || args[2].kind != 3 || args[2].arr.ndim != 1 || args[3].kind != 3 || args[3].arr.ndim != 2) { fn_set_error("NdPPoly: c 4-D, xb/yb 1-D, xi (n,2)"); return TSR_EARG; }
     const int64_t kx1 = args[0].arr.shape[0], ky1 = args[0].arr.shape[1], mx = args[0].arr.shape[2], my = args[0].arr.shape[3], n = args[3].arr.shape[0];
+    if (mx < 1 || my < 1 || args[1].arr.shape[0] != mx + 1 || args[2].arr.shape[0] != my + 1) { fn_set_error("NdPPoly: the breakpoints must have c.shape[2]+1 and c.shape[3]+1 entries"); return TSR_EARG; }
+    if (args[3].arr.shape[1] != 2) { fn_set_error("NdPPoly: xi must have shape (n, 2)"); return TSR_EARG; }
     int64_t lc, lxb, lyb, lxi;
     double *c = fn_arg_doubles(&args[0], &lc), *xb = c ? fn_arg_doubles(&args[1], &lxb) : NULL, *yb = xb ? fn_arg_doubles(&args[2], &lyb) : NULL, *xi = yb ? fn_arg_doubles(&args[3], &lxi) : NULL;
     double *out = xi ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n}) : NULL;
@@ -992,27 +1137,40 @@ static int r_ndppoly(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         for (int64_t a = 0; a < kx1; a++) { double w = 0.0; for (int64_t b = 0; b < ky1; b++) w = w * sy + c[((a * ky1 + b) * mx + ix) * my + iy]; v = v * sx + w; }
         out[t] = v;
     }
-    fn_free_doubles(c, lc); fn_free_doubles(xb, lxb); fn_free_doubles(yb, lyb); fn_free_doubles(xi, lxi);
+    if (c) fn_free_doubles(c, lc);
+    if (xb) fn_free_doubles(xb, lxb);
+    if (yb) fn_free_doubles(yb, lyb);
+    if (xi) fn_free_doubles(xi, lxi);
     return rc;
 }
-/* NdBSpline((tx, ty), c, (kx, ky))(xi): 2-D tensor B-spline, c shape (ncx, ncy); de Boor along x then y. */
+/* NdBSpline((tx, ty), c, (kx, ky))(xi): 2-D tensor B-spline, c shape (ncx, ncy); de Boor along x then y. Each
+   knot vector has at least c.shape[d] + k + 1 entries and xi is (n, 2). */
 static int r_ndbspline(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nargs; (void)nres;
-    if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3 || args[2].arr.ndim != 2 || args[3].kind != 1 || args[4].kind != 1 || args[5].kind != 3 || args[5].arr.ndim != 2) { fn_set_error("NdBSpline: tx, ty 1-D, c (ncx,ncy), kx, ky ints, xi (n,2)"); return TSR_EARG; }
-    const int kx = (int)args[3].num, ky = (int)args[4].num;
+    if (args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 1 || args[2].kind != 3 || args[2].arr.ndim != 2 || args[3].kind != 1 || args[4].kind != 1 || args[5].kind != 3 || args[5].arr.ndim != 2) { fn_set_error("NdBSpline: tx, ty 1-D, c (ncx,ncy), kx, ky ints, xi (n,2)"); return TSR_EARG; }
+    IP_INT(kx64, args[3], 0, INT32_MAX, "NdBSpline: kx");
+    IP_INT(ky64, args[4], 0, INT32_MAX, "NdBSpline: ky");
+    const int kx = (int)kx64, ky = (int)ky64;
     const int64_t ncx = args[2].arr.shape[0], ncy = args[2].arr.shape[1], n = args[5].arr.shape[0];
+    if (ncx < kx64 + 1 || ncy < ky64 + 1 || args[0].arr.shape[0] < ncx + kx64 + 1 || args[1].arr.shape[0] < ncy + ky64 + 1) { fn_set_error("NdBSpline: inconsistent (t, c, k) sizes"); return TSR_EARG; }
+    if (args[5].arr.shape[1] != 2) { fn_set_error("NdBSpline: xi must have shape (n, 2)"); return TSR_EARG; }
     int64_t ltx, lty, lc, lxi;
     double *tx = fn_arg_doubles(&args[0], &ltx), *ty = tx ? fn_arg_doubles(&args[1], &lty) : NULL, *c = ty ? fn_arg_doubles(&args[2], &lc) : NULL, *xi = c ? fn_arg_doubles(&args[5], &lxi) : NULL;
     double *colx = xi ? (double *)malloc((size_t)ncx * sizeof(double)) : NULL, *g = colx ? (double *)malloc((size_t)ncy * sizeof(double)) : NULL;
-    double *out = g ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n}) : NULL;
+    double *dx = g ? (double *)malloc((size_t)(kx + 1) * sizeof(double)) : NULL, *dy = dx ? (double *)malloc((size_t)(ky + 1) * sizeof(double)) : NULL;
+    double *out = dy ? (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n}) : NULL;
     int rc = out ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) for (int64_t t = 0; t < n; t++) {
         const double px = xi[t * 2], py = xi[t * 2 + 1];
-        for (int64_t j = 0; j < ncy; j++) { for (int64_t i = 0; i < ncx; i++) colx[i] = c[i * ncy + j]; g[j] = ip_deboor_scalar(tx, colx, ncx, kx, px); }
-        out[t] = ip_deboor_scalar(ty, g, ncy, ky, py);
+        for (int64_t j = 0; j < ncy; j++) { for (int64_t i = 0; i < ncx; i++) colx[i] = c[i * ncy + j]; g[j] = ip_deboor_buf(tx, colx, ncx, kx, px, dx); }
+        out[t] = ip_deboor_buf(ty, g, ncy, ky, py, dy);
     }
-    free(colx); free(g); fn_free_doubles(tx, ltx); fn_free_doubles(ty, lty); fn_free_doubles(c, lc); fn_free_doubles(xi, lxi);
+    free(colx); free(g); free(dx); free(dy);
+    if (tx) fn_free_doubles(tx, ltx);
+    if (ty) fn_free_doubles(ty, lty);
+    if (c) fn_free_doubles(c, lc);
+    if (xi) fn_free_doubles(xi, lxi);
     return rc;
 }
 
@@ -1060,7 +1218,8 @@ static int r_fitpack_curfit(const void *ctx, const tsr_arg *args, int nargs, tsr
         args[1].kind != 3 || args[1].arr.ndim != 1 ||
         args[2].kind != 3 || args[2].arr.ndim != 1) { fn_set_error("splrep: x, y and w must be 1-D arrays"); return TSR_EARG; }
     if (args[3].kind != 1) { fn_set_error("splrep: k must be an integer degree"); return TSR_EARG; }
-    const int k = (int)args[3].num;
+    IP_INT(k64, args[3], INT32_MIN, INT32_MAX, "splrep: k");
+    const int k = (int)k64;
     if (k < 1 || k > 5) { fn_set_error("splrep: degree k must be between 1 and 5"); return TSR_EARG; }
     const double s = args[4].num;
     if (s < 0.0) { fn_set_error("splrep: smoothing factor s must be non-negative"); return TSR_EARG; }
@@ -1103,7 +1262,9 @@ static int r_fitpack_surfit(const void *ctx, const tsr_arg *args, int nargs, tsr
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3 || args[3].kind != 3) { fn_set_error("bisplrep: x, y, z and w must be 1-D arrays"); return TSR_EARG; }
     if (args[4].kind != 1 || args[5].kind != 1) { fn_set_error("bisplrep: kx and ky must be integers"); return TSR_EARG; }
-    const int kx = (int)args[4].num, ky = (int)args[5].num;
+    IP_INT(kx64, args[4], INT32_MIN, INT32_MAX, "bisplrep: kx");
+    IP_INT(ky64, args[5], INT32_MIN, INT32_MAX, "bisplrep: ky");
+    const int kx = (int)kx64, ky = (int)ky64;
     if (kx < 1 || kx > 5 || ky < 1 || ky > 5) { fn_set_error("bisplrep: kx, ky must be in 1..5"); return TSR_EARG; }
     const double s = args[6].num, eps = args[7].num;
     if (s < 0.0) { fn_set_error("bisplrep: s must be non-negative"); return TSR_EARG; }
@@ -1212,7 +1373,9 @@ static int r_fitpack_regrid(const void *ctx, const tsr_arg *args, int nargs, tsr
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[2].kind != 3) { fn_set_error("regrid: x, y and z must be arrays"); return TSR_EARG; }
     if (args[3].kind != 1 || args[4].kind != 1) { fn_set_error("regrid: kx and ky must be integers"); return TSR_EARG; }
-    const int kx = (int)args[3].num, ky = (int)args[4].num;
+    IP_INT(kx64, args[3], INT32_MIN, INT32_MAX, "regrid: kx");
+    IP_INT(ky64, args[4], INT32_MIN, INT32_MAX, "regrid: ky");
+    const int kx = (int)kx64, ky = (int)ky64;
     if (kx < 1 || kx > 5 || ky < 1 || ky > 5) { fn_set_error("regrid: kx, ky must be in 1..5"); return TSR_EARG; }
     const double s = args[5].num;
     if (s < 0.0) { fn_set_error("regrid: s must be non-negative"); return TSR_EARG; }
