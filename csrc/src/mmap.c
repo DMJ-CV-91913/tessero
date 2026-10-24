@@ -426,10 +426,18 @@ int64_t tsr_npy_write_header(int dtype, int32_t ndim, const int64_t *shape, int 
     if (dtype < 0 || dtype >= TSR_NDTYPES || ndim < 0 || ndim > TSR_MAXDIM || (ndim > 0 && !shape)) return TSR_EARG;
     char dict[1024];
     int n = snprintf(dict, sizeof(dict), "{'descr': '%s', 'fortran_order': %s, 'shape': (", DESCR[dtype], fortran ? "True" : "False");
+    /* refuse what tsr_npy_header refuses, so every header written parses back: a dimension its digit check
+       rejects (>= 9223372036854775800) or a shape whose byte count overflows int64 */
+    int64_t count = 1;
     for (int d = 0; d < ndim; d++) {
         if (shape[d] < 0) return TSR_EARG;
-        n += snprintf(dict + n, sizeof(dict) - (size_t)n, d ? ", %lld" : "%lld", (long long)shape[d]);
+        if (shape[d] >= INT64_MAX - 7) return TSR_ESHAPE;
+        if (shape[d] != 0 && count > INT64_MAX / shape[d]) return TSR_ESHAPE;
+        count *= shape[d];
     }
+    if (count > INT64_MAX / tsr_itemsize(dtype)) return TSR_ESHAPE;
+    for (int d = 0; d < ndim; d++)
+        n += snprintf(dict + n, sizeof(dict) - (size_t)n, d ? ", %lld" : "%lld", (long long)shape[d]);
     n += snprintf(dict + n, sizeof(dict) - (size_t)n, "%s), }", ndim == 1 ? "," : "");
     int major = 1;
     int64_t prefix = 10;

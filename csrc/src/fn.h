@@ -241,6 +241,45 @@ static inline double fn_sum(const double *x, int64_t n, unsigned flags)
     return acc;
 }
 
+/* ---- integer-valued arguments. Casting a double to an integer type is undefined behaviour for NaN, the
+   infinities and values outside the type, so a routine never casts an unchecked argument: it uses
+   fn_arg_i64 (with an error path) or fn_dbl_i64 (a helper without one, whose caller range-checks). */
+
+/* v is finite and inside int64, so (int64_t)v is defined (and truncates toward zero, as Python's int(v)) */
+static inline int fn_dbl_fits_i64(double v) { return v >= -9223372036854775808.0 && v < 9223372036854775808.0; }
+/* (int64_t)v when that is defined, `bad` for NaN, an infinity or a value outside int64 */
+static inline int64_t fn_dbl_i64(double v, int64_t bad) { return fn_dbl_fits_i64(v) ? (int64_t)v : bad; }
+/* a number argument (kind 1) as an integer, or `bad` (see fn_dbl_i64) */
+static inline int64_t fn_num_i64(const tsr_arg *a, int64_t bad) { return (a->flags & 1) ? a->ival : fn_dbl_i64(a->num, bad); }
+
+/* Number argument `a` (kind 1 or 4) as an integer in [lo, hi]. An integer passes exactly. A float must be
+   finite and inside int64 and, with `exact`, integral (NumPy's operator.index: TypeError "'float' object
+   cannot be interpreted as an integer"); without it the float truncates as Python's int() does, which
+   refuses NaN and the infinities with Python's messages. Out of [lo, hi]: "<name> must be in [lo, hi]".
+   Returns TSR_OK, or TSR_ETYPE / TSR_EARG with the message set. */
+static inline int fn_arg_i64(const tsr_arg *a, int exact, int64_t lo, int64_t hi, const char *name, int64_t *out)
+{
+    int64_t v;
+    if (a->kind == 1 && (a->flags & 1)) v = a->ival;
+    else if (a->kind == 1 || a->kind == 4) {
+        const double x = a->num;
+        if (exact && x != floor(x)) {                 /* NaN, the infinities and fractions */
+            fn_set_error("'float' object cannot be interpreted as an integer (%s)", name);
+            return TSR_ETYPE;
+        }
+        if (x != x) { fn_set_error("cannot convert float NaN to integer (%s)", name); return TSR_EARG; }
+        if (x == INFINITY || x == -INFINITY) { fn_set_error("cannot convert float infinity to integer (%s)", name); return TSR_EARG; }
+        if (!fn_dbl_fits_i64(x)) { fn_set_error("%s must be in [%lld, %lld]", name, (long long)lo, (long long)hi); return TSR_EARG; }
+        v = (int64_t)x;
+    } else {
+        fn_set_error("%s must be an integer", name);
+        return TSR_ETYPE;
+    }
+    if (v < lo || v > hi) { fn_set_error("%s must be in [%lld, %lld]", name, (long long)lo, (long long)hi); return TSR_EARG; }
+    *out = v;
+    return TSR_OK;
+}
+
 #ifdef __cplusplus
 }
 #endif

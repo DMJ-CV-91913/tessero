@@ -1031,6 +1031,285 @@ static void test_security_regressions(void)
     CHECK(tsr_csr_cg(2, ok_ip, far_ix, dd, xx, yy, 1e-10, 0, 10, &res) == TSR_EINDEX, "csr cg column outside matrix refused");
 }
 
+/* Regressions for the argument-validation findings of the fuzzing campaign (csrc/fuzz/README.md, batch A): each
+   input used to read or write out of bounds, hit undefined behaviour (an unchecked float->int cast, a signed
+   overflow) or run unbounded. They run under ASan + UBSan in `make sanitize`. */
+static tsr_arg arg_int(int64_t v) { tsr_arg a = arg_num((double)v); a.flags = 1; a.ival = v; return a; }
+static tsr_arg arg_none(void) { tsr_arg a; memset(&a, 0, sizeof a); return a; }
+static void fa_free(tsr_result *r, int n)
+{
+    for (int k = 0; k < n; k++)
+        if ((r[k].kind == 3 || r[k].kind == 2) && r[k].arr.data) tsr_free(r[k].arr.data, r[k].bytes);
+}
+/* call routine `name`; results stay in r (nres slots, zeroed first) for the caller to inspect and fa_free */
+static int fa_call(const char *name, int nargs, const tsr_arg *a, tsr_result *r, int nres)
+{
+    memset(r, 0, sizeof(tsr_result) * (size_t)nres);
+    const int id = tsr_fn_find(name);
+    if (id < 0) { fprintf(stderr, "no routine %s\n", name); return -999; }
+    return tsr_fn_routine(id, nargs, a, nres, r);
+}
+static double fa_num(const tsr_result *r) { return r->kind == 3 ? ((const double *)r->arr.data)[0] : r->num; }
+
+static void test_fuzz_batch_a(void)
+{
+    tsr_result r[8];
+    int rc;
+    double e0[1] = {0}, one[1] = {1.0}, three[3] = {1, 2, 3}, five[1] = {5.0}, nanv[2] = {NAN, 2.0};
+    int64_t s0[1] = {0}, s1[1] = {1}, s2[1] = {2}, s3[1] = {3};
+
+    /* F2: ellip_harm / _2 / ellip_normal with p < 1 indexed z[-1]; SciPy returns NaN */
+    tsr_arg eh[5] = {arg_num(5), arg_num(8), arg_int(1), arg_int(0), arg_num(2.5)};
+    rc = fa_call("special.ellip_harm", 5, eh, r, 1);
+    CHECK(rc == 0 && isnan(r[0].num), "F2 ellip_harm(p=0) is NaN (rc %d)", rc);
+    rc = fa_call("special.ellip_harm_2", 5, eh, r, 1);
+    CHECK(rc == 0 && isnan(r[0].num), "F2 ellip_harm_2(p=0) is NaN (rc %d)", rc);
+    rc = fa_call("special.ellip_normal", 4, eh, r, 1);
+    CHECK(rc == 0 && isnan(r[0].num), "F2 ellip_normal(p=0) is NaN (rc %d)", rc);
+    eh[3] = arg_num(NAN);
+    rc = fa_call("special.ellip_harm", 5, eh, r, 1);
+    CHECK(rc == 0 && isnan(r[0].num), "F2 ellip_harm(p=NaN) is NaN (rc %d)", rc);
+    eh[3] = arg_int(1);
+    rc = fa_call("special.ellip_harm", 5, eh, r, 1);
+    CHECK(rc == 0 && isfinite(r[0].num), "F2 ellip_harm(p=1) still evaluates (rc %d)", rc);
+
+    /* F5: a label on a 0-length axis and a longer axis was accepted (0 meant "unset") and read out of bounds */
+    tsr_arg ei[3] = {arg_str("i,i"), arg_arr(e0, 1, s0), arg_arr(three, 1, s3)};
+    CHECK(fa_call("np.einsum", 3, ei, r, 1) == TSR_EARG, "F5 einsum 0-length vs 3 refused");
+    ei[2] = arg_arr(one, 1, s1);
+    rc = fa_call("np.einsum", 3, ei, r, 1);
+    CHECK(rc == 0 && fa_num(&r[0]) == 0.0, "F5 einsum 0-length vs 1 broadcasts to 0 (rc %d)", rc);
+    fa_free(r, 1);
+    tsr_arg eo[3] = {arg_str("i,j->ij"), arg_arr(e0, 1, s0), arg_arr(three, 1, s3)};
+    rc = fa_call("np.einsum", 3, eo, r, 1);
+    CHECK(rc == 0 && r[0].kind == 3 && r[0].arr.shape[0] == 0 && r[0].arr.shape[1] == 3, "F5 einsum outer with a 0-length axis (rc %d)", rc);
+    fa_free(r, 1);
+    /* F8: dots that are not one "..." per term were misparsed (olab left unset), and a short output "." read past
+       the string */
+    double cube[8] = {0}; int64_t s222[3] = {2, 2, 2};
+    tsr_arg ed[2] = {arg_str("a.b.c"), arg_arr(cube, 3, s222)};
+    CHECK(fa_call("np.einsum", 2, ed, r, 1) == TSR_EARG, "F8 einsum 'a.b.c' refused");
+    ed[0] = arg_str("..a.");
+    CHECK(fa_call("np.einsum", 2, ed, r, 1) == TSR_EARG, "F8 einsum '..a.' refused");
+    tsr_arg eu[2] = {arg_str("a->."), arg_arr(three, 1, s3)};
+    CHECK(fa_call("np.einsum", 2, eu, r, 1) == TSR_EARG, "F8 einsum output '.' refused");
+    eu[0] = arg_str("...a->....");
+    CHECK(fa_call("np.einsum", 2, eu, r, 1) == TSR_EARG, "F8 einsum output '....' refused");
+    eu[0] = arg_str("...a->...");
+    rc = fa_call("np.einsum", 2, eu, r, 1);
+    CHECK(rc == 0 && fa_num(&r[0]) == 6.0, "einsum '...a->...' still sums (rc %d)", rc);
+    fa_free(r, 1);
+
+    /* F23: an order ~1e18 indexed the fixed [256] coefficient buffer; SciPy returns at most 251 coefficients */
+    tsr_arg mc[2] = {arg_num(1e18), arg_num(2.0)};
+    CHECK(fa_call("special.mathieu_odd_coef", 2, mc, r, 1) == TSR_EARG, "F23 mathieu_odd_coef(1e18) refused (int overflow)");
+    mc[0] = arg_int(1000); mc[1] = arg_num(1.0);
+    rc = fa_call("special.mathieu_even_coef", 2, mc, r, 1);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 251, "F23 mathieu_even_coef(1000) has 251 coefficients (rc %d)", rc);
+    fa_free(r, 1);
+    mc[1] = arg_num(NAN);
+    CHECK(fa_call("special.mathieu_even_coef", 2, mc, r, 1) == TSR_EARG, "F23 mathieu_even_coef(q=NaN) refused");
+
+    /* F20: pbvv_seq repeated the recurrence per order (quadratic: 2^20 ran for minutes); v=1e300 cast to int */
+    tsr_arg pv[2] = {arg_num(1048576.0), arg_num(1.0)};
+    rc = fa_call("special.pbvv_seq", 2, pv, r, 2);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 1048577, "F20 pbvv_seq(2^20) in one recurrence (rc %d)", rc);
+    fa_free(r, 2);
+    pv[0] = arg_num(1e300);
+    CHECK(fa_call("special.pbvv_seq", 2, pv, r, 2) == TSR_EARG, "F20 pbvv_seq(1e300) refused");
+    pv[0] = arg_num(NAN);
+    CHECK(fa_call("special.pbdv_seq", 2, pv, r, 2) == TSR_EARG, "F20 pbdv_seq(NaN) refused");
+    pv[0] = arg_num(-5.5);
+    rc = fa_call("special.pbvv_seq", 2, pv, r, 2);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 2 && CLOSE(((double *)r[0].arr.data)[0], 0.22003509, 1e-7) &&
+          CLOSE(((double *)r[0].arr.data)[1], -0.54176921, 1e-7), "pbvv_seq(-5.5, 1) matches scipy (rc %d)", rc);
+    fa_free(r, 2);
+    /* the fixed [260] zero buffer of erf_zeros / fresnel*_zeros overflowed for nt > 260 */
+    tsr_arg ez[1] = {arg_int(300)};
+    rc = fa_call("special.erf_zeros", 1, ez, r, 1);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 300, "erf_zeros(300) (rc %d)", rc);
+    fa_free(r, 1);
+    tsr_arg nc[1] = {arg_int(10000000)};
+    CHECK(fa_call("np.newton_cotes", 1, nc, r, 1) == TSR_EARG, "newton_cotes(1e7) refused before the (rn+1)^2 allocation");
+
+    /* F13: an empty sample made stat_osm offset a null pointer; N is an integer >= 0 as numpy.linspace needs */
+    tsr_arg bn[4] = {arg_arr(e0, 1, s0), arg_num(-2), arg_num(2), arg_int(3)};
+    rc = fa_call("stats.boxcox_normplot", 4, bn, r, 2);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 0, "F13 boxcox_normplot([]) is empty (rc %d)", rc);
+    fa_free(r, 2);
+    rc = fa_call("stats.yeojohnson_normplot", 4, bn, r, 2);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 0, "F13 yeojohnson_normplot([]) is empty (rc %d)", rc);
+    fa_free(r, 2);
+    rc = fa_call("stats.probplot", 1, bn, r, 5);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 0 && r[4].num == 0.0 && isnan(r[2].num), "F13 probplot([]) is (nan, nan, 0) (rc %d)", rc);
+    fa_free(r, 5);
+    bn[0] = arg_arr(three, 1, s3); bn[3] = arg_num(NAN);
+    CHECK(fa_call("stats.boxcox_normplot", 4, bn, r, 2) == TSR_ETYPE, "F13 boxcox_normplot N=NaN refused");
+    bn[3] = arg_int(-1);
+    CHECK(fa_call("stats.boxcox_normplot", 4, bn, r, 2) == TSR_EARG, "F13 boxcox_normplot N=-1 refused");
+
+    /* F18: ecdf never advanced past a NaN (a 2-D fuzz input ran for minutes); SciPy wants 1-D, NaN-free */
+    double sq4[4] = {1, 2, 3, 4}; int64_t s22[2] = {2, 2};
+    tsr_arg ec[1] = {arg_arr(sq4, 2, s22)};
+    CHECK(fa_call("stats.ecdf", 1, ec, r, 2) == TSR_EARG, "F18 ecdf 2-D refused");
+    ec[0] = arg_arr(nanv, 1, s2);
+    CHECK(fa_call("stats.ecdf", 1, ec, r, 2) == TSR_EARG, "F18 ecdf NaN refused");
+
+    /* F34: f_obs of length 1 against an empty f_exp read the empty side; NumPy broadcasting gives length 0 */
+    tsr_arg cs[4] = {arg_arr(five, 1, s1), arg_arr(e0, 1, s0), arg_int(0), arg_none()};
+    rc = fa_call("stats.chisquare", 4, cs, r, 2);
+    CHECK(rc == 0 && fa_num(&r[0]) == 0.0 && isnan(fa_num(&r[1])), "F34 chisquare([5], f_exp=[]) is (0, nan) (rc %d)", rc);
+    fa_free(r, 2);
+
+    /* F15 / F36 / F40: a 0-d input indexed shape[-1] / stride[-1] */
+    double sc3[1] = {3.0};
+    tsr_arg mf[2] = {arg_arr(sc3, 0, NULL), arg_int(1)};
+    rc = fa_call("ndimage.maximum_filter", 2, mf, r, 1);
+    CHECK(rc == 0 && r[0].arr.ndim == 0 && fa_num(&r[0]) == 3.0, "F15 maximum_filter of a 0-d input (rc %d)", rc);
+    fa_free(r, 1);
+    mf[1] = arg_int(3);
+    rc = fa_call("ndimage.morphological_laplace", 2, mf, r, 1);
+    CHECK(rc == 0 && fa_num(&r[0]) == 0.0, "F15 morphological_laplace of a 0-d input (rc %d)", rc);
+    fa_free(r, 1);
+    tsr_arg mk[2] = {arg_arr(sc3, 0, NULL), arg_arr(sc3, 0, NULL)};
+    rc = fa_call("distance.minkowski_distance", 2, mk, r, 1);
+    CHECK(rc == 0 && fa_num(&r[0]) == 0.0, "F36 minkowski_distance of 0-d inputs (rc %d)", rc);
+    double ot[2] = {1.0, 2.0}, oz[1] = {1.0};
+    tsr_arg mk2[2] = {arg_arr(oz, 0, NULL), arg_arr(ot, 1, s2)};
+    rc = fa_call("distance.minkowski_distance", 2, mk2, r, 1);
+    CHECK(rc == 0 && fa_num(&r[0]) == 1.0, "F36 minkowski_distance 0-d against (2,) broadcasts (rc %d)", rc);
+    double m23[6] = {0}; int64_t s23[2] = {2, 3}, s33[2] = {3, 3};
+    double m33[9] = {0};
+    tsr_arg mk3[2] = {arg_arr(m23, 2, s23), arg_arr(m33, 2, s33)};
+    CHECK(fa_call("distance.minkowski_distance", 2, mk3, r, 1) == TSR_EARG, "minkowski_distance (2,3) vs (3,3) refused (read past y)");
+    tsr_arg fh[3] = {arg_arr(sc3, 0, NULL), arg_num(0.1), arg_num(0.0)};
+    CHECK(fa_call("scipyfft.fht", 3, fh, r, 3) == TSR_EDIM, "F40 fht of a 0-d input refused");
+
+    /* F11: a NaN label was cast to int64 (find_objects); it is background */
+    tsr_arg fo[1] = {arg_arr(nanv, 1, s2)};
+    rc = fa_call("ndimage.find_objects", 1, fo, r, 1);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 2 && ((double *)r[0].arr.data)[2] == 1.0 && ((double *)r[0].arr.data)[3] == 2.0,
+          "F11 find_objects with a NaN label (rc %d)", rc);
+    fa_free(r, 1);
+    /* labels / masks shorter than the input were read past their end */
+    tsr_arg ls[2] = {arg_arr(three, 1, s3), arg_arr(ot, 1, s2)};
+    CHECK(fa_call("ndimage.sum", 2, ls, r, 1) == TSR_EARG, "ndimage.sum with short labels refused");
+    tsr_arg bp[3] = {arg_arr(sq4, 2, s22), arg_none(), arg_arr(ot, 1, s2)};
+    CHECK(fa_call("ndimage.binary_propagation", 3, bp, r, 1) == TSR_EARG, "binary_propagation with a short mask refused");
+    double neg4[4] = {-5, 5, 0, 0}, mk4[4] = {1, 0, 0, 2};
+    tsr_arg ws[2] = {arg_arr(neg4, 2, s22), arg_arr(mk4, 2, s22)};
+    CHECK(fa_call("ndimage.watershed_ift", 2, ws, r, 1) == TSR_ETYPE, "watershed_ift with a negative input refused");
+    tsr_arg g1[2] = {arg_arr(three, 1, s3), arg_num(NAN)};
+    CHECK(fa_call("ndimage.gaussian_filter1d", 2, g1, r, 1) == TSR_EARG, "gaussian_filter1d sigma=NaN refused");
+    tsr_arg u1[2] = {arg_arr(three, 1, s3), arg_int((int64_t)1 << 62)};
+    CHECK(fa_call("ndimage.uniform_filter1d", 2, u1, r, 1) == TSR_EARG, "uniform_filter1d size 2^62 refused");
+    tsr_arg mo[5] = {arg_arr(three, 1, s3), arg_int(3), arg_str("reflect"), arg_num(0), arg_num(9e18)};
+    CHECK(fa_call("ndimage.minimum_filter", 5, mo, r, 1) == TSR_EARG, "minimum_filter origin 9e18 refused");
+    tsr_arg zm[2] = {arg_arr(three, 1, s3), arg_num(NAN)};
+    CHECK(fa_call("ndimage.zoom", 2, zm, r, 1) == TSR_EARG, "zoom NaN refused");
+    double idm[1] = {1.0};
+    tsr_arg af[4] = {arg_arr(three, 1, s3), arg_arr(idm, 1, s1), arg_num(0), arg_arr(ot, 1, s2)};
+    CHECK(fa_call("ndimage.affine_transform", 4, af, r, 1) == TSR_EARG, "affine_transform output_shape of the wrong length refused");
+
+    /* map_coordinates with (ndim,) coordinates: a scalar result whose 0-d block leaked */
+    double mcoord[1] = {1.0};
+    tsr_arg mcs[3] = {arg_arr(three, 1, s3), arg_arr(mcoord, 1, s1), arg_int(1)};
+    rc = fa_call("ndimage.map_coordinates", 3, mcs, r, 1);
+    CHECK(rc == 0 && r[0].kind == 1 && r[0].num == 2.0, "map_coordinates scalar result (rc %d, no 0-d block leaked)", rc);
+    fa_free(r, 1);
+
+    /* F7 / F9: histogram bin counts: (bins + 1) * 8 wrapped; an infinite estimator quotient was cast to int64 */
+    tsr_arg hb[2] = {arg_arr(three, 1, s3), arg_int((int64_t)1 << 60)};
+    CHECK(fa_call("np.histogram", 2, hb, r, 2) == TSR_EARG, "F7 histogram bins=2^60 refused");
+    CHECK(fa_call("np.histogram_bin_edges", 2, hb, r, 1) == TSR_EARG, "F7 histogram_bin_edges bins=2^60 refused");
+    double spread[8] = {-1e308, 0, 0, 0, 0, 1e308, 1, 2}; int64_t s8[1] = {8};
+    tsr_arg he[2] = {arg_arr(spread, 1, s8), arg_str("fd")};
+    CHECK(fa_call("np.histogram_bin_edges", 2, he, r, 1) == TSR_EARG, "F9 histogram 'fd' over an infinite spread refused");
+
+    /* F31 / F33: sparse diagonal constructors built a dense m*n matrix (the product overflowed) */
+    tsr_arg ey[1] = {arg_num(4e9)};
+    CHECK(fa_call("sparse.eye", 1, ey, r, 4) == TSR_ENOMEM, "F31 sparse.eye(4e9) refused (int32 indices)");
+    ey[0] = arg_num(NAN);
+    CHECK(fa_call("sparse.eye", 1, ey, r, 4) == TSR_EARG, "F31 sparse.eye(NaN) refused");
+    ey[0] = arg_int(100000);
+    rc = fa_call("sparse.eye_array", 1, ey, r, 4);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 100000 && r[2].arr.shape[0] == 100001, "sparse.eye_array(1e5) without a dense build (rc %d)", rc);
+    fa_free(r, 4);
+    tsr_arg ek[3] = {arg_int(3), arg_none(), arg_int(1)};
+    rc = fa_call("sparse.eye", 3, ek, r, 4);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 2 && ((int32_t *)r[1].arr.data)[0] == 1 && ((int32_t *)r[1].arr.data)[1] == 2 &&
+          ((int32_t *)r[2].arr.data)[3] == 2, "sparse.eye(3, k=1) structure (rc %d)", rc);
+    fa_free(r, 4);
+    double d12[2] = {1, 2}, d34[2] = {3, 4}, big2[2] = {4e9, 4e9}, off0[1] = {0}, off00[2] = {0, 0}, offn[1] = {NAN};
+    tsr_arg dl[2] = {arg_arr(d12, 1, s2), arg_arr(d34, 1, s2)};
+    tsr_arg seq; memset(&seq, 0, sizeof seq); seq.kind = 5; seq.items = dl; seq.count = 1;
+    tsr_arg dg[3] = {seq, arg_arr(off0, 1, s1), arg_arr(big2, 1, s2)};
+    CHECK(fa_call("sparse.diags", 3, dg, r, 4) == TSR_ENOMEM, "F33 sparse.diags shape (4e9, 4e9) refused");
+    dg[1] = arg_arr(offn, 1, s1); dg[2] = arg_none();
+    CHECK(fa_call("sparse.diags", 3, dg, r, 4) == TSR_EARG, "F33 sparse.diags offset NaN refused");
+    dg[1] = arg_arr(off00, 1, s2);
+    CHECK(fa_call("sparse.diags", 2, dg, r, 4) == TSR_EARG, "sparse.diags with more offsets than diagonals refused");
+    seq.count = 2; dg[0] = seq;
+    rc = fa_call("sparse.diags", 2, dg, r, 4);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 2 && ((double *)r[0].arr.data)[0] == 4.0 && ((double *)r[0].arr.data)[1] == 6.0,
+          "sparse.diags repeated offsets still sum (rc %d)", rc);
+    fa_free(r, 4);
+    double sd[6] = {1, 2, 3, 4, 5, 6};
+    tsr_arg sp[4] = {arg_arr(sd, 2, s23), arg_arr(off0, 1, s1), arg_int(3), arg_int(3)};
+    CHECK(fa_call("sparse.spdiags", 4, sp, r, 4) == TSR_EARG, "sparse.spdiags with fewer offsets than rows refused");
+
+    /* F1 / F10 / F6: text and binary file readers */
+    char path[] = "/tmp/tsr_fuzz_a_XXXXXX";
+    int fd = mkstemp(path);
+    CHECK(fd >= 0, "mkstemp");
+    if (fd >= 0) {
+        const char txt[] = "1 300 -3 2.7";
+        CHECK(write(fd, txt, sizeof txt - 1) == (ssize_t)(sizeof txt - 1), "write");
+        close(fd);
+        tsr_arg ff[4] = {arg_str(path), arg_str("uint8"), arg_int(3), arg_str(" ")};
+        rc = fa_call("np.fromfile", 4, ff, r, 1);
+        CHECK(rc == 0 && r[0].arr.shape[0] == 3 && ((uint8_t *)r[0].arr.data)[1] == 44 && ((uint8_t *)r[0].arr.data)[2] == 253,
+              "F1 fromfile text uint8 parses integers and wraps (rc %d)", rc);
+        fa_free(r, 1);
+        ff[2] = arg_int(-1);
+        CHECK(fa_call("np.fromfile", 4, ff, r, 1) == TSR_EARG, "F1 fromfile text int '2.7' refused (unmatched data)");
+        tsr_arg fb[5] = {arg_str(path), arg_str("uint8"), arg_int(-1), arg_none(), arg_num(NAN)};
+        CHECK(fa_call("np.fromfile", 5, fb, r, 1) == TSR_ETYPE, "F10 fromfile offset NaN refused");
+        fb[4] = arg_int(INT64_MAX);
+        CHECK(fa_call("np.fromfile", 5, fb, r, 1) == TSR_EARG, "F10 fromfile offset past the end refused");
+        fb[4] = arg_int(-9223372036854775807LL);
+        CHECK(fa_call("np.fromfile", 5, fb, r, 1) == TSR_EARG, "F10 fromfile negative offset refused");
+        FILE *f = fopen(path, "w");
+        if (f) fclose(f);                                  /* empty file */
+        tsr_arg gf[1] = {arg_str(path)};
+        rc = fa_call("np.genfromtxt", 1, gf, r, 1);
+        CHECK(rc == 0, "F6 genfromtxt of an empty file (rc %d)", rc);
+        fa_free(r, 1);
+        rc = fa_call("np.loadtxt", 1, gf, r, 1);
+        CHECK(rc == 0, "F6 loadtxt of an empty file (rc %d)", rc);
+        fa_free(r, 1);
+        unlink(path);
+    }
+
+    /* CI libFuzzer: np.linalg.svd of a matrix with NaN / infinity hung inside dgesdd; NumPy: "SVD did not converge" */
+    double sv[4] = {1.0, NAN, 2.0, INFINITY};
+    tsr_arg svd_a[1] = {arg_arr(sv, 2, s22)};
+    CHECK(fa_call("linalg.svd", 1, svd_a, r, 3) == TSR_EARG, "svd of a non-finite matrix refused (no dgesdd hang)");
+    CHECK(fa_call("slinalg.svd", 1, svd_a, r, 3) == TSR_EARG, "scipy svd of a non-finite matrix refused");
+    double lb[2] = {1.0, 2.0};
+    tsr_arg ls_a[2] = {arg_arr(sv, 2, s22), arg_arr(lb, 1, s2)};
+    CHECK(fa_call("linalg.lstsq", 2, ls_a, r, 4) == TSR_EARG, "lstsq with a non-finite matrix refused (no dgelsd hang)");
+
+    /* F4: the .npy writer refuses a header the reader refuses (byte count beyond int64) */
+    int64_t hs1[1] = {INT64_MAX - 7}, hs2[2] = {(int64_t)1 << 62, 4}, hs3[2] = {(int64_t)1 << 60, 8};
+    char hdr[256];
+    CHECK(tsr_npy_write_header(TSR_F64, 1, hs1, 0, NULL, 0) < 0, "F4 npy header for a 9223372036854775800 dim refused");
+    CHECK(tsr_npy_write_header(TSR_U8, 2, hs2, 0, hdr, sizeof hdr) < 0, "F4 npy header for 2^64 elements refused");
+    CHECK(tsr_npy_write_header(TSR_F64, 2, hs3, 0, hdr, sizeof hdr) < 0, "F4 npy header for 2^66 bytes refused");
+    int64_t ok2[2] = {(int64_t)1 << 30, 8};
+    CHECK(tsr_npy_write_header(TSR_F64, 2, ok2, 0, hdr, sizeof hdr) > 0, "npy header for 2^33 elements still written");
+}
+
 static void test_size_overflow(void)
 {
     /* shapes whose element count wraps around int64 must never describe a small buffer */
@@ -1235,7 +1514,6 @@ static int fzb_call(const char *name, int nargs, tsr_arg *args, int nres, tsr_re
     return rc;
 }
 
-static tsr_arg arg_int(int64_t v) { tsr_arg a = arg_num((double)v); a.flags = 1; a.ival = v; return a; }
 
 static tsr_arg arg_arr_dt(void *d, int dtype, int32_t nd, const int64_t *shape)
 {
@@ -1892,6 +2170,7 @@ int main(void)
     test_size_overflow();
     test_numerics_review();
     test_security_regressions();
+    test_fuzz_batch_a();
     test_fuzz_batch_b();
     test_ci_regressions();
     test_abi_runtime();
