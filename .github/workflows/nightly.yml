@@ -116,18 +116,18 @@ jobs:
 
   # ThreadSanitizer over the C tests with 4 OpenMP threads (test_threads, the threaded ufunc/elementwise loops).
   # clang + LLVM libomp with the Archer tool: libomp tells TSan about its barriers and task synchronisation, so a
-  # report is a real race (blocking). gcc + libgomp is informational: libgomp is not TSan-instrumented, so every
-  # `#pragma omp parallel` whose workers read a variable the main thread wrote before the region is reported
-  # (measured: 14 reports in src/elementwise.c and src/ufunc.c, all of that shape, none between workers).
+  # report is a real race (blocking). There is no gcc + libgomp leg: libgomp is not TSan-instrumented, so TSan cannot
+  # see its barriers and reports every `#pragma omp parallel` whose workers read a variable the main thread wrote
+  # before the region (measured: 14 reports in src/elementwise.c and src/ufunc.c, all of that shape, none between
+  # workers). That leg could never pass, so it was removed (2026-10-24); Archer is the race check.
   tsan:
     name: TSan OpenMP kernels (${{ matrix.toolchain }})
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    continue-on-error: ${{ matrix.toolchain == 'gcc-libgomp' }}
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [clang-libomp-archer, gcc-libgomp]
+        toolchain: [clang-libomp-archer]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }

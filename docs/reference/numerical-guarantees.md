@@ -51,6 +51,8 @@ Across machines or builds the low bits may differ, because:
 - LAPACK routines (`numpy.linalg`, `scipy.linalg`) come from the system LAPACK/OpenBLAS: tolerance-equal
   across implementations, and decompositions with sign or ordering freedom (eigenvectors, SVD) are
   canonicalised where NumPy's own output is canonical, otherwise compared by invariants.
+- Supported LAPACK is 3.11 or newer. LAPACK 3.10 (Ubuntu 22.04) runs safely; four functions differ there in
+  eigenvector sign or last digits (see the installation guide), and CI checks that nothing else does.
 - Code without explicit FMA may be contracted differently by different compilers or targets (GCC
   contracts `a * b + c` by default on targets with FMA instructions).
 - `long double` is 80-bit x87 extended precision on x86-64 Linux, 128-bit quad on aarch64 Linux and plain
