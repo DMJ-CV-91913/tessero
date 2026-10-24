@@ -54,7 +54,74 @@
     case OP_GT: CMP(T, x > y); return TSR_OK;            \
     case OP_GE: CMP(T, x >= y); return TSR_OK;
 
-#define FLOAT_BINARY(NAME, T, POWF, ATAN2F, HYPOTF, FMODF, FLOORF)                                      \
+/*
+ * NumPy's float floor_divide and remainder (npy_divmod in npy_math_internal.h.src), so x == (x // y) * y + x % y
+ * holds the way it does in NumPy. floor(x / y) is wrong whenever x / y rounds up to an integer: 1.0 // 0.1 is 9
+ * (0.1 is slightly above 1/10), while floor(1.0 / 0.1) = floor(10.0) = 10. y == 0 gives x / y (inf or nan) and
+ * the fmod NaN remainder; a zero remainder takes the sign of y, a zero quotient the sign of x / y.
+ *
+ * Fast path (bit-identical, the C tests and a 400k-case NumPy comparison check it): npy_divmod returns the
+ * exact floor of the real quotient whenever |x / y| < 2^(p-3) (p = 53 or 24: the two roundings in
+ * (x - fmod) / y stay below 1/4, so the snap lands on trunc or trunc - 1, which is exactly the floor). When
+ * the rounded quotient q = x / y is not an integer it lies strictly between the same two integers as the real
+ * quotient, so floor(q) is that exact floor too. Only quotients that round to an integer (or are huge, zero,
+ * inf or nan) need the fmod-based path, which keeps the common case at one divide.
+ */
+#define DIVMOD_FNS(T, S, LIM)                                                                    \
+    static inline T fmod_py##S(T a, T b)                                                         \
+    {                                                                                            \
+        T mod = fmod##S(a, b);                                                                   \
+        if (b == 0) return mod;                                                                  \
+        if (mod != 0) { if ((b < 0) != (mod < 0)) mod += b; }                                    \
+        else mod = copysign##S((T)0, b);                                                         \
+        return mod;                                                                              \
+    }                                                                                            \
+    static inline T floordiv_py##S(T a, T b)                                                     \
+    {                                                                                            \
+        const T q = a / b, fq = floor##S(q);                                                     \
+        if (q - fq > (T)0 && fabs##S(q) < (LIM)) return fq;  /* not an integer: the exact floor */ \
+        if (b == 0) return q;                                                                    \
+        const T mod = fmod##S(a, b);                                                             \
+        T div = (a - mod) / b;                                                                   \
+        if (mod != 0 && ((b < 0) != (mod < 0))) div -= (T)1;                                     \
+        if (div == 0) return copysign##S((T)0, q);                                               \
+        T fl = floor##S(div);                                                                    \
+        if (div - fl > (T)0.5) fl += (T)1;                                                       \
+        return fl;                                                                               \
+    }
+DIVMOD_FNS(double, , 0x1p50)
+DIVMOD_FNS(float, f, 0x1p21f)
+
+/* floor_divide over a run, in blocks: a branch-free (vectorisable) pass writes floor(x / y) and notes whether
+   any element of the block needs the exact path; only such blocks are redone with floordiv_py. */
+#define FDIV_BLOCK 256
+#define FDIV_RUN(T, S, LIM)                                                                          \
+    do {                                                                                             \
+        for (int64_t i0_ = 0; i0_ < n; i0_ += FDIV_BLOCK) {                                          \
+            const int64_t m_ = n - i0_ < FDIV_BLOCK ? n - i0_ : FDIV_BLOCK;                          \
+            const char *a_ = a + i0_ * sa, *b_ = b + i0_ * sb;                                       \
+            char *o_ = o + i0_ * so;                                                                 \
+            int slow_ = 0;                                                                           \
+            if (sa == (int64_t)sizeof(T) && sb == (int64_t)sizeof(T) && so == (int64_t)sizeof(T)) {  \
+                const T *A = (const T *)a_, *B = (const T *)b_; T *O = (T *)o_;                      \
+                for (int64_t k = 0; k < m_; k++) {                                                   \
+                    const T q = A[k] / B[k], f = floor##S(q);                                        \
+                    O[k] = f; slow_ |= !(q - f > (T)0 && fabs##S(q) < (LIM));                        \
+                }                                                                                    \
+            } else if (sa == (int64_t)sizeof(T) && sb == 0 && so == (int64_t)sizeof(T)) {           \
+                const T *A = (const T *)a_, y = *(const T *)b_; T *O = (T *)o_;                      \
+                for (int64_t k = 0; k < m_; k++) {                                                   \
+                    const T q = A[k] / y, f = floor##S(q);                                           \
+                    O[k] = f; slow_ |= !(q - f > (T)0 && fabs##S(q) < (LIM));                        \
+                }                                                                                    \
+            } else slow_ = 1;                                                                        \
+            if (slow_)                                                                               \
+                for (int64_t k = 0; k < m_; k++)                                                     \
+                    *(T *)(o_ + k * so) = floordiv_py##S(*(const T *)(a_ + k * sa), *(const T *)(b_ + k * sb)); \
+        }                                                                                            \
+    } while (0)
+
+#define FLOAT_BINARY(NAME, T, POWF, ATAN2F, HYPOTF, FMODF, S, LIM)                                      \
     TSR_CLONES static int NAME(int op, int64_t n, const char *a, int64_t sa, const char *b, int64_t sb, \
                                char *o, int64_t so)                                                     \
     {                                                                                                   \
@@ -68,15 +135,15 @@
         case OP_MIN: RUN(T, FMIN(x, y)); return TSR_OK;                                                 \
         case OP_ATAN2: RUN(T, ATAN2F(x, y)); return TSR_OK;                                             \
         case OP_HYPOT: RUN(T, HYPOTF(x, y)); return TSR_OK;                                             \
-        case OP_MOD: RUN(T, ({ T r_ = FMODF(x, y); (r_ != 0 && ((r_ < 0) != (y < 0))) ? r_ + y : r_; })); return TSR_OK; \
-        case OP_FLOORDIV: RUN(T, FLOORF(x / y)); return TSR_OK;                                         \
+        case OP_MOD: RUN(T, FMODF(x, y)); return TSR_OK;                                                \
+        case OP_FLOORDIV: FDIV_RUN(T, S, LIM); return TSR_OK;                                           \
         COMPARISONS(T)                                                                                  \
         default: return TSR_ETYPE;                                                                      \
         }                                                                                               \
     }
 
-FLOAT_BINARY(bin_f64, double, pow, atan2, hypot, fmod, floor)
-FLOAT_BINARY(bin_f32, float, powf, atan2f, hypotf, fmodf, floorf)
+FLOAT_BINARY(bin_f64, double, pow, atan2, hypot, fmod_py, , 0x1p50)
+FLOAT_BINARY(bin_f32, float, powf, atan2f, hypotf, fmod_pyf, f, 0x1p21f)
 
 /*
  * Python semantics for integer floor division and modulo; division by zero gives 0 (NumPy does too, with a warning).
@@ -125,8 +192,50 @@ static int bin_bool(int op, int64_t n, const char *a, int64_t sa, const char *b,
     }
 }
 
+/* NumPy's complex divide (Smith's method): scale by the larger component of y so |y|^2 is never formed; the
+   naive y0^2 + y1^2 overflows for |y| > ~1e154 and underflows for tiny y. NumPy's two branches (|y0| >= |y1|,
+   else) are evaluated as selects with each expression's operand order kept, so the bits are NumPy's. y == 0
+   gives NumPy's x / 0, written x * inf (identical for every x, including 0 and nan). Branch-free so the
+   contiguous loop vectorises. Not multiversioned on purpose: an FMA clone would contract p + q * rat and
+   the numerators into fused operations and change the bits. */
+#define CDIV_BODY(x0, x1, y0, y1, re, im)                                                            \
+    do {                                                                                             \
+        const double ar_ = fabs(y0), ai_ = fabs(y1);                                                 \
+        const int big_ = ar_ >= ai_, zero_ = (ar_ == 0) & (ai_ == 0);                                \
+        const double p_ = big_ ? (y0) : (y1), q_ = big_ ? (y1) : (y0);                               \
+        const double rat_ = q_ / p_, scl_ = 1.0 / (p_ + q_ * rat_);                                  \
+        const double rb_ = (x0) + (x1) * rat_, rs_ = (x0) * rat_ + (x1);                             \
+        const double ib_ = (x1) - (x0) * rat_, is_ = (x1) * rat_ - (x0);                             \
+        const double r_ = (big_ ? rb_ : rs_) * scl_, i_ = (big_ ? ib_ : is_) * scl_;                 \
+        re = zero_ ? (x0) * (double)INFINITY : r_;                                                   \
+        im = zero_ ? (x1) * (double)INFINITY : i_;                                                   \
+    } while (0)
+static void div_c128(int64_t n, const char *a, int64_t sa, const char *b, int64_t sb, char *o, int64_t so)
+{
+    if (sa == 16 && sb == 16 && so == 16) {
+        const double *x = (const double *)a, *y = (const double *)b;
+        double *out = (double *)o;
+        for (int64_t i = 0; i < n; i++) {
+            const double x0 = x[2 * i], x1 = x[2 * i + 1], y0 = y[2 * i], y1 = y[2 * i + 1];
+            double re, im;
+            CDIV_BODY(x0, x1, y0, y1, re, im);
+            out[2 * i] = re; out[2 * i + 1] = im;
+        }
+        return;
+    }
+    for (int64_t i = 0; i < n; i++) {
+        const double *x = (const double *)(a + i * sa), *y = (const double *)(b + i * sb);
+        const double x0 = x[0], x1 = x[1], y0 = y[0], y1 = y[1];
+        double re, im;
+        CDIV_BODY(x0, x1, y0, y1, re, im);
+        double *out = (double *)(o + i * so);
+        out[0] = re; out[1] = im;
+    }
+}
+
 static int bin_c128(int op, int64_t n, const char *a, int64_t sa, const char *b, int64_t sb, char *o, int64_t so)
 {
+    if (op == OP_DIV) { div_c128(n, a, sa, b, sb, o, so); return TSR_OK; }
     for (int64_t i = 0; i < n; i++) {
         const double *x = (const double *)(a + i * sa);
         const double *y = (const double *)(b + i * sb);
@@ -135,12 +244,6 @@ static int bin_c128(int op, int64_t n, const char *a, int64_t sa, const char *b,
         case OP_ADD: re = x[0] + y[0]; im = x[1] + y[1]; break;
         case OP_SUB: re = x[0] - y[0]; im = x[1] - y[1]; break;
         case OP_MUL: re = x[0] * y[0] - x[1] * y[1]; im = x[0] * y[1] + x[1] * y[0]; break;
-        case OP_DIV: {
-            double d = y[0] * y[0] + y[1] * y[1];
-            re = (x[0] * y[0] + x[1] * y[1]) / d;
-            im = (x[1] * y[0] - x[0] * y[1]) / d;
-            break;
-        }
         case OP_EQ: *(uint8_t *)(o + i * so) = x[0] == y[0] && x[1] == y[1]; continue;
         case OP_NE: *(uint8_t *)(o + i * so) = x[0] != y[0] || x[1] != y[1]; continue;
         default: return TSR_ETYPE;
@@ -353,13 +456,19 @@ int tsr_unary(int op, int dtype, int32_t ndim, const int64_t *shape, const void 
         }                                                                             \
     } while (0)
 
-#define CAST_TO(TI)                                                                   \
+/* a float source converts through the NumPy-matching helpers (NaN/Inf/out-of-range are defined, see
+   internal.h); an integer source keeps C's modular conversion, which is NumPy's wrap-around */
+#define CVT_I64(x) _Generic((x), float: tsr_f2i64f(x), double: tsr_f2i64(x), default: (int64_t)(x))
+#define CVT_I32(x) _Generic((x), float: tsr_f2i32f(x), double: tsr_f2i32(x), default: (int32_t)(x))
+#define CVT_U8(x) _Generic((x), float: tsr_f2u8f(x), double: tsr_f2u8(x), default: (uint8_t)(x))
+
+#define CAST_TO(TI)                                                                 \
     switch (dout) {                                                                   \
     case TSR_F64: CAST_RUN(TI, double, x); return TSR_OK;                             \
     case TSR_F32: CAST_RUN(TI, float, x); return TSR_OK;                              \
-    case TSR_I64: CAST_RUN(TI, int64_t, x); return TSR_OK;                            \
-    case TSR_I32: CAST_RUN(TI, int32_t, x); return TSR_OK;                            \
-    case TSR_U8: CAST_RUN(TI, uint8_t, x); return TSR_OK;                             \
+    case TSR_I64: CAST_RUN(TI, int64_t, CVT_I64(x)); return TSR_OK;                   \
+    case TSR_I32: CAST_RUN(TI, int32_t, CVT_I32(x)); return TSR_OK;                   \
+    case TSR_U8: CAST_RUN(TI, uint8_t, CVT_U8(x)); return TSR_OK;                     \
     case TSR_BOOL: CAST_RUN(TI, uint8_t, x != 0); return TSR_OK;                      \
     case TSR_C128:                                                                    \
         for (int64_t i = 0; i < n; i++) {                                             \
@@ -370,6 +479,65 @@ int tsr_unary(int op, int dtype, int32_t ndim, const int64_t *shape, const void 
     default: return TSR_EARG;                                                         \
     }
 
+#if defined(__x86_64__) || defined(_M_X64)
+/* Contiguous float -> int32 / uint8 casts with the packed cvtt instructions written out: cvttpd2dq / cvttps2dq
+   return exactly the "integer indefinite" INT32_MIN for NaN and out-of-range lanes, i.e. tsr_f2i32 / tsr_f2u8
+   (NumPy's x86-64 results), and the explicit form keeps the vector width the plain cast had (the select-based
+   helpers made GCC drop to narrower vectors). uint8 keeps the low byte: mask, then two exact packs. */
+static inline __m128i cvt4_pd(const double *p)
+{
+    return _mm_unpacklo_epi64(_mm_cvttpd_epi32(_mm_loadu_pd(p)), _mm_cvttpd_epi32(_mm_loadu_pd(p + 2)));
+}
+static inline __m128i low_bytes16(__m128i a, __m128i b, __m128i c, __m128i d)
+{
+    const __m128i m = _mm_set1_epi32(0xFF);
+    a = _mm_and_si128(a, m); b = _mm_and_si128(b, m); c = _mm_and_si128(c, m); d = _mm_and_si128(d, m);
+    return _mm_packus_epi16(_mm_packs_epi32(a, b), _mm_packs_epi32(c, d));
+}
+#if defined(__GNUC__) && !defined(__clang__) && defined(__x86_64__)
+#include <immintrin.h>
+/* float64 -> int32 with 256-bit vcvttpd2dq (4 lanes per instruction, same "integer indefinite" result) */
+__attribute__((target("avx2"))) static void cvt_pd_i32_avx2(const double *A, int32_t *O, int64_t n)
+{
+    int64_t i = 0;
+    for (; i + 8 <= n; i += 8) {
+        _mm_storeu_si128((__m128i *)(O + i), _mm256_cvttpd_epi32(_mm256_loadu_pd(A + i)));
+        _mm_storeu_si128((__m128i *)(O + i + 4), _mm256_cvttpd_epi32(_mm256_loadu_pd(A + i + 4)));
+    }
+    for (; i < n; i++) O[i] = tsr_f2i32(A[i]);
+}
+#define TSR_HAVE_AVX2_CVT 1
+#endif
+TSR_CLONES static int cast_sse(int din, int dout, int64_t n, const char *a, char *o)
+{
+    int64_t i = 0;
+    if (din == TSR_F64 && dout == TSR_I32) {
+        const double *A = (const double *)a; int32_t *O = (int32_t *)o;
+#ifdef TSR_HAVE_AVX2_CVT
+        if (__builtin_cpu_supports("avx2")) { cvt_pd_i32_avx2(A, O, n); return 1; }
+#endif
+        for (; i + 4 <= n; i += 4) _mm_storeu_si128((__m128i *)(O + i), cvt4_pd(A + i));
+        for (; i < n; i++) O[i] = tsr_f2i32(A[i]);
+    } else if (din == TSR_F64 && dout == TSR_U8) {
+        const double *A = (const double *)a; uint8_t *O = (uint8_t *)o;
+        for (; i + 16 <= n; i += 16)
+            _mm_storeu_si128((__m128i *)(O + i), low_bytes16(cvt4_pd(A + i), cvt4_pd(A + i + 4), cvt4_pd(A + i + 8), cvt4_pd(A + i + 12)));
+        for (; i < n; i++) O[i] = tsr_f2u8(A[i]);
+    } else if (din == TSR_F32 && dout == TSR_I32) {
+        const float *A = (const float *)a; int32_t *O = (int32_t *)o;
+        for (; i + 4 <= n; i += 4) _mm_storeu_si128((__m128i *)(O + i), _mm_cvttps_epi32(_mm_loadu_ps(A + i)));
+        for (; i < n; i++) O[i] = tsr_f2i32f(A[i]);
+    } else if (din == TSR_F32 && dout == TSR_U8) {
+        const float *A = (const float *)a; uint8_t *O = (uint8_t *)o;
+        for (; i + 16 <= n; i += 16)
+            _mm_storeu_si128((__m128i *)(O + i), low_bytes16(_mm_cvttps_epi32(_mm_loadu_ps(A + i)), _mm_cvttps_epi32(_mm_loadu_ps(A + i + 4)),
+                                                             _mm_cvttps_epi32(_mm_loadu_ps(A + i + 8)), _mm_cvttps_epi32(_mm_loadu_ps(A + i + 12))));
+        for (; i < n; i++) O[i] = tsr_f2u8f(A[i]);
+    } else return 0;
+    return 1;
+}
+#endif
+
 TSR_CLONES static int cast_run(int din, int dout, int64_t n, const char *a, int64_t sa, char *o, int64_t so)
 {
     int64_t isz = tsr_itemsize(din);
@@ -378,6 +546,9 @@ TSR_CLONES static int cast_run(int din, int dout, int64_t n, const char *a, int6
         for (int64_t i = 0; i < n; i++) memcpy(o + i * so, a + i * sa, (size_t)isz);
         return TSR_OK;
     }
+#if defined(__x86_64__) || defined(_M_X64)
+    if (sa == isz && so == tsr_itemsize(dout) && cast_sse(din, dout, n, a, o)) return TSR_OK;
+#endif
     switch (din) {
     case TSR_F64: CAST_TO(double)
     case TSR_F32: CAST_TO(float)
@@ -392,9 +563,9 @@ TSR_CLONES static int cast_run(int din, int dout, int64_t n, const char *a, int6
             switch (dout) {
             case TSR_F64: *(double *)q = re; break;
             case TSR_F32: *(float *)q = (float)re; break;
-            case TSR_I64: *(int64_t *)q = (int64_t)re; break;
-            case TSR_I32: *(int32_t *)q = (int32_t)re; break;
-            case TSR_U8: *(uint8_t *)q = (uint8_t)re; break;
+            case TSR_I64: *(int64_t *)q = tsr_f2i64(re); break;
+            case TSR_I32: *(int32_t *)q = tsr_f2i32(re); break;
+            case TSR_U8: *(uint8_t *)q = tsr_f2u8(re); break;
             case TSR_BOOL: *(uint8_t *)q = re != 0 || ((const double *)(a + i * sa))[1] != 0; break;
             default: return TSR_EARG;
             }
@@ -477,11 +648,13 @@ int tsr_fill(int dtype, int64_t n, void *out, const void *value)
 
 int tsr_arange(int dtype, int64_t n, double start, double step, void *out)
 {
+    /* integer starts/steps convert without UB and the index arithmetic wraps like NumPy's int64 */
+    const int64_t i0 = tsr_f2i64(start), di = tsr_f2i64(step);
     switch (dtype) {
     case TSR_F64: for (int64_t i = 0; i < n; i++) ((double *)out)[i] = start + (double)i * step; return TSR_OK;
     case TSR_F32: for (int64_t i = 0; i < n; i++) ((float *)out)[i] = (float)(start + (double)i * step); return TSR_OK;
-    case TSR_I64: for (int64_t i = 0; i < n; i++) ((int64_t *)out)[i] = (int64_t)start + i * (int64_t)step; return TSR_OK;
-    case TSR_I32: for (int64_t i = 0; i < n; i++) ((int32_t *)out)[i] = (int32_t)((int64_t)start + i * (int64_t)step); return TSR_OK;
+    case TSR_I64: for (int64_t i = 0; i < n; i++) ((int64_t *)out)[i] = TSR_WADD(int64_t, i0, TSR_WMUL(int64_t, i, di)); return TSR_OK;
+    case TSR_I32: for (int64_t i = 0; i < n; i++) ((int32_t *)out)[i] = (int32_t)TSR_WADD(int64_t, i0, TSR_WMUL(int64_t, i, di)); return TSR_OK;
     default: return TSR_ETYPE;
     }
 }

@@ -234,6 +234,21 @@ PHP_METHOD(Engine, info)
 #endif
 }
 
+/* selfcheck(): the floating-point environment gate (calling thread and every OpenMP worker) and the canonical
+   KAT. canonical is true only when both pass; bit-exact (tier A) results are guaranteed only then. */
+PHP_METHOD(Engine, selfcheck)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    char why[256];
+    const int fe = tsr_fpenv_check(why, sizeof why);
+    const int sc = tsr_selfcheck();
+    array_init(return_value);
+    add_assoc_long(return_value, "fpenv", fe);
+    add_assoc_string(return_value, "fpenv_reason", why);
+    add_assoc_long(return_value, "selfcheck", sc);
+    add_assoc_bool(return_value, "canonical", fe == 0 && sc == 0);
+}
+
 ZEND_BEGIN_ARG_INFO_EX(ai_e_none, 0, 0, 0)
 ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(ai_e_long, 0, 0, 1)
@@ -265,6 +280,7 @@ static const zend_function_entry engine_methods[] = {
     E_ME(abiVersion, ai_e_none)
     E_ME(feature, ai_e_string)
     E_ME(info, ai_e_none)
+    E_ME(selfcheck, ai_e_selfcheck)
     E_ME(linprog, ai_linprog)
     E_ME(milp, ai_milp)
     E_ME(mdpValueIteration, ai_vi)
@@ -338,6 +354,18 @@ PHP_MINIT_FUNCTION(tessero)
     tsr_startup_memory_limit = PG(memory_limit);
     tsr_apply_process_settings();
     zend_class_entry ce;
+
+    /* FP environment gate: a host built or linked with -ffast-math (crtfastmath sets FTZ/DAZ process-wide) or
+       a changed rounding mode silently breaks the bit-exact guarantees. Warn, never fail: PHP must still load.
+       Calling thread only here: an OpenMP region before php-fpm forks its workers would leave libgomp's
+       thread pool unusable in the children. Engine::selfcheck() checks the workers at run time. */
+    {
+        char why[256];
+        const int fe = tsr_fpenv_check_thread(why, sizeof why);
+        if (fe != 0)
+            zend_error(E_WARNING, "tessero: non-canonical floating-point environment at load (bits 0x%x: %s); "
+                                  "bit-exact results are not guaranteed, see Tessero\\Ext\\Engine::selfcheck()", fe, why);
+    }
 
     INIT_NS_CLASS_ENTRY(ce, "Tessero\\Ext", "Exception", NULL);
     tsr_ce_exception = zend_register_internal_class_ex(&ce, spl_ce_RuntimeException);

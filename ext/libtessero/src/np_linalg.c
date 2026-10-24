@@ -22,6 +22,45 @@
 #define TSR_MAXDIM 32
 #endif
 
+/*
+ * LAPACK integer range guard. The kernel's dimensions are int64, LAPACKE's lapack_int is 32-bit on the usual
+ * LP64 builds, and a bare (lapack_int) cast of a dimension above INT32_MAX wraps to a small or negative value:
+ * LAPACK would then factor the wrong matrix or walk past the buffer. Every LAPACK-routed routine is registered
+ * through LA_GUARDED, which refuses (TSR_EARG + message) any array argument whose matrix dimensions (the last
+ * two axes; batch axes are looped in C and never reach LAPACK) exceed lapack_int; the dimensions LAPACK sees
+ * (m, n, nrhs, the leading dimensions, k = min(m, n), band widths) all derive from those axes. Routines that
+ * reach LAPACK only on some paths (norm's SVD) call TSR_LA_FIT themselves. A no-op for ILP64 lapack_int.
+ */
+int tsr_la_dims_fit(const char *who, const int64_t *dims, size_t n)
+{
+    if (sizeof(lapack_int) >= sizeof(int64_t)) return 1;
+    const int64_t lim = (int64_t)INT32_MAX;
+    for (size_t i = 0; i < n; i++)
+        if (dims[i] > lim) {
+            fn_set_error("%s: dimension %lld exceeds the LAPACK integer limit %lld (32-bit lapack_int)", who,
+                         (long long)dims[i], (long long)lim);
+            return 0;
+        }
+    return 1;
+}
+static inline int la_guard_args(const tsr_arg *args, int nargs)
+{
+    if (sizeof(lapack_int) >= sizeof(int64_t)) return 1;
+    for (int i = 0; i < nargs; i++) {                         /* fast path: one compare per matrix axis */
+        if (args[i].kind != 3) continue;
+        const tsr_array *a = &args[i].arr;
+        const int32_t lo = a->ndim > 2 ? a->ndim - 2 : 0;
+        for (int32_t d = lo; d < a->ndim; d++)
+            if (a->shape[d] > (int64_t)INT32_MAX) return tsr_la_dims_fit("linalg", a->shape + lo, (size_t)(a->ndim - lo));
+    }
+    return 1;
+}
+#define LA_GUARDED(f)                                                                                  \
+    static int f##__g(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)    \
+    {                                                                                                  \
+        return la_guard_args(args, nargs) ? f(ctx, args, nargs, res, nres) : TSR_EARG;                 \
+    }
+
 /* the last two dimensions must be square; returns M and the number of stacked matrices (product of the rest) */
 static int square_batch(const tsr_array *a, int64_t *m, int64_t *batch)
 {
@@ -659,7 +698,7 @@ static int r_eigvals(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int all_real = 1;
     if (n > 0) {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, 1, &d, 1);
+        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, &d, (lapack_int)n);  /* ld >= n: LAPACKE 3.10 */
         if (info != 0) { free(wr); free(wi); free(ev); fn_free_doubles(a, na); fn_set_error("eigvals: the QR algorithm failed to converge"); return TSR_EARG; }
         for (int64_t i = 0; i < n; i++) { ev[2 * i] = wr[i]; ev[2 * i + 1] = wi[i]; if (wi[i] != 0.0) all_real = 0; }
         qsort(ev, (size_t)n, 2 * sizeof(double), cmp_eval);
@@ -706,7 +745,7 @@ static int r_eig(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     int all_real = 1;
     if (n > 0) {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'V', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, 1, vr, (lapack_int)n);
+        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'V', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, vr, (lapack_int)n);
         if (info != 0) { free(wr); free(wi); free(vr); free(vc); free(ord); fn_free_doubles(a, na); fn_set_error("eig: the QR algorithm failed to converge"); return TSR_EARG; }
         for (int64_t i = 0; i < n; i++) if (wi[i] != 0.0) all_real = 0;
         if (force_complex) all_real = 0;
@@ -766,9 +805,31 @@ static const tsr_arg *la_arg(const tsr_arg *args, int nargs, int k)
 static int la_int(const tsr_arg *a, int64_t *out)
 {
     if (a->kind == 1 && (a->flags & 1)) { *out = a->ival; return TSR_OK; }
-    if (a->kind == 1) { *out = (int64_t)a->num; return TSR_OK; }
+    if (a->kind == 1) {                              /* NaN/Inf/huge would be an undefined float -> int cast */
+        if (!(a->num > -9.2e18 && a->num < 9.2e18)) { fn_set_error("axis must be an integer"); return TSR_EARG; }
+        *out = (int64_t)a->num; return TSR_OK;
+    }
     if (a->kind == 4) { *out = a->num != 0; return TSR_OK; }
     fn_set_error("axis must be an integer"); return TSR_EARG;
+}
+
+/* running max/min that propagate NaN, as NumPy's abs(x).max() / .min() do: a NaN is taken and then kept
+   (every later comparison against it is false) */
+#define LA_NMAX(acc, v) (((v) > (acc) || (v) != (v)) ? (v) : (acc))
+#define LA_NMIN(acc, v) (((v) < (acc) || (v) != (v)) ? (v) : (acc))
+/* abs(x).max() / abs(x).min() of a contiguous vector with NumPy's NaN propagation: the extremum and a NaN flag
+   are accumulated separately so the loop stays a vectorisable max/min (empty: 0 / +inf, as the callers expect) */
+static double la_absmax(const double *x, int64_t n)
+{
+    double m = 0.0; int nan = 0;
+    for (int64_t i = 0; i < n; i++) { const double v = fabs(x[i]); m = v > m ? v : m; nan |= v != v; }
+    return nan ? FN_NAN : m;
+}
+static double la_absmin(const double *x, int64_t n)
+{
+    double m = FN_INF; int nan = 0;
+    for (int64_t i = 0; i < n; i++) { const double v = fabs(x[i]); m = v < m ? v : m; nan |= v != v; }
+    return nan ? FN_NAN : m;
 }
 
 /* ---- norm: parse the ord argument ---- */
@@ -814,13 +875,14 @@ static int r_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
                 double acc = 0.0;
                 if (p == 0.0) { int64_t c = 0; for (int64_t i = 0; i < total; i++) if (x[i] != 0.0) c++; out = (double)c; }
                 else { for (int64_t i = 0; i < total; i++) acc += pow(fabs(x[i]), p); out = pow(acc, 1.0 / p); }
-            } else if (nd <= 1 && okind == ORD_PINF) { out = 0.0; for (int64_t i = 0; i < total; i++) if (fabs(x[i]) > out) out = fabs(x[i]); }
-            else if (nd <= 1 && okind == ORD_NINF) { out = FN_INF; for (int64_t i = 0; i < total; i++) if (fabs(x[i]) < out) out = fabs(x[i]); if (total == 0) out = 0.0; }
+            } else if (nd <= 1 && okind == ORD_PINF) { out = la_absmax(x, total); }
+            else if (nd <= 1 && okind == ORD_NINF) { out = la_absmin(x, total); if (total == 0) out = 0.0; }
             else { double acc = 0.0; for (int64_t i = 0; i < total; i++) acc += x[i] * x[i]; out = sqrt(acc); }  /* frobenius / 2-norm */
         } else if (nd == 2) {
             const int64_t m = X->shape[0], n = X->shape[1];
             if (okind == ORD_NUC || (okind == ORD_NUM && (p == 2.0 || p == -2.0))) {
                 const int64_t k = m < n ? m : n;
+                if (!TSR_LA_FIT("norm", m, n)) { fn_free_doubles(x, na); return TSR_EARG; }
                 double *s = (double *)malloc(sizeof(double) * (size_t)(k > 0 ? k : 1));
                 double *xc = (double *)malloc(sizeof(double) * (size_t)(total > 0 ? total : 1));
                 if (!s || !xc) { free(s); free(xc); fn_free_doubles(x, na); return TSR_ENOMEM; }
@@ -833,10 +895,10 @@ static int r_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
                 free(s); free(xc);
             } else if (okind == ORD_NUM && (p == 1.0 || p == -1.0)) {   /* column sums */
                 out = p > 0 ? 0.0 : FN_INF;
-                for (int64_t j = 0; j < n; j++) { double c = 0.0; for (int64_t i = 0; i < m; i++) c += fabs(x[i * n + j]); if (p > 0 ? c > out : c < out) out = c; }
+                for (int64_t j = 0; j < n; j++) { double c = 0.0; for (int64_t i = 0; i < m; i++) c += fabs(x[i * n + j]); out = p > 0 ? LA_NMAX(out, c) : LA_NMIN(out, c); }
             } else if (okind == ORD_PINF || okind == ORD_NINF) {         /* row sums */
                 out = okind == ORD_PINF ? 0.0 : FN_INF;
-                for (int64_t i = 0; i < m; i++) { double r = 0.0; for (int64_t j = 0; j < n; j++) r += fabs(x[i * n + j]); if (okind == ORD_PINF ? r > out : r < out) out = r; }
+                for (int64_t i = 0; i < m; i++) { double r = 0.0; for (int64_t j = 0; j < n; j++) r += fabs(x[i * n + j]); out = okind == ORD_PINF ? LA_NMAX(out, r) : LA_NMIN(out, r); }
             } else { fn_free_doubles(x, na); fn_set_error("norm: invalid ord for a matrix"); return TSR_EARG; }
         } else { fn_free_doubles(x, na); fn_set_error("norm: improper number of dimensions to norm"); return TSR_EARG; }
         fn_free_doubles(x, na);
@@ -866,8 +928,8 @@ static int r_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
             double mx = 0.0, mn = FN_INF; int64_t cnt = 0;
             for (int64_t t = 0; t < alen; t++) {
                 const double v = fabs(x[(o * alen + t) * inner + in]);
-                if (v > mx) mx = v;
-                if (v < mn) mn = v;
+                mx = LA_NMAX(mx, v);
+                mn = LA_NMIN(mn, v);
                 if (v != 0.0) cnt++;
             }
             double r;
@@ -1170,8 +1232,8 @@ static int r_vector_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     const int64_t total = tsr_shape_size(args[0].arr.ndim, args[0].arr.shape);
     if (!x && total > 0) { fn_set_error("vector_norm: out of memory"); return TSR_ENOMEM; }
     double out;
-    if (okind == ORD_PINF) { out = 0.0; for (int64_t i = 0; i < total; i++) if (fabs(x[i]) > out) out = fabs(x[i]); }
-    else if (okind == ORD_NINF) { out = FN_INF; for (int64_t i = 0; i < total; i++) if (fabs(x[i]) < out) out = fabs(x[i]); if (total == 0) out = 0.0; }
+    if (okind == ORD_PINF) { out = la_absmax(x, total); }
+    else if (okind == ORD_NINF) { out = la_absmin(x, total); if (total == 0) out = 0.0; }
     else if (okind == ORD_NUM && p == 0.0) { int64_t c = 0; for (int64_t i = 0; i < total; i++) if (x[i] != 0.0) c++; out = (double)c; }
     else if (okind == ORD_NUM && p != 2.0) { double acc = 0.0; for (int64_t i = 0; i < total; i++) acc += pow(fabs(x[i]), p); out = pow(acc, 1.0 / p); }
     else { double acc = 0.0; for (int64_t i = 0; i < total; i++) acc += x[i] * x[i]; out = sqrt(acc); }
@@ -1196,6 +1258,7 @@ static int r_matrix_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     if (okind == ORD_FRO) { double acc = 0.0; for (int64_t i = 0; i < total; i++) acc += x[i] * x[i]; out = sqrt(acc); }
     else if (okind == ORD_NUC || (okind == ORD_NUM && (p == 2.0 || p == -2.0))) {
         const int64_t k = m < n ? m : n;
+        if (!TSR_LA_FIT("matrix_norm", m, n)) { fn_free_doubles(x, na); return TSR_EARG; }
         double *s = (double *)malloc(sizeof(double) * (size_t)(k > 0 ? k : 1));
         double *xc = (double *)malloc(sizeof(double) * (size_t)(total > 0 ? total : 1));
         if (!s || !xc) { free(s); free(xc); fn_free_doubles(x, na); return TSR_ENOMEM; }
@@ -1208,10 +1271,10 @@ static int r_matrix_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_re
         free(s); free(xc);
     } else if (okind == ORD_NUM && (p == 1.0 || p == -1.0)) {
         out = p > 0 ? 0.0 : FN_INF;
-        for (int64_t j = 0; j < n; j++) { double c = 0.0; for (int64_t i = 0; i < m; i++) c += fabs(x[i * n + j]); if (p > 0 ? c > out : c < out) out = c; }
+        for (int64_t j = 0; j < n; j++) { double c = 0.0; for (int64_t i = 0; i < m; i++) c += fabs(x[i * n + j]); out = p > 0 ? LA_NMAX(out, c) : LA_NMIN(out, c); }
     } else if (okind == ORD_PINF || okind == ORD_NINF) {
         out = okind == ORD_PINF ? 0.0 : FN_INF;
-        for (int64_t i = 0; i < m; i++) { double r = 0.0; for (int64_t j = 0; j < n; j++) r += fabs(x[i * n + j]); if (okind == ORD_PINF ? r > out : r < out) out = r; }
+        for (int64_t i = 0; i < m; i++) { double r = 0.0; for (int64_t j = 0; j < n; j++) r += fabs(x[i * n + j]); out = okind == ORD_PINF ? LA_NMAX(out, r) : LA_NMIN(out, r); }
     } else { fn_free_doubles(x, na); fn_set_error("matrix_norm: invalid ord"); return TSR_EARG; }
     fn_free_doubles(x, na);
     fn_result_num(&res[0], out);
@@ -1442,8 +1505,84 @@ int sl_funm_byname(const char *fname, const double *A, int64_t n, double *out)
     return rc;
 }
 
+/* LAPACK-routed routines run behind la_guard_args (each core dimension must fit lapack_int); the guarded
+   entry points are defined after the last routine, just before the scipy.linalg table. */
+static int r_cho_factor__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_cho_solve__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_cho_solve_banded__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_cholesky__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_cholesky_banded__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_cond__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_coshm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_cosm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_cossin__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_det__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eig__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eig_banded__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eigh__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eigh_tridiagonal__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eigvals__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eigvals_banded__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eigvalsh__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_eigvalsh_tridiagonal__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_expm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_expm_cond__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_expm_frechet__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_fractional_matrix_power__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_funm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_hessenberg__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_inv__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_ldl__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_logm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_lstsq__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_lu__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_lu_factor__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_lu_solve__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_matrix_balance__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_matrix_power__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_matrix_rank__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_null_space__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_ordqz__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_orth__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_orthogonal_procrustes__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_pinv__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_pinvh__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_polar__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_qr__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_qr_complex__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_qr_delete__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_qr_insert__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_qr_multiply__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_qr_update__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_qz__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_rq__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_schur__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_scipy_cholesky__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_signm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_sinhm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_sinm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_banded__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_circulant__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_continuous_are__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_continuous_lyapunov__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_discrete_are__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_discrete_lyapunov__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_sylvester__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_toeplitz__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solve_triangular__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_solveh_banded__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_sqrtm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_subspace_angles__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_svd__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_svdvals__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_tanhm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_tanm__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_tensorinv__g(const void *, const tsr_arg *, int, tsr_result *, int);
+static int r_tensorsolve__g(const void *, const tsr_arg *, int, tsr_result *, int);
+
 static const fn_def DEFS[] = {
-    ROUTINE("linalg.qr_complex", 2, "a", "Q, R", r_qr_complex, NULL,
+    ROUTINE("linalg.qr_complex", 2, "a", "Q, R", r_qr_complex__g, NULL,
             "Reduced complex QR via LAPACKE zgeqrf+zungqr; A = Q R with Q unitary (internal helper for scipy.stats.unitary_group)."),
     ROUTINE("linalg.matmul", 1, "x1, x2", "out", r_la_matmul, NULL, "Matrix product of two arrays (numpy.linalg.matmul)."),
     ROUTINE("linalg.vector_norm", 1, "x, axis=None, keepdims=False, ord=2", "out", r_vector_norm, NULL, "Vector norm over the flattened array (numpy.linalg.vector_norm)."),
@@ -1457,28 +1596,28 @@ static const fn_def DEFS[] = {
     ROUTINE("np.vecdot", 1, "x1, x2, axis=-1", "out", r_la_vecdot, NULL, "Vector dot product over the last axis (numpy.vecdot)."),
     ROUTINE("np.matvec", 1, "x1, x2", "out", r_matvec, NULL, "Matrix-vector product over the last two axes of x1 and the last axis of x2 (numpy.matvec)."),
     ROUTINE("np.vecmat", 1, "x1, x2", "out", r_vecmat, NULL, "Vector-matrix product; x1 is (..., N), x2 is (..., N, M) (numpy.vecmat)."),
-    ROUTINE("linalg.tensorsolve", 1, "a, b, axes=None", "out", r_tensorsolve, NULL, "Solve the tensor equation a x = b (numpy.linalg.tensorsolve)."),
-    ROUTINE("linalg.tensorinv", 1, "a, ind=2", "out", r_tensorinv, NULL, "Inverse of an N-dimensional array as a tensor (numpy.linalg.tensorinv)."),
-    ROUTINE("linalg.matrix_power", 1, "a, n", "out", r_matrix_power, NULL, "Raise a square matrix to the (integer) power n (numpy.linalg.matrix_power)."),
+    ROUTINE("linalg.tensorsolve", 1, "a, b, axes=None", "out", r_tensorsolve__g, NULL, "Solve the tensor equation a x = b (numpy.linalg.tensorsolve)."),
+    ROUTINE("linalg.tensorinv", 1, "a, ind=2", "out", r_tensorinv__g, NULL, "Inverse of an N-dimensional array as a tensor (numpy.linalg.tensorinv)."),
+    ROUTINE("linalg.matrix_power", 1, "a, n", "out", r_matrix_power__g, NULL, "Raise a square matrix to the (integer) power n (numpy.linalg.matrix_power)."),
     ROUTINE("linalg.matrix_transpose", 1, "x", "out", r_matrix_transpose, NULL, "Transpose the last two axes of a stack of matrices (numpy.linalg.matrix_transpose)."),
     ROUTINE("linalg.multi_dot", 1, "*arrays", "out", r_multi_dot, NULL, "Chained matrix product with optimal ordering (numpy.linalg.multi_dot)."),
-    ROUTINE("linalg.svdvals", 1, "a", "out", r_svdvals, NULL, "Singular values of a matrix (numpy.linalg.svdvals)."),
-    ROUTINE("linalg.matrix_rank", 1, "A, tol=None, hermitian=False", "out", r_matrix_rank, NULL, "Rank by counting singular values above a tolerance (numpy.linalg.matrix_rank)."),
-    ROUTINE("linalg.cond", 1, "x, p=None", "out", r_cond, NULL, "2-norm condition number (numpy.linalg.cond)."),
-    ROUTINE("linalg.pinv", 1, "a, rcond=1e-15", "out", r_pinv, NULL, "Moore-Penrose pseudo-inverse via SVD (numpy.linalg.pinv)."),
-    ROUTINE("linalg.eigvalsh", 1, "a, UPLO='L'", "out", r_eigvalsh, NULL, "Eigenvalues of a symmetric matrix, ascending, stacked (numpy.linalg.eigvalsh)."),
-    ROUTINE("linalg.lstsq", 4, "a, b, rcond=None", "x, residuals, rank, singular_values", r_lstsq, NULL, "Least-squares solution (numpy.linalg.lstsq)."),
+    ROUTINE("linalg.svdvals", 1, "a", "out", r_svdvals__g, NULL, "Singular values of a matrix (numpy.linalg.svdvals)."),
+    ROUTINE("linalg.matrix_rank", 1, "A, tol=None, hermitian=False", "out", r_matrix_rank__g, NULL, "Rank by counting singular values above a tolerance (numpy.linalg.matrix_rank)."),
+    ROUTINE("linalg.cond", 1, "x, p=None", "out", r_cond__g, NULL, "2-norm condition number (numpy.linalg.cond)."),
+    ROUTINE("linalg.pinv", 1, "a, rcond=1e-15", "out", r_pinv__g, NULL, "Moore-Penrose pseudo-inverse via SVD (numpy.linalg.pinv)."),
+    ROUTINE("linalg.eigvalsh", 1, "a, UPLO='L'", "out", r_eigvalsh__g, NULL, "Eigenvalues of a symmetric matrix, ascending, stacked (numpy.linalg.eigvalsh)."),
+    ROUTINE("linalg.lstsq", 4, "a, b, rcond=None", "x, residuals, rank, singular_values", r_lstsq__g, NULL, "Least-squares solution (numpy.linalg.lstsq)."),
     ROUTINE("linalg.norm", 1, "x, ord=None, axis=None, keepdims=False", "out", r_norm, NULL, "Vector or matrix norm (numpy.linalg.norm)."),
-    ROUTINE("linalg.eigh", 2, "a, UPLO='L'", "eigenvalues, eigenvectors", r_eigh, NULL, "Eigenvalues (ascending) and eigenvectors of a symmetric matrix, stacked (numpy.linalg.eigh)."),
-    ROUTINE("linalg.svd", 3, "a, full_matrices=True", "U, S, Vh", r_svd, NULL, "Singular value decomposition A = U diag(S) Vh (numpy.linalg.svd)."),
-    ROUTINE("linalg.qr", 2, "a, mode='reduced'", "Q, R", r_qr, NULL, "QR factorisation with a non-negative R diagonal (numpy.linalg.qr)."),
-    ROUTINE("linalg.eigvals", 1, "a", "out", r_eigvals, NULL, "Eigenvalues of a general matrix, sorted (numpy.linalg.eigvals)."),
-    ROUTINE("linalg.eig", 2, "a", "eigenvalues, eigenvectors", r_eig, NULL, "Eigenvalues and right eigenvectors of a general matrix (numpy.linalg.eig)."),
-    ROUTINE("linalg.solve", 1, "a, b", "out", r_solve, NULL, "Solve a linear system a x = b, stacked (numpy.linalg.solve)."),
-    ROUTINE("linalg.inv", 1, "a", "out", r_inv, NULL, "Multiplicative inverse of a square matrix, stacked (numpy.linalg.inv)."),
-    ROUTINE("linalg.det", 1, "a", "out", r_det, NULL, "Determinant of a square matrix, stacked (numpy.linalg.det)."),
-    ROUTINE("linalg.slogdet", 2, "a", "sign, logabsdet", r_det, &SLOGDET, "Sign and natural log of the absolute determinant, stacked (numpy.linalg.slogdet)."),
-    ROUTINE("linalg.cholesky", 1, "a, upper=False", "out", r_cholesky, NULL, "Cholesky factor (lower by default), stacked (numpy.linalg.cholesky)."),
+    ROUTINE("linalg.eigh", 2, "a, UPLO='L'", "eigenvalues, eigenvectors", r_eigh__g, NULL, "Eigenvalues (ascending) and eigenvectors of a symmetric matrix, stacked (numpy.linalg.eigh)."),
+    ROUTINE("linalg.svd", 3, "a, full_matrices=True", "U, S, Vh", r_svd__g, NULL, "Singular value decomposition A = U diag(S) Vh (numpy.linalg.svd)."),
+    ROUTINE("linalg.qr", 2, "a, mode='reduced'", "Q, R", r_qr__g, NULL, "QR factorisation with a non-negative R diagonal (numpy.linalg.qr)."),
+    ROUTINE("linalg.eigvals", 1, "a", "out", r_eigvals__g, NULL, "Eigenvalues of a general matrix, sorted (numpy.linalg.eigvals)."),
+    ROUTINE("linalg.eig", 2, "a", "eigenvalues, eigenvectors", r_eig__g, NULL, "Eigenvalues and right eigenvectors of a general matrix (numpy.linalg.eig)."),
+    ROUTINE("linalg.solve", 1, "a, b", "out", r_solve__g, NULL, "Solve a linear system a x = b, stacked (numpy.linalg.solve)."),
+    ROUTINE("linalg.inv", 1, "a", "out", r_inv__g, NULL, "Multiplicative inverse of a square matrix, stacked (numpy.linalg.inv)."),
+    ROUTINE("linalg.det", 1, "a", "out", r_det__g, NULL, "Determinant of a square matrix, stacked (numpy.linalg.det)."),
+    ROUTINE("linalg.slogdet", 2, "a", "sign, logabsdet", r_det__g, &SLOGDET, "Sign and natural log of the absolute determinant, stacked (numpy.linalg.slogdet)."),
+    ROUTINE("linalg.cholesky", 1, "a, upper=False", "out", r_cholesky__g, NULL, "Cholesky factor (lower by default), stacked (numpy.linalg.cholesky)."),
 };
 
 const fn_table TSR_NP_LINALG_TABLE = {DEFS, (int)(sizeof DEFS / sizeof DEFS[0])};
@@ -4216,8 +4355,22 @@ static int r_ordqz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
                 sel[i] = s ? 1 : 0;
             }
             lapack_int mout = 0; double pl = 0.0, pr = 0.0, dif[2] = {0.0, 0.0};
-            lapack_int info2 = LAPACKE_dtgsen(LAPACK_ROW_MAJOR, 0, 1, 1, sel, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n,
-                                              alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n, &mout, &pl, &pr, dif);
+            /* LAPACKE < 3.11 passes iwork = NULL to dtgsen for ijob = 0, and dtgsen writes iwork(1): own the workspace
+               (query, allocate, run: the same LAPACK call sequence the 3.11+ LAPACKE_dtgsen makes internally) */
+            double wq = 0.0; lapack_int iwq = 0;
+            lapack_int info2 = LAPACKE_dtgsen_work(LAPACK_ROW_MAJOR, 0, 1, 1, sel, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n,
+                                                   alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n, &mout, &pl, &pr, dif,
+                                                   &wq, -1, &iwq, -1);
+            if (info2 == 0) {
+                const lapack_int lw = (lapack_int)wq > 1 ? (lapack_int)wq : 1, liw = iwq > 1 ? iwq : 1;
+                double *wk = (double *)malloc(sizeof(double) * (size_t)lw);
+                lapack_int *iwk = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)liw);
+                if (!wk || !iwk) info2 = -1000;
+                else info2 = LAPACKE_dtgsen_work(LAPACK_ROW_MAJOR, 0, 1, 1, sel, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n,
+                                                 alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n, &mout, &pl, &pr, dif,
+                                                 wk, lw, iwk, liw);
+                free(wk); free(iwk);
+            }
             if (info2 == 1) { rc = TSR_EARG; fn_set_error("ordqz: reordering failed (ill-conditioned pencil)"); }
             else if (info2 != 0) { rc = TSR_EARG; fn_set_error("ordqz: dtgsen failed"); }
         }
@@ -4301,28 +4454,102 @@ static int r_fiedler_companion(const void *ctx, const tsr_arg *args, int nargs, 
     return rc;
 }
 
+LA_GUARDED(r_cho_factor)
+LA_GUARDED(r_cho_solve)
+LA_GUARDED(r_cho_solve_banded)
+LA_GUARDED(r_cholesky)
+LA_GUARDED(r_cholesky_banded)
+LA_GUARDED(r_cond)
+LA_GUARDED(r_coshm)
+LA_GUARDED(r_cosm)
+LA_GUARDED(r_cossin)
+LA_GUARDED(r_det)
+LA_GUARDED(r_eig)
+LA_GUARDED(r_eig_banded)
+LA_GUARDED(r_eigh)
+LA_GUARDED(r_eigh_tridiagonal)
+LA_GUARDED(r_eigvals)
+LA_GUARDED(r_eigvals_banded)
+LA_GUARDED(r_eigvalsh)
+LA_GUARDED(r_eigvalsh_tridiagonal)
+LA_GUARDED(r_expm)
+LA_GUARDED(r_expm_cond)
+LA_GUARDED(r_expm_frechet)
+LA_GUARDED(r_fractional_matrix_power)
+LA_GUARDED(r_funm)
+LA_GUARDED(r_hessenberg)
+LA_GUARDED(r_inv)
+LA_GUARDED(r_ldl)
+LA_GUARDED(r_logm)
+LA_GUARDED(r_lstsq)
+LA_GUARDED(r_lu)
+LA_GUARDED(r_lu_factor)
+LA_GUARDED(r_lu_solve)
+LA_GUARDED(r_matrix_balance)
+LA_GUARDED(r_matrix_power)
+LA_GUARDED(r_matrix_rank)
+LA_GUARDED(r_null_space)
+LA_GUARDED(r_ordqz)
+LA_GUARDED(r_orth)
+LA_GUARDED(r_orthogonal_procrustes)
+LA_GUARDED(r_pinv)
+LA_GUARDED(r_pinvh)
+LA_GUARDED(r_polar)
+LA_GUARDED(r_qr)
+LA_GUARDED(r_qr_complex)
+LA_GUARDED(r_qr_delete)
+LA_GUARDED(r_qr_insert)
+LA_GUARDED(r_qr_multiply)
+LA_GUARDED(r_qr_update)
+LA_GUARDED(r_qz)
+LA_GUARDED(r_rq)
+LA_GUARDED(r_schur)
+LA_GUARDED(r_scipy_cholesky)
+LA_GUARDED(r_signm)
+LA_GUARDED(r_sinhm)
+LA_GUARDED(r_sinm)
+LA_GUARDED(r_solve)
+LA_GUARDED(r_solve_banded)
+LA_GUARDED(r_solve_circulant)
+LA_GUARDED(r_solve_continuous_are)
+LA_GUARDED(r_solve_continuous_lyapunov)
+LA_GUARDED(r_solve_discrete_are)
+LA_GUARDED(r_solve_discrete_lyapunov)
+LA_GUARDED(r_solve_sylvester)
+LA_GUARDED(r_solve_toeplitz)
+LA_GUARDED(r_solve_triangular)
+LA_GUARDED(r_solveh_banded)
+LA_GUARDED(r_sqrtm)
+LA_GUARDED(r_subspace_angles)
+LA_GUARDED(r_svd)
+LA_GUARDED(r_svdvals)
+LA_GUARDED(r_tanhm)
+LA_GUARDED(r_tanm)
+LA_GUARDED(r_tensorinv)
+LA_GUARDED(r_tensorsolve)
+
 /* scipy.linalg: the functions whose default behaviour matches numpy.linalg reuse the same routines (the extra
    scipy-only keyword arguments do not change the result for the covered cases). Always-complex eig/eigvals and
    expm come in later commits. */
 static const int ALWAYS_COMPLEX = 1;                       /* scipy.linalg.eig / eigvals always return complex128 */
 static const fn_def SCIPY_DEFS[] = {
-    ROUTINE("slinalg.solve", 1, "a, b", "out", r_solve, NULL, "Solve a linear system a x = b (scipy.linalg.solve)."),
-    ROUTINE("slinalg.inv", 1, "a", "out", r_inv, NULL, "Inverse of a square matrix (scipy.linalg.inv)."),
-    ROUTINE("slinalg.det", 1, "a", "out", r_det, NULL, "Determinant of a square matrix (scipy.linalg.det)."),
-    ROUTINE("slinalg.svdvals", 1, "a", "out", r_svdvals, NULL, "Singular values of a matrix (scipy.linalg.svdvals)."),
-    ROUTINE("slinalg.lstsq", 4, "a, b, cond=None", "x, residues, rank, s", r_lstsq, NULL, "Least-squares solution (scipy.linalg.lstsq)."),
-    ROUTINE("slinalg.pinv", 1, "a", "out", r_pinv, NULL, "Moore-Penrose pseudo-inverse via SVD (scipy.linalg.pinv)."),
-    ROUTINE("slinalg.pinvh", 1, "a", "out", r_pinvh, NULL, "Moore-Penrose pseudo-inverse of a symmetric matrix via eigendecomposition (scipy.linalg.pinvh)."),
+    ROUTINE("slinalg.solve", 1, "a, b", "out", r_solve__g, NULL, "Solve a linear system a x = b (scipy.linalg.solve)."),
+    ROUTINE("slinalg.inv", 1, "a", "out", r_inv__g, NULL, "Inverse of a square matrix (scipy.linalg.inv)."),
+    ROUTINE("slinalg.det", 1, "a", "out", r_det__g, NULL, "Determinant of a square matrix (scipy.linalg.det)."),
+    ROUTINE("slinalg.svdvals", 1, "a", "out", r_svdvals__g, NULL, "Singular values of a matrix (scipy.linalg.svdvals)."),
+    ROUTINE("slinalg.lstsq", 4, "a, b, cond=None", "x, residues, rank, s", r_lstsq__g, NULL, "Least-squares solution (scipy.linalg.lstsq)."),
+    ROUTINE("slinalg.pinv", 1, "a", "out", r_pinv__g, NULL, "Moore-Penrose pseudo-inverse via SVD (scipy.linalg.pinv)."),
+    ROUTINE("slinalg.pinvh", 1, "a", "out", r_pinvh__g, NULL, "Moore-Penrose pseudo-inverse of a symmetric matrix via eigendecomposition (scipy.linalg.pinvh)."),
     ROUTINE("slinalg.norm", 1, "a, ord=None, axis=None, keepdims=False", "out", r_norm, NULL, "Vector or matrix norm (scipy.linalg.norm)."),
-    ROUTINE("slinalg.eigvalsh", 1, "a", "out", r_eigvalsh, NULL, "Eigenvalues of a symmetric matrix, ascending (scipy.linalg.eigvalsh)."),
-    ROUTINE("slinalg.svd", 3, "a, full_matrices=True", "U, s, Vh", r_svd, NULL, "Singular value decomposition (scipy.linalg.svd)."),
-    ROUTINE("slinalg.eigh", 2, "a", "eigenvalues, eigenvectors", r_eigh, NULL, "Eigenvalues and eigenvectors of a symmetric matrix (scipy.linalg.eigh)."),
-    ROUTINE("slinalg.qr", 2, "a, mode='full'", "Q, R", r_qr, NULL, "QR factorisation (scipy.linalg.qr; mode 'full' or 'economic')."),
-    ROUTINE("slinalg.cholesky", 1, "a, lower=False", "out", r_scipy_cholesky, NULL, "Cholesky factor, upper by default (scipy.linalg.cholesky)."),
-    ROUTINE("slinalg.cho_factor", 2, "a, lower=False", "c, lower", r_cho_factor, NULL, "Cholesky factor for cho_solve, other triangle left as input (scipy.linalg.cho_factor)."),
-    ROUTINE("slinalg.cho_solve", 1, "c, lower, b", "out", r_cho_solve, NULL, "Solve a x = b from a Cholesky factor; takes c, lower, b unpacked (scipy.linalg.cho_solve)."),
-    ROUTINE("slinalg.solve_triangular", 1, "a, b, trans=0, lower=False, unit_diagonal=False", "out", r_solve_triangular, NULL, "Solve a triangular system (scipy.linalg.solve_triangular)."),
-    ROUTINE("slinalg.lu", 3, "a, permute_l=False", "p, l, u", r_lu, NULL, "LU factorisation with partial pivoting, A = P L U (scipy.linalg.lu)."),
+    ROUTINE("slinalg.eigvalsh", 1, "a", "out", r_eigvalsh__g, NULL, "Eigenvalues of a symmetric matrix, ascending (scipy.linalg.eigvalsh)."),
+    ROUTINE("slinalg.svd", 3, "a, full_matrices=True", "U, s, Vh", r_svd__g, NULL, "Singular value decomposition (scipy.linalg.svd)."),
+    ROUTINE("slinalg.eigh", 2, "a", "eigenvalues, eigenvectors", r_eigh__g, NULL, "Eigenvalues and eigenvectors of a symmetric matrix (scipy.linalg.eigh)."),
+    ROUTINE("slinalg.qr", 2, "a, mode='full'", "Q, R", r_qr__g, NULL, "QR factorisation (scipy.linalg.qr; mode 'full' or 'economic')."),
+    ROUTINE("slinalg.cholesky", 1, "a, lower=False", "out", r_scipy_cholesky__g, NULL, "Cholesky factor, upper by default (scipy.linalg.cholesky)."),
+    ROUTINE("slinalg.cho_factor", 2, "a, lower=False", "c, lower", r_cho_factor__g, NULL, "Cholesky factor for cho_solve, other triangle left as input (scipy.linalg.cho_factor)."),
+    ROUTINE("slinalg.cho_solve", 1, "c, lower, b", "out", r_cho_solve__g, NULL, "Solve a x = b from a Cholesky factor; takes c, lower, b unpacked (scipy.linalg.cho_solve)."),
+    ROUTINE("slinalg.solve_triangular", 1, "a, b, trans=0, lower=False, unit_diagonal=False", "out", r_solve_triangular__g, NULL, "Solve a triangular system (scipy.linalg.solve_triangular)."),
+    ROUTINE("slinalg.lu", 3, "a, permute_l=False", "p, l, u", r_lu__g, NULL, "LU factorisation with partial pivoting, A = P L U (scipy.linalg.lu)."),
     ROUTINE("slinalg.toeplitz", 1, "c, r=None", "out", r_toeplitz, NULL, "Toeplitz matrix with first column c and first row r (scipy.linalg.toeplitz)."),
     ROUTINE("slinalg.block_diag", 1, "*arrs", "out", r_block_diag, NULL, "Assemble 2-D blocks on the diagonal of a larger zero matrix (scipy.linalg.block_diag)."),
     ROUTINE("slinalg.circulant", 1, "c", "out", r_circulant, NULL, "Circulant matrix with first column c (scipy.linalg.circulant)."),
@@ -4338,65 +4565,65 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.dft", 1, "n, scale=None", "out", r_dft, NULL, "The n x n discrete Fourier transform matrix (scipy.linalg.dft)."),
     ROUTINE("slinalg.khatri_rao", 1, "a, b", "out", r_khatri_rao, NULL, "Column-wise Kronecker (Khatri-Rao) product (scipy.linalg.khatri_rao)."),
     ROUTINE("slinalg.diagsvd", 1, "s, M, N", "out", r_diagsvd, NULL, "M x N matrix with s on the diagonal (scipy.linalg.diagsvd)."),
-    ROUTINE("slinalg.orth", 1, "A, rcond=None", "out", r_orth, NULL, "Orthonormal basis for the range of A via SVD (scipy.linalg.orth)."),
-    ROUTINE("slinalg.null_space", 1, "A, rcond=None", "out", r_null_space, NULL, "Orthonormal basis for the null space of A via SVD (scipy.linalg.null_space)."),
-    ROUTINE("slinalg.polar", 2, "a, side='right'", "u, p", r_polar, NULL, "Polar decomposition a = u p (right) or p u (left) via SVD (scipy.linalg.polar)."),
-    ROUTINE("slinalg.lu_factor", 2, "a", "lu, piv", r_lu_factor, NULL, "LU factorisation for lu_solve: combined factors and 0-based pivots (scipy.linalg.lu_factor)."),
-    ROUTINE("slinalg.lu_solve", 1, "lu, piv, b, trans=0", "out", r_lu_solve, NULL, "Solve a x = b from an lu_factor result; takes lu, piv, b unpacked (scipy.linalg.lu_solve)."),
-    ROUTINE("slinalg.hessenberg", 1, "a, calc_q=False", "out", r_hessenberg, NULL, "Upper Hessenberg form via dgehrd (scipy.linalg.hessenberg)."),
-    ROUTINE("slinalg.schur", 2, "a, output='real'", "T, Z", r_schur, NULL, "Real Schur decomposition A = Z T Z^T via dgees (scipy.linalg.schur)."),
-    ROUTINE("slinalg.solve_sylvester", 1, "a, b, q", "out", r_solve_sylvester, NULL, "Solve the Sylvester equation a x + x b = q (scipy.linalg.solve_sylvester)."),
-    ROUTINE("slinalg.solve_continuous_lyapunov", 1, "a, q", "out", r_solve_continuous_lyapunov, NULL, "Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov)."),
-    ROUTINE("slinalg.eigvalsh_tridiagonal", 1, "d, e", "out", r_eigvalsh_tridiagonal, NULL, "Eigenvalues of a symmetric tridiagonal matrix via dsterf (scipy.linalg.eigvalsh_tridiagonal)."),
+    ROUTINE("slinalg.orth", 1, "A, rcond=None", "out", r_orth__g, NULL, "Orthonormal basis for the range of A via SVD (scipy.linalg.orth)."),
+    ROUTINE("slinalg.null_space", 1, "A, rcond=None", "out", r_null_space__g, NULL, "Orthonormal basis for the null space of A via SVD (scipy.linalg.null_space)."),
+    ROUTINE("slinalg.polar", 2, "a, side='right'", "u, p", r_polar__g, NULL, "Polar decomposition a = u p (right) or p u (left) via SVD (scipy.linalg.polar)."),
+    ROUTINE("slinalg.lu_factor", 2, "a", "lu, piv", r_lu_factor__g, NULL, "LU factorisation for lu_solve: combined factors and 0-based pivots (scipy.linalg.lu_factor)."),
+    ROUTINE("slinalg.lu_solve", 1, "lu, piv, b, trans=0", "out", r_lu_solve__g, NULL, "Solve a x = b from an lu_factor result; takes lu, piv, b unpacked (scipy.linalg.lu_solve)."),
+    ROUTINE("slinalg.hessenberg", 1, "a, calc_q=False", "out", r_hessenberg__g, NULL, "Upper Hessenberg form via dgehrd (scipy.linalg.hessenberg)."),
+    ROUTINE("slinalg.schur", 2, "a, output='real'", "T, Z", r_schur__g, NULL, "Real Schur decomposition A = Z T Z^T via dgees (scipy.linalg.schur)."),
+    ROUTINE("slinalg.solve_sylvester", 1, "a, b, q", "out", r_solve_sylvester__g, NULL, "Solve the Sylvester equation a x + x b = q (scipy.linalg.solve_sylvester)."),
+    ROUTINE("slinalg.solve_continuous_lyapunov", 1, "a, q", "out", r_solve_continuous_lyapunov__g, NULL, "Solve the continuous Lyapunov equation a x + x a^H = q (scipy.linalg.solve_continuous_lyapunov)."),
+    ROUTINE("slinalg.eigvalsh_tridiagonal", 1, "d, e", "out", r_eigvalsh_tridiagonal__g, NULL, "Eigenvalues of a symmetric tridiagonal matrix via dsterf (scipy.linalg.eigvalsh_tridiagonal)."),
     ROUTINE("slinalg.issymmetric", 1, "a, atol=None, rtol=None", "out", r_issymmetric, NULL, "Whether a square matrix is symmetric (scipy.linalg.issymmetric)."),
     ROUTINE("slinalg.ishermitian", 1, "a, atol=None, rtol=None", "out", r_issymmetric, NULL, "Whether a square matrix is Hermitian; for real input, symmetric (scipy.linalg.ishermitian)."),
-    ROUTINE("slinalg.solve_toeplitz", 1, "c_or_cr, b", "out", r_solve_toeplitz, NULL, "Solve a Toeplitz system T x = b (scipy.linalg.solve_toeplitz)."),
-    ROUTINE("slinalg.solve_circulant", 1, "c, b", "out", r_solve_circulant, NULL, "Solve a circulant system C x = b (scipy.linalg.solve_circulant)."),
+    ROUTINE("slinalg.solve_toeplitz", 1, "c_or_cr, b", "out", r_solve_toeplitz__g, NULL, "Solve a Toeplitz system T x = b (scipy.linalg.solve_toeplitz)."),
+    ROUTINE("slinalg.solve_circulant", 1, "c, b", "out", r_solve_circulant__g, NULL, "Solve a circulant system C x = b (scipy.linalg.solve_circulant)."),
     ROUTINE("slinalg.matmul_toeplitz", 1, "c_or_cr, x", "out", r_matmul_toeplitz, NULL, "The product of a Toeplitz matrix with x (scipy.linalg.matmul_toeplitz)."),
     ROUTINE("slinalg.invhilbert", 1, "n", "out", r_invhilbert, NULL, "Inverse of the Hilbert matrix of order n (scipy.linalg.invhilbert)."),
-    ROUTINE("slinalg.eigh_tridiagonal", 2, "d, e", "eigenvalues, eigenvectors", r_eigh_tridiagonal, NULL, "Eigenvalues and eigenvectors of a symmetric tridiagonal matrix via dstev (scipy.linalg.eigh_tridiagonal)."),
-    ROUTINE("slinalg.eigvals_banded", 1, "a_band, lower=False", "out", r_eigvals_banded, NULL, "Eigenvalues of a symmetric banded matrix in band storage via dsbevd (scipy.linalg.eigvals_banded)."),
-    ROUTINE("slinalg.cholesky_banded", 1, "ab, lower=False", "out", r_cholesky_banded, NULL, "Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded)."),
-    ROUTINE("slinalg.solve_discrete_lyapunov", 1, "a, q", "out", r_solve_discrete_lyapunov, NULL, "Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov)."),
+    ROUTINE("slinalg.eigh_tridiagonal", 2, "d, e", "eigenvalues, eigenvectors", r_eigh_tridiagonal__g, NULL, "Eigenvalues and eigenvectors of a symmetric tridiagonal matrix via dstev (scipy.linalg.eigh_tridiagonal)."),
+    ROUTINE("slinalg.eigvals_banded", 1, "a_band, lower=False", "out", r_eigvals_banded__g, NULL, "Eigenvalues of a symmetric banded matrix in band storage via dsbevd (scipy.linalg.eigvals_banded)."),
+    ROUTINE("slinalg.cholesky_banded", 1, "ab, lower=False", "out", r_cholesky_banded__g, NULL, "Cholesky factor of a symmetric positive-definite banded matrix via dpbtrf (scipy.linalg.cholesky_banded)."),
+    ROUTINE("slinalg.solve_discrete_lyapunov", 1, "a, q", "out", r_solve_discrete_lyapunov__g, NULL, "Solve the discrete Lyapunov equation a x a^H - x + q = 0 (scipy.linalg.solve_discrete_lyapunov)."),
     ROUTINE("slinalg.helmert", 1, "n, full=False", "out", r_helmert, NULL, "Helmert matrix of order n (scipy.linalg.helmert)."),
-    ROUTINE("slinalg.cho_solve_banded", 1, "cb, lower, b", "out", r_cho_solve_banded, NULL, "Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded)."),
-    ROUTINE("slinalg.rq", 2, "a, mode='full'", "R, Q", r_rq, NULL, "RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq)."),
-    ROUTINE("slinalg.orthogonal_procrustes", 2, "A, B", "R, scale", r_orthogonal_procrustes, NULL, "Orthogonal Procrustes solution R minimising ||A R - B|| and scale (scipy.linalg.orthogonal_procrustes)."),
-    ROUTINE("slinalg.matrix_balance", 2, "A, permute=True, scale=True, separate=False", "B, T", r_matrix_balance, NULL, "Balance a matrix via dgebal; returns the balanced matrix and the scaling transform (scipy.linalg.matrix_balance)."),
-    ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
-    ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
-    ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),
-    ROUTINE("slinalg.expm_frechet", 2, "A, E", "expm, frechet", r_expm_frechet, NULL, "Matrix exponential and its Frechet derivative in direction E via the block-enlarge identity (scipy.linalg.expm_frechet)."),
-    ROUTINE("slinalg.expm_cond", 1, "A", "out", r_expm_cond, NULL, "Relative condition number of the matrix exponential from the Kronecker form of its Frechet derivative (scipy.linalg.expm_cond)."),
+    ROUTINE("slinalg.cho_solve_banded", 1, "cb, lower, b", "out", r_cho_solve_banded__g, NULL, "Solve A x = b from a banded Cholesky factor via dpbtrs (scipy.linalg.cho_solve_banded)."),
+    ROUTINE("slinalg.rq", 2, "a, mode='full'", "R, Q", r_rq__g, NULL, "RQ decomposition a = R Q of a square matrix via dgerqf (scipy.linalg.rq)."),
+    ROUTINE("slinalg.orthogonal_procrustes", 2, "A, B", "R, scale", r_orthogonal_procrustes__g, NULL, "Orthogonal Procrustes solution R minimising ||A R - B|| and scale (scipy.linalg.orthogonal_procrustes)."),
+    ROUTINE("slinalg.matrix_balance", 2, "A, permute=True, scale=True, separate=False", "B, T", r_matrix_balance__g, NULL, "Balance a matrix via dgebal; returns the balanced matrix and the scaling transform (scipy.linalg.matrix_balance)."),
+    ROUTINE("slinalg.solve_banded", 1, "l, u, ab, b", "out", r_solve_banded__g, NULL, "Solve a banded linear system via dgbsv; takes l, u, ab, b unpacked (scipy.linalg.solve_banded)."),
+    ROUTINE("slinalg.solveh_banded", 1, "ab, b, lower=False", "out", r_solveh_banded__g, NULL, "Solve a Hermitian positive-definite banded system via dpbsv (scipy.linalg.solveh_banded)."),
+    ROUTINE("slinalg.eig_banded", 2, "ab, lower=False, eigvals_only=False", "w, v", r_eig_banded__g, NULL, "Eigenvalues and eigenvectors of a symmetric banded matrix via dsbevd (scipy.linalg.eig_banded)."),
+    ROUTINE("slinalg.expm_frechet", 2, "A, E", "expm, frechet", r_expm_frechet__g, NULL, "Matrix exponential and its Frechet derivative in direction E via the block-enlarge identity (scipy.linalg.expm_frechet)."),
+    ROUTINE("slinalg.expm_cond", 1, "A", "out", r_expm_cond__g, NULL, "Relative condition number of the matrix exponential from the Kronecker form of its Frechet derivative (scipy.linalg.expm_cond)."),
     ROUTINE("slinalg.rsf2csf", 2, "T, Z", "T, Z", r_rsf2csf, NULL, "Convert a real Schur form to the complex (upper-triangular) Schur form (scipy.linalg.rsf2csf)."),
     ROUTINE("slinalg.cdf2rdf", 2, "w, v", "wr, vr", r_cdf2rdf, NULL, "Convert complex eigenvalues/eigenvectors to real block-diagonal form (scipy.linalg.cdf2rdf)."),
-    ROUTINE("slinalg.subspace_angles", 2, "A, B", "out", r_subspace_angles, NULL, "Principal angles between the column spaces of A and B (scipy.linalg.subspace_angles)."),
-    ROUTINE("slinalg.solve_continuous_are", 4, "a, b, q, r", "out", r_solve_continuous_are, NULL, "Stabilising solution of the continuous-time algebraic Riccati equation (scipy.linalg.solve_continuous_are)."),
-    ROUTINE("slinalg.solve_discrete_are", 4, "a, b, q, r", "out", r_solve_discrete_are, NULL, "Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are)."),
-    ROUTINE("slinalg.signm", 1, "A", "out", r_signm, NULL, "Matrix sign function via the Schur-Parlett method (scipy.linalg.signm; real, well-separated spectrum)."),
-    ROUTINE("slinalg.qr_multiply", 3, "a, c, mode='right'", "CQ, R", r_qr_multiply, NULL, "Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply)."),
-    ROUTINE("slinalg.qr_update", 4, "Q, R, u, v", "Q, R", r_qr_update, NULL, "Economic QR of (Q R + u v^T), canonicalised (scipy.linalg.qr_update)."),
-    ROUTINE("slinalg.qr_insert", 5, "Q, R, u, k, which='row'", "Q, R", r_qr_insert, NULL, "Economic QR after inserting a row/column, canonicalised (scipy.linalg.qr_insert)."),
-    ROUTINE("slinalg.qr_delete", 5, "Q, R, k, p=1, which='row'", "Q, R", r_qr_delete, NULL, "Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete)."),
-    ROUTINE("slinalg.cossin", 3, "X, p, q", "u, cs, vh", r_cossin, NULL, "Cosine-sine decomposition of a partitioned orthogonal matrix via dorcsd (scipy.linalg.cossin)."),
-    ROUTINE("slinalg.ordqz", 6, "A, B, sort='lhp', output='real'", "AA, BB, alpha, beta, Q, Z", r_ordqz, NULL, "Reordered generalised Schur (QZ) decomposition via dgges and dtgsen (scipy.linalg.ordqz)."),
+    ROUTINE("slinalg.subspace_angles", 2, "A, B", "out", r_subspace_angles__g, NULL, "Principal angles between the column spaces of A and B (scipy.linalg.subspace_angles)."),
+    ROUTINE("slinalg.solve_continuous_are", 4, "a, b, q, r", "out", r_solve_continuous_are__g, NULL, "Stabilising solution of the continuous-time algebraic Riccati equation (scipy.linalg.solve_continuous_are)."),
+    ROUTINE("slinalg.solve_discrete_are", 4, "a, b, q, r", "out", r_solve_discrete_are__g, NULL, "Stabilising solution of the discrete-time algebraic Riccati equation (scipy.linalg.solve_discrete_are)."),
+    ROUTINE("slinalg.signm", 1, "A", "out", r_signm__g, NULL, "Matrix sign function via the Schur-Parlett method (scipy.linalg.signm; real, well-separated spectrum)."),
+    ROUTINE("slinalg.qr_multiply", 3, "a, c, mode='right'", "CQ, R", r_qr_multiply__g, NULL, "Product of c with the economic orthogonal factor Q of a, plus R (scipy.linalg.qr_multiply)."),
+    ROUTINE("slinalg.qr_update", 4, "Q, R, u, v", "Q, R", r_qr_update__g, NULL, "Economic QR of (Q R + u v^T), canonicalised (scipy.linalg.qr_update)."),
+    ROUTINE("slinalg.qr_insert", 5, "Q, R, u, k, which='row'", "Q, R", r_qr_insert__g, NULL, "Economic QR after inserting a row/column, canonicalised (scipy.linalg.qr_insert)."),
+    ROUTINE("slinalg.qr_delete", 5, "Q, R, k, p=1, which='row'", "Q, R", r_qr_delete__g, NULL, "Economic QR after deleting rows/columns, canonicalised (scipy.linalg.qr_delete)."),
+    ROUTINE("slinalg.cossin", 3, "X, p, q", "u, cs, vh", r_cossin__g, NULL, "Cosine-sine decomposition of a partitioned orthogonal matrix via dorcsd (scipy.linalg.cossin)."),
+    ROUTINE("slinalg.ordqz", 6, "A, B, sort='lhp', output='real'", "AA, BB, alpha, beta, Q, Z", r_ordqz__g, NULL, "Reordered generalised Schur (QZ) decomposition via dgges and dtgsen (scipy.linalg.ordqz)."),
     ROUTINE("slinalg.bandwidth", 2, "a", "lower, upper", r_bandwidth, NULL, "Lower and upper bandwidths of a 2-D array (scipy.linalg.bandwidth)."),
     ROUTINE("slinalg.fiedler_companion", 1, "a", "out", r_fiedler_companion, NULL, "Fiedler companion matrix of a polynomial (scipy.linalg.fiedler_companion)."),
-    ROUTINE("slinalg.solve_lyapunov", 1, "a, q", "out", r_solve_continuous_lyapunov, NULL, "Solve the continuous Lyapunov equation a x + x a^H = q; alias of solve_continuous_lyapunov (scipy.linalg.solve_lyapunov)."),
-    ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
-    ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
-    ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),
-    ROUTINE("slinalg.ldl", 3, "a, lower=True", "lu, d, perm", r_ldl, NULL, "LDL^T factorisation of a symmetric matrix via dsytrf (scipy.linalg.ldl)."),
-    ROUTINE("slinalg.sinm", 1, "a", "out", r_sinm, NULL, "Matrix sine via the Schur-Parlett method (scipy.linalg.sinm; real spectrum)."),
-    ROUTINE("slinalg.cosm", 1, "a", "out", r_cosm, NULL, "Matrix cosine via the Schur-Parlett method (scipy.linalg.cosm; real spectrum)."),
-    ROUTINE("slinalg.sinhm", 1, "a", "out", r_sinhm, NULL, "Matrix hyperbolic sine via the Schur-Parlett method (scipy.linalg.sinhm; real spectrum)."),
-    ROUTINE("slinalg.coshm", 1, "a", "out", r_coshm, NULL, "Matrix hyperbolic cosine via the Schur-Parlett method (scipy.linalg.coshm; real spectrum)."),
-    ROUTINE("slinalg.tanhm", 1, "a", "out", r_tanhm, NULL, "Matrix hyperbolic tangent via the Schur-Parlett method (scipy.linalg.tanhm; real spectrum)."),
-    ROUTINE("slinalg.expm", 1, "a", "out", r_expm, NULL, "Matrix exponential via the Schur-Parlett method (scipy.linalg.expm; real spectrum)."),
-    ROUTINE("slinalg.tanm", 1, "a", "out", r_tanm, NULL, "Matrix tangent via the Schur-Parlett method (scipy.linalg.tanm; real spectrum)."),
-    ROUTINE("slinalg.funm", 2, "a, func='exp'", "out", r_funm, NULL, "Matrix function f(A) by name via the Schur-Parlett method; func one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.linalg.funm; real spectrum)."),
-    ROUTINE("slinalg.fractional_matrix_power", 1, "a, t", "out", r_fractional_matrix_power, NULL, "Fractional matrix power a^t via the Schur-Parlett method (scipy.linalg.fractional_matrix_power; positive real spectrum)."),
-    ROUTINE("slinalg.eigvals", 1, "a", "out", r_eigvals, &ALWAYS_COMPLEX, "Eigenvalues of a general matrix, complex, sorted (scipy.linalg.eigvals)."),
-    ROUTINE("slinalg.eig", 2, "a", "eigenvalues, eigenvectors", r_eig, &ALWAYS_COMPLEX, "Eigenvalues and right eigenvectors of a general matrix, complex (scipy.linalg.eig)."),
+    ROUTINE("slinalg.solve_lyapunov", 1, "a, q", "out", r_solve_continuous_lyapunov__g, NULL, "Solve the continuous Lyapunov equation a x + x a^H = q; alias of solve_continuous_lyapunov (scipy.linalg.solve_lyapunov)."),
+    ROUTINE("slinalg.qz", 4, "A, B, output='real'", "AA, BB, Q, Z", r_qz__g, NULL, "Generalised real Schur decomposition via dgges (scipy.linalg.qz)."),
+    ROUTINE("slinalg.sqrtm", 1, "a, disp=True", "out", r_sqrtm__g, NULL, "Principal matrix square root via the Schur method (scipy.linalg.sqrtm; real spectrum)."),
+    ROUTINE("slinalg.logm", 1, "a, disp=True", "out", r_logm__g, NULL, "Principal matrix logarithm via the Schur-Parlett method (scipy.linalg.logm; distinct positive real spectrum)."),
+    ROUTINE("slinalg.ldl", 3, "a, lower=True", "lu, d, perm", r_ldl__g, NULL, "LDL^T factorisation of a symmetric matrix via dsytrf (scipy.linalg.ldl)."),
+    ROUTINE("slinalg.sinm", 1, "a", "out", r_sinm__g, NULL, "Matrix sine via the Schur-Parlett method (scipy.linalg.sinm; real spectrum)."),
+    ROUTINE("slinalg.cosm", 1, "a", "out", r_cosm__g, NULL, "Matrix cosine via the Schur-Parlett method (scipy.linalg.cosm; real spectrum)."),
+    ROUTINE("slinalg.sinhm", 1, "a", "out", r_sinhm__g, NULL, "Matrix hyperbolic sine via the Schur-Parlett method (scipy.linalg.sinhm; real spectrum)."),
+    ROUTINE("slinalg.coshm", 1, "a", "out", r_coshm__g, NULL, "Matrix hyperbolic cosine via the Schur-Parlett method (scipy.linalg.coshm; real spectrum)."),
+    ROUTINE("slinalg.tanhm", 1, "a", "out", r_tanhm__g, NULL, "Matrix hyperbolic tangent via the Schur-Parlett method (scipy.linalg.tanhm; real spectrum)."),
+    ROUTINE("slinalg.expm", 1, "a", "out", r_expm__g, NULL, "Matrix exponential via the Schur-Parlett method (scipy.linalg.expm; real spectrum)."),
+    ROUTINE("slinalg.tanm", 1, "a", "out", r_tanm__g, NULL, "Matrix tangent via the Schur-Parlett method (scipy.linalg.tanm; real spectrum)."),
+    ROUTINE("slinalg.funm", 2, "a, func='exp'", "out", r_funm__g, NULL, "Matrix function f(A) by name via the Schur-Parlett method; func one of exp/sqrt/log/sin/cos/sinh/cosh/tanh/tan (scipy.linalg.funm; real spectrum)."),
+    ROUTINE("slinalg.fractional_matrix_power", 1, "a, t", "out", r_fractional_matrix_power__g, NULL, "Fractional matrix power a^t via the Schur-Parlett method (scipy.linalg.fractional_matrix_power; positive real spectrum)."),
+    ROUTINE("slinalg.eigvals", 1, "a", "out", r_eigvals__g, &ALWAYS_COMPLEX, "Eigenvalues of a general matrix, complex, sorted (scipy.linalg.eigvals)."),
+    ROUTINE("slinalg.eig", 2, "a", "eigenvalues, eigenvectors", r_eig__g, &ALWAYS_COMPLEX, "Eigenvalues and right eigenvectors of a general matrix, complex (scipy.linalg.eig)."),
 };
 const fn_table TSR_SCIPY_LINALG_TABLE = {SCIPY_DEFS, (int)(sizeof SCIPY_DEFS / sizeof SCIPY_DEFS[0])};

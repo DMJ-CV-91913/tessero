@@ -990,6 +990,11 @@ int tsr_fn_gufunc(int id, int nin, const tsr_array *in, const uint64_t *axmask, 
             if (has_nan && nanpol == 2) { fn_set_error("The input contains nan values"); r = TSR_EARG; break; }
             if (has_nan && nanpol == 1) {
                 if (d->nanpolicy == 2 && nin >= 2) {      /* paired samples: drop a position if any is NaN */
+                    /* the walk below indexes every input by input 0's length: unequal pairs must be refused
+                       first (the core's own n[0] == n[1] check runs only after compaction) */
+                    int mismatch = 0;
+                    for (int i = 1; i < nin; i++) if (n[i] != n[0]) mismatch = 1;
+                    if (mismatch) { fn_set_error("Array shapes are incompatible for broadcasting."); r = TSR_EARG; break; }
                     int64_t k = 0;
                     for (int64_t t = 0; t < n[0]; t++) {
                         int bad = 0;
