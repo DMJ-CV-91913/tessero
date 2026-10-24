@@ -2085,7 +2085,7 @@ static double *sig_polyroots(const double *p, int64_t m, int64_t *nz)
     for (int64_t j = 0; j < n; j++) comp[j] = -p[s + 1 + j] / p0;
     for (int64_t i = 1; i < n; i++) comp[i * n + (i - 1)] = 1.0;
     /* ldvl/ldvr = max(1,n): LAPACKE < 3.11 row-major rejects ld < n even when the job is N */
-    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, comp, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
+    lapack_int info = !fn_all_finite(comp, (int64_t)(n) * (n)) ? -5 : LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, comp, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
     free(comp);
     if (info != 0) { free(wr); free(wi); free(pairs); *nz = -1; return NULL; }
     for (int64_t i = 0; i < n; i++) { pairs[2 * i] = wr[i]; pairs[2 * i + 1] = wi[i]; }
@@ -2271,7 +2271,7 @@ static int ss_charpoly(const double *M, int64_t n, double *out)
     if (!a || !wr || !wi || !cr || !ci) { free(a); free(wr); free(wi); free(cr); free(ci); return -1; }
     memcpy(a, M, sizeof(double) * (size_t)(n * n));
     /* ldvl/ldvr = max(1,n): LAPACKE < 3.11 row-major rejects ld < n even when the job is N */
-    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
+    lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -5 : LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
     free(a);
     if (info != 0) { free(wr); free(wi); free(cr); free(ci); return -1; }
     cr[0] = 1.0; ci[0] = 0.0;

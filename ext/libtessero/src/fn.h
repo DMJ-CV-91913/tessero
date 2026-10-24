@@ -266,6 +266,17 @@ static inline int64_t fn_dbl_i64(double v, int64_t bad) { return fn_dbl_fits_i64
 /* a number argument (kind 1) as an integer, or `bad` (see fn_dbl_i64) */
 static inline int64_t fn_num_i64(const tsr_arg *a, int64_t bad) { return (a->flags & 1) ? a->ival : fn_dbl_i64(a->num, bad); }
 
+/* 1 when x[0..n-1] are all finite. The LAPACK eigenvalue and Schur drivers (dgeev, dgees) must never receive a
+   matrix holding NaN or an infinity: on that path the system LAPACKE corrupted the caller's heap before returning
+   its NaN-check error (CI fuzz, linalg.eigvals, 2026-10-24). Callers skip the call and report the same negative
+   info LAPACKE returns for a non-finite matrix argument, so the observable result is unchanged. */
+static inline int fn_all_finite(const double *x, int64_t n)
+{
+    for (int64_t i = 0; i < n; i++)
+        if (!isfinite(x[i])) return 0;
+    return 1;
+}
+
 /* Number argument `a` (kind 1 or 4) as an integer in [lo, hi]. An integer passes exactly. A float must be
    finite and inside int64 and, with `exact`, integral (NumPy's operator.index: TypeError "'float' object
    cannot be interpreted as an integer"); without it the float truncates as Python's int() does, which

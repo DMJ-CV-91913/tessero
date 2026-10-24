@@ -91,7 +91,7 @@ static int r_roots(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     for (int64_t i = 1; i < n; i++) comp[i * n + (i - 1)] = 1.0;            /* sub-diagonal */
     fn_free_doubles(p, m);
     /* ldvl/ldvr = max(1,n): LAPACKE < 3.11 row-major rejects ld < n even when the job is N */
-    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, comp, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
+    lapack_int info = !fn_all_finite(comp, (int64_t)(n) * (n)) ? -5 : LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, comp, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
     free(comp);
     if (info != 0) { free(wr); free(wi); fn_set_error("roots: the eigenvalue solve failed (%d)", (int)info); return TSR_EARG; }
     double *pairs = (double *)malloc(sizeof(double) * (size_t)(2 * n));

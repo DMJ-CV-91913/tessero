@@ -69,6 +69,7 @@ reproducers `fuzz/corpus/routines/regress_*` (default table, CI seed 1).
 | E-1 | `np.roll` | a scalar shift with `axis=()` read `axes[0]` uninitialised and indexed `tot[]` with it (`np_shape.c:687`) | the shift broadcasts against the axes as in NumPy: zero axes, nothing rolls (a copy) |
 | E-2 | `slinalg.invhilbert` | O(n^3) work (three O(n) binomials per entry) with no bound: a CI timeout | n above 700 refused (about 2^30 multiplies); entries overflow to inf near n = 270 anyway |
 | E-3 | `special.sph_harm_y`, `special.lambertw` | orders and the branch index cast to int unchecked; xsf negated m = INT_MIN and its int recurrence overflowed beyond n = 645 | orders beyond +-645, NaN or infinite give NaN; a NaN or huge `k` is refused |
+| E-4 | `linalg.eigvals`, `eig` and every `dgeev` / `dgees` caller (16 sites: Schur, roots, polynomial roots, signal, sparse `eigs`) | a NaN or infinite matrix reached the system LAPACKE, which corrupted the caller's heap on its NaN-check path before returning -5 (libFuzzer on main; ASan bad-free at `np_linalg.c:726`) | the matrix is checked with `fn_all_finite` first and LAPACKE is not called; the routine reports the same failure as before |
 
 Batch D (`scipy_csgraph.c`, `np_linalg.c`, `cxx/dist_disc.cpp`, vendored `xsf/specfun/specfun.h`). Regression checks in
 `tests/test_main.c` (`test_fuzz_batch_d`); reproducers `fuzz/corpus/routines/D-*` (default table; each fails on the
