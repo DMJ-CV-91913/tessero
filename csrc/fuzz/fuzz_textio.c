@@ -35,13 +35,7 @@ static tsr_arg count_arg(fz_in *in)
         return fz_arg_int(X[fz_u8(in) % (sizeof X / sizeof X[0])]);
     }
     default:
-#ifdef FUZZ_SKIP_KNOWN
-        /* open finding F10: skiprows / skip_header / skip_footer / count / offset given as a non-integer number
-           are cast to int64 unchecked (NaN, Inf, 1e300). Pass integers only. */
-        return fz_arg_int((int64_t)(fz_u8(in) % 8) - 2);
-#else
         return fz_arg_num(fz_double(in));
-#endif
     }
 }
 
@@ -92,11 +86,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         args[nargs++] = count_arg(&in);
     }
     if (sel & 0x80) nargs = 1 + fz_u8(&in) % nargs;     /* trailing arguments absent */
-#ifdef FUZZ_SKIP_KNOWN
-    /* open finding F10: fromfile computes file_size - offset in int64 unchecked; keep offset small */
-    if (which == 2 && nargs > 4 && args[4].kind == 1 && (args[4].ival < -4096 || args[4].ival > 4096))
-        args[4] = fz_arg_int(args[4].ival % 4096);
-#endif
 
     FILE *f = fopen(g_path, "wb");
     if (!f) abort();

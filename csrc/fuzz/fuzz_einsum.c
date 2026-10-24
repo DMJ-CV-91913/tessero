@@ -41,21 +41,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         ops[o] = fz_arg_array(&in, &pool, 0, nd[o], shape[o]);
         if (ops[o].kind != 3) { fz_release(&pool); return 0; }
     }
-#ifdef FUZZ_SKIP_KNOWN
-    /* open finding F5: a label bound to a 0-length axis and a longer one is accepted (size 0 means "unset"),
-       then the operand data is read out of bounds. Skip operands with a 0-length axis. */
-    for (int o = 0; o < nop; o++)
-        for (int d = 0; d < nd[o]; d++) if (shape[o][d] == 0) { fz_release(&pool); return 0; }
-    /* open finding F8: dots that are not one contiguous "..." per term pass the first parse and are misparsed
-       by the second. Skip subscripts with any '.' outside a run of exactly three. */
-    for (size_t i = 0; sub[i]; ) {
-        if (sub[i] != '.') { i++; continue; }
-        size_t run = 0;
-        while (sub[i + run] == '.') run++;
-        if (run != 3) { fz_release(&pool); return 0; }
-        i += run;
-    }
-#endif
     if (as_seq) {
         tsr_arg seq = fz_arg_none();
         seq.kind = 5;

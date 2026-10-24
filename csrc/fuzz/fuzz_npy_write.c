@@ -2,8 +2,8 @@
  * Fuzz target: the .npy header writer (tsr_npy_write_header) with fuzzed dtype, rank, shape (incl. negative
  * and 19-digit dimensions), fortran flag and a short output capacity. Oracle: the size query (buf NULL)
  * equals the length written; a too-small buffer is never written; a sufficient buffer is written only up
- * to the returned length (guard bytes); the header is a multiple of 64 and parses back to the same values
- * whenever the parser accepts it.
+ * to the returned length (guard bytes); the header is a multiple of 64 and always parses back to the same
+ * values; a shape the parser would refuse (byte count beyond int64) is refused by the writer too.
  */
 #include "../src/internal.h"
 #include <stdlib.h>
@@ -28,9 +28,20 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 #undef BYTE
     const int64_t need = tsr_npy_write_header(dtype, nd, shape, fortran, NULL, 0);
     const int valid = dtype >= 0 && dtype < TSR_NDTYPES && nd >= 0 && nd <= TSR_MAXDIM;
-    int negative = 0;
+    int negative = 0, overflow = 0;
     for (int d = 0; valid && d < nd; d++) negative |= shape[d] < 0;
-    if (!valid || negative) {
+    if (valid && !negative) {
+        /* the parser refuses shapes whose byte count overflows int64, and (a conservative digit check) any
+           dimension >= 9223372036854775800 even when another dimension is 0: the writer must refuse them too */
+        int64_t count = 1, isz = tsr_itemsize(dtype);
+        for (int d = 0; d < nd; d++) if (shape[d] >= INT64_MAX - 7) overflow = 1;
+        for (int d = 0; d < nd && !overflow; d++) {
+            if (shape[d] && count > INT64_MAX / shape[d]) { overflow = 1; break; }
+            count *= shape[d];
+        }
+        if (!overflow && count > INT64_MAX / isz) overflow = 1;
+    }
+    if (!valid || negative || overflow) {
         if (need >= 0) abort();                           /* invalid input must be refused */
         char big[2048];
         if (tsr_npy_write_header(dtype, nd, shape, fortran, big, sizeof big) != need) abort();
@@ -49,22 +60,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         int dt2, fo2;
         int32_t nd2;
         int64_t sh2[32], off2;
-        if (tsr_npy_header(buf, need, &dt2, &nd2, sh2, &fo2, &off2) == TSR_OK) {
-            if (dt2 != dtype || nd2 != nd || fo2 != (fortran != 0) || off2 != need) abort();
-            if (nd && memcmp(sh2, shape, sizeof(int64_t) * (size_t)nd) != 0) abort();
-        } else {
-            /* the parser refuses only shapes whose byte count overflows int64, and (a conservative digit
-               check) any dimension >= 9223372036854775800 even when another dimension is 0 */
-            int64_t count = 1, isz = tsr_itemsize(dtype);
-            int overflow = 0;
-            for (int d = 0; d < nd; d++) if (shape[d] >= INT64_MAX - 7) overflow = 1;
-            for (int d = 0; d < nd && !overflow; d++) {
-                if (shape[d] && count > INT64_MAX / shape[d]) { overflow = 1; break; }
-                count *= shape[d];
-            }
-            if (!overflow && count > INT64_MAX / isz) overflow = 1;
-            if (!overflow) abort();
-        }
+        if (tsr_npy_header(buf, need, &dt2, &nd2, sh2, &fo2, &off2) != TSR_OK) abort();   /* written => readable */
+        if (dt2 != dtype || nd2 != nd || fo2 != (fortran != 0) || off2 != need) abort();
+        if (nd && memcmp(sh2, shape, sizeof(int64_t) * (size_t)nd) != 0) abort();
     }
     free(buf);
     return 0;

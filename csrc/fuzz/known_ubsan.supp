@@ -1,13 +1,60 @@
 # UBSan suppressions for OPEN fuzzing findings, used only when FUZZ_DEFS contains -DFUZZ_SKIP_KNOWN so a long
 # run keeps exploring past them. Default fuzzing (and CI without FUZZ_DEFS) reports them. Remove a line when its
 # fix lands. Memory-safety findings cannot be suppressed here: the harnesses steer around those instead.
-# F1: np.fromfile text mode casts NaN/Inf/out-of-range values to an integer dtype (np_io.c io_store)
-float-cast-overflow:io_store
-# F6: np.loadtxt / np.genfromtxt memcpy from a NULL buffer when the file yields no values (np_io.c)
-nonnull-attribute:r_loadtxt
-nonnull-attribute:r_genfromtxt
 # F11 (systemic): routines and their helpers cast numeric arguments to int64/int without a range check, e.g.
-# (int64_t)args[k].num with NaN/Inf/1e300 (about 140 direct sites, scipy_signal.c the most, plus helpers such as
-# fw2_read_hsize). Suppressing the cast itself keeps the x86 result (INT64_MIN) flowing, so any memory error it
-# leads to downstream is still reported. This covers every float-cast-overflow while the class is open.
-float-cast-overflow:*
+# (int64_t)args[k].num with NaN/Inf/1e300 (scipy_signal.c the most, plus helpers such as fw2_read_hsize).
+# Suppressing the cast itself keeps the x86 result (INT64_MIN) flowing, so any memory error it leads to
+# downstream is still reported. The class is fixed (checked conversions, fn_arg_i64 / fn_dbl_i64 in src/fn.h) in
+# np_numeric.c, np_io.c, np_sets.c, scipy_ndimage.c, scipy_sparse.c, scipy_fft.c, spatial_distance.c, mmap.c,
+# stats_fn_desc.cpp and stats_fn_tests.cpp, which are therefore not listed: casts there are reported.
+float-cast-overflow:cxx/dist_basic.cpp
+float-cast-overflow:cxx/dist_cont1.cpp
+float-cast-overflow:cxx/dist_cont2.cpp
+float-cast-overflow:cxx/dist_cont3.cpp
+float-cast-overflow:cxx/dist_cont4.cpp
+float-cast-overflow:cxx/dist_cont5.cpp
+float-cast-overflow:cxx/dist_cont6.cpp
+float-cast-overflow:cxx/dist_disc.cpp
+float-cast-overflow:cxx/fn_guard.cpp
+float-cast-overflow:cxx/gen_special.cpp
+float-cast-overflow:cxx/stats_dist.cpp
+float-cast-overflow:cxx/gen_sc.hpp
+float-cast-overflow:cxx/gen_special_internal.inc
+float-cast-overflow:cxx/special_complex.inc
+float-cast-overflow:cxx/stats_dist.hpp
+float-cast-overflow:cxx/u128.hpp
+float-cast-overflow:cxx/stats_fn_corr.cpp
+float-cast-overflow:cxx/stats_fn_tests2.cpp
+float-cast-overflow:src/alloc.c
+float-cast-overflow:src/array.c
+float-cast-overflow:src/elementwise.c
+float-cast-overflow:src/fft.c
+float-cast-overflow:src/fn_core.c
+float-cast-overflow:src/fn_tables.c
+float-cast-overflow:src/fpenv.c
+float-cast-overflow:src/gen_special_table.c
+float-cast-overflow:src/index.c
+float-cast-overflow:src/lp.c
+float-cast-overflow:src/matmul.c
+float-cast-overflow:src/mdp.c
+float-cast-overflow:src/np_linalg.c
+float-cast-overflow:src/np_poly.c
+float-cast-overflow:src/np_polynomial.c
+float-cast-overflow:src/np_random.c
+float-cast-overflow:src/np_shape.c
+float-cast-overflow:src/np_stats.c
+float-cast-overflow:src/reduce.c
+float-cast-overflow:src/repro_f32.c
+float-cast-overflow:src/rng.c
+float-cast-overflow:src/scipy_cluster.c
+float-cast-overflow:src/scipy_cluster_hier.c
+float-cast-overflow:src/scipy_csgraph.c
+float-cast-overflow:src/scipy_interpolate.c
+float-cast-overflow:src/scipy_signal.c
+float-cast-overflow:src/scipy_sparse_linalg.c
+float-cast-overflow:src/selfcheck.c
+float-cast-overflow:src/sort.c
+float-cast-overflow:src/sparse.c
+float-cast-overflow:src/ufunc.c
+# third-party code (xsf, boost, cdflib, ...) reached with unchecked arguments from the files above
+float-cast-overflow:third_party/
