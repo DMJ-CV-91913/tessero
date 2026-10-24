@@ -25,3 +25,32 @@ __pycache__/
 
 # ---- R&D process logs: disk only (owner directive 2026-10-20: code+tests+technical only) ----
 /.work/
+
+# phpize / configure / make output of an in-tree extension build (never commit)
+/ext/build/
+/ext/Makefile.fragments
+/ext/Makefile.objects
+/ext/acinclude.m4
+/ext/aclocal.m4
+/ext/config.h.in
+/ext/config.log
+/ext/config.nice
+/ext/config.status
+/ext/configure
+/ext/configure.ac
+/ext/install-sh
+/ext/libtool
+/ext/ltmain.sh
+/ext/missing
+/ext/mkinstalldirs
+/ext/run-tests.php
+/ext/include/
+*.dep
+/ext/tests/*.diff
+/ext/tests/*.exp
+/ext/tests/*.log
+/ext/tests/*.out
+/ext/tests/*.php
+/ext/tests/*.sh
+# the soname symlink created by csrc/Makefile (ADR 0014)
+/lib/*/libtessero.so.*
