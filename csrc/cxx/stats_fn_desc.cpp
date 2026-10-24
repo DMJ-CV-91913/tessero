@@ -834,7 +834,7 @@ int emit(tsr_result *r, const Lanes &L, const double *vals, bool keepdims, bool 
         for (int i = 0; i < nd; i++) shp[i] = L.oshape[i];
     }
     if (nd == 0) {
-        if (as_int) fn_result_int(r, (int64_t)vals[0]);
+        if (as_int) fn_result_int(r, fn_dbl_i64(vals[0], INT64_MIN));   /* NaN: the x86 result, no UB */
         else fn_result_num(r, vals[0]);
         return TSR_OK;
     }
@@ -842,7 +842,7 @@ int emit(tsr_result *r, const Lanes &L, const double *vals, bool keepdims, bool 
     if (as_int) {
         int64_t *o = (int64_t *)fn_result_array(r, TSR_I64, nd, shp);
         if (!o) return TSR_ENOMEM;
-        for (int64_t i = 0; i < cnt; i++) o[i] = (int64_t)vals[i];
+        for (int64_t i = 0; i < cnt; i++) o[i] = fn_dbl_i64(vals[i], INT64_MIN);
     } else {
         double *o = (double *)fn_result_array(r, TSR_F64, nd, shp);
         if (!o) return TSR_ENOMEM;
@@ -859,7 +859,7 @@ int emit_arr(tsr_result *r, int nd, const int64_t *shp, const double *vals, bool
     if (as_int) {
         int64_t *o = (int64_t *)fn_result_array(r, TSR_I64, nd, shp);
         if (!o) return TSR_ENOMEM;
-        for (int64_t i = 0; i < cnt; i++) o[i] = (int64_t)vals[i];
+        for (int64_t i = 0; i < cnt; i++) o[i] = fn_dbl_i64(vals[i], INT64_MIN);
     } else {
         double *o = (double *)fn_result_array(r, TSR_F64, nd, shp);
         if (!o) return TSR_ENOMEM;
@@ -2216,6 +2216,8 @@ static int r_multivariate_normal(const void *ctx, const tsr_arg *args, int nargs
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multivariate_normal: mean 1-D, cov 2-D, x (m,d)"); return TSR_EARG; }
     const int64_t d = args[0].arr.shape[0], m = args[2].arr.shape[0];
+    /* the dimensions must agree: mean (d,), cov (d, d), x (m, d) -- they were read with d unchecked */
+    if (args[0].arr.ndim != 1 || args[1].arr.shape[0] != d || args[1].arr.shape[1] != d || args[2].arr.shape[1] != d) { fn_set_error("multivariate_normal: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lm, lc, lx; double *mean = fn_arg_doubles(&args[0], &lm), *C = mean ? fn_arg_doubles(&args[1], &lc) : nullptr, *X = C ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(mean, lm); fn_free_doubles(C, lc); return TSR_ENOMEM; }
     std::vector<double> L(d * d, 0.0), z(d);
@@ -2245,6 +2247,7 @@ static int r_dirichlet(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("dirichlet: alpha 1-D, x (m,k)"); return TSR_EARG; }
     const int64_t k = args[0].arr.shape[0], m = args[1].arr.shape[0];
+    if (args[0].arr.ndim != 1 || args[1].arr.shape[1] != k) { fn_set_error("dirichlet: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t la, lx; double *al = fn_arg_doubles(&args[0], &la), *X = al ? fn_arg_doubles(&args[1], &lx) : nullptr;
     if (!X) { fn_free_doubles(al, la); return TSR_ENOMEM; }
     double asum = 0.0, lg = 0.0; for (int64_t i = 0; i < k; i++) { asum += al[i]; lg += std::lgamma(al[i]); }
@@ -2261,6 +2264,7 @@ static int r_multinomial(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 1 || args[1].kind != 3 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multinomial: n int, p 1-D, x (m,k)"); return TSR_EARG; }
     const double nn = args[0].num; const int64_t k = args[1].arr.shape[0], m = args[2].arr.shape[0];
+    if (args[1].arr.ndim != 1 || args[2].arr.shape[1] != k) { fn_set_error("multinomial: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lp, lx; double *p = fn_arg_doubles(&args[1], &lp), *X = p ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(p, lp); return TSR_ENOMEM; }
     int64_t sh[1] = {m}; double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
@@ -2277,6 +2281,7 @@ static int r_dirichlet_multinomial(const void *ctx, const tsr_arg *args, int nar
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("dirichlet_multinomial: alpha 1-D, n int, x (m,k)"); return TSR_EARG; }
     const int64_t k = args[0].arr.shape[0], m = args[2].arr.shape[0]; const double nn = args[1].num;
+    if (args[0].arr.ndim != 1 || args[2].arr.shape[1] != k) { fn_set_error("dirichlet_multinomial: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t la, lx; double *al = fn_arg_doubles(&args[0], &la), *X = al ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(al, la); return TSR_ENOMEM; }
     double A = 0.0; for (int64_t i = 0; i < k; i++) A += al[i];
@@ -2295,6 +2300,7 @@ static int r_multivariate_hypergeom(const void *ctx, const tsr_arg *args, int na
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multivariate_hypergeom: m 1-D, n int, x (mm,k)"); return TSR_EARG; }
     const int64_t k = args[0].arr.shape[0], mm = args[2].arr.shape[0]; const double n = args[1].num;
+    if (args[0].arr.ndim != 1 || args[2].arr.shape[1] != k) { fn_set_error("multivariate_hypergeom: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lmc, lx; double *mc = fn_arg_doubles(&args[0], &lmc), *X = mc ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(mc, lmc); return TSR_ENOMEM; }
     double M = 0.0; for (int64_t i = 0; i < k; i++) M += mc[i];
@@ -2321,6 +2327,7 @@ static int r_multivariate_t(const void *ctx, const tsr_arg *args, int nargs, tsr
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 1 || args[3].kind != 3 || args[3].arr.ndim != 2) { fn_set_error("multivariate_t: loc 1-D, shape 2-D, df scalar, x (m,d)"); return TSR_EARG; }
     const int64_t d = args[0].arr.shape[0], m = args[3].arr.shape[0]; const double df = args[2].num;
+    if (args[0].arr.ndim != 1 || args[1].arr.shape[0] != d || args[1].arr.shape[1] != d || args[3].arr.shape[1] != d) { fn_set_error("multivariate_t: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t ll, ls, lx; double *loc = fn_arg_doubles(&args[0], &ll), *S = loc ? fn_arg_doubles(&args[1], &ls) : nullptr, *X = S ? fn_arg_doubles(&args[3], &lx) : nullptr;
     if (!X) { fn_free_doubles(loc, ll); fn_free_doubles(S, ls); return TSR_ENOMEM; }
     std::vector<double> L(d * d, 0.0), z(d);
@@ -2346,6 +2353,7 @@ static int r_vonmises_fisher(const void *ctx, const tsr_arg *args, int nargs, ts
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("vonmises_fisher: mu 1-D, kappa scalar, x (m,d)"); return TSR_EARG; }
     const int64_t d = args[0].arr.shape[0], m = args[2].arr.shape[0]; const double kappa = args[1].num;
+    if (args[0].arr.ndim != 1 || args[2].arr.shape[1] != d) { fn_set_error("vonmises_fisher: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lm, lx; double *mu = fn_arg_doubles(&args[0], &lm), *X = mu ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(mu, lm); return TSR_ENOMEM; }
     const double halfd = (double)d / 2.0;
@@ -2379,6 +2387,8 @@ static int r_matrix_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_
     (void)ctx; (void)nargs; (void)nres;
     for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("matrix_normal: M, U, V, X must be 2-D arrays"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], p = args[0].arr.shape[1];
+    if (args[1].arr.shape[0] != n || args[1].arr.shape[1] != n || args[2].arr.shape[0] != p || args[2].arr.shape[1] != p ||
+        args[3].arr.shape[0] != n || args[3].arr.shape[1] != p) { fn_set_error("matrix_normal: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lM, lU, lV, lX; double *M = fn_arg_doubles(&args[0], &lM), *U = M ? fn_arg_doubles(&args[1], &lU) : nullptr,
         *V = U ? fn_arg_doubles(&args[2], &lV) : nullptr, *X = V ? fn_arg_doubles(&args[3], &lX) : nullptr;
     int rc = X ? TSR_OK : TSR_ENOMEM;
@@ -2405,6 +2415,7 @@ static int stat_wishart(const tsr_arg *args, tsr_result *res, int inv)
 {
     if (args[0].kind != 1 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("wishart: df scalar, scale and X 2-D"); return TSR_EARG; }
     const double df = args[0].num; const int64_t d = args[1].arr.shape[0];
+    if (args[1].arr.shape[1] != d || args[2].arr.shape[0] != d || args[2].arr.shape[1] != d) { fn_set_error("wishart: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lS, lX; double *S = fn_arg_doubles(&args[1], &lS), *X = S ? fn_arg_doubles(&args[2], &lX) : nullptr;
     int rc = X ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {
