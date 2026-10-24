@@ -1,0 +1,3 @@
+libtessero/third_party/scipy/fitpack/insert.lo: \
+ /home/tessero/tw-merge/ext/libtessero/third_party/scipy/fitpack/insert.c \
+ /home/tessero/tw-merge/ext/libtessero/third_party/scipy/fitpack/f2c.h

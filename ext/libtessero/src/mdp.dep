@@ -1,0 +1,3 @@
+libtessero/src/mdp.lo: /home/tessero/tw-merge/ext/libtessero/src/mdp.c \
+ /home/tessero/tw-merge/ext/libtessero/src/internal.h \
+ /home/tessero/tw-merge/ext/libtessero/src/../include/tessero.h
