@@ -19,7 +19,7 @@ static decode(string $bytes, string $what = '.npy data'): Tessero\NDArray
 ### encode
 
 ```php
-static encode(Tessero\NDArray $array): string
+static encode(Tessero\NDArray|Tessero\Ext\NDArray $array): string
 ```
 
 ### load
@@ -28,17 +28,24 @@ static encode(Tessero\NDArray $array): string
 static load(string $path): Tessero\NDArray
 ```
 
+$path must be a local file (stream wrappers are refused); never build it from request input.
+
 ### loadZ
 
 ```php
-static loadZ(string $path): array
+static loadZ(string $path, int $maxBytes = 268435456): array
 ```
+
+Read every array of a .npz archive. The archive may inflate to at most $maxBytes in total
+(default 256 MiB, checked before decompressing) and hold at most IoGuard::MAX_ZIP_ENTRIES members.
 
 ### save
 
 ```php
 static save(string $path, Tessero\NDArray $array): void
 ```
+
+$path must be a local file (stream wrappers are refused); never build it from request input.
 
 ### saveZ
 

@@ -233,6 +233,14 @@ static expm1(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray
 
 e^x - 1, accurate near 0.
 
+### floatPower
+
+```php
+static floatPower(mixed $x1, mixed $x2, ?Tessero\NDArray $out = null): Tessero\NDArray
+```
+
+x1 ** x2, computed in float64 (numpy.float_power).
+
 ### floor
 
 ```php
@@ -247,7 +255,7 @@ round down.
 static floorDivide(mixed $x, mixed $y, ?Tessero\NDArray $out = null): Tessero\NDArray
 ```
 
-floor(x / y).
+x // y as NumPy floor_divide: the floor of the exact quotient (1.0 // 0.1 is 9.0, not floor(1.0 / 0.1)).
 
 ### fmax
 
@@ -281,6 +289,14 @@ static gamma(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray
 
 gamma function (scipy.special.gamma).
 
+### gcd
+
+```php
+static gcd(mixed $x1, mixed $x2, ?Tessero\NDArray $out = null): Tessero\NDArray
+```
+
+Greatest common divisor, element-wise (numpy.gcd; integer inputs).
+
 ### greater
 
 ```php
@@ -296,6 +312,14 @@ static greaterEqual(mixed $x, mixed $y, ?Tessero\NDArray $out = null): Tessero\N
 ```
 
 x >= y (bool).
+
+### heaviside
+
+```php
+static heaviside(mixed $x1, mixed $x2, ?Tessero\NDArray $out = null): Tessero\NDArray
+```
+
+0 where x1 < 0, x2 where x1 == 0, 1 where x1 > 0 (numpy.heaviside).
 
 ### hypot
 
@@ -344,6 +368,14 @@ static isnan(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray
 ```
 
 x is NaN (bool).
+
+### lcm
+
+```php
+static lcm(mixed $x1, mixed $x2, ?Tessero\NDArray $out = null): Tessero\NDArray
+```
+
+Least common multiple, element-wise (numpy.lcm; integer inputs).
 
 ### less
 

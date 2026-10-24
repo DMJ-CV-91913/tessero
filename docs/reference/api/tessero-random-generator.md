@@ -38,6 +38,15 @@ Samples from a binomial distribution (Generator.binomial).
 
 numpy.random.Generator.binomial
 
+### bytes
+
+```php
+bytes(int $length): string
+```
+
+`$length` random bytes as a binary string (numpy.random.Generator.bytes). Even $length 0 advances
+the stream by one 32-bit draw, exactly as NumPy does.
+
 ### chisquare
 
 ```php
@@ -56,6 +65,15 @@ choice(Tessero\NDArray|array|int $a, array|int|null $size = null, bool $replace 
 
 Sample from a 1-D array (or arange(a) for an int). Probabilities $p use
 NumPy's CDF-inversion, so the draws match numpy's choice(..., p=p).
+
+### dirichlet
+
+```php
+dirichlet(array $alpha, array|int|null $size = null): Tessero\NDArray
+```
+
+Draw from a Dirichlet distribution (numpy.random.Generator.dirichlet). Each sample is a vector of
+length count($alpha) that sums to 1, built from independent standard-gamma draws then normalised.
 
 ### exponential
 
@@ -171,6 +189,34 @@ Samples from a logarithmic series distribution (Generator.logseries).
 
 numpy.random.Generator.logseries
 
+### multinomial
+
+```php
+multinomial(int $n, array $pvals, array|int|null $size = null): Tessero\NDArray
+```
+
+Draw samples from a multinomial distribution (numpy.random.Generator.multinomial): for each of the
+len($pvals) categories, a count, built from sequential conditional binomial draws.
+
+### multivariateHypergeometric
+
+```php
+multivariateHypergeometric(array $colors, int $nsample, array|int|null $size = null, string $method = 'marginals'): Tessero\NDArray
+```
+
+Draw from a multivariate hypergeometric distribution (numpy.random.Generator.multivariate_hypergeometric,
+method='marginals'): sequential univariate hypergeometric draws over the colours.
+
+### multivariateNormal
+
+```php
+multivariateNormal(mixed $mean, mixed $cov, array|int|null $size = null, string $checkValid = 'warn', float $tol = 1.0E-8, string $method = 'svd'): Tessero\NDArray
+```
+
+Draw samples from a multivariate normal distribution (numpy.random.Generator.multivariate_normal,
+method 'svd'). $mean is the length-d mean vector and $cov the (d, d) covariance matrix; $size fixes the
+number of samples (null: one sample of shape (d,)). The SVD factorisation matches NumPy's.
+
 ### negativeBinomial
 
 ```php
@@ -228,6 +274,15 @@ permutation(Tessero\NDArray|array|int $x): Tessero\NDArray
 ```
 
 Random permutation of arange(n), or a shuffled copy of an array along axis 0.
+
+### permuted
+
+```php
+permuted(Tessero\NDArray $x, ?int $axis = null, ?Tessero\NDArray $out = null): Tessero\NDArray
+```
+
+Randomly permute values along an axis, each slice independently (numpy.random.Generator.permuted).
+With $axis null the flattened array is permuted. Returns a new array (or writes into $out).
 
 ### poisson
 

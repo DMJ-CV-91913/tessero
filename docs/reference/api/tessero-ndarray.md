@@ -1,6 +1,6 @@
 # NDArray
 
-`Tessero\NDArray` extends `Tessero\Ext\Operand` implements `ArrayAccess`, `Countable`, `IteratorAggregate`, `JsonSerializable`, `Traversable`
+`Tessero\NDArray` extends `Tessero\Internal\OperandBase` implements `ArrayAccess`, `Countable`, `IteratorAggregate`, `JsonSerializable`, `Traversable`
 
 An n-dimensional, homogeneously typed array in native memory.
 
@@ -256,6 +256,14 @@ argmax(?int $axis = null, bool $keepdims = false): mixed
 argmin(?int $axis = null, bool $keepdims = false): mixed
 ```
 
+### argpartition
+
+```php
+argpartition(mixed $kth, int $axis = -1): mixed
+```
+
+Indices that would partition the array about the kth element (numpy.ndarray.argpartition).
+
 ### argsort
 
 ```php
@@ -296,17 +304,41 @@ buffer(): Tessero\Native\Buffer
 
 The native block this array (or view) reads; shared by all views of it. Advanced use only.
 
+### byteswap
+
+```php
+byteswap(bool $inplace = false): self
+```
+
+A copy with each element's bytes reversed (numpy.ndarray.byteswap).
+
 ### ceil
 
 ```php
 ceil(?self $out = null): self
 ```
 
+### choose
+
+```php
+choose(mixed $choices, mixed $mode = 'raise'): mixed
+```
+
+Choose from a set of arrays by index (numpy.ndarray.choose).
+
 ### clip
 
 ```php
 clip(int|float|null $min = null, int|float|null $max = null): self
 ```
+
+### compress
+
+```php
+compress(mixed $condition, ?int $axis = null): mixed
+```
+
+Select elements where a boolean condition is true (numpy.ndarray.compress).
 
 ### conj
 
@@ -357,6 +389,14 @@ cumprod(?int $axis = null): self
 ```php
 cumsum(?int $axis = null): self
 ```
+
+### diagonal
+
+```php
+diagonal(int $offset = 0, int $axis1 = 0, int $axis2 = 1): mixed
+```
+
+A diagonal of the matrix (numpy.ndarray.diagonal).
 
 ### diff
 
@@ -417,6 +457,14 @@ filename(): ?string
 ```
 
 The mapped file's resolved path, or null.
+
+### fill
+
+```php
+fill(mixed $value): self
+```
+
+Fill the array with a scalar value (numpy.ndarray.fill); returns a new same-shape array.
 
 ### filter
 
@@ -634,6 +682,14 @@ logicalXor(mixed $b): self
 lt(mixed $b): self
 ```
 
+### mT
+
+```php
+mT(): mixed
+```
+
+Matrix transpose: swap the last two axes (numpy.ndarray.mT).
+
 ### matmul
 
 ```php
@@ -725,6 +781,14 @@ ne(mixed $b): self
 neg(?self $out = null): self
 ```
 
+### nonzero
+
+```php
+nonzero(): mixed
+```
+
+Indices of the non-zero elements (numpy.ndarray.nonzero).
+
 ### offset
 
 ```php
@@ -756,6 +820,14 @@ offsetSet(mixed $offset, mixed $value): void
 ```php
 offsetUnset(mixed $offset): void
 ```
+
+### partition
+
+```php
+partition(mixed $kth, int $axis = -1): mixed
+```
+
+A partial sort: a copy with the kth element in final sorted position (numpy.ndarray.partition).
 
 ### pow
 
@@ -812,11 +884,27 @@ real(): self
 reciprocal(?self $out = null): self
 ```
 
+### repeat
+
+```php
+repeat(mixed $repeats, ?int $axis = null): mixed
+```
+
+Repeat elements (numpy.ndarray.repeat).
+
 ### reshape
 
 ```php
 reshape(array|int ...$shape): self
 ```
+
+### resize
+
+```php
+resize(array|int $shape): self
+```
+
+Return a copy resized to the given shape (numpy.ndarray.resize): flattened, zero-padded or truncated.
 
 ### rint
 
@@ -851,6 +939,14 @@ save(string $path): void
 ```
 
 Write this array to a .npy file (numpy.save), C order.
+
+### searchsorted
+
+```php
+searchsorted(mixed $v, string $side = 'left'): mixed
+```
+
+Indices where elements of v keep this sorted if inserted (numpy.ndarray.searchsorted).
 
 ### setWhere
 
@@ -1028,6 +1124,14 @@ toList(): array
 ```
 
 Flat C-order list of values (complex: interleaved re, im).
+
+### trace
+
+```php
+trace(int $offset = 0, int $axis1 = 0, int $axis2 = 1): mixed
+```
+
+Sum along a diagonal (numpy.ndarray.trace).
 
 ### transpose
 
