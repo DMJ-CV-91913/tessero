@@ -134,16 +134,26 @@ static void cpoly(const double complex *roots, int nr, double complex *out)
 }
 
 /* zpk -> (b, a): b = k*poly(z), a = poly(p); the imaginary parts cancel for conjugate-symmetric roots
-   (numpy.poly takes the real part), so we emit real coefficients. Caller allocates b[nz+1], a[np_+1]. */
-static void zpk2tf_real(const double complex *z, int nz, const double complex *p, int np_, double k, double *b, double *a)
+   (numpy.poly takes the real part), so we emit real coefficients. Caller allocates b[nz+1], a[np_+1].
+   Orders up to ZPK_STACK-1 use stack scratch and cannot fail; returns TSR_OK or TSR_ENOMEM. */
+#define ZPK_STACK 66
+static int zpk2tf_real(const double complex *z, int nz, const double complex *p, int np_, double k, double *b, double *a)
 {
-    double complex *cb = (double complex *)malloc((size_t)(nz + 1) * sizeof(double complex));
-    double complex *ca = (double complex *)malloc((size_t)(np_ + 1) * sizeof(double complex));
+    double complex sb[ZPK_STACK], sa[ZPK_STACK];
+    double complex *cb = nz < ZPK_STACK ? sb : (double complex *)malloc((size_t)(nz + 1) * sizeof(double complex));
+    double complex *ca = np_ < ZPK_STACK ? sa : (double complex *)malloc((size_t)(np_ + 1) * sizeof(double complex));
+    if (!cb || !ca) {
+        if (cb != sb) free(cb);
+        if (ca != sa) free(ca);
+        return TSR_ENOMEM;
+    }
     cpoly(z, nz, cb);
     cpoly(p, np_, ca);
     for (int i = 0; i <= nz; i++) b[i] = k * creal(cb[i]);
     for (int i = 0; i <= np_; i++) a[i] = creal(ca[i]);
-    free(cb); free(ca);
+    if (cb != sb) free(cb);
+    if (ca != sa) free(ca);
+    return TSR_OK;
 }
 
 /* read a 1-D array argument (real or complex128) into a freshly-allocated double complex buffer */
@@ -179,9 +189,9 @@ static int r_zpk2tf(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     double *b = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nz + 1});
     double *a = b ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){np_ + 1}) : NULL;
     if (!b || !a) { free(z); free(p); return TSR_ENOMEM; }
-    zpk2tf_real(z, (int)nz, p, (int)np_, k, b, a);
+    const int rc = zpk2tf_real(z, (int)nz, p, (int)np_, k, b, a);
     free(z); free(p);
-    return TSR_OK;
+    return rc;
 }
 
 /* ---- zpk2sos (scipy.signal.zpk2sos, pairing='nearest', analog=False) ---- */
@@ -270,7 +280,7 @@ static int zs_countreal(const double complex *a, int n) { int c = 0; for (int i 
 static void zs_section(const double complex *zz, int nz, const double complex *pp, int np, double *row)
 {
     double b[3], a[3];
-    zpk2tf_real(zz, nz, pp, np, 1.0, b, a);
+    (void)zpk2tf_real(zz, nz, pp, np, 1.0, b, a);        /* order <= 2: stack scratch, cannot fail */
     for (int i = 0; i < 6; i++) row[i] = 0.0;
     for (int i = 0; i <= nz; i++) row[2 - nz + i] = b[i];
     for (int i = 0; i <= np; i++) row[5 - np + i] = a[i];
@@ -468,10 +478,11 @@ static int r_butter(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     }
     /* buttap: analog prototype poles on the unit circle, no zeros, gain 1 */
     double complex *p = (double complex *)malloc((size_t)N * sizeof(double complex));
+    double complex *z = (double complex *)malloc((size_t)(N + 1) * sizeof(double complex));   /* room for appended zeros */
+    if (!p || !z) { free(p); free(z); return TSR_ENOMEM; }
     for (int64_t i = 0; i < N; i++) { const double m = (double)(-N + 1 + 2 * i); p[i] = -cexp(I * M_PI * m / (2.0 * (double)N)); }
     double k = 1.0;
     const double fs = 2.0, warped = 2.0 * fs * tan(M_PI * Wn / fs);
-    double complex *z = (double complex *)malloc((size_t)(N + 1) * sizeof(double complex));   /* room for appended zeros */
     int nz = 0;
     if (!hp) {                                               /* lp2lp: scale poles, no zeros */
         for (int64_t i = 0; i < N; i++) p[i] *= warped;
@@ -500,7 +511,7 @@ static int r_butter(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     double *aa = (double *)malloc((size_t)(N + 1) * sizeof(double));
     int rc = TSR_OK;
     if (!bb || !aa) { rc = TSR_ENOMEM; goto done; }
-    zpk2tf_real(z, nz, p, (int)N, k, bb, aa);
+    if ((rc = zpk2tf_real(z, nz, p, (int)N, k, bb, aa)) != TSR_OK) goto done;
     {
         double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nz + 1});
         double *oa = ob ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){N + 1}) : NULL;
@@ -552,7 +563,7 @@ static int iir_lp_proto_to_ba_z(double complex *z0, int nz0, double complex *p, 
     bb = (double *)malloc((size_t)(nz + 1) * sizeof(double));
     aa = (double *)malloc((size_t)(N + 1) * sizeof(double));
     if (!bb || !aa) { rc = TSR_ENOMEM; goto done; }
-    zpk2tf_real(z, nz, p, N, k, bb, aa);
+    if ((rc = zpk2tf_real(z, nz, p, N, k, bb, aa)) != TSR_OK) goto done;
     {
         double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nz + 1});
         double *oa = ob ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){N + 1}) : NULL;
@@ -2043,6 +2054,7 @@ static int r_sos2zpk(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     const int64_t nn = 2 * nsec;
     double *z = (double *)calloc((size_t)(2 * (nn ? nn : 1)), sizeof(double));
     double *p = (double *)calloc((size_t)(2 * (nn ? nn : 1)), sizeof(double));
+    if (!z || !p) { free(z); free(p); fn_free_doubles(sos, ns); return TSR_ENOMEM; }
     int rc = TSR_OK;
     double k = 1.0;
     for (int64_t s = 0; s < nsec && rc == TSR_OK; s++) {
@@ -2207,7 +2219,7 @@ static int r_zpk2ss(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     double *a = (double *)malloc(sizeof(double) * (size_t)(np_ + 1));
     int rc = TSR_OK;
     if (!b || !a) rc = TSR_ENOMEM;
-    else { zpk2tf_real(z, (int)nz, p, (int)np_, k, b, a); rc = sig_tf2ss_emit(b, nz + 1, a, np_ + 1, res); }
+    else if ((rc = zpk2tf_real(z, (int)nz, p, (int)np_, k, b, a)) == TSR_OK) rc = sig_tf2ss_emit(b, nz + 1, a, np_ + 1, res);
     free(b); free(a); free(z); free(p);
     return rc;
 }
@@ -2826,7 +2838,9 @@ static int sig_compute_factors(const double *up, const int64_t *mult, int64_t nu
     if (!suf || !sufn || !facbuf || !flen) { free(suf); free(sufn); free(facbuf); free(flen); return TSR_ENOMEM; }
     int rc = TSR_OK;
     /* build suffixes from the last pole down to index 1 */
-    double *cur = (double *)malloc(sizeof(double) * (size_t)W); int64_t ncur = 1; cur[0] = 1.0;
+    double *cur = (double *)malloc(sizeof(double) * (size_t)W); int64_t ncur = 1;
+    if (!cur) { free(suf); free(sufn); free(facbuf); free(flen); return TSR_ENOMEM; }
+    cur[0] = 1.0;
     /* suffixes list in forward index: suffix[nu-1] = [1]; fill descending */
     if (nu > 0) { suf[(nu - 1) * W] = 1.0; sufn[nu - 1] = 1; }
     for (int64_t i = nu - 1; i >= 1 && rc == TSR_OK; i--) {
@@ -2840,7 +2854,9 @@ static int sig_compute_factors(const double *up, const int64_t *mult, int64_t nu
     }
     free(cur);
     /* forward pass accumulating `current` = product_{j<i}; emit factor rows */
-    double *current = (double *)malloc(sizeof(double) * (size_t)W); int64_t nce = 1; current[0] = 1.0;
+    double *current = (double *)malloc(sizeof(double) * (size_t)W); int64_t nce = 1;
+    if (!current) rc = TSR_ENOMEM;
+    else current[0] = 1.0;
     int64_t fi = 0;
     for (int64_t i = 0; i < nu && rc == TSR_OK; i++) {
         const double mono[2] = {1.0, -up[i]};
@@ -2891,19 +2907,24 @@ static int sig_invres_common(const tsr_arg *args, int nargs, int z_domain, const
         const int64_t W = nfac + 1;
         /* numerator accumulator (highest-first in the working domain) */
         double *num = NULL; int64_t nnum = 0;
-        if (nkt == 0) { num = (double *)calloc(1, sizeof(double)); nnum = 1; }
+        if (nkt == 0) { num = (double *)calloc(1, sizeof(double)); nnum = 1; if (!num) rc = TSR_ENOMEM; }
         else {
             double *kt = (double *)malloc(sizeof(double) * (size_t)nkt);
-            for (int64_t i = 0; i < nkt; i++) kt[i] = z_domain ? kk[ke - 1 - i] : kk[ks + i];   /* k[::-1] for z */
             double *dd = den; int64_t ndd = nden; double *drev = NULL;
-            if (z_domain) { drev = (double *)malloc(sizeof(double) * (size_t)nden); for (int64_t i = 0; i < nden; i++) drev[i] = den[nden - 1 - i]; dd = drev; }
-            num = rp_mul(kt, nkt, dd, ndd, &nnum);
+            if (z_domain) drev = (double *)malloc(sizeof(double) * (size_t)nden);
+            if (!kt || (z_domain && !drev)) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < nkt; i++) kt[i] = z_domain ? kk[ke - 1 - i] : kk[ks + i];   /* k[::-1] for z */
+                if (z_domain) { for (int64_t i = 0; i < nden; i++) drev[i] = den[nden - 1 - i]; dd = drev; }
+                num = rp_mul(kt, nkt, dd, ndd, &nnum);
+                if (!num) rc = TSR_ENOMEM;
+            }
             free(kt); free(drev);
-            if (!num) rc = TSR_ENOMEM;
         }
         for (int64_t i = 0; i < nfac && rc == TSR_OK; i++) {
             double *fac = facs + i * W; int64_t nf = flen[i];
             double *scaled = (double *)malloc(sizeof(double) * (size_t)nf);
+            if (!scaled) { rc = TSR_ENOMEM; break; }
             for (int64_t t = 0; t < nf; t++) scaled[t] = r[i] * (z_domain ? fac[nf - 1 - t] : fac[t]);   /* factor[::-1] for z */
             int64_t nsum; double *s = rp_add(num, nnum, scaled, nf, &nsum);
             free(scaled); free(num);
@@ -2985,7 +3006,9 @@ static int cp_compute_factors(const double complex *up, const int64_t *mult, int
     int64_t *flen = (int64_t *)malloc(sizeof(int64_t) * (size_t)(nu > 0 ? nu : 1));
     if (!suf || !sufn || !facbuf || !flen) { free(suf); free(sufn); free(facbuf); free(flen); return TSR_ENOMEM; }
     int rc = TSR_OK;
-    double complex *cur = (double complex *)malloc(sizeof(double complex) * (size_t)W); int64_t ncur = 1; cur[0] = 1.0;
+    double complex *cur = (double complex *)malloc(sizeof(double complex) * (size_t)W); int64_t ncur = 1;
+    if (!cur) { free(suf); free(sufn); free(facbuf); free(flen); return TSR_ENOMEM; }
+    cur[0] = 1.0;
     if (nu > 0) { suf[(nu - 1) * W] = 1.0; sufn[nu - 1] = 1; }
     for (int64_t i = nu - 1; i >= 1 && rc == TSR_OK; i--) {
         const double complex mono[2] = {1.0, -up[i]};
@@ -2993,7 +3016,9 @@ static int cp_compute_factors(const double complex *up, const int64_t *mult, int
         if (rc == TSR_OK) { memcpy(suf + (i - 1) * W, cur, sizeof(double complex) * (size_t)ncur); sufn[i - 1] = ncur; }
     }
     free(cur);
-    double complex *current = (double complex *)malloc(sizeof(double complex) * (size_t)W); int64_t nce = 1; current[0] = 1.0;
+    double complex *current = (double complex *)malloc(sizeof(double complex) * (size_t)W); int64_t nce = 1;
+    if (!current) rc = TSR_ENOMEM;
+    else current[0] = 1.0;
     for (int64_t i = 0; i < nu && rc == TSR_OK; i++) {
         int64_t nb; double complex *blk = cp_mul(current, nce, suf + i * W, sufn[i], &nb);
         if (!blk) { rc = TSR_ENOMEM; break; }
@@ -3028,9 +3053,10 @@ static int cp_compute_residues(const double complex *up, const int64_t *mult, in
             double complex *fq = NULL, *fd = NULL; int64_t nfq = 0, nfd = 0;
             rc = cp_div(factor, nf, mono, 2, &fq, &nfq, &fd, &nfd);
             if (rc != TSR_OK) break;
-            double complex *numc = (double complex *)malloc(sizeof(double complex) * (size_t)nnumer);
-            memcpy(numc, numer, sizeof(double complex) * (size_t)nnumer); int64_t nnc = nnumer;
+            double complex *numc = (double complex *)malloc(sizeof(double complex) * (size_t)(nnumer > 0 ? nnumer : 1));
             double complex *block = (double complex *)malloc(sizeof(double complex) * (size_t)m);
+            if (!numc || !block) { free(numc); free(block); free(fq); free(fd); rc = TSR_ENOMEM; break; }
+            memcpy(numc, numer, sizeof(double complex) * (size_t)nnumer); int64_t nnc = nnumer;
             for (int64_t t = 0; t < m && rc == TSR_OK; t++) {
                 double complex *nq = NULL, *nn = NULL; int64_t nnq = 0, nnn = 0;
                 rc = cp_div(numc, nnc, mono, 2, &nq, &nnq, &nn, &nnn);
@@ -3038,7 +3064,8 @@ static int cp_compute_residues(const double complex *up, const int64_t *mult, in
                 const double complex rr = nn[0] / fd[0];
                 block[t] = rr;
                 /* numc = polysub(nq_was_numer_quotient?, rr*fq) -- scipy: numer=nq; numer=polysub(numer, rr*factor) */
-                double complex *scaled = (double complex *)malloc(sizeof(double complex) * (size_t)nfq);
+                double complex *scaled = (double complex *)malloc(sizeof(double complex) * (size_t)(nfq > 0 ? nfq : 1));
+                if (!scaled) { free(nn); free(nq); rc = TSR_ENOMEM; break; }
                 for (int64_t z = 0; z < nfq; z++) scaled[z] = rr * fq[z];
                 int64_t ns; double complex *sub = cp_addsub(nq, nnq, scaled, nfq, 1, &ns);
                 free(scaled); free(nn); free(nq); free(numc);
@@ -3090,20 +3117,24 @@ static int sig_residue_common(const tsr_arg *args, int nargs, int z_domain, cons
     else {
         /* roots of the trimmed real denominator */
         aTrim = (double *)malloc(sizeof(double) * (size_t)nat);
-        for (int64_t i = 0; i < nat; i++) aTrim[i] = aa[as + i];
-        int64_t nz = 0; rootbuf = sig_polyroots(aTrim, nat, &nz);
-        npoles = (nz > 0) ? nz : 0;
-        if (nz < 0) { fn_set_error("%s: root solve failed", who); rc = TSR_EARG; }
+        if (!aTrim) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < nat; i++) aTrim[i] = aa[as + i];
+            int64_t nz = 0; rootbuf = sig_polyroots(aTrim, nat, &nz);
+            npoles = (nz > 0) ? nz : 0;
+            if (nz < 0) { fn_set_error("%s: root solve failed", who); rc = TSR_EARG; }
+        }
     }
     if (rc == TSR_OK) {
         /* numerator polynomial (complex), reversed if z_domain */
         const double a_scale = z_domain ? aa[ae - 1] : aa[as];   /* a_rev[0]=a[-1] ; a[0] for residue */
         double *bwork = (double *)malloc(sizeof(double) * (size_t)(nbt > 0 ? nbt : 1));
-        for (int64_t i = 0; i < nbt; i++) bwork[i] = z_domain ? bb[be - 1 - i] : bb[bs + i];
         double *awork = (double *)malloc(sizeof(double) * (size_t)(nat > 0 ? nat : 1));
-        for (int64_t i = 0; i < nat; i++) awork[i] = z_domain ? aa[ae - 1 - i] : aa[as + i];
         /* k, b = polydiv(b, a) when numerator degree >= denominator degree */
         double complex *bcx = (double complex *)malloc(sizeof(double complex) * (size_t)(nbt > 0 ? nbt : 1));
+        if (!bwork || !awork || !bcx) { free(bwork); free(awork); free(bcx); rc = TSR_ENOMEM; goto emit; }
+        for (int64_t i = 0; i < nbt; i++) bwork[i] = z_domain ? bb[be - 1 - i] : bb[bs + i];
+        for (int64_t i = 0; i < nat; i++) awork[i] = z_domain ? aa[ae - 1 - i] : aa[as + i];
         for (int64_t i = 0; i < nbt; i++) bcx[i] = bwork[i];
         int64_t nbcx = nbt;
         if (nbt == 0) { /* numerator is zero: residues all zero, k empty */
@@ -3111,10 +3142,14 @@ static int sig_residue_common(const tsr_arg *args, int nargs, int z_domain, cons
             /* sorted poles for output */
             double complex *ps = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
             int64_t *m1 = (int64_t *)malloc(sizeof(int64_t) * (size_t)(npoles > 0 ? npoles : 1));
-            for (int64_t i = 0; i < npoles; i++) { ps[i] = rootbuf[2 * i] + I * rootbuf[2 * i + 1]; m1[i] = 1; }
-            cp_cmplx_sort(ps, m1, npoles);
-            free(rootbuf); rootbuf = NULL; poles = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
-            for (int64_t i = 0; i < npoles; i++) poles[i] = ps[i];
+            poles = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
+            if (!resid || !ps || !m1 || !poles) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < npoles; i++) { ps[i] = rootbuf[2 * i] + I * rootbuf[2 * i + 1]; m1[i] = 1; }
+                cp_cmplx_sort(ps, m1, npoles);
+                for (int64_t i = 0; i < npoles; i++) poles[i] = ps[i];
+            }
+            free(rootbuf); rootbuf = NULL;
             free(ps); free(m1);
             up = NULL; nk = 0;
             free(bcx); free(bwork); free(awork);
@@ -3122,11 +3157,16 @@ static int sig_residue_common(const tsr_arg *args, int nargs, int z_domain, cons
         }
         if (nbt >= nat) {
             double complex *acx = (double complex *)malloc(sizeof(double complex) * (size_t)nat);
-            for (int64_t i = 0; i < nat; i++) acx[i] = awork[i];
             double complex *q = NULL, *r = NULL; int64_t nq = 0, nr = 0;
-            rc = cp_div(bcx, nbcx, acx, nat, &q, &nq, &r, &nr);
-            free(acx);
-            if (rc == TSR_OK) { kout = (double *)malloc(sizeof(double) * (size_t)nq); for (int64_t i = 0; i < nq; i++) kout[i] = creal(q[i]); nk = nq; free(bcx); bcx = r; nbcx = nr; free(q); }
+            if (!acx) rc = TSR_ENOMEM;
+            else {
+                for (int64_t i = 0; i < nat; i++) acx[i] = awork[i];
+                rc = cp_div(bcx, nbcx, acx, nat, &q, &nq, &r, &nr);
+                free(acx);
+            }
+            if (rc == TSR_OK) kout = (double *)malloc(sizeof(double) * (size_t)(nq > 0 ? nq : 1));
+            if (rc == TSR_OK && !kout) rc = TSR_ENOMEM;
+            if (rc == TSR_OK) { for (int64_t i = 0; i < nq; i++) kout[i] = creal(q[i]); nk = nq; free(bcx); bcx = r; nbcx = nr; free(q); }
             else { free(q); free(r); }
         }
         if (rc == TSR_OK) {
@@ -3136,6 +3176,10 @@ static int sig_residue_common(const tsr_arg *args, int nargs, int z_domain, cons
             double complex *grp = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
             unsigned char *used = (unsigned char *)calloc((size_t)(npoles > 0 ? npoles : 1), 1);
             double complex *pc = (double complex *)malloc(sizeof(double complex) * (size_t)(npoles > 0 ? npoles : 1));
+            if (!up || !mult || !grp || !used || !pc) {
+                free(grp); free(used); free(pc); free(bcx); free(bwork); free(awork);
+                rc = TSR_ENOMEM; goto emit;
+            }
             for (int64_t i = 0; i < npoles; i++) pc[i] = rootbuf[2 * i] + I * rootbuf[2 * i + 1];
             nu = 0;
             for (int64_t i = 0; i < npoles; i++) {
@@ -3148,12 +3192,20 @@ static int sig_residue_common(const tsr_arg *args, int nargs, int z_domain, cons
             /* numerator for compute_residues (residuez uses 1/unique_poles) */
             double complex *cpoles = up;
             double complex *recip = NULL;
-            if (z_domain) { recip = (double complex *)malloc(sizeof(double complex) * (size_t)(nu > 0 ? nu : 1)); for (int64_t i = 0; i < nu; i++) recip[i] = 1.0 / up[i]; cpoles = recip; }
-            rc = cp_compute_residues(cpoles, mult, nu, bcx, nbcx, &resid, &nresid);
+            if (z_domain) {
+                recip = (double complex *)malloc(sizeof(double complex) * (size_t)(nu > 0 ? nu : 1));
+                if (recip) { for (int64_t i = 0; i < nu; i++) recip[i] = 1.0 / up[i]; }
+                cpoles = recip;
+            }
+            rc = cpoles ? cp_compute_residues(cpoles, mult, nu, bcx, nbcx, &resid, &nresid) : TSR_ENOMEM;
             free(recip);
+            double complex *pexp = NULL;
+            if (rc == TSR_OK) {
+                pexp = (double complex *)malloc(sizeof(double complex) * (size_t)(nresid > 0 ? nresid : 1));
+                if (!pexp) rc = TSR_ENOMEM;
+            }
             if (rc == TSR_OK) {
                 /* expand poles and scale residues */
-                double complex *pexp = (double complex *)malloc(sizeof(double complex) * (size_t)(nresid > 0 ? nresid : 1));
                 int64_t idx = 0;
                 for (int64_t i = 0; i < nu; i++) for (int64_t t = 0; t < mult[i]; t++) pexp[idx++] = up[i];
                 if (z_domain) {
@@ -4789,6 +4841,7 @@ static int remez_core(int numtaps, int numband, const double *bands /*2*numband,
 
         /* enforce sign alternation, keep max |err| within same-sign runs */
         int *alt = (int*)malloc((size_t)ncand * sizeof(int));
+        if (!alt) { free(err); free(chosen); free(cerr); break; }   /* as the other scratch failures above */
         long nalt = 0;
         long i2 = 0;
         while (i2 < ncand) {
@@ -7329,8 +7382,7 @@ static int r_iirfilter(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     double *aa = (double *)malloc((size_t)(npp + 1) * sizeof(double));
     rc = TSR_OK;
     if (!bb || !aa) rc = TSR_ENOMEM;
-    else {
-        zpk2tf_real(zz, (int)nzz, pp, (int)npp, k, bb, aa);
+    else if ((rc = zpk2tf_real(zz, (int)nzz, pp, (int)npp, k, bb, aa)) == TSR_OK) {
         double *ob = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nzz + 1});
         double *oa = ob ? (double *)fn_result_array(&res[1], TSR_F64, 1, (int64_t[]){npp + 1}) : NULL;
         if (!ob || !oa) rc = TSR_ENOMEM;

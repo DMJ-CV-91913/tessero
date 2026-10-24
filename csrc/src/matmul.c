@@ -1,4 +1,11 @@
-/* Cache-blocked matrix product used when no BLAS library is available. */
+/* Matrix products. Two entry points with DIFFERENT numerical contracts (tessero.h):
+ *   tsr_matmul  the fast path: F64/F32 go to the linked BLAS (cblas_dgemm/cblas_sgemm, OpenBLAS on Linux)
+ *               whenever every dimension and leading dimension fits an int, else to the blocked kernel
+ *               below. BLAS results depend on the BLAS build, its SIMD kernel and its thread count, so
+ *               they agree with NumPy to a tolerance, not bit for bit. I64 always uses the blocked kernel.
+ *   tsr_gemm    the canonical entry point: never calls BLAS; every product is accumulated in a fixed
+ *               order with an explicit round-once FMA (TSR_RFMA), so the bits are identical across
+ *               compiler, SIMD clone, thread count and CPU. Use it when results must be reproducible. */
 #include "internal.h"
 #include <limits.h>
 
