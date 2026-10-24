@@ -57,8 +57,11 @@ ZEND_BEGIN_ARG_INFO_EX(ai_ints, 0, 0, 4)
     ZEND_ARG_TYPE_INFO(0, low, IS_LONG, 0)
     ZEND_ARG_TYPE_INFO(0, high, IS_LONG, 0)
 ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(ai_e_selfcheck, 0, 0, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
 
 
+PHP_METHOD(Engine, selfcheck);
 PHP_METHOD(Engine, linprog);
 PHP_METHOD(Engine, milp);
 PHP_METHOD(Engine, mdpValueIteration);
