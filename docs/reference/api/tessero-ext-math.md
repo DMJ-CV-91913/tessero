@@ -210,6 +210,14 @@ static expm1($x, ?Tessero\Ext\NDArray $out = …)
 
 e^x - 1, accurate near 0. Kernel ufunc (same code as the NDArray method).
 
+### floatPower
+
+```php
+static floatPower($x, $y, ?Tessero\Ext\NDArray $out = …)
+```
+
+x1**x2 computed in float64 (numpy.float_power). Loop ufunc.
+
 ### floor
 
 ```php
@@ -224,7 +232,7 @@ round down. Kernel ufunc (same code as the NDArray method).
 static floorDivide($x, $y, ?Tessero\Ext\NDArray $out = …)
 ```
 
-floor(x / y). Kernel ufunc (same code as the NDArray method).
+x // y (NumPy floor_divide: the floor of the exact quotient). Kernel ufunc (same code as the NDArray method).
 
 ### fmax
 
@@ -258,6 +266,14 @@ static gamma($x, ?Tessero\Ext\NDArray $out = …)
 
 gamma function (scipy.special.gamma). Loop ufunc.
 
+### gcd
+
+```php
+static gcd($x, $y, ?Tessero\Ext\NDArray $out = …)
+```
+
+greatest common divisor (numpy.gcd; integer inputs only). Loop ufunc.
+
 ### greater
 
 ```php
@@ -273,6 +289,14 @@ static greaterEqual($x, $y, ?Tessero\Ext\NDArray $out = …)
 ```
 
 x >= y (bool). Kernel ufunc (same code as the NDArray method).
+
+### heaviside
+
+```php
+static heaviside($x, $y, ?Tessero\Ext\NDArray $out = …)
+```
+
+0 if x1<0, x2 if x1==0, 1 if x1>0 (numpy.heaviside). Loop ufunc.
 
 ### hypot
 
@@ -321,6 +345,14 @@ static isnan($x, ?Tessero\Ext\NDArray $out = …)
 ```
 
 x is NaN (bool). Kernel ufunc (same code as the NDArray method).
+
+### lcm
+
+```php
+static lcm($x, $y, ?Tessero\Ext\NDArray $out = …)
+```
+
+least common multiple (numpy.lcm; integer inputs only). Loop ufunc.
 
 ### less
 

@@ -1175,12 +1175,14 @@ functions:
     args: [v, x]
     outs: [d, dp]
     impl: "xsf::pbdv(i[0], i[1], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) < 2147483646.0)"   # xsf sizes its work array from abs((int)v) + 2: undefined for |v| >= 2^31 and a ~2^64-byte calloc for |v| >= 2^31 - 2, which fails, so SciPy returns NaN
     doc: "Parabolic cylinder function D."
   - name: pbvv
     ref: scipy.special.pbvv
     args: [v, x]
     outs: [v, vp]
     impl: "xsf::pbvv(i[0], i[1], o[0], o[1]);"
+    guard: "!(std::fabs(i[0]) < 2147483646.0)"   # as pbdv: the work-array size abs((int)v) + 2 overflows int; SciPy's calloc fails and it returns NaN
     doc: "Parabolic cylinder function V."
   - name: pbwa
     ref: scipy.special.pbwa

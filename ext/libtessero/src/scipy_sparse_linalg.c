@@ -965,6 +965,7 @@ static int r_eigsh(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     if (nargs < 1 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("eigsh: A must be a 2-D array"); return TSR_EARG; }
     int64_t n = args[0].arr.shape[0];
     if (args[0].arr.shape[1] != n) { fn_set_error("eigsh: A must be square"); return TSR_EARG; }
+    if (!TSR_LA_FIT("eigsh", n)) return TSR_EARG;              /* n goes to LAPACKE as a 32-bit lapack_int */
     int64_t k = 6;
     if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
     const char *which = "LM";
@@ -1003,6 +1004,7 @@ static int r_eigs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (nargs < 1 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("eigs: A must be a 2-D array"); return TSR_EARG; }
     int64_t n = args[0].arr.shape[0];
     if (args[0].arr.shape[1] != n) { fn_set_error("eigs: A must be square"); return TSR_EARG; }
+    if (!TSR_LA_FIT("eigs", n)) return TSR_EARG;
     int64_t k = 6;
     if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
     const char *which = "LM";
@@ -1018,7 +1020,7 @@ static int r_eigs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (!wr || !wi || !idx || !sel) rc = TSR_ENOMEM;
     else {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, A, (lapack_int)n, wr, wi, &d, 1, &d, 1);
+        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, A, (lapack_int)n, wr, wi, &d, (lapack_int)n, &d, (lapack_int)n);  /* ld >= n: LAPACKE 3.10 */
         if (info != 0) { fn_set_error("eigs: the QR algorithm failed to converge"); rc = TSR_EARG; }
         else {
             for (int64_t i = 0; i < n; i++) idx[i] = i;
@@ -1062,6 +1064,7 @@ static int r_svds(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     (void)ctx; (void)nres;
     if (nargs < 1 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("svds: A must be a 2-D array"); return TSR_EARG; }
     int64_t m = args[0].arr.shape[0], n = args[0].arr.shape[1];
+    if (!TSR_LA_FIT("svds", m, n)) return TSR_EARG;
     int64_t k = 6;
     if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
     const char *which = "LM";
@@ -1131,6 +1134,7 @@ static int r_lobpcg(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     }
     int64_t n = args[0].arr.shape[0];
     if (args[0].arr.shape[1] != n) { fn_set_error("lobpcg: A must be square"); return TSR_EARG; }
+    if (!TSR_LA_FIT("lobpcg", n)) return TSR_EARG;
     if (args[1].arr.shape[0] != n) { fn_set_error("lobpcg: X has the wrong number of rows"); return TSR_EARG; }
     int64_t k = args[1].arr.shape[1];
     if (k < 1 || k > n) { fn_set_error("lobpcg: the block size must satisfy 1 <= k <= n"); return TSR_EARG; }

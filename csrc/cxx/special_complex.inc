@@ -206,10 +206,18 @@ extern "C" int tsr_scplx_sph_harm_y(const void *ctx, const tsr_arg *args, int na
     for (int64_t q = 0; q < n; q++) {
         int64_t o0 = a[0].a.offset, o1 = a[1].a.offset, o2 = a[2].a.offset, o3 = a[3].a.offset;
         for (int d = 0; d < nd; d++) { o0 += ix[d] * st[0][d]; o1 += ix[d] * st[1][d]; o2 += ix[d] * st[2][d]; o3 += ix[d] * st[3][d]; }
-        const int nn = (int)rd_real(&a[0].a, o0), mm = (int)rd_real(&a[1].a, o1);
-        const cplx y = xsf::sph_harm_y(nn, mm, rd_real(&a[2].a, o2), rd_real(&a[3].a, o3));
-        out[2 * q] = y.real();
-        out[2 * q + 1] = y.imag();
+        /* xsf takes int orders and negates m, and its recurrences run |n| and |m| steps: an order that is NaN, an
+           infinity or beyond +-2^20 (work out of reach; INT_MIN would overflow on negation) gives NaN, never a
+           float->int cast of an unchecked value */
+        const int64_t n64 = fn_dbl_i64(rd_real(&a[0].a, o0), INT64_MIN), m64 = fn_dbl_i64(rd_real(&a[1].a, o1), INT64_MIN);
+        const int64_t lim = (int64_t)1 << 20;
+        if (n64 < -lim || n64 > lim || m64 < -lim || m64 > lim) {
+            out[2 * q] = out[2 * q + 1] = std::numeric_limits<double>::quiet_NaN();
+        } else {
+            const cplx y = xsf::sph_harm_y((int)n64, (int)m64, rd_real(&a[2].a, o2), rd_real(&a[3].a, o3));
+            out[2 * q] = y.real();
+            out[2 * q + 1] = y.imag();
+        }
         for (int d = nd - 1; d >= 0; d--) { if (++ix[d] < sh[d]) break; ix[d] = 0; }
     }
     return TSR_OK;
@@ -252,7 +260,12 @@ extern "C" int tsr_scplx_lambertw(const void *ctx, const tsr_arg *args, int narg
     if (rc < 0) return rc;
     long k = 0;
     double tol = 1e-8;
-    if (nargs > 1 && args[1].kind == 1) k = (long)((args[1].flags & 1) ? (double)args[1].ival : args[1].num);
+    if (nargs > 1 && args[1].kind == 1) {          /* branch index: checked, never a cast of NaN/inf/huge */
+        int64_t kk;
+        const int krc = fn_arg_i64(&args[1], 0, -((int64_t)1 << 53), (int64_t)1 << 53, "k", &kk);
+        if (krc < 0) return krc;
+        k = (long)kk;
+    }
     if (nargs > 2 && args[2].kind == 1) tol = (args[2].flags & 1) ? (double)args[2].ival : args[2].num;
     double *out = (double *)fn_result_array(&res[0], TSR_C128, z.a.ndim, z.a.shape);
     if (!out) return TSR_ENOMEM;

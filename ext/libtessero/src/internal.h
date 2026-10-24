@@ -5,7 +5,16 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
+#include <math.h>
+#include "fmaf_ro.h"   /* fmaf is correctly rounded everywhere (MinGW's rounds twice) */
+/* libtessero is built hidden-by-default (csrc/Makefile VIS): the public ABI is exactly what tessero.h declares */
+#if defined(TSR_EXPORT_ABI) && defined(__GNUC__)
+#  pragma GCC visibility push(default)
+#endif
 #include "../include/tessero.h"
+#if defined(TSR_EXPORT_ABI) && defined(__GNUC__)
+#  pragma GCC visibility pop
+#endif
 
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846
@@ -25,8 +34,17 @@ int tsr_get_threads(void);
  * x86-64-v4 (AVX-512), v3 (AVX2/FMA) and baseline, and the dynamic loader
  * picks the best clone for the running CPU (ifunc). Elsewhere (musl,
  * macOS, Windows, ARM) the platform build flags choose the ISA instead.
+ *
+ * GCC >= 12 is REQUIRED for the clones: GCC 11 (the Ubuntu 22.04 LTS default)
+ * cannot emit the ifunc dispatcher for `static` multiversioned functions and
+ * fails the build with "no dispatcher found for the versioning attributes".
+ * On GCC 11 (or anything else) TSR_CLONES expands to nothing, so the functions
+ * compile as a single version using the build's -march; results are IDENTICAL
+ * (determinism is by construction, not by which SIMD clone runs), only the
+ * auto-dispatched SIMD speedup is lost. Install gcc-12+ and build with CC=gcc-12
+ * to get the multiversioned fast paths. Define TSR_NO_CLONES to force-disable.
  */
-#if defined(__x86_64__) && defined(__GLIBC__) && defined(__GNUC__) && !defined(__clang__) && !defined(TSR_NO_CLONES)
+#if defined(__x86_64__) && defined(__GLIBC__) && defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 12) && !defined(TSR_NO_CLONES)
 #  define TSR_CLONES __attribute__((target_clones("arch=x86-64-v4", "arch=x86-64-v3", "default")))
 #else
 #  define TSR_CLONES
@@ -36,6 +54,56 @@ int tsr_get_threads(void);
 #define TSR_WADD(T, a, b) ((T)((uint64_t)(int64_t)(a) + (uint64_t)(int64_t)(b)))
 #define TSR_WSUB(T, a, b) ((T)((uint64_t)(int64_t)(a) - (uint64_t)(int64_t)(b)))
 #define TSR_WMUL(T, a, b) ((T)((uint64_t)(int64_t)(a) * (uint64_t)(int64_t)(b)))
+
+/*
+ * Round-once fused multiply-add: a*b + c with a SINGLE rounding, by construction.
+ * Explicit fmaf/fma make the result bit-identical across compiler version, the
+ * -ffp-contract setting, which SIMD clone runs, and the target ISA (a non-FMA CPU
+ * uses the correctly-rounded software FMA and gets the SAME bits). This is what
+ * makes the gemm / axpy / dot kernels canonical, the same discipline repro_f32.c
+ * applies to the transcendentals. Relying on the compiler to contract c + a*b into
+ * an FMA is the footgun: GCC 14 and GCC 12 disagreed and silently emitted a
+ * two-round, non-canonical kernel. T is the element type (float or double).
+ */
+#define TSR_RFMA(T, a, b, c) (_Generic((T)0, float: TSR_FMAF_FN, double: fma, default: fma)((a), (b), (c)))
+
+/*
+ * Float -> integer conversion with NumPy's x86-64 results and no undefined behaviour. C leaves the
+ * conversion of NaN, +-Inf or an out-of-range value undefined (C11 6.3.1.4); x86-64 cvttsd2si returns the
+ * "integer indefinite" value there, which is what NumPy produces, so these helpers return exactly that:
+ * INT64_MIN for int64, INT32_MIN for int32, and for uint8 the low byte of the int32 conversion (NumPy
+ * casts float -> uint8 through a 32-bit truncation: 300.0 -> 44, -1.0 -> 255, 1e10 -> 0). In-range values
+ * truncate toward zero exactly as the plain cast does. No branch in loops: on x86-64 the int64 forms ARE the
+ * cvttsd2si / cvttss2si instruction (an intrinsic has defined semantics, unlike the C cast), elsewhere a
+ * compare pair + select; the int32 forms clamp an invalid input to -2^31 before the cast. The ...f variants
+ * take float. Contiguous float -> int32/uint8 casts use the packed cvtt instructions directly (elementwise.c).
+ */
+#if defined(__x86_64__) || defined(_M_X64)
+#include <emmintrin.h>
+static inline int64_t tsr_f2i64(double x) { return _mm_cvttsd_si64(_mm_set_sd(x)); }
+static inline int64_t tsr_f2i64f(float x) { return _mm_cvttss_si64(_mm_set_ss(x)); }
+#else
+static inline int64_t tsr_f2i64(double x)
+{
+    return (x >= -9223372036854775808.0 && x < 9223372036854775808.0) ? (int64_t)x : INT64_MIN;
+}
+static inline int64_t tsr_f2i64f(float x)
+{
+    return (x >= -9223372036854775808.0f && x < 9223372036854775808.0f) ? (int64_t)x : INT64_MIN;
+}
+#endif
+/* int32: an invalid input is replaced by -2^31 BEFORE the (then always defined) cast, a select in the float
+   domain that keeps the packed cvttpd2dq / cvttps2dq conversion */
+static inline int32_t tsr_f2i32(double x) { return (int32_t)((x > -2147483649.0 && x < 2147483648.0) ? x : -2147483648.0); }
+static inline int32_t tsr_f2i32f(float x) { return (int32_t)((x >= -2147483648.0f && x < 2147483648.0f) ? x : -2147483648.0f); }
+static inline uint8_t tsr_f2u8(double x) { return (uint8_t)(uint32_t)tsr_f2i32(x); }
+static inline uint8_t tsr_f2u8f(float x) { return (uint8_t)(uint32_t)tsr_f2i32f(x); }
+
+/* 1 when every dimension fits LAPACKE's lapack_int, else 0 with the error message set (np_linalg.c). Call it
+   before handing int64 dimensions to LAPACKE: TSR_LA_FIT("eigsh", n) or TSR_LA_FIT("svds", m, n). */
+int tsr_la_dims_fit(const char *who, const int64_t *dims, size_t n);
+#define TSR_LA_FIT(who, ...) \
+    tsr_la_dims_fit((who), (const int64_t[]){__VA_ARGS__}, sizeof((const int64_t[]){__VA_ARGS__}) / sizeof(int64_t))
 
 /* Element count of a shape, or -1 if negative or if the count (or count * 16 bytes) would overflow int64.
    Every size that becomes an allocation or a loop bound goes through this. */
@@ -144,5 +212,55 @@ static inline int tsr_iter_init(tsr_iter *it, int nop, int32_t ndim, const int64
 /* numpy bit-generator view of a PCG64 state (rng.c), for the numpy/random distributions */
 struct bitgen;
 void tsr_pcg64_bitgen(uint64_t *state, struct bitgen *bg);
+
+/*
+ * Checked allocation sizes (ADR 0014). A size that is the product of two INDEPENDENT lengths (n*n, rows*cols,
+ * count*itemsize) goes through these instead of a bare multiply: a negative operand or an int64 overflow gives
+ * -1 / NULL, so a huge argument becomes a MemoryError instead of a short buffer.
+ *   tsr_count_mul(a, b)        a*b, or -1
+ *   tsr_bytes_n(n, el, pad)    n*el + pad, or -1
+ *   tsr_alloc_n(n, el, pad)    counted tsr_alloc() of tsr_bytes_n() bytes (tessero.h); free it with
+ *                              tsr_free(p, tsr_bytes_n(n, el, pad))
+ *   tsr_scratch_n(n, el)       raw malloc of n*el bytes (at least 1) for scratch released with free()
+ *   tsr_scratch0_n(n, el)      the zero-filled (calloc) variant
+ * The raw helpers are NOT counted against the budget (see ADR 0014 for the counted-allocator plan).
+ * tsr_effective_cpus (alloc.c): CPUs this process may use (affinity mask and cgroup quota), cached, >= 1.
+ */
+#include <stdlib.h>
+int tsr_effective_cpus(void);
+static inline int tsr_mul_overflows(int64_t a, int64_t b, int64_t *out)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_mul_overflow(a, b, out);
+#else
+    if (a != 0 && b != 0 && (a > INT64_MAX / b)) return 1;   /* operands are non-negative here */
+    *out = a * b;
+    return 0;
+#endif
+}
+static inline int64_t tsr_count_mul(int64_t a, int64_t b)
+{
+    int64_t r;
+    if (a < 0 || b < 0 || tsr_mul_overflows(a, b, &r)) return -1;
+    return r;
+}
+static inline int64_t tsr_bytes_n(int64_t n, int64_t elsize, int64_t pad)
+{
+    const int64_t b = tsr_count_mul(n, elsize);
+    if (b < 0 || pad < 0 || b > INT64_MAX - pad) return -1;
+    return b + pad;
+}
+static inline void *tsr_scratch_n(int64_t n, int64_t elsize)
+{
+    const int64_t b = tsr_bytes_n(n, elsize, 0);
+    if (b < 0 || (uint64_t)b > (uint64_t)SIZE_MAX) return NULL;
+    return malloc(b > 0 ? (size_t)b : 1);
+}
+static inline void *tsr_scratch0_n(int64_t n, int64_t elsize)
+{
+    const int64_t b = tsr_bytes_n(n, elsize, 0);
+    if (b < 0 || (uint64_t)b > (uint64_t)SIZE_MAX) return NULL;
+    return b > 0 ? calloc((size_t)n, (size_t)elsize) : calloc(1, 1);
+}
 
 #endif

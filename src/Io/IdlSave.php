@@ -56,14 +56,15 @@ final class IdlSave
      * @return array<string,array{type:string,shape:array<int,int>,data:array<int,mixed>}>
      *         name => {type, shape (C order), data (flat row-major; complex interleaved re/im)}
      */
-    public static function read(string $bytes): array
+    public static function read(string $bytes, int $maxBytes = IoGuard::DEFAULT_MAX_BYTES): array
     {
+        IoGuard::checkLimit($maxBytes, 'maxBytes', 'readsav');
         if (strncmp($bytes, 'SR', 2) !== 0) {
             throw new TesseroException('readsav: invalid signature (expected "SR")');
         }
         $recfmt = substr($bytes, 2, 2);
         if ($recfmt === "\x00\x06") {
-            $bytes = self::inflateSav($bytes);
+            $bytes = self::inflateSav($bytes, $maxBytes);
         } elseif ($recfmt !== "\x00\x04") {
             throw new TesseroException('readsav: invalid record format marker');
         }
@@ -84,13 +85,17 @@ final class IdlSave
         return $variables;
     }
 
-    /** Inflate a /compress .sav: rebuild a plain stream by zlib-decompressing each record body. */
-    private static function inflateSav(string $bytes): string
+    /**
+     * Inflate a /compress .sav: rebuild a plain stream by zlib-decompressing each record body. The rebuilt
+     * stream may be at most $maxBytes long; every record must end after it starts and inside the file.
+     */
+    private static function inflateSav(string $bytes, int $maxBytes): string
     {
         $r = new self($bytes);
         $r->pos = 4;
         $out = "SR\x00\x04";
         while (true) {
+            $start = $r->pos;
             $rectype = $r->readLong();
             $nextrec = $r->readUint32();
             $nextrec += $r->readUint32() * (2 ** 32);
@@ -103,11 +108,8 @@ final class IdlSave
                 $out .= $unknown;
                 break;
             }
-            $pos = $r->pos;
-            $recString = zlib_decode($r->readBytes((int) $nextrec - $pos));
-            if ($recString === false) {
-                throw new TesseroException('readsav: zlib inflate failed');
-            }
+            $r->checkNext($start, $nextrec);
+            $recString = IoGuard::inflate($r->readBytes((int) $nextrec - $r->pos), $maxBytes - strlen($out) - 16, 'readsav', 'any');
             $newNext = strlen($out) + strlen($recString) + 12;
             $out .= pack('N', $rectype);
             $out .= pack('N', (int) ($newNext % (2 ** 32)));
@@ -125,6 +127,7 @@ final class IdlSave
         if ($this->pos + 12 > $this->len) {
             return null;
         }
+        $start = $this->pos;
         $rectype = $this->readLong();
         $nextrec = $this->readUint32();
         $nextrec += $this->readUint32() * (2 ** 32);
@@ -133,6 +136,7 @@ final class IdlSave
         if ($rectype === 6) {                               // END_MARKER
             return ['end' => true];
         }
+        $this->checkNext($start, $nextrec);                 // before parsing: the chain must move forward
         $record = [];
         if ($rectype === 2 || $rectype === 16) {            // VARIABLE / HEAP_DATA
             $record['rectype'] = $rectype === 2 ? 'VARIABLE' : 'HEAP_DATA';
@@ -367,9 +371,23 @@ final class IdlSave
         return $vals;
     }
 
+    /**
+     * A record's "next record" offset must lie after the record's start and inside the file; otherwise a
+     * crafted chain seeks backwards (or onto itself) and the reader loops forever.
+     */
+    private function checkNext(int $start, int|float $nextrec): void
+    {
+        if (! ($nextrec > $start && $nextrec <= $this->len)) {
+            throw new TesseroException("readsav: record at byte {$start} points to an invalid next record ({$nextrec})");
+        }
+    }
+
     // ---- primitive readers (advance $this->pos) ----
     private function readBytes(int $n): string
     {
+        if ($n < 0) {
+            throw new TesseroException('readsav: negative length');
+        }
         if ($this->pos + $n > $this->len) {
             throw new TesseroException('readsav: unexpected end of file');
         }

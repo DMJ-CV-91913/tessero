@@ -292,6 +292,13 @@ row-wise 1024 x 1024 x linear over [-8, 8], dy[j] = 0.25 + (j mod 11) / 8, gamma
 | rmsnorm_bwd   | `4936bad3c94b516f776c58e7c0dba694085475e248e2bc4bcd212568acfdcddb` |
 | layernorm_bwd | `6e7ccc1157b019d2ed95b5c6889fe47120e588abcdc77ebaed50c3bf9b85b385` |
 
+### Runtime self-check KAT (csrc/src/selfcheck.c)
+
+**APPROVED golden (2026-10-24):** `TSR_CANON_GEMM_F32_KAT = 0x86bbab2bc87f8e3b`, the FNV-1a digest of the
+8 x 67 x 8 full-mantissa canonical f32 GEMM checked by `tsr_selfcheck()` at load. Reproduced on independent x86-64
+hosts (two microarchitectures) and with two compilers (gcc 13.3, clang 18.1); non-canonical forms (BLAS sgemm,
+wider accumulator, unfused mul+add, reordered reduction) each give a different digest.
+
 ## What this PROVES
 
 On x86 with AVX2+FMA, all four primitives are bit-identical across SIMD width (scalar ==

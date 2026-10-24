@@ -11,9 +11,9 @@ import, GitHub is the source of truth and this page is a snapshot from 2026-09-2
 |---|---:|
 | P0 | 12 |
 | P1 | 19 |
-| P2 | 9 |
+| P2 | 10 |
 | P3 | 13 |
-| **Total open** | **53** |
+| **Total open** | **54** |
 | Resolved | 2 |
 
 The feature items (P3) come from the [NumPy/SciPy gap analysis](numpy-scipy-gap-analysis.md). The steps for testing outside the
@@ -73,6 +73,7 @@ Linux review host are in the [live-testing checklist](../operations/live-testing
 | [TSR-119](#tsr-119) | Integer comparisons above 2^53 in argpartition and nanargmin/nanargmax | numerics | 0.25 |
 | [TSR-120](#tsr-120) | Bound the work of untrusted size arguments | security, reliability | 1 |
 | [TSR-207](#tsr-207) | Re-baseline the pinned fixture environment from SkylakeX (AVX-512) to Haswell (AVX2) | process, numerics, ci | 0.5 |
+| [TSR-208](#tsr-208) | Retire PHP 8.2 and 8.3 support | tooling, tech-debt | 1 |
 
 ## P3: features (NumPy/SciPy gaps).
 
@@ -151,7 +152,7 @@ Acceptance criteria:
 
 **Live Laravel application testing** (P0; laravel, beta-exit)
 
-The bridge is covered by package tests only. It needs a real application: Laravel 10/11/12, database casts, queued jobs, Horizon, Octane (Swoole, RoadRunner, FrankenPHP).
+The bridge is covered by package tests only. It needs a real application: Laravel 12/13, database casts, queued jobs, Horizon, Octane (Swoole, RoadRunner, FrankenPHP).
 
 Acceptance criteria:
 
@@ -702,6 +703,18 @@ Acceptance criteria:
 - Tier-1 batch implemented and verified on both backends (nd-FFT, ufunc fills, multivariate randoms, softmax/log_softmax/perm, simpson/cumulative_trapezoid, minimize_scalar, sparse diags, Polynomial)
 - Tier-2 and Tier-3 items tracked as sub-issues
 - The coverage page reflects each capability as it lands
+
+### TSR-208
+
+**Retire PHP 8.2 and 8.3 support** (P2; tooling, tech-debt)
+
+Owner decision 2026-10-24: support for PHP 8.2 and 8.3 is to be rolled off as future technical debt (not urgent). Today every branch from 8.2 is supported at its security-patched release (8.2.35, 8.3.36, 8.4.27, 8.5.12). Upstream security support ends for 8.2 on 2026-12-31 and for 8.3 on 2027-12-31.
+
+Acceptance criteria:
+
+- composer.json, laravel/composer.json and ext/composer.json require ~8.4.27 || ^8.5.12 (or the then-current patched floors)
+- Library::phpPatched(), the extension MINIT check and its #error refuse 8.2 and 8.3; tests/Unit/PhpSecurityTest.php updated
+- CI matrices, the ASan PHP build and the README drop 8.2 and 8.3; version-conditional code for PHP < 8.4 in ext/ is removed
 
 ## Resolved
 

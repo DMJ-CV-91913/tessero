@@ -30,9 +30,18 @@ int tsr_simd_level(void);                 /* 0 baseline, 1 AVX2 (x86-64-v3), 2 A
 ## Memory: 64-byte aligned, NOT zero-filled, counted against a budget
 
 ```c
+/* Memory ownership (ADR 0015): the layer that allocates memory frees it. A block from tsr_alloc, tsr_calloc or
+   tsr_alloc_n is released only with tsr_free(p, bytes), where bytes is exactly the size requested (for tsr_alloc_n:
+   n*elsize + pad), never with free()/efree()/FFI::free; and tsr_free never
+   receives memory from another allocator. Strings this header returns (tsr_version, tsr_fn_name, tsr_fn_error,
+   tsr_mmap_error, tsr_ufunc_name, ...) are static or thread-local: never freed. The kernel calls back into no
+   caller code: no function in this header takes a callback. */
 void *tsr_alloc(int64_t bytes);           /* NULL when out of memory, over budget, or (no budget) larger than the RAM */
 void *tsr_calloc(int64_t bytes);          /* zero-filled variant */
 void tsr_free(void *p, int64_t bytes);
+/* 1 when this build checks memory ownership (-DTSR_OWNERSHIP_CHECK, ADR 0015): tsr_free aborts on a pointer tsr_alloc
+   did not return, a double free or a wrong size, and free() of a tsr_alloc pointer is an invalid free. 0 in release. */
+int tsr_ownership_check(void);
 int64_t tsr_allocated(void);
 int64_t tsr_peak(void);
 void tsr_set_budget(int64_t bytes);       /* 0 = unlimited */
@@ -87,6 +96,29 @@ int tsr_where(int dtype, int32_t ndim, const int64_t *shape, const void *cond, c
               const void *a, const int64_t *sa, const void *b, const int64_t *sb, void *out, const int64_t *sout);
 ```
 
+## Reproducible f32 transcendentals (see csrc/src/repro_f32.c, csrc/repro/GOLDENS.md)
+
+```c
+A SEPARATE surface from the accuracy-first f64 ufuncs below. Each value is computed from a fixed
+   polynomial in portably correctly-rounded f32 ops (+, -, *, fmaf) only, so the result is a single
+   defined bit-pattern, identical across SIMD level, thread count, compiler and the GPU shader that
+   mirrors the same spec. Contiguous f32 arrays of length n; return 0, or -1 on a bad argument. */
+int tsr_repro_rsqrt_f32(int64_t n, const float *x, float *y);   /* 1/sqrt(x) */
+int tsr_repro_exp2_f32 (int64_t n, const float *x, float *y);   /* 2^x       */
+int tsr_repro_exp_f32  (int64_t n, const float *x, float *y);   /* e^x       */
+int tsr_repro_erf_f32  (int64_t n, const float *x, float *y);   /* erf(x)    */
+int tsr_repro_recip_f32(int64_t n, const float *x, float *y);   /* 1/x, any f32 input */
+int tsr_repro_tanh_f32 (int64_t n, const float *x, float *y);   /* tanh(x)   */
+/* composites: one definition of the composition, mirrored by the Talario GPU shaders */
+int tsr_repro_sigmoid_f32  (int64_t n, const float *x, float *y);
+int tsr_repro_gelu_tanh_f32(int64_t n, const float *x, float *y);
+int tsr_repro_softmax_f32  (int64_t m, int64_t n, const float *x, float *y);              /* row-wise */
+int tsr_repro_rmsnorm_f32  (int64_t m, int64_t n, const float *x, const float *gamma, float eps, float *y);
+int tsr_repro_layernorm_f32(int64_t m, int64_t n, const float *x, const float *gamma, const float *beta,
+                            float eps, float *y);
+/* The element-level definitions are header-only in tessero_repro_f32.h (shared with Talario). */
+```
+
 ## Loop ufuncs (cbrt, erf, gamma, logaddexp, fmax, fmod, ...): ids are 0 .. tsr_ufunc_count()-1
 
 ```c
@@ -109,7 +141,9 @@ int tsr_ufunc(int id, int loop_dtype, int32_t ndim, const int64_t *shape,
 
 ```c
 *ndim = -1 derives a 1-D shape from the file size. tsr_mmap_plan is the pure validation step (no I/O).
-   The data pointer stays valid until tsr_mmap_close(handle). Mapped bytes are not counted by tsr_allocated. */
+   The data pointer stays valid until tsr_mmap_close(handle). Mapped bytes are not counted by tsr_allocated.
+   Ownership (ADR 0015): the handle owns the mapping; release it only with tsr_mmap_close (never tsr_free or free
+   on handle or data), exactly once, after the last use of data. */
 int tsr_mmap_plan(int dtype, int mode, int32_t *ndim, int64_t *shape, int64_t offset, int64_t file_size,
                   int64_t granularity, int64_t *bytes, int64_t *map_start, int64_t *map_length, int64_t *new_size);
 int tsr_mmap_open(const char *path, int mode, int dtype, int32_t *ndim, int64_t *shape, int64_t offset,
@@ -159,12 +193,59 @@ int tsr_sort(int dtype, int64_t n, void *data);                       /* ascendi
 int tsr_argsort(int dtype, int64_t n, const void *data, int64_t *out); /* stable */
 ```
 
-## Dense matrix product fallback (row-major, used when no BLAS is loaded)
+## Dense matrix product (row-major). F64/F32 are computed by the linked BLAS (cblas_{d,s}gemm) whenever all
 
 ```c
+dimensions fit an int, else by a blocked kernel; I64 always by the blocked kernel. BLAS results depend on the
+   BLAS build and thread count (tolerance-level agreement). tsr_gemm below is the canonical, bit-exact entry
+   point (no BLAS, explicit round-once FMA, identical on every CPU and thread count). ---- */
 int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_t lda,
                const void *b, int64_t ldb, void *c, int64_t ldc);
+/* General matrix multiply, the BLAS xgemm contract (F64/F32): C = alpha*op(A)*op(B) + beta*C, row-major.
+   transa/transb: 0 (or CBLAS 111) = no transpose, nonzero (e.g. 1 or CBLAS 112) = transpose. op(A) is m x k,
+   op(B) is k x n, C is m x n. beta == 0 overwrites C without reading it. Mirrors cblas_{s,d}gemm so callers can
+   swap it with a loaded BLAS; unlike tsr_matmul it never calls BLAS and is bit-exact (canonical FMA order). */
+int tsr_gemm(int dtype, int transa, int transb, int64_t m, int64_t n, int64_t k,
+             double alpha, const void *a, int64_t lda, const void *b, int64_t ldb,
+             double beta, void *c, int64_t ldc);
+/* y := alpha*x + y (BLAS-1 AXPY, F64/F32). incx/incy are element strides (1 for contiguous); negative strides
+   follow the reference-BLAS convention. alpha is cast to the element type. n==0 is a no-op. Mirrors
+   cblas_{s,d}axpy. Returns 0, TSR_EARG (-1) if n<0, or TSR_ETYPE (-4) for an unsupported dtype. */
+int tsr_axpy(int dtype, int64_t n, double alpha, const void *x, int64_t incx, void *y, int64_t incy);
 double tsr_dot_f64(int64_t n, const double *x, int64_t incx, const double *y, int64_t incy);
+
+/* Canonical-form self-check (the runtime approval guard). Runs a frozen known-answer GEMM on the
+   library's dispatched path and on a no-clone explicit-fma reference, and compares both to the frozen
+   canonical digest. Returns 0 if the build is canonical; negative if it diverges (a non-canonical,
+   mock or non-FMA build must NOT be used silently -- the caller substitutes the reference or aborts).
+   -1 = fast clone diverged from the reference; -2 = the reference itself is not the frozen canonical. */
+int tsr_selfcheck(void);
+```
+
+## Numerics review (2026-10): FP-environment gate and KAT sensitivity
+
+```c
+tsr_selfcheck codes, complete: 0 canonical; -1 fast clone != reference; -2 reference != frozen digest;
+   -3 libm fmaf not correctly rounded; -4 subnormals flushed (FTZ/DAZ behaviour); -5 signed zero broken;
+   -6 FP control register non-canonical (tsr_fpenv_check != 0; checked first, before any probe arithmetic).
+   tsr_fpenv_check: reads the FP control state on the calling thread AND every OpenMP worker (x86-64 MXCSR
+   FTZ bit 15 = 0, DAZ bit 6 = 0, RC bits 14:13 = 00, exception masks bits 12:7 all 1; aarch64 FPCR FZ bit 24
+   = 0, FZ16 bit 19 = 0, RMode bits 23:22 = 00, trap enables bits 8-12/15 = 0; every arch fegetround() ==
+   FE_TONEAREST). Returns 0 when canonical, else a bitmask: 1 FTZ/FZ, 2 DAZ, 4 rounding-mode bits, 8 traps
+   unmasked, 16 fegetround != nearest, 32 FZ16, 64 = the offending state is on an OpenMP worker. Writes a
+   human-readable reason naming the bits into buf (NUL-terminated, truncated to cap; buf may be NULL).
+   tsr_fpenv_check_thread: the same for the calling thread only (no OpenMP region: safe before fork(), e.g.
+   in a PHP module's MINIT). tsr_fpenv_canonicalize: opt-in repair of the calling thread and the OpenMP
+   workers (round-to-nearest, FTZ/DAZ off, exceptions masked); returns tsr_fpenv_check afterwards. Never
+   called implicitly. tsr_selfcheck_digest: FNV-1a digest of the KAT gemm output computed by variant
+   0 = canonical fmaf reference, 1 = the dispatched tsr_gemm, 2 = separate mul+add (non-FMA, deliberately
+   wrong), 3 = reversed k order (deliberately wrong); 0 for an unknown variant. tsr_selfcheck_canonical:
+   the frozen digest variants 0 and 1 must equal (0 = bootstrap build). */
+int tsr_fpenv_check(char *buf, int64_t cap);
+int tsr_fpenv_check_thread(char *buf, int64_t cap);
+int tsr_fpenv_canonicalize(void);
+uint64_t tsr_selfcheck_digest(int variant);
+uint64_t tsr_selfcheck_canonical(void);
 ```
 
 ## FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out
@@ -186,6 +267,8 @@ void tsr_pcg64_uint64(uint64_t *state, int64_t n, uint64_t *out);
 void tsr_pcg64_random(uint64_t *state, int64_t n, double *out);      /* [0, 1), same stream as numpy */
 void tsr_pcg64_normal(uint64_t *state, int64_t n, double mean, double sd, double *out);
 void tsr_pcg64_integers(uint64_t *state, int64_t n, int64_t low, int64_t high, int64_t *out); /* [low, high) */
+void tsr_pcg64_bytes(uint64_t *state, int64_t n, uint8_t *out);                       /* Generator.bytes */
+int tsr_pcg64_multivariate_normal(uint64_t *state, const double *mean, const double *cov, int64_t dim, int64_t n, double *out); /* Generator.multivariate_normal */
 int tsr_pcg64_shuffle(uint64_t *state, int64_t n, int64_t itemsize, void *data);                 /* Generator.shuffle */
 ```
 
@@ -256,12 +339,18 @@ Entries are numbered 0 .. tsr_fn_count()-1; tsr_fn_info() describes one as JSON 
    stats 8 (outputs mean, var, skew, kurtosis), entropy 9, support 10 (inputs shapes..., loc[, scale]).
    tsr_fn_gufunc: axmask[i] selects the core axes of input i; outputs are allocated by the caller with the
    shapes from tsr_fn_gufunc_shape (out_shape is nout x 32). params follow the order of info "params".
-   tsr_fn_routine: arguments of any kind (numbers, strings, arrays, null, sequences); results the caller adopts
-   (arrays are tsr_alloc blocks of `bytes` bytes). A sequence argument (info "seq"/"variadic": numpy's
-   `arrays` list or `*args`) is kind 5 with `count` items at `items`; a sequence result (info "out_seq":
-   numpy's list/tuple of arrays) is kind 6 whose arr.data is a tsr_alloc block of arr.shape[0] tsr_result
-   (`bytes` bytes), each owned by the caller like a top-level result. tsr_fn_error() describes the last
-   failure on this thread. */
+   tsr_fn_routine: arguments of any kind (numbers, strings, arrays, null, sequences); results the caller adopts.
+   Memory ownership (ADR 0015): argument memory stays the caller's and is only read or written during the call
+   (no kernel, thread-local or OpenMP worker keeps a pointer to it afterwards). A result of kind 2 (a
+   NUL-terminated string, e.g. a dtype name) or kind 3 (an array) owns arr.data, a tsr_alloc block of `bytes`
+   bytes: the caller releases it with tsr_free(arr.data, bytes), or hands it to a structure that will. A
+   sequence argument (info "seq"/"variadic": numpy's `arrays` list or `*args`) is kind 5 with `count` items at
+   `items`; a sequence result (info "out_seq": numpy's list/tuple of arrays) is kind 6: arr.ndim is 1,
+   arr.shape[0] is the item count n, and arr.data is a tsr_alloc block of `bytes` bytes (at least
+   n * sizeof(tsr_result)) holding n results, each owned by the caller like a top-level result. Release a kind 6
+   by releasing each item, then tsr_free(arr.data, bytes); tsr_fn_results_free does exactly that. On failure
+   (a negative return) tsr_fn_routine has already released any partial results and every slot is kind 0, so
+   there is nothing to free. tsr_fn_error() describes the last failure on this thread. */
 typedef struct tsr_arg {
     int32_t kind;                          /* 0 null, 1 number, 2 string, 3 array, 4 bool, 5 sequence */
     int32_t flags;                         /* kind 1: bit 0 set when the number was an integer, exactly in ival;
@@ -275,8 +364,9 @@ typedef struct tsr_arg {
     int64_t ival;                          /* kind 1 with flags bit 0 */
 } tsr_arg;
 typedef struct tsr_result {
-    int32_t kind;                          /* 0 none, 1 float, 3 array (arr.data from tsr_alloc: the caller owns it), 4 bool, 5 int,
-                                              6 sequence (arr.data: arr.shape[0] tsr_result) */
+    int32_t kind;                          /* 0 none, 1 float, 2 string, 3 array, 4 bool, 5 int, 6 sequence (arr.data:
+                                              arr.shape[0] tsr_result). Kinds 2, 3 and 6 own arr.data, a tsr_alloc
+                                              block of `bytes` bytes the caller frees (tsr_fn_results_free) */
     int32_t flags;
     double num;
     tsr_array arr;
@@ -289,6 +379,11 @@ int tsr_fn_find(const char *name);
 int64_t tsr_fn_info(int id, char *buf, int64_t cap);
 int tsr_fn_arity(int id, int method, int *nin, int *nout);
 const char *tsr_fn_error(void);
+/* Release routine results the caller did not take over (ADR 0015). For each of the n results: kind 2 (a string)
+   and kind 3 (an array) free arr.data with tsr_free(arr.data, bytes); kind 6 (a sequence) first releases its
+   arr.shape[0] items the same way, then frees its own block; other kinds own no memory. Each result is reset to
+   kind 0, so a second call is a no-op. Safe after any tsr_fn_routine return: the slots are always initialised. */
+void tsr_fn_results_free(tsr_result *res, int64_t n);
 int tsr_fn_ufunc(int id, int method, int dtype, int32_t ndim, const int64_t *shape, int nop, void **data,
                  const int64_t *strides);
 /* numpy.random.Generator methods (kind "random"): one variate per element of the output (the last operand,
@@ -304,5 +399,36 @@ int tsr_fn_gufunc_shape(int id, int nin, const tsr_array *in, const uint64_t *ax
 int tsr_fn_gufunc(int id, int nin, const tsr_array *in, const uint64_t *axmask, int keepdims, const double *params,
                   int nout, const tsr_array *out);
 int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result *res);   /* kind "routine" */
+
+/* scipy.stats.poisson_binom: a discrete distribution whose shape parameter is the whole probability vector p
+   (length n), built per call rather than registered. tsr_poisson_binom evaluates one distribution method
+   (DM_PDF..DM_ISF, DM_STATS, DM_ENTROPY, DM_SUPPORT, DM_MOMENT from fn.h): element methods write one output per
+   xv[i]; DM_STATS writes 4 (mean, var, skew, kurtosis), DM_SUPPORT 2, DM_ENTROPY 1. tsr_poisson_binom_rvs draws
+   `nsamp` int64-valued variates from the PCG64 state. Both return 0, or -1 if the result cannot be allocated
+   (invalid parameters do not fail: an out-of-domain probability gives NaN results, as SciPy does). */
+int tsr_poisson_binom(int method, const double *xv, int64_t nx, const double *p, int64_t n, double loc, double *out);
+int tsr_poisson_binom_rvs(uint64_t *state, const double *p, int64_t n, double loc, int64_t nsamp, double *out);
+```
+
+## ABI, capabilities and runtime settings (ADR 0014)
+
+```c
+tsr_abi_version: the C ABI generation (2 for 0.2.x). It changes only on an incompatible change (a removed or
+     changed function, struct layout or constant), and the soname libtessero.so.<abi> changes with it. A binding
+     checks it once at load and refuses a library it was not written for.
+   tsr_feature: 1 when the named capability is present in THIS build/process, 0 otherwise (unknown names give 0):
+     "repro_f32" tsr_repro_*, "gemm_canonical" bit-exact tsr_gemm/tsr_axpy, "lapack" linalg through LAPACKE,
+     "openblas_threads" a BLAS whose thread pool tsr_set_blas_threads controls, "openmp" OpenMP threads,
+     "fpenv_check" runtime floating-point-environment checks. New names are compatible additions.
+   tsr_set_blas_threads: caps the thread pool of the BLAS loaded in the process (OpenBLAS / MKL, found by name, no
+     link dependency). Returns 0, -1 for n < 1, or -4 when no controllable BLAS is loaded. Process-wide.
+   tsr_get_blas_threads: the BLAS pool size, 0 when unknown.
+   tsr_alloc_n: tsr_alloc(n*elsize + pad) with the size computed overflow-checked; NULL when it overflows or is
+     negative. Free with tsr_free(p, n*elsize + pad). */
+int tsr_abi_version(void);
+int tsr_feature(const char *name);
+int tsr_set_blas_threads(int n);
+int tsr_get_blas_threads(void);
+void *tsr_alloc_n(int64_t n, int64_t elsize, int64_t pad);
 ```
 

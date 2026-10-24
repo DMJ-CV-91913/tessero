@@ -22,10 +22,28 @@ beta($a, $b, $size = null)
 binomial($n, $p, $size = null)
 ```
 
+### bytes
+
+```php
+bytes(int $length)
+```
+
 ### chisquare
 
 ```php
 chisquare($df, $size = null)
+```
+
+### choice
+
+```php
+choice($a, $size = null, $replace = true, $p = null)
+```
+
+### dirichlet
+
+```php
+dirichlet($alpha, $size = null)
 ```
 
 ### exponential
@@ -100,6 +118,24 @@ lognormal($mean = 0.0, $sigma = 1.0, $size = null)
 logseries($p, $size = null)
 ```
 
+### multinomial
+
+```php
+multinomial(int $n, $pvals, $size = null)
+```
+
+### multivariateHypergeometric
+
+```php
+multivariateHypergeometric($colors, int $nsample, $size = null, $method)
+```
+
+### multivariateNormal
+
+```php
+multivariateNormal($mean, $cov, $size = null, $checkValid = 'warn', $tol = 1.0E-8, $method = 'svd')
+```
+
 ### negativeBinomial
 
 ```php
@@ -134,6 +170,12 @@ pareto($a, $size = null)
 
 ```php
 permutation($x)
+```
+
+### permuted
+
+```php
+permuted(Tessero\Ext\NDArray $x, $axis = null, $out = null)
 ```
 
 ### poisson

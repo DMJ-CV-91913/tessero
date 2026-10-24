@@ -11,7 +11,7 @@ The native extension provides the same class as Tessero\Ext\Stats.
 
 | Name | Value |
 |---|---|
-| `FUNCTIONS` | `{"alexandergovern":"alexandergovern","alpha":"alpha","anderson":"anderson","anderson_ksamp":"andersonKsamp","anglit":"anglit","ansari":"ansari","arcsine":"arcsine","argus":"argus","bartlett":"bartlett","bernoulli":"bernoulli","beta":"beta","betabinom":"betabinom","betanbinom":"betanbinom","betaprime":"betaprime","binned_statistic":"binnedStatistic","binned_statistic_2d":"binnedStatistic2d","binned_statistic_dd":"binnedStatisticDd","binom":"binom","binomtest":"binomtest","boltzmann":"boltzmann","boxcox":"boxcox","boxcox_llf":"boxcoxLlf","bradford":"bradford","brunnermunzel":"brunnermunzel","burr":"burr","burr12":"burr12","bws_test":"bwsTest","cauchy":"cauchy","chatterjeexi":"chatterjeexi","chi":"chi","chi2":"chi2","chi2_contingency":"chi2Contingency","chisquare":"chisquare","circmean":"circmean","circstd":"circstd","circvar":"circvar","combine_pvalues":"combinePvalues","cosine":"cosine","cramervonmises":"cramervonmises","cramervonmises_2samp":"cramervonmises2samp","crystalball":"crystalball","cumfreq":"cumfreq","describe":"describe","dgamma":"dgamma","differential_entropy":"differentialEntropy","dlaplace":"dlaplace","dpareto_lognorm":"dparetoLognorm","dweibull":"dweibull","energy_distance":"energyDistance","entropy":"entropy","epps_singleton_2samp":"eppsSingleton2samp","erlang":"erlang","expectile":"expectile","expon":"expon","exponnorm":"exponnorm","exponpow":"exponpow","exponweib":"exponweib","f":"f","f_oneway":"fOneway","false_discovery_control":"falseDiscoveryControl","fatiguelife":"fatiguelife","fisher_exact":"fisherExact","fisk":"fisk","fligner":"fligner","foldcauchy":"foldcauchy","foldnorm":"foldnorm","friedmanchisquare":"friedmanchisquare","gamma":"gamma","gausshyper":"gausshyper","genexpon":"genexpon","genextreme":"genextreme","gengamma":"gengamma","genhalflogistic":"genhalflogistic","genhyperbolic":"genhyperbolic","geninvgauss":"geninvgauss","genlogistic":"genlogistic","gennorm":"gennorm","genpareto":"genpareto","geom":"geom","gibrat":"gibrat","gmean":"gmean","gompertz":"gompertz","gstd":"gstd","gumbel_l":"gumbelL","gumbel_r":"gumbelR","gzscore":"gzscore","halfcauchy":"halfcauchy","halfgennorm":"halfgennorm","halflogistic":"halflogistic","halfnorm":"halfnorm","hmean":"hmean","hypergeom":"hypergeom","hypsecant":"hypsecant","invgamma":"invgamma","invgauss":"invgauss","invweibull":"invweibull","iqr":"iqr","irwinhall":"irwinhall","jarque_bera":"jarqueBera","jf_skew_t":"jfSkewT","johnsonsb":"johnsonsb","johnsonsu":"johnsonsu","kappa3":"kappa3","kappa4":"kappa4","kendalltau":"kendalltau","kruskal":"kruskal","ks_1samp":"ks1samp","ks_2samp":"ks2samp","ksone":"ksone","kstat":"kstat","kstatvar":"kstatvar","kstest":"kstest","kstwo":"kstwo","kstwobign":"kstwobign","kurtosis":"kurtosis","kurtosistest":"kurtosistest","landau":"landau","laplace":"laplace","laplace_asymmetric":"laplaceAsymmetric","levene":"levene","levy":"levy","levy_l":"levyL","levy_stable":"levyStable","linregress":"linregress","lmoment":"lmoment","loggamma":"loggamma","logistic":"logistic","loglaplace":"loglaplace","lognorm":"lognorm","logser":"logser","loguniform":"loguniform","lomax":"lomax","mannwhitneyu":"mannwhitneyu","maxwell":"maxwell","median_abs_deviation":"medianAbsDeviation","median_test":"medianTest","mielke":"mielke","mode":"mode","moment":"moment","mood":"mood","moyal":"moyal","nakagami":"nakagami","nbinom":"nbinom","ncf":"ncf","nchypergeom_fisher":"nchypergeomFisher","nchypergeom_wallenius":"nchypergeomWallenius","nct":"nct","ncx2":"ncx2","nhypergeom":"nhypergeom","norm":"norm","normaltest":"normaltest","norminvgauss":"norminvgauss","obrientransform":"obrientransform","page_trend_test":"pageTrendTest","pareto":"pareto","pearson3":"pearson3","pearsonr":"pearsonr","percentileofscore":"percentileofscore","planck":"planck","pmean":"pmean","pointbiserialr":"pointbiserialr","poisson":"poisson","poisson_means_test":"poissonMeansTest","power_divergence":"powerDivergence","powerlaw":"powerlaw","powerlognorm":"powerlognorm","powernorm":"powernorm","quantile":"quantile","quantile_test":"quantileTest","randint":"randint","rankdata":"rankdata","ranksums":"ranksums","rayleigh":"rayleigh","rdist":"rdist","recipinvgauss":"recipinvgauss","reciprocal":"reciprocal","rel_breitwigner":"relBreitwigner","relfreq":"relfreq","rice":"rice","scoreatpercentile":"scoreatpercentile","sem":"sem","semicircular":"semicircular","shapiro":"shapiro","siegelslopes":"siegelslopes","sigmaclip":"sigmaclip","skellam":"skellam","skew":"skew","skewcauchy":"skewcauchy","skewnorm":"skewnorm","skewtest":"skewtest","somersd":"somersd","spearmanr":"spearmanr","spearmanrho":"spearmanrho","studentized_range":"studentizedRange","t":"t","theilslopes":"theilslopes","tiecorrect":"tiecorrect","tmax":"tmax","tmean":"tmean","tmin":"tmin","trapezoid":"trapezoid","triang":"triang","trim1":"trim1","trim_mean":"trimMean","trimboth":"trimboth","truncexpon":"truncexpon","truncnorm":"truncnorm","truncpareto":"truncpareto","truncweibull_min":"truncweibullMin","tsem":"tsem","tstd":"tstd","ttest_1samp":"ttest1samp","ttest_ind":"ttestInd","ttest_ind_from_stats":"ttestIndFromStats","ttest_rel":"ttestRel","tukeylambda":"tukeylambda","tvar":"tvar","uniform":"uniform","variation":"variation","vonmises":"vonmises","vonmises_line":"vonmisesLine","wald":"wald","wasserstein_distance":"wassersteinDistance","weibull_max":"weibullMax","weibull_min":"weibullMin","weightedtau":"weightedtau","wilcoxon":"wilcoxon","wrapcauchy":"wrapcauchy","yeojohnson":"yeojohnson","yeojohnson_llf":"yeojohnsonLlf","yulesimon":"yulesimon","zipf":"zipf","zipfian":"zipfian","zmap":"zmap","zscore":"zscore"}` |
+| `FUNCTIONS` | `{"alexandergovern":"alexandergovern","alpha":"alpha","anderson":"anderson","anderson_ksamp":"andersonKsamp","anglit":"anglit","ansari":"ansari","arcsine":"arcsine","argus":"argus","bartlett":"bartlett","bernoulli":"bernoulli","beta":"beta","betabinom":"betabinom","betanbinom":"betanbinom","betaprime":"betaprime","binned_statistic":"binnedStatistic","binned_statistic_2d":"binnedStatistic2d","binned_statistic_dd":"binnedStatisticDd","binom":"binom","binomtest":"binomtest","boltzmann":"boltzmann","boxcox":"boxcox","boxcox_llf":"boxcoxLlf","boxcox_normplot":"boxcoxNormplot","bradford":"bradford","brunnermunzel":"brunnermunzel","burr":"burr","burr12":"burr12","bws_test":"bwsTest","cauchy":"cauchy","chatterjeexi":"chatterjeexi","chi":"chi","chi2":"chi2","chi2_contingency":"chi2Contingency","chisquare":"chisquare","circmean":"circmean","circstd":"circstd","circvar":"circvar","combine_pvalues":"combinePvalues","cosine":"cosine","cramervonmises":"cramervonmises","cramervonmises_2samp":"cramervonmises2samp","crystalball":"crystalball","cumfreq":"cumfreq","describe":"describe","dgamma":"dgamma","differential_entropy":"differentialEntropy","directional_stats":"directionalStats","dirichlet":"dirichlet","dirichlet_multinomial":"dirichletMultinomial","dlaplace":"dlaplace","dpareto_lognorm":"dparetoLognorm","dweibull":"dweibull","ecdf":"ecdf","energy_distance":"energyDistance","entropy":"entropy","epps_singleton_2samp":"eppsSingleton2samp","erlang":"erlang","expectile":"expectile","expon":"expon","exponnorm":"exponnorm","exponpow":"exponpow","exponweib":"exponweib","f":"f","f_oneway":"fOneway","false_discovery_control":"falseDiscoveryControl","fatiguelife":"fatiguelife","fisher_exact":"fisherExact","fisk":"fisk","fligner":"fligner","foldcauchy":"foldcauchy","foldnorm":"foldnorm","friedmanchisquare":"friedmanchisquare","gamma":"gamma","gausshyper":"gausshyper","gaussian_kde":"gaussianKde","genexpon":"genexpon","genextreme":"genextreme","gengamma":"gengamma","genhalflogistic":"genhalflogistic","genhyperbolic":"genhyperbolic","geninvgauss":"geninvgauss","genlogistic":"genlogistic","gennorm":"gennorm","genpareto":"genpareto","geom":"geom","gibrat":"gibrat","gmean":"gmean","gompertz":"gompertz","gstd":"gstd","gumbel_l":"gumbelL","gumbel_r":"gumbelR","gzscore":"gzscore","halfcauchy":"halfcauchy","halfgennorm":"halfgennorm","halflogistic":"halflogistic","halfnorm":"halfnorm","hmean":"hmean","hypergeom":"hypergeom","hypsecant":"hypsecant","invgamma":"invgamma","invgauss":"invgauss","invweibull":"invweibull","invwishart":"invwishart","iqr":"iqr","irwinhall":"irwinhall","jarque_bera":"jarqueBera","jf_skew_t":"jfSkewT","johnsonsb":"johnsonsb","johnsonsu":"johnsonsu","kappa3":"kappa3","kappa4":"kappa4","kendalltau":"kendalltau","kruskal":"kruskal","ks_1samp":"ks1samp","ks_2samp":"ks2samp","ksone":"ksone","kstat":"kstat","kstatvar":"kstatvar","kstest":"kstest","kstwo":"kstwo","kstwobign":"kstwobign","kurtosis":"kurtosis","kurtosistest":"kurtosistest","landau":"landau","laplace":"laplace","laplace_asymmetric":"laplaceAsymmetric","levene":"levene","levy":"levy","levy_l":"levyL","levy_stable":"levyStable","linregress":"linregress","lmoment":"lmoment","loggamma":"loggamma","logistic":"logistic","loglaplace":"loglaplace","lognorm":"lognorm","logser":"logser","loguniform":"loguniform","lomax":"lomax","mannwhitneyu":"mannwhitneyu","matrix_normal":"matrixNormal","maxwell":"maxwell","median_abs_deviation":"medianAbsDeviation","median_test":"medianTest","mielke":"mielke","mode":"mode","moment":"moment","mood":"mood","moyal":"moyal","multinomial":"multinomial","multivariate_hypergeom":"multivariateHypergeom","multivariate_normal":"multivariateNormal","multivariate_t":"multivariateT","nakagami":"nakagami","nbinom":"nbinom","ncf":"ncf","nchypergeom_fisher":"nchypergeomFisher","nchypergeom_wallenius":"nchypergeomWallenius","nct":"nct","ncx2":"ncx2","nhypergeom":"nhypergeom","norm":"norm","normaltest":"normaltest","norminvgauss":"norminvgauss","obrientransform":"obrientransform","page_trend_test":"pageTrendTest","pareto":"pareto","pearson3":"pearson3","pearsonr":"pearsonr","percentileofscore":"percentileofscore","planck":"planck","pmean":"pmean","pointbiserialr":"pointbiserialr","poisson":"poisson","poisson_means_test":"poissonMeansTest","power_divergence":"powerDivergence","powerlaw":"powerlaw","powerlognorm":"powerlognorm","powernorm":"powernorm","probplot":"probplot","quantile":"quantile","quantile_test":"quantileTest","randint":"randint","rankdata":"rankdata","ranksums":"ranksums","rayleigh":"rayleigh","rdist":"rdist","recipinvgauss":"recipinvgauss","reciprocal":"reciprocal","rel_breitwigner":"relBreitwigner","relfreq":"relfreq","rice":"rice","scoreatpercentile":"scoreatpercentile","sem":"sem","semicircular":"semicircular","shapiro":"shapiro","siegelslopes":"siegelslopes","sigmaclip":"sigmaclip","skellam":"skellam","skew":"skew","skewcauchy":"skewcauchy","skewnorm":"skewnorm","skewtest":"skewtest","somersd":"somersd","spearmanr":"spearmanr","spearmanrho":"spearmanrho","studentized_range":"studentizedRange","t":"t","theilslopes":"theilslopes","tiecorrect":"tiecorrect","tmax":"tmax","tmean":"tmean","tmin":"tmin","trapezoid":"trapezoid","triang":"triang","trim1":"trim1","trim_mean":"trimMean","trimboth":"trimboth","truncexpon":"truncexpon","truncnorm":"truncnorm","truncpareto":"truncpareto","truncweibull_min":"truncweibullMin","tsem":"tsem","tstd":"tstd","ttest_1samp":"ttest1samp","ttest_ind":"ttestInd","ttest_ind_from_stats":"ttestIndFromStats","ttest_rel":"ttestRel","tukey_hsd":"tukeyHsd","tukeylambda":"tukeylambda","tvar":"tvar","uniform":"uniform","variation":"variation","vonmises":"vonmises","vonmises_fisher":"vonmisesFisher","vonmises_line":"vonmisesLine","wald":"wald","wasserstein_distance":"wassersteinDistance","wasserstein_distance_nd":"wassersteinDistanceNd","weibull_max":"weibullMax","weibull_min":"weibullMin","weightedtau":"weightedtau","wilcoxon":"wilcoxon","wishart":"wishart","wrapcauchy":"wrapcauchy","yeojohnson":"yeojohnson","yeojohnson_llf":"yeojohnsonLlf","yeojohnson_normplot":"yeojohnsonNormplot","yulesimon":"yulesimon","zipf":"zipf","zipfian":"zipfian","zmap":"zmap","zscore":"zscore","poisson_binom":"poissonBinom"}` |
 
 ## Methods
 
@@ -243,6 +243,16 @@ Box-Cox log-likelihood (scipy.stats.boxcox_llf).
 
 scipy.stats.boxcox_llf
 
+### boxcoxNormplot
+
+```php
+static boxcoxNormplot(mixed $x, mixed $la, mixed $lb, mixed $N = 80): mixed
+```
+
+Box-Cox normality plot: lambdas and probability-plot correlations (scipy.stats.boxcox_normplot).
+
+scipy.stats.boxcox_normplot
+
 ### bradford
 
 ```php
@@ -473,6 +483,36 @@ Differential entropy estimated from a sample (scipy.stats.differential_entropy).
 
 scipy.stats.differential_entropy
 
+### directionalStats
+
+```php
+static directionalStats(mixed $samples): mixed
+```
+
+Mean direction and resultant length of unit vectors (scipy.stats.directional_stats).
+
+scipy.stats.directional_stats
+
+### dirichlet
+
+```php
+static dirichlet(mixed $alpha, mixed $x): mixed
+```
+
+Dirichlet pdf at each row of x (scipy.stats.dirichlet).
+
+scipy.stats.dirichlet
+
+### dirichletMultinomial
+
+```php
+static dirichletMultinomial(mixed $alpha, mixed $n, mixed $x): mixed
+```
+
+Dirichlet-multinomial pmf at each row of x (scipy.stats.dirichlet_multinomial).
+
+scipy.stats.dirichlet_multinomial
+
 ### dlaplace
 
 ```php
@@ -502,6 +542,16 @@ static dweibull(mixed $c, mixed $loc = 0, mixed $scale = 1): Tessero\Stats\Distr
 A double Weibull continuous random variable.
 
 scipy.stats.dweibull (frozen)
+
+### ecdf
+
+```php
+static ecdf(mixed $sample): mixed
+```
+
+Empirical CDF: sorted unique values and cumulative proportions (scipy.stats.ecdf).
+
+scipy.stats.ecdf
 
 ### energyDistance
 
@@ -712,6 +762,16 @@ static gausshyper(mixed $a, mixed $b, mixed $c, mixed $z, mixed $loc = 0, mixed 
 A Gauss hypergeometric continuous random variable.
 
 scipy.stats.gausshyper (frozen)
+
+### gaussianKde
+
+```php
+static gaussianKde(mixed $dataset, mixed $points): mixed
+```
+
+Gaussian kernel density estimate (Scott's factor) evaluated at points (scipy.stats.gaussian_kde).
+
+scipy.stats.gaussian_kde
 
 ### genexpon
 
@@ -982,6 +1042,16 @@ static invweibull(mixed $c, mixed $loc = 0, mixed $scale = 1): Tessero\Stats\Dis
 An inverted Weibull continuous random variable.
 
 scipy.stats.invweibull (frozen)
+
+### invwishart
+
+```php
+static invwishart(mixed $df, mixed $scale, mixed $x): mixed
+```
+
+Inverse-Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.invwishart).
+
+scipy.stats.invwishart
 
 ### iqr
 
@@ -1353,6 +1423,16 @@ Mann-Whitney U rank test on two independent samples (scipy.stats.mannwhitneyu).
 
 scipy.stats.mannwhitneyu
 
+### matrixNormal
+
+```php
+static matrixNormal(mixed $mean, mixed $rowcov, mixed $colcov, mixed $x): mixed
+```
+
+Matrix-normal pdf and log-pdf at a matrix x (scipy.stats.matrix_normal).
+
+scipy.stats.matrix_normal
+
 ### maxwell
 
 ```php
@@ -1432,6 +1512,46 @@ static moyal(mixed $loc = 0, mixed $scale = 1): Tessero\Stats\Distribution
 A Moyal continuous random variable.
 
 scipy.stats.moyal (frozen)
+
+### multinomial
+
+```php
+static multinomial(mixed $n, mixed $p, mixed $x): mixed
+```
+
+Multinomial pmf at each row of x (scipy.stats.multinomial).
+
+scipy.stats.multinomial
+
+### multivariateHypergeom
+
+```php
+static multivariateHypergeom(mixed $m, mixed $n, mixed $x): mixed
+```
+
+Multivariate hypergeometric pmf at each row of x (scipy.stats.multivariate_hypergeom).
+
+scipy.stats.multivariate_hypergeom
+
+### multivariateNormal
+
+```php
+static multivariateNormal(mixed $mean, mixed $cov, mixed $x): mixed
+```
+
+Multivariate normal pdf and log-pdf at each row of x (scipy.stats.multivariate_normal).
+
+scipy.stats.multivariate_normal
+
+### multivariateT
+
+```php
+static multivariateT(mixed $loc, mixed $shape, mixed $df, mixed $x): mixed
+```
+
+Multivariate Student-t pdf and log-pdf at each row of x (scipy.stats.multivariate_t).
+
+scipy.stats.multivariate_t
 
 ### nakagami
 
@@ -1643,6 +1763,28 @@ A Poisson discrete random variable.
 
 scipy.stats.poisson (frozen)
 
+### poissonBinom
+
+```php
+static poissonBinom(mixed $p, mixed $loc = 0): Tessero\Stats\PoissonBinom
+```
+
+The Poisson binomial distribution: the number of successes in independent Bernoulli trials whose
+success probabilities are the vector $p.
+
+scipy.stats.poisson_binom (frozen)
+
+### poissonBinomPmf
+
+```php
+static poissonBinomPmf(mixed $k, mixed $p, mixed $loc = 0): Tessero\NDArray|float
+```
+
+Probability mass of the Poisson binomial distribution with probabilities $p, evaluated at $k (a functional
+shortcut for poissonBinom($p)->pmf($k)).
+
+scipy.stats.poisson_binom
+
 ### poissonMeansTest
 
 ```php
@@ -1692,6 +1834,16 @@ static powernorm(mixed $c, mixed $loc = 0, mixed $scale = 1): Tessero\Stats\Dist
 A power normal continuous random variable.
 
 scipy.stats.powernorm (frozen)
+
+### probplot
+
+```php
+static probplot(mixed $x): mixed
+```
+
+Probability plot data: order-statistic medians, ordered values, and the fit (scipy.stats.probplot).
+
+scipy.stats.probplot
 
 ### quantile
 
@@ -2173,6 +2325,16 @@ T-test on two related samples (scipy.stats.ttest_rel).
 
 scipy.stats.ttest_rel
 
+### tukeyHsd
+
+```php
+static tukeyHsd(mixed $sample1, mixed $sample2 = null, mixed $sample3 = null, mixed $sample4 = null, mixed $sample5 = null, mixed $sample6 = null, mixed $sample7 = null, mixed $sample8 = null, mixed $sample9 = null, mixed $sample10 = null, mixed $sample11 = null, mixed $sample12 = null, mixed $equalVar = true): mixed
+```
+
+Tukey HSD pairwise comparison of means (scipy.stats.tukey_hsd).
+
+scipy.stats.tukey_hsd
+
 ### tukeylambda
 
 ```php
@@ -2223,6 +2385,16 @@ A Von Mises continuous random variable.
 
 scipy.stats.vonmises (frozen)
 
+### vonmisesFisher
+
+```php
+static vonmisesFisher(mixed $mu, mixed $kappa, mixed $x): mixed
+```
+
+Von Mises-Fisher pdf at each row of x (scipy.stats.vonmises_fisher).
+
+scipy.stats.vonmises_fisher
+
 ### vonmisesLine
 
 ```php
@@ -2252,6 +2424,16 @@ static wassersteinDistance(mixed $uValues, mixed $vValues, mixed $uWeights = nul
 First Wasserstein distance between two 1-D distributions (scipy.stats.wasserstein_distance).
 
 scipy.stats.wasserstein_distance
+
+### wassersteinDistanceNd
+
+```php
+static wassersteinDistanceNd(mixed $uValues, mixed $vValues, mixed $uWeights = null, mixed $vWeights = null): mixed
+```
+
+Wasserstein-1 distance between two N-D discrete distributions (scipy.stats.wasserstein_distance_nd).
+
+scipy.stats.wasserstein_distance_nd
 
 ### weibullMax
 
@@ -2293,6 +2475,16 @@ Wilcoxon signed-rank test; zstatistic with method='asymptotic' / 'approx' (scipy
 
 scipy.stats.wilcoxon
 
+### wishart
+
+```php
+static wishart(mixed $df, mixed $scale, mixed $x): mixed
+```
+
+Wishart pdf and log-pdf at an SPD matrix x (scipy.stats.wishart).
+
+scipy.stats.wishart
+
 ### wrapcauchy
 
 ```php
@@ -2322,6 +2514,16 @@ static yeojohnsonLlf(mixed $lmb, mixed $data, mixed $axis = 0, mixed $nanPolicy 
 Yeo-Johnson log-likelihood (scipy.stats.yeojohnson_llf).
 
 scipy.stats.yeojohnson_llf
+
+### yeojohnsonNormplot
+
+```php
+static yeojohnsonNormplot(mixed $x, mixed $la, mixed $lb, mixed $N = 80): mixed
+```
+
+Yeo-Johnson normality plot: lambdas and probability-plot correlations (scipy.stats.yeojohnson_normplot).
+
+scipy.stats.yeojohnson_normplot
 
 ### yulesimon
 

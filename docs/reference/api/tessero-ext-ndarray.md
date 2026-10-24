@@ -16,6 +16,18 @@ static arange($start, $stop = …, $step = …, ?string $dtype = …)
 static array($data, ?string $dtype = …)
 ```
 
+### complex
+
+```php
+static complex($real, $imag = …)
+```
+
+### empty
+
+```php
+static empty($shape, ?string $dtype = …)
+```
+
 ### eye
 
 ```php
@@ -154,6 +166,12 @@ argmax(?int $axis = null, bool $keepdims = false)
 argmin(?int $axis = null, bool $keepdims = false)
 ```
 
+### argpartition
+
+```php
+argpartition($arg1, $arg2 = …)
+```
+
 ### argsort
 
 ```php
@@ -178,16 +196,34 @@ astype(string $dtype)
 atan2($value)
 ```
 
+### byteswap
+
+```php
+byteswap(bool $sync = …)
+```
+
 ### ceil
 
 ```php
 ceil()
 ```
 
+### choose
+
+```php
+choose($arg1, $arg2 = …)
+```
+
 ### clip
 
 ```php
 clip($min = …, $max = …)
+```
+
+### compress
+
+```php
+compress($arg1, $arg2 = …)
 ```
 
 ### conj
@@ -232,6 +268,12 @@ cumprod(?int $axis = …)
 cumsum(?int $axis = …)
 ```
 
+### diagonal
+
+```php
+diagonal(?int $offset = …, ?int $axis1 = …, ?int $axis2 = …)
+```
+
 ### div
 
 ```php
@@ -272,6 +314,18 @@ expm1()
 
 ```php
 filename()
+```
+
+### fill
+
+```php
+fill($value)
+```
+
+### flatten
+
+```php
+flatten()
 ```
 
 ### floor
@@ -442,6 +496,12 @@ logicalXor($value)
 lt($value)
 ```
 
+### mT
+
+```php
+mT()
+```
+
 ### matmul
 
 ```php
@@ -490,6 +550,12 @@ mod($value)
 mul($value)
 ```
 
+### nbytes
+
+```php
+nbytes()
+```
+
 ### ndim
 
 ```php
@@ -508,6 +574,18 @@ ne($value)
 neg()
 ```
 
+### nonzero
+
+```php
+nonzero()
+```
+
+### partition
+
+```php
+partition($arg1, $arg2 = …)
+```
+
 ### pow
 
 ```php
@@ -518,6 +596,12 @@ pow($value)
 
 ```php
 prod(array|int|null $axis = null, bool $keepdims = false)
+```
+
+### put
+
+```php
+put($indices, $values, ?int $axis = …)
 ```
 
 ### ravel
@@ -544,16 +628,34 @@ real()
 reciprocal()
 ```
 
+### repeat
+
+```php
+repeat($arg1, $arg2 = …)
+```
+
 ### reshape
 
 ```php
 reshape(...$args)
 ```
 
+### resize
+
+```php
+resize($value)
+```
+
 ### rint
 
 ```php
 rint()
+```
+
+### round
+
+```php
+round(int $decimals = 0)
 ```
 
 ### rpow
@@ -572,6 +674,12 @@ rsub($value)
 
 ```php
 save(string $path)
+```
+
+### searchsorted
+
+```php
+searchsorted($arg1, $arg2 = …)
 ```
 
 ### shape
@@ -628,6 +736,12 @@ sqrt()
 square()
 ```
 
+### squeeze
+
+```php
+squeeze(?int $axis = …)
+```
+
 ### std
 
 ```php
@@ -652,10 +766,22 @@ sub($value)
 sum(array|int|null $axis = null, bool $keepdims = false)
 ```
 
+### swapAxes
+
+```php
+swapAxes(int $axis1, int $axis2)
+```
+
 ### t
 
 ```php
 t()
+```
+
+### take
+
+```php
+take($indices, ?int $axis = …)
 ```
 
 ### tan
@@ -694,6 +820,12 @@ toJson()
 toList()
 ```
 
+### trace
+
+```php
+trace(?int $offset = …, ?int $axis1 = …, ?int $axis2 = …)
+```
+
 ### transpose
 
 ```php
@@ -704,4 +836,10 @@ transpose(?array $axes = …)
 
 ```php
 var(array|int|null $axis = null, int $ddof = 0, bool $keepdims = false)
+```
+
+### view
+
+```php
+view(string $dtype)
 ```

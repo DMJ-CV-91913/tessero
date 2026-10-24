@@ -136,6 +136,12 @@ static boxcox($x, $lmbda = null, $alpha = null, $optimizer = null)
 static boxcoxLlf($lmb, $data, $axis = 0, $keepdims = false, $nanPolicy = 'propagate')
 ```
 
+### boxcoxNormplot
+
+```php
+static boxcoxNormplot($x, $la, $lb, $N = 80)
+```
+
 ### bradford
 
 ```php
@@ -274,6 +280,24 @@ static dgamma($a, $loc = 0, $scale = 1)
 static differentialEntropy($values, $axis = 0, $windowLength = null, $base = null, $method = 'auto', $nanPolicy = 'propagate', $keepdims = false)
 ```
 
+### directionalStats
+
+```php
+static directionalStats($samples)
+```
+
+### dirichlet
+
+```php
+static dirichlet($alpha, $x)
+```
+
+### dirichletMultinomial
+
+```php
+static dirichletMultinomial($alpha, $n, $x)
+```
+
 ### dlaplace
 
 ```php
@@ -290,6 +314,12 @@ static dparetoLognorm($u, $s, $a, $b, $loc = 0, $scale = 1)
 
 ```php
 static dweibull($c, $loc = 0, $scale = 1)
+```
+
+### ecdf
+
+```php
+static ecdf($sample)
 ```
 
 ### energyDistance
@@ -416,6 +446,12 @@ static gamma($a, $loc = 0, $scale = 1)
 
 ```php
 static gausshyper($a, $b, $c, $z, $loc = 0, $scale = 1)
+```
+
+### gaussianKde
+
+```php
+static gaussianKde($dataset, $points)
 ```
 
 ### genexpon
@@ -578,6 +614,12 @@ static invgauss($mu, $loc = 0, $scale = 1)
 
 ```php
 static invweibull($c, $loc = 0, $scale = 1)
+```
+
+### invwishart
+
+```php
+static invwishart($df, $scale, $x)
 ```
 
 ### iqr
@@ -802,6 +844,12 @@ static lomax($c, $loc = 0, $scale = 1)
 static mannwhitneyu($x, $y, $useContinuity = true, $alternative = 'two-sided', $axis = 0, $method = 'auto', $nanPolicy = 'propagate', $keepdims = false)
 ```
 
+### matrixNormal
+
+```php
+static matrixNormal($mean, $rowcov, $colcov, $x)
+```
+
 ### maxwell
 
 ```php
@@ -848,6 +896,30 @@ static mood($x, $y, $axis = 0, $alternative = 'two-sided', $nanPolicy = 'propaga
 
 ```php
 static moyal($loc = 0, $scale = 1)
+```
+
+### multinomial
+
+```php
+static multinomial($n, $p, $x)
+```
+
+### multivariateHypergeom
+
+```php
+static multivariateHypergeom($m, $n, $x)
+```
+
+### multivariateNormal
+
+```php
+static multivariateNormal($mean, $cov, $x)
+```
+
+### multivariateT
+
+```php
+static multivariateT($loc, $shape, $df, $x)
 ```
 
 ### nakagami
@@ -976,6 +1048,18 @@ static pointbiserialr($x, $y, $axis = 0, $nanPolicy = 'propagate', $keepdims = f
 static poisson($mu, $loc = 0)
 ```
 
+### poissonBinom
+
+```php
+static poissonBinom($p, $loc = …)
+```
+
+### poissonBinomPmf
+
+```php
+static poissonBinomPmf($k, $p, $loc = …)
+```
+
 ### poissonMeansTest
 
 ```php
@@ -1004,6 +1088,12 @@ static powerlognorm($c, $s, $loc = 0, $scale = 1)
 
 ```php
 static powernorm($c, $loc = 0, $scale = 1)
+```
+
+### probplot
+
+```php
+static probplot($x)
 ```
 
 ### quantile
@@ -1294,6 +1384,12 @@ static ttestIndFromStats($mean1, $std1, $nobs1, $mean2, $std2, $nobs2, $equalVar
 static ttestRel($a, $b, $axis = 0, $nanPolicy = 'propagate', $alternative = 'two-sided', $keepdims = false)
 ```
 
+### tukeyHsd
+
+```php
+static tukeyHsd($sample1, $sample2 = null, $sample3 = null, $sample4 = null, $sample5 = null, $sample6 = null, $sample7 = null, $sample8 = null, $sample9 = null, $sample10 = null, $sample11 = null, $sample12 = null, $equalVar = true)
+```
+
 ### tukeylambda
 
 ```php
@@ -1324,6 +1420,12 @@ static variation($a, $axis = 0, $nanPolicy = 'propagate', $ddof = 0, $keepdims =
 static vonmises($kappa, $loc = 0, $scale = 1)
 ```
 
+### vonmisesFisher
+
+```php
+static vonmisesFisher($mu, $kappa, $x)
+```
+
 ### vonmisesLine
 
 ```php
@@ -1340,6 +1442,12 @@ static wald($loc = 0, $scale = 1)
 
 ```php
 static wassersteinDistance($uValues, $vValues, $uWeights = null, $vWeights = null)
+```
+
+### wassersteinDistanceNd
+
+```php
+static wassersteinDistanceNd($uValues, $vValues, $uWeights = null, $vWeights = null)
 ```
 
 ### weibullMax
@@ -1366,6 +1474,12 @@ static weightedtau($x, $y, $rank = true, $weigher = null, $additive = true, $axi
 static wilcoxon($x, $y = null, $zeroMethod = 'wilcox', $correction = false, $alternative = 'two-sided', $method = 'auto', $axis = 0, $nanPolicy = 'propagate', $keepdims = false)
 ```
 
+### wishart
+
+```php
+static wishart($df, $scale, $x)
+```
+
 ### wrapcauchy
 
 ```php
@@ -1382,6 +1496,12 @@ static yeojohnson($x, $lmbda = null)
 
 ```php
 static yeojohnsonLlf($lmb, $data, $axis = 0, $nanPolicy = 'propagate', $keepdims = false)
+```
+
+### yeojohnsonNormplot
+
+```php
+static yeojohnsonNormplot($x, $la, $lb, $N = 80)
 ```
 
 ### yulesimon

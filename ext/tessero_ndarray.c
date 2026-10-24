@@ -160,6 +160,7 @@ static inline char *elem0(const tsr_array *a) { return (char *)a->data + a->offs
 int tsr_ndarray_new(zval *rv, int dtype, int32_t ndim, const int64_t *shape, int zero)
 {
     if (ndim > 32) { tsr_throw_rc(-5, "array"); return FAILURE; }
+    if (dtype < 0 || dtype > D_C128) { tsr_throw_rc(-4, "array"); return FAILURE; }
     int64_t n = 1;
     for (int d = 0; d < ndim; d++) {
         if (shape[d] < 0) { zend_throw_exception(tsr_ce_shape_exception, "Dimensions must be non-negative", 0); return FAILURE; }
@@ -340,17 +341,26 @@ static int cast_copy(const tsr_array *src, int dt, zval *out)
 
 static void to_php(const tsr_array *a, int d, const char *p, zval *rv);
 
-/* does a nested PHP array hold NDArray objects (a list of arrays, as numpy.array([a, b]) accepts)? */
-static int holds_ndarray(zval *v)
+/*
+ * does a nested PHP array hold NDArray objects (a list of arrays, as numpy.array([a, b]) accepts)?
+ * Scans the whole value: -1 when it nests deeper than 32 levels (an array may reference itself, and
+ * unbounded recursion would overflow the C stack), else 1 or 0.
+ */
+static int holds_ndarray(zval *v, int depth)
 {
     ZVAL_DEREF(v);
     if (Z_TYPE_P(v) != IS_ARRAY) return 0;
+    if (depth > 32) return -1;
+    int found = 0;
     zval *e;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(v), e) {
         ZVAL_DEREF(e);
-        if (is_ndarray(e) || holds_ndarray(e)) return 1;
+        if (is_ndarray(e)) { found = 1; continue; }
+        const int r = holds_ndarray(e, depth + 1);
+        if (r < 0) return -1;
+        found |= r;
     } ZEND_HASH_FOREACH_END();
-    return 0;
+    return found;
 }
 
 /* a copy of v with every NDArray replaced by its nested PHP array */
@@ -380,7 +390,9 @@ int tsr_ndarray_from_zval(zval *value, int dtype, zval *out)
         if (dtype < 0 || dtype == o->a.dtype) { ZVAL_COPY(out, value); return SUCCESS; }
         return cast_copy(&o->a, dtype, out);
     }
-    if (Z_TYPE_P(value) == IS_ARRAY && holds_ndarray(value)) {
+    const int nested = Z_TYPE_P(value) == IS_ARRAY ? holds_ndarray(value, 1) : 0;
+    if (nested < 0) { tsr_throw_rc(-5, "array"); return FAILURE; }
+    if (nested) {
         zval plain;
         unwrap_ndarrays(value, &plain);
         const int r = ndarray_from_php(&plain, dtype, out);
@@ -1278,8 +1290,13 @@ PHP_METHOD(NDArray, arange)
     int all_int = Z_TYPE_P(start) == IS_LONG && (!stop || Z_TYPE_P(stop) == IS_LONG) && (!step || Z_TYPE_P(step) == IS_LONG);
     if (stop) b = zval_get_double(stop); else { b = a; a = 0.0; }
     if (s == 0.0) { zend_throw_exception(tsr_ce_exception, "arange step must be non-zero", 0); RETURN_THROWS(); }
-    int64_t n = (int64_t)ceil((b - a) / s);
-    if (n < 0) n = 0;
+    /* casting a non-finite or out-of-range double to int64 is undefined behaviour: check before casting */
+    const double span = ceil((b - a) / s);
+    if (!isfinite(span) || span >= 9.2e18) {
+        zend_throw_exception(tsr_ce_memory_exception, "arange: the requested length is not finite or too large", 0);
+        RETURN_THROWS();
+    }
+    int64_t n = span > 0 ? (int64_t)span : 0;
     int dt = dtype_arg(dts, all_int ? D_I64 : D_F64);
     if (dt < 0) RETURN_THROWS();
     int64_t shape[1] = {n};
@@ -1328,7 +1345,9 @@ PHP_METHOD(NDArray, eye)
     char *p = elem0(&Z_TSR_P(return_value)->a);
     zval one;
     ZVAL_LONG(&one, 1);
-    for (zend_long i = k < 0 ? -k : 0; i < n && i + k < m; i++) zval_to_elem(&one, dt, p + (i * m + i + k) * ITEMSIZE[dt]);
+    /* a diagonal outside the matrix is empty; rejecting it first also keeps -k and i + k from overflowing */
+    if (k >= m || k <= -n) return;
+    for (int64_t i = k < 0 ? -(int64_t)k : 0; i < n && i + k < m; i++) zval_to_elem(&one, dt, p + (i * m + i + k) * ITEMSIZE[dt]);
 }
 
 /* Element count of an untrusted shape (fromBytes, unserialize): -1 for a negative dimension or an overflow. */
@@ -1382,6 +1401,10 @@ PHP_METHOD(NDArray, where)
     int dx = dtype_of_zv(x), dy = dtype_of_zv(y);
     if (dx < 0 && Z_TYPE_P(x) == IS_ARRAY) dx = D_F64;
     if (dy < 0 && Z_TYPE_P(y) == IS_ARRAY) dy = D_F64;
+    if (dx < 0 || dy < 0) {
+        zend_throw_exception(tsr_ce_dtype_exception, "where: x and y must be numbers, bools, arrays or NDArrays", 0);
+        goto out;
+    }
     int dt = is_scalar_zv(x) && !is_scalar_zv(y) ? with_scalar(dy, x) : (is_scalar_zv(y) && !is_scalar_zv(x) ? with_scalar(dx, y) : promote(dx, dy));
     if (operand(x, dt, &X) == FAILURE || operand(y, dt, &Y) == FAILURE) goto out;
     if (tsr_ndarray_contiguous_as(&X, dt, &Xc) == FAILURE || tsr_ndarray_contiguous_as(&Y, dt, &Yc) == FAILURE) goto out;

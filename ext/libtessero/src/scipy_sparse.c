@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static double *sp_dense(int64_t m, int64_t n);   /* a checked dense scratch matrix (below) */
+
 static int sp_input(const tsr_arg *a, const double **p, int64_t *m, int64_t *n, int64_t *tot, double **owned)
 {
     if (a->kind != 3 || a->arr.ndim != 2) { fn_set_error("sparse: input must be a 2-D array"); return TSR_EARG; }
@@ -170,7 +172,7 @@ static int r_hstack(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         else if (items[i].arr.shape[0] != m) { fn_set_error("hstack: blocks must have the same number of rows"); return TSR_EARG; }
         ncols += items[i].arr.shape[1];
     }
-    double *dense = (double *)calloc((size_t)(m * ncols > 0 ? m * ncols : 1), sizeof(double));
+    double *dense = sp_dense(m, ncols);
     if (!dense) return TSR_ENOMEM;
     int64_t coloff = 0;
     for (int64_t i = 0; i < k; i++) {
@@ -199,7 +201,7 @@ static int r_vstack(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         else if (items[i].arr.shape[1] != n) { fn_set_error("vstack: blocks must have the same number of columns"); return TSR_EARG; }
         nrows += items[i].arr.shape[0];
     }
-    double *dense = (double *)calloc((size_t)(nrows * n > 0 ? nrows * n : 1), sizeof(double));
+    double *dense = sp_dense(nrows, n);
     if (!dense) return TSR_ENOMEM;
     int64_t rowoff = 0;
     for (int64_t i = 0; i < k; i++) {
@@ -228,8 +230,119 @@ static int sp_emit_csr(tsr_result *res, const double *D, int64_t m, int64_t n)
     sp_shape(&res[3], m, n);
     return TSR_OK;
 }
+/* an integer argument (axis, offset, block size, grid size): truncated as int(); NaN or infinity reads as the
+   default and the value is clamped to +-2^40 (beyond any int32-indexed shape), so the callers' index arithmetic
+   (i + k, nr * nc) cannot overflow */
 static int64_t sp_int(const tsr_arg *a, int n, int idx, int64_t dflt)
-{ if (idx >= n || a[idx].kind != 1) return dflt; return (a[idx].flags & 1) ? a[idx].ival : (int64_t)a[idx].num; }
+{
+    if (idx >= n || a[idx].kind != 1) return dflt;
+    const int64_t v = fn_num_i64(&a[idx], dflt), lim = (int64_t)1 << 40;
+    return v < -lim ? -lim : v > lim ? lim : v;
+}
+
+/* a dimension argument (eye's m and n, spdiags' m and n, an entry of diags' shape): int() truncation, NaN and
+   infinity refused with Python's message, negative refused */
+static int sp_dim(const tsr_arg *a, const char *who, int64_t *out)
+{
+    int rc = fn_arg_i64(a, 0, INT64_MIN, INT64_MAX, who, out);
+    if (rc < 0) return rc;
+    if (*out < 0) { fn_set_error("'shape' elements cannot be negative (%s)", who); return TSR_EARG; }
+    return TSR_OK;
+}
+
+/* a diagonal offset read from a float64 array: integral (NumPy refuses a fractional or NaN offset) */
+static int sp_offset(double v, int64_t *out)
+{
+    if (v != v) { fn_set_error("cannot convert float NaN to integer"); return TSR_EARG; }
+    if (v != floor(v)) { fn_set_error("'numpy.float64' object cannot be interpreted as an integer"); return TSR_ETYPE; }
+    /* every offset beyond +-2^40 lies outside any int32-indexed matrix: clamp so later arithmetic stays defined */
+    *out = v < -1099511627776.0 ? -((int64_t)1 << 40) : v > 1099511627776.0 ? ((int64_t)1 << 40) : (int64_t)v;
+    return TSR_OK;
+}
+
+/* Value of diagonal p at (i, j) for the direct diagonal builder; 1 when that diagonal holds an entry there. */
+typedef int (*sp_diag_get)(const void *ctx, int64_t p, int64_t i, int64_t j, double *v);
+
+/* CSR (data, indices, indptr, shape in res[0..3]) of an m x n matrix whose entries lie on nd diagonals (offset
+   off[p] for diagonal p), built row by row without a dense m x n intermediate (eye(10**5) needed 80 GB, and the
+   m * n product overflowed int64 for large shapes). Diagonals with equal offsets combine in p order: summed (sum)
+   or the last one wins; zero results are dropped, exactly as the dense build did. */
+static int sp_diag_csr(tsr_result *res, int64_t m, int64_t n, int64_t nd, const int64_t *off, int sum,
+                       sp_diag_get get, const void *ctx)
+{
+    if (m > INT32_MAX || n > INT32_MAX) { fn_set_error("sparse: the shape is too large for int32 indices"); return TSR_ENOMEM; }
+    /* the diagonals that intersect the matrix, in ascending offset order (stable): columns ascend in a row */
+    int64_t *ord = (int64_t *)malloc((size_t)(nd > 0 ? nd : 1) * sizeof(int64_t));
+    if (!ord) return TSR_ENOMEM;
+    int64_t no = 0;
+    for (int64_t p = 0; p < nd; p++) {
+        if (off[p] <= -m || off[p] >= n) continue;
+        int64_t q = no++;
+        while (q > 0 && off[ord[q - 1]] > off[p]) { ord[q] = ord[q - 1]; q--; }
+        ord[q] = p;
+    }
+    double *data = NULL; int32_t *ind = NULL, *iptr = NULL;
+    int64_t nnz = 0;
+    for (int pass = 0; pass < 2; pass++) {
+        if (pass == 1) {
+            if (nnz > INT32_MAX) { free(ord); fn_set_error("sparse: too many stored entries for int32 indices"); return TSR_ENOMEM; }
+            int64_t dsh[1] = {nnz}, psh[1] = {m + 1};
+            data = (double *)fn_result_array(&res[0], TSR_F64, 1, dsh);
+            ind = data ? (int32_t *)fn_result_array(&res[1], TSR_I32, 1, dsh) : NULL;
+            iptr = ind ? (int32_t *)fn_result_array(&res[2], TSR_I32, 1, psh) : NULL;
+            if (!iptr) { free(ord); return TSR_ENOMEM; }
+            iptr[0] = 0;
+            nnz = 0;
+        }
+        for (int64_t i = 0; i < m; i++) {
+            for (int64_t q = 0; q < no; ) {
+                const int64_t k = off[ord[q]], j = i + k;
+                int64_t r = q;
+                while (r < no && off[ord[r]] == k) r++;
+                if (j >= 0 && j < n) {
+                    double acc = 0.0, v;
+                    int have = 0;
+                    for (int64_t t = q; t < r; t++)
+                        if (get(ctx, ord[t], i, j, &v)) { acc = sum ? acc + v : v; have = 1; }
+                    if (have && acc != 0.0) {
+                        if (pass == 1) { data[nnz] = acc; ind[nnz] = (int32_t)j; }
+                        nnz++;
+                    }
+                }
+                q = r;
+            }
+            if (pass == 1) iptr[i + 1] = (int32_t)nnz;
+        }
+    }
+    free(ord);
+    sp_shape(&res[3], m, n);
+    return TSR_OK;
+}
+
+static int sp_get_one(const void *ctx, int64_t p, int64_t i, int64_t j, double *v) { (void)ctx; (void)p; (void)i; (void)j; *v = 1.0; return 1; }
+
+/* a dense m x n scratch matrix (zeroed); NULL with an error when the shape cannot be indexed with int32 or is
+   implausibly large (the product is checked before it is formed) */
+static double *sp_dense(int64_t m, int64_t n)
+{
+    if (m < 0 || n < 0 || m > INT32_MAX || n > INT32_MAX || (n > 0 && m > ((int64_t)1 << 36) / n)) {
+        fn_set_error("sparse: the shape is too large");
+        return NULL;
+    }
+    const size_t cnt = (size_t)(m * n);
+    return (double *)calloc(cnt ? cnt : 1, sizeof(double));
+}
+
+/* an offset argument (eye's k, diags' scalar offsets): int() truncation, NaN / infinity refused, clamped to
+   +-2^40 (every larger offset lies outside any int32-indexed matrix) */
+static int sp_koff(const tsr_arg *a, int64_t *out)
+{
+    int rc = fn_arg_i64(a, 0, INT64_MIN, INT64_MAX, "k", out);
+    if (rc < 0) return rc;
+    const int64_t lim = (int64_t)1 << 40;
+    *out = *out < -lim ? -lim : *out > lim ? lim : *out;
+    return TSR_OK;
+}
 
 /* eye(m, n=None, k=0): sparse identity-like matrix with ones on diagonal k, as CSR. */
 static int r_lil_array(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -343,22 +456,27 @@ static int r_bsr_array(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
 static int r_sp_eye(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    int64_t m = sp_int(a, nargs, 0, 0), n = sp_int(a, nargs, 1, -1), k = sp_int(a, nargs, 2, 0);
-    if (m < 0) { fn_set_error("sparse.eye: m must be >= 0"); return TSR_EARG; }
-    if (n < 0) n = m;
-    double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
-    if (!D) return TSR_ENOMEM;
-    for (int64_t i = 0; i < m; i++) { int64_t j = i + k; if (j >= 0 && j < n) D[i * n + j] = 1.0; }
-    int rc = sp_emit_csr(res, D, m, n); free(D); return rc;
+    int64_t m = 0, n, k = 0;
+    int rc;
+    if (nargs > 2 && a[2].kind == 1 && (rc = sp_koff(&a[2], &k)) < 0) return rc;
+    if (nargs > 0 && a[0].kind == 1) {
+        if ((rc = fn_arg_i64(&a[0], 0, INT64_MIN, INT64_MAX, "m", &m)) < 0) return rc;
+        if (m < 0) { fn_set_error("sparse.eye: m must be >= 0"); return TSR_EARG; }
+    }
+    n = m;
+    if (nargs > 1 && a[1].kind == 1) {
+        if ((rc = fn_arg_i64(&a[1], 0, INT64_MIN, INT64_MAX, "n", &n)) < 0) return rc;
+        if (n < 0) n = m;                                 /* negative n: the old "None" sentinel */
+    }
+    return sp_diag_csr(res, m, n, 1, &k, 1, sp_get_one, NULL);
 }
 static int r_sp_identity(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
 {
-    (void)ctx; (void)nres; int64_t n = sp_int(a, nargs, 0, 0);
+    (void)ctx; (void)nres; int64_t n = 0;
+    if (nargs > 0 && a[0].kind == 1) { int rc = fn_arg_i64(&a[0], 0, INT64_MIN, INT64_MAX, "n", &n); if (rc < 0) return rc; }
     if (n < 0) { fn_set_error("sparse.identity: n must be >= 0"); return TSR_EARG; }
-    double *D = (double *)calloc((size_t)(n * n > 0 ? n * n : 1), sizeof(double));
-    if (!D) return TSR_ENOMEM;
-    for (int64_t i = 0; i < n; i++) D[i * n + i] = 1.0;
-    int rc = sp_emit_csr(res, D, n, n); free(D); return rc;
+    const int64_t k = 0;
+    return sp_diag_csr(res, n, n, 1, &k, 1, sp_get_one, NULL);
 }
 /* kron(A, B): Kronecker product of two dense matrices, as CSR. */
 static int r_sp_kron(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
@@ -369,7 +487,7 @@ static int r_sp_kron(const void *ctx, const tsr_arg *a, int nargs, tsr_result *r
     int64_t la, lb; double *A = fn_arg_doubles(&a[0], &la), *B = A ? fn_arg_doubles(&a[1], &lb) : NULL;
     int rc = B ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {
-        const int64_t M = ma * mb, N = na * nb; double *D = (double *)calloc((size_t)(M * N > 0 ? M * N : 1), sizeof(double));
+        const int64_t M = ma * mb, N = na * nb; double *D = sp_dense(M, N);
         if (!D) rc = TSR_ENOMEM;
         else { for (int64_t i = 0; i < ma; i++) for (int64_t j = 0; j < na; j++) { double av = A[i * na + j]; if (av != 0.0) for (int64_t p = 0; p < mb; p++) for (int64_t q = 0; q < nb; q++) D[(i * mb + p) * N + (j * nb + q)] = av * B[p * nb + q]; }
             rc = sp_emit_csr(res, D, M, N); free(D); }
@@ -387,7 +505,7 @@ static int r_sp_kronsum(const void *ctx, const tsr_arg *a, int nargs, tsr_result
     int64_t la, lb; double *A = fn_arg_doubles(&a[0], &la), *B = A ? fn_arg_doubles(&a[1], &lb) : NULL;
     int rc = B ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {
-        const int64_t N = aa * bb; double *D = (double *)calloc((size_t)(N * N > 0 ? N * N : 1), sizeof(double));
+        const int64_t N = aa * bb; double *D = sp_dense(N, N);
         if (!D) rc = TSR_ENOMEM;
         else { for (int64_t blk = 0; blk < bb; blk++) for (int64_t u = 0; u < aa; u++) for (int64_t v = 0; v < aa; v++) D[(blk * aa + u) * N + (blk * aa + v)] += A[u * aa + v];
             for (int64_t p = 0; p < bb; p++) for (int64_t qq = 0; qq < bb; qq++) { double bv = B[p * bb + qq]; if (bv != 0.0) for (int64_t u = 0; u < aa; u++) D[(p * aa + u) * N + (qq * aa + u)] += bv; }
@@ -403,7 +521,7 @@ static int sp_tri(const tsr_arg *a, int nargs, tsr_result *res, int lower)
     const int64_t m = a[0].arr.shape[0], n = a[0].arr.shape[1], k = sp_int(a, nargs, 1, 0);
     int64_t la; double *A = fn_arg_doubles(&a[0], &la);
     int rc = A ? TSR_OK : TSR_ENOMEM;
-    if (rc == TSR_OK) { double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
+    if (rc == TSR_OK) { double *D = sp_dense(m, n);
         if (!D) rc = TSR_ENOMEM;
         else { for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) { int keep = lower ? (j <= i + k) : (j >= i + k); if (keep) D[i * n + j] = A[i * n + j]; }
             rc = sp_emit_csr(res, D, m, n); free(D); } }
@@ -433,22 +551,49 @@ static int r_sp_find(const void *ctx, const tsr_arg *a, int nargs, tsr_result *r
     return rc;
 }
 
+/* spdiags: diagonal p takes data[p, j] at column j (j < L) */
+typedef struct { const double *data; int64_t L; } spd_ctx;
+static int spd_get(const void *vc, int64_t p, int64_t i, int64_t j, double *v)
+{
+    const spd_ctx *c = (const spd_ctx *)vc; (void)i;
+    if (j >= c->L) return 0;
+    *v = c->data[p * c->L + j];
+    return 1;
+}
+/* diags: entry t of diagonal p (offset k) sits at row t + max(0, -k) */
+typedef struct { double *const *d; const int64_t *len, *off; } dg_ctx;
+static int dg_get(const void *vc, int64_t p, int64_t i, int64_t j, double *v)
+{
+    const dg_ctx *c = (const dg_ctx *)vc; (void)j;
+    const int64_t t = i - (c->off[p] < 0 ? -c->off[p] : 0);
+    if (t < 0 || t >= c->len[p]) return 0;
+    *v = c->d[p][t];
+    return 1;
+}
+
 /* spdiags(data, diags, m, n): set diagonal diags[p] of an m-by-n matrix from data[p], as CSR. */
 static int r_sp_spdiags(const void *ctx, const tsr_arg *a, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
     if (a[0].kind != 3 || a[0].arr.ndim != 2 || a[1].kind != 3 || a[1].arr.ndim != 1) { fn_set_error("sparse.spdiags: data 2-D, diags 1-D"); return TSR_EARG; }
-    const int64_t nd = a[0].arr.shape[0], L = a[0].arr.shape[1], m = sp_int(a, nargs, 2, 0), n = sp_int(a, nargs, 3, 0);
-    int64_t ld, lo; double *data = fn_arg_doubles(&a[0], &ld), *offs = data ? fn_arg_doubles(&a[1], &lo) : NULL;
-    int rc = offs ? TSR_OK : TSR_ENOMEM;
-    if (rc == TSR_OK) {
-        double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
-        if (!D) rc = TSR_ENOMEM;
-        else { for (int64_t p = 0; p < nd; p++) { int64_t k = (int64_t)offs[p];
-                for (int64_t i = 0; i < m; i++) { int64_t j = i + k; if (j >= 0 && j < n && j < L) D[i * n + j] = data[p * L + j]; } }
-            rc = emit_csr(res, D, m, n); free(D); }
+    const int64_t nd = a[0].arr.shape[0], L = a[0].arr.shape[1];
+    int64_t m = 0, n = 0;
+    int rc;
+    if (nargs > 2 && a[2].kind == 1 && (rc = sp_dim(&a[2], "m", &m)) < 0) return rc;
+    if (nargs > 3 && a[3].kind == 1 && (rc = sp_dim(&a[3], "n", &n)) < 0) return rc;
+    if (a[1].arr.shape[0] != nd) {                        /* offs[p] was read for every data row */
+        fn_set_error("number of diagonals (%lld) does not match the number of offsets (%lld)", (long long)nd, (long long)a[1].arr.shape[0]);
+        return TSR_EARG;
     }
-    fn_free_doubles(data, ld); fn_free_doubles(offs, lo);
+    int64_t ld, lo; double *data = fn_arg_doubles(&a[0], &ld), *offs = data ? fn_arg_doubles(&a[1], &lo) : NULL;
+    int64_t *ko = offs ? (int64_t *)malloc((size_t)(nd > 0 ? nd : 1) * sizeof(int64_t)) : NULL;
+    rc = ko ? TSR_OK : TSR_ENOMEM;
+    for (int64_t p = 0; p < nd && rc == TSR_OK; p++) rc = sp_offset(offs[p], &ko[p]);
+    if (rc == TSR_OK) {
+        const spd_ctx c = { data, L };
+        rc = sp_diag_csr(res, m, n, nd, ko, 0, spd_get, &c);   /* spdiags: a repeated offset overwrites */
+    }
+    free(ko); fn_free_doubles(data, ld); fn_free_doubles(offs, lo);
     return rc;
 }
 /* diags(diagonals, offsets=0, shape=None): build an m-by-n matrix placing diagonals[p] on diagonal offsets[p]
@@ -460,27 +605,52 @@ static int r_sp_diags(const void *ctx, const tsr_arg *a, int nargs, tsr_result *
     if (a[0].kind == 5) { items = a[0].items; nd = a[0].count; }
     else if (a[0].kind == 3 && a[0].arr.ndim == 1) { items = &a[0]; nd = 1; }
     else { fn_set_error("sparse.diags: diagonals must be a sequence of 1-D arrays"); return TSR_EARG; }
-    int64_t *offs = (int64_t *)malloc((size_t)(nd > 0 ? nd : 1) * sizeof(int64_t));
-    if (!offs) return TSR_ENOMEM;
-    if (nargs > 1 && a[1].kind == 3) { int64_t lo; double *od = fn_arg_doubles(&a[1], &lo); if (!od) { free(offs); return TSR_ENOMEM; } for (int64_t p = 0; p < nd; p++) offs[p] = (int64_t)od[p]; fn_free_doubles(od, lo); }
-    else { int64_t o = (nargs > 1) ? sp_int(a, nargs, 1, 0) : 0; for (int64_t p = 0; p < nd; p++) offs[p] = o; }
+    for (int64_t p = 0; p < nd; p++)                    /* each diagonal's length is its shape[0] */
+        if (items[p].kind != 3 || items[p].arr.ndim != 1) { fn_set_error("sparse.diags: each diagonal must be a 1-D array"); return TSR_EARG; }
+    int64_t *offs = (int64_t *)malloc((size_t)(nd > 0 ? nd : 1) * 3 * sizeof(int64_t));
+    double **dv = (double **)calloc((size_t)(nd > 0 ? nd : 1), sizeof(double *));
+    if (!offs || !dv) { free(offs); free(dv); return TSR_ENOMEM; }
+    int64_t *len = offs + (nd > 0 ? nd : 1), *got = len + (nd > 0 ? nd : 1);
+    int rc = TSR_OK;
+    if (nargs > 1 && a[1].kind == 3) {
+        int64_t lo; double *od = fn_arg_doubles(&a[1], &lo);
+        if (!od) rc = TSR_ENOMEM;
+        else if (lo != nd) { fn_set_error("Different number of diagonals and offsets."); rc = TSR_EARG; }   /* od[p] was read past lo */
+        for (int64_t p = 0; p < nd && rc == TSR_OK; p++) rc = sp_offset(od[p], &offs[p]);
+        fn_free_doubles(od, lo);
+    } else {
+        int64_t o = 0;
+        if (nargs > 1 && a[1].kind == 1) rc = sp_koff(&a[1], &o);
+        for (int64_t p = 0; p < nd; p++) offs[p] = o;
+    }
     /* shape: explicit (m, n) as a 2-int array/sequence, else inferred square. */
     int64_t m = -1, n = -1;
-    if (nargs > 2 && a[2].kind == 3 && a[2].arr.ndim == 1) { int64_t ls; double *sd = fn_arg_doubles(&a[2], &ls); if (sd && ls >= 2) { m = (int64_t)sd[0]; n = (int64_t)sd[1]; } fn_free_doubles(sd, ls); }
-    else if (nargs > 2 && a[2].kind == 5 && a[2].count >= 2) { m = (int64_t)(a[2].items[0].flags & 1 ? a[2].items[0].ival : a[2].items[0].num); n = (int64_t)(a[2].items[1].flags & 1 ? a[2].items[1].ival : a[2].items[1].num); }
-    if (m < 0) { int64_t mx = 0; for (int64_t p = 0; p < nd; p++) { int64_t L = items[p].arr.shape[0], k = offs[p] < 0 ? -offs[p] : offs[p]; if (L + k > mx) mx = L + k; } m = n = mx; }
-    double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
-    if (!D) { free(offs); return TSR_ENOMEM; }
-    int rc = TSR_OK;
-    for (int64_t p = 0; p < nd && rc == TSR_OK; p++) {
-        int64_t L, k = offs[p]; double *d = fn_arg_doubles(&items[p], &L);
-        if (!d) { rc = TSR_ENOMEM; break; }
-        int64_t r0 = k < 0 ? -k : 0, c0 = k > 0 ? k : 0;
-        for (int64_t t = 0; t < L; t++) { int64_t r = t + r0, c = t + c0; if (r < m && c < n) D[r * n + c] += d[t]; }
-        fn_free_doubles(d, L);
+    if (rc == TSR_OK && nargs > 2 && a[2].kind == 3 && a[2].arr.ndim == 1) {
+        int64_t ls; double *sd = fn_arg_doubles(&a[2], &ls);
+        if (!sd) rc = TSR_ENOMEM;
+        else if (ls >= 2) {
+            tsr_arg e0, e1;
+            memset(&e0, 0, sizeof e0); memset(&e1, 0, sizeof e1);
+            e0.kind = e1.kind = 1; e0.num = sd[0]; e1.num = sd[1];
+            if ((rc = sp_dim(&e0, "shape", &m)) == TSR_OK) rc = sp_dim(&e1, "shape", &n);
+        }
+        fn_free_doubles(sd, ls);
+    } else if (rc == TSR_OK && nargs > 2 && a[2].kind == 5 && a[2].count >= 2) {
+        if ((rc = sp_dim(&a[2].items[0], "shape", &m)) == TSR_OK) rc = sp_dim(&a[2].items[1], "shape", &n);
     }
-    if (rc == TSR_OK) rc = emit_csr(res, D, m, n);
-    free(D); free(offs);
+    for (int64_t p = 0; p < nd; p++) { len[p] = items[p].arr.shape[0]; got[p] = 0; }
+    if (rc == TSR_OK && m < 0) {                          /* offsets are clamped to +-2^40: no overflow */
+        int64_t mx = 0;
+        for (int64_t p = 0; p < nd; p++) { const int64_t k = offs[p] < 0 ? -offs[p] : offs[p]; if (len[p] + k > mx) mx = len[p] + k; }
+        m = n = mx;
+    }
+    for (int64_t p = 0; p < nd && rc == TSR_OK; p++) { dv[p] = fn_arg_doubles(&items[p], &got[p]); if (!dv[p]) rc = TSR_ENOMEM; }
+    if (rc == TSR_OK) {
+        const dg_ctx c = { dv, len, offs };
+        rc = sp_diag_csr(res, m, n, nd, offs, 1, dg_get, &c);   /* duplicate offsets sum */
+    }
+    for (int64_t p = 0; p < nd; p++) if (dv[p]) fn_free_doubles(dv[p], got[p]);
+    free(dv); free(offs);
     return rc;
 }
 
@@ -493,7 +663,7 @@ static int r_sp_block_diag(const void *ctx, const tsr_arg *args, int nargs, tsr_
     if (k < 1) { fn_set_error("sparse.block_diag: at least one block is required"); return TSR_EARG; }
     int64_t R = 0, C = 0;
     for (int64_t i = 0; i < k; i++) { if (items[i].kind != 3 || items[i].arr.ndim != 2) { fn_set_error("sparse.block_diag: every block must be a 2-D array"); return TSR_EARG; } R += items[i].arr.shape[0]; C += items[i].arr.shape[1]; }
-    double *D = (double *)calloc((size_t)(R * C > 0 ? R * C : 1), sizeof(double));
+    double *D = sp_dense(R, C);
     if (!D) return TSR_ENOMEM;
     int64_t roff = 0, coff = 0; int rc = TSR_OK;
     for (int64_t i = 0; i < k && rc == TSR_OK; i++) {
@@ -520,7 +690,7 @@ static int r_sp_bmat(const void *ctx, const tsr_arg *a, int nargs, tsr_result *r
     if (a[0].kind == 5) { items = a[0].items; k = a[0].count; }
     else { fn_set_error("sparse.bmat: blocks must be a sequence"); return TSR_EARG; }
     const int64_t nr = sp_int(a, nargs, 1, 0), nc = sp_int(a, nargs, 2, 0);
-    if (nr < 1 || nc < 1 || k != nr * nc) { fn_set_error("sparse.bmat: blocks length must equal nrows*ncols"); return TSR_EARG; }
+    if (nr < 1 || nc < 1 || nr > k || nc > k || k != nr * nc) { fn_set_error("sparse.bmat: blocks length must equal nrows*ncols"); return TSR_EARG; }
     int64_t *rh = (int64_t *)malloc((size_t)nr * sizeof(int64_t));
     int64_t *cw = (int64_t *)malloc((size_t)nc * sizeof(int64_t));
     if (!rh || !cw) { free(rh); free(cw); return TSR_ENOMEM; }
@@ -541,7 +711,7 @@ static int r_sp_bmat(const void *ctx, const tsr_arg *a, int nargs, tsr_result *r
     if (!roff || !coff) { free(rh); free(cw); free(roff); free(coff); return TSR_ENOMEM; }
     for (int64_t i = 0; i < nr; i++) { roff[i] = R; R += rh[i]; }
     for (int64_t j = 0; j < nc; j++) { coff[j] = C; C += cw[j]; }
-    double *Dn = (double *)calloc((size_t)(R * C > 0 ? R * C : 1), sizeof(double));
+    double *Dn = sp_dense(R, C);
     if (!Dn) { free(rh); free(cw); free(roff); free(coff); return TSR_ENOMEM; }
     int rc = TSR_OK;
     for (int64_t i = 0; i < nr && rc == TSR_OK; i++) for (int64_t j = 0; j < nc && rc == TSR_OK; j++) {
@@ -569,7 +739,7 @@ static int sp_transpose_or_copy(const tsr_arg *a, tsr_result *res, int transpose
     if (!A) return TSR_ENOMEM;
     int rc;
     if (transpose) {
-        double *D = (double *)calloc((size_t)(m * n > 0 ? m * n : 1), sizeof(double));
+        double *D = sp_dense(m, n);
         if (!D) { fn_free_doubles(A, la); return TSR_ENOMEM; }
         for (int64_t i = 0; i < m; i++) for (int64_t j = 0; j < n; j++) D[j * m + i] = A[i * n + j];
         rc = emit_csr(res, D, n, m);
@@ -587,11 +757,11 @@ static int r_sp_permute_dims(const void *ctx, const tsr_arg *a, int nargs, tsr_r
     if (nargs > 1 && a[1].kind == 3 && a[1].arr.ndim == 1) {
         int64_t lo; double *ax = fn_arg_doubles(&a[1], &lo);
         if (!ax) return TSR_ENOMEM;
-        if (lo >= 2 && (int64_t)ax[0] == 0 && (int64_t)ax[1] == 1) transpose = 0;   /* (0,1) identity */
+        if (lo >= 2 && ax[0] == 0.0 && ax[1] == 1.0) transpose = 0;   /* (0,1) identity (compared as doubles: no cast) */
         fn_free_doubles(ax, lo);
     } else if (nargs > 1 && a[1].kind == 5 && a[1].count >= 2) {
-        int64_t a0 = (a[1].items[0].flags & 1) ? a[1].items[0].ival : (int64_t)a[1].items[0].num;
-        int64_t a1 = (a[1].items[1].flags & 1) ? a[1].items[1].ival : (int64_t)a[1].items[1].num;
+        int64_t a0 = fn_num_i64(&a[1].items[0], -1);
+        int64_t a1 = fn_num_i64(&a[1].items[1], -1);
         if (a0 == 0 && a1 == 1) transpose = 0;
     }
     return sp_transpose_or_copy(a, res, transpose);
