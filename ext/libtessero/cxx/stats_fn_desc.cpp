@@ -834,7 +834,7 @@ int emit(tsr_result *r, const Lanes &L, const double *vals, bool keepdims, bool 
         for (int i = 0; i < nd; i++) shp[i] = L.oshape[i];
     }
     if (nd == 0) {
-        if (as_int) fn_result_int(r, (int64_t)vals[0]);
+        if (as_int) fn_result_int(r, fn_dbl_i64(vals[0], INT64_MIN));   /* NaN: the x86 result, no UB */
         else fn_result_num(r, vals[0]);
         return TSR_OK;
     }
@@ -842,7 +842,7 @@ int emit(tsr_result *r, const Lanes &L, const double *vals, bool keepdims, bool 
     if (as_int) {
         int64_t *o = (int64_t *)fn_result_array(r, TSR_I64, nd, shp);
         if (!o) return TSR_ENOMEM;
-        for (int64_t i = 0; i < cnt; i++) o[i] = (int64_t)vals[i];
+        for (int64_t i = 0; i < cnt; i++) o[i] = fn_dbl_i64(vals[i], INT64_MIN);
     } else {
         double *o = (double *)fn_result_array(r, TSR_F64, nd, shp);
         if (!o) return TSR_ENOMEM;
@@ -859,7 +859,7 @@ int emit_arr(tsr_result *r, int nd, const int64_t *shp, const double *vals, bool
     if (as_int) {
         int64_t *o = (int64_t *)fn_result_array(r, TSR_I64, nd, shp);
         if (!o) return TSR_ENOMEM;
-        for (int64_t i = 0; i < cnt; i++) o[i] = (int64_t)vals[i];
+        for (int64_t i = 0; i < cnt; i++) o[i] = fn_dbl_i64(vals[i], INT64_MIN);
     } else {
         double *o = (double *)fn_result_array(r, TSR_F64, nd, shp);
         if (!o) return TSR_ENOMEM;
@@ -1504,6 +1504,10 @@ int r_freq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int
         const double delta = le - fe, step = delta / (double)nb;
         for (int64_t i = 0; i <= nb; i++) edges[i] = (step == 0 ? ((double)i / (double)nb) * delta : (double)i * step) + fe;
         edges[nb] = le;
+        /* np.histogram's check: a spread that overflows (le - fe = inf) gives NaN edges, and the bin index
+           of every sample was then an undefined float->int cast */
+        for (int64_t i = 0; i < nb; i++)
+            if (!(edges[i] < edges[i + 1])) { fn_set_error("Too many bins for data range. Cannot create %lld finite-sized bins.", (long long)nb); return TSR_EARG; }
     }
     vector<double> hist((size_t)nb, 0.0);
     {
@@ -1539,7 +1543,7 @@ int r_freq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int
     }
     int rc = emit_arr(&res[0], 1, &nb, hist.data(), false);
     if (rc != TSR_OK) return rc;
-    if (lim_int) fn_result_int(&res[1], (int64_t)lower);
+    if (lim_int) fn_result_int(&res[1], fn_dbl_i64(lower, INT64_MIN));   /* an int64 limit near 2^63 rounds up */
     else fn_result_num(&res[1], lower);
     fn_result_num(&res[2], binsize);
     fn_result_int(&res[3], extra);
@@ -1610,7 +1614,8 @@ int r_lmoment(const void *, const tsr_arg *args, int nargs, tsr_result *res, int
        MemoryError, never a double -> int overflow here */
     double nmax = 0;
     for (double v : order) nmax = std::max(nmax, v);
-    if (nmax > 100000000.0) { fn_set_error("Unable to allocate memory for %.0f L-moments", nmax); return TSR_ENOMEM; }
+    /* SciPy builds an nmax x nmax weight matrix: past 65536 (32 GiB) that is its MemoryError */
+    if (nmax > 65536.0) { fn_set_error("Unable to allocate memory for %.0f L-moments", nmax); return TSR_ENOMEM; }
     int nm = (int)nmax;
     vector<double> out((size_t)(no * nl + 1));
     for (int64_t o = 0; o < nl; o++) {
@@ -1628,7 +1633,10 @@ int r_lmoment(const void *, const tsr_arg *args, int nargs, tsr_result *res, int
             for (int64_t j = 0; j < n; j++) bj[j] = sc::binom((double)j, (double)rr);
             bk[rr] = blas_dot(bj.data(), x, n) / sc::binom(N - 1, (double)rr) / N;
         }
-        for (int rr = 0; rr < nm; rr++) {
+        /* lm[rr] for rr >= n is NaN below whatever it computes: skip it (the quadratic loop made a large order
+           with a short sample run for minutes) */
+        const int nmn = (int)std::min<int64_t>(n, nm);
+        for (int rr = 0; rr < nmn; rr++) {
             vector<double> prk(nm);
             for (int k = 0; k < nm; k++)
                 prk[k] = std::pow(-1.0, (double)(rr - k)) * sc::binom((double)rr, (double)k) * sc::binom((double)(rr + k), (double)k);
@@ -2073,8 +2081,13 @@ static int r_ecdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 {
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3) { fn_set_error("ecdf: sample must be an array"); return TSR_EARG; }
+    if (args[0].arr.ndim != 1) { fn_set_error("`sample` must be a one-dimensional sequence."); return TSR_EARG; }   /* scipy */
     int64_t ls; double *s = fn_arg_doubles(&args[0], &ls);
     if (!s) return TSR_ENOMEM;
+    /* a NaN never equals itself, so the tie loop below never advanced past it (and std::sort needs a strict weak
+       order): refuse it as SciPy does */
+    for (int64_t i = 0; i < ls; i++)
+        if (std::isnan(s[i])) { fn_free_doubles(s, ls); fn_set_error("`sample` must not contain nan."); return TSR_EARG; }
     std::vector<double> v(s, s + ls); std::sort(v.begin(), v.end());
     std::vector<double> q, p;
     for (int64_t i = 0; i < ls;) { double val = v[i]; int64_t j = i; while (j < ls && v[j] == val) j++; q.push_back(val); p.push_back((double)j / (double)ls); i = j; }
@@ -2091,6 +2104,7 @@ static int r_ecdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 /* Filliben's order-statistic medians mapped through the normal quantile (for probplot / normplot). */
 static void stat_osm(double *a, int64_t n)
 {
+    if (n <= 0) return;                                   /* empty sample: nothing to fill (a may be null) */
     if (n == 1) { a[0] = sc::ndtri(0.5); return; }
     double last = std::pow(0.5, 1.0 / (double)n);
     a[n - 1] = sc::ndtri(last);
@@ -2146,6 +2160,7 @@ static int r_probplot(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int rc = orr ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {
         double slope, intercept, r = stat_linr(osm.data(), osr.data(), n, &slope, &intercept);
+        if (n == 0) r = 0.0;                              /* scipy: (nan, nan, 0.0) for an empty sample */
         for (int64_t i = 0; i < n; i++) { om[i] = osm[i]; orr[i] = osr[i]; }
         fn_result_num(&res[2], slope); fn_result_num(&res[3], intercept); fn_result_num(&res[4], r);
     }
@@ -2157,10 +2172,20 @@ static int stat_normplot(const tsr_arg *args, int nargs, tsr_result *res, int ye
 {
     if (args[0].kind != 3) { fn_set_error("normplot: x must be an array"); return TSR_EARG; }
     const double la = args[1].num, lb = args[2].num;
-    const int64_t N = (nargs > 3 && args[3].kind == 1) ? ((args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num) : 80;
+    int64_t N = 80;
+    if (nargs > 3 && args[3].kind == 1) {
+        int rc = fn_arg_i64(&args[3], 1, INT64_MIN, INT64_MAX, "N", &N);
+        if (rc < 0) return rc;
+        if (N < 0) { fn_set_error("Number of samples, %lld, must be non-negative.", (long long)N); return TSR_EARG; }
+    }
     int64_t lx; double *x = fn_arg_doubles(&args[0], &lx);
     if (!x) return TSR_ENOMEM;
     const int64_t n = lx;
+    if (n > 0 && !(lb > la)) { fn_free_doubles(x, lx); fn_set_error("`lb` has to be larger than `la`."); return TSR_EARG; }
+    if (n > 0 && !yeo)
+        for (int64_t i = 0; i < n; i++)
+            if (x[i] <= 0.0) { fn_free_doubles(x, lx); fn_set_error("Data must be positive."); return TSR_EARG; }
+    if (n == 0) N = 0;                                    /* scipy returns the empty sample: no lambdas */
     std::vector<double> osm(n), y(n);
     stat_osm(osm.data(), n);
     int64_t sh[1] = {N};
@@ -2191,6 +2216,8 @@ static int r_multivariate_normal(const void *ctx, const tsr_arg *args, int nargs
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multivariate_normal: mean 1-D, cov 2-D, x (m,d)"); return TSR_EARG; }
     const int64_t d = args[0].arr.shape[0], m = args[2].arr.shape[0];
+    /* the dimensions must agree: mean (d,), cov (d, d), x (m, d) -- they were read with d unchecked */
+    if (args[0].arr.ndim != 1 || args[1].arr.shape[0] != d || args[1].arr.shape[1] != d || args[2].arr.shape[1] != d) { fn_set_error("multivariate_normal: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lm, lc, lx; double *mean = fn_arg_doubles(&args[0], &lm), *C = mean ? fn_arg_doubles(&args[1], &lc) : nullptr, *X = C ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(mean, lm); fn_free_doubles(C, lc); return TSR_ENOMEM; }
     std::vector<double> L(d * d, 0.0), z(d);
@@ -2220,6 +2247,7 @@ static int r_dirichlet(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2) { fn_set_error("dirichlet: alpha 1-D, x (m,k)"); return TSR_EARG; }
     const int64_t k = args[0].arr.shape[0], m = args[1].arr.shape[0];
+    if (args[0].arr.ndim != 1 || args[1].arr.shape[1] != k) { fn_set_error("dirichlet: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t la, lx; double *al = fn_arg_doubles(&args[0], &la), *X = al ? fn_arg_doubles(&args[1], &lx) : nullptr;
     if (!X) { fn_free_doubles(al, la); return TSR_ENOMEM; }
     double asum = 0.0, lg = 0.0; for (int64_t i = 0; i < k; i++) { asum += al[i]; lg += std::lgamma(al[i]); }
@@ -2236,6 +2264,7 @@ static int r_multinomial(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 1 || args[1].kind != 3 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multinomial: n int, p 1-D, x (m,k)"); return TSR_EARG; }
     const double nn = args[0].num; const int64_t k = args[1].arr.shape[0], m = args[2].arr.shape[0];
+    if (args[1].arr.ndim != 1 || args[2].arr.shape[1] != k) { fn_set_error("multinomial: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lp, lx; double *p = fn_arg_doubles(&args[1], &lp), *X = p ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(p, lp); return TSR_ENOMEM; }
     int64_t sh[1] = {m}; double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
@@ -2252,6 +2281,7 @@ static int r_dirichlet_multinomial(const void *ctx, const tsr_arg *args, int nar
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("dirichlet_multinomial: alpha 1-D, n int, x (m,k)"); return TSR_EARG; }
     const int64_t k = args[0].arr.shape[0], m = args[2].arr.shape[0]; const double nn = args[1].num;
+    if (args[0].arr.ndim != 1 || args[2].arr.shape[1] != k) { fn_set_error("dirichlet_multinomial: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t la, lx; double *al = fn_arg_doubles(&args[0], &la), *X = al ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(al, la); return TSR_ENOMEM; }
     double A = 0.0; for (int64_t i = 0; i < k; i++) A += al[i];
@@ -2270,6 +2300,7 @@ static int r_multivariate_hypergeom(const void *ctx, const tsr_arg *args, int na
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("multivariate_hypergeom: m 1-D, n int, x (mm,k)"); return TSR_EARG; }
     const int64_t k = args[0].arr.shape[0], mm = args[2].arr.shape[0]; const double n = args[1].num;
+    if (args[0].arr.ndim != 1 || args[2].arr.shape[1] != k) { fn_set_error("multivariate_hypergeom: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lmc, lx; double *mc = fn_arg_doubles(&args[0], &lmc), *X = mc ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(mc, lmc); return TSR_ENOMEM; }
     double M = 0.0; for (int64_t i = 0; i < k; i++) M += mc[i];
@@ -2296,6 +2327,7 @@ static int r_multivariate_t(const void *ctx, const tsr_arg *args, int nargs, tsr
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 1 || args[3].kind != 3 || args[3].arr.ndim != 2) { fn_set_error("multivariate_t: loc 1-D, shape 2-D, df scalar, x (m,d)"); return TSR_EARG; }
     const int64_t d = args[0].arr.shape[0], m = args[3].arr.shape[0]; const double df = args[2].num;
+    if (args[0].arr.ndim != 1 || args[1].arr.shape[0] != d || args[1].arr.shape[1] != d || args[3].arr.shape[1] != d) { fn_set_error("multivariate_t: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t ll, ls, lx; double *loc = fn_arg_doubles(&args[0], &ll), *S = loc ? fn_arg_doubles(&args[1], &ls) : nullptr, *X = S ? fn_arg_doubles(&args[3], &lx) : nullptr;
     if (!X) { fn_free_doubles(loc, ll); fn_free_doubles(S, ls); return TSR_ENOMEM; }
     std::vector<double> L(d * d, 0.0), z(d);
@@ -2321,6 +2353,7 @@ static int r_vonmises_fisher(const void *ctx, const tsr_arg *args, int nargs, ts
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 1 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("vonmises_fisher: mu 1-D, kappa scalar, x (m,d)"); return TSR_EARG; }
     const int64_t d = args[0].arr.shape[0], m = args[2].arr.shape[0]; const double kappa = args[1].num;
+    if (args[0].arr.ndim != 1 || args[2].arr.shape[1] != d) { fn_set_error("vonmises_fisher: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lm, lx; double *mu = fn_arg_doubles(&args[0], &lm), *X = mu ? fn_arg_doubles(&args[2], &lx) : nullptr;
     if (!X) { fn_free_doubles(mu, lm); return TSR_ENOMEM; }
     const double halfd = (double)d / 2.0;
@@ -2354,6 +2387,8 @@ static int r_matrix_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_
     (void)ctx; (void)nargs; (void)nres;
     for (int i = 0; i < 4; i++) if (args[i].kind != 3 || args[i].arr.ndim != 2) { fn_set_error("matrix_normal: M, U, V, X must be 2-D arrays"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], p = args[0].arr.shape[1];
+    if (args[1].arr.shape[0] != n || args[1].arr.shape[1] != n || args[2].arr.shape[0] != p || args[2].arr.shape[1] != p ||
+        args[3].arr.shape[0] != n || args[3].arr.shape[1] != p) { fn_set_error("matrix_normal: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lM, lU, lV, lX; double *M = fn_arg_doubles(&args[0], &lM), *U = M ? fn_arg_doubles(&args[1], &lU) : nullptr,
         *V = U ? fn_arg_doubles(&args[2], &lV) : nullptr, *X = V ? fn_arg_doubles(&args[3], &lX) : nullptr;
     int rc = X ? TSR_OK : TSR_ENOMEM;
@@ -2380,6 +2415,7 @@ static int stat_wishart(const tsr_arg *args, tsr_result *res, int inv)
 {
     if (args[0].kind != 1 || args[1].kind != 3 || args[1].arr.ndim != 2 || args[2].kind != 3 || args[2].arr.ndim != 2) { fn_set_error("wishart: df scalar, scale and X 2-D"); return TSR_EARG; }
     const double df = args[0].num; const int64_t d = args[1].arr.shape[0];
+    if (args[1].arr.shape[1] != d || args[2].arr.shape[0] != d || args[2].arr.shape[1] != d) { fn_set_error("wishart: the shapes of the arguments do not match"); return TSR_EARG; }
     int64_t lS, lX; double *S = fn_arg_doubles(&args[1], &lS), *X = S ? fn_arg_doubles(&args[2], &lX) : nullptr;
     int rc = X ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {

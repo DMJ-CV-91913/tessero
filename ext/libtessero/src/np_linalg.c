@@ -55,6 +55,30 @@ static inline int la_guard_args(const tsr_arg *args, int nargs)
     }
     return 1;
 }
+/* The SVD drivers on a matrix holding NaN or an infinity: dgesdd / dgelsd iterate without converging (a
+   fuzz-found hang in np.linalg.svd). NumPy reports LinAlgError "SVD did not converge" there, so these wrappers
+   check the input first and return a positive info, which every caller already reports as non-convergence. */
+static int la_mat_finite(int layout, lapack_int m, lapack_int n, const double *a, lapack_int lda)
+{
+    const int64_t rows = layout == LAPACK_ROW_MAJOR ? m : n, cols = layout == LAPACK_ROW_MAJOR ? n : m;
+    for (int64_t r = 0; r < rows; r++)
+        for (int64_t c = 0; c < cols; c++)
+            if (!isfinite(a[r * (int64_t)lda + c])) return 0;
+    return 1;
+}
+static lapack_int la_dgesdd(int layout, char jobz, lapack_int m, lapack_int n, double *a, lapack_int lda, double *s,
+                            double *u, lapack_int ldu, double *vt, lapack_int ldvt)
+{
+    if (!la_mat_finite(layout, m, n, a, lda)) return 1;
+    return LAPACKE_dgesdd(layout, jobz, m, n, a, lda, s, u, ldu, vt, ldvt);
+}
+static lapack_int la_dgelsd(int layout, lapack_int m, lapack_int n, lapack_int nrhs, double *a, lapack_int lda,
+                            double *b, lapack_int ldb, double *s, double rcond, lapack_int *rank)
+{
+    if (!la_mat_finite(layout, m, n, a, lda) || !la_mat_finite(layout, m, nrhs, b, ldb)) return 1;
+    return LAPACKE_dgelsd(layout, m, n, nrhs, a, lda, b, ldb, s, rcond, rank);
+}
+
 #define LA_GUARDED(f)                                                                                  \
     static int f##__g(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)    \
     {                                                                                                  \
@@ -290,7 +314,7 @@ static int r_solve(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 static lapack_int svd_values(double *a, int64_t m, int64_t n, double *s)
 {
     double dummy = 0.0;
-    return LAPACKE_dgesdd(LAPACK_COL_MAJOR, 'N', (lapack_int)n, (lapack_int)m, a, (lapack_int)n, s,
+    return la_dgesdd(LAPACK_COL_MAJOR, 'N', (lapack_int)n, (lapack_int)m, a, (lapack_int)n, s,
                           &dummy, 1, &dummy, 1);
 }
 
@@ -395,7 +419,7 @@ static int r_pinv(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     double *s = (double *)malloc(sizeof(double) * (size_t)k);
     double *vt = (double *)malloc(sizeof(double) * (size_t)(k * n));
     if (!u || !s || !vt) { free(u); free(s); free(vt); fn_free_doubles(a, na); return TSR_ENOMEM; }
-    lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n,
+    lapack_int info = la_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n,
                                      s, u, (lapack_int)k, vt, (lapack_int)n);
     if (info != 0) { free(u); free(s); free(vt); fn_free_doubles(a, na); fn_set_error("pinv: SVD did not converge"); return TSR_EARG; }
     double smax = 0.0;
@@ -467,7 +491,7 @@ static int r_lstsq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
         for (int64_t j = 0; j < nrhs; j++) bb[i * nrhs + j] = bsrc[i * nrhs + j];
     lapack_int rank = 0, info = 0;
     if (k > 0 && nrhs > 0)
-        info = LAPACKE_dgelsd(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)n, (lapack_int)nrhs, a, (lapack_int)n,
+        info = la_dgelsd(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)n, (lapack_int)nrhs, a, (lapack_int)n,
                               bb, (lapack_int)nrhs, s, rcond, &rank);
     if (info != 0) { free(bb); free(s); fn_free_doubles(a, na); fn_free_doubles(bsrc, nb); fn_set_error("lstsq: SVD did not converge"); return TSR_EARG; }
     /* results: x (n,) or (n, nrhs); residuals; rank; singular_values (k,) */
@@ -607,7 +631,7 @@ static int r_svd(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     double *vt = (double *)fn_result_array(&res[2], TSR_F64, 2, vsh);
     if (!u || !s || !vt) { fn_free_doubles(a, na); return TSR_ENOMEM; }
     if (k > 0) {
-        lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, full ? 'A' : 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n,
+        lapack_int info = la_dgesdd(LAPACK_ROW_MAJOR, full ? 'A' : 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n,
                                          s, u, (lapack_int)uc, vt, (lapack_int)n);
         if (info != 0) { fn_free_doubles(a, na); fn_set_error("svd: the algorithm did not converge"); return TSR_EARG; }
         sign_canon(u, m, uc, k, vt, n);                 /* flip the k singular directions (u col j <-> vt row j) */
@@ -2170,7 +2194,7 @@ static int r_orth(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (!u || !s || !vt) { free(u); free(s); free(vt); fn_free_doubles(a, na); return TSR_ENOMEM; }
     int64_t rank = 0;
     if (k > 0) {
-        lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)k, vt, (lapack_int)n);
+        lapack_int info = la_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)k, vt, (lapack_int)n);
         if (info != 0) { free(u); free(s); free(vt); fn_free_doubles(a, na); fn_set_error("orth: SVD did not converge"); return TSR_EARG; }
         double rtol = (double)(m > n ? m : n) * DBL_EPSILON;
         if (nargs > 1 && args[1].kind == 1) rtol = args[1].num;
@@ -2206,7 +2230,7 @@ static int r_null_space(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     if (!u || !s || !vt) { free(u); free(s); free(vt); fn_free_doubles(a, na); return TSR_ENOMEM; }
     int64_t rank = 0;
     if (k > 0) {
-        lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)m, vt, (lapack_int)n);
+        lapack_int info = la_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)m, vt, (lapack_int)n);
         if (info != 0) { free(u); free(s); free(vt); fn_free_doubles(a, na); fn_set_error("null_space: SVD did not converge"); return TSR_EARG; }
         double rtol = (double)(m > n ? m : n) * DBL_EPSILON;
         if (nargs > 1 && args[1].kind == 1) rtol = args[1].num;
@@ -2248,7 +2272,7 @@ static int r_polar(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     double *vt = (double *)malloc(sizeof(double) * (size_t)((k ? k : 1) * (n ? n : 1)));
     if (!u || !s || !vt) { free(u); free(s); free(vt); fn_free_doubles(a, na); return TSR_ENOMEM; }
     if (k > 0) {
-        lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)k, vt, (lapack_int)n);
+        lapack_int info = la_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)k, vt, (lapack_int)n);
         if (info != 0) { free(u); free(s); free(vt); fn_free_doubles(a, na); fn_set_error("polar: SVD did not converge"); return TSR_EARG; }
     }
     int64_t ush[2] = {m, n};
@@ -2894,7 +2918,7 @@ static int r_orthogonal_procrustes(const void *ctx, const tsr_arg *args, int nar
     if (!M || !U || !Vt || !s) rc = TSR_ENOMEM;
     else {
         for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) { double acc = 0; for (int64_t k = 0; k < m; k++) acc += A[k * n + i] * B[k * n + j]; M[i * n + j] = acc; }
-        lapack_int info = n > 0 ? LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)n, (lapack_int)n, M, (lapack_int)n, s, U, (lapack_int)n, Vt, (lapack_int)n) : 0;
+        lapack_int info = n > 0 ? la_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)n, (lapack_int)n, M, (lapack_int)n, s, U, (lapack_int)n, Vt, (lapack_int)n) : 0;
         if (info != 0) { rc = TSR_EARG; fn_set_error("orthogonal_procrustes: SVD did not converge"); }
         else {
             int64_t rsh[2] = {n, n};
@@ -3807,7 +3831,7 @@ static int sl_orth(const double *A, int64_t m, int64_t n, double *Qout, int64_t 
     int rc = -1;
     if (a && u && s && vt) {
         memcpy(a, A, sizeof(double) * (size_t)(m * n));
-        lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)k, vt, (lapack_int)n);
+        lapack_int info = la_dgesdd(LAPACK_ROW_MAJOR, 'S', (lapack_int)m, (lapack_int)n, a, (lapack_int)n, s, u, (lapack_int)k, vt, (lapack_int)n);
         if (info == 0) {
             const double tol = s[0] * (double)(m > n ? m : n) * DBL_EPSILON;
             int64_t rank = 0;
