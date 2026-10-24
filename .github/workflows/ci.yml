@@ -5,6 +5,12 @@ on:
     branches: [main]
     tags: ['v*']
   pull_request:
+  # The repository is private, so Actions minutes are billed (macOS 10x, Windows 2x). Pull requests run every
+  # tier-1 job plus the native macOS/Windows builds; the full PHP-version x JIT matrix on macOS and Windows runs
+  # weekly, on main and tags, and on demand (workflow_dispatch), so tier-2 platforms stay visible.
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
 
 # least privilege: every job only reads; the release job raises its own scope
 permissions:
@@ -41,7 +47,6 @@ jobs:
           # tier 2: no LAPACK linkage on these targets yet (csrc/Makefile), so they cannot block a release.
           # continue-on-error keeps a failing tier-2 leg from failing the workflow or the jobs that need `native`.
           - { platform: darwin-arm64,      runner: macos-14,       tier2: true }
-          - { platform: darwin-x86_64,     runner: macos-15-intel, tier2: true }   # macos-13 is retired: jobs on it never start
           - { platform: windows-x86_64,    runner: windows-latest, tier2: true }
     continue-on-error: ${{ matrix.tier2 == true }}
     defaults:
@@ -81,6 +86,20 @@ jobs:
         with:
           name: lib-${{ matrix.platform }}
           path: lib/${{ matrix.platform }}/
+
+  native-darwin-intel:
+    name: libtessero darwin-x86_64 (full runs)
+    if: github.event_name != 'pull_request'
+    runs-on: macos-15-intel
+    continue-on-error: true      # tier 2 (docs/project/platform-debt.md)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: brew install openblas      # LAPACK + LAPACKE + cblas (Accelerate has no LAPACKE)
+      - name: build
+        run: make -C csrc
+      - name: C unit tests
+        run: make -C csrc test
 
   sanitizers:
     name: ASan + UBSan
@@ -165,7 +184,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-14, windows-latest]
+        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-24.04","ubuntu-24.04-arm"]' || '["ubuntu-24.04","ubuntu-24.04-arm","macos-14","windows-latest"]') }}
         php: ['8.2', '8.3', '8.4', '8.5']
         jit: ['off', 'tracing', 'function']
     continue-on-error: ${{ startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'windows') }}   # tier 2 (no LAPACK linkage yet)
