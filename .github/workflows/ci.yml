@@ -324,6 +324,9 @@ jobs:
         ts: ['nts']
         include:
           - { php: '8.4', ts: 'zts' }
+          # 8.5 is the newest supported branch: thread-safe (development) and non-thread-safe (production)
+          # builds, each also rebuilt with the memory-ownership check below (ADR 0015)
+          - { php: '8.5', ts: 'zts' }
     env:
       # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
       # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
@@ -359,6 +362,21 @@ jobs:
         run: php -d extension=$PWD/ext/modules/tessero.so -d ffi.enable=1 vendor/bin/phpunit --testsuite ext,unit
       - name: NumPy/SciPy fixtures (extension)
         run: php -d extension=$PWD/ext/modules/tessero.so -d memory_limit=8G tools/parity/run-tests.php --backend=ext --no-record
+      # ADR 0015 on the newest branch, NTS and ZTS: a rebuild with the ownership check, where tsr_free aborts on a
+      # foreign pointer, a double free or a wrong byte count, must pass the extension's phpt suite and parity fixtures
+      - name: ownership-checked rebuild (ADR 0015)
+        if: matrix.php == '8.5'
+        run: |
+          rm -rf /tmp/ext-own && cp -r ext /tmp/ext-own && cd /tmp/ext-own && (make distclean >/dev/null 2>&1 || true)
+          phpize && CFLAGS="-O2 -DTSR_OWNERSHIP_CHECK" ./configure --enable-tessero && make -j"$(nproc)"
+          php -d extension=/tmp/ext-own/modules/tessero.so -r 'exit(\Tessero\Ext\Engine::feature("ownership_check") ? 0 : 1);' \
+            || { echo "::error::the rebuilt module does not carry the ownership check"; exit 1; }
+      - name: phpt with the ownership check (ADR 0015)
+        if: matrix.php == '8.5'
+        run: cd /tmp/ext-own && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=$GITHUB_WORKSPACE/ext/tests
+      - name: NumPy/SciPy fixtures with the ownership check (ADR 0015)
+        if: matrix.php == '8.5'
+        run: php -d extension=/tmp/ext-own/modules/tessero.so -d memory_limit=8G tools/parity/run-tests.php --backend=ext --no-record
       - name: docs examples with both backends
         run: php -d extension=$PWD/ext/modules/tessero.so -d ffi.enable=1 tests/docs/examples.php
       - name: without OpenMP
