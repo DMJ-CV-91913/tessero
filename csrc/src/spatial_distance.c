@@ -491,7 +491,9 @@ static int r_procrustes(const void *ctx, const tsr_arg *args, int nargs, tsr_res
                 double s = 0.0; for (int64_t i = 0; i < n; i++) s += A[i * k + p] * B[i * k + q];
                 M[p * k + q] = s;
             }
-            lapack_int info = LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)k, (lapack_int)k, M, (lapack_int)k, w, U, (lapack_int)k, Vt, (lapack_int)k);
+            /* dgesdd does not converge (it can loop) on a NaN or an infinity: refuse them first */
+            int fin = 1; for (int64_t q = 0; q < k * k; q++) if (!isfinite(M[q])) fin = 0;
+            lapack_int info = fin ? LAPACKE_dgesdd(LAPACK_ROW_MAJOR, 'A', (lapack_int)k, (lapack_int)k, M, (lapack_int)k, w, U, (lapack_int)k, Vt, (lapack_int)k) : 1;
             if (info != 0) { fn_set_error("procrustes: SVD failed"); rc = TSR_EARG; }
             else {
                 double scale = 0.0; for (int64_t i = 0; i < k; i++) scale += w[i];

@@ -1224,8 +1224,9 @@ int f_binomtest(const void *, const tsr_arg *args, int nargs, tsr_result *res, i
 {
     return guarded([&] {
         /* k, n, p=0.5, alternative='two-sided' */
-        if (args[0].kind != 1 || args[0].num != std::floor(args[0].num)) fail("`k` must be an integer.");
-        if (args[1].kind != 1 || args[1].num != std::floor(args[1].num)) fail("`n` must be an integer.");
+        /* an integer that fits int64 (an infinite or 1e19 "integer" was cast to int64 for the results) */
+        if (args[0].kind != 1 || args[0].num != std::floor(args[0].num) || !(std::fabs(args[0].num) < 9.2e18)) fail("`k` must be an integer.");
+        if (args[1].kind != 1 || args[1].num != std::floor(args[1].num) || !(std::fabs(args[1].num) < 9.2e18)) fail("`n` must be an integer.");
         const double k = args[0].num, n = args[1].num;
         if (k < 0) fail("k must be an integer not less than 0, but got %g.", k);
         if (n < 1) fail("n must be an integer not less than 1, but got %g.", n);

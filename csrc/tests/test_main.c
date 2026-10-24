@@ -1090,7 +1090,7 @@ static void test_fuzz_batch_a(void)
     tsr_arg g1[2] = {arg_arr(three, 1, s3), arg_num(NAN)};
     CHECK(fa_call("ndimage.gaussian_filter1d", 2, g1, r, 1) == TSR_EARG, "gaussian_filter1d sigma=NaN refused");
     tsr_arg u1[2] = {arg_arr(three, 1, s3), arg_int((int64_t)1 << 62)};
-    CHECK(fa_call("ndimage.uniform_filter1d", 2, u1, r, 1) == TSR_ENOMEM, "uniform_filter1d size 2^62 refused");
+    CHECK(fa_call("ndimage.uniform_filter1d", 2, u1, r, 1) == TSR_EARG, "uniform_filter1d size 2^62 refused");
     tsr_arg mo[5] = {arg_arr(three, 1, s3), arg_int(3), arg_str("reflect"), arg_num(0), arg_num(9e18)};
     CHECK(fa_call("ndimage.minimum_filter", 5, mo, r, 1) == TSR_EARG, "minimum_filter origin 9e18 refused");
     tsr_arg zm[2] = {arg_arr(three, 1, s3), arg_num(NAN)};
@@ -1171,6 +1171,15 @@ static void test_fuzz_batch_a(void)
         fa_free(r, 1);
         unlink(path);
     }
+
+    /* CI libFuzzer: np.linalg.svd of a matrix with NaN / infinity hung inside dgesdd; NumPy: "SVD did not converge" */
+    double sv[4] = {1.0, NAN, 2.0, INFINITY};
+    tsr_arg svd_a[1] = {arg_arr(sv, 2, s22)};
+    CHECK(fa_call("linalg.svd", 1, svd_a, r, 3) == TSR_EARG, "svd of a non-finite matrix refused (no dgesdd hang)");
+    CHECK(fa_call("slinalg.svd", 1, svd_a, r, 3) == TSR_EARG, "scipy svd of a non-finite matrix refused");
+    double lb[2] = {1.0, 2.0};
+    tsr_arg ls_a[2] = {arg_arr(sv, 2, s22), arg_arr(lb, 1, s2)};
+    CHECK(fa_call("linalg.lstsq", 2, ls_a, r, 4) == TSR_EARG, "lstsq with a non-finite matrix refused (no dgelsd hang)");
 
     /* F4: the .npy writer refuses a header the reader refuses (byte count beyond int64) */
     int64_t hs1[1] = {INT64_MAX - 7}, hs2[2] = {(int64_t)1 << 62, 4}, hs3[2] = {(int64_t)1 << 60, 8};

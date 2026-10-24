@@ -100,9 +100,11 @@ static int64_t bmap(int64_t p, int64_t n, int mode)
     switch (mode) {
     case ND_NEAREST: return p < 0 ? 0 : n - 1;
     case ND_WRAP: { p %= n; if (p < 0) p += n; return p; }
-    case ND_MIRROR: if (n == 1) return 0; while (p < 0 || p >= n) { if (p < 0) p = -p; else p = 2 * n - 2 - p; } return p;
+    /* mirror and reflect are periodic (2n - 2 and 2n): fold with one modulo instead of stepping one period at a
+       time, which took |p| / n iterations for a far tap (a long filter on a short line ran for minutes) */
+    case ND_MIRROR: { if (n == 1) return 0; const int64_t per = 2 * n - 2; int64_t m = p % per; if (m < 0) m += per; return m < n ? m : per - m; }
     case ND_CONSTANT: return -1;
-    default: while (p < 0 || p >= n) { if (p < 0) p = -p - 1; else p = 2 * n - 1 - p; } return p;   /* reflect */
+    default: { const int64_t per = 2 * n; int64_t m = p % per; if (m < 0) m += per; return m < n ? m : per - 1 - m; }   /* reflect */
     }
 }
 
@@ -364,18 +366,20 @@ static int64_t arg_int(const tsr_arg *a, int64_t dflt)
     return fn_num_i64(a, dflt);                           /* NaN, infinity, beyond int64: the default */
 }
 
-/* the longest 1-D filter / window volume accepted: 2^28 taps (2 GiB of doubles); larger is out of memory */
-#define ND_MAXW ((int64_t)1 << 28)
+/* the longest 1-D filter accepted (2^20 taps) and the largest window volume of the order-statistic filters (2^18
+   elements, each sorted once per output sample): the work per sample, not the memory, bounds them */
+#define ND_MAXW ((int64_t)1 << 20)
+#define ND_MAXV ((int64_t)1 << 18)
 /* SciPy's origin rule for a window of length w >= 1: -(w // 2) <= origin <= (w - 1) // 2 ("invalid origin").
    Checking it also keeps the boundary index arithmetic (position + offset - origin) inside int64. */
 static int nd_origin_ok(int64_t origin, int64_t w) { return w < 1 || (origin >= -(w / 2) && origin <= (w - 1) / 2); }
-/* the window volume prod(size) with every size >= 1, refused beyond ND_MAXW */
+/* the window volume prod(size) with every size >= 1, refused beyond ND_MAXV */
 static int nd_window(const int64_t *size, int32_t nd, const char *who, int64_t *V)
 {
     int64_t v = 1;
     for (int d = 0; d < nd; d++) {
         if (size[d] < 1) { fn_set_error("%s: size must be >= 1", who); return TSR_EARG; }
-        if (size[d] > ND_MAXW / v) { fn_set_error("%s: size is too large", who); return TSR_ENOMEM; }
+        if (size[d] > ND_MAXV / v) { fn_set_error("%s: the window may hold at most %lld elements", who, (long long)ND_MAXV); return TSR_EARG; }
         v *= size[d];
     }
     *V = v;
@@ -386,7 +390,8 @@ static int nd_radius(double v, int64_t *lw)
 {
     if (v != v) { fn_set_error("cannot convert float NaN to integer"); return TSR_EARG; }
     if (v == INFINITY || v == -INFINITY) { fn_set_error("cannot convert float infinity to integer"); return TSR_EARG; }
-    if (v > (double)(ND_MAXW / 2)) { fn_set_error("gaussian filter: kernel radius is too large"); return TSR_ENOMEM; }
+    /* every output sample sums 2 * radius + 1 taps: beyond 2^16 the work, not the memory, is out of reach */
+    if (v > 65536.0) { fn_set_error("gaussian filter: kernel radius must be <= 65536"); return TSR_EARG; }
     *lw = v < 0 ? 0 : (int64_t)v;
     return TSR_OK;
 }
@@ -757,7 +762,7 @@ static int r_uniform_filter1d(const void *ctx, const tsr_arg *args, int nargs, t
     if (args[0].kind != 3) { fn_set_error("uniform_filter1d: input must be an array"); return TSR_EARG; }
     const int64_t size = arg_int(nargs > 1 ? &args[1] : NULL, 0);
     if (size < 1) { fn_set_error("uniform_filter1d: size must be >= 1"); return TSR_EARG; }
-    if (size > ND_MAXW) { fn_set_error("uniform_filter1d: size is too large"); return TSR_ENOMEM; }
+    if (size > ND_MAXW) { fn_set_error("uniform_filter1d: size must be <= 1048576"); return TSR_EARG; }
     int ax, mode; double cval; int64_t origin;
     int rc = filter_tail(args, nargs, args[0].arr.ndim, 2, &ax, &mode, &cval, &origin);
     if (rc < 0) return rc;
@@ -806,7 +811,7 @@ static int r_minmax_filter1d(const void *ctx, const tsr_arg *args, int nargs, ts
     if (args[0].kind != 3) { fn_set_error("minimum/maximum_filter1d: input must be an array"); return TSR_EARG; }
     const int64_t size = arg_int(nargs > 1 ? &args[1] : NULL, 0);
     if (size < 1) { fn_set_error("minimum/maximum_filter1d: size must be >= 1"); return TSR_EARG; }
-    if (size > ND_MAXW) { fn_set_error("minimum/maximum_filter1d: size is too large"); return TSR_ENOMEM; }
+    if (size > ND_MAXW) { fn_set_error("minimum/maximum_filter1d: size must be <= 1048576"); return TSR_EARG; }
     const int32_t nd = args[0].arr.ndim;
     int ax, mode; double cval; int64_t origin;
     int rc = filter_tail(args, nargs, nd, 2, &ax, &mode, &cval, &origin);
@@ -907,7 +912,7 @@ static int r_uniform_filter(const void *ctx, const tsr_arg *args, int nargs, tsr
     for (int d = 0; d < nd; d++) {
         const int64_t sz = fn_dbl_i64(sized[d], 0);
         if (sz < 1) { for (int e = 0; e < d; e++) free(kern[e]); fn_set_error("uniform_filter: size must be >= 1"); return TSR_EARG; }
-        if (sz > ND_MAXW) { for (int e = 0; e < d; e++) free(kern[e]); fn_set_error("uniform_filter: size is too large"); return TSR_ENOMEM; }
+        if (sz > ND_MAXW) { for (int e = 0; e < d; e++) free(kern[e]); fn_set_error("uniform_filter: size must be <= 1048576"); return TSR_EARG; }
         if (!nd_origin_ok(origin0, sz)) { for (int e = 0; e < d; e++) free(kern[e]); fn_set_error("invalid origin"); return TSR_EARG; }
         W[d] = sz; orig[d] = origin0;
         kern[d] = (double *)malloc((size_t)sz * sizeof(double));
@@ -1371,6 +1376,7 @@ static int r_find_objects(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     if (L > ((int64_t)1 << 31)) { fn_free_doubles(in, ti); fn_set_error("find_objects: max_label is too large"); return TSR_ENOMEM; }
     const int64_t sh[3] = { L, nd, 2 };
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 3, sh);
+    if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }   /* before the L-sized scratch below */
     int64_t *lo = (L > 0) ? (int64_t *)malloc((size_t)(L * nd) * sizeof(int64_t)) : NULL;
     int64_t *hi = (L > 0) ? (int64_t *)malloc((size_t)(L * nd) * sizeof(int64_t)) : NULL;
     uint8_t *present = (L > 0) ? (uint8_t *)calloc((size_t)(L > 0 ? L : 1), 1) : NULL;
@@ -1407,7 +1413,7 @@ static void edt_line(const double *f, double *d, int64_t n, const void *vc)
         double s;
         for (;;) {
             s = ((f[q] + w2 * (double)(q * q)) - (f[v[k]] + w2 * (double)(v[k] * v[k]))) / (2.0 * w2 * (double)(q - v[k]));
-            if (s <= z[k]) k--; else break;   /* z[0] = -inf stops this at k = 0 */
+            if (k > 0 && s <= z[k]) k--; else break;   /* stop at k = 0: z[0] = -inf did not when s = -inf (sampling 0) */
         }
         k++; v[k] = q; z[k] = s; z[k + 1] = INFINITY;
     }
@@ -1749,6 +1755,7 @@ static double geom_interp(const double *in, const int64_t *si, int32_t nd, const
     for (int d = 0; d < nd; d++) {
         const double c = coord[d];
         if (!isfinite(c)) return cval;                    /* NaN / infinity: no sample (and no float->int cast) */
+        if (si[d] <= 0) return cval;                      /* an empty input has nothing to sample (it read in[0]) */
         if (con) { if (c < 0.0 || c > (double)(si[d] - 1)) return cval; cc[d] = c; }
         else cc[d] = map_coord(c, si[d], mode);
     }
