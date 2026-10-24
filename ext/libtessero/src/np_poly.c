@@ -13,18 +13,30 @@ static int r_polyfit(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("polyfit: x and y must be arrays"); return TSR_EARG; }
     int64_t deg = 1;
-    if (nargs > 2 && args[2].kind == 1) deg = (args[2].flags & 1) ? args[2].ival : (int64_t)args[2].num;
-    if (deg < 0) { fn_set_error("polyfit: deg must be >= 0"); return TSR_EARG; }
+    if (nargs > 2 && args[2].kind == 1) {
+        const double d = args[2].num;                       /* checked before the cast: NumPy's int(deg) */
+        if (args[2].flags & 1) deg = args[2].ival;
+        else if (d != d || d == INFINITY || d == -INFINITY) { fn_set_error("polyfit: cannot convert float %s to integer", d != d ? "NaN" : "infinity"); return TSR_EARG; }
+        else if (d >= 2147483647.0 || d <= -2147483648.0) { fn_set_error("polyfit: deg is too large"); return TSR_EARG; }
+        else deg = (int64_t)d;
+    }
+    if (deg < 0) { fn_set_error("polyfit: expected deg >= 0"); return TSR_EARG; }
     int64_t nx, ny;
     double *x = fn_arg_doubles(&args[0], &nx);
     if (!x) return TSR_ENOMEM;
     double *y = fn_arg_doubles(&args[1], &ny);
     if (!y) { fn_free_doubles(x, nx); return TSR_ENOMEM; }
     if (nx != ny) { fn_free_doubles(x, nx); fn_free_doubles(y, ny); fn_set_error("polyfit: x and y have different lengths"); return TSR_EARG; }
+    if (nx == 0) { fn_free_doubles(x, nx); fn_free_doubles(y, ny); fn_set_error("polyfit: expected non-empty vector for x"); return TSR_ETYPE; }
     const int64_t n = nx, m = deg + 1;
-    double *V = (double *)malloc(sizeof(double) * (size_t)(n * m));
     const int64_t ldb = n > m ? n : m;
-    double *b = (double *)calloc((size_t)ldb, sizeof(double));
+    if (!TSR_LA_FIT("polyfit", n, m) || !tsr_fits(((double)n * (double)m + (double)ldb) * 8.0)) {
+        fn_free_doubles(x, nx); fn_free_doubles(y, ny);
+        if (TSR_LA_FIT("polyfit", n, m)) fn_set_error("polyfit: deg is too large");
+        return TSR_ENOMEM;
+    }
+    double *V = (double *)tsr_scratch_n(n * m, sizeof(double));
+    double *b = (double *)tsr_scratch0_n(ldb, sizeof(double));
     if (!V || !b) { free(V); free(b); fn_free_doubles(x, nx); fn_free_doubles(y, ny); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n; i++) {
         double p = 1.0;
@@ -66,7 +78,12 @@ static int r_roots(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     while (s < m && p[s] == 0.0) s++;                      /* strip leading zeros */
     const int64_t n = (m - s) - 1;                         /* number of roots */
     if (n <= 0) { fn_free_doubles(p, m); return fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){0}) ? TSR_OK : TSR_ENOMEM; }
-    double *comp = (double *)calloc((size_t)(n * n), sizeof(double));
+    if (!TSR_LA_FIT("roots", n) || !tsr_fits((double)n * (double)n * 8.0)) {   /* the n x n companion matrix */
+        fn_free_doubles(p, m);
+        if (TSR_LA_FIT("roots", n)) fn_set_error("roots: too many coefficients");
+        return TSR_ENOMEM;
+    }
+    double *comp = (double *)tsr_scratch0_n(n * n, sizeof(double));
     double *wr = (double *)malloc(sizeof(double) * (size_t)n), *wi = (double *)malloc(sizeof(double) * (size_t)n);
     if (!comp || !wr || !wi) { free(comp); free(wr); free(wi); fn_free_doubles(p, m); return TSR_ENOMEM; }
     const double p0 = p[s];
@@ -78,6 +95,7 @@ static int r_roots(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     free(comp);
     if (info != 0) { free(wr); free(wi); fn_set_error("roots: the eigenvalue solve failed (%d)", (int)info); return TSR_EARG; }
     double *pairs = (double *)malloc(sizeof(double) * (size_t)(2 * n));
+    if (!pairs) { free(wr); free(wi); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n; i++) { pairs[2 * i] = wr[i]; pairs[2 * i + 1] = wi[i]; }
     free(wr); free(wi);
     qsort(pairs, (size_t)n, 2 * sizeof(double), cplx_cmp);
