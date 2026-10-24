@@ -65,6 +65,8 @@ __declspec(thread) int tsr_cdflib_runaway = 0;
 #else
 _Thread_local int tsr_cdflib_runaway = 0;
 #endif
+void tsr_cdflib_runaway_clear(void) { tsr_cdflib_runaway = 0; }
+int tsr_cdflib_runaway_get(void) { return tsr_cdflib_runaway; }
 
 static const double PI = 3.1415926535897932384626433832795028841971693993751;
 
