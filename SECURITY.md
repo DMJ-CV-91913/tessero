@@ -16,8 +16,8 @@ From 1.0 on, the latest minor release and the one before it receive security fix
 
 Please report privately. Do not open a public issue, discussion or pull request.
 
-- Use the repository's **private vulnerability reporting** ("Report a vulnerability" under the Security tab).
-  This is the only channel; it reaches the maintainers listed in `MAINTAINERS.md`.
+- Email **security@tessero.org**. This is the only channel; it reaches the maintainers listed in
+  `MAINTAINERS.md`. GitHub's private vulnerability reporting is not enabled for this repository.
 
 Include the affected version or commit and the backend (FFI package or extension), a reproducer if possible,
 and the impact you see (memory corruption, denial of service, information disclosure, code execution).
