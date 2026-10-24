@@ -2,6 +2,10 @@ name: docs
 
 # TSR-402: publish the MkDocs site to GitHub Pages on main and on version tags.
 # (A `mike` version selector for 0.3+ is a follow-up; this deploys the current build.)
+#
+# GitHub Pages must be enabled once by a repository admin (Settings > Pages > Build and deployment > Source:
+# "GitHub Actions"). Until then the build still runs (it is the strict link/nav check) and the deploy job is
+# skipped with a notice instead of failing.
 
 on:
   push:
@@ -9,10 +13,8 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+# nothing at the top level; each job asks for what it needs
+permissions: {}
 
 # Allow one concurrent deployment; don't cancel an in-progress release deploy.
 concurrency:
@@ -21,26 +23,48 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: read          # only to ask whether Pages is configured
+    outputs:
+      pages: ${{ steps.pages.outputs.enabled }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Install MkDocs Material
-        run: pip install mkdocs-material
+        run: pip install mkdocs-material==9.7.7
       - name: Build the site (strict - fails on broken links or stale nav)
         run: mkdocs build --strict --site-dir site
-      - uses: actions/upload-pages-artifact@v3
+      - name: Is GitHub Pages configured for Actions deployments?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if build_type="$(gh api "repos/${GITHUB_REPOSITORY}/pages" --jq .build_type 2>/dev/null)" && [ "$build_type" = workflow ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::GitHub Pages is not enabled with source 'GitHub Actions' (Settings > Pages); the site was built but not deployed."
+          fi
+      - if: steps.pages.outputs.enabled == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    if: needs.build.outputs.pages == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

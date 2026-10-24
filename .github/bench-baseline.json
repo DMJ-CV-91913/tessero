@@ -1,0 +1,30 @@
+{
+  "runner": "GitHub ubuntu-22.04 x86-64 runner, PHP 8.4 FFI, OpenBLAS from apt (initial sample)",
+  "how": "median per case from bench/run.php --json --no-gates on the CI runner; refresh with .github/scripts/bench_compare.py --update",
+  "ms": {
+    "add 1M f64 (new array)": 0.405,
+    "add 1M f64 (out=)": 0.483,
+    "mul scalar 1M": 0.313,
+    "sqrt 1M": 1.389,
+    "exp 1M": 8.176,
+    "log 1M": 13.264,
+    "sum 1M (pairwise)": 0.26,
+    "sum axis 0 1000x1000": 0.232,
+    "transpose copy 1000x1000": 0.554,
+    "boolean mask 1M": 5.648,
+    "sort 1M": 40.969,
+    "matmul 600x600": 5.405,
+    "solve 600x600": 4.736,
+    "cholesky 600x600": 5.065,
+    "svd 300x300": 18.188,
+    "fft 2^20 complex": 97.194,
+    "rfft 2^20 real": 57.51,
+    "fft 1_000_003 (prime, Bluestein)": 415.437,
+    "rng normal 1M": 34.736,
+    "PHP list -> NDArray 1M": 26.545,
+    "NDArray -> PHP list 1M": 61.515,
+    "linprog 200x200 dense": 4.05,
+    "MDP value iteration 20k x 4": 194.94,
+    "MDP modified PI 20k x 4": 70.334
+  }
+}
