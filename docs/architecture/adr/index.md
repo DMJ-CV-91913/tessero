@@ -20,6 +20,7 @@ a new record that supersedes the old one.
 | [0012](0012-pinned-reference-environment.md) | Reference fixtures are generated in a pinned numerical environment | Accepted (amends 0002) |
 | [0013](0013-registry-sequences-and-in-place-routines.md) | Registry routines take sequences, variadic and in-place arguments | Accepted (amends 0011, 0004) |
 | [0014](0014-abi-stability.md) | A versioned C ABI: exported surface, soname, capability query and process settings | Proposed (amends 0004, 0006) |
+| [0015](0015-memory-ownership.md) | Memory ownership: the layer that allocates memory frees it | Accepted (amends 0004, 0011, 0014) |
 | [0016](0016-input-sanitization-gate.md) | A central input gate before every registry call | Proposed (amends 0011) |
 
 To propose a decision, copy the template below into a new file with the next

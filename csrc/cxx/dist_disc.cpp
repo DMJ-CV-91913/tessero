@@ -3807,6 +3807,7 @@ template <class Urn, bool Fisher> struct NCHypergeom : Disc {
         } catch (const std::exception &e) {
             fail(e.what());
         }
+        biasedurn::glob_rng = nullptr;   /* the caller's generator is not kept past the call (ADR 0015) */
     }
     void rvs(bitgen_t *bg, int64_t n, const double *const *sa, double *out) const override
     {
