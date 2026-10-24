@@ -2,4 +2,4 @@
 # Regenerating fixtures with other versions changes tests/fixtures/parity/*.json; pin, then regenerate.
 numpy==2.4.4
 scipy==1.17.1
-PyYAML>=6
+PyYAML>=6.0.3
