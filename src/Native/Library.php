@@ -131,6 +131,33 @@ final class Library
     }
 
     /**
+     * FFI::cdef($header, $path). On Windows the loader resolves a DLL's own imports through the process search
+     * path, not the DLL's directory, so the OpenBLAS / MinGW runtime DLLs bundled next to tessero.dll are found
+     * only while that directory is the DLL directory (SetDllDirectoryA). The previous setting is restored.
+     */
+    private static function cdefBesideItsDlls(string $header, string $path): FFI
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return FFI::cdef($header, $path);
+        }
+        $k32 = FFI::cdef(
+            'unsigned long GetDllDirectoryA(unsigned long nBufferLength, char *lpBuffer);'
+            . ' int SetDllDirectoryA(const char *lpPathName);',
+            'kernel32.dll'
+        );
+        $buf = FFI::new('char[32768]');
+        $n = $k32->GetDllDirectoryA(32768, $buf);
+        // 0: none set. The buffer is NUL-terminated; the returned count has been seen one short, so it only gates
+        $previous = $n > 0 && $n < 32768 ? FFI::string($buf) : null;
+        $k32->SetDllDirectoryA(dirname($path));
+        try {
+            return FFI::cdef($header, $path);
+        } finally {
+            $k32->SetDllDirectoryA($previous);
+        }
+    }
+
+    /**
      * A shared library named by an environment variable, checked before anything dlopen()s it: an absolute
      * path (a relative one resolves against the working directory, the web root under php-cgi), an existing
      * file, and on POSIX neither the file nor its directory writable by group or others (fileperms & 0022),
@@ -269,7 +296,7 @@ final class Library
             );
         }
         try {
-            $ffi = FFI::cdef(self::header(), $path);
+            $ffi = self::cdefBesideItsDlls(self::header(), $path);
         } catch (\FFI\Exception $e) {
             // typically a symbol the header declares but the binary lacks: an older or foreign build
             throw new LibraryUnavailable("Could not load {$path}: " . $e->getMessage()
