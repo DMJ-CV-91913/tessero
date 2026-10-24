@@ -37,6 +37,9 @@ use Tessero\Random\SeedSequence;
  *
  * @see S. Joe and F. Y. Kuo, "Constructing Sobol sequences with better two-dimensional
  *      projections", SIAM J. Sci. Comput. 30, 2635-2654 (2008).
+ *
+ * The direction-number table (POLY/MINIT) is Joe and Kuo's, used under their licence: see
+ * licenses/LICENSE.joe-kuo-sobol.txt.
  */
 final class Sobol
 {

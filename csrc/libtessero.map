@@ -9,6 +9,8 @@ TESSERO_0.2 {
     tsr_*;
   local:
     tsr_cdflib_runaway;
+    tsr_cdflib_runaway_clear;
+    tsr_cdflib_runaway_get;
     tsr_effective_cpus;
     tsr_pcg64_bitgen;
     tsr_physical_bytes;

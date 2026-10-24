@@ -35,6 +35,8 @@ else ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S)))
   LIBNAME := tessero
   SHARED := -shared -static-libgcc
   OPENMP ?=
+  # MinGW hides M_PI, M_LN2, ... under strict -std=c++17 (__STRICT_ANSI__); MSVC needs the same define (config.w32)
+  PLATFORM_DEFS := -D_USE_MATH_DEFINES
   ifeq ($(LAPACK),)
     MINGW_PREFIX ?= /mingw64
     LAPACK := -lopenblas
@@ -83,8 +85,8 @@ CFLAGS ?= -O3 -std=gnu11 -fPIC -fno-math-errno -fno-trapping-math $(OPENMP) $(WA
 # CFLAGS given on the command line keeps it.
 VIS := -fvisibility=hidden -DTSR_EXPORT_ABI
 LDLIBS := -lm $(LAPACK)
-CFLAGS += $(LAPACK_INC)
-CXXFLAGS += $(LAPACK_INC)
+CFLAGS += $(LAPACK_INC) $(PLATFORM_DEFS)
+CXXFLAGS += $(LAPACK_INC) $(PLATFORM_DEFS)
 
 # ---- compiler and linker hardening (OpenSSF "Compiler Options Hardening Guide for C and C++"). Every flag is
 #      probed, so a toolchain that lacks one drops it instead of failing. None changes floating-point semantics;
@@ -107,6 +109,10 @@ ifeq ($(HARDEN),1)
   CXXFLAGS += $(HARDEN_CXX)
   LDLIBS += $(HARDEN_LD)
 endif
+# reproducible builds: __FILE__ (assert messages) and any debug info name sources relative to csrc/, so the
+# library is byte-identical whatever directory it is built in (probed: GCC >= 8, clang >= 10)
+CFLAGS += $(call try_cc,-ffile-prefix-map=$(CURDIR)=.)
+CXXFLAGS += $(call try_cxx,-ffile-prefix-map=$(CURDIR)=.)
 
 # exports: the version script (GNU ld, gold, lld; probed, so another linker just skips it) keeps every symbol
 # that is not tsr_* local, plus the tsr_ helpers listed in it that are internal
@@ -115,9 +121,12 @@ VERSION_SCRIPT := $(call try_so,-Wl$(comma)--version-script=$(CURDIR)/libtessero
 # Without this a second libtessero already in the global scope (Talario's, loaded by its PHP extension) captured
 # them: arrays came from the other instance's allocator and budget, and errors went to its slots.
 VERSION_SCRIPT += $(call try_so,-Wl$(comma)-Bsymbolic-functions)
-# -z nodelete (probed): never unmapped by dlclose() (PHP FFI releases its libraries at shutdown), so libgomp's
-# OpenMP worker threads can finish without executing unmapped code. Preventive, not reproduction-tested
-# (ADR 0014); tsr_feature("nodelete") reports whether the linker applied it.
+# -z nodelete (probed; ELF): never unmapped by dlclose(). Two reasons: (1) PHP 8.2 FFI closes its libraries at
+# the end of every request, so each request re-mapped the library and re-ran its initialisers, and the
+# process-lifetime state set up once (OpenMP and BLAS thread pools, the static libstdc++ exception emergency
+# pool) was reported by LeakSanitizer as leaked; a later FFI::cdef reuses the mapped library. (2) Unmapping while
+# libgomp worker threads are alive could make them execute unmapped code at process exit (preventive, not
+# reproduction-tested; ADR 0014). tsr_feature("nodelete") reports whether the linker applied it.
 VERSION_SCRIPT += $(call try_so,-Wl$(comma)-z$(comma)nodelete)
 LDLIBS += $(call try_so,-ldl)
 
@@ -146,9 +155,13 @@ $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h include/tessero_version.h
 $(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h include/tessero_repro_f32.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -fno-fast-math -ffp-contract=off -fvisibility=default -Ithird_party/numpy/include -c -o $@ $<
+# numpy/random builds with contraction off, so a*b+c (random_uniform's lower + range*x, random_normal's
+# loc + scale*z, ...) rounds twice, as in NumPy's x86-64 wheels, on every target: aarch64 GCC and Apple clang
+# contract by default, which moved those draws 1 ulp off the x86 reference. x86-64 builds without -mfma never
+# contract, so there it changes nothing. ext/config.m4 compiles these sources with the same flag.
 $(BUILD)/c/%.o: third_party/numpy/random/src/%.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) $(VIS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) -ffp-contract=off $(VIS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/%.o: third_party/scipy/quadpack/%.c
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<

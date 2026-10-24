@@ -15,6 +15,8 @@
 #  define BOOST_MATH_STANDALONE 1
 #endif
 
+#include "boost_error_format.hpp"   /* first: Boost's error messages formatted without iostreams */
+
 #include <cmath>
 #include <complex>
 #include <limits>

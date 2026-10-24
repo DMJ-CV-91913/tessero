@@ -116,13 +116,17 @@ struct TupleDID cdfnbn_which3(double, double, double, double, double);
 struct TupleDID cdfnor_which3(double, double, double, double);
 struct TupleDID cdfnor_which4(double, double, double, double);
 struct TupleDID cdft_which3(double, double, double);
-#ifdef __cplusplus
-extern thread_local int tsr_cdflib_runaway; /* Tessera local modification */
-#elif defined(_MSC_VER)
+#ifndef __cplusplus
+#if defined(_MSC_VER)
 extern __declspec(thread) int tsr_cdflib_runaway; /* Tessera local modification (MSVC C has no _Thread_local) */
 #else
 extern _Thread_local int tsr_cdflib_runaway; /* Tessera local modification */
 #endif
+#endif
+/* Tessera local modification: C++ reaches the thread-local flag only through these (a C++ `extern thread_local`
+   of a C _Thread_local needs a TLV wrapper function that C never emits on macOS) */
+void tsr_cdflib_runaway_clear(void);
+int tsr_cdflib_runaway_get(void);
 struct TupleDID cdftnc_which3(double, double, double, double);
 struct TupleDID cdftnc_which4(double, double, double, double);
 
