@@ -69,14 +69,29 @@ by these changes (the reference host passes the same suites):
 * macOS and Windows: no LAPACK linkage (tier 2, non-blocking). `macos-13` was retired; the leg now uses
   `macos-15-intel` (it had left every `ci` run on `main` queued forever).
 
+## PHP security floor (2026-10-24)
+
+Owner decision: Tessero supports PHP 8.2 and newer, but only releases that carry the 2026-10-21 security fixes:
+8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on each branch. Enforced in three layers, kept in step by
+`tests/Unit/PhpSecurityTest.php`:
+
+- install: the `php` constraint `~8.2.35 || ~8.3.36 || ~8.4.27 || ^8.5.12` in `composer.json`,
+  `laravel/composer.json` and `ext/composer.json` (PIE);
+- FFI: `Tessero\Native\Library::phpPatched()` runs before the library loads (`LibraryUnavailable` otherwise);
+- extension: a compile-time `#error` against unpatched headers, and a MINIT check of the running PHP (patch
+  releases of a branch share the extension API). On an unpatched PHP the extension logs an `E_CORE_WARNING` and
+  registers no classes instead of failing MINIT, which would be a fatal startup error for the whole SAPI.
+
+The reference Docker image pins `php:8.4.27` by digest.
+
 ## Input sanitization gate (2026-10-24)
 
 Owner directive: sanitize inputs before code executes. Every registry entry point now runs a structural gate
 before dispatch (`csrc/src/fn_gate.c`, [ADR 0016](../architecture/adr/0016-input-sanitization-gate.md)): argument
 kinds and flag bits, strings, array dtype, rank, dimensions, element-count and stride-extent overflow, NULL data,
-elements before their block, alignment, and bounded sequences. No routine runs on input it refuses, for the PHP
-bindings and for native callers alike. `fuzz/fuzz_abi.c` sends every structure it classifies invalid to a random
-routine and fails if the call is accepted.
+elements before their block, alignment, outputs that would alias through a zero stride, and bounded sequences. No
+routine runs on input it refuses, for the PHP bindings and for native callers alike. `fuzz/fuzz_abi.c` sends every
+structure it classifies invalid to a random routine and fails if the call is accepted.
 
 ## Backlog (prioritised)
 

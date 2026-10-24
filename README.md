@@ -7,6 +7,10 @@ small SIMD C library, `libtessero`. You reach it through FFI (no compiler
 needed) or through a native Zend extension, and the Laravel package
 integrates it into applications. Results are checked against NumPy and SciPy.
 
+Security floor: only PHP releases with the 2026-10-21 security fixes are supported (8.2.35, 8.3.36, 8.4.27,
+8.5.12 or newer on each branch). Composer refuses older releases, the FFI loader throws and the extension
+disables itself with a startup warning.
+
 ```php
 use Tessero\Ext\NDArray;
 use Tessero\Ext\Engine;
