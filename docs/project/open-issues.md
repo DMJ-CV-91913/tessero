@@ -151,7 +151,7 @@ Acceptance criteria:
 
 **Live Laravel application testing** (P0; laravel, beta-exit)
 
-The bridge is covered by package tests only. It needs a real application: Laravel 12/13, database casts, queued jobs, Horizon, Octane (Swoole, RoadRunner, FrankenPHP).
+The bridge is covered by package tests only. It needs a real application: Laravel 12, database casts, queued jobs, Horizon, Octane (Swoole, RoadRunner, FrankenPHP).
 
 Acceptance criteria:
 

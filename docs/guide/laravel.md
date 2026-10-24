@@ -1,6 +1,6 @@
 # Laravel
 
-`tessero/laravel` connects Tessero to a Laravel 12 or 13 application. Laravel 10 and 11 are not supported: every release on those lines is affected by security advisories that will not be fixed there.
+`tessero/laravel` connects Tessero to a Laravel 12 application. Laravel 10 and 11 are not supported: every release on those lines is affected by security advisories that will not be fixed there.
 
 ```bash
 composer require tessero/laravel
