@@ -47,58 +47,21 @@ Throughput measured on the shared host (gcc 13, ASan+UBSan, nice -19, 1 thread):
 
 ## Open findings
 
-All found by this workstream; reproducers are NOT committed (they still crash). Bytes are hex; run
-`printf '<hex>' | xxd -r -p > in && ./fuzzsa_<target> in`. "cast/overflow" items are UBSan reports (integer
-overflow or float->int out of range on an unchecked argument cast); the others are ASan memory errors.
+Bytes are hex; run `printf '<hex>' | xxd -r -p > in && ./fuzzsa_routines in` (default routine table, no
+`TSR_FUZZ_ONLY`). Found by the batch A campaigns in files outside batch A, not fixed there:
+
+| id | routine | site | reproducer |
+|----|---------|------|------------|
+| A-N1 | `interpolate.splantider` | `r_splantider` scipy_interpolate.c:409 (heap read past the coefficients; use-after-free in another input) | `c2020107bd010480313a418055422dc24ee135b9` |
+| A-N2 | `hierarchy.fcluster` | `incon_collect` scipy_cluster_hier.c:228 (heap read out of bounds) | `bc030107ea010480418042804380440000000000` |
+
+The float->int cast class (F11) is closed in the batch A and batch B files; `fuzz/known_ubsan.supp` keeps it
+suppressed under `FUZZ_SKIP_KNOWN` per source file for every other file (it no longer has a blanket
+`float-cast-overflow:*`), so a cast in a fixed file is fatal in every run.
 
 The `routines` harness remains productive: these are the classes found so far, not an exhaustive audit of the
-1095 registry routines. Most are one systemic gap -- a public routine trusts an argument (a size, an order, a
+registry routines. Most are one systemic gap -- a public routine trusts an argument (a size, an order, a
 coefficient-array length, a rank, a NaN/Inf number) without validating it before using it to index or allocate.
-Each `FUZZ_SKIP_KNOWN` entry is removed as its fix lands, so the next long run surfaces the next routine.
-
-ASan memory errors (read/write out of bounds; the highest severity):
-
-| id | routine(s) | site | trigger |
-|----|-----------|------|---------|
-| F2  | `special.ellip_harm` / `_2` / `ellip_normal` | `ellip_lame` np_numeric.c:4460 | `p < 1` makes `tp-1` index `z[-1]` |
-| F5  | `np.einsum` | `r_einsum` np_numeric.c:3687 | a label on a 0-length axis and a longer one is read out of bounds |
-| F8  | `np.einsum` | `r_einsum` np_numeric.c:3630 | dots that are not one contiguous `...` per term misparse, leaving `olab` uninitialized (nondeterministic) |
-| F11 | `ndimage.find_objects` | np_numeric | NaN/Inf argument cast to a size (UBSan, but drives OOB) |
-| F15 | `ndimage.*` rank/morphology filters | `windowed_rank_buf` scipy_ndimage.c:398 | a 0-d input indexes `stride[-1]` |
-| F36 | `distance.minkowski_distance` | spatial_distance.c:380 | a 0-d input indexes `shape[-1]` (same class as F15) |
-| F23 | `special.mathieu_odd_coef` / `_even_coef` | `mathieu_coef_run` np_numeric.c:4318/4326 | an order ~4.6e18 indexes a fixed `[256]` buffer |
-
-Out-of-bounds writes to a too-small result block:
-
-| id | routine | site |
-|----|---------|------|
-| F13 | `stats.boxcox_normplot` / `yeojohnson_normplot` / `probplot` | `stat_osm` stats_fn_desc.cpp:2096 (offset on a NULL pointer) |
-| F34 | `stats.chisquare` / `power_divergence` | `stats_fn_tests.cpp:920` (NULL `f_exp` dereference) |
-
-UBSan integer/float-cast reports (an argument cast to int/int64 without a range check; the standalone driver treats
-these as fatal, suppressed under `FUZZ_SKIP_KNOWN` by `fuzz/known_ubsan.supp`):
-
-| id | routine | site |
-|----|---------|------|
-| F1  | `np.fromfile` (text, integer dtype) | `io_store` np_io.c:107 |
-| F7  | `np.histogram` / `_bin_edges` | `hist_edges` np_sets.c:885 (`(bins+1)*8` wraps) |
-| F9  | `np.histogram` with an estimator bins | `hist_edges` np_sets.c:859 (`(last-first)/width` -> int) |
-| F10 | `np.fromfile` | `r_fromfile` np_io.c:127/134 (offset/count: NaN cast and `size - offset` overflow) |
-| F31 F33 | `sparse.diags` / `eye_array` / `eye` / `spdiags` | scipy_sparse.c:349/472 (dimension product overflows) |
-
-Leaks and unbounded work:
-
-| id | routine | note |
-|----|---------|------|
-| F18 | `stats.ecdf` | a 2-D input runs for minutes (no rank check) |
-| F20 | `special.pbvv_seq` | a large `n` runs past the timeout (no cap) |
-
-Not a memory bug (noted for completeness):
-
-| id | routine | note |
-|----|---------|------|
-| F6  | `np.loadtxt` / `np.genfromtxt` | `memcpy` from a NULL buffer when the file yields no values (np_io.c:246; UBSan nonnull) |
-| F4  | `tsr_npy_write_header` | writes a header for a shape whose byte count overflows int64, which `tsr_npy_header` then rejects (writer/reader asymmetry, no overflow) |
 
 ## Fixed findings
 
@@ -144,4 +107,52 @@ the same change and committed as `fuzz/corpus/routines/N*` (slot bytes rewritten
 | N11 | `signal.convolve` | an empty `v` in 'same' mode read past the result | SciPy's "v cannot be empty" |
 | N12 | `signal.correlate` (N-d convolve/correlate) | an empty `in2` in 'same' mode read past the result | SciPy's "second array argument cannot be empty" |
 | N13 | `windows.dpss` | M = 4096 with Kmax = 4096 ran inverse iteration for every vector past the timeout | refused above Kmax * M^2 = 2^32 (M > 1024) |
+
+Batch A (`np_numeric.c`, `np_io.c`, `np_sets.c`, `scipy_ndimage.c`, `scipy_sparse.c`, `scipy_fft.c`,
+`spatial_distance.c`, `mmap.c`, `stats_fn_desc.cpp`, `stats_fn_tests.cpp`). Regression checks in
+`tests/test_main.c` (`test_fuzz_batch_a`); reproducers committed as `fuzz/corpus/<target>/regress_F*` (crafted
+anew where the recorded input no longer reached the bug with the current harness) and replaying clean; their
+`FUZZ_SKIP_KNOWN` blocks (incl. the special.* integer clamp and the ndimage 0-d skip) and suppressions are gone.
+Integer-valued arguments go through the checked conversions in `src/fn.h` (`fn_arg_i64` with an error,
+`fn_dbl_i64` / `fn_num_i64` where the caller range-checks): no float->int cast of an unchecked double remains in
+these files.
+
+| id | routine(s) | was | status: behaviour now (as SciPy / NumPy) | corpus |
+|----|-----------|-----|------------------------------------------|--------|
+| F1  | `np.fromfile` text, integer dtype | NaN/huge value cast to the integer type | fixed: integers parsed as integers (`300` -> 44 in uint8), `2.7` / `nan` raise "could not be read to its end due to unmatched data" | textio/regress_F1_fromfile_int_nan |
+| F2  | `special.ellip_harm` / `_2` / `ellip_normal` | `p < 1` indexed `z[-1]` | fixed: NaN unless `n >= 0` and `1 <= p <= 2n+1` | routines/regress_F2_* |
+| F4  | `tsr_npy_write_header` | wrote headers the reader refuses | fixed: refuses (TSR_ESHAPE) a dimension >= 9223372036854775800 or a byte count beyond int64; the npy_write oracle now requires every written header to parse | npy_write/regress_F4_int64max_dim |
+| F5  | `np.einsum` | a 0-length label bound to a longer axis read out of bounds | fixed: sizes 0 and n (n != 1) are a broadcast error; 0 against 1 gives 0 | einsum/regress_F5_zero_axis |
+| F6  | `np.loadtxt` / `np.genfromtxt` | `memcpy` from NULL for an empty file | fixed: no copy of 0 values | textio/regress_F6_genfromtxt_empty |
+| F7  | `np.histogram` / `_bin_edges` | `(bins+1)*8` wrapped | fixed: "array is too big" | hist/regress_F7_bins_overflow |
+| F8  | `np.einsum` | non-contiguous dots misparsed (`olab` unset); a short output `.` read past the string | fixed: NumPy's "'.' that is not part of an ellipsis" error | einsum/regress_F8_* |
+| F9  | `np.histogram` estimator bins | `ceil((last-first)/width)` cast unchecked | fixed: NaN / infinity raise as `int()` does, beyond int64 "array is too big" | hist/regress_F9_estimator_quotient |
+| F10 | `np.fromfile` | offset/count NaN cast; `size - offset` overflow | fixed: integral offset/count required, negative offset "Invalid argument", past the end "negative dimensions are not allowed" | textio/regress_F10_* |
+| F11 (part) | `ndimage.find_objects` | NaN label cast to int64 | fixed: NaN / out-of-range labels are background; max_label bounded | routines/regress_F11_find_objects_nan |
+| F13 | `stats.boxcox_normplot` / `yeojohnson_normplot` / `probplot` | empty sample offset a NULL pointer | fixed: empty results (`probplot`: r = 0.0); `N` integral and >= 0, `lb > la`, positive data for Box-Cox | routines/regress_F13_* |
+| F15 | `ndimage` rank/morphology filters | 0-d input indexed `stride[-1]` | fixed: a 0-d input is one element (filters return it, morphological_laplace 0); window volume and origin checked | routines/regress_F15_* |
+| F18 | `stats.ecdf` | a NaN never advanced the tie loop (minutes) | fixed: 1-D only, NaN refused | routines/regress_F18_ecdf |
+| F20 | `special.pbvv_seq` / `pbdv_seq` | one recurrence per order (quadratic); `(int)v` of NaN/1e300 | fixed: one xsf recurrence as SciPy's `_specfun` call; NaN / infinity / too large refused | routines/regress_F20_* |
+| F23 | `special.mathieu_odd_coef` / `_even_coef` | an order ~1e18 indexed `fc[256]` | fixed: at most 251 coefficients, `m` integral and in int range, NaN/inf predictor raises | routines/regress_F23_mathieu_odd_coef_1e18 |
+| F31 F33 | `sparse.eye` / `eye_array` / `identity` / `diags` / `spdiags` | dense m*n intermediate, product overflow | fixed: CSR built directly (no dense matrix), dimensions within int32 indices, offsets/shape validated, offsets count must match | routines/regress_F31_*, regress_F33_* |
+| F34 | `stats.chisquare` / `power_divergence` | length 1 against an empty side read the empty side | fixed: broadcasts to length 0 (statistic 0, p NaN) | routines/regress_F34_chisquare |
+| F36 | `distance.minkowski_distance` | 0-d input indexed `shape[-1]` | fixed: 0-d and length-1 axes broadcast; mismatched rows refused (they were read past y) | routines/regress_F36_minkowski_distance_0d |
+| F40 | `scipyfft.fht` | 0-d input indexed `shape[-1]` | fixed: refused (SciPy raises IndexError) | routines/regress_F40_fht_0d |
+| CI | `linalg.svd` / `slinalg.svd` / `linalg.lstsq` (np_linalg.c) | dgesdd / dgelsd looped on a matrix with NaN or infinity (CI libFuzzer hang) | fixed: the SVD drivers check the input and report NumPy's "SVD did not converge" (also procrustes) | routines/regress_svd_nonfinite_hang |
+
+Found by the batch A campaigns themselves in the batch A files (routine slot restricted to the batch A routines,
+`FUZZ_SKIP_KNOWN`), fixed in the same change and covered by the campaign corpus replay:
+
+| routine(s) | was | now |
+|-----------|-----|-----|
+| `np.copyto` / `put` / `putmask` / `place` / `fill_diagonal` / `put_along_axis` | a number as the destination: stored through a NULL `arr.data` | "must be an array" |
+| `special.erf_zeros` / `fresnel*_zeros`, `pbdn_seq` | fixed `[260]` / `[300]` stack buffers overflowed | heap buffers; nt <= 1000 (deflation is at least quadratic) |
+| `special.bernoulli` / `euler` | quadratic recurrence (minutes at n = 65536) | SciPy's specfun bernob / eulerb (linear) |
+| `special.mathieu_*_coef` | specfun's int `m * m` overflowed (m > 46340); a huge q made fcoef index `fc[km - 1]` wildly | refused / fcoef's 251 NaNs |
+| `special.*_zeros` (Bessel, Kelvin, Airy) | scans from x = 0 for large orders; full scans for impossible counts | start below the first zero, value-only scan, nt bounds |
+| `special.multigammaln`, `np.newton_cotes`, `stats.lmoment` | unbounded loops on a large d / rn / order | SciPy's a > (d-1)/2 check and bounds; lmoment skips the NaN-overwritten moments |
+| `np.round` (negative decimals), `np.unpackbits`, `special.factorial2`, int sums | float->int casts of NaN / 2^63 | checked |
+| `np.gradient` (edge_order < 1), `np.polyint` (2-D k), `integrate.cumulative_simpson` (empty axis, mismatched x) | read past the input | NumPy / SciPy errors |
+| `stats.binomtest`, `cumfreq` / `relfreq`, `multivariate_normal` / `_t`, `dirichlet`, `multinomial`, `matrix_normal`, `wishart`, ... | k / n beyond int64 cast; NaN bin index; argument shapes never compared (read past x) | checked |
+| `ndimage` labels / masks / origins / sizes, geometric transforms, EDT, watershed, find_objects | short labels and masks read past their end; origins drove index overflow; NaN coordinates cast; an empty input sampled `in[0]`; sampling 0 underflowed the EDT envelope; negative watershed input indexed the cost queue | validated (SciPy's "invalid origin", "input and labels must have the same shape", ...); mirror/reflect folded in O(1) |
 

@@ -31,7 +31,7 @@ static void fft_dstcore(const double *x, int64_t N, int type, double *y)
 static int fft_type(const tsr_arg *args, int nargs)
 {
     int t = 2;
-    if (nargs > 1 && args[1].kind == 1) t = (int)((args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num);
+    if (nargs > 1 && args[1].kind == 1) { const int64_t v = fn_num_i64(&args[1], 0); t = v >= 1 && v <= 4 ? (int)v : 0; }   /* others: refused */
     return t;
 }
 
@@ -117,6 +117,8 @@ static int fht_run(const tsr_arg *args, int nargs, tsr_result *res, int inverse)
 {
     if (nargs < 3 || args[0].kind != 3) { fn_set_error("fht: a must be an array, with dln and mu"); return TSR_EARG; }
     const tsr_array *A = &args[0].arr;
+    /* scipy indexes a.shape[-1] (IndexError for a 0-d array); a 0-d array indexed shape[-1] here */
+    if (A->ndim < 1) { fn_set_error("fht: a must have at least one dimension"); return TSR_EDIM; }
     const int64_t n = A->shape[A->ndim - 1];
     if (n < 1) { fn_set_error("fht: last axis must be non-empty"); return TSR_EARG; }
     int64_t na;
