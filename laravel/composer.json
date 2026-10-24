@@ -4,7 +4,7 @@
     "type": "library",
     "license": "BSD-3-Clause",
     "require": {
-        "php": "^8.2",
+        "php": "~8.2.35 || ~8.3.36 || ~8.4.27 || ^8.5.12",
         "tessero/tessero": "^0.2",
         "illuminate/support": "^12.0 || ^13.0",
         "illuminate/contracts": "^12.0 || ^13.0"
