@@ -1,8 +1,9 @@
 # Third-party code in Tessero
 
 Tessero's own code is under the BSD 3-Clause License (`LICENSE`). The kernel (`csrc/`, copied into `ext/libtessero/` by
-`tools/sync-ext.sh`) includes the code below, all under permissive licences. The licence texts ship next to
-the code; binaries built from this repository must carry this file and those texts.
+`tools/sync-ext.sh`) and the PHP package (`src/`) include the code below, all under permissive licences. The
+licence texts ship next to the code (or in `licenses/`); binaries built from this repository must carry this file and
+those texts (the release job packs them into `tessero-binaries.tgz` under `lib/licenses/`).
 
 | Component | Version | Licence | Location | Used for |
 |---|---|---|---|---|
@@ -13,7 +14,21 @@ the code; binaries built from this repository must carry this file and those tex
 | Boost.Math (the 178 headers used, standalone mode) | commit 5e088ff | Boost Software License 1.0 (`csrc/third_party/boost/LICENSE_1_0.txt`) | `csrc/third_party/boost/` | `scipy.special` (the functions SciPy takes from Boost) |
 | NumPy random distributions (`numpy/random/src/distributions/*`) | NumPy 2.4.4 | BSD-3-Clause (`csrc/third_party/numpy/LICENSE.txt`, `csrc/third_party/numpy/random/LICENSE.md`) | `csrc/third_party/numpy/random/` | `numpy.random.Generator` methods, `rvs` of `scipy.stats` distributions |
 | FITPACK (P. Dierckx), f2c translation of SciPy's `scipy/interpolate/fitpack/*.f` | SciPy 1.17.1 | BSD-3-Clause, as distributed in SciPy (`csrc/third_party/scipy/LICENSE.txt`); procedure in `csrc/third_party/scipy/fitpack/README.fitpack` | `csrc/third_party/scipy/fitpack/` | `scipy.interpolate` smoothing splines |
-| `f2c.h` and the libf2c-style helpers in `fitpack_support.c` | netlib f2c | f2c permission notice (AT&T, Lucent, Bellcore); the verbatim notice text from the netlib distribution still has to be added next to the code (tracked in the 2026-10 security review backlog) | `csrc/third_party/scipy/fitpack/` | runtime support for the translated FITPACK |
+| `f2c.h` and the libf2c-style helpers in `fitpack_support.c` | netlib libf2c (`Notice` dated 1997) | f2c permission notice (AT&T, Lucent, Bellcore), verbatim in `csrc/third_party/scipy/fitpack/LICENSE.f2c` (file `Notice` of https://www.netlib.org/f2c/libf2c.zip) | `csrc/third_party/scipy/fitpack/` | runtime support for the translated FITPACK |
+| Joe & Kuo Sobol' direction numbers (`new-joe-kuo-6.21201`) | 2008 table | BSD-3-Clause-style licence of F. Y. Kuo and S. Joe (`licenses/LICENSE.joe-kuo-sobol.txt`, from https://web.maths.unsw.edu.au/~fkuo/sobol/licence) | `src/Stats/Qmc/Sobol.php` | `scipy.stats.qmc.Sobol`, `scipy.stats.sobol_indices` |
+| MT19937 Mersenne Twister (M. Matsumoto, T. Nishimura) as distributed in NumPy (`numpy/random/src/mt19937`) | NumPy 2.4.4 | BSD-3-Clause (Matsumoto and Nishimura) and MIT (J.-S. Roy, R. J. Wagner, M. Jonsson, I. Wada) (`licenses/LICENSE.mt19937.md`) | `src/Random/MT19937.php` | the legacy `numpy.random.RandomState` stream, `scipy.stats.multiscale_graphcorr` |
+
+## Libraries linked at build or run time (not vendored)
+
+These are not part of this repository and are not shipped in `tessero-binaries.tgz`; they come from the
+operating system's package manager (or, for the FFI package's optional BLAS, from a SciPy wheel).
+
+| Library | Licence | How it is used |
+|---|---|---|
+| LAPACKE and LAPACK (Reference LAPACK) | BSD-3-Clause | `libtessero.so` (Linux) links `liblapacke.so.3` and `libblas.so.3` dynamically (`csrc/Makefile`, `LAPACK`); the extension does the same |
+| OpenBLAS | BSD-3-Clause | provides BLAS/LAPACK behind those sonames on most distributions; `src/Native/Blas.php` may also load `libopenblas.so.0` or SciPy's bundled `libscipy_openblas` at run time |
+| libgomp (GCC OpenMP runtime) | GPL-3.0-or-later WITH GCC-exception-3.1 | linked dynamically when built with OpenMP (the default on Linux) |
+| libstdc++ and libgcc (GCC runtime) | GPL-3.0-or-later WITH GCC-exception-3.1 | linked statically into `libtessero` (`-static-libstdc++ -static-libgcc`; `-static-libgcc` on Windows). The GCC Runtime Library Exception permits distributing the resulting binary under Tessero's licence because it is produced by GCC, an eligible compilation process |
 
 Code written for Tessero that follows SciPy's or NumPy's Python/Cython code line by line (and therefore is a
 derived work under their BSD-3-Clause licence) says so in its header: `csrc/third_party/scipy/cython_ports.hpp`
