@@ -1259,7 +1259,8 @@ static void test_fuzz_batch_a(void)
     CHECK(fa_call("sparse.spdiags", 4, sp, r, 4) == TSR_EARG, "sparse.spdiags with fewer offsets than rows refused");
 
     /* F1 / F10 / F6: text and binary file readers */
-    char path[] = "/tmp/tsr_fuzz_a_XXXXXX";
+    char path[1024];
+    snprintf(path, sizeof path, "%s/tsr_fuzz_a_XXXXXX", test_tmpdir());   /* no /tmp on Windows */
     int fd = mkstemp(path);
     CHECK(fd >= 0, "mkstemp");
     if (fd >= 0) {
@@ -1308,6 +1309,25 @@ static void test_fuzz_batch_a(void)
     CHECK(tsr_npy_write_header(TSR_F64, 2, hs3, 0, hdr, sizeof hdr) < 0, "F4 npy header for 2^66 bytes refused");
     int64_t ok2[2] = {(int64_t)1 << 30, 8};
     CHECK(tsr_npy_write_header(TSR_F64, 2, ok2, 0, hdr, sizeof hdr) > 0, "npy header for 2^33 elements still written");
+
+    /* CI fuzz: sph_harm_y cast its orders to int unchecked, and xsf negated m = INT_MIN (signed overflow);
+       lambertw cast its branch index unchecked. Orders out of reach give NaN; a non-finite k is refused. */
+    tsr_arg sy[4] = {arg_num(-2147483648.0), arg_num(-2147483648.0), arg_num(0.5), arg_num(0.25)};
+    rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
+    CHECK(rc == 0 && isnan(((double *)r[0].arr.data)[0]), "sph_harm_y with order INT_MIN is NaN (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    sy[0] = arg_num(NAN); sy[1] = arg_num(1e300);
+    rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
+    CHECK(rc == 0 && isnan(((double *)r[0].arr.data)[0]), "sph_harm_y with NaN/huge orders is NaN (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    sy[0] = arg_int(2); sy[1] = arg_int(1);
+    rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
+    CHECK(rc == 0 && !isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(2, 1, ...) still computed (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    tsr_arg lw[2] = {arg_num(1.0), arg_num(NAN)};
+    CHECK(fa_call("special.lambertw", 2, lw, r, 1) < 0, "lambertw with k = NaN refused");
+    lw[1] = arg_num(1e300);
+    CHECK(fa_call("special.lambertw", 2, lw, r, 1) < 0, "lambertw with k = 1e300 refused");
 }
 
 static void test_size_overflow(void)
