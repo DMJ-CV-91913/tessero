@@ -54,3 +54,4 @@ __pycache__/
 /ext/tests/*.sh
 # the soname symlink created by csrc/Makefile (ADR 0014)
 /lib/*/libtessero.so.*
+/ext/*~
