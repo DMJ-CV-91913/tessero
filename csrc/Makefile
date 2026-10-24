@@ -9,21 +9,37 @@ LIBNAME := libtessero
 # the C ABI generation, from the single version source (include/tessero_version.h, ADR 0014): the soname
 # libtessero.so.<abi> changes only when the ABI does
 TSR_ABI := $(shell sed -n 's/^\#define TSR_ABI_VERSION \([0-9][0-9]*\).*/\1/p' include/tessero_version.h)
-# LAPACKE (row-major C LAPACK) backs numpy.linalg / scipy.linalg in the kernel (src/np_linalg.c). On glibc/musl
-# Linux liblapacke pulls in the system LAPACK/BLAS (OpenBLAS via the alternatives system). macOS and Windows
-# linalg linkage is tracked cross-platform work (Accelerate / OpenBLAS-for-MSVC): set LAPACK on those targets.
+# LAPACKE (row-major C LAPACK) and cblas back numpy.linalg / scipy.linalg and the float matmul in the kernel.
+#   Linux:   liblapacke + the system BLAS (OpenBLAS via the alternatives system).
+#   macOS:   Homebrew OpenBLAS, which ships LAPACK, LAPACKE (lapacke.h) and cblas in one library (Apple's
+#            Accelerate has LAPACK but no LAPACKE). `brew install openblas`; OPENBLAS_PREFIX overrides the path.
+#   Windows: MSYS2 MINGW64 OpenBLAS (`pacman -S mingw-w64-x86_64-openblas`), which also carries LAPACKE.
+# Set LAPACK (link flags) and LAPACK_INC (include flags) to use any other LAPACKE provider.
 LAPACK ?=
+LAPACK_INC ?=
 ifeq ($(UNAME_S),Darwin)
   PLATFORM := darwin-$(UNAME_M)
   EXT := dylib
   SHARED := -dynamiclib -install_name @rpath/libtessero.dylib
   OPENMP ?=
+  ifeq ($(LAPACK),)
+    OPENBLAS_PREFIX ?= $(shell brew --prefix openblas 2>/dev/null)
+    ifneq ($(OPENBLAS_PREFIX),)
+      LAPACK_INC := -I$(OPENBLAS_PREFIX)/include
+      LAPACK := -L$(OPENBLAS_PREFIX)/lib -lopenblas -Wl,-rpath,$(OPENBLAS_PREFIX)/lib
+    endif
+  endif
 else ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S)))
   PLATFORM := windows-$(UNAME_M)
   EXT := dll
   LIBNAME := tessero
   SHARED := -shared -static-libgcc
   OPENMP ?=
+  ifeq ($(LAPACK),)
+    MINGW_PREFIX ?= /mingw64
+    LAPACK := -lopenblas
+    LAPACK_INC := $(if $(wildcard $(MINGW_PREFIX)/include/openblas/lapacke.h),-I$(MINGW_PREFIX)/include/openblas)
+  endif
 else
   MUSL := $(shell ldd --version 2>&1 | grep -qi musl && echo -musl)
   PLATFORM := linux$(MUSL)-$(UNAME_M)
@@ -67,6 +83,8 @@ CFLAGS ?= -O3 -std=gnu11 -fPIC -fno-math-errno -fno-trapping-math $(OPENMP) $(WA
 # CFLAGS given on the command line keeps it.
 VIS := -fvisibility=hidden -DTSR_EXPORT_ABI
 LDLIBS := -lm $(LAPACK)
+CFLAGS += $(LAPACK_INC)
+CXXFLAGS += $(LAPACK_INC)
 
 # ---- compiler and linker hardening (OpenSSF "Compiler Options Hardening Guide for C and C++"). Every flag is
 #      probed, so a toolchain that lacks one drops it instead of failing. None changes floating-point semantics;

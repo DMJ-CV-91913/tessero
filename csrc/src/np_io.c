@@ -7,6 +7,43 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+/* getline() with POSIX semantics (returns the line length, -1 at end of file or on error, grows *line as needed).
+   POSIX systems use the C library's; Windows (MinGW, MSVC) has none, so it is implemented here. */
+#ifdef _WIN32
+#if defined(_MSC_VER) && !defined(ssize_t)
+typedef long long ssize_t;
+#endif
+static long long tsr_getline(char **line, size_t *cap, FILE *fp)
+{
+    if (!line || !cap || !fp) return -1;
+    if (!*line || *cap == 0) {
+        size_t c = 128;
+        char *p = (char *)realloc(*line, c);
+        if (!p) return -1;
+        *line = p;
+        *cap = c;
+    }
+    size_t n = 0;
+    int ch;
+    while ((ch = fgetc(fp)) != EOF) {
+        if (n + 2 > *cap) {
+            if (*cap > ((size_t)-1) / 2) return -1;
+            size_t c = *cap * 2;
+            char *p = (char *)realloc(*line, c);
+            if (!p) return -1;
+            *line = p;
+            *cap = c;
+        }
+        (*line)[n++] = (char)ch;
+        if (ch == '\n') break;
+    }
+    if (n == 0) return -1;
+    (*line)[n] = '\0';
+    return (long long)n;
+}
+#else
+#define tsr_getline getline
+#endif
 
 static int push(double **d, int64_t *cap, int64_t *cnt, double v)
 {
@@ -34,7 +71,7 @@ static int r_loadtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     if (!fp) { fn_set_error("loadtxt: could not open '%s'", fname); return TSR_EARG; }
     double *data = NULL; int64_t cap = 0, cnt = 0, nrows = 0, ncols = -1;
     char *line = NULL; size_t lcap = 0; ssize_t len; int64_t lineno = 0; int rc = TSR_OK;
-    while ((len = getline(&line, &lcap, fp)) != -1) {
+    while ((len = tsr_getline(&line, &lcap, fp)) != -1) {
         if (lineno++ < skiprows) continue;
         if (comments && comments[0]) { char *h = strstr(line, comments); if (h) *h = '\0'; }
         int64_t rowcols = 0;
@@ -185,7 +222,7 @@ static int r_genfromtxt(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     if (!fp) { fn_set_error("genfromtxt: could not open '%s'", fname); return TSR_EARG; }
     double *data = NULL; int64_t cap = 0, cnt = 0, nrows = 0, ncols = -1;
     char *line = NULL; size_t lcap = 0; ssize_t len; int64_t lineno = 0; int rc = TSR_OK;
-    while ((len = getline(&line, &lcap, fp)) != -1) {
+    while ((len = tsr_getline(&line, &lcap, fp)) != -1) {
         (void)len;
         if (lineno++ < skip_header) continue;
         if (comments && comments[0]) { char *h = strstr(line, comments); if (h) *h = '\0'; }
