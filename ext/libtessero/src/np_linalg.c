@@ -722,7 +722,7 @@ static int r_eigvals(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int all_real = 1;
     if (n > 0) {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, &d, (lapack_int)n);  /* ld >= n: LAPACKE 3.10 */
+        lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -5 : LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, &d, (lapack_int)n);  /* ld >= n: LAPACKE 3.10 */
         if (info != 0) { free(wr); free(wi); free(ev); fn_free_doubles(a, na); fn_set_error("eigvals: the QR algorithm failed to converge"); return TSR_EARG; }
         for (int64_t i = 0; i < n; i++) { ev[2 * i] = wr[i]; ev[2 * i + 1] = wi[i]; if (wi[i] != 0.0) all_real = 0; }
         qsort(ev, (size_t)n, 2 * sizeof(double), cmp_eval);
@@ -769,7 +769,7 @@ static int r_eig(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     int all_real = 1;
     if (n > 0) {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'V', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, vr, (lapack_int)n);
+        lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -5 : LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'V', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, vr, (lapack_int)n);
         if (info != 0) { free(wr); free(wi); free(vr); free(vc); free(ord); fn_free_doubles(a, na); fn_set_error("eig: the QR algorithm failed to converge"); return TSR_EARG; }
         for (int64_t i = 0; i < n; i++) if (wi[i] != 0.0) all_real = 0;
         if (force_complex) all_real = 0;
@@ -1498,7 +1498,7 @@ int sl_funm_byname(const char *fname, const double *A, int64_t n, double *out)
     memcpy(a, A, sizeof(double) * nn);
     int rc = 0;
     lapack_int sdim = 0;
-    lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
+    lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
     if (info != 0) rc = -1;
     for (int64_t i = 0; rc == 0 && i < n; i++) {
         if (fabs(wi[i]) > 1e-12 * (1.0 + fabs(wr[i]))) rc = -1;        /* complex spectrum unsupported */
@@ -2463,7 +2463,7 @@ static int r_schur(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     if (!t || !z) { free(wr); free(wi); fn_free_doubles(a, na); return TSR_ENOMEM; }
     if (n > 0) {
         lapack_int sdim = 0;
-        lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, z, (lapack_int)n);
+        lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, z, (lapack_int)n);
         if (info != 0) { free(wr); free(wi); fn_free_doubles(a, na); fn_set_error("schur: dgees failed"); return TSR_EARG; }
     }
     for (int64_t i = 0; i < n * n; i++) t[i] = a[i];     /* a now holds the Schur form T */
@@ -2481,7 +2481,7 @@ static int sl_schur(double *a, double *z, int64_t n)
     double *wi = (double *)malloc(sizeof(double) * (size_t)n);
     if (!wr || !wi) { free(wr); free(wi); return -1; }
     lapack_int sdim = 0;
-    lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, z, (lapack_int)n);
+    lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, z, (lapack_int)n);
     free(wr); free(wi);
     return info == 0 ? 0 : -1;
 }
@@ -3177,7 +3177,7 @@ static int r_sqrtm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     int rc = TSR_OK;
     if (n > 0) {
         lapack_int sdim = 0;
-        lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, z, (lapack_int)n);
+        lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, z, (lapack_int)n);
         if (info != 0) { rc = TSR_EARG; fn_set_error("sqrtm: dgees failed"); }
     }
     for (int64_t i = 0; rc == TSR_OK && i < n; i++) {
@@ -3236,7 +3236,7 @@ static int r_logm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     int rc = TSR_OK;
     if (n > 0) {
         lapack_int sdim = 0;
-        lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
+        lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
         if (info != 0) { rc = TSR_EARG; fn_set_error("logm: dgees failed"); }
     }
     for (int64_t i = 0; rc == TSR_OK && i < n; i++) {
@@ -3381,7 +3381,7 @@ static int matfun_impl(const tsr_arg *args, int nargs, tsr_result *res, double (
     int rc = TSR_OK;
     if (n > 0) {
         lapack_int sdim = 0;
-        lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
+        lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
         if (info != 0) { rc = TSR_EARG; fn_set_error("%s: dgees failed", name); }
     }
     for (int64_t i = 0; rc == TSR_OK && i < n; i++) {
@@ -3494,7 +3494,7 @@ static int r_fractional_matrix_power(const void *ctx, const tsr_arg *args, int n
     int rc = TSR_OK;
     if (n > 0) {
         lapack_int sdim = 0;
-        lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
+        lapack_int info = !fn_all_finite(a, (int64_t)(n) * (n)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'N', NULL, (lapack_int)n, a, (lapack_int)n, &sdim, wr, wi, zz, (lapack_int)n);
         if (info != 0) { rc = TSR_EARG; fn_set_error("fractional_matrix_power: dgees failed"); }
     }
     for (int64_t i = 0; rc == TSR_OK && i < n; i++) {
@@ -3986,7 +3986,7 @@ static int sl_riccati_from(double *Hmat, int64_t m, LAPACK_D_SELECT2 select, dou
     int rc = -1;
     if (wr && wi && vs && U1 && U2) {
         lapack_int sdim = 0;
-        lapack_int info = LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'S', select, (lapack_int)N, Hmat, (lapack_int)N, &sdim, wr, wi, vs, (lapack_int)N);
+        lapack_int info = !fn_all_finite(Hmat, (int64_t)(N) * (N)) ? -6 : LAPACKE_dgees(LAPACK_ROW_MAJOR, 'V', 'S', select, (lapack_int)N, Hmat, (lapack_int)N, &sdim, wr, wi, vs, (lapack_int)N);
         if (info == 0 && sdim == (lapack_int)m) {
             for (int64_t i = 0; i < m; i++)
                 for (int64_t j = 0; j < m; j++) { U1[i * m + j] = vs[i * N + j]; U2[i * m + j] = vs[(m + i) * N + j]; }

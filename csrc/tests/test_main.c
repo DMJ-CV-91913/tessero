@@ -1351,6 +1351,19 @@ static void test_fuzz_batch_a(void)
     CHECK(rc == 0 && r[0].arr.shape[0] == 3 && ((double *)r[0].arr.data)[0] == 9.0 && ((double *)r[0].arr.data)[1] == -36.0,
           "invhilbert(3) still exact: [[9, -36, 30], ...] (rc %d)", rc);
     if (rc == 0) fa_free(r, 1);
+    /* CI fuzz (main): a NaN matrix reaching LAPACKE_dgeev corrupted the caller's heap on LAPACKE's NaN-check path,
+       before it returned -5. dgeev/dgees are now never called with a non-finite matrix; the routine reports the
+       same failure. Under the sanitizer + ownership-check build any heap damage here aborts the test. */
+    double ev_nan[4] = {1.0, NAN, 2.0, 3.0};
+    int64_t ev_sh[2] = {2, 2};
+    tsr_arg evg[1] = {arg_arr(ev_nan, 2, ev_sh)};
+    CHECK(fa_call("linalg.eigvals", 1, evg, r, 1) < 0, "linalg.eigvals of a NaN matrix fails cleanly (no LAPACKE call)");
+    CHECK(fa_call("linalg.eig", 1, evg, r, 2) < 0, "linalg.eig of a NaN matrix fails cleanly (no LAPACKE call)");
+    double ev_ok[4] = {2.0, 0.0, 0.0, 3.0};
+    evg[0] = arg_arr(ev_ok, 2, ev_sh);
+    rc = fa_call("linalg.eigvals", 1, evg, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[0] == 2.0 && ((double *)r[0].arr.data)[1] == 3.0, "linalg.eigvals of a finite matrix unchanged (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
     tsr_arg lw[2] = {arg_num(1.0), arg_num(NAN)};
     CHECK(fa_call("special.lambertw", 2, lw, r, 1) < 0, "lambertw with k = NaN refused");
     lw[1] = arg_num(1e300);
