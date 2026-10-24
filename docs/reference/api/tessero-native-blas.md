@@ -20,6 +20,7 @@ Linalg throws LibraryUnavailable.
 | `ROW_MAJOR` | `101` |
 | `NO_TRANS` | `111` |
 | `TRANS` | `112` |
+| `INT_MAX` | `2147483647` |
 
 ## Methods
 
@@ -35,7 +36,9 @@ static available(): bool
 static call(string $fn, mixed ...$args): mixed
 ```
 
-Call a BLAS/LAPACKE symbol by its unprefixed name.
+Call a BLAS/LAPACKE symbol by its unprefixed name. Integer arguments must fit the library's 32-bit
+int: PHP FFI silently truncates a wider value (2^32 + 3 becomes 3), which would make LAPACK work on
+a different size than the buffers have.
 
 ### ffi
 
@@ -71,7 +74,7 @@ static preloadCandidates(): array
 static ptr(string $type, int $address): FFI\CData
 ```
 
-Pointer of the given C type in the BLAS FFI scope at an absolute address.
+Pointer of the given C type in the BLAS FFI scope at an absolute address. @internal
 
 ### setThreads
 

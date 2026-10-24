@@ -4,6 +4,12 @@
 
 ## Methods
 
+### allclose
+
+```php
+static allclose($a, $b, $rtol = 1.0E-5, $atol = 1.0E-8, $equalNan = false)
+```
+
 ### append
 
 ```php
@@ -22,6 +28,12 @@ static argpartition($a, $kth, $axis = -1)
 static argwhere($a)
 ```
 
+### around
+
+```php
+static around($a, $decimals = 0)
+```
+
 ### arrayEqual
 
 ```php
@@ -38,6 +50,24 @@ static arrayEquiv($a1, $a2)
 
 ```php
 static arraySplit($ary, $indicesOrSections, $axis = 0)
+```
+
+### asarrayChkfinite
+
+```php
+static asarrayChkfinite($a, $dtype = null, $order = null)
+```
+
+### ascontiguousarray
+
+```php
+static ascontiguousarray($a, $dtype = null)
+```
+
+### asfortranarray
+
+```php
+static asfortranarray($a, $dtype = null)
 ```
 
 ### atleast1d
@@ -76,6 +106,30 @@ static bartlett($M)
 static bincount($x, $weights = null, $minlength = 0)
 ```
 
+### bitwiseAnd
+
+```php
+static bitwiseAnd($x1, $x2)
+```
+
+### bitwiseCount
+
+```php
+static bitwiseCount($x)
+```
+
+### bitwiseOr
+
+```php
+static bitwiseOr($x1, $x2)
+```
+
+### bitwiseXor
+
+```php
+static bitwiseXor($x1, $x2)
+```
+
 ### blackman
 
 ```php
@@ -98,6 +152,12 @@ static broadcastShapes(...$args)
 
 ```php
 static broadcastTo($array, $shape)
+```
+
+### canCast
+
+```php
+static canCast($from_, $to, $casting = 'safe')
 ```
 
 ### choose
@@ -178,10 +238,22 @@ static cross($a, $b, $axisa = -1, $axisb = -1, $axisc = -1, $axis = null)
 static cumulativeProd($x, $axis = null, $includeInitial = false)
 ```
 
+### cumulativeSimpson
+
+```php
+static cumulativeSimpson($y, $x = null, $dx = 1.0, $axis = -1, $initial = null)
+```
+
 ### cumulativeSum
 
 ```php
 static cumulativeSum($x, $axis = null, $includeInitial = false)
+```
+
+### cumulativeTrapezoid
+
+```php
+static cumulativeTrapezoid($y, $x = null, $dx = 1.0, $axis = -1, $initial = null)
 ```
 
 ### delete
@@ -232,6 +304,12 @@ static diff($a, $n = 1, $axis = -1, $prepend = null, $append = null)
 static digitize($x, $bins, $right = false)
 ```
 
+### divmod
+
+```php
+static divmod($x1, $x2)
+```
+
 ### dsplit
 
 ```php
@@ -244,16 +322,34 @@ static dsplit($ary, $indicesOrSections)
 static dstack($tup)
 ```
 
+### e
+
+```php
+static e()
+```
+
 ### ediff1d
 
 ```php
 static ediff1d($ary, $toEnd = null, $toBegin = null)
 ```
 
+### einsum
+
+```php
+static einsum($subscripts, ...$operands)
+```
+
 ### emptyLike
 
 ```php
 static emptyLike($a, $dtype = null, $shape = null)
+```
+
+### eulerGamma
+
+```php
+static eulerGamma()
 ```
 
 ### expandDims
@@ -268,10 +364,22 @@ static expandDims($a, $axis)
 static extract($condition, $arr)
 ```
 
+### fabs
+
+```php
+static fabs($x)
+```
+
 ### fillDiagonal
 
 ```php
 static fillDiagonal($a, $val, $wrap = false)
+```
+
+### finfo
+
+```php
+static finfo($dtype)
 ```
 
 ### flatnonzero
@@ -298,10 +406,34 @@ static fliplr($m)
 static flipud($m)
 ```
 
+### frexp
+
+```php
+static frexp($x)
+```
+
+### fromfile
+
+```php
+static fromfile($fname, $dtype = null, $count = -1, $sep = null, $offset = 0)
+```
+
+### fromiter
+
+```php
+static fromiter($iterable, $dtype, $count = -1)
+```
+
 ### fullLike
 
 ```php
 static fullLike($a, $fillValue, $dtype = null, $shape = null)
+```
+
+### genfromtxt
+
+```php
+static genfromtxt($fname, $delimiter = null, $skipHeader = 0, $skipFooter = 0, $comments = null, $usecols = null)
 ```
 
 ### geomspace
@@ -334,10 +466,22 @@ static hanning($M)
 static histogram($a, $bins = 10, $range = null, $density = false, $weights = null)
 ```
 
+### histogram2d
+
+```php
+static histogram2d($x, $y, $bins = 10, $range = null, $density = false, $weights = null)
+```
+
 ### histogramBinEdges
 
 ```php
 static histogramBinEdges($a, $bins = 10, $range = null, $weights = null)
+```
+
+### histogramdd
+
+```php
+static histogramdd($sample, $bins = 10, $range = null, $density = false, $weights = null)
 ```
 
 ### hsplit
@@ -364,10 +508,22 @@ static i0($x)
 static identity($n, $dtype = null)
 ```
 
+### iinfo
+
+```php
+static iinfo($dtype)
+```
+
 ### indices
 
 ```php
 static indices($dimensions, $dtype = 'int64', $sparse = false)
+```
+
+### inf
+
+```php
+static inf()
 ```
 
 ### inner
@@ -392,6 +548,12 @@ static interp($x, $xp, $fp, $left = null, $right = null, $period = null)
 
 ```php
 static intersect1d($ar1, $ar2, $assumeUnique = false, $returnIndices = false)
+```
+
+### isclose
+
+```php
+static isclose($a, $b, $rtol = 1.0E-5, $atol = 1.0E-8, $equalNan = false)
 ```
 
 ### iscomplex
@@ -454,10 +616,28 @@ static kaiser($M, $beta)
 static kron($a, $b)
 ```
 
+### ldexp
+
+```php
+static ldexp($x1, $x2)
+```
+
+### leftShift
+
+```php
+static leftShift($x1, $x2)
+```
+
 ### lexsort
 
 ```php
 static lexsort($keys)
+```
+
+### loadtxt
+
+```php
+static loadtxt($fname, $delimiter = null, $skiprows = 0, $comments = null, $usecols = null)
 ```
 
 ### logspace
@@ -472,6 +652,12 @@ static logspace($start, $stop, $num = 50, $endpoint = true, $base = 10.0, $dtype
 static matrixTranspose($x)
 ```
 
+### matvec
+
+```php
+static matvec($x1, $x2)
+```
+
 ### median
 
 ```php
@@ -484,10 +670,22 @@ static median($a, $axis = null, $keepdims = false)
 static meshgrid(...$xi)
 ```
 
+### modf
+
+```php
+static modf($x)
+```
+
 ### moveaxis
 
 ```php
 static moveaxis($a, $source, $destination)
+```
+
+### nan
+
+```php
+static nan()
 ```
 
 ### nanToNum
@@ -586,6 +784,12 @@ static nanvar($a, $axis = null, $ddof = 0, $keepdims = false)
 static ndim($a)
 ```
 
+### newtonCotes
+
+```php
+static newtonCotes($rn, $equal = 0)
+```
+
 ### nonzero
 
 ```php
@@ -602,6 +806,12 @@ static onesLike($a, $dtype = null, $shape = null)
 
 ```php
 static outer($a, $b)
+```
+
+### packbits
+
+```php
+static packbits($a, $axis = null, $bitorder = 'big')
 ```
 
 ### pad
@@ -622,10 +832,22 @@ static partition($a, $kth, $axis = -1)
 static percentile($a, $q, $axis = null, $method = 'linear', $keepdims = false)
 ```
 
+### pi
+
+```php
+static pi()
+```
+
 ### place
 
 ```php
 static place($arr, $mask, $vals)
+```
+
+### poly
+
+```php
+static poly($seq)
 ```
 
 ### polyadd
@@ -644,6 +866,12 @@ static polyder($p, $m = 1)
 
 ```php
 static polydiv($u, $v)
+```
+
+### polyfit
+
+```php
+static polyfit($x, $y, $deg)
 ```
 
 ### polyint
@@ -668,6 +896,18 @@ static polysub($a1, $a2)
 
 ```php
 static polyval($p, $x)
+```
+
+### positive
+
+```php
+static positive($x)
+```
+
+### promoteTypes
+
+```php
+static promoteTypes($type1, $type2)
 ```
 
 ### ptp
@@ -724,6 +964,18 @@ static repeat($a, $repeats, $axis = null)
 static resize($a, $newShape)
 ```
 
+### resultType
+
+```php
+static resultType(...$arraysAndDtypes)
+```
+
+### rightShift
+
+```php
+static rightShift($x1, $x2)
+```
+
 ### roll
 
 ```php
@@ -736,10 +988,34 @@ static roll($a, $shift, $axis = null)
 static rollaxis($a, $axis, $start = 0)
 ```
 
+### romb
+
+```php
+static romb($y, $dx = 1.0)
+```
+
+### roots
+
+```php
+static roots($p)
+```
+
 ### rot90
 
 ```php
 static rot90($m, $k = 1, $axes = null)
+```
+
+### round
+
+```php
+static round($a, $decimals = 0)
+```
+
+### savetxt
+
+```php
+static savetxt($fname, $X, $fmt = null, $delimiter = null, $newline = null, $header = null, $footer = null, $comments = null)
 ```
 
 ### searchsorted
@@ -772,6 +1048,12 @@ static setxor1d($ar1, $ar2, $assumeUnique = false)
 static shape($a)
 ```
 
+### simpson
+
+```php
+static simpson($y, $x = null, $dx = 1.0, $axis = -1)
+```
+
 ### sinc
 
 ```php
@@ -782,6 +1064,18 @@ static sinc($x)
 
 ```php
 static size($a, $axis = null)
+```
+
+### sortComplex
+
+```php
+static sortComplex($a)
+```
+
+### spacing
+
+```php
+static spacing($x)
 ```
 
 ### split
@@ -928,6 +1222,12 @@ static uniqueInverse($x)
 static uniqueValues($x)
 ```
 
+### unpackbits
+
+```php
+static unpackbits($a, $axis = null, $count = null, $bitorder = 'big')
+```
+
 ### unravelIndex
 
 ```php
@@ -956,6 +1256,18 @@ static vander($x, $N = null, $increasing = false)
 
 ```php
 static vdot($a, $b)
+```
+
+### vecdot
+
+```php
+static vecdot($x1, $x2, $axis = -1)
+```
+
+### vecmat
+
+```php
+static vecmat($x1, $x2)
 ```
 
 ### vsplit

@@ -55,6 +55,11 @@ if test "$PHP_TESSERO" != "no"; then
     AC_MSG_NOTICE([tessero hardening flags:$TESSERO_HARDEN])
     TESSERO_CFLAGS="$TESSERO_CFLAGS $TESSERO_HARDEN"
   fi
+  dnl code placement (probed): 64-byte function alignment keeps hot loops from shifting across cache lines when
+  dnl the code before them grows (as with the hardening flags); layout only, results unchanged. Mirrors csrc/Makefile.
+  tessero_save_CFLAGS=$CFLAGS; CFLAGS="$CFLAGS -O2 -Werror -falign-functions=64"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([], [])], [TESSERO_CFLAGS="$TESSERO_CFLAGS -falign-functions=64"])
+  CFLAGS=$tessero_save_CFLAGS
   PHP_ADD_LIBRARY(m, 1, TESSERO_SHARED_LIBADD)
   dnl LAPACKE (row-major C LAPACK) backs linalg.* (libtessero/src/np_linalg.c); pulls in the system LAPACK/BLAS.
   dnl On macOS/Windows this needs the platform LAPACKE (Accelerate / OpenBLAS-for-MSVC): tracked cross-platform work.
