@@ -1,5 +1,0 @@
-libtessero/src/spatial_distance.lo: \
- /home/tessero/tw-merge/ext/libtessero/src/spatial_distance.c \
- /home/tessero/tw-merge/ext/libtessero/src/fn.h \
- /home/tessero/tw-merge/ext/libtessero/src/internal.h \
- /home/tessero/tw-merge/ext/libtessero/src/../include/tessero.h

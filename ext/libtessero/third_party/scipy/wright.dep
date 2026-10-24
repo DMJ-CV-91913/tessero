@@ -1,7 +1,0 @@
-libtessero/third_party/scipy/wright.lo: \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/wright.cc \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/wright.hh \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/_round.h \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/sf_error.h \
- /home/tessero/tw-merge/ext/libtessero/third_party/xsf/xsf/error.h \
- /home/tessero/tw-merge/ext/libtessero/third_party/xsf/xsf/config.h

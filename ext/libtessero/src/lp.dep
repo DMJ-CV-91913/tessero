@@ -1,3 +1,0 @@
-libtessero/src/lp.lo: /home/tessero/tw-merge/ext/libtessero/src/lp.c \
- /home/tessero/tw-merge/ext/libtessero/src/internal.h \
- /home/tessero/tw-merge/ext/libtessero/src/../include/tessero.h
