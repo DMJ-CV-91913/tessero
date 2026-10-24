@@ -337,7 +337,7 @@ static int r_squareform(const void *ctx, const tsr_arg *args, int nargs, tsr_res
 
 /* ---- scipy.spatial top-level Minkowski helpers (credited to scipy.spatial.* via scope.py) ---- */
 /* p-th-power Minkowski contribution between two k-vectors; p==inf -> max |a-b| (root is then the identity). */
-static double spt_mink_p(const double *a, const double *b, int64_t k, double p, int inf)
+static inline double spt_mink_p(const double *a, const double *b, int64_t k, double p, int inf)
 {
     if (inf) { double m = 0.0; for (int64_t d = 0; d < k; d++) { double t = fabs(a[d] - b[d]); if (t > m) m = t; } return m; }
     double s = 0.0; for (int64_t d = 0; d < k; d++) s += pow(fabs(a[d] - b[d]), p);

@@ -97,14 +97,19 @@ static int64_t bmap(int64_t p, int64_t n, int mode)
 {
     if (p >= 0 && p < n) return p;
     if (n <= 0) return -1;
+    /* mirror and reflect are periodic (2n - 2 and 2n): a far tap is folded into one period first, then the loops
+       below take at most two steps (they used to step one period per iteration: |p| / n of them, minutes for a
+       long filter on a short line) */
+    if ((mode == ND_MIRROR || (mode != ND_NEAREST && mode != ND_WRAP && mode != ND_CONSTANT)) && (p < -2 * n || p >= 3 * n)) {
+        const int64_t per = mode == ND_MIRROR ? 2 * n - 2 : 2 * n;
+        if (per > 0) { p %= per; if (p < 0) p += per; }
+    }
     switch (mode) {
     case ND_NEAREST: return p < 0 ? 0 : n - 1;
     case ND_WRAP: { p %= n; if (p < 0) p += n; return p; }
-    /* mirror and reflect are periodic (2n - 2 and 2n): fold with one modulo instead of stepping one period at a
-       time, which took |p| / n iterations for a far tap (a long filter on a short line ran for minutes) */
-    case ND_MIRROR: { if (n == 1) return 0; const int64_t per = 2 * n - 2; int64_t m = p % per; if (m < 0) m += per; return m < n ? m : per - m; }
+    case ND_MIRROR: if (n == 1) return 0; while (p < 0 || p >= n) { if (p < 0) p = -p; else p = 2 * n - 2 - p; } return p;
     case ND_CONSTANT: return -1;
-    default: { const int64_t per = 2 * n; int64_t m = p % per; if (m < 0) m += per; return m < n ? m : per - 1 - m; }   /* reflect */
+    default: while (p < 0 || p >= n) { if (p < 0) p = -p - 1; else p = 2 * n - 1 - p; } return p;   /* reflect */
     }
 }
 
@@ -1815,10 +1820,11 @@ static int r_map_coordinates(const void *ctx, const tsr_arg *args, int nargs, ts
     int64_t osh[8], M = 1; for (int d = 0; d < ond; d++) { osh[d] = args[1].arr.shape[d + 1]; M *= osh[d]; }
     int64_t ti, tc; double *in = fn_arg_doubles(&args[0], &ti);
     double *co = in ? fn_arg_doubles(&args[1], &tc) : NULL;
-    double *out = co ? (double *)fn_result_array(&res[0], TSR_F64, ond, ond > 0 ? osh : NULL) : NULL;
-    if (!out && !(ond == 0 && co)) { fn_free_doubles(in, ti); if (co) fn_free_doubles(co, tc); return TSR_ENOMEM; }
-    double *dst = (ond == 0) ? &res[0].num : out;
-    if (ond == 0) res[0].kind = 1;
+    /* (nd,) coordinates give a scalar: no 0-d result block (one was allocated and then overwritten, a leak) */
+    double *out = (co && ond > 0) ? (double *)fn_result_array(&res[0], TSR_F64, ond, osh) : NULL;
+    if (!co || (ond > 0 && !out)) { fn_free_doubles(in, ti); if (co) fn_free_doubles(co, tc); return TSR_ENOMEM; }
+    double scalar = 0.0;
+    double *dst = (ond == 0) ? &scalar : out;
     const int con = (mode == ND_CONSTANT);
     const double *src = in; double *coeff = NULL;
     if (order >= 2) {
@@ -1835,6 +1841,7 @@ static int r_map_coordinates(const void *ctx, const tsr_arg *args, int nargs, ts
         for (int d = 0; d < nd; d++) coord[d] = co[(int64_t)d * M + m];
         dst[m] = geom_interp(src, si, nd, istride, coord, (int)order, mode, cval, con);
     }
+    if (ond == 0) fn_result_num(&res[0], scalar);
     free(coeff); fn_free_doubles(in, ti); fn_free_doubles(co, tc);
     return TSR_OK;
 }
