@@ -72,24 +72,30 @@ final class NetCDF
     // --------------------------------------------------------------------- read
 
     /**
-     * Parse netCDF-3 bytes.
+     * Parse netCDF-3 bytes. Header counts are checked against the bytes present and at most $maxElements
+     * values are decoded in total (see IoGuard); undefined dimension ids and nc_types are errors.
      *
      * @return array{version:int, numrecs:int, dimensions:array<string,int|null>,
      *               attrs:array<string,mixed>,
      *               variables:array<string,array{dims:array<int,string>, typecode:string, size:int,
      *                   shape:array<int,int>, data:array<int,int|float>|string, attrs:array<string,mixed>}>}
      */
-    public static function read(string $bytes): array
+    public static function read(string $bytes, int $maxElements = IoGuard::DEFAULT_MAX_ELEMENTS): array
     {
+        IoGuard::checkLimit($maxElements, 'maxElements', 'netcdf');
         $p = 0;
         $magic = substr($bytes, 0, 3);
-        if ($magic !== 'CDF') {
+        if ($magic !== 'CDF' || strlen($bytes) < 4) {
             throw new TesseroException('netcdf: not a valid NetCDF-3 file (bad magic)');
         }
         $version = ord($bytes[3]);
         $p = 4;
+        $len = strlen($bytes);
 
         $numrecs = self::unpackInt($bytes, $p);
+        if ($numrecs < 0) {                              // includes STREAMING (0xFFFFFFFF), which scipy also refuses
+            throw new TesseroException('netcdf: unsupported record count');
+        }
         [$dimNames, $dimLengths] = self::readDimArray($bytes, $p);
         $gattrs = self::readAttArray($bytes, $p);
 
@@ -98,7 +104,7 @@ final class NetCDF
         if ($header !== 0 && $header !== self::NC_VARIABLE) {
             throw new TesseroException('netcdf: unexpected var header');
         }
-        $count = self::unpackInt($bytes, $p);
+        $count = self::readCount($bytes, $p, 4, 'variable');
 
         $vars = [];
         $recVars = [];                                   // names of record variables, in file order
@@ -106,19 +112,25 @@ final class NetCDF
         $recBegin = 0;
         for ($vi = 0; $vi < $count; $vi++) {
             $name = self::unpackString($bytes, $p);
-            $ndims = self::unpackInt($bytes, $p);
+            $ndims = self::readCount($bytes, $p, 4, 'dimension id');
             $dims = [];
             $shape = [];
             for ($d = 0; $d < $ndims; $d++) {
                 $dimid = self::unpackInt($bytes, $p);
+                if (! isset($dimNames[$dimid])) {
+                    throw new TesseroException("netcdf: variable '{$name}' uses undefined dimension id {$dimid}");
+                }
                 $dims[] = $dimNames[$dimid];
                 $shape[] = $dimLengths[$dimid];          // null for the record dim
             }
             $vattrs = self::readAttArray($bytes, $p);
             $ncType = self::unpackInt($bytes, $p);
-            [$typecode, $size] = self::TYPEMAP[$ncType];
+            [$typecode, $size] = self::TYPEMAP[$ncType] ?? throw new TesseroException("netcdf: variable '{$name}' has unknown nc_type {$ncType}");
             $vsize = self::unpackInt($bytes, $p);
             $begin = $version === 2 ? self::unpackInt64($bytes, $p) : self::unpackInt($bytes, $p);
+            if ($begin < 0 || $begin > $len || $vsize < 0) {
+                throw new TesseroException("netcdf: variable '{$name}' has an invalid offset or size");
+            }
 
             $isRec = $shape !== [] && $shape[0] === null;
             $vars[$name] = ['dims' => $dims, 'typecode' => $typecode, 'size' => $size,
@@ -133,14 +145,29 @@ final class NetCDF
             }
         }
 
+        // Every declared count is checked against the bytes present and the running total of decoded values
+        // against $maxElements BEFORE decoding: variables may overlap, so the file size alone bounds nothing.
+        $elements = 0;
+        $isRecVar = array_flip($recVars);
+
         // Non-record variable data: contiguous at begin, big-endian, reshaped row-major.
         foreach ($vars as $name => &$v) {
-            if (in_array($name, $recVars, true)) {
+            if (isset($isRecVar[$name])) {
                 continue;
             }
             $n = 1;
             foreach ($v['_shape'] as $s) {
                 $n *= (int) $s;
+                if ($n > $maxElements) {
+                    break;
+                }
+            }
+            $elements += $n;
+            if ($elements > $maxElements) {
+                throw new TesseroException("netcdf: the file declares more than {$maxElements} values (\$maxElements)");
+            }
+            if ($n * $v['size'] > $len - $v['_begin']) {
+                throw new TesseroException("netcdf: variable '{$name}' declares {$n} values past the end of the file");
             }
             $raw = substr($bytes, $v['_begin'], $n * $v['size']);
             $dec = self::decodeValues($raw, $v['typecode'], $n);
@@ -155,6 +182,9 @@ final class NetCDF
             $perRec = 1;
             foreach (array_slice($v['_shape'], 1) as $s) {
                 $perRec *= (int) $s;
+                if ($perRec > $maxElements) {
+                    break;
+                }
             }
             $within = 0;
             foreach ($recVars as $rn) {
@@ -163,11 +193,21 @@ final class NetCDF
                 }
                 $within += $vars[$rn]['_vsize'];
             }
+            $elements += $numrecs * $perRec;
+            if ($elements > $maxElements) {
+                throw new TesseroException("netcdf: the file declares more than {$maxElements} values (\$maxElements)");
+            }
+            if ($numrecs > 0 && $perRec > 0
+                && $recBegin + ($numrecs - 1) * $recsize + $within + $perRec * $v['size'] > $len) {
+                throw new TesseroException("netcdf: record variable '{$name}' extends past the end of the file");
+            }
             $flat = [];
-            for ($r = 0; $r < $numrecs; $r++) {
+            for ($r = 0; $perRec > 0 && $r < $numrecs; $r++) {
                 $off = $recBegin + $r * $recsize + $within;
                 $raw = substr($bytes, $off, $perRec * $v['size']);
-                $flat = array_merge($flat, self::decodeValues($raw, $v['typecode'], $perRec));
+                foreach (self::decodeValues($raw, $v['typecode'], $perRec) as $x) {   // append: array_merge per record is quadratic
+                    $flat[] = $x;
+                }
             }
             $v['data'] = ($v['typecode'] === 'c') ? implode('', $flat) : $flat;
             $v['shape'] = array_merge([$numrecs], array_map('intval', array_slice($v['_shape'], 1)));
@@ -197,12 +237,15 @@ final class NetCDF
         if ($header !== 0 && $header !== self::NC_DIMENSION) {
             throw new TesseroException('netcdf: unexpected dim header');
         }
-        $count = self::unpackInt($bytes, $p);
+        $count = self::readCount($bytes, $p, 8, 'dimension');
         $names = [];
         $lengths = [];
         for ($i = 0; $i < $count; $i++) {
             $names[] = self::unpackString($bytes, $p);
             $l = self::unpackInt($bytes, $p);
+            if ($l < 0) {
+                throw new TesseroException('netcdf: negative dimension length');
+            }
             $lengths[] = $l === 0 ? null : $l;           // 0 marks the record (unlimited) dim
         }
 
@@ -216,14 +259,17 @@ final class NetCDF
         if ($header !== 0 && $header !== self::NC_ATTRIBUTE) {
             throw new TesseroException('netcdf: unexpected attr header');
         }
-        $count = self::unpackInt($bytes, $p);
+        $count = self::readCount($bytes, $p, 12, 'attribute');
         $attrs = [];
         for ($i = 0; $i < $count; $i++) {
             $name = self::unpackString($bytes, $p);
             $ncType = self::unpackInt($bytes, $p);
             $n = self::unpackInt($bytes, $p);
-            [$typecode, $size] = self::TYPEMAP[$ncType];
+            [$typecode, $size] = self::TYPEMAP[$ncType] ?? throw new TesseroException("netcdf: attribute '{$name}' has unknown nc_type {$ncType}");
             $count2 = $n * $size;
+            if ($n < 0 || $count2 > strlen($bytes) - $p) {
+                throw new TesseroException("netcdf: attribute '{$name}' declares {$n} values past the end of the file");
+            }
             $raw = substr($bytes, $p, $count2);
             $p += $count2;
             $p += (4 - ($count2 % 4)) % 4;               // advance past padding
@@ -241,6 +287,9 @@ final class NetCDF
     /** @return array<int,int|float|string> flat big-endian values; for char, list of single chars */
     private static function decodeValues(string $raw, string $typecode, int $n): array
     {
+        if ($n < 0 || strlen($raw) < $n * (self::TYPEMAP[self::REVERSE[$typecode] ?? 0][1] ?? 1)) {
+            throw new TesseroException('netcdf: truncated data');      // the byte loops below index $raw[0 .. n-1]
+        }
         $out = [];
         switch ($typecode) {
             case 'd':
@@ -594,8 +643,22 @@ final class NetCDF
         return pack('N', $v & 0xFFFFFFFF);
     }
 
+    /** A list count from the header: non-negative and small enough that its entries ($minBytes each) fit. */
+    private static function readCount(string $bytes, int &$p, int $minBytes, string $what): int
+    {
+        $n = self::unpackInt($bytes, $p);
+        if ($n < 0 || $n > intdiv(strlen($bytes) - $p, $minBytes)) {
+            throw new TesseroException("netcdf: invalid {$what} count {$n}");
+        }
+
+        return $n;
+    }
+
     private static function unpackInt(string $bytes, int &$p): int
     {
+        if ($p < 0 || $p + 4 > strlen($bytes)) {
+            throw new TesseroException('netcdf: unexpected end of header');
+        }
         $v = unpack('N', substr($bytes, $p, 4))[1];
         $p += 4;
 
@@ -604,6 +667,9 @@ final class NetCDF
 
     private static function unpackInt64(string $bytes, int &$p): int
     {
+        if ($p < 0 || $p + 8 > strlen($bytes)) {
+            throw new TesseroException('netcdf: unexpected end of header');
+        }
         $v = unpack('J', substr($bytes, $p, 8))[1];
         $p += 8;
 
@@ -620,6 +686,9 @@ final class NetCDF
     private static function unpackString(string $bytes, int &$p): string
     {
         $count = self::unpackInt($bytes, $p);
+        if ($count < 0 || $count > strlen($bytes) - $p) {
+            throw new TesseroException('netcdf: name runs past the end of the file');
+        }
         $s = rtrim(substr($bytes, $p, $count), "\x00");
         $p += $count + ((4 - ($count % 4)) % 4);
 

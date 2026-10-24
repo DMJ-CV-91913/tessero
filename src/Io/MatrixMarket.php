@@ -26,12 +26,14 @@ use Tessero\Exceptions\TesseroException;
 final class MatrixMarket
 {
     /**
-     * Parse Matrix Market text.
+     * Parse Matrix Market text. The dense result may hold at most $maxElements entries (see IoGuard);
+     * the size line is checked against that cap and against the data present before allocating.
      *
      * @return array{rows:int, cols:int, format:string, field:string, symmetry:string, data:array<int,array<int,float|int|array{0:float,1:float}>>}
      */
-    public static function read(string $text): array
+    public static function read(string $text, int $maxElements = IoGuard::DEFAULT_MAX_ELEMENTS): array
     {
+        IoGuard::checkLimit($maxElements, 'maxElements', 'mmread');
         $lines = preg_split('/\r\n|\r|\n/', $text);
         if ($lines === false || $lines === []) {
             throw new TesseroException('mmread: empty input');
@@ -56,7 +58,24 @@ final class MatrixMarket
         $size = preg_split('/\s+/', trim($lines[$i]));
         $i++;
         $rows = (int) $size[0];
-        $cols = (int) $size[1];
+        $cols = (int) ($size[1] ?? -1);
+        // The dense result is rows x cols whatever the format, so the declared size is checked before
+        // anything is allocated: against the cap, and (array format) against the lines actually present.
+        if ($rows < 0 || $cols < 0) {
+            throw new TesseroException('mmread: invalid size line');
+        }
+        if ($rows > 0 && $cols > intdiv($maxElements, $rows)) {
+            throw new TesseroException("mmread: a {$rows}x{$cols} matrix exceeds {$maxElements} elements (\$maxElements)");
+        }
+        if ($format === 'array' && $rows * $cols > $n - $i) {
+            throw new TesseroException('mmread: truncated array data');
+        }
+        if ($format === 'coordinate') {
+            $nnz = (int) ($size[2] ?? 0);
+            if ($nnz < 0 || $nnz > $n - $i) {
+                throw new TesseroException('mmread: truncated coordinate data');
+            }
+        }
 
         $isComplex = $field === 'complex';
         $parseVal = static function (array $t, int $off) use ($isComplex, $field): float|int|array {
@@ -92,7 +111,6 @@ final class MatrixMarket
                 }
             }
         } elseif ($format === 'coordinate') {
-            $nnz = (int) ($size[2] ?? 0);
             for ($k = 0; $k < $nnz; $k++) {
                 while ($i < $n && trim($lines[$i]) === '') {
                     $i++;
@@ -103,7 +121,10 @@ final class MatrixMarket
                 $t = preg_split('/\s+/', trim($lines[$i]));
                 $i++;
                 $r = (int) $t[0] - 1;
-                $c = (int) $t[1] - 1;
+                $c = (int) ($t[1] ?? 0) - 1;
+                if ($r < 0 || $r >= $rows || $c < 0 || $c >= $cols) {
+                    throw new TesseroException('mmread: coordinate entry outside the matrix');
+                }
                 $v = $field === 'pattern' ? ($field === 'integer' ? 1 : 1.0) : $parseVal($t, 2);
                 $data[$r][$c] = $v;
                 if ($symmetry !== 'general' && $r !== $c) {
