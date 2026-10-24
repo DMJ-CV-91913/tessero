@@ -1099,6 +1099,13 @@ static void test_fuzz_batch_a(void)
     tsr_arg af[4] = {arg_arr(three, 1, s3), arg_arr(idm, 1, s1), arg_num(0), arg_arr(ot, 1, s2)};
     CHECK(fa_call("ndimage.affine_transform", 4, af, r, 1) == TSR_EARG, "affine_transform output_shape of the wrong length refused");
 
+    /* map_coordinates with (ndim,) coordinates: a scalar result whose 0-d block leaked */
+    double mcoord[1] = {1.0};
+    tsr_arg mcs[3] = {arg_arr(three, 1, s3), arg_arr(mcoord, 1, s1), arg_int(1)};
+    rc = fa_call("ndimage.map_coordinates", 3, mcs, r, 1);
+    CHECK(rc == 0 && r[0].kind == 1 && r[0].num == 2.0, "map_coordinates scalar result (rc %d, no 0-d block leaked)", rc);
+    fa_free(r, 1);
+
     /* F7 / F9: histogram bin counts: (bins + 1) * 8 wrapped; an infinite estimator quotient was cast to int64 */
     tsr_arg hb[2] = {arg_arr(three, 1, s3), arg_int((int64_t)1 << 60)};
     CHECK(fa_call("np.histogram", 2, hb, r, 2) == TSR_EARG, "F7 histogram bins=2^60 refused");
