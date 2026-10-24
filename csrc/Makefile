@@ -107,6 +107,10 @@ ifeq ($(HARDEN),1)
   CXXFLAGS += $(HARDEN_CXX)
   LDLIBS += $(HARDEN_LD)
 endif
+# reproducible builds: __FILE__ (assert messages) and any debug info name sources relative to csrc/, so the
+# library is byte-identical whatever directory it is built in (probed: GCC >= 8, clang >= 10)
+CFLAGS += $(call try_cc,-ffile-prefix-map=$(CURDIR)=.)
+CXXFLAGS += $(call try_cxx,-ffile-prefix-map=$(CURDIR)=.)
 
 # exports: the version script (GNU ld, gold, lld; probed, so another linker just skips it) keeps every symbol
 # that is not tsr_* local, plus the tsr_ helpers listed in it that are internal
@@ -115,6 +119,11 @@ VERSION_SCRIPT := $(call try_so,-Wl$(comma)--version-script=$(CURDIR)/libtessero
 # Without this a second libtessero already in the global scope (Talario's, loaded by its PHP extension) captured
 # them: arrays came from the other instance's allocator and budget, and errors went to its slots.
 VERSION_SCRIPT += $(call try_so,-Wl$(comma)-Bsymbolic-functions)
+# Never unmapped by dlclose (ELF; probed). PHP 8.2's FFI closes its libraries at the end of every request, so
+# each request re-mapped the library and re-ran its initialisers, and the process-lifetime state it sets up once
+# (the OpenMP and BLAS thread pools, the static libstdc++'s exception emergency pool) was reported by
+# LeakSanitizer as leaked once the image was gone. A later FFI::cdef reuses the mapped library.
+VERSION_SCRIPT += $(call try_so,-Wl$(comma)-z$(comma)nodelete)
 LDLIBS += $(call try_so,-ldl)
 
 all: $(OUT)/$(LIBNAME).$(EXT)
@@ -142,9 +151,13 @@ $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h include/tessero_version.h
 $(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h include/tessero_repro_f32.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -fno-fast-math -ffp-contract=off -fvisibility=default -Ithird_party/numpy/include -c -o $@ $<
+# numpy/random builds with contraction off, so a*b+c (random_uniform's lower + range*x, random_normal's
+# loc + scale*z, ...) rounds twice, as in NumPy's x86-64 wheels, on every target: aarch64 GCC and Apple clang
+# contract by default, which moved those draws 1 ulp off the x86 reference. x86-64 builds without -mfma never
+# contract, so there it changes nothing. ext/config.m4 compiles these sources with the same flag.
 $(BUILD)/c/%.o: third_party/numpy/random/src/%.c
 	@mkdir -p $(BUILD)/c
-	$(CC) $(CFLAGS) $(VIS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
+	$(CC) $(CFLAGS) -ffp-contract=off $(VIS) -Ithird_party/numpy/include -w -MMD -MP -c -o $@ $<
 $(BUILD)/c/%.o: third_party/scipy/quadpack/%.c
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<

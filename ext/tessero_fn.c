@@ -821,7 +821,36 @@ void tsr_fn_call_gufunc(const char *name, zval *args, int nargs, zval *rv)
 
 /* ================================================================ registration */
 
-static char *pstrdup(const char *s) { return pestrdup(s, 1); }
+/* Every persistent block the registration allocates (bindings, arginfo and its strings, method tables) is
+   recorded here, so MSHUTDOWN returns it: no process-lifetime leak for LeakSanitizer to report, and none that
+   accumulates in an embedding that starts and stops PHP repeatedly. The classes keep pointers into these blocks
+   until the engine destroys them, which only reads arg_info that carries type declarations (ours carry none). */
+static void **g_pblocks = NULL;
+static size_t g_npblocks = 0, g_cappblocks = 0;
+
+void *tsr_pkeep(void *p)
+{
+    if (!p) return p;
+    if (g_npblocks == g_cappblocks) {
+        g_cappblocks = g_cappblocks ? 2 * g_cappblocks : 1024;
+        g_pblocks = perealloc(g_pblocks, g_cappblocks * sizeof(void *), 1);
+    }
+    g_pblocks[g_npblocks++] = p;
+    return p;
+}
+
+void tsr_unregister_fn(void)
+{
+    zend_hash_destroy(&g_by_method);
+    while (g_npblocks > 0) pefree(g_pblocks[--g_npblocks], 1);
+    if (g_pblocks) pefree(g_pblocks, 1);
+    g_pblocks = NULL;
+    g_cappblocks = 0;
+    g_binds = NULL;
+    g_nbinds = 0;
+}
+
+static char *pstrdup(const char *s) { return tsr_pkeep(pestrdup(s, 1)); }
 
 static void load_bind(int id, zval *info, fn_bind *b)
 {
@@ -886,9 +915,9 @@ static void load_bind(int id, zval *info, fn_bind *b)
             if (b->nrargs >= 32) break;
             char t[64];
             camel(Z_STRVAL_P(e), t, sizeof t);
-            b->rnames[b->nrargs] = pestrdup(t, 1);
+            b->rnames[b->nrargs] = pstrdup(t);
             zval *d = defaults && Z_TYPE_P(defaults) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(defaults), Z_STR_P(e)) : NULL;
-            b->rdefs[b->nrargs] = d && Z_TYPE_P(d) == IS_STRING ? pestrdup(Z_STRVAL_P(d), 1) : NULL;
+            b->rdefs[b->nrargs] = d && Z_TYPE_P(d) == IS_STRING ? pstrdup(Z_STRVAL_P(d)) : NULL;
             b->nrargs++;
         } ZEND_HASH_FOREACH_END();
     }
@@ -925,7 +954,7 @@ static void load_bind(int id, zval *info, fn_bind *b)
     if ((v = zend_hash_str_find(Z_ARRVAL_P(info), "shapes", 6)) && Z_TYPE_P(v) == IS_ARRAY) b->nshape = zend_hash_num_elements(Z_ARRVAL_P(v));
 }
 
-static char *camel_dup(const char *s) { char t[64]; camel(s, t, sizeof t); return pestrdup(t, 1); }
+static char *camel_dup(const char *s) { char t[64]; camel(s, t, sizeof t); return pstrdup(t); }
 
 /* a PHP literal for a registry default ("None", "False", "10", "'valid'") */
 static char *php_default(const char *d)
@@ -962,7 +991,7 @@ static zend_internal_arg_info *make_arginfo(const fn_bind *b, zval *info, int *n
         total = b->nshape + (b->discrete ? 1 : 2);
         required = b->nshape;
     }
-    ai = pecalloc((size_t)total + 1, sizeof(zend_internal_arg_info), 1);
+    ai = tsr_pkeep(pecalloc((size_t)total + 1, sizeof(zend_internal_arg_info), 1));
     ai[0].type = (zend_type)ZEND_TYPE_INIT_NONE(0);
     int k = 1;
     zval *e;
@@ -1061,14 +1090,14 @@ void tsr_register_fn(void)
 {
     zend_hash_init(&g_by_method, 512, NULL, NULL, 1);
     const int n = tsr_fn_count();
-    g_binds = pecalloc((size_t)(n > 0 ? n : 1), sizeof(fn_bind), 1);
+    g_binds = tsr_pkeep(pecalloc((size_t)(n > 0 ? n : 1), sizeof(fn_bind), 1));
     g_nbinds = n;
     /* module index 3 (random) goes to Tessero\Ext\Random\Generator (instance methods, tessero_random.c); the
        others are abstract classes of static methods. linalg (index 4) is Tessero\Ext\Linalg. */
     static const char *const MODS[18][2] = {{"special", "Special"}, {"stats", "Stats"}, {"np", "Np"}, {"random", "Random\\Generator"}, {"linalg", "Linalg"}, {"slinalg", "ScipyLinalg"}, {"distance", "Distance"}, {"sparse", "Sparse"}, {"signal", "Signal"}, {"ndimage", "Ndimage"}, {"csgraph", "Csgraph"}, {"windows", "SignalWindows"}, {"interpolate", "Interpolate"}, {"cluster", "Cluster"}, {"npoly", "Polynomial"}, {"hierarchy", "Hierarchy"}, {"splinalg", "SparseLinalg"}, {"scipyfft", "ScipyFft"}};
     zend_function_entry *fes[18];
     int nfe[18] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    for (int m = 0; m < 18; m++) fes[m] = pecalloc((size_t)n + 1, sizeof(zend_function_entry), 1);
+    for (int m = 0; m < 18; m++) fes[m] = tsr_pkeep(pecalloc((size_t)n + 1, sizeof(zend_function_entry), 1));
     char buf[16384];
     for (int id = 0; id < n; id++) {
         const int64_t len = tsr_fn_info(id, buf, sizeof buf);
