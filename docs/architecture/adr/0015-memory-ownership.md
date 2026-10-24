@@ -24,6 +24,11 @@ of a multi-result routine).
 
 **The golden rule: the layer that allocates memory owns its deallocation, with the matching function and size.**
 
+This is DJs Golden Rule(TM), made binding for Tessero and Talario by the project owner on 2026-10-24 in the
+words "The layer that allocates the memory must own its deallocation." The principle is rooted in established
+practice in native and PHP extension development; the mark (a trademark of Douglas Johnson, unregistered) names
+the projects' adoption and enforcement of it, which this ADR specifies.
+
 ### The contract per ABI call (for native consumers and both bindings)
 
 | Memory handed out by | Released by | Never |
