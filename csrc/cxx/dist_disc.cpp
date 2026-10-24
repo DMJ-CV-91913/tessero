@@ -1493,7 +1493,7 @@ double CWalleniusNCHypergeometric::recursive() {
    // Approximate by ignoring probabilities < accuracy and minimize storage requirement
    const int BUFSIZE = 512;            // buffer size
    double p[BUFSIZE+2];                // probabilities
-   double * p1, * p2;                  // offset into p
+   int32_t o1, o2;                     // offsets into p (Tessera local modification: indices, not pointers)
    double mxo;                         // (m-x)*omega
    double Nmnx;                        // N-m-nu+x
    double y, y1;                       // save old p[x] before it is overwritten
@@ -1503,22 +1503,25 @@ double CWalleniusNCHypergeometric::recursive() {
    int32_t x1, x2;                     // xi_min, xi_max
 
    accuracya = 0.005f * accuracy;      // absolute accuracy
-   p1 = p2 = p + 1;                    // make space for p1[-1]
-   p1[-1] = 0.;  p1[0]  = 1.;          // initialize for recursion
+   /* Tessera local modification: the original walked pointers p1/p2 = p + 1 - x1 below the start of p (undefined
+      behaviour once x1 > 1, even though every element it touches is inside p). The same recursion over integer
+      offsets o1/o2 reads and writes exactly the same elements in the same order, so results are bit-identical. */
+   o1 = o2 = 1;                        // make space for p[o1-1]
+   p[o1-1] = 0.;  p[o1]  = 1.;         // initialize for recursion
    x1 = x2 = 0;
    for (nu=1; nu<=n; nu++) {
-      if (n - nu < x - x1 || p1[x1] < accuracya) {
+      if (n - nu < x - x1 || p[o1+x1] < accuracya) {
          x1++;                        // increase lower limit when breakpoint passed or probability negligible
-         p2--;                        // compensate buffer offset in order to reduce storage space
+         o2--;                        // compensate buffer offset in order to reduce storage space
       }
-      if (x2 < x && p1[x2] >= accuracya) {
+      if (x2 < x && p[o1+x2] >= accuracya) {
          x2++;  y1 = 0.;               // increase upper limit until x has been reached
       }
       else {
-         y1 = p1[x2];
+         y1 = p[o1+x2];
       }
       if (x1 > x2) return 0.;
-      if (p2+x2-p > BUFSIZE) FatalError("buffer overrun in function CWalleniusNCHypergeometric::recursive");
+      if (o2+x2 > BUFSIZE) FatalError("buffer overrun in function CWalleniusNCHypergeometric::recursive");
 
       mxo = (m-x2)*omega;
       Nmnx = N-m-nu+x2+1;
@@ -1527,15 +1530,15 @@ double CWalleniusNCHypergeometric::recursive() {
          mxo += omega; Nmnx--;
          d1 = mxo + Nmnx;
          dcom = 1. / (d1 * d2);        // save a division by making common divisor
-         y  = p1[xi-1]*mxo*d2*dcom + y1*(Nmnx+1)*d1*dcom;
-         y1 = p1[xi-1];                // (warning: pointer alias, can't swap instruction order)
-         p2[xi] = y;
+         y  = p[o1+xi-1]*mxo*d2*dcom + y1*(Nmnx+1)*d1*dcom;
+         y1 = p[o1+xi-1];              // (warning: alias, can't swap instruction order)
+         p[o2+xi] = y;
       }
-      p1 = p2;
+      o1 = o2;
    }
 
    if (x < x1 || x > x2) return 0.;
-   return p1[x];
+   return p[o1+x];
 }
 
 
@@ -1998,7 +2001,7 @@ int32_t CWalleniusNCHypergeometric::MakeTable(double * table, int32_t MaxLength,
    // probability repeatedly, even if only some of the table values are needed.
    // *xfirst is 0 if it is more efficient to call probability repeatedly.
 
-   double * p1, * p2;                  // offset into p
+   int32_t o1, o2;                     // offsets into p (Tessera local modification: indices, not pointers)
    double mxo;                         // (m-x)*omega
    double Nmnx;                        // N-m-nu+x
    double y, y1;                       // probability. Save old p[x] before it is overwritten
@@ -2051,21 +2054,23 @@ int32_t CWalleniusNCHypergeometric::MakeTable(double * table, int32_t MaxLength,
 
    if (UseTable && MaxLength > LengthNeeded) {
       // use recursion table method
-      p1 = p2 = table + 1;             // make space for p1[-1]
-      p1[-1] = 0.;  p1[0] = 1.;        // initialize for recursion
+      /* Tessera local modification: integer offsets into table instead of pointers below its start (see
+         CWalleniusNCHypergeometric::recursive); same elements, same order, bit-identical results. */
+      o1 = o2 = 1;                     // make space for table[o1-1]
+      table[o1-1] = 0.;  table[o1] = 1.; // initialize for recursion
       x1 = x2 = 0;
       for (nu = 1; nu <= n; nu++) {
-         if (n - nu < xmin - x1 || p1[x1] < cutoff) {
+         if (n - nu < xmin - x1 || table[o1+x1] < cutoff) {
             x1++;                      // increase lower limit when breakpoint passed or probability negligible
-            p2--;                      // compensate buffer offset in order to reduce storage space
+            o2--;                      // compensate buffer offset in order to reduce storage space
          }
-         if (x2 < xmax && p1[x2] >= cutoff) {
+         if (x2 < xmax && table[o1+x2] >= cutoff) {
             x2++;  y1 = 0.;            // increase upper limit until x has been reached
          }
          else {
-            y1 = p1[x2];
+            y1 = table[o1+x2];
          }
-         if (p2 - table + x2 >= MaxLength || x1 > x2) {
+         if (o2 + x2 >= MaxLength || x1 > x2) {
             goto ONE_BY_ONE;           // Error: table length exceeded. Use other method
          }
 
@@ -2076,11 +2081,11 @@ int32_t CWalleniusNCHypergeometric::MakeTable(double * table, int32_t MaxLength,
             mxo += omega; Nmnx--;
             d1 = mxo + Nmnx;
             dcom = 1. / (d1 * d2);     // save a division by making common divisor
-            y  = p1[xi-1]*mxo*d2*dcom + y1*(Nmnx+1)*d1*dcom;
-            y1 = p1[xi-1];             // (warning: pointer alias, can't swap instruction order)
-            p2[xi] = y;
+            y  = table[o1+xi-1]*mxo*d2*dcom + y1*(Nmnx+1)*d1*dcom;
+            y1 = table[o1+xi-1];       // (warning: alias, can't swap instruction order)
+            table[o2+xi] = y;
          }
-         p1 = p2;
+         o1 = o2;
       }
 
       // return results
