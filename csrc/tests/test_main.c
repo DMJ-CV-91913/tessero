@@ -1924,6 +1924,149 @@ static void test_fuzz_batch_c(void)
     CHECK(tsr_allocated() == before, "fuzz batch C leaves no kernel allocation behind (%lld bytes)", (long long)(tsr_allocated() - before));
 }
 
+/* batch D: csgraph node indices and CSR arrays (C-O1, the CI csg_bfs_pred overflow), the BiasedUrn recursion's
+   pointer arithmetic, and the specfun int overflows reached through hyperu and the spheroidal radial functions.
+   Under `make sanitize` the calls below would stop at the old undefined behaviour. */
+static int bd_ufunc(const char *name, int method, int nin, int nout, double *in, int64_t n, double *out)
+{
+    const int id = tsr_fn_find(name);
+    if (id < 0) return -999;
+    void *data[16]; int64_t strides[16], shape[1] = {n};
+    for (int k = 0; k < nin; k++) { data[k] = in + k * n; strides[k] = 8; }
+    for (int k = 0; k < nout; k++) { data[nin + k] = out + k * n; strides[nin + k] = 8; }
+    return tsr_fn_ufunc(id, method, 0, 1, shape, nin + nout, data, strides);
+}
+
+static void test_fuzz_batch_d(void)
+{
+    tsr_result r[4];
+    const int64_t before = tsr_allocated();
+    double g[9] = {0, 1, 0, 0, 0, 1, 1, 0, 0};                     /* 3-node cycle */
+    int64_t s33[2] = {3, 3}, s13[2] = {1, 3}, s3[1] = {3}, s2[1] = {2};
+    const tsr_arg G = arg_arr(g, 2, s33);
+    const char *starts[3] = {"csgraph.breadth_first_order", "csgraph.depth_first_order", "csgraph.breadth_first_tree"};
+    for (int k = 0; k < 3; k++) {
+        tsr_arg a[2] = {G, arg_int(5)};
+        CHECK(fa_call(starts[k], 2, a, r, 2) == TSR_EARG, "%s with i_start past the nodes refused", starts[k]);
+        a[1] = arg_int(-1);
+        CHECK(fa_call(starts[k], 2, a, r, 2) == TSR_EARG, "%s with a negative i_start refused", starts[k]);
+        a[1] = arg_num(NAN);
+        CHECK(fa_call(starts[k], 2, a, r, 2) < 0, "%s with i_start = NaN refused", starts[k]);
+        a[1] = arg_int(2);
+        const int rc = fa_call(starts[k], 2, a, r, 2);
+        CHECK(rc == 0, "%s from node 2 still works (rc %d)", starts[k], rc);
+        if (rc == 0) fa_free(r, 2);
+    }
+    tsr_arg dft[2] = {G, arg_int(3)};
+    CHECK(fa_call("csgraph.depth_first_tree", 2, dft, r, 1) == TSR_EARG, "depth_first_tree with i_start = n refused");
+
+    /* csgraph_to_dense: indptr past the data, decreasing, not starting at 0; n_nodes beyond n*n */
+    double dat[2] = {1, 2}, ind[2] = {0, 1}, ptr_bad[4] = {0, 1, 9, 9}, ptr_dec[4] = {0, 2, 1, 2}, ptr_off[4] = {1, 1, 2, 2};
+    int64_t s4[1] = {4};
+    tsr_arg cd[4] = {arg_arr(dat, 1, s2), arg_arr(ind, 1, s2), arg_arr(ptr_bad, 1, s4), arg_int(3)};
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) == TSR_EARG, "csgraph_to_dense with indptr past the data refused");
+    cd[2] = arg_arr(ptr_dec, 1, s4);
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) == TSR_EARG, "csgraph_to_dense with a decreasing indptr refused");
+    cd[2] = arg_arr(ptr_off, 1, s4);
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) == TSR_EARG, "csgraph_to_dense with indptr[0] != 0 refused");
+    cd[3] = arg_num(1e19);
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) < 0, "csgraph_to_dense with a huge n_nodes refused");
+    double ptr_ok[4] = {0, 1, 2, 2};
+    cd[2] = arg_arr(ptr_ok, 1, s4); cd[3] = arg_int(3);
+    int rc = fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[0] == 1.0 && ((double *)r[0].arr.data)[4] == 2.0, "csgraph_to_dense still builds (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+
+    /* predecessors that do not match the graph were read past their end */
+    double p13[3] = {-9999, 0, 1}, p2[2] = {-9999, 0};
+    tsr_arg cdm[2] = {G, arg_arr(p13, 2, s13)};
+    CHECK(fa_call("csgraph.construct_dist_matrix", 2, cdm, r, 1) == TSR_EARG, "construct_dist_matrix with 1x3 predecessors for 3 nodes refused");
+    tsr_arg rp[2] = {G, arg_arr(p2, 1, s2)};
+    CHECK(fa_call("csgraph.reconstruct_path", 2, rp, r, 1) == TSR_EARG, "reconstruct_path with 2 predecessors for 3 nodes refused");
+    rp[1] = arg_arr(p13, 1, s3);
+    rc = fa_call("csgraph.reconstruct_path", 2, rp, r, 1);
+    CHECK(rc == 0, "reconstruct_path with matching predecessors still works (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+
+    /* maximum_flow / yen: no float->int cast of NaN or non-integral capacities and indices */
+    double cap[9] = {0, 3, 0, 0, 0, 2, 0, 0, 0};
+    tsr_arg mf[3] = {arg_arr(cap, 2, s33), arg_int(0), arg_int(2)};
+    rc = fa_call("csgraph.maximum_flow", 3, mf, r, 2);
+    CHECK(rc == 0 && fa_num(&r[0]) == 2.0, "maximum_flow 0->2 is 2 (rc %d)", rc);
+    if (rc == 0) fa_free(r, 2);
+    mf[1] = arg_num(NAN);
+    CHECK(fa_call("csgraph.maximum_flow", 3, mf, r, 2) < 0, "maximum_flow with source = NaN refused");
+    cap[1] = 1.5; mf[1] = arg_int(0);
+    CHECK(fa_call("csgraph.maximum_flow", 3, mf, r, 2) == TSR_EARG, "maximum_flow with a non-integral capacity refused");
+    cap[1] = NAN;
+    CHECK(fa_call("csgraph.maximum_flow", 3, mf, r, 2) == TSR_EARG, "maximum_flow with a NaN capacity refused");
+    tsr_arg ye[4] = {G, arg_int(0), arg_int(2), arg_num(NAN)};
+    CHECK(fa_call("csgraph.yen", 4, ye, r, 2) < 0, "yen with K = NaN refused");
+
+    /* BiasedUrn (Wallenius): pmf through the recursion (lower limit moving) and cdf through the table method;
+       the values are the pre-fix bits (dist_disc.cpp now indexes instead of stepping pointers below the buffer) */
+    enum { W = 4 };
+    double win[6 * W], wout[W];
+    for (int i = 0; i < W; i++) { win[i] = 2 + i; win[W + i] = 60; win[2 * W + i] = 30; win[3 * W + i] = 25; win[4 * W + i] = 0.1 + i; win[5 * W + i] = 0; }
+    rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, win, W, wout);
+    CHECK(rc == 0 && wout[0] == 0x1.6f3fc1ff1f476p-3 && wout[1] == 0x1.2cb5830c138e2p-23 && wout[2] == 0x1.203a553569e89p-31
+          && wout[3] == 0x1.cfdd2c2779e1ep-35, "nchypergeom_wallenius.pmf through the recursion keeps its bits (rc %d, %a)", rc, wout[0]);
+    double wsum = 0, wsx[6 * 26], wso[26];
+    for (int i = 0; i <= 25; i++) { wsx[i] = i; wsx[26 + i] = 60; wsx[52 + i] = 30; wsx[78 + i] = 25; wsx[104 + i] = 2.5; wsx[130 + i] = 0; }
+    rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, wsx, 26, wso);
+    for (int i = 0; i <= 25; i++) wsum += wso[i];
+    CHECK(rc == 0 && fabs(wsum - 1.0) < 1e-9, "nchypergeom_wallenius pmf sums to 1 over its support (%.17g)", wsum);
+    rc = bd_ufunc("stats.nchypergeom_wallenius", 2, 6, 1, wsx, 26, wso);
+    CHECK(rc == 0 && fabs(wso[25] - 1.0) < 1e-9 && wso[10] <= wso[20], "nchypergeom_wallenius cdf (table method) (rc %d)", rc);
+
+    /* specfun: chgubi's digit estimate (hyperu with huge a) and the rmn1/rmn2l work size (c = -inf) were signed
+       int overflows on (int) of a non-finite value; the results keep SciPy's x86-64 bits */
+    double hin[3 * 3] = {1e300, 1e200, 1, 2, 1, 1, 1, 2, 0.5}, hout[3];
+    rc = bd_ufunc("special.hyperu", 0, 3, 1, hin, 3, hout);
+    CHECK(rc == 0 && isnan(hout[0]) && isnan(hout[1]) && hout[2] == 0x1.d887be0f4bed8p-1, "hyperu with huge a is NaN, hyperu(1, 1, 0.5) keeps its bits (rc %d)", rc);
+    double pin[4 * 2] = {0, 1, 1, 3, -INFINITY, 2.5, 1.5, 1.2}, pout[2 * 2];
+    const char *rad[4] = {"special.pro_rad1", "special.pro_rad2", "special.obl_rad1", "special.obl_rad2"};
+    for (int k = 0; k < 4; k++) {
+        rc = bd_ufunc(rad[k], 0, 4, 2, pin, 2, pout);
+        CHECK(rc == 0 && pout[0] == 0.0 && isnan(pout[2]), "%s at c = -inf keeps SciPy's (0, nan) (rc %d)", rad[k], rc);
+    }
+
+    /* min_weight_full_bipartite_matching: NaN/inf weights broke the potentials and the unmatched p[j] = 0 wrote at
+       index -1 (fuzz D-N1); an infeasible graph returned a "matching" through missing edges */
+    double bw[4] = {1, 2, 3, 4};
+    tsr_arg bm[1] = {arg_arr(bw, 2, (int64_t[]){2, 2})};
+    rc = fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2);
+    CHECK(rc == 0 && ((int64_t *)r[1].arr.data)[0] == 0 && ((int64_t *)r[1].arr.data)[1] == 1, "bipartite matching of [[1,2],[3,4]] (rc %d)", rc);
+    if (rc == 0) fa_free(r, 2);
+    bw[1] = NAN;
+    CHECK(fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2) == TSR_EARG, "bipartite matching with a NaN weight refused");
+    bw[1] = INFINITY;
+    CHECK(fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2) == TSR_EARG, "bipartite matching with an infinite weight refused");
+    double bz[4] = {1, 2, 0, 0};                                         /* row 1 has no edge */
+    bm[0] = arg_arr(bz, 2, (int64_t[]){2, 2});
+    CHECK(fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2) == TSR_EARG, "bipartite matching without a full matching refused");
+
+    /* invpascal: O(n^4) symmetric / O(n^3) triangular work timed out the CI fuzz run (seed 1); now one binomial row
+       per k with sl_binom's exact arithmetic (same bits) and a bound on the symmetric work */
+    tsr_arg ip[2] = {arg_int(8), arg_str("symmetric")};
+    rc = fa_call("slinalg.invpascal", 2, ip, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[3 * 8 + 5] == 0x1.b08p+9 && ((double *)r[0].arr.data)[5 * 8 + 2] == -0x1.0e8p+9,
+          "invpascal(8) symmetric keeps its values (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    ip[1] = arg_str("upper");
+    rc = fa_call("slinalg.invpascal", 2, ip, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[3 * 8 + 5] == 0x1.4p+3 && signbit(((double *)r[0].arr.data)[5 * 8 + 2]),
+          "invpascal(8) upper keeps its values, -0.0 below the diagonal (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    ip[0] = arg_int(1861); ip[1] = arg_str("symmetric");
+    CHECK(fa_call("slinalg.invpascal", 2, ip, r, 1) == TSR_EARG, "invpascal(1861) symmetric refused (work bound)");
+    ip[0] = arg_int(3000); ip[1] = arg_str("lower");
+    rc = fa_call("slinalg.invpascal", 2, ip, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[1 * 3000 + 0] == -1.0, "invpascal(3000) lower is computed (O(n^2)) (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    CHECK(tsr_allocated() == before, "batch D leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 static void test_abi_runtime(void)
 {
     /* version and capability negotiation: one version source */
@@ -2399,6 +2542,7 @@ int main(void)
     test_fuzz_batch_a();
     test_fuzz_batch_b();
     test_fuzz_batch_c();
+    test_fuzz_batch_d();
     test_ci_regressions();
     test_abi_runtime();
     test_ownership();

@@ -83,6 +83,16 @@ namespace specfun {
 
     enum class Status { OK = 0, NoMemory, Other };
 
+    /* Tessera local modification: chgubi's digit estimate and the rmn1/rmn2l work size cast a double to int and
+       then do int arithmetic that overflows for non-finite or huge values (c = -inf, an infinite log10 of hmax):
+       undefined behaviour in SciPy. These helpers make it defined with the same bits SciPy's x86-64 builds give:
+       cvttsd2si's INT_MIN for NaN and out-of-range doubles, and two's-complement wrapping. Results are unchanged
+       wherever the original was defined. */
+    inline int tsr_x86_int(double v) { return (v == v && v > -2147483649.0 && v < 2147483648.0) ? (int)v : (-2147483647 - 1); }
+    inline int tsr_wrap_add(int a, int b) { return (int)((unsigned)a + (unsigned)b); }
+    inline int tsr_wrap_sub(int a, int b) { return (int)((unsigned)a - (unsigned)b); }
+    inline int tsr_wrap_mul(int a, int b) { return (int)((unsigned)a * (unsigned)b); }
+
     void airyb(double, double *, double *, double *, double *);
     void bjndd(double, int, double *, double *, double *);
 
@@ -1096,7 +1106,7 @@ namespace specfun {
             da2 = log10(hmin);
         }
 
-        *id = 15 - (int)fabs(da1 - da2);
+        *id = tsr_wrap_sub(15, tsr_x86_int(fabs(da1 - da2)));
         hm1 *= log(x);
         s0 = 0;
 
@@ -1159,7 +1169,7 @@ namespace specfun {
         if (hmin != 0.0) {
             db2 = log10(hmin);
         }
-        id1 = 15 - (int)fabs(db1 - db2);
+        id1 = tsr_wrap_sub(15, tsr_x86_int(fabs(db1 - db2)));
         if (id1 < *id) {
             *id = id1;
         }
@@ -5100,7 +5110,7 @@ namespace specfun {
 
         nm1 = (int)((n - m) / 2);
         ip = (n - m == 2 * nm1 ? 0 : 1);
-        nm = 25 + nm1 + (int)c;
+        nm = tsr_wrap_add(25 + nm1, tsr_x86_int(c));
         reg = (m + nm > 80 ? 1.0e-200 : 1.0);
         r0 = reg;
 
@@ -5160,7 +5170,7 @@ namespace specfun {
         }
 
         cx = c * x;
-        nm2 = 2 * nm + m;
+        nm2 = tsr_wrap_add(tsr_wrap_mul(2, nm), m);
         sphj(cx, nm2, &nm2, sj.get(), dj.get());
 
         a0 = pow(1.0 - kd / (x * x), 0.5 * m) / suc;
@@ -5252,12 +5262,12 @@ namespace specfun {
         if (n - m == 2 * nm1) {
             ip = 0;
         }
-        nm = 25 + nm1 + (int)c;
+        nm = tsr_wrap_add(25 + nm1, tsr_x86_int(c));
         reg = 1.0;
         if (m + nm > 80) {
             reg = 1.0e-200;
         }
-        nm2 = 2 * nm + m;
+        nm2 = tsr_wrap_add(tsr_wrap_mul(2, nm), m);
         cx = c * x;
         sphy(cx, nm2, &nm2, sy.get(), dy.get());
         r0 = reg;
