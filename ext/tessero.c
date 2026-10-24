@@ -399,6 +399,7 @@ PHP_MINIT_FUNCTION(tessero)
 PHP_MSHUTDOWN_FUNCTION(tessero)
 {
     UNREGISTER_INI_ENTRIES();
+    tsr_unregister_fn();
     return SUCCESS;
 }
 

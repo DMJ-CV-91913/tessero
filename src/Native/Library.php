@@ -148,6 +148,8 @@ final class Library
         if (! $absolute || str_contains($path, "\0") || str_contains($path, '://')) {
             throw new LibraryUnavailable("{$var} must be an absolute path to a shared library, got '{$path}'.");
         }
+        // a permission check must not use a cached stat (before PHP 8.4, chmod() leaves it stale)
+        clearstatcache();
         $real = @realpath($path);
         if ($real === false || ! is_file($real)) {
             throw new LibraryUnavailable("{$var} points to '{$path}', which is not a readable file.");

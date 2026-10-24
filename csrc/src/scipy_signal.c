@@ -1781,11 +1781,12 @@ static int r_win_tukey(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     double alpha = win_dbl(args, nargs, 1, 0.5);
     int sym = win_sym(args, nargs, 2);
     int64_t Mext = sym ? M : M + 1;
+    /* alpha >= 1 is the Hann window, which allocates its own result: decide before allocating this one */
+    if (alpha >= 1.0) { static const double a[] = {0.5, 0.5}; return win_cosine_sum(M, a, 2, sym, &res[0]); }
     int64_t sh[1] = {M};
     double *w = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
     if (!w) return TSR_ENOMEM;
     if (alpha <= 0.0) { for (int64_t i = 0; i < M; i++) w[i] = 1.0; return TSR_OK; }
-    if (alpha >= 1.0) { static const double a[] = {0.5, 0.5}; return win_cosine_sum(M, a, 2, sym, &res[0]); }
     double den = (double)(Mext - 1);
     int64_t width = (int64_t)(alpha * den / 2.0);          /* floor */
     for (int64_t i = 0; i < M; i++) {
@@ -1954,7 +1955,8 @@ static double *sig_polyroots(const double *p, int64_t m, int64_t *nz)
     const double p0 = p[s];
     for (int64_t j = 0; j < n; j++) comp[j] = -p[s + 1 + j] / p0;
     for (int64_t i = 1; i < n; i++) comp[i * n + (i - 1)] = 1.0;
-    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, comp, (lapack_int)n, wr, wi, NULL, 1, NULL, 1);
+    /* ldvl/ldvr = max(1,n): LAPACKE < 3.11 row-major rejects ld < n even when the job is N */
+    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, comp, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
     free(comp);
     if (info != 0) { free(wr); free(wi); free(pairs); *nz = -1; return NULL; }
     for (int64_t i = 0; i < n; i++) { pairs[2 * i] = wr[i]; pairs[2 * i + 1] = wi[i]; }
@@ -2136,7 +2138,8 @@ static int ss_charpoly(const double *M, int64_t n, double *out)
     double *ci = (double *)calloc((size_t)(n + 1), sizeof(double));
     if (!a || !wr || !wi || !cr || !ci) { free(a); free(wr); free(wi); free(cr); free(ci); return -1; }
     memcpy(a, M, sizeof(double) * (size_t)(n * n));
-    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, NULL, 1, NULL, 1);
+    /* ldvl/ldvr = max(1,n): LAPACKE < 3.11 row-major rejects ld < n even when the job is N */
+    lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, NULL, (lapack_int)(n > 0 ? n : 1), NULL, (lapack_int)(n > 0 ? n : 1));
     free(a);
     if (info != 0) { free(wr); free(wi); free(cr); free(ci); return -1; }
     cr[0] = 1.0; ci[0] = 0.0;

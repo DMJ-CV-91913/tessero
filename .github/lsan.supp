@@ -2,7 +2,7 @@
 # libgomp allocates its thread-pool descriptor once at initialisation and never frees it
 leak:libgomp.so
 leak:gomp_
-# ext-tessero builds its function registry (arginfo, the routine table, the Generator class) in MINIT with
-# persistent allocations and does not free them in MSHUTDOWN: one-time, process-lifetime, reported at exit.
-# Tracked for the extension owners (free them in MSHUTDOWN, then drop this line); per-request leaks still fail.
-leak:zm_startup_tessero
+# PHP 8.2's FFI::cdef leaks one declaration (56 bytes) each time a declared C function does not resolve, and
+# Native\Blas probes candidate libraries that way (Ubuntu's libopenblas.so.0 has no LAPACKE). PHP's own
+# allocation, not Tessero's; PHP 8.4 does not leak it.
+leak:zend_ffi_declare
