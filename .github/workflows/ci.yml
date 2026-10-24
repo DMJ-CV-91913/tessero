@@ -29,6 +29,11 @@ concurrency:
 # Determinism: every action is pinned to a commit SHA, tool versions are pinned (composer, mkdocs-material, the PHP
 # built for the ASan job), fuzzing uses fixed seeds where the harness takes one, and no step retries on failure.
 
+# setup-php reuses a PHP preinstalled on the runner image unless told to update it: without this the Windows
+# images kept PHP 8.5.11, below the security floor (8.2.35, 8.3.36, 8.4.27, 8.5.12; docs/project/security-review-2026-10.md)
+env:
+  update: true
+
 jobs:
   # ---------------------------------------------------------------- native library, 6 platforms
   native:
