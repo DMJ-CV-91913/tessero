@@ -915,7 +915,7 @@ int power_divergence_impl(const tsr_arg *args, int nargs, tsr_result *res, int n
                 /* 1-D axis=None: f_obs and f_exp broadcast against each other */
                 const int64_t ne = b.n(i, 1);
                 if (ne != 1 && n != 1) fail("shape mismatch: objects cannot be broadcast to a single shape");
-                const int64_t m = std::max(n, ne);
+                const int64_t m = n == 1 ? ne : n;        /* NumPy broadcasting: 1 against 0 is 0 (max() read the empty side) */
                 vector<double> ov((size_t)m), ev((size_t)m);
                 for (int64_t j = 0; j < m; j++) { ov[j] = b.x(i, 0)[n == 1 ? 0 : j]; ev[j] = b.x(i, 1)[ne == 1 ? 0 : j]; }
                 power_div_slice(ov.data(), m, ev.data(), false, false, ddof, lam, sum_check, o);

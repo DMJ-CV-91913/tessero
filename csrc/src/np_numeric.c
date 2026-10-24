@@ -1091,7 +1091,7 @@ static int r_trapezoid(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
         const double sum = lane_sum(lane, len, inner);
         if (rdt == TSR_F64) ((double *)z.a.data)[o] = sum;
         else if (rdt == TSR_F32) ((float *)z.a.data)[o] = (float)sum;
-        else ((int64_t *)z.a.data)[o] = (int64_t)sum;
+        else ((int64_t *)z.a.data)[o] = fn_dbl_i64(sum, INT64_MIN);   /* an int64 sum beyond 2^63: the x86 result */
         for (int d = nd - 2; d >= 0; d--) { if (++ix[d] < osh[d]) break; ix[d] = 0; }
     }
     tsr_free(lane, lb);
@@ -3131,9 +3131,20 @@ static int py_values_check(const tsr_arg *va, const tsr_array *vals, int ddt)
     return TSR_OK;
 }
 
+/* the in-place routines ("&a" arguments) write through args[0].arr: it must be an array. The bindings only pass
+   a writable NDArray there, but a direct C caller (or the fuzzer) can pass a number, whose zeroed arr has a NULL
+   data pointer that np.copyto stored through. */
+static int inplace_arg(const tsr_arg *args, int nargs, const char *what)
+{
+    if (nargs >= 1 && args[0].kind == 3) return TSR_OK;
+    fn_set_error("%s must be an array (it is written in place)", what);
+    return TSR_ETYPE;
+}
+
 /* put(a, ind, v, mode='raise') */
 static int r_put(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
+    if (inplace_arg(args, nargs, "a") < 0) return TSR_ETYPE;
     const tsr_array *a = &args[0].arr;
     const tsr_arg *ma = argk(args, nargs, 3);
     int mode = 0;
@@ -3182,6 +3193,7 @@ static int r_put(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
 static int r_putmask(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     const int place = *(const int *)ctx;
+    if (inplace_arg(args, nargs, place ? "arr" : "a") < 0) return TSR_ETYPE;
     const tsr_array *a = &args[0].arr;
     own mv, vv;
     int rc = values_flat(argk(args, nargs, 1), &mv, "mask");
@@ -3227,6 +3239,7 @@ static const int PUTMASK = 0, PLACE = 1;
 /* copyto(dst, src, casting='same_kind', where=True) */
 static int r_copyto(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
+    if (inplace_arg(args, nargs, "dst") < 0) return TSR_ETYPE;
     const tsr_array *dst = &args[0].arr;
     harr hs, hw;
     const tsr_arg *sa = argk(args, nargs, 1);
@@ -3285,6 +3298,7 @@ static int r_copyto(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 /* fill_diagonal(a, val, wrap=False) */
 static int r_fill_diagonal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
+    if (inplace_arg(args, nargs, "a") < 0) return TSR_ETYPE;
     const tsr_array *a = &args[0].arr;
     if (a->ndim < 2) { fn_set_error("array must be at least 2-d"); return TSR_EARG; }
     const tsr_arg *wa = argk(args, nargs, 2);
@@ -3314,6 +3328,7 @@ static int r_fill_diagonal(const void *ctx, const tsr_arg *args, int nargs, tsr_
 /* put_along_axis(arr, indices, values, axis) */
 static int r_put_along_axis(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
+    if (inplace_arg(args, nargs, "arr") < 0) return TSR_ETYPE;
     const tsr_array *arr = &args[0].arr;
     harr hi, hv;
     int rc = get_arr(argk(args, nargs, 1), &hi, "indices");
@@ -3396,7 +3411,8 @@ static int r_round(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     if ((rc = own_from(&z, &h.a, -1)) < 0) return rc;      /* contiguous copy, same dtype */
     const int64_t n = tsr_shape_size(z.a.ndim, z.a.shape);
     if (is_intlike(dt) && dec >= 0) return own_emit(&res[0], &z);   /* numpy: unchanged */
-    const int ad = dec < 0 ? (int)-dec : (int)dec;
+    /* |decimals| > 400 acts as 400 (10**400 is already inf); clamping first keeps -dec and the cast defined */
+    const int ad = (int)(dec < -400 || dec > 400 ? 400 : dec < 0 ? -dec : dec);
     const double f = pow(10.0, (double)ad);
     if (dt == TSR_F64 || dt == TSR_C128) {
         double *p = (double *)z.a.data;
@@ -3409,11 +3425,13 @@ static int r_round(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
         for (int64_t i = 0; i < n; i++)
             p[i] = dec >= 0 ? rintf(p[i] * ff) / ff : rintf(p[i] / ff) * ff;
     } else if (dt == TSR_I64) {
-        int64_t *p = (int64_t *)z.a.data;                  /* decimals < 0 */
-        for (int64_t i = 0; i < n; i++) p[i] = (int64_t)(rint((double)p[i] / f) * f);
+        /* decimals < 0. 10**|decimals| beyond double (|decimals| > 308) rounds everything to 0; a value near
+           INT64_MAX rounds up to 2^63, which takes the x86 result (INT64_MIN) instead of an undefined cast */
+        int64_t *p = (int64_t *)z.a.data;
+        for (int64_t i = 0; i < n; i++) p[i] = isfinite(f) ? fn_dbl_i64(rint((double)p[i] / f) * f, INT64_MIN) : 0;
     } else if (dt == TSR_I32) {
-        int32_t *p = (int32_t *)z.a.data;
-        for (int64_t i = 0; i < n; i++) p[i] = (int32_t)(rint((double)p[i] / f) * f);
+        int32_t *p = (int32_t *)z.a.data;                  /* rounding up past INT32_MAX wraps as an int32 store */
+        for (int64_t i = 0; i < n; i++) p[i] = isfinite(f) ? (int32_t)(uint32_t)(uint64_t)fn_dbl_i64(rint((double)p[i] / f) * f, 0) : 0;
     } else if (dt == TSR_U8) {
         uint8_t *p = (uint8_t *)z.a.data;
         for (int64_t i = 0; i < n; i++) { double r = rint((double)p[i] / f) * f; p[i] = (uint8_t)(r < 0 ? 0 : r > 255 ? 255 : r); }
@@ -3598,7 +3616,12 @@ static int r_einsum(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
                 if (lblmap[(unsigned char)*p] < 0) { if (nnamed >= EINSUM_MAXLBL) { fn_set_error("einsum: too many distinct labels"); return TSR_EARG; } idchar[nnamed] = *p; lblmap[(unsigned char)*p] = nnamed++; }
             } else { fn_set_error("einsum: invalid character '%c' in subscripts", *p); return TSR_EARG; }
         }
-        if (dots != 0 && dots != 3) { fn_set_error("einsum: '.' may only appear in an ellipsis '...'"); return TSR_EARG; }
+        /* the dots must form one contiguous "..." (NumPy): "a.b.c" passed a count check and pass B then
+           stepped over letters three at a time, leaving olab entries unset */
+        if ((dots != 0 && dots != 3) || (dots == 3 && !strstr(t, "..."))) {
+            fn_set_error("einstein sum subscripts string contains a '.' that is not part of an ellipsis ('...') in operand %d", o);
+            return TSR_EARG;
+        }
         const int32_t nd = ops[o].arr.ndim;
         if (dots == 3) { int cov = nd - letters; if (cov < 0) { fn_set_error("einsum: operand %d has fewer dimensions than its subscript", o + 1); return TSR_EARG; } if (cov > E) E = cov; }
         else if (letters != nd) { fn_set_error("einsum: operand %d has %d dimensions but %d labels", o + 1, nd, letters); return TSR_EARG; }
@@ -3612,7 +3635,9 @@ static int r_einsum(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     int   olab[EINSUM_MAXOP][TSR_MAXDIM];
     int64_t ostr[EINSUM_MAXOP][TSR_MAXDIM];
     int64_t osz[EINSUM_MAXOP][TSR_MAXDIM];
-    int64_t lsize[EINSUM_MAXLBL]; for (int i = 0; i < nlab; i++) lsize[i] = 0;
+    /* label sizes; -1 = not seen yet (0 is a real size: a label on a 0-length axis used to read as unset, so a
+       longer axis with the same label was accepted and read out of bounds) */
+    int64_t lsize[EINSUM_MAXLBL]; for (int i = 0; i < nlab; i++) lsize[i] = -1;
     for (int o = 0; o < nop; o++) {
         const int32_t nd = ops[o].arr.ndim; const int64_t *shp = ops[o].arr.shape;
         int letters = 0; for (const char *p = terms[o]; *p; p++) if (*p != '.') letters++;
@@ -3627,18 +3652,26 @@ static int r_einsum(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         for (int d = nd - 1; d >= 0; d--) { ostr[o][d] = st; osz[o][d] = shp[d]; st *= shp[d]; }
         for (int d = 0; d < nd; d++) {
             const int L = olab[o][d]; const int64_t s = shp[d];
-            if (lsize[L] == 0 || (lsize[L] == 1 && s != 1)) lsize[L] = s;
+            if (lsize[L] < 0 || (lsize[L] == 1 && s != 1)) lsize[L] = s;
             if (s != 1 && lsize[L] != s) { fn_set_error("einsum: label size mismatch (%lld vs %lld)", (long long)lsize[L], (long long)s); return TSR_EARG; }
         }
     }
 
+    for (int L = 0; L < nlab; L++) if (lsize[L] < 0) lsize[L] = 1;   /* every label has an axis; defensive */
+
     /* output labels: explicit (parse outpart) or implicit (ellipsis dims, then once-only labels sorted) */
     int outlab[EINSUM_MAXLBL]; int nout = 0;
     if (explicit_out) {
+        int out_ell = 0;
         for (const char *p = outpart; *p; ) {
             /* every append is bounded (outlab/oshape/ostride_out hold EINSUM_MAXLBL), and a label may appear once
                (as in NumPy): without both checks a long output subscript overflowed these stack arrays */
             if (*p == '.') {
+                /* one "..." at most; stepping 3 over a shorter run of dots read past the string's end */
+                if (p[1] != '.' || p[2] != '.' || p[3] == '.' || out_ell++) {
+                    fn_set_error("einstein sum subscripts string contains a '.' that is not part of an ellipsis ('...') in the output");
+                    return TSR_EARG;
+                }
                 if (nout + E > EINSUM_MAXLBL) { fn_set_error("einsum: the output subscript is too long"); return TSR_EARG; }
                 for (int j = 0; j < E; j++) outlab[nout++] = base_ell + j;
                 p += 3;
@@ -3663,12 +3696,12 @@ static int r_einsum(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 
     /* output shape and strides */
     int64_t oshape[EINSUM_MAXLBL]; int64_t ostride_out[EINSUM_MAXLBL]; int64_t outsize;
-    for (int k = 0; k < nout; k++) oshape[k] = lsize[outlab[k]] ? lsize[outlab[k]] : 1;
+    for (int k = 0; k < nout; k++) oshape[k] = lsize[outlab[k]];
     { int64_t st = 1; for (int k = nout - 1; k >= 0; k--) { ostride_out[k] = st; st *= oshape[k]; } outsize = st; }
 
     /* total number of label combinations (guard against a runaway loop) */
     int64_t total = 1;
-    for (int L = 0; L < nlab; L++) { const int64_t s = lsize[L] ? lsize[L] : 1; if (s && total > (int64_t)100000000 / s) { fn_set_error("einsum: contraction too large for this implementation"); return TSR_EARG; } total *= s; }
+    for (int L = 0; L < nlab; L++) { const int64_t s = lsize[L]; if (s && total > (int64_t)100000000 / s) { fn_set_error("einsum: contraction too large for this implementation"); return TSR_EARG; } total *= s; }
 
     /* materialise operands as contiguous float64 */
     double *data[EINSUM_MAXOP]; int64_t dn[EINSUM_MAXOP];
@@ -3853,7 +3886,15 @@ static int r_softmax(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 { (void)ctx; (void)nres; return softmax_impl(args, nargs, res, 0); }
 /* scipy.special Gauss-Chebyshev quadrature nodes and weights (closed form). n points, ascending nodes; the
    optional `mu` (sum of weights) is not returned (nout fixed at 2). roots_chebyc/s live on [-2, 2]; sh_* on [0, 1]. */
-static int64_t roots_argi(const tsr_arg *a, int n, int i) { return (n > i && a[i].kind == 1) ? (a[i].flags & 1 ? a[i].ival : (int64_t)a[i].num) : 0; }
+/* an integer argument (0 when absent); NaN, an infinity or a float outside int64 reads as INT64_MIN, which the
+   callers' range checks refuse */
+static int64_t roots_argi(const tsr_arg *a, int n, int i) { return (n > i && a[i].kind == 1) ? fn_num_i64(&a[i], INT64_MIN) : 0; }
+/* an integer argument that may be negative (0 when absent): Python int() truncation, NaN/infinity refused */
+static int roots_argi_chk(const tsr_arg *a, int n, int i, const char *name, int64_t *out)
+{
+    *out = 0;
+    return (n > i && a[i].kind == 1) ? fn_arg_i64(&a[i], 0, INT64_MIN, INT64_MAX, name, out) : TSR_OK;
+}
 void tsr_special_jv(const void *, const double *, double *);
 void tsr_special_yv(const void *, const double *, double *);
 void tsr_special_jvp(const void *, const double *, double *);
@@ -3875,7 +3916,13 @@ static double bz_eval(int kind, double nu, double x, double *deriv)
 static int bessel_zeros(int kind, double nu, int64_t nt, double *out)
 {
     const double h = 0.05;
-    double x = 1e-6, dprev, pf = bz_eval(kind, nu, x, &dprev);
+    /* the scan stops at x = 1e5, below which there are fewer than 1e5 / pi + 2 zeros (they are about pi
+       apart): a larger nt cannot succeed, so refuse it before scanning 2e6 points */
+    if (nt > 40000) { fn_set_error("*_zeros: nt must be <= 40000"); return TSR_EARG; }
+    /* every zero of J_nu, Y_nu and their derivatives lies beyond |nu| (j'_{nu,1} >= nu): for a large order start
+       the scan just below it instead of stepping through the zero-free stretch (orders below 100 keep the
+       original grid, so their results are unchanged) */
+    double x = fabs(nu) >= 100.0 ? fabs(nu) - 1.0 : 1e-6, dprev, pf = bz_eval(kind, nu, x, &dprev);
     int64_t got = 0;
     while (got < nt && x < 1.0e5) {
         double x2 = x + h, d2, f2 = bz_eval(kind, nu, x2, &d2);
@@ -3927,6 +3974,7 @@ static int kelvin_zeros(int which, int64_t nt, double *out)
     int64_t got = 0;
     while (got < nt && x < 1.0e4) {
         double x2 = x + h, f2 = kz_eval(which, x2);
+        if (!isfinite(f2)) break;                         /* past the overflow there are no more sign changes */
         if (pf == 0.0) { pf = f2; x = x2; continue; }
         if ((pf < 0.0) != (f2 < 0.0)) {
             double a = x, b = x2;
@@ -3969,16 +4017,6 @@ static int r_kelvin_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r,
 
 /* scipy.special.multigammaln(a, d): ln of the multivariate gamma, element-wise over a with scalar int d:
    (d(d-1)/4) ln(pi) + sum_{j=1..d} lgamma(a + (1-j)/2). */
-/* C(a, b) as an exact-ish double via the multiplicative recurrence (a, b small). */
-static double combi_binom(int64_t a, int64_t b)
-{
-    if (b < 0 || b > a) return 0.0;
-    if (b > a - b) b = a - b;
-    double r = 1.0;
-    for (int64_t i = 0; i < b; i++) r = r * (double)(a - i) / (double)(i + 1);
-    return r;
-}
-
 /* scipy.special.factorial2(n): double factorial, element-wise over non-negative integer n. */
 static int r_factorial2(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -3991,7 +4029,7 @@ static int r_factorial2(const void *c, const tsr_arg *args, int nargs, tsr_resul
     const double LSQPI = 0.5 * log(M_PI);
     for (int64_t i = 0; i < na; i++) {
         double v = n[i];
-        if (((int64_t)v) % 2 == 0) out[i] = exp(0.5 * v * log(2.0) + lgamma(0.5 * v + 1.0));
+        if (fmod(trunc(v), 2.0) == 0.0) out[i] = exp(0.5 * v * log(2.0) + lgamma(0.5 * v + 1.0));   /* NaN: odd branch, NaN result */
         else                       out[i] = exp(0.5 * (v + 1.0) * log(2.0) + lgamma(0.5 * v + 1.0) - LSQPI);
     }
     fn_free_doubles(n, na);
@@ -4005,7 +4043,7 @@ static int r_factorialk(const void *c, const tsr_arg *args, int nargs, tsr_resul
 {
     (void)c; (void)nres;
     if (args[0].kind != 3) { fn_set_error("factorialk: n must be an array"); return TSR_ETYPE; }
-    int64_t k = (nargs > 1 && args[1].kind == 1) ? (args[1].flags & 1 ? args[1].ival : (int64_t)args[1].num) : 0;
+    int64_t k = (nargs > 1 && args[1].kind == 1) ? fn_num_i64(&args[1], 0) : 0;
     if (k < 1) { fn_set_error("factorialk: k must be a positive integer"); return TSR_EARG; }
     int64_t na; double *n = fn_arg_doubles(&args[0], &na);
     if (!n) return TSR_ENOMEM;
@@ -4015,52 +4053,45 @@ static int r_factorialk(const void *c, const tsr_arg *args, int nargs, tsr_resul
     for (int64_t i = 0; i < na; i++) {
         double v = n[i];
         if (v < 0.0) { out[i] = 0.0; continue; }
-        double rr = (double)(((int64_t)v) % k);
+        double rr = fn_dbl_fits_i64(v) ? (double)(((int64_t)v) % k) : fmod(trunc(v), (double)k);   /* NaN stays NaN */
         out[i] = pow(kd, (v - rr) / kd) * tgamma(v / kd + 1.0) / tgamma(rr / kd + 1.0) * fmax(rr, 1.0);
     }
     fn_free_doubles(n, na);
     return TSR_OK;
 }
 
-/* scipy.special.bernoulli(n): B_0..B_n via B_m = -1/(m+1) sum_{k<m} C(m+1,k) B_k. */
+int tsr_bernob_eulerb(int euler, int n, double *out);   /* cxx/special_common.hpp */
+
+/* scipy.special.bernoulli(n): B_0..B_n as SciPy computes them (specfun bernob). */
 static int r_bernoulli(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)c; (void)nres;
-    int64_t n = (nargs > 0 && args[0].kind == 1) ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : -1;
+    int64_t n = (nargs > 0 && args[0].kind == 1) ? fn_num_i64(&args[0], -1) : -1;
     if (n < 0) { fn_set_error("bernoulli: n must be a non-negative integer"); return TSR_EARG; }
+    if (n > INT32_MAX - 2) { fn_set_error("bernoulli: n is too large"); return TSR_ENOMEM; }
     double *B = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n + 1});
     if (!B) return TSR_ENOMEM;
-    B[0] = 1.0;
-    for (int64_t m = 1; m <= n; m++) {
-        double s = 0.0;
-        for (int64_t k = 0; k < m; k++) s += combi_binom(m + 1, k) * B[k];
-        B[m] = -s / (double)(m + 1);
-    }
-    return TSR_OK;
+    /* SciPy's specfun bernob (zeta series per even index, linear in n): the recurrence over all lower terms was
+       quadratic, so bernoulli(65536) ran for minutes where SciPy takes a millisecond */
+    return tsr_bernob_eulerb(0, (int)n, B) == 0 ? TSR_OK : TSR_ENOMEM;
 }
 
-/* scipy.special.euler(n): E_0..E_n via sum_{k<=nn} C(2nn,2k) E_{2k} = 0, odd terms zero. */
+/* scipy.special.euler(n): E_0..E_n as SciPy computes them (specfun eulerb), odd terms zero. */
 static int r_euler(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)c; (void)nres;
-    int64_t n = (nargs > 0 && args[0].kind == 1) ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : -1;
+    int64_t n = (nargs > 0 && args[0].kind == 1) ? fn_num_i64(&args[0], -1) : -1;
     if (n < 0) { fn_set_error("euler: n must be a non-negative integer"); return TSR_EARG; }
+    if (n > INT32_MAX - 2) { fn_set_error("euler: n is too large"); return TSR_ENOMEM; }
     double *E = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n + 1});
     if (!E) return TSR_ENOMEM;
-    for (int64_t i = 0; i <= n; i++) E[i] = 0.0;
-    E[0] = 1.0;
-    for (int64_t nn = 1; 2 * nn <= n; nn++) {
-        double s = 0.0;
-        for (int64_t k = 0; k < nn; k++) s += combi_binom(2 * nn, 2 * k) * E[2 * k];
-        E[2 * nn] = -s;
-    }
-    return TSR_OK;
+    return tsr_bernob_eulerb(1, (int)n, E) == 0 ? TSR_OK : TSR_ENOMEM;   /* SciPy's specfun eulerb, linear */
 }
 
 static int r_multigammaln(const void *c, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)c; (void)nres;
-    int64_t d = (nargs > 1 && args[1].kind == 1) ? (args[1].flags & 1 ? args[1].ival : (int64_t)args[1].num) : 0;
+    int64_t d = (nargs > 1 && args[1].kind == 1) ? fn_num_i64(&args[1], 0) : 0;
     if (d < 1) { fn_set_error("multigammaln: d must be a positive integer"); return TSR_EARG; }
     const double c0 = 0.25 * (double)d * (double)(d - 1) * log(M_PI);
     if (args[0].kind == 1) {
@@ -4094,7 +4125,9 @@ static int r_keip_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, i
 
 static int bz_run(const tsr_arg *args, int nargs, tsr_result *res, int kind)
 {
-    int64_t nu = roots_argi(args, nargs, 0), nt = roots_argi(args, nargs, 1);
+    int64_t nu, nt = roots_argi(args, nargs, 1);
+    int rc = roots_argi_chk(args, nargs, 0, "n", &nu);
+    if (rc < 0) return rc;
     if (nt < 1) { fn_set_error("*_zeros: nt must be >= 1"); return TSR_EARG; }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nt});
     if (!out) return TSR_ENOMEM;
@@ -4109,7 +4142,9 @@ static int r_ynp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, in
 static int r_jnyn_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr)
 {
     (void)c; (void)nr;
-    int64_t nu = roots_argi(args, na, 0), nt = roots_argi(args, na, 1);
+    int64_t nu, nt = roots_argi(args, na, 1);
+    int rc0 = roots_argi_chk(args, na, 0, "n", &nu);
+    if (rc0 < 0) return rc0;
     if (nt < 1) { fn_set_error("jnyn_zeros: nt must be >= 1"); return TSR_EARG; }
     const int kinds[4] = {0, 2, 1, 3};   /* Jn, Jn', Yn, Yn' */
     for (int o = 0; o < 4; o++) {
@@ -4136,12 +4171,11 @@ static int airy_scan(int fsel, int64_t nt, double *out)
         double x2 = x - h, f2 = ai_eval(fsel, x2);
         if (pf == 0.0) { pf = f2; x = x2; continue; }
         if ((pf < 0.0) != (f2 < 0.0)) {
-            double a = x, b = x2;
+            double a = x, b = x2, fa = pf;   /* f(a), carried (it is f(m) of the step that moved a) */
             for (int it = 0; it < 200 && (a - b) > 1e-15; it++) {
                 double m = 0.5 * (a + b), fm = ai_eval(fsel, m);
                 if (fm == 0.0) { a = b = m; break; }
-                double fa = ai_eval(fsel, a);
-                if ((fa < 0.0) != (fm < 0.0)) b = m; else a = m;
+                if ((fa < 0.0) != (fm < 0.0)) b = m; else { a = m; fa = fm; }
             }
             out[got++] = 0.5 * (a + b);
         }
@@ -4157,6 +4191,7 @@ static int r_ai_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r,
     (void)c; (void)nr;
     int64_t nt = roots_argi(args, na, 0);
     if (nt < 1) { fn_set_error("ai_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > 2000) { fn_set_error("ai_zeros: nt must be <= 2000"); return TSR_EARG; }   /* the scan bisects every zero */
     double *a = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){nt});
     double *ap = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){nt});
     double *ai = (double *)fn_result_array(&r[2], TSR_F64, 1, (int64_t[]){nt});
@@ -4174,6 +4209,7 @@ static int r_bi_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r,
     (void)c; (void)nr;
     int64_t nt = roots_argi(args, na, 0);
     if (nt < 1) { fn_set_error("bi_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > 2000) { fn_set_error("bi_zeros: nt must be <= 2000"); return TSR_EARG; }   /* the scan bisects every zero */
     double *b = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){nt});
     double *bp = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){nt});
     double *bi = (double *)fn_result_array(&r[2], TSR_F64, 1, (int64_t[]){nt});
@@ -4199,6 +4235,7 @@ static int cv_seq(const tsr_arg *a, int na, tsr_result *r, int oblate)
     int64_t m = roots_argi(a, na, 0), n = roots_argi(a, na, 1);
     double cc = seq_argf(a, na, 2);
     if (n < m || m < 0) { fn_set_error("*_cv_seq: need 0 <= m <= n"); return TSR_EARG; }
+    if (n - m > 199) { fn_set_error("Difference between n and m is too large."); return TSR_EARG; }   /* scipy */
     int64_t len = n - m + 1;
     double *out = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){len});
     if (!out) return TSR_ENOMEM;
@@ -4214,21 +4251,30 @@ static int r_pro_cv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, i
 
 /* scipy.special.pbdv_seq(v, x) / pbvv_seq: parabolic cylinder functions and derivatives for the orders
    v0, v0+1, ..., v0+n1 where v0 = v - int(v) and n1 = max(1, int(v)). */
+int tsr_pb_seq(int vv, double v1, double x, int64_t len, double *dv, double *dp);   /* cxx/special_common.hpp */
+
+/* Python's int(v) refusal for NaN / infinity (the message SciPy's int(v) raises) */
+static int int_of_nonfinite(double v)
+{
+    fn_set_error(v != v ? "cannot convert float NaN to integer" : "cannot convert float infinity to integer");
+    return TSR_EARG;
+}
+
 static int pb_seq(const tsr_arg *a, int na, tsr_result *r, int vv)
 {
     double v = seq_argf(a, na, 0), x = seq_argf(a, na, 1);
-    int n = (int)v, n1 = n < 1 ? 1 : n;
-    double v0 = v - n;
-    int64_t len = (int64_t)n1 + 1;
+    if (!isfinite(v)) return int_of_nonfinite(v);
+    /* SciPy: n = int(v), v0 = v - n, n1 = max(n, 1); its specfun work arrays hold n1 + 2 entries in a C int */
+    const double n = trunc(v), v0 = v - n;
+    if (n > 2147483645.0) { fn_set_error("negative dimensions are not allowed"); return TSR_EARG; }
+    const int n1 = n < 1.0 ? 1 : (int)n;
+    const int64_t len = (int64_t)n1 + 1;
     double *dv = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){len});
     double *dp = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){len});
     if (!dv || !dp) return TSR_ENOMEM;
-    for (int64_t k = 0; k < len; k++) {
-        double in[2] = {v0 + (double)k, x}, o[2];
-        if (vv) tsr_special_pbvv(NULL, in, o); else tsr_special_pbdv(NULL, in, o);
-        dv[k] = o[0]; dp[k] = o[1];
-    }
-    return TSR_OK;
+    /* one recurrence for order n1 + v0, as SciPy's _specfun.pbdv/pbvv returns it: evaluating each order on its
+       own repeated the recurrence and was quadratic in n (pbvv_seq(2**20) ran for minutes) */
+    return tsr_pb_seq(vv, (double)n1 + v0, x, len, dv, dp) == 0 ? TSR_OK : TSR_ENOMEM;
 }
 static int r_pbdv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return pb_seq(a, n, r, 0); }
 static int r_pbvv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return pb_seq(a, n, r, 1); }
@@ -4239,6 +4285,9 @@ static int r_lmbda(const void *c, const tsr_arg *a, int na, tsr_result *r, int n
 {
     (void)c; (void)nr;
     double v = seq_argf(a, na, 0), x = seq_argf(a, na, 1);
+    if (!isfinite(v)) return int_of_nonfinite(v);
+    if (v < 0.0) { fn_set_error("argument must be > 0."); return TSR_EARG; }                      /* scipy */
+    if (v > 2147483645.0) { fn_set_error("negative dimensions are not allowed"); return TSR_EARG; }
     int n = (int)v;
     double v0 = v - n;
     int64_t len = (int64_t)n + 1;
@@ -4312,13 +4361,28 @@ void tsr_mathieu_coef(int, int, double, double *);
    km = int(qm + m/2) with qm a q-dependent predictor. */
 static int mathieu_coef_run(const tsr_arg *a, int na, tsr_result *r, int odd)
 {
-    int64_t m = roots_argi(a, na, 0);
-    double q = seq_argf(a, na, 1);
-    if (m < 0 || (odd && m < 1) || q < 0.0) { fn_set_error("mathieu_*_coef: need q >= 0 and m >= 0 (m >= 1 for odd)"); return TSR_EARG; }
+    const double md = seq_argf(a, na, 0), q = seq_argf(a, na, 1);
+    if (!(md == floor(md) && md >= (odd ? 1.0 : 0.0)) || q < 0.0) { fn_set_error("mathieu_*_coef: need q >= 0 and m >= 0 (m >= 1 for odd)"); return TSR_EARG; }
+    if (md > 2147483647.0) { fn_set_error("value too large to convert to int"); return TSR_EARG; }   /* scipy: OverflowError */
+    /* specfun's cva2 squares m in int (cvqm: m * m), which overflows past 46340: refuse what it cannot compute */
+    if (md > 46340.0) { fn_set_error("mathieu_*_coef: m must be <= 46340"); return TSR_EARG; }
+    const int64_t m = (int64_t)md;
     double sq = sqrt(q);
     double qm = (q <= 1.0) ? (7.5 + 56.1 * sq - 134.7 * q + 90.7 * sq * q) : (17.0 + 3.1 * sq - 0.126 * q + 0.0037 * sq * q);
-    int km = (int)(qm + 0.5 * (double)m);
+    /* km = int(qm + m/2), and SciPy returns fc[:km] of fcoef's 251 coefficients, so at most 251 (it warns "Too
+       many predicted coefficients"); a NaN or infinite qm (q NaN, inf or huge) makes int() raise */
+    const double kmd = qm + 0.5 * (double)m;
+    if (!isfinite(kmd)) return int_of_nonfinite(kmd);
+    int km = kmd >= 251.0 ? 251 : (int)kmd;
     if (km < 1) km = 1;
+    if (q > 1.0e-7 && kmd >= 252.0) {
+        /* fcoef's own km (the same int(qm + m/2)) exceeds 251: it would return 251 NaNs, after an int cast
+           that is undefined once qm passes INT_MAX (a huge q) and then indexed fc[km - 1] wildly */
+        double *nan_out = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){km});
+        if (!nan_out) return TSR_ENOMEM;
+        for (int i = 0; i < km; i++) nan_out[i] = NAN;
+        return TSR_OK;
+    }
     int kd = odd ? ((m % 2) ? 3 : 4) : ((m % 2) ? 2 : 1);
     double fc[256];
     for (int i = 0; i < 256; i++) fc[i] = 0.0;
@@ -4331,8 +4395,11 @@ static int mathieu_coef_run(const tsr_arg *a, int na, tsr_result *r, int odd)
 static int r_mathieu_even_coef(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return mathieu_coef_run(a, n, r, 0); }
 static int r_mathieu_odd_coef(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return mathieu_coef_run(a, n, r, 1); }
 
-void tsr_cerzo(int, double *);
-void tsr_fcszo(int, int, double *);
+int tsr_cerzo(int, double *);
+int tsr_fcszo(int, int, double *);
+/* erf_zeros / fresnel*_zeros find each zero by Newton iteration deflated by all the previous ones, so the work is
+   at least quadratic in nt (as in SciPy's specfun): 4096 zeros took minutes. Larger counts are refused. */
+#define ZEROS_MAX_NT 1000
 
 /* scipy.special.erf_zeros(nt): the first nt complex zeros of erf in the first quadrant. */
 static int r_erf_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
@@ -4340,10 +4407,10 @@ static int r_erf_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, i
     (void)c; (void)nr;
     int64_t nt = roots_argi(a, na, 0);
     if (nt < 1) { fn_set_error("erf_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > ZEROS_MAX_NT) { fn_set_error("erf_zeros: nt must be <= %d", ZEROS_MAX_NT); return TSR_EARG; }
     double *out = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
     if (!out) return TSR_ENOMEM;
-    tsr_cerzo((int)nt, out);
-    return TSR_OK;
+    return tsr_cerzo((int)nt, out) == 0 ? TSR_OK : TSR_ENOMEM;
 }
 /* scipy.special.fresnelc_zeros/fresnels_zeros(nt): complex zeros of the cosine (kf=1) / sine (kf=2)
    Fresnel integrals; fresnel_zeros(nt) returns both as (S, C). */
@@ -4352,31 +4419,31 @@ static int r_fresnelc_zeros(const void *c, const tsr_arg *a, int na, tsr_result 
     (void)c; (void)nr;
     int64_t nt = roots_argi(a, na, 0);
     if (nt < 1) { fn_set_error("fresnelc_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > ZEROS_MAX_NT) { fn_set_error("fresnelc_zeros: nt must be <= %d", ZEROS_MAX_NT); return TSR_EARG; }
     double *out = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
     if (!out) return TSR_ENOMEM;
-    tsr_fcszo(1, (int)nt, out);
-    return TSR_OK;
+    return tsr_fcszo(1, (int)nt, out) == 0 ? TSR_OK : TSR_ENOMEM;
 }
 static int r_fresnels_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
 {
     (void)c; (void)nr;
     int64_t nt = roots_argi(a, na, 0);
     if (nt < 1) { fn_set_error("fresnels_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > ZEROS_MAX_NT) { fn_set_error("fresnels_zeros: nt must be <= %d", ZEROS_MAX_NT); return TSR_EARG; }
     double *out = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
     if (!out) return TSR_ENOMEM;
-    tsr_fcszo(2, (int)nt, out);
-    return TSR_OK;
+    return tsr_fcszo(2, (int)nt, out) == 0 ? TSR_OK : TSR_ENOMEM;
 }
 static int r_fresnel_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r, int nr)
 {
     (void)c; (void)nr;
     int64_t nt = roots_argi(a, na, 0);
     if (nt < 1) { fn_set_error("fresnel_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > ZEROS_MAX_NT) { fn_set_error("fresnel_zeros: nt must be <= %d", ZEROS_MAX_NT); return TSR_EARG; }
     double *s = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
     double *cc = (double *)fn_result_array(&r[1], TSR_C128, 1, (int64_t[]){nt});
     if (!s || !cc) return TSR_ENOMEM;
-    tsr_fcszo(2, (int)nt, s);
-    tsr_fcszo(1, (int)nt, cc);
+    if (tsr_fcszo(2, (int)nt, s) != 0 || tsr_fcszo(1, (int)nt, cc) != 0) return TSR_ENOMEM;
     return TSR_OK;
 }
 
@@ -4398,7 +4465,7 @@ static int r_jnjnp_zeros(const void *c, const tsr_arg *a, int na, tsr_result *r,
     return TSR_OK;
 }
 
-void tsr_cpbdn(int, double, double, double *, double *);
+int tsr_cpbdn(int, double, double, double *, double *);
 
 /* scipy.special.pbdn_seq(n, z): complex parabolic cylinder Dn(z) and derivatives for orders 0..n1,
    where n1 = max(1, |n|). Returns two complex128 arrays of length n1 + 1. */
@@ -4408,13 +4475,13 @@ static int r_pbdn_seq(const void *c, const tsr_arg *a, int na, tsr_result *r, in
     int64_t n = roots_argi(a, na, 0);
     double zre = seq_argf(a, na, 1);
     if (n < 0) { fn_set_error("pbdn_seq: n must be >= 0"); return TSR_EARG; }
+    if (n > 2147483645) { fn_set_error("negative dimensions are not allowed"); return TSR_EARG; }
     int n1 = (n <= 1) ? 1 : (int)n;
     int64_t len = (int64_t)n1 + 1;
     double *b = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){len});
     double *d = (double *)fn_result_array(&r[1], TSR_C128, 1, (int64_t[]){len});
     if (!b || !d) return TSR_ENOMEM;
-    tsr_cpbdn(n1, zre, 0.0, b, d);
-    return TSR_OK;
+    return tsr_cpbdn(n1, zre, 0.0, b, d) == 0 ? TSR_OK : TSR_ENOMEM;
 }
 
 /* ---- ellipsoidal harmonics / Lame functions (scipy.special.ellip_harm / ellip_harm_2 / ellip_normal) ----
@@ -4433,7 +4500,7 @@ static int ellip_lame(double h2, double k2, int n, int p, double *eigv)
     else if (p - 1 < (n - r) + (r + 1)) { t = 'L'; tp = p - (r + 1); size = n - r; }
     else if (p - 1 < 2 * (n - r) + (r + 1)) { t = 'M'; tp = p - (n - r) - (r + 1); size = n - r; }
     else { t = 'N'; tp = p - 2 * (n - r) - (r + 1); size = r; }
-    if (size < 1 || size > 64) return 0;
+    if (size < 1 || size > 64 || tp < 1 || tp > size) return 0;   /* tp indexes the eigenvectors 1..size */
     double g[64], d[64], f[64], ss[64], dd[64];
     for (int j = 0; j < size; j++) {
         if (t == 'K') {
@@ -4493,14 +4560,30 @@ static int ellip_glnodes(int N, double *x, double *w)
 
 #define ELLIP_GLN 256
 
+/* (n, p) of ellip_harm / ellip_harm_2 / ellip_normal. SciPy's _ellip_harm returns NaN unless n >= 0 and
+   1 <= p <= 2n + 1 (also for a NaN or infinite n or p): 0 then. 1 when valid; -1 when n is beyond what
+   ellip_lame supports (its 64-term limit refuses it anyway; checked here so the int casts stay defined). */
+static int ellip_np(const tsr_arg *a, int na, int *n, int *p)
+{
+    const int64_t nn = roots_argi(a, na, 2), pp = roots_argi(a, na, 3);
+    if (nn < 0 || pp < 1) return 0;
+    if (nn > 1000000) return -1;
+    if (pp > 2 * nn + 1) return 0;
+    *n = (int)nn;
+    *p = (int)pp;
+    return 1;
+}
+
 /* read (h2, k2, n, p[, s]) scalar args */
 static int r_ellip_harm(const void *c, const tsr_arg *a, int na, tsr_result *res, int nr)
 {
     (void)c; (void)nr;
     double h2 = seq_argf(a, na, 0), k2 = seq_argf(a, na, 1), s = seq_argf(a, na, 4);
-    int n = (int)roots_argi(a, na, 2), p = (int)roots_argi(a, na, 3);
+    int n = 0, p = 0;
+    const int np_ok = ellip_np(a, na, &n, &p);
+    if (np_ok == 0) { fn_result_num(&res[0], NAN); return TSR_OK; }
     double eigv[64];
-    if (!ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_harm: invalid arguments"); return TSR_EARG; }
+    if (np_ok < 0 || !ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_harm: invalid arguments"); return TSR_EARG; }
     fn_result_num(&res[0], ellip_eval(h2, k2, n, p, s, eigv, 1.0, 1.0));
     return TSR_OK;
 }
@@ -4509,9 +4592,11 @@ static int r_ellip_harm_2(const void *c, const tsr_arg *a, int na, tsr_result *r
 {
     (void)c; (void)nr;
     double h2 = seq_argf(a, na, 0), k2 = seq_argf(a, na, 1), s = seq_argf(a, na, 4);
-    int n = (int)roots_argi(a, na, 2), p = (int)roots_argi(a, na, 3);
+    int n = 0, p = 0;
+    const int np_ok = ellip_np(a, na, &n, &p);
+    if (np_ok == 0) { fn_result_num(&res[0], NAN); return TSR_OK; }
     double eigv[64];
-    if (!ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_harm_2: invalid arguments"); return TSR_EARG; }
+    if (np_ok < 0 || !ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_harm_2: invalid arguments"); return TSR_EARG; }
     double *gx = (double *)malloc(2 * ELLIP_GLN * sizeof(double));
     if (!gx) return TSR_ENOMEM;
     double *gw = gx + ELLIP_GLN;
@@ -4532,9 +4617,11 @@ static int r_ellip_normal(const void *c, const tsr_arg *a, int na, tsr_result *r
 {
     (void)c; (void)nr;
     double h2 = seq_argf(a, na, 0), k2 = seq_argf(a, na, 1);
-    int n = (int)roots_argi(a, na, 2), p = (int)roots_argi(a, na, 3);
+    int n = 0, p = 0;
+    const int np_ok = ellip_np(a, na, &n, &p);
+    if (np_ok == 0) { fn_result_num(&res[0], NAN); return TSR_OK; }
     double eigv[64];
-    if (!ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_normal: invalid arguments"); return TSR_EARG; }
+    if (np_ok < 0 || !ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_normal: invalid arguments"); return TSR_EARG; }
     double h = sqrt(h2), kk = sqrt(k2);
     double *gx = (double *)malloc(2 * ELLIP_GLN * sizeof(double));
     if (!gx) return TSR_ENOMEM;
@@ -4561,7 +4648,7 @@ static int r_ellip_normal(const void *c, const tsr_arg *a, int na, tsr_result *r
     return TSR_OK;
 }
 
-static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? (args[0].flags & 1 ? args[0].ival : (int64_t)args[0].num) : 0; }
+static int64_t roots_n(const tsr_arg *args) { return args[0].kind == 1 ? fn_num_i64(&args[0], INT64_MIN) : 0; }
 static int roots_alloc(tsr_result *res, int64_t n, double **x, double **w)
 {
     *x = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n});
@@ -4991,8 +5078,11 @@ static int r_newton_cotes(const void *ctx, const tsr_arg *args, int nargs, tsr_r
 {
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 1) { fn_set_error("newton_cotes: rn must be an integer"); return TSR_EARG; }
-    const int64_t N = (args[0].flags & 1) ? args[0].ival : (int64_t)args[0].num;
+    const int64_t N = fn_num_i64(&args[0], 0);
     if (N < 1) { fn_set_error("newton_cotes: rn must be >= 1"); return TSR_EARG; }
+    /* the weights solve an (rn+1)^2 moment system (cubic work; the rule is numerically useless long before):
+       refuse rn > 1000 instead of allocating and factorising gigabytes */
+    if (N > 1000) { fn_set_error("newton_cotes: rn must be <= 1000"); return TSR_EARG; }
     const int64_t p = N + 1;
     double *A = (double *)malloc((size_t)p * p * sizeof(double)), *b = (double *)malloc((size_t)p * sizeof(double));
     int rc = (A && b) ? TSR_OK : TSR_ENOMEM;
@@ -5054,7 +5144,8 @@ static int r_unpackbits(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     int64_t nbits = L * 8, sh[1] = {nbits};
     unsigned char *out = (unsigned char *)fn_result_array(&res[0], TSR_U8, 1, sh);
     if (!out) { fn_free_doubles(a, L); return TSR_ENOMEM; }
-    for (int64_t i = 0; i < L; i++) { unsigned v = (unsigned)a[i]; for (int j = 0; j < 8; j++) out[i * 8 + j] = (unsigned char)((v >> (7 - j)) & 1); }
+    /* each value as the uint8 NumPy unpacks (wrapped like a cast to uint8; NaN and huge values read as 0) */
+    for (int64_t i = 0; i < L; i++) { const unsigned v = (uint8_t)(uint64_t)fn_dbl_i64(a[i], 0); for (int j = 0; j < 8; j++) out[i * 8 + j] = (unsigned char)((v >> (7 - j)) & 1); }
     fn_free_doubles(a, L);
     return TSR_OK;
 }
