@@ -26,6 +26,18 @@ final class BackendParityTest extends TestCase
         mt_srand(self::SEED);
     }
 
+    /**
+     * With the extension loaded, FFI arrays take their operators from Tessero\Ext\Operand. On PHP 8.2 the
+     * class_alias() of that internal class threw, so Tessero\NDArray could not be loaded at all.
+     */
+    public function testFfiArraysUseTheExtensionOperators(): void
+    {
+        $a = F::array([1.0, 2.0]);
+        $this->assertInstanceOf(\Tessero\Ext\Operand::class, $a);
+        $this->assertSame([3.0, 6.0], ($a + $a->mul(2.0))->toList());
+        $this->assertSame([2.0, 4.0], ($a * 2)->toList());
+    }
+
     public function testReductionsOverAllAxisCombinations(): void
     {
         $checked = 0;

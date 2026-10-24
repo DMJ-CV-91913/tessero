@@ -985,6 +985,115 @@ static void *abi_dist_ok(void *p)
     return NULL;
 }
 
+/* free every array (and nested sequence) a routine returned */
+static void free_results(tsr_result *r, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (r[i].kind == 6) {
+            tsr_result *e = (tsr_result *)r[i].arr.data;
+            free_results(e, (int)r[i].arr.shape[0]);
+        }
+        if ((r[i].kind == 3 || r[i].kind == 6) && r[i].arr.data) tsr_free(r[i].arr.data, r[i].bytes);
+    }
+}
+
+void tsr_special_yn(const void *, const double *, double *);
+void tsr_special_pbdv(const void *, const double *, double *);
+void tsr_special_pbvv(const void *, const double *, double *);
+void tsr_special_betainccinv(const void *, const double *, double *);
+void tsr_special_smirnov(const void *, const double *, double *);
+
+/* Bugs found by the CI matrix (2026-10): an old LAPACKE, sanitizers, Valgrind and an older compiler */
+static void test_ci_regressions(void)
+{
+    /* LAPACKE < 3.11 (Ubuntu 22.04's 3.10, OpenBLAS 0.3.20) rejects ldvl/ldvr < n in row-major dgeev even when
+       the vectors are not wanted: every companion-matrix root finder failed for degree >= 2 */
+    double p3[3] = {1, -3, 2}, c3[3] = {2, -3, 1}, ch[3] = {0, 0, 1};
+    int64_t s3[1] = {3};
+    tsr_result r[3];
+    struct { const char *fn; double *coef; double want0, want1; } rt[] = {
+        {"np.roots", p3, 1, 2}, {"npoly.polyroots", c3, 1, 2}, {"npoly.chebroots", ch, -0.70710678118654757, 0.70710678118654757}};
+    for (int k = 0; k < 3; k++) {
+        const int id = tsr_fn_find(rt[k].fn);
+        tsr_arg a[1] = {arg_arr(rt[k].coef, 1, s3)};
+        const int rc = id >= 0 ? tsr_fn_routine(id, 1, a, 1, r) : -1;
+        CHECK(rc == 0, "%s rc %d: %s", rt[k].fn, rc, tsr_fn_error());
+        if (rc == 0) {
+            const double *o = (const double *)r[0].arr.data;
+            const int cplx = r[0].arr.dtype == TSR_C128;
+            CHECK(r[0].arr.shape[0] == 2 && CLOSE(o[0], rt[k].want0, 1e-12) && CLOSE(o[cplx ? 2 : 1], rt[k].want1, 1e-12),
+                  "%s roots %g %g", rt[k].fn, o[0], o[cplx ? 2 : 1]);
+            free_results(r, 1);
+        }
+    }
+    double b2[2] = {1, 2}, a3[3] = {1, 3, 2};   /* (s + 2) / ((s + 1)(s + 2)) */
+    int64_t s2[1] = {2};
+    const int tz = tsr_fn_find("signal.tf2zpk");
+    tsr_arg za[2] = {arg_arr(b2, 1, s2), arg_arr(a3, 1, s3)};
+    const int rz = tz >= 0 ? tsr_fn_routine(tz, 2, za, 3, r) : -1;
+    CHECK(rz == 0 && r[1].arr.shape[0] == 2, "tf2zpk poles rc %d: %s", rz, tsr_fn_error());
+    if (rz == 0) free_results(r, 3);
+    double A[4] = {0, 1, -2, -3}, B[2] = {0, 1}, C[2] = {1, 0}, D[1] = {0};
+    int64_t s22[2] = {2, 2}, s21[2] = {2, 1}, s12[2] = {1, 2}, s11[2] = {1, 1};
+    const int st = tsr_fn_find("signal.ss2tf");
+    tsr_arg sa[4] = {arg_arr(A, 2, s22), arg_arr(B, 2, s21), arg_arr(C, 2, s12), arg_arr(D, 2, s11)};
+    const int rs = st >= 0 ? tsr_fn_routine(st, 4, sa, 2, r) : -1;
+    CHECK(rs == 0, "ss2tf rc %d: %s", rs, tsr_fn_error());
+    if (rs == 0) {
+        const double *den = (const double *)r[1].arr.data;
+        CHECK(CLOSE(den[0], 1.0, 1e-12) && CLOSE(den[1], 3.0, 1e-12) && CLOSE(den[2], 2.0, 1e-12), "ss2tf den %g %g %g", den[0], den[1], den[2]);
+        free_results(r, 2);
+    }
+
+    /* pbdv / pbvv sized a work array from abs((int)v) + 2: an infinite or huge order was undefined behaviour and
+       asked calloc for ~2^64 bytes (ASan aborts). SciPy's calloc fails and it returns NaN, NaN. */
+    const double vs[] = {INFINITY, -INFINITY, 3e9, -3e9, 2147483646.0, NAN};
+    for (int k = 0; k < 6; k++) {
+        double in[2] = {vs[k], 1.0}, o[2] = {0, 0}, q[2] = {0, 0};
+        tsr_special_pbdv(NULL, in, o);
+        tsr_special_pbvv(NULL, in, q);
+        CHECK(isnan(o[0]) && isnan(o[1]) && isnan(q[0]) && isnan(q[1]), "pbdv/pbvv(%g, 1) = %g %g %g %g", vs[k], o[0], o[1], q[0], q[1]);
+    }
+    double pin[2] = {2.5, 1.0}, po[2];
+    tsr_special_pbdv(NULL, pin, po);
+    CHECK(po[0] == -0.7476376353845996 && po[1] == 1.6629868944926967, "pbdv(2.5, 1) unchanged %.17g %.17g", po[0], po[1]);
+    const int ps = tsr_fn_find("special.pbdv_seq");
+    tsr_arg pa[2] = {arg_num(INFINITY), arg_num(1.0)};
+    CHECK(ps >= 0 && tsr_fn_routine(ps, 2, pa, 2, r) == TSR_EARG, "pbdv_seq(inf) refused like int(inf)");
+
+    /* yn of an order outside int: the (int)n cast was undefined (a gcc-11 build returned Y_2(0.5) = -5.44); SciPy's
+       x86-64 build returns -inf for 0 <= x < inf and NaN otherwise */
+    const double ns[] = {INFINITY, -INFINITY, 3e9, -3e9, -2147483648.0, 1e300};
+    for (int k = 0; k < 6; k++) {
+        double y1[2] = {ns[k], 0.5}, y2[2] = {ns[k], 0.0}, y3[2] = {ns[k], -1.0}, y4[2] = {ns[k], INFINITY}, o1, o2, o3, o4;
+        tsr_special_yn(NULL, y1, &o1); tsr_special_yn(NULL, y2, &o2); tsr_special_yn(NULL, y3, &o3); tsr_special_yn(NULL, y4, &o4);
+        CHECK(o1 == -INFINITY && o2 == -INFINITY && isnan(o3) && isnan(o4), "yn(%g, x) = %g %g %g %g", ns[k], o1, o2, o3, o4);
+    }
+    double y5[2] = {5.0, 0.5}, y6[2] = {-5.0, 100.0}, o5, o6;
+    tsr_special_yn(NULL, y5, &o5); tsr_special_yn(NULL, y6, &o6);
+    CHECK(o5 == -7946.3014788074752 && o6 == 0.029480196281661417, "yn finite orders unchanged %.17g %.17g", o5, o6);
+    double sm[2] = {INFINITY, 0.5}, so;
+    tsr_special_smirnov(NULL, sm, &so);
+    CHECK(isnan(so), "smirnov(inf, 0.5) = %g (SciPy: NaN)", so);
+
+    /* windows.tukey with alpha >= 1 allocated its result, then let the Hann window allocate another over it (the
+       first leaked; found by the extension's parity run under ASan). The final allocation check catches a leak. */
+    const int tk = tsr_fn_find("windows.tukey");
+    tsr_arg ta[2] = {arg_num(8), arg_num(1.0)};
+    const int rt2 = tk >= 0 ? tsr_fn_routine(tk, 2, ta, 1, r) : -1;
+    CHECK(rt2 == 0 && r[0].arr.shape[0] == 8 && ((const double *)r[0].arr.data)[0] == 0.0, "tukey(8, 1.0) is Hann (rc %d)", rt2);
+    if (rt2 == 0) free_results(r, 1);
+
+    /* betainccinv: Boost's evaluation_error path (Temme root finder) formatted its message through iostreams,
+       which crashed under Valgrind; the exception and SciPy's catch stay, the value is unchanged */
+    double bi[3] = {1e-10, 5, 1e-300}, bo;
+    tsr_special_betainccinv(NULL, bi, &bo);
+    double bj[3] = {2, 3, 0.4}, bp;
+    tsr_special_betainccinv(NULL, bj, &bp);
+    CHECK(bp == 0.44450000208376739, "betainccinv(2, 3, 0.4) = %.17g", bp);
+    CHECK(isnan(bo), "betainccinv(1e-10, 5, 1e-300) = %g (SciPy: NaN)", bo);
+}
+
 static void test_abi_runtime(void)
 {
     /* version and capability negotiation: one version source */
@@ -1137,6 +1246,7 @@ int main(void)
     test_rfft();
     test_size_overflow();
     test_security_regressions();
+    test_ci_regressions();
     test_abi_runtime();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);

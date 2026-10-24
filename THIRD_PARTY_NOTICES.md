@@ -51,6 +51,12 @@ Every change to vendored code is marked in the source with `Tessero` (`grep -rn 
 - `scipy/quadpack/quadpack.h` (new): the prototypes of `__quadpack.h` without the Python glue.
 - `scipy/wright.cc`: the unused `Python.h` include removed. `scipy/gen_harmonic.h`: `<cinttypes>` added.
 - `scipy/xsf_wrappers.h` (new): the subset of `xsf_wrappers.h` that `_cosine.c` needs.
+- Boost's `throw_on_error` handlers format the offending value with `std::stringstream` before throwing;
+  `csrc/cxx/boost_error_format.hpp` (Tessero's, included before any Boost header) specialises
+  `boost::math::policies::detail::prec_format` for the floating-point and integer types to format with `snprintf`.
+  The message text is byte-identical (same precision, same `%g` conversion), the exceptions and SciPy's catch
+  blocks are unchanged, and no iostream/locale code runs on an error path (under Valgrind it crashed in the
+  statically linked libstdc++).
 
 **Changes on inputs where SciPy's own code is undefined or never finishes.** Outside those inputs the results
 are unchanged; the parity fixtures verify that.
@@ -75,6 +81,16 @@ are unchanged; the parity fixtures verify that.
   still a negative integer, so the recursion never ends (SciPy crashes); Tessero returns NaN on exactly that path.
 - `scipy/boost_special_functions.h`, `user_overflow_error`: SciPy sets Python's `OverflowError` and returns 0;
   Tessero records the same message as the call's error, and the registry raises it after the element loop.
+- `scipy/cython_ports.hpp`, the `_unsafe` wrappers (`yn`, `kn`, `expn`, `bdtrc`, `bdtri`, `nbdtr*`, `pdtri`,
+  `smirnov*`): Cython's `<int>n` of an order outside int (+-inf, |n| >= 2^31) is undefined behaviour in C.
+  `tsr_int_cast` returns INT_MIN there, which is what SciPy's x86-64 wheels get from `cvttsd2si`, so the results
+  are the x86-64 reference on every compiler and target. `yn` then needs one more step, because cephes negates
+  INT_MIN: for those orders Tessero returns SciPy's x86-64 result directly (-inf for 0 <= x < inf, NaN
+  otherwise); a gcc-11 build had returned Y_2(x).
+- `xsf/xsf/par_cyl.h` (`pbdv`, `pbvv`) sizes its work array from `abs((int)v) + 2`: undefined for |v| >= 2^31,
+  and a ~2^64-byte `calloc` for |v| >= 2^31 - 2, which fails, so SciPy returns NaN. The registry returns NaN for
+  those orders without calling it (`guard:` in `spec/special.yaml`; `pbdv_seq`/`pbvv_seq` raise for a
+  non-finite order, as SciPy's `int(v)` does).
 - `scipy/cdflib.c`, `cumtnc` (non-central t, used by `nctdtridf` and `nctdtrinc`): SciPy's forward sum never ends
   when the partial sum stays negative or is NaN. The sum is stopped only when it provably cannot end (the rest of
   the series is bounded by 2(|d| + |e|)/(1 − λ/i) and the partial sum lies below minus that bound), with 10⁹
