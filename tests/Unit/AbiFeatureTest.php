@@ -39,6 +39,16 @@ final class AbiFeatureTest extends TestCase
         $this->assertTrue(Tessero::feature('fpenv_check'));
     }
 
+    public function testLinkedWithNodeleteOnLinux(): void
+    {
+        if (PHP_OS_FAMILY !== 'Linux') {
+            $this->assertFalse(Tessero::feature('nodelete'));     // ELF-only (ADR 0014)
+
+            return;
+        }
+        $this->assertTrue(Tessero::feature('nodelete'), 'libtessero must carry DF_1_NODELETE (ADR 0014)');
+    }
+
     public function testBlasThreadDefaults(): void
     {
         $this->assertNull(Library::defaultBlasThreads('cli', false));
