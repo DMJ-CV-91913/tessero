@@ -9,21 +9,21 @@ namespace Tessero\Random;
  *
  * NumPy's modern RNG (PCG64 + SeedSequence) is already reproduced by Tessero's kernel
  * ({@see Generator} / {@see SeedSequence}). This class covers the *legacy* generator that
- * `numpy.random.RandomState` is built on — the 624-word Mersenne Twister with Matsumoto–
+ * `numpy.random.RandomState` is built on -- the 624-word Mersenne Twister with Matsumoto-
  * Nishimura tempering and NumPy's two seeding paths:
  *
- *   - a scalar int seed `0 <= s < 2**32` → `mt19937_seed` (`init_genrand`),
- *   - an int array seed → `mt19937_init_by_array`.
+ *   - a scalar int seed `0 <= s < 2**32` -> `mt19937_seed` (`init_genrand`),
+ *   - an int array seed -> `mt19937_init_by_array`.
  *
  * (NumPy rejects scalar int seeds outside `[0, 2**32)` with a ValueError; only arrays carry
  * wider entropy, exactly as reproduced here.)
  *
  * The draw methods reproduce legacy `mtrand` semantics, which differ from the Generator ones:
  *   - `randomSample()` = `(a>>5)*2**26 + (b>>6)) / 2**53` from two 32-bit words,
- *   - `standardNormal()` = the legacy Box–Muller *polar* gauss (NOT the ziggurat),
+ *   - `standardNormal()` = the legacy Box-Muller *polar* gauss (NOT the ziggurat),
  *   - `randint(low, high)` / `randomInterval(max)` = masked-rejection bounded integers
  *     (32-bit draw when the range fits in 32 bits, else a 64-bit draw),
- *   - `permutation(n)` / `shuffle()` = legacy Fisher–Yates using `randomInterval(i)`.
+ *   - `permutation(n)` / `shuffle()` = legacy Fisher-Yates using `randomInterval(i)`.
  *
  * Verified bit-for-bit against `numpy.random.RandomState` for int and array seeds across
  * randomSample / standardNormal / randint / permutation. This unlocks
@@ -32,6 +32,9 @@ namespace Tessero\Random;
  *
  * Pure-PHP (no kernel routine): MGC uses the stream at modest volume and the same code path
  * serves both backends, mirroring {@see SeedSequence} and {@see \Tessero\Stats\Pcg64Uint32Stream}.
+ *
+ * The algorithm follows the MT19937 reference code of Matsumoto and Nishimura (BSD-3-Clause) as distributed
+ * in NumPy (randomkit, MIT); the copyright notices and licence terms are in licenses/LICENSE.mt19937.md.
  */
 final class MT19937
 {
@@ -52,8 +55,8 @@ final class MT19937
     private float $gauss = 0.0;
 
     /**
-     * @param int|list<int> $seed scalar int in [0, 2**32) (→ init_genrand) or an int array
-     *                            (→ init_by_array), exactly as numpy.random.RandomState accepts.
+     * @param int|list<int> $seed scalar int in [0, 2**32) (-> init_genrand) or an int array
+     *                            (-> init_by_array), exactly as numpy.random.RandomState accepts.
      */
     public function __construct(int|array $seed)
     {
@@ -174,7 +177,7 @@ final class MT19937
         return $out;
     }
 
-    /** A single standard normal (numpy legacy gauss: Box–Muller polar). */
+    /** A single standard normal (numpy legacy gauss: Box-Muller polar). */
     public function nextGauss(): float
     {
         if ($this->hasGauss) {
@@ -209,7 +212,7 @@ final class MT19937
 
     /**
      * A uniform integer in [0, $max] by numpy's smallest-mask rejection (rk_interval). Uses a 32-bit
-     * draw when the range fits in 32 bits, else a 64-bit draw — matching numpy's legacy buffered path.
+     * draw when the range fits in 32 bits, else a 64-bit draw -- matching numpy's legacy buffered path.
      */
     public function randomInterval(int $max): int
     {
@@ -271,7 +274,7 @@ final class MT19937
     }
 
     /**
-     * In-place legacy Fisher–Yates shuffle (numpy RandomState.shuffle).
+     * In-place legacy Fisher-Yates shuffle (numpy RandomState.shuffle).
      *
      * @param array<int,mixed> $arr
      */

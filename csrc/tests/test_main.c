@@ -1205,7 +1205,9 @@ static void test_size_overflow(void)
 /* ---- ABI, capability negotiation and runtime settings (ADR 0014) ---- */
 #include <pthread.h>
 #include <stdatomic.h>
+#if !defined(_WIN32)
 #include <sys/wait.h>
+#endif
 #include "../include/tessero_version.h"
 
 #define ABI_DM_MOMENT 11                  /* DM_MOMENT in src/fn.h */
@@ -1246,6 +1248,314 @@ static void *abi_dist_ok(void *p)
         if (abi_moment(j->id, 4, 0, out) != TSR_OK || !isfinite(out[0])) j->bad++;
     }
     return NULL;
+}
+
+/* free every array (and nested sequence) a routine returned */
+static void free_results(tsr_result *r, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (r[i].kind == 6) {
+            tsr_result *e = (tsr_result *)r[i].arr.data;
+            free_results(e, (int)r[i].arr.shape[0]);
+        }
+        if ((r[i].kind == 3 || r[i].kind == 6) && r[i].arr.data) tsr_free(r[i].arr.data, r[i].bytes);
+    }
+}
+
+void tsr_special_yn(const void *, const double *, double *);
+void tsr_special_pbdv(const void *, const double *, double *);
+void tsr_special_pbvv(const void *, const double *, double *);
+void tsr_special_betainccinv(const void *, const double *, double *);
+void tsr_special_smirnov(const void *, const double *, double *);
+
+/* Bugs found by the CI matrix (2026-10): an old LAPACKE, sanitizers, Valgrind and an older compiler */
+static void test_ci_regressions(void)
+{
+    /* LAPACKE < 3.11 (Ubuntu 22.04's 3.10, OpenBLAS 0.3.20) rejects ldvl/ldvr < n in row-major dgeev even when
+       the vectors are not wanted: every companion-matrix root finder failed for degree >= 2 */
+    double p3[3] = {1, -3, 2}, c3[3] = {2, -3, 1}, ch[3] = {0, 0, 1};
+    int64_t s3[1] = {3};
+    tsr_result r[3];
+    struct { const char *fn; double *coef; double want0, want1; } rt[] = {
+        {"np.roots", p3, 1, 2}, {"npoly.polyroots", c3, 1, 2}, {"npoly.chebroots", ch, -0.70710678118654757, 0.70710678118654757}};
+    for (int k = 0; k < 3; k++) {
+        const int id = tsr_fn_find(rt[k].fn);
+        tsr_arg a[1] = {arg_arr(rt[k].coef, 1, s3)};
+        const int rc = id >= 0 ? tsr_fn_routine(id, 1, a, 1, r) : -1;
+        CHECK(rc == 0, "%s rc %d: %s", rt[k].fn, rc, tsr_fn_error());
+        if (rc == 0) {
+            const double *o = (const double *)r[0].arr.data;
+            const int cplx = r[0].arr.dtype == TSR_C128;
+            CHECK(r[0].arr.shape[0] == 2 && CLOSE(o[0], rt[k].want0, 1e-12) && CLOSE(o[cplx ? 2 : 1], rt[k].want1, 1e-12),
+                  "%s roots %g %g", rt[k].fn, o[0], o[cplx ? 2 : 1]);
+            free_results(r, 1);
+        }
+    }
+    double b2[2] = {1, 2}, a3[3] = {1, 3, 2};   /* (s + 2) / ((s + 1)(s + 2)) */
+    int64_t s2[1] = {2};
+    const int tz = tsr_fn_find("signal.tf2zpk");
+    tsr_arg za[2] = {arg_arr(b2, 1, s2), arg_arr(a3, 1, s3)};
+    const int rz = tz >= 0 ? tsr_fn_routine(tz, 2, za, 3, r) : -1;
+    CHECK(rz == 0 && r[1].arr.shape[0] == 2, "tf2zpk poles rc %d: %s", rz, tsr_fn_error());
+    if (rz == 0) free_results(r, 3);
+    double A[4] = {0, 1, -2, -3}, B[2] = {0, 1}, C[2] = {1, 0}, D[1] = {0};
+    int64_t s22[2] = {2, 2}, s21[2] = {2, 1}, s12[2] = {1, 2}, s11[2] = {1, 1};
+    const int st = tsr_fn_find("signal.ss2tf");
+    tsr_arg sa[4] = {arg_arr(A, 2, s22), arg_arr(B, 2, s21), arg_arr(C, 2, s12), arg_arr(D, 2, s11)};
+    const int rs = st >= 0 ? tsr_fn_routine(st, 4, sa, 2, r) : -1;
+    CHECK(rs == 0, "ss2tf rc %d: %s", rs, tsr_fn_error());
+    if (rs == 0) {
+        const double *den = (const double *)r[1].arr.data;
+        CHECK(CLOSE(den[0], 1.0, 1e-12) && CLOSE(den[1], 3.0, 1e-12) && CLOSE(den[2], 2.0, 1e-12), "ss2tf den %g %g %g", den[0], den[1], den[2]);
+        free_results(r, 2);
+    }
+
+    /* pbdv / pbvv sized a work array from abs((int)v) + 2: an infinite or huge order was undefined behaviour and
+       asked calloc for ~2^64 bytes (ASan aborts). SciPy's calloc fails and it returns NaN, NaN. */
+    const double vs[] = {INFINITY, -INFINITY, 3e9, -3e9, 2147483646.0, NAN};
+    for (int k = 0; k < 6; k++) {
+        double in[2] = {vs[k], 1.0}, o[2] = {0, 0}, q[2] = {0, 0};
+        tsr_special_pbdv(NULL, in, o);
+        tsr_special_pbvv(NULL, in, q);
+        CHECK(isnan(o[0]) && isnan(o[1]) && isnan(q[0]) && isnan(q[1]), "pbdv/pbvv(%g, 1) = %g %g %g %g", vs[k], o[0], o[1], q[0], q[1]);
+    }
+    double pin[2] = {2.5, 1.0}, po[2];
+    tsr_special_pbdv(NULL, pin, po);
+    CHECK(po[0] == -0.7476376353845996 && po[1] == 1.6629868944926967, "pbdv(2.5, 1) unchanged %.17g %.17g", po[0], po[1]);
+    const int ps = tsr_fn_find("special.pbdv_seq");
+    tsr_arg pa[2] = {arg_num(INFINITY), arg_num(1.0)};
+    CHECK(ps >= 0 && tsr_fn_routine(ps, 2, pa, 2, r) == TSR_EARG, "pbdv_seq(inf) refused like int(inf)");
+
+    /* yn of an order outside int: the (int)n cast was undefined (a gcc-11 build returned Y_2(0.5) = -5.44); SciPy's
+       x86-64 build returns -inf for 0 <= x < inf and NaN otherwise */
+    const double ns[] = {INFINITY, -INFINITY, 3e9, -3e9, -2147483648.0, 1e300};
+    for (int k = 0; k < 6; k++) {
+        double y1[2] = {ns[k], 0.5}, y2[2] = {ns[k], 0.0}, y3[2] = {ns[k], -1.0}, y4[2] = {ns[k], INFINITY}, o1, o2, o3, o4;
+        tsr_special_yn(NULL, y1, &o1); tsr_special_yn(NULL, y2, &o2); tsr_special_yn(NULL, y3, &o3); tsr_special_yn(NULL, y4, &o4);
+        CHECK(o1 == -INFINITY && o2 == -INFINITY && isnan(o3) && isnan(o4), "yn(%g, x) = %g %g %g %g", ns[k], o1, o2, o3, o4);
+    }
+    double y5[2] = {5.0, 0.5}, y6[2] = {-5.0, 100.0}, o5, o6;
+    tsr_special_yn(NULL, y5, &o5); tsr_special_yn(NULL, y6, &o6);
+    CHECK(o5 == -7946.3014788074752 && o6 == 0.029480196281661417, "yn finite orders unchanged %.17g %.17g", o5, o6);
+    double sm[2] = {INFINITY, 0.5}, so;
+    tsr_special_smirnov(NULL, sm, &so);
+    CHECK(isnan(so), "smirnov(inf, 0.5) = %g (SciPy: NaN)", so);
+
+    /* windows.tukey with alpha >= 1 allocated its result, then let the Hann window allocate another over it (the
+       first leaked; found by the extension's parity run under ASan). The final allocation check catches a leak. */
+    const int tk = tsr_fn_find("windows.tukey");
+    tsr_arg ta[2] = {arg_num(8), arg_num(1.0)};
+    const int rt2 = tk >= 0 ? tsr_fn_routine(tk, 2, ta, 1, r) : -1;
+    CHECK(rt2 == 0 && r[0].arr.shape[0] == 8 && ((const double *)r[0].arr.data)[0] == 0.0, "tukey(8, 1.0) is Hann (rc %d)", rt2);
+    if (rt2 == 0) free_results(r, 1);
+
+    /* betainccinv: Boost's evaluation_error path (Temme root finder) formatted its message through iostreams,
+       which crashed under Valgrind; the exception and SciPy's catch stay, the value is unchanged */
+    double bi[3] = {1e-10, 5, 1e-300}, bo;
+    tsr_special_betainccinv(NULL, bi, &bo);
+    double bj[3] = {2, 3, 0.4}, bp;
+    tsr_special_betainccinv(NULL, bj, &bp);
+    CHECK(bp == 0.44450000208376739, "betainccinv(2, 3, 0.4) = %.17g", bp);
+    CHECK(isnan(bo), "betainccinv(1e-10, 5, 1e-300) = %g (SciPy: NaN)", bo);
+}
+
+/* Fuzzer findings, batch B (csrc/fuzz/README.md: numpy.polynomial, np.polyfit/roots and scipy.signal): each input
+   below used to read or write out of bounds, hit a float->int cast with undefined behaviour, leak a kernel
+   allocation or run for minutes. Every call must now return cleanly (an error where NumPy/SciPy raise) and leave
+   no tessero allocation behind. */
+static int fzb_call(const char *name, int nargs, tsr_arg *args, int nres, tsr_result *res)
+{
+    const int id = tsr_fn_find(name);
+    if (id < 0) return 1;                                 /* a positive code never comes from a routine */
+    const int64_t before = tsr_allocated();
+    const int rc = tsr_fn_routine(id, nargs, args, nres, res);
+    if (rc == 0) free_results(res, nres);
+    if (tsr_allocated() != before) return 2;              /* leaked a kernel allocation */
+    return rc;
+}
+
+
+static tsr_arg arg_arr_dt(void *d, int dtype, int32_t nd, const int64_t *shape)
+{
+    tsr_arg a; memset(&a, 0, sizeof a); a.kind = 3; tsr_array_init(&a.arr, dtype, nd, shape, d); return a;
+}
+
+static void test_fuzz_batch_b(void)
+{
+    tsr_result r[4];
+    double one[8] = {1, 2, 3, 4, 5, 6, 7, 8}, nanv[4] = {NAN, NAN, NAN, NAN}, dummy = 0;
+    int64_t s0[1] = {0}, s1[1] = {1}, s2[1] = {2}, s3[1] = {3}, s4[1] = {4};
+
+    /* npoly.* (F16 F17 F19 F25 F28 F29 F32): an empty coefficient series indexed c[0], c[-1] or c[n-2], or sized
+       calloc(2n-1) = calloc(-1); NumPy raises "Coefficient array is empty" (IndexError where it indexes first) */
+    tsr_arg e0 = arg_arr(&dummy, 1, s0), c3 = arg_arr(one, 1, s3);
+    CHECK(fzb_call("npoly.chebint", 2, (tsr_arg[]){e0, arg_int(1)}, 1, r) == TSR_EINDEX, "F16 chebint([]) is an IndexError");
+    CHECK(fzb_call("npoly.hermeint", 2, (tsr_arg[]){e0, arg_int(1)}, 1, r) == TSR_EINDEX, "F29 hermeint([]) is an IndexError");
+    CHECK(fzb_call("npoly.chebmulx", 1, (tsr_arg[]){e0}, 1, r) == TSR_EARG, "F17 chebmulx([]) refused");
+    CHECK(fzb_call("npoly.lag2poly", 1, (tsr_arg[]){e0}, 1, r) == TSR_EARG, "F19 lag2poly([]) refused");
+    CHECK(fzb_call("npoly.herm2poly", 1, (tsr_arg[]){e0}, 1, r) == TSR_EARG, "F32 herm2poly([]) refused");
+    CHECK(fzb_call("npoly.chebdiv", 2, (tsr_arg[]){c3, e0}, 2, r) == TSR_EARG, "F25 chebdiv(c, []) refused");
+    CHECK(fzb_call("npoly.chebmul", 2, (tsr_arg[]){e0, c3}, 1, r) == TSR_EARG, "F28 chebmul([], c) refused");
+    CHECK(fzb_call("npoly.polypow", 2, (tsr_arg[]){e0, arg_int(2)}, 1, r) == TSR_EARG, "polypow([]) refused (was calloc(-1))");
+    CHECK(fzb_call("npoly.chebval", 2, (tsr_arg[]){c3, e0}, 1, r) == TSR_EINDEX, "chebval(x, []) is an IndexError");
+    /* an order or degree is an integer within reach: NaN / a fraction is NumPy's TypeError, a huge one is refused */
+    CHECK(fzb_call("npoly.chebint", 2, (tsr_arg[]){c3, arg_num(NAN)}, 1, r) == TSR_ETYPE, "chebint(m=NaN) is a TypeError");
+    CHECK(fzb_call("npoly.chebint", 2, (tsr_arg[]){c3, arg_num(2.5)}, 1, r) == TSR_ETYPE, "chebint(m=2.5) is a TypeError");
+    CHECK(fzb_call("npoly.chebint", 2, (tsr_arg[]){c3, arg_num(1e9)}, 1, r) == TSR_EARG, "chebint(m=1e9) refused, not run");
+    CHECK(fzb_call("npoly.legvander", 2, (tsr_arg[]){c3, arg_num(1e300)}, 1, r) == TSR_ETYPE, "legvander(deg=1e300): no float cast");
+    CHECK(fzb_call("npoly.legvander", 2, (tsr_arg[]){c3, arg_int(INT64_MAX - 2)}, 1, r) == TSR_ENOMEM, "legvander(deg=2^63-3): shape refused");
+    CHECK(fzb_call("npoly.leggauss", 1, (tsr_arg[]){arg_int(1048576)}, 2, r) == TSR_ENOMEM, "leggauss(2^20): the 2^20 x 2^20 companion refused");
+    const int id_der = tsr_fn_find("npoly.chebder");
+    if (id_der >= 0 && tsr_fn_routine(id_der, 2, (tsr_arg[]){c3, arg_int(INT64_MAX)}, 1, r) == 0) {   /* was INT64_MAX steps */
+        CHECK(r[0].arr.shape[0] == 1 && ((const double *)r[0].arr.data)[0] == 0.0, "chebder(c, m=2^63-1) = [0]");
+        free_results(r, 1);
+    } else CHECK(0, "chebder(c, m=2^63-1) failed: %s", tsr_fn_error());
+    const int id_int = tsr_fn_find("npoly.chebint");
+    if (id_int >= 0 && tsr_fn_routine(id_int, 2, (tsr_arg[]){c3, arg_int(2)}, 1, r) == 0) {
+        CHECK(r[0].arr.shape[0] == 5, "chebint([1,2,3], 2) has 5 terms");
+        free_results(r, 1);
+    } else CHECK(0, "chebint([1,2,3], 2) failed: %s", tsr_fn_error());
+    /* 2-D / 3-D forms: x and y of different lengths were read in lock-step, a one-element deg read deg[1] */
+    double two[2] = {1, 2};
+    CHECK(fzb_call("npoly.chebval2d", 3, (tsr_arg[]){arg_arr(two, 1, s2), arg_arr(one, 1, s1), arg_arr(one, 2, (int64_t[]){2, 2})}, 1, r) == TSR_EARG,
+          "chebval2d with x, y of different shapes refused");
+    CHECK(fzb_call("npoly.chebvander2d", 3, (tsr_arg[]){arg_arr(two, 1, s2), arg_arr(two, 1, s2), arg_arr(two, 1, s1)}, 1, r) == TSR_EARG,
+          "chebvander2d with one degree refused");
+    CHECK(fzb_call("npoly.polyvander2d", 3, (tsr_arg[]){arg_arr(two, 1, s2), arg_arr(two, 1, s2), arg_arr(nanv, 1, s2)}, 1, r) == TSR_ETYPE,
+          "polyvander2d with NaN degrees refused");
+    /* np.polyfit: NaN deg was cast to int64, an empty x reached LAPACK */
+    CHECK(fzb_call("np.polyfit", 3, (tsr_arg[]){c3, c3, arg_num(NAN)}, 1, r) == TSR_EARG, "np.polyfit(deg=NaN) refused");
+    CHECK(fzb_call("np.polyfit", 3, (tsr_arg[]){e0, e0, arg_int(1)}, 1, r) == TSR_ETYPE, "np.polyfit on empty x is a TypeError");
+
+    /* zpk transforms (F12 F14 F22 F37): more zeros than poles made the degree negative and the zero buffer too
+       small; SciPy: "Improper transfer function. Must have at least as many poles as zeros." */
+    tsr_arg kz = arg_num(1.0), p1 = arg_arr(one, 1, s1);
+    CHECK(fzb_call("signal.lp2bp_zpk", 3, (tsr_arg[]){c3, p1, kz}, 3, r) == TSR_EARG, "F12 lp2bp_zpk improper refused");
+    CHECK(fzb_call("signal.lp2hp_zpk", 3, (tsr_arg[]){c3, p1, kz}, 3, r) == TSR_EARG, "F14 lp2hp_zpk improper refused");
+    CHECK(fzb_call("signal.lp2bs_zpk", 3, (tsr_arg[]){c3, p1, kz}, 3, r) == TSR_EARG, "F22 lp2bs_zpk improper refused");
+    CHECK(fzb_call("signal.bilinear_zpk", 4, (tsr_arg[]){c3, p1, kz, arg_num(2.0)}, 3, r) == TSR_EARG, "F37 bilinear_zpk improper refused");
+    CHECK(fzb_call("signal.lp2lp_zpk", 3, (tsr_arg[]){c3, p1, kz}, 3, r) == TSR_EARG, "lp2lp_zpk improper refused");
+    /* zpk2sos (F30): an N-d root array was walked with its first stride only (out of bounds); it is now read in C
+       order through every stride, so a (2, 1) zero array means the same as [-1, -1] */
+    double zz[2] = {-1, -1}, pp[2] = {0.5, 0.5};
+    const int id_sos = tsr_fn_find("signal.zpk2sos");
+    if (id_sos >= 0 && tsr_fn_routine(id_sos, 3, (tsr_arg[]){arg_arr(zz, 2, (int64_t[]){2, 1}), arg_arr(pp, 1, s2), kz}, 1, r) == 0) {
+        const double *o = (const double *)r[0].arr.data;
+        CHECK(r[0].arr.shape[0] == 1 && o[0] == 1 && o[1] == 2 && o[2] == 1 && o[3] == 1 && o[4] == -1 && o[5] == 0.25,
+              "F30 zpk2sos of a (2,1) zero array");
+        free_results(r, 1);
+    } else CHECK(0, "F30 zpk2sos failed: %s", tsr_fn_error());
+    CHECK(fzb_call("signal.zpk2sos", 3, (tsr_arg[]){arg_arr(nanv, 3, (int64_t[]){1, 2, 2}), arg_arr(nanv, 1, s4), kz}, 1, r) <= 0, "zpk2sos of NaN roots is clean");
+    /* lp2lp (F21): an empty denominator was read at a[0] by sig_normalize */
+    double b3[3] = {NAN, 1, 2};
+    CHECK(fzb_call("signal.lp2lp", 2, (tsr_arg[]){arg_arr(b3, 1, s3), arg_arr(&dummy, 3, (int64_t[]){2, 2, 0})}, 2, r) == TSR_EARG, "F21 lp2lp with empty a refused");
+    CHECK(fzb_call("signal.lp2bp", 2, (tsr_arg[]){arg_arr(b3, 1, s3), e0}, 2, r) == TSR_EARG, "lp2bp with empty a refused (was calloc(-1))");
+    /* iirdesign (F35): wp/ws were read as raw doubles at data[0], an empty complex array past its end */
+    CHECK(fzb_call("signal.iirdesign", 4, (tsr_arg[]){arg_arr(one, 1, s4), arg_arr_dt(&dummy, TSR_C128, 3, (int64_t[]){0, 1, 0}), arg_num(1), arg_num(40)}, 2, r) == TSR_EARG,
+          "F35 iirdesign with an empty ws refused");
+    /* dbode (F38): a 0-d denominator was indexed at shape[0] - 1 */
+    double big = 1048576.0;
+    CHECK(fzb_call("signal.dbode", 3, (tsr_arg[]){arg_arr(two, 1, s2), arg_arr(&big, 0, NULL), arg_num(NAN)}, 3, r) == TSR_EARG, "F38 dbode with a 0-d den refused");
+    CHECK(fzb_call("signal.dbode", 2, (tsr_arg[]){arg_arr(two, 1, s2), e0}, 3, r) == TSR_EARG, "dbode with an empty den refused");
+    /* welch / csd / stft (F39): a negative or NaN segment length reached calloc(count * size) */
+    double x4[4] = {64, 9.3e18, 2, 3};
+    tsr_arg x4a = arg_arr(x4, 1, s4), none; memset(&none, 0, sizeof none);
+    CHECK(fzb_call("signal.welch", 4, (tsr_arg[]){x4a, none, none, arg_int(-3)}, 2, r) == TSR_EARG, "F39 welch(nperseg=-3) refused");
+    CHECK(fzb_call("signal.welch", 4, (tsr_arg[]){x4a, none, none, arg_num(NAN)}, 2, r) == TSR_EARG, "welch(nperseg=NaN) refused");
+    CHECK(fzb_call("signal.welch", 6, (tsr_arg[]){x4a, none, none, arg_int(4), none, arg_int(2)}, 2, r) == TSR_EARG, "welch(nfft < nperseg) refused");
+    CHECK(fzb_call("signal.welch", 5, (tsr_arg[]){x4a, none, none, arg_int(4), arg_num(-INFINITY)}, 2, r) == TSR_EARG, "welch(noverlap=-inf) refused");
+    CHECK(fzb_call("signal.csd", 5, (tsr_arg[]){x4a, x4a, none, none, arg_int(-3)}, 2, r) == TSR_EARG, "csd(nperseg=-3) refused");
+    CHECK(fzb_call("signal.spectrogram", 4, (tsr_arg[]){x4a, none, none, arg_num(1e300)}, 3, r) <= 0, "spectrogram(nperseg=1e300) clean");
+    /* stft (F3): the input copy (a tsr_alloc block) was released with free(), leaking 64 bytes on every call */
+    CHECK(fzb_call("signal.stft", 1, (tsr_arg[]){x4a}, 3, r) == 0, "F3 stft(x) succeeds without a leak");
+    CHECK(fzb_call("signal.stft", 6, (tsr_arg[]){x4a, none, none, arg_int(4), none, arg_num(-1)}, 3, r) == TSR_EARG, "stft(nfft=-1) refused");
+    /* peak_widths / peak_prominences (F26): a peak index outside x (4e9) was dereferenced */
+    double pk[2] = {4000000000.0, 3}, xn[1] = {NAN}, rel = -64;
+    CHECK(fzb_call("signal.peak_widths", 3, (tsr_arg[]){arg_arr(xn, 1, s1), arg_arr(pk, 1, s2), arg_arr(&rel, 0, NULL)}, 4, r) == TSR_EARG, "F26 peak_widths bad peak refused");
+    CHECK(fzb_call("signal.peak_prominences", 2, (tsr_arg[]){arg_arr(xn, 1, s1), arg_arr(pk, 1, s2)}, 3, r) == TSR_EARG, "peak_prominences bad peak refused");
+    double xp[3] = {0, 1, 0}, p_ok = 1;
+    const int id_pp = tsr_fn_find("signal.peak_prominences");
+    if (id_pp >= 0 && tsr_fn_routine(id_pp, 2, (tsr_arg[]){arg_arr(xp, 1, s3), arg_arr(&p_ok, 1, s1)}, 3, r) == 0) {
+        CHECK(((const double *)r[0].arr.data)[0] == 1.0, "peak_prominences([0,1,0], [1]) = 1");
+        free_results(r, 3);
+    } else CHECK(0, "peak_prominences valid call failed: %s", tsr_fn_error());
+    /* windows: chebwin (F27) was an O(M^2) cosine sum (minutes at M = 65536); tukey (F24, the alpha >= 1 path the
+       bugfix stream fixed) and every window took M through an unchecked cast */
+    const int id_cw = tsr_fn_find("windows.chebwin");
+    if (id_cw >= 0 && tsr_fn_routine(id_cw, 2, (tsr_arg[]){arg_int(65536), arg_num(100)}, 1, r) == 0) {
+        const double *w = (const double *)r[0].arr.data; double mx = 0;
+        for (int64_t i = 0; i < 65536; i++) if (w[i] > mx) mx = w[i];
+        CHECK(r[0].arr.shape[0] == 65536 && mx == 1.0 && fabs(w[1] - w[65534]) < 1e-12, "F27 chebwin(65536) by FFT");
+        free_results(r, 1);
+    } else CHECK(0, "F27 chebwin(65536) failed: %s", tsr_fn_error());
+    CHECK(fzb_call("windows.tukey", 3, (tsr_arg[]){arg_int(4), arg_int(1), arg_arr(one, 3, (int64_t[]){3, 1, 1})}, 1, r) <= 0, "F24 tukey(4, 1, sym=array) clean");
+    CHECK(fzb_call("windows.tukey", 2, (tsr_arg[]){arg_num(INFINITY), arg_num(0.5)}, 1, r) == TSR_EARG, "tukey(M=inf) refused");
+    CHECK(fzb_call("windows.tukey", 2, (tsr_arg[]){arg_int(8), arg_num(NAN)}, 1, r) == TSR_EARG, "tukey(alpha=NaN) refused (SciPy: int(nan))");
+    CHECK(fzb_call("windows.hann", 1, (tsr_arg[]){arg_num(9.3e18)}, 1, r) == TSR_EARG, "hann(M=9.3e18) refused");
+    /* the systemic float->int cast of numeric arguments: NaN / inf / 1e300 now take the routine's error path */
+    CHECK(fzb_call("signal.freqz", 3, (tsr_arg[]){c3, c3, arg_num(NAN)}, 2, r) == TSR_EARG, "freqz(worN=NaN) refused");
+    CHECK(fzb_call("signal.butter", 2, (tsr_arg[]){arg_num(INFINITY), arg_num(0.5)}, 2, r) == TSR_EARG, "butter(N=inf) refused");
+    CHECK(fzb_call("signal.savgol_coeffs", 2, (tsr_arg[]){arg_num(1e300), arg_int(2)}, 1, r) == TSR_EARG, "savgol_coeffs(1e300) refused");
+    CHECK(fzb_call("signal.correlation_lags", 2, (tsr_arg[]){arg_num(NAN), arg_int(3)}, 1, r) == TSR_EARG, "correlation_lags(NaN) refused");
+    CHECK(fzb_call("signal.envelope", 3, (tsr_arg[]){x4a, arg_int(1), arg_int(9)}, 1, r) == TSR_EARG, "envelope band outside -n//2..(n+1)//2 refused");
+    double taps[1] = {40};
+    CHECK(fzb_call("signal.max_len_seq", 4, (tsr_arg[]){arg_int(4), none, none, arg_arr(taps, 1, s1)}, 2, r) == TSR_EARG, "max_len_seq tap > nbits refused");
+    CHECK(fzb_call("signal.resample_poly", 3, (tsr_arg[]){x4a, arg_num(1e18), arg_int(1)}, 1, r) < 0, "resample_poly(up=1e18) refused");
+    double fq[2] = {0, 1}, gn[2] = {1, 0};
+    CHECK(fzb_call("signal.firwin2", 4, (tsr_arg[]){arg_int(9), arg_arr(fq, 1, s2), arg_arr(gn, 1, s2), arg_int(3)}, 1, r) == TSR_EARG, "firwin2(nfreqs <= numtaps) refused");
+    double far[2] = {1e300, -INFINITY};
+    const int id_cs = tsr_fn_find("signal.cspline1d_eval");
+    if (id_cs >= 0 && tsr_fn_routine(id_cs, 2, (tsr_arg[]){c3, arg_arr(far, 1, s2)}, 1, r) == 0) {   /* the mirror loop never ended */
+        CHECK(isfinite(((const double *)r[0].arr.data)[0]) && isnan(((const double *)r[0].arr.data)[1]), "cspline1d_eval at 1e300 / -inf terminates");
+        free_results(r, 1);
+    } else CHECK(0, "cspline1d_eval far points failed: %s", tsr_fn_error());
+
+    /* found by this batch's own campaign (fuzz/corpus/routines/N*): more of the same class in scipy.signal */
+    CHECK(fzb_call("signal.cspline1d", 1, (tsr_arg[]){e0}, 1, r) == 0, "N1 cspline1d([]) is empty (wrote out[-1])");
+    CHECK(fzb_call("signal.symiirorder1", 3, (tsr_arg[]){e0, arg_num(0.5), arg_num(0.1)}, 1, r) == TSR_EARG, "symiirorder1([]) refused (wrote out[-1])");
+    CHECK(fzb_call("signal.symiirorder2", 3, (tsr_arg[]){arg_arr(one, 1, s1), arg_num(0.5), arg_num(0.1)}, 1, r) == TSR_EARG, "N2 symiirorder2 of one sample refused (read x[1])");
+    CHECK(fzb_call("signal.envelope", 4, (tsr_arg[]){x4a, none, none, arg_int(64)}, 1, r) == 0, "N3 envelope(n_out > len(z)) pads the spectrum");
+    CHECK(fzb_call("windows.taylor", 2, (tsr_arg[]){arg_int(24), arg_num(9.3e18)}, 1, r) == TSR_EARG, "N5 taylor(nbar=9.3e18) refused");
+    CHECK(fzb_call("signal.medfilt", 2, (tsr_arg[]){x4a, arg_arr((double[]){INFINITY}, 1, s1)}, 1, r) == TSR_EARG, "N6 medfilt(kernel_size=[inf]) refused");
+    const int id_mf = tsr_fn_find("signal.medfilt");
+    double mx5[5] = {5, -1, 3, 9, 2};
+    if (id_mf >= 0 && tsr_fn_routine(id_mf, 2, (tsr_arg[]){arg_arr(mx5, 1, (int64_t[]){5}), arg_int(65537)}, 1, r) == 0) {   /* the box is all padding but x */
+        CHECK(((const double *)r[0].arr.data)[2] == 0.0, "medfilt with a kernel far larger than x");
+        free_results(r, 1);
+    } else CHECK(0, "medfilt huge kernel failed: %s", tsr_fn_error());
+    if (id_mf >= 0 && tsr_fn_routine(id_mf, 2, (tsr_arg[]){arg_arr(mx5, 1, (int64_t[]){5}), arg_int(3)}, 1, r) == 0) {
+        const double *o = (const double *)r[0].arr.data;
+        CHECK(o[0] == 0 && o[1] == 3 && o[2] == 3 && o[3] == 3 && o[4] == 2, "medfilt([5,-1,3,9,2], 3) = [0,3,3,3,2]");
+        free_results(r, 1);
+    } else CHECK(0, "medfilt 3 failed: %s", tsr_fn_error());
+    double rb[2] = {4000000000.0, 3}, rd = NAN, rb1[2] = {0.1, 0.1}, rd1 = 1;
+    CHECK(fzb_call("signal.remez", 3, (tsr_arg[]){arg_int(1), arg_arr(rb, 1, s2), arg_arr(&rd, 0, NULL)}, 1, r) == TSR_EARG, "N7 remez with edges beyond fs/2 refused");
+    CHECK(fzb_call("signal.remez", 3, (tsr_arg[]){arg_int(1), arg_arr(rb1, 1, s2), arg_arr(&rd1, 1, s1)}, 1, r) <= 0, "remez with a one-point grid is clean");
+    uint8_t h8[2] = {0, 0};
+    double xf[5] = {166, 3, 1e-300, 3, 1e-9};
+    CHECK(fzb_call("signal.find_peaks", 2, (tsr_arg[]){arg_arr(xf, 1, (int64_t[]){5}), arg_arr_dt(h8, TSR_U8, 1, s2)}, 1, r) == 0, "N8 find_peaks(height=uint8 array) reads bytes");
+    double bf[1] = {1};
+    CHECK(fzb_call("signal.filtfilt", 3, (tsr_arg[]){e0, arg_arr(bf, 1, s1), arg_arr(one, 1, (int64_t[]){8})}, 1, r) == TSR_EARG, "N10 filtfilt with empty b refused");
+    CHECK(fzb_call("signal.lfilter_zi", 2, (tsr_arg[]){e0, arg_arr(bf, 1, s1)}, 1, r) == TSR_EARG, "lfilter_zi with empty b refused");
+    CHECK(fzb_call("signal.convolve", 3, (tsr_arg[]){arg_arr(two, 1, s2), e0, arg_str("same")}, 1, r) == TSR_EARG, "N11 convolve(a, [], 'same') refused");
+    CHECK(fzb_call("signal.correlate", 3, (tsr_arg[]){x4a, e0, arg_str("same")}, 1, r) == TSR_EARG, "N12 correlate(x, [], same) refused (read past the empty full result)");
+    CHECK(fzb_call("signal.correlate", 3, (tsr_arg[]){e0, x4a, arg_str("same")}, 1, r) == 0, "correlate([], x, same) is empty (SciPy)");
+    CHECK(fzb_call("signal.findfreqs", 3, (tsr_arg[]){arg_arr(one, 1, s2), e0, arg_int(4)}, 1, r) <= 0, "findfreqs with no poles does not leak");
+    /* dpss (N9): above 1024 points only the Kmax tapers are computed (it was an O(M^3) full eigensolve) */
+    const int id_dp = tsr_fn_find("windows.dpss");
+    if (id_dp >= 0 && tsr_fn_routine(id_dp, 3, (tsr_arg[]){arg_int(1500), arg_num(2.5), arg_int(2)}, 1, r) == 0) {
+        const double *w = (const double *)r[0].arr.data;
+        CHECK(r[0].arr.shape[0] == 2 && fabs(w[0] - 0.00017167929445718752) < 1e-12 && fabs(w[750] - 0.04529204787020111) < 1e-12 &&
+              fabs(w[1500 + 100] - 0.006608579188112873) < 1e-12 && fabs(w[1500 + 1499] + 0.0012259428754950801) < 1e-12,
+              "dpss(1500, 2.5, 2) matches SciPy");
+        free_results(r, 1);
+    } else CHECK(0, "dpss(1500) failed: %s", tsr_fn_error());
+    if (id_dp >= 0 && tsr_fn_routine(id_dp, 2, (tsr_arg[]){arg_int(4096), arg_num(1.0)}, 1, r) == 0) {
+        const double *w = (const double *)r[0].arr.data;
+        CHECK(fabs(w[0] - 0.24011681985880415) < 1e-10 && fabs(w[2048] - 0.9999999403953588) < 1e-12, "N9 dpss(4096, 1) matches SciPy");
+        free_results(r, 1);
+    } else CHECK(0, "dpss(4096) failed: %s", tsr_fn_error());
+    CHECK(fzb_call("windows.dpss", 3, (tsr_arg[]){arg_int(4096), arg_num(17), arg_int(4096)}, 1, r) == TSR_EARG, "N13 dpss(4096, 17, Kmax=4096) refused, not run for minutes");
 }
 
 static void test_abi_runtime(void)
@@ -1348,7 +1658,9 @@ static void test_abi_runtime(void)
     CHECK(memcmp(r1, r4, RN * sizeof(float)) == 0, "repro erf identical at 1 and 4 threads");
     free(rx); free(r1); free(r4);
 
-    /* fork: a child of a process that computed with threads runs serial until set again; the parent keeps its count */
+    /* fork: a child of a process that computed with threads runs serial until set again; the parent keeps its count
+       (POSIX only: Windows has no fork; platform-debt PD-15) */
+#if !defined(_WIN32)
     tsr_set_threads(4);
     (void)tsr_get_threads();                                    /* as a kernel would, before a parallel region */
     fflush(NULL);
@@ -1359,6 +1671,7 @@ static void test_abi_runtime(void)
           "forked child runs serial (status %d)", status);
     CHECK(tsr_get_threads() == (tsr_openmp() ? 4 : 1), "parent keeps its thread count");
     tsr_set_threads(1);
+#endif
 
     /* distribution errors are per calling thread: a failing call on one thread never leaks into the other */
     const int sk = tsr_fn_find("stats.skewnorm");
@@ -1598,6 +1911,8 @@ int main(void)
     test_numerics_review();
     test_security_regressions();
     test_fuzz_batch_a();
+    test_fuzz_batch_b();
+    test_ci_regressions();
     test_abi_runtime();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);

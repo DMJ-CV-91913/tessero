@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cfloat>
+#include <climits>
 #include <cmath>
 #include <limits>
 
@@ -211,20 +212,34 @@ inline double hyperu(double a, double b, double x)
 /* ---------------------------------------------------------------- _legacy.pxd (double -> int casts) */
 
 inline double bdtr_unsafe(double k, double n, double p) { return (std::isnan(n) || std::isinf(n)) ? NaN : xsf::bdtr(k, (int)n, p); }
-inline double bdtrc_unsafe(double k, double n, double p) { return (std::isnan(n) || std::isinf(n)) ? NaN : xsf::bdtrc(k, (int)n, p); }
-inline double bdtri_unsafe(double k, double n, double p) { return (std::isnan(n) || std::isinf(n)) ? NaN : xsf::bdtri(k, (int)n, p); }
-inline double expn_unsafe(double n, double x) { return std::isnan(n) ? n : xsf::cephes::expn((int)n, x); }
-inline double nbdtrc_unsafe(double k, double n, double p) { return (std::isnan(k) || std::isnan(n)) ? NaN : xsf::cephes::nbdtrc((int)k, (int)n, p); }
-inline double nbdtr_unsafe(double k, double n, double p) { return (std::isnan(k) || std::isnan(n)) ? NaN : xsf::cephes::nbdtr((int)k, (int)n, p); }
-inline double nbdtri_unsafe(double k, double n, double p) { return (std::isnan(k) || std::isnan(n)) ? NaN : xsf::cephes::nbdtri((int)k, (int)n, p); }
-inline double pdtri_unsafe(double k, double y) { return std::isnan(k) ? k : xsf::cephes::pdtri((int)k, y); }
-inline double kn_unsafe(double n, double x) { return std::isnan(n) ? n : xsf::cyl_bessel_k((double)(int)n, x); }
-inline double yn_unsafe(double n, double x) { return std::isnan(n) ? n : xsf::cephes::yn((int)n, x); }
-inline double smirnov_unsafe(double n, double e) { return std::isnan(n) ? n : xsf::cephes::smirnov((int)n, e); }
-inline double smirnovc_unsafe(double n, double e) { return std::isnan(n) ? n : xsf::cephes::smirnovc((int)n, e); }
-inline double smirnovp_unsafe(double n, double e) { return std::isnan(n) ? n : xsf::cephes::smirnovp((int)n, e); }
-inline double smirnovi_unsafe(double n, double p) { return std::isnan(n) ? n : xsf::cephes::smirnovi((int)n, p); }
-inline double smirnovci_unsafe(double n, double p) { return std::isnan(n) ? n : xsf::cephes::smirnovci((int)n, p); }
+/* Tessero: Cython's <int>n of a double outside int (+-inf, |n| >= 2^31) is undefined behaviour in C. SciPy's
+   x86-64 wheels get INT_MIN from cvttsd2si there; tsr_int_cast gives exactly that without the undefined cast,
+   so results match the x86-64 reference on every compiler and target (a gcc-11 build returned yn(inf, 0.5) =
+   Y_2(0.5) = -5.44 instead of -inf). Finite orders inside int convert as before. */
+inline int tsr_int_cast(double n) { return (n > -2147483649.0 && n < 2147483648.0) ? (int)n : INT_MIN; }
+
+inline double bdtrc_unsafe(double k, double n, double p) { return (std::isnan(n) || std::isinf(n)) ? NaN : xsf::bdtrc(k, tsr_int_cast(n), p); }
+inline double bdtri_unsafe(double k, double n, double p) { return (std::isnan(n) || std::isinf(n)) ? NaN : xsf::bdtri(k, tsr_int_cast(n), p); }
+inline double expn_unsafe(double n, double x) { return std::isnan(n) ? n : xsf::cephes::expn(tsr_int_cast(n), x); }
+inline double nbdtrc_unsafe(double k, double n, double p) { return (std::isnan(k) || std::isnan(n)) ? NaN : xsf::cephes::nbdtrc(tsr_int_cast(k), tsr_int_cast(n), p); }
+inline double nbdtr_unsafe(double k, double n, double p) { return (std::isnan(k) || std::isnan(n)) ? NaN : xsf::cephes::nbdtr(tsr_int_cast(k), tsr_int_cast(n), p); }
+inline double nbdtri_unsafe(double k, double n, double p) { return (std::isnan(k) || std::isnan(n)) ? NaN : xsf::cephes::nbdtri(tsr_int_cast(k), tsr_int_cast(n), p); }
+inline double pdtri_unsafe(double k, double y) { return std::isnan(k) ? k : xsf::cephes::pdtri(tsr_int_cast(k), y); }
+inline double kn_unsafe(double n, double x) { return std::isnan(n) ? n : xsf::cyl_bessel_k((double)tsr_int_cast(n), x); }
+/* Tessero: for n = INT_MIN cephes' yn negates n (signed overflow), so the order cannot be passed on. SciPy's x86-64
+   build returns the limit of Y_n(x) as |n| -> inf there: -inf for 0 <= x < inf, NaN for x < 0, x = inf or NaN. */
+inline double yn_unsafe(double n, double x)
+{
+    if (std::isnan(n)) return n;
+    const int k = tsr_int_cast(n);
+    if (k == INT_MIN) return (x >= 0 && x < std::numeric_limits<double>::infinity()) ? -std::numeric_limits<double>::infinity() : NaN;
+    return xsf::cephes::yn(k, x);
+}
+inline double smirnov_unsafe(double n, double e) { return std::isnan(n) ? n : xsf::cephes::smirnov(tsr_int_cast(n), e); }
+inline double smirnovc_unsafe(double n, double e) { return std::isnan(n) ? n : xsf::cephes::smirnovc(tsr_int_cast(n), e); }
+inline double smirnovp_unsafe(double n, double e) { return std::isnan(n) ? n : xsf::cephes::smirnovp(tsr_int_cast(n), e); }
+inline double smirnovi_unsafe(double n, double p) { return std::isnan(n) ? n : xsf::cephes::smirnovi(tsr_int_cast(n), p); }
+inline double smirnovci_unsafe(double n, double p) { return std::isnan(n) ? n : xsf::cephes::smirnovci(tsr_int_cast(n), p); }
 
 /* ---------------------------------------------------------------- orthogonal_eval.pxd (real) */
 
@@ -464,17 +479,17 @@ inline double ncfdtrinc(double dfn, double dfd, double p, double f)
 inline double nctdtridf(double p, double nc, double t)
 {
     if (std::isnan(p) || std::isnan(nc) || std::isnan(t)) return NaN;
-    tsr_cdflib_runaway = 0;
+    tsr_cdflib_runaway_clear();
     TupleDID r = cdftnc_which3(p, 1.0 - p, t, nc);
-    if (tsr_cdflib_runaway) return NaN;
+    if (tsr_cdflib_runaway_get()) return NaN;
     return cdf_result(r.d1, r.i1, r.d2, 1);
 }
 inline double nctdtrinc(double df, double p, double t)
 {
     if (std::isnan(df) || std::isnan(p) || std::isnan(t)) return NaN;
-    tsr_cdflib_runaway = 0;
+    tsr_cdflib_runaway_clear();
     TupleDID r = cdftnc_which4(p, 1.0 - p, t, df);
-    if (tsr_cdflib_runaway) return NaN;
+    if (tsr_cdflib_runaway_get()) return NaN;
     return cdf_result(r.d1, r.i1, r.d2, 1);
 }
 inline double nrdtrimn(double p, double std_, double x)

@@ -23,11 +23,10 @@
    K = 67 reduction, so a two-rounding mul+add, a reordered sum or a double accumulator each change the bits
    (proved by test_numerics_review against the deliberately wrong variants in tsr_selfcheck_digest).
 
-   CANDIDATE golden (2026-10-23): computed on the build/reference host (x86-64, AVX2+FMA, no AVX-512,
-   gcc 13.3) where the dispatched tsr_gemm (1 and 4 OpenMP threads), the no-clone fmaf reference and a
-   standalone scalar -O0 -ffp-contract=off reference agreed, while OpenBLAS cblas_sgemm (8aac4968efdebd4b),
-   a double accumulator (36ff49cef2514bab), mul+add and reversed-k all gave other digests. It becomes
-   APPROVED once a second independent host reproduces it (the GOLDENS.md process). */
+   APPROVED golden (2026-10-24): the dispatched tsr_gemm (1 and 4 OpenMP threads), the no-clone fmaf reference
+   and a standalone scalar -O0 -ffp-contract=off reference agree on it; it was reproduced on independent x86-64
+   hosts (two microarchitectures) and by a second compiler (gcc and clang), while BLAS sgemm, a wider
+   accumulator, mul+add and a reordered reduction each give a different digest. */
 #ifndef TSR_CANON_GEMM_F32_KAT
 #define TSR_CANON_GEMM_F32_KAT 0x86bbab2bc87f8e3bULL
 #endif
