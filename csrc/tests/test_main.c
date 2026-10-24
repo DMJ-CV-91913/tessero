@@ -2019,7 +2019,7 @@ static void test_fuzz_batch_d(void)
     for (int i = 0; i < W; i++) { win[i] = 2 + i; win[W + i] = 60; win[2 * W + i] = 30; win[3 * W + i] = 25; win[4 * W + i] = 0.1 + i; win[5 * W + i] = 0; }
     rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, win, W, wout);
     CHECK(rc == 0 && wout[0] == 0x1.6f3fc1ff1f476p-3 && wout[1] == 0x1.2cb5830c138e2p-23 && wout[2] == 0x1.203a553569e89p-31
-          && wout[3] == 0x1.cfdd2c2779e1ep-35, "nchypergeom_wallenius.pmf through the recursion keeps its bits (rc %d, %a)", rc, wout[0]);
+          && wout[3] == 0x1.cfdd2c2779e1ep-35, "nchypergeom_wallenius.pmf through the recursion keeps its bits (rc %d, %a %a %a %a)", rc, wout[0], wout[1], wout[2], wout[3]);
     double wsum = 0, wsx[6 * 26], wso[26];
     for (int i = 0; i <= 25; i++) { wsx[i] = i; wsx[26 + i] = 60; wsx[52 + i] = 30; wsx[78 + i] = 25; wsx[104 + i] = 2.5; wsx[130 + i] = 0; }
     rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, wsx, 26, wso);
@@ -2037,7 +2037,7 @@ static void test_fuzz_batch_d(void)
     const char *rad[4] = {"special.pro_rad1", "special.pro_rad2", "special.obl_rad1", "special.obl_rad2"};
     for (int k = 0; k < 4; k++) {
         rc = bd_ufunc(rad[k], 0, 4, 2, pin, 2, pout);
-        CHECK(rc == 0 && pout[0] == 0.0 && isnan(pout[2]), "%s at c = -inf keeps SciPy's (0, nan) (rc %d)", rad[k], rc);
+        CHECK(rc == 0 && pout[0] == 0.0 && isnan(pout[2]), "%s at c = -inf keeps SciPy's (0, nan) (rc %d; got %a %a %a %a)", rad[k], rc, pout[0], pout[1], pout[2], pout[3]);
     }
 
     /* min_weight_full_bipartite_matching: NaN/inf weights broke the potentials and the unmatched p[j] = 0 wrote at
