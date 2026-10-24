@@ -4,7 +4,7 @@
     "description": "Native Zend extension for Tessero: NDArray with operators, slicing, foreach and JSON; LP/MILP/MDP solvers; NumPy-identical RNG. Install with PIE: pie install tessero/tessero-ext",
     "license": "BSD-3-Clause",
     "require": {
-        "php": "~8.2.35 || ~8.3.36 || ~8.4.27 || ^8.5.12"
+        "php": "~8.2.35 || ~8.3.36 || ~8.4.27 || ~8.5.12"
     },
     "php-ext": {
         "extension-name": "tessero",
