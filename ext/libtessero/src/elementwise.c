@@ -336,9 +336,9 @@ int tsr_binary(int op, int dtype, int32_t ndim, const int64_t *shape, const void
         case U_EXPM1: URUN(T, T, expm1##S(x)); return TSR_OK;                                           \
         case U_LOG1P: URUN(T, T, log1p##S(x)); return TSR_OK;                                           \
         case U_RECIPROCAL: URUN(T, T, (T)1 / x); return TSR_OK;                                         \
-        case U_ISNAN: URUN(T, uint8_t, isnan(x)); return TSR_OK;                                        \
-        case U_ISFINITE: URUN(T, uint8_t, isfinite(x)); return TSR_OK;                                  \
-        case U_ISINF: URUN(T, uint8_t, isinf(x)); return TSR_OK;                                        \
+        case U_ISNAN: URUN(T, uint8_t, isnan(x) != 0); return TSR_OK;                                     \
+        case U_ISFINITE: URUN(T, uint8_t, isfinite(x) != 0); return TSR_OK;                               \
+        case U_ISINF: URUN(T, uint8_t, isinf(x) != 0); return TSR_OK;                                     \
         default: return TSR_ETYPE;                                                                      \
         }                                                                                               \
     }

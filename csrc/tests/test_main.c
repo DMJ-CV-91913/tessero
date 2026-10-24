@@ -845,6 +845,42 @@ static int long_double_is_wider(void)
     return one + tiny != one;
 }
 
+/* tsr_fmaf_ro (fmaf_ro.h) is the correctly rounded fmaf used where the C runtime's rounds twice: check it against
+   fmaf wherever fmaf is the correct one, on inputs built so the exact a*b + c sits next to a float halfway point,
+   which is where a second rounding goes wrong (the naive (float)(double sum) must be caught out at least once) */
+static void test_fmaf_ro(void)
+{
+    uint64_t st = 0x9E3779B97F4A7C15ull;
+    int bad = 0, naive_wrong = 0;
+    for (int i = 0; i < 400000; i++) {
+        st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+        const uint32_t uc = ((uint32_t)(127 + (int)((st >> 8) % 41) - 20) << 23) | (uint32_t)(st & 0x7FFFFFu) | ((uint32_t)(st >> 63) << 31);
+        float c;
+        memcpy(&c, &uc, 4);
+        /* a*b is +-ulp(c)/2 up to the rounding of b: the exact sum lies just off a float midpoint */
+        const double ulp = (double)nextafterf(fabsf(c), INFINITY) - (double)fabsf(c);
+        const float a = (float)(1.0 + ldexp((double)((st >> 20) & 0xFFFFu), -23));
+        float b = (float)(ulp / 2 / a);
+        if ((st >> 40) & 1u) b = -b;
+        const double p = (double)a * (double)b;
+        const float want = fmaf(a, b, c), got = tsr_fmaf_ro(a, b, c), naive = (float)(p + (double)c);
+        if (memcmp(&want, &got, 4) != 0 && !(isnan(want) && isnan(got))) bad++;
+        if (memcmp(&want, &naive, 4) != 0) naive_wrong++;
+    }
+    const float z = tsr_fmaf_ro(-0.0f, 1.0f, 0.0f), nz = tsr_fmaf_ro(-0.0f, 1.0f, -0.0f);
+    if (!TSR_FMAF_IS_RO) {   /* fmaf is the C library's: the reference */
+        CHECK(bad == 0, "tsr_fmaf_ro == fmaf on near-halfway inputs (%d differ)", bad);
+        CHECK(naive_wrong > 0, "the near-halfway inputs do catch a double-rounding fmaf (%d)", naive_wrong);
+    }
+    CHECK(z == 0 && !signbit(z) && nz == 0 && signbit(nz), "tsr_fmaf_ro signed zeros");
+    CHECK(isinf(tsr_fmaf_ro(INFINITY, 2.0f, 1.0f)) && isnan(tsr_fmaf_ro(INFINITY, 0.0f, 1.0f)), "tsr_fmaf_ro inf and nan");
+    CHECK(tsr_fmaf_ro(0x1.000002p0f, 0x1.000002p0f, -0x1.000004p0f) == 0x1p-46f, "tsr_fmaf_ro keeps the low product bits");
+    /* double fma: the product of 1 + 2^-52 with itself needs 106 bits; an fma built on a 64-bit-mantissa long
+       double loses the 2^-104 term and returns 0 */
+    volatile double d = 0x1.0000000000001p0, e = -0x1.0000000000002p0;
+    CHECK(fma(d, d, e) == 0x1p-104, "fma is correctly rounded (%a)", fma(d, d, e));
+}
+
 static void test_vmath(void)
 {
     /* vectorised exp/log (vmath.h): < 1 ulp, against long double references where long double is wider, and
@@ -1749,6 +1785,7 @@ int main(void)
     test_ufunc();
     test_mmap_npy();
     test_slice_blanks();
+    test_fmaf_ro();
     test_vmath();
     test_rfft();
     test_size_overflow();

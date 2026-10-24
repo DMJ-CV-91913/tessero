@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <math.h>
+#include "fmaf_ro.h"   /* fmaf is correctly rounded everywhere (MinGW's rounds twice) */
 /* libtessero is built hidden-by-default (csrc/Makefile VIS): the public ABI is exactly what tessero.h declares */
 #if defined(TSR_EXPORT_ABI) && defined(__GNUC__)
 #  pragma GCC visibility push(default)
@@ -64,7 +65,7 @@ int tsr_get_threads(void);
  * an FMA is the footgun: GCC 14 and GCC 12 disagreed and silently emitted a
  * two-round, non-canonical kernel. T is the element type (float or double).
  */
-#define TSR_RFMA(T, a, b, c) (_Generic((T)0, float: fmaf, double: fma, default: fma)((a), (b), (c)))
+#define TSR_RFMA(T, a, b, c) (_Generic((T)0, float: TSR_FMAF_FN, double: fma, default: fma)((a), (b), (c)))
 
 /*
  * Float -> integer conversion with NumPy's x86-64 results and no undefined behaviour. C leaves the
