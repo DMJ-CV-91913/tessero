@@ -1,0 +1,3 @@
+libtessero/src/repro_f32.lo: \
+ /home/tessero/tw-merge/ext/libtessero/src/repro_f32.c \
+ /home/tessero/tw-merge/ext/libtessero/src/../include/tessero_repro_f32.h
