@@ -479,17 +479,17 @@ inline double ncfdtrinc(double dfn, double dfd, double p, double f)
 inline double nctdtridf(double p, double nc, double t)
 {
     if (std::isnan(p) || std::isnan(nc) || std::isnan(t)) return NaN;
-    tsr_cdflib_runaway = 0;
+    tsr_cdflib_runaway_clear();
     TupleDID r = cdftnc_which3(p, 1.0 - p, t, nc);
-    if (tsr_cdflib_runaway) return NaN;
+    if (tsr_cdflib_runaway_get()) return NaN;
     return cdf_result(r.d1, r.i1, r.d2, 1);
 }
 inline double nctdtrinc(double df, double p, double t)
 {
     if (std::isnan(df) || std::isnan(p) || std::isnan(t)) return NaN;
-    tsr_cdflib_runaway = 0;
+    tsr_cdflib_runaway_clear();
     TupleDID r = cdftnc_which4(p, 1.0 - p, t, df);
-    if (tsr_cdflib_runaway) return NaN;
+    if (tsr_cdflib_runaway_get()) return NaN;
     return cdf_result(r.d1, r.i1, r.d2, 1);
 }
 inline double nrdtrimn(double p, double std_, double x)
