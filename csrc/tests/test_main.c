@@ -942,7 +942,9 @@ static void test_size_overflow(void)
 /* ---- ABI, capability negotiation and runtime settings (ADR 0014) ---- */
 #include <pthread.h>
 #include <stdatomic.h>
+#if !defined(_WIN32)
 #include <sys/wait.h>
+#endif
 #include "../include/tessero_version.h"
 
 #define ABI_DM_MOMENT 11                  /* DM_MOMENT in src/fn.h */
@@ -1194,7 +1196,9 @@ static void test_abi_runtime(void)
     CHECK(memcmp(r1, r4, RN * sizeof(float)) == 0, "repro erf identical at 1 and 4 threads");
     free(rx); free(r1); free(r4);
 
-    /* fork: a child of a process that computed with threads runs serial until set again; the parent keeps its count */
+    /* fork: a child of a process that computed with threads runs serial until set again; the parent keeps its count
+       (POSIX only: Windows has no fork; platform-debt PD-15) */
+#if !defined(_WIN32)
     tsr_set_threads(4);
     (void)tsr_get_threads();                                    /* as a kernel would, before a parallel region */
     fflush(NULL);
@@ -1205,6 +1209,7 @@ static void test_abi_runtime(void)
           "forked child runs serial (status %d)", status);
     CHECK(tsr_get_threads() == (tsr_openmp() ? 4 : 1), "parent keeps its thread count");
     tsr_set_threads(1);
+#endif
 
     /* distribution errors are per calling thread: a failing call on one thread never leaks into the other */
     const int sk = tsr_fn_find("stats.skewnorm");

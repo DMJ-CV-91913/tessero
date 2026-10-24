@@ -40,7 +40,7 @@ static int fpenv_probe(void)
 #elif defined(__aarch64__)
     uint64_t fpcr;
     __asm__ volatile("mrs %0, fpcr" : "=r"(fpcr));
-    if (fpcr & (1u << 24)) bad |= FPE_FZ;
+    if (fpcr & (1u << 24)) bad |= FPE_FTZ;
     if (fpcr & (1u << 19)) bad |= FPE_FZ16;
     if (fpcr & (3u << 22)) bad |= FPE_RMODE;
     if (fpcr & ((0x1Fu << 8) | (1u << 15))) bad |= FPE_TRAPS;
