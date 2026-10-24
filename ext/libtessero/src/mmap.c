@@ -436,9 +436,15 @@ int64_t tsr_npy_write_header(int dtype, int32_t ndim, const int64_t *shape, int 
         count *= shape[d];
     }
     if (count > INT64_MAX / tsr_itemsize(dtype)) return TSR_ESHAPE;
-    for (int d = 0; d < ndim; d++)
+    /* every snprintf is checked against what is left of dict, so a truncated header is refused rather than written
+       (at most 32 dims x 21 chars + the prefix: about 750 of the 1024 bytes) */
+    if (n < 0 || (size_t)n >= sizeof(dict)) return TSR_ESHAPE;
+    for (int d = 0; d < ndim; d++) {
         n += snprintf(dict + n, sizeof(dict) - (size_t)n, d ? ", %lld" : "%lld", (long long)shape[d]);
+        if ((size_t)n >= sizeof(dict)) return TSR_ESHAPE;
+    }
     n += snprintf(dict + n, sizeof(dict) - (size_t)n, "%s), }", ndim == 1 ? "," : "");
+    if ((size_t)n >= sizeof(dict)) return TSR_ESHAPE;
     int major = 1;
     int64_t prefix = 10;
     if (n + prefix + 1 > 65535) { major = 2; prefix = 12; }
