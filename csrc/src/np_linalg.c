@@ -696,7 +696,7 @@ static int r_eigvals(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int all_real = 1;
     if (n > 0) {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, 1, &d, 1);
+        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, &d, (lapack_int)n);  /* ld >= n: LAPACKE 3.10 */
         if (info != 0) { free(wr); free(wi); free(ev); fn_free_doubles(a, na); fn_set_error("eigvals: the QR algorithm failed to converge"); return TSR_EARG; }
         for (int64_t i = 0; i < n; i++) { ev[2 * i] = wr[i]; ev[2 * i + 1] = wi[i]; if (wi[i] != 0.0) all_real = 0; }
         qsort(ev, (size_t)n, 2 * sizeof(double), cmp_eval);
@@ -743,7 +743,7 @@ static int r_eig(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     int all_real = 1;
     if (n > 0) {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'V', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, 1, vr, (lapack_int)n);
+        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'V', (lapack_int)n, a, (lapack_int)n, wr, wi, &d, (lapack_int)n, vr, (lapack_int)n);
         if (info != 0) { free(wr); free(wi); free(vr); free(vc); free(ord); fn_free_doubles(a, na); fn_set_error("eig: the QR algorithm failed to converge"); return TSR_EARG; }
         for (int64_t i = 0; i < n; i++) if (wi[i] != 0.0) all_real = 0;
         if (force_complex) all_real = 0;
@@ -4339,8 +4339,22 @@ static int r_ordqz(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
                 sel[i] = s ? 1 : 0;
             }
             lapack_int mout = 0; double pl = 0.0, pr = 0.0, dif[2] = {0.0, 0.0};
-            lapack_int info2 = LAPACKE_dtgsen(LAPACK_ROW_MAJOR, 0, 1, 1, sel, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n,
-                                              alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n, &mout, &pl, &pr, dif);
+            /* LAPACKE < 3.11 passes iwork = NULL to dtgsen for ijob = 0, and dtgsen writes iwork(1): own the workspace
+               (query, allocate, run: the same LAPACK call sequence the 3.11+ LAPACKE_dtgsen makes internally) */
+            double wq = 0.0; lapack_int iwq = 0;
+            lapack_int info2 = LAPACKE_dtgsen_work(LAPACK_ROW_MAJOR, 0, 1, 1, sel, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n,
+                                                   alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n, &mout, &pl, &pr, dif,
+                                                   &wq, -1, &iwq, -1);
+            if (info2 == 0) {
+                const lapack_int lw = (lapack_int)wq > 1 ? (lapack_int)wq : 1, liw = iwq > 1 ? iwq : 1;
+                double *wk = (double *)malloc(sizeof(double) * (size_t)lw);
+                lapack_int *iwk = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)liw);
+                if (!wk || !iwk) info2 = -1000;
+                else info2 = LAPACKE_dtgsen_work(LAPACK_ROW_MAJOR, 0, 1, 1, sel, (lapack_int)n, a, (lapack_int)n, b, (lapack_int)n,
+                                                 alphar, alphai, beta, Q, (lapack_int)n, Z, (lapack_int)n, &mout, &pl, &pr, dif,
+                                                 wk, lw, iwk, liw);
+                free(wk); free(iwk);
+            }
             if (info2 == 1) { rc = TSR_EARG; fn_set_error("ordqz: reordering failed (ill-conditioned pencil)"); }
             else if (info2 != 0) { rc = TSR_EARG; fn_set_error("ordqz: dtgsen failed"); }
         }
