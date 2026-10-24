@@ -204,6 +204,27 @@ final class Library
         if ($budget !== null) {
             $ffi->tsr_set_budget($budget);
         }
+        // The BLAS libtessero links (used by matmul) gets the same web-SAPI default as the extension's
+        // tessero.blas_threads=auto: one thread per worker, since php-fpm already runs a worker per core.
+        $threads = self::defaultBlasThreads(PHP_SAPI, getenv('TESSERO_BLAS_THREADS', true));
+        if ($threads !== null) {
+            $ffi->tsr_set_blas_threads($threads);
+        }
+    }
+
+    /**
+     * The BLAS thread cap to apply at load, or null to leave the BLAS alone: TESSERO_BLAS_THREADS=n (n >= 1)
+     * wins, 0 means leave alone, and otherwise web SAPIs get 1 and the CLI keeps the BLAS default.
+     */
+    public static function defaultBlasThreads(string $sapi, string|false $env): ?int
+    {
+        if ($env !== false && $env !== '' && preg_match('/^\d+$/', $env) === 1) {
+            $n = (int) $env;
+
+            return $n >= 1 ? $n : null;
+        }
+
+        return in_array($sapi, ['cli', 'phpdbg', 'embed'], true) ? null : 1;
     }
 
     private static function load(): FFI
@@ -260,6 +281,11 @@ final class Library
      */
     private static function checkVersion(FFI $ffi, string $what): void
     {
+        $abi = $ffi->tsr_abi_version();
+        if ($abi !== \Tessero\Tessero::ABI_VERSION) {
+            throw new LibraryUnavailable("libtessero ({$what}) implements C ABI {$abi}, tessero/tessero needs ABI " . \Tessero\Tessero::ABI_VERSION
+                . '. Use the binary shipped with the package, or rebuild it with `make -C csrc`.');
+        }
         $v = (string) $ffi->tsr_version();
         if ($v !== \Tessero\Tessero::VERSION) {
             throw new LibraryUnavailable("libtessero {$v} ({$what}) does not match tessero/tessero " . \Tessero\Tessero::VERSION
