@@ -1020,7 +1020,7 @@ static int r_eigs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (!wr || !wi || !idx || !sel) rc = TSR_ENOMEM;
     else {
         double d = 0.0;
-        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, A, (lapack_int)n, wr, wi, &d, 1, &d, 1);
+        lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)n, A, (lapack_int)n, wr, wi, &d, (lapack_int)n, &d, (lapack_int)n);  /* ld >= n: LAPACKE 3.10 */
         if (info != 0) { fn_set_error("eigs: the QR algorithm failed to converge"); rc = TSR_EARG; }
         else {
             for (int64_t i = 0; i < n; i++) idx[i] = i;
