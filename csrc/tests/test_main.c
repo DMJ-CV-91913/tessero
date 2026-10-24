@@ -939,6 +939,180 @@ static void test_size_overflow(void)
     CHECK(tsr_iter_init(&it, 1, 2, huge, sts) == TSR_EARG, "iterator refuses an overflowing size");
 }
 
+/* ---- ABI, capability negotiation and runtime settings (ADR 0014) ---- */
+#include <pthread.h>
+#include <stdatomic.h>
+#include <sys/wait.h>
+#include "../include/tessero_version.h"
+
+#define ABI_DM_MOMENT 11                  /* DM_MOMENT in src/fn.h */
+typedef struct { int id; int bad; int calls; _Atomic int *done; } abi_dist_job;
+
+/* skewnorm.moment(order, a=1) over n elements; the element n/2 has the unsupported order 21 when `fail` is set */
+static int abi_moment(int id, int64_t n, int fail, double *out)
+{
+    double *order = malloc((size_t)n * sizeof(double)), a = 1.0, loc = 0.0, scale = 1.0;
+    for (int64_t i = 0; i < n; i++) order[i] = (fail && i == n / 2) ? 21.0 : 2.0;
+    void *data[5] = {order, &a, &loc, &scale, out};
+    int64_t shape[1] = {n}, strides[5] = {8, 0, 0, 0, 8};
+    const int rc = tsr_fn_ufunc(id, ABI_DM_MOMENT, TSR_F64, 1, shape, 5, data, strides);
+    free(order);
+    return rc;
+}
+
+/* long calls whose middle element fails: each must report its own failure */
+static void *abi_dist_failing(void *p)
+{
+    abi_dist_job *j = (abi_dist_job *)p;
+    const int64_t n = (int64_t)1 << 16;
+    double *out = malloc((size_t)n * sizeof(double));
+    for (int it = 0; it < 12; it++, j->calls++)
+        if (abi_moment(j->id, n, 1, out) != TSR_EARG || !strstr(tsr_fn_error(), "skewnorm")) j->bad++;
+    free(out);
+    atomic_store(j->done, 1);
+    return NULL;
+}
+
+/* short successful calls meanwhile: none may pick up (or clear) the other thread's failure */
+static void *abi_dist_ok(void *p)
+{
+    abi_dist_job *j = (abi_dist_job *)p;
+    double out[4];
+    while (!atomic_load(j->done) || j->calls == 0) {
+        j->calls++;
+        if (abi_moment(j->id, 4, 0, out) != TSR_OK || !isfinite(out[0])) j->bad++;
+    }
+    return NULL;
+}
+
+static void test_abi_runtime(void)
+{
+    /* version and capability negotiation: one version source */
+    CHECK(tsr_abi_version() == TSR_ABI_VERSION && TSR_ABI_VERSION == 2, "abi version %d", tsr_abi_version());
+    CHECK(strcmp(tsr_version(), TSR_VERSION_STRING) == 0, "tsr_version %s", tsr_version());
+    CHECK(tsr_feature("repro_f32") == 1 && tsr_feature("gemm_canonical") == 1 && tsr_feature("lapack") == 1, "features present");
+    CHECK(tsr_feature("openmp") == tsr_openmp(), "openmp feature matches tsr_openmp");
+    const int fpenv = tsr_feature("fpenv_check");
+    CHECK(fpenv == 0 || fpenv == 1, "fpenv_check answers 0/1");
+    CHECK(tsr_feature("no_such_feature") == 0 && tsr_feature("") == 0 && tsr_feature(NULL) == 0, "unknown features are 0");
+
+    /* checked allocation sizes: products of independent lengths never wrap */
+    CHECK(tsr_count_mul((int64_t)1 << 32, (int64_t)1 << 31) == -1, "count_mul overflow");
+    CHECK(tsr_count_mul(-1, 8) == -1 && tsr_count_mul(0, INT64_MAX) == 0 && tsr_count_mul(3, 7) == 21, "count_mul values");
+    CHECK(tsr_bytes_n(INT64_MAX / 8, 8, 64) == -1 && tsr_bytes_n(10, 8, 64) == 144, "bytes_n pad overflow / value");
+    CHECK(tsr_scratch_n((int64_t)1 << 62, 16) == NULL && tsr_scratch0_n(-5, 8) == NULL, "scratch refuses overflow");
+    void *s0 = tsr_scratch0_n(0, 8);
+    CHECK(s0 != NULL, "scratch of 0 elements is a valid block");
+    free(s0);
+    const int64_t before = tsr_allocated();
+    CHECK(tsr_alloc_n((int64_t)1 << 62, 16, 0) == NULL && tsr_alloc_n(-1, 8, 0) == NULL, "alloc_n refuses overflow");
+    CHECK(tsr_allocated() == before, "a refused alloc_n leaves the accounting alone");
+    void *an = tsr_alloc_n(100, 8, 24);
+    CHECK(an && tsr_allocated() == before + 824, "alloc_n counted: %ld", (long)(tsr_allocated() - before));
+    tsr_free(an, tsr_bytes_n(100, 8, 24));
+
+    /* cluster.hierarchy: the n*n workspace is counted, so a budget refuses it (it used to bypass the budget) */
+    const int64_t nobs = 1000;
+    double *obs = malloc((size_t)nobs * 2 * sizeof(double));
+    for (int64_t i = 0; i < nobs * 2; i++) obs[i] = (double)((i * 7919) % 1009);
+    int64_t osh[2] = {nobs, 2};
+    const int lk = tsr_fn_find("hierarchy.linkage");
+    tsr_arg la[1] = {arg_arr(obs, 2, osh)};
+    tsr_result lr[1];
+    tsr_set_budget(tsr_allocated() + (1 << 20));                  /* 1 MiB: far below the 8 MB workspace */
+    CHECK(lk >= 0 && tsr_fn_routine(lk, 1, la, 1, lr) == TSR_ENOMEM, "linkage workspace counted against the budget");
+    tsr_set_budget(0);
+    int64_t small[2] = {50, 2};
+    tsr_arg ls[1] = {arg_arr(obs, 2, small)};
+    if (tsr_fn_routine(lk, 1, ls, 1, lr) == TSR_OK) {
+        CHECK(lr[0].arr.shape[0] == 49 && lr[0].arr.shape[1] == 4, "linkage still works");
+        tsr_free(lr[0].arr.data, lr[0].bytes);
+    } else CHECK(0, "linkage failed: %s", tsr_fn_error());
+    /* a condensed distance vector whose length is not k*(k-1)/2 sized a workspace larger than it and read past it */
+    int64_t len5[1] = {5}, len6[1] = {6};
+    tsr_arg l5[1] = {arg_arr(obs, 1, len5)}, l6[1] = {arg_arr(obs, 1, len6)};
+    CHECK(tsr_fn_routine(lk, 1, l5, 1, lr) == TSR_EARG, "linkage refuses a condensed length of 5");
+    if (tsr_fn_routine(lk, 1, l6, 1, lr) == TSR_OK) {
+        CHECK(lr[0].arr.shape[0] == 3, "linkage of 4 points from 6 distances");
+        tsr_free(lr[0].arr.data, lr[0].bytes);
+    } else CHECK(0, "linkage of 6 distances failed: %s", tsr_fn_error());
+    free(obs);
+
+    /* signal: zpk2tf (now checked) through butter, and a high order beyond its stack scratch */
+    const int bt = tsr_fn_find("signal.butter");
+    for (int N = 4; N <= 64; N += 60) {
+        tsr_arg ba[2] = {arg_num((double)N), arg_num(0.25)};
+        tsr_result br[2];
+        if (bt >= 0 && tsr_fn_routine(bt, 2, ba, 2, br) == TSR_OK) {
+            CHECK(br[0].arr.shape[0] == N + 1 && br[1].arr.shape[0] == N + 1 && ((double *)br[1].arr.data)[0] == 1.0,
+                  "butter(%d) shape and a[0]", N);
+            tsr_free(br[0].arr.data, br[0].bytes);
+            tsr_free(br[1].arr.data, br[1].bytes);
+        } else CHECK(0, "butter(%d) failed: %s", N, tsr_fn_error());
+    }
+
+    /* BLAS pool: controllable exactly when a BLAS with a thread API is loaded */
+    CHECK(tsr_set_blas_threads(0) == TSR_EARG, "blas threads < 1 refused");
+    if (tsr_feature("openblas_threads")) {
+        const int prev = tsr_get_blas_threads();
+        CHECK(tsr_set_blas_threads(1) == TSR_OK && tsr_get_blas_threads() == 1, "blas threads set to 1");
+        if (prev > 0) tsr_set_blas_threads(prev);
+    } else {
+        CHECK(tsr_set_blas_threads(1) == TSR_ETYPE && tsr_get_blas_threads() == 0, "no BLAS: refused, unknown size");
+    }
+
+    /* thread clamp follows the CPUs this process may use (affinity / cgroup quota) */
+    const int cpus = tsr_effective_cpus();
+    CHECK(cpus >= 1, "effective cpus %d", cpus);
+#if defined(_SC_NPROCESSORS_ONLN)
+    CHECK(cpus <= sysconf(_SC_NPROCESSORS_ONLN), "cpus %d within the online CPUs", cpus);
+#endif
+    tsr_set_threads(1 << 30);
+    CHECK(tsr_get_threads() == (tsr_openmp() ? cpus * 4 : 1), "threads clamped to 4 x effective cpus (%d)", tsr_get_threads());
+
+    /* repro_f32 regions follow tsr_set_threads, and stay bit-identical across thread counts */
+    const int64_t RN = 1 << 16;
+    float *rx = malloc(RN * sizeof(float)), *r1 = malloc(RN * sizeof(float)), *r4 = malloc(RN * sizeof(float));
+    for (int64_t i = 0; i < RN; i++) rx[i] = (float)((double)(i - RN / 2) / 1024.0);
+    tsr_set_threads(1);
+    tsr_repro_exp_f32(RN, rx, r1);
+    tsr_set_threads(4);
+    tsr_repro_exp_f32(RN, rx, r4);
+    CHECK(memcmp(r1, r4, RN * sizeof(float)) == 0, "repro exp identical at 1 and 4 threads");
+    tsr_repro_erf_f32(RN, rx, r4);
+    tsr_set_threads(1);
+    tsr_repro_erf_f32(RN, rx, r1);
+    CHECK(memcmp(r1, r4, RN * sizeof(float)) == 0, "repro erf identical at 1 and 4 threads");
+    free(rx); free(r1); free(r4);
+
+    /* fork: a child of a process that computed with threads runs serial until set again; the parent keeps its count */
+    tsr_set_threads(4);
+    (void)tsr_get_threads();                                    /* as a kernel would, before a parallel region */
+    fflush(NULL);
+    pid_t pid = fork();
+    if (pid == 0) _exit(tsr_get_threads() == 1 ? 0 : 3);
+    int status = -1;
+    CHECK(pid > 0 && waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0,
+          "forked child runs serial (status %d)", status);
+    CHECK(tsr_get_threads() == (tsr_openmp() ? 4 : 1), "parent keeps its thread count");
+    tsr_set_threads(1);
+
+    /* distribution errors are per calling thread: a failing call on one thread never leaks into the other */
+    const int sk = tsr_fn_find("stats.skewnorm");
+    CHECK(sk >= 0, "stats.skewnorm registered");
+    if (sk >= 0) {
+        _Atomic int done = 0;
+        abi_dist_job fail_job = {sk, 0, 0, &done}, ok_job = {sk, 0, 0, &done};
+        pthread_t ta, tb;
+        pthread_create(&tb, NULL, abi_dist_ok, &ok_job);
+        pthread_create(&ta, NULL, abi_dist_failing, &fail_job);
+        pthread_join(ta, NULL);
+        pthread_join(tb, NULL);
+        CHECK(fail_job.bad == 0, "failing thread saw its own error every time (%d of %d missed)", fail_job.bad, fail_job.calls);
+        CHECK(ok_job.bad == 0, "succeeding thread never saw the other thread's error (%d of %d leaked)", ok_job.bad, ok_job.calls);
+    }
+}
+
 int main(void)
 {
     test_alloc();
@@ -963,6 +1137,7 @@ int main(void)
     test_rfft();
     test_size_overflow();
     test_security_regressions();
+    test_abi_runtime();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);
     return failures ? 1 : 0;
