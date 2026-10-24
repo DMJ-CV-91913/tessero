@@ -22,6 +22,7 @@ a new record that supersedes the old one.
 | [0014](0014-abi-stability.md) | A versioned C ABI: exported surface, soname, capability query and process settings | Proposed (amends 0004, 0006) |
 | [0015](0015-memory-ownership.md) | Memory ownership: the layer that allocates memory frees it | Accepted (amends 0004, 0011, 0014) |
 | [0016](0016-input-sanitization-gate.md) | A central input gate before every registry call | Proposed (amends 0011) |
+| [0017](0017-openmp-runtime-split.md) | OpenMP runtimes: ship with GCC libgomp, analyse races under LLVM libomp + Archer | Accepted |
 
 To propose a decision, copy the template below into a new file with the next
 number and open a pull request. Discussion happens on the pull request.

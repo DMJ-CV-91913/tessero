@@ -1333,6 +1333,24 @@ static void test_fuzz_batch_a(void)
     rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
     CHECK(rc == 0 && isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(646, 1, ...) is NaN, not an int overflow (rc %d)", rc);
     if (rc == 0) fa_free(r, 1);
+    /* CI fuzz (np_shape.c:687): np.roll with a scalar shift and axis=() read axes[0] uninitialised and indexed with it.
+       NumPy broadcasts the shift against zero axes: nothing rolls and the result is a copy */
+    double rl[3] = {1, 2, 3};
+    int64_t rls[1] = {3};
+    tsr_arg noax; memset(&noax, 0, sizeof noax); noax.kind = 5; noax.count = 0;
+    tsr_arg ra[3] = {arg_arr(rl, 1, rls), arg_int(1), noax};
+    rc = fa_call("np.roll", 3, ra, r, 1);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 3 && ((double *)r[0].arr.data)[0] == 1 && ((double *)r[0].arr.data)[2] == 3,
+          "np.roll(a, 1, axis=()) is an unrolled copy (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    /* CI fuzz timeout: invhilbert is O(n^3) (three O(n) binomials per entry); n beyond 700 is refused */
+    tsr_arg ih[1] = {arg_int(701)};
+    CHECK(fa_call("slinalg.invhilbert", 1, ih, r, 1) == TSR_EARG, "invhilbert(701) refused (work out of reach)");
+    ih[0] = arg_int(3);
+    rc = fa_call("slinalg.invhilbert", 1, ih, r, 1);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 3 && ((double *)r[0].arr.data)[0] == 9.0 && ((double *)r[0].arr.data)[1] == -36.0,
+          "invhilbert(3) still exact: [[9, -36, 30], ...] (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
     tsr_arg lw[2] = {arg_num(1.0), arg_num(NAN)};
     CHECK(fa_call("special.lambertw", 2, lw, r, 1) < 0, "lambertw with k = NaN refused");
     lw[1] = arg_num(1e300);
@@ -2195,16 +2213,29 @@ static void test_abi_runtime(void)
     /* fork: a child of a process that computed with threads runs serial until set again; the parent keeps its count
        (POSIX only: Windows has no fork; platform-debt PD-15) */
 #if !defined(_WIN32)
+    /* the parent really runs a threaded region first (above TSR_PAR_MIN), so the OpenMP runtime's worker pool exists
+       at fork time; the child must run the same kernel serially and finish (an alarm turns a deadlock into a failure) */
+    const int64_t fn_[1] = {(int64_t)1 << 18}, fs8[1] = {8};
+    double *fa = (double *)malloc(sizeof(double) * (size_t)fn_[0]), *fo = (double *)malloc(sizeof(double) * (size_t)fn_[0]);
+    for (int64_t i = 0; i < fn_[0]; i++) fa[i] = (double)(i % 7) * 0.25;
     tsr_set_threads(4);
-    (void)tsr_get_threads();                                    /* as a kernel would, before a parallel region */
+    tsr_unary(U_EXP, TSR_F64, 1, fn_, fa, fs8, fo, fs8);       /* parallel region in the parent */
+    const double fwant = fo[(int64_t)1 << 17];                 /* the threaded result: the serial child must match */
     fflush(NULL);
     pid_t pid = fork();
-    if (pid == 0) _exit(tsr_get_threads() == 1 ? 0 : 3);
+    if (pid == 0) {
+        alarm(20);
+        if (tsr_get_threads() != 1) _exit(3);
+        fo[(int64_t)1 << 17] = 0.0;
+        if (tsr_unary(U_EXP, TSR_F64, 1, fn_, fa, fs8, fo, fs8) != 0) _exit(4);
+        _exit(fo[(int64_t)1 << 17] == fwant ? 0 : 5);
+    }
     int status = -1;
     CHECK(pid > 0 && waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0,
-          "forked child runs serial (status %d)", status);
+          "forked child of a threaded parent runs a kernel serially, same bits, no deadlock (status %d)", status);
     CHECK(tsr_get_threads() == (tsr_openmp() ? 4 : 1), "parent keeps its thread count");
     tsr_set_threads(1);
+    free(fa); free(fo);
 #endif
 
     /* distribution errors are per calling thread: a failing call on one thread never leaks into the other */
