@@ -879,7 +879,7 @@ int dist_rvs_array(const fn_dist *fd, void *bitgen, int64_t n, const double *con
 __attribute__((visibility("default")))
 int tsr_poisson_binom(int method, const double *xv, int64_t nx, const double *p, int64_t n, double loc, double *out)
 {
-    if (n < 0 || !p || !out) return -1;
+    if (n < 0 || !p || !out || (nx > 0 && !xv)) return -1;
     dist_take_error();   /* clear any stale per-thread failure left by earlier work so it is not misattributed here */
     try {
         tsd::PoissonBinom pb(p, n);
