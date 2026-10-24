@@ -27,6 +27,11 @@ Requirements:
   `brew install openblas`). The copy bundled with `pip install scipy` is found
   automatically. Set `TESSERO_BLAS` to use another build. ILP64 builds are refused
   because they would silently truncate indices.
+- Supported LAPACK: 3.11 or newer (Ubuntu 24.04, current Debian, Homebrew, the SciPy wheels). On LAPACK 3.10
+  (Ubuntu 22.04) Tessero runs safely, with workarounds for two LAPACKE 3.10 defects, but four functions may
+  return different though valid values: `signal.savgol_filter` and `linalg.eig_banded` (eigenvector signs),
+  `linalg.subspace_angles` (a tiny angle returned as 0) and `linalg.ordqz` (sign and last digits). CI checks
+  that 3.10 runs without a crash or any other difference.
 
 ## Option B: the native extension
 

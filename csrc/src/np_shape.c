@@ -681,7 +681,9 @@ static int r_roll(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     else if ((rc = axis_tuple(aa, v.ndim, axes, &na, 1, NULL)) < 0) { own_free(&o); return rc; }
     if (ns != na && ns != 1 && na != 1) { own_free(&o); fn_set_error("shape mismatch: objects cannot be broadcast to a single shape.  Mismatch is between arg 0 with shape (%d,) and arg 1 with shape (%d,).", ns, na); return TSR_EARG; }
     int64_t tot[TSR_MAXDIM] = {0};
-    const int nb = ns > na ? ns : na;
+    /* NumPy broadcasts shift against axis: a single shift takes the axis count, including zero for axis=() (nothing
+       rolls); max(ns, na) read axes[0] uninitialised when na == 0 (fuzz, np_shape.c:687) */
+    const int nb = ns == 1 ? na : ns;
     for (int i = 0; i < nb; i++) {
         const int ax = axes[na == 1 ? 0 : i];
         tot[ax] = (int64_t)((uint64_t)tot[ax] + (uint64_t)shi[ns == 1 ? 0 : i]);

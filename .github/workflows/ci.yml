@@ -269,16 +269,15 @@ jobs:
       - run: php -d ffi.enable=1 tools/parity/gen-facades.php --check
       - run: php -d ffi.enable=1 -d memory_limit=8G tools/parity/run-tests.php --backend=ffi --no-record
 
-  # The same parity suite against Ubuntu 22.04's LAPACK 3.10.0 / OpenBLAS 0.3.20 (the oldest runtime the
-  # glibc-2.35 binary targets). Informational until the kernel stops depending on the two LAPACKE 3.10 defects
-  # described at the top of this file. Two further differences there are LAPACK-implementation dependent, not
-  # defects: slinalg.eig_banded (eigenvector sign) and slinalg.subspace_angles call 5 (an angle of 2.6e-8 that
-  # the older LAPACK returns as 0).
+  # LAPACK >= 3.11 is the supported range. Ubuntu 22.04 ships LAPACK 3.10.0 / OpenBLAS 0.3.20, whose LAPACKE has two
+  # defects the kernel works around (described at the top of this file); this job proves the parity suite runs to
+  # completion there without a crash or an exception. Four functions return different but valid values on 3.10
+  # (eigenvector signs, a tiny angle returned as 0, last digits): they are allowed and reported as a warning; any
+  # other difference fails the job.
   parity-ffi-lapack310:
-    name: NumPy/SciPy fixtures (FFI) on LAPACK 3.10 (Ubuntu 22.04, informational)
+    name: LAPACK 3.10 crash safety (Ubuntu 22.04; LAPACK >= 3.11 supported)
     needs: native
     runs-on: ubuntu-22.04
-    continue-on-error: true
     env:
       # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
       # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
@@ -293,7 +292,19 @@ jobs:
         with: { php-version: '8.4', extensions: ffi }
       - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
       - run: dpkg -l | grep -Ei 'lapack|openblas'
-      - run: php -d ffi.enable=1 -d memory_limit=8G tools/parity/run-tests.php --backend=ffi --no-record
+      - name: parity suite completes; only the documented LAPACK 3.10 differences
+        run: |
+          set +e
+          php -d ffi.enable=1 -d memory_limit=8G tools/parity/run-tests.php --backend=ffi --no-record > parity.log 2>&1
+          rc=$?
+          set -e
+          tail -n 30 parity.log
+          grep -q 'functions pass' parity.log || { echo "::error::the parity run did not complete (exit $rc): crash or fatal error"; exit 1; }
+          if grep -q 'threw ' parity.log; then echo '::error::a function threw on LAPACK 3.10:'; grep 'threw ' parity.log | head -n 20; exit 1; fi
+          unexpected=$(grep '^FAIL ' parity.log | grep -vE '^FAIL (signal\.savgol_filter|slinalg\.eig_banded|slinalg\.subspace_angles|slinalg\.ordqz):' || true)
+          [ -z "$unexpected" ] || { echo '::error::value differences on LAPACK 3.10 beyond the documented four:'; echo "$unexpected"; exit 1; }
+          case $rc in 0|1) ;; *) echo "::error::exit status $rc"; exit 1 ;; esac
+          if grep -q '^FAIL ' parity.log; then echo "::warning::documented LAPACK 3.10 differences (LAPACK >= 3.11 is supported): $(grep '^FAIL ' parity.log | cut -d: -f1 | sed 's/^FAIL //' | paste -sd ' ')"; fi
 
   # ---------------------------------------------------------------- ext-tessero (native backend)
   sync:

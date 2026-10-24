@@ -1704,7 +1704,7 @@ long double ks_select_ld(long double cdfprob, long double sfprob, bool cdf)
 /* numpy matmul of small square matrices (row-major) */
 void matmul(const vector<double> &A, const vector<double> &B, vector<double> &C, int m)
 {
-    vector<double> R(m * m);
+    vector<double> R((size_t)m * m);
     for (int i = 0; i < m; i++)
         for (int j = 0; j < m; j++) {
             double s = 0;
@@ -1722,7 +1722,7 @@ long double kolmogn_DMTW(int64_t n, double d, bool cdf)
     const int64_t k = (int64_t)std::ceil(nd);
     const double h = k - nd;
     const int m = (int)(2 * k - 1);
-    vector<double> H(m * m, 0.0), v(m), w(m);
+    vector<double> H((size_t)m * m, 0.0), v(m), w(m);
     for (int j = 1; j <= m; j++) v[j - 1] = 1.0 - std::pow(h, (double)j);
     double fac = 1.0;
     for (int j = 1; j <= m; j++) {
@@ -1736,7 +1736,7 @@ long double kolmogn_DMTW(int64_t n, double d, bool cdf)
         for (int r = i - 1; r < m; r++) H[r * m + i] = w[r - (i - 1)];
     for (int r = 0; r < m; r++) H[r * m + 0] = v[r];
     for (int c = 0; c < m; c++) H[(m - 1) * m + c] = v[m - 1 - c];
-    vector<double> Hp(m * m, 0.0);
+    vector<double> Hp((size_t)m * m, 0.0);
     for (int i = 0; i < m; i++) Hp[i * m + i] = 1.0;
     int64_t nn = n;
     int expnt = 0, Hexpnt = 0;
@@ -2783,7 +2783,7 @@ int r_anderson_ksamp(const void *, const tsr_arg *a, int n, tsr_result *res, int
 /* eigen-decomposition of a symmetric matrix (cyclic Jacobi, long double): A = V diag(w) V^T */
 void sym_eig(vector<long double> A, int n, vector<long double> &w, vector<long double> &V)
 {
-    V.assign(n * n, 0);
+    V.assign((size_t)n * n, 0);
     for (int i = 0; i < n; i++) V[i * n + i] = 1;
     for (int sweep = 0; sweep < 100; sweep++) {
         long double off = 0;
@@ -2873,7 +2873,7 @@ int core_epps(vector<vector<double>> &xs, const vector<double> &t, double *out, 
             const double mu = rowmean(G, m, r);
             for (int64_t i = 0; i < m; i++) X[r * m + i] -= mu;
         }
-        C.assign(d * d, 0);
+        C.assign((size_t)d * d, 0);
         const double fact = (double)(m - 1);
         for (int r = 0; r < d; r++)
             for (int c = 0; c < d; c++) {
@@ -2889,7 +2889,7 @@ int core_epps(vector<vector<double>> &xs, const vector<double> &t, double *out, 
     vector<long double> cx, cy;
     cov(gx, nx, cx);
     cov(gy, ny, cy);
-    vector<long double> E(d * d);
+    vector<long double> E((size_t)d * d);
     const double fx = (double)n / (double)nx, fy = (double)n / (double)ny;
     for (int i = 0; i < d * d; i++) E[i] = (double)(fx * (double)cx[i]) + (double)(fy * (double)cy[i]);
     for (int i = 0; i < d; i++) for (int j = i + 1; j < d; j++) { const long double s = (E[i * d + j] + E[j * d + i]) / 2; E[i * d + j] = E[j * d + i] = s; }

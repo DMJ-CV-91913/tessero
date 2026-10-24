@@ -1324,6 +1324,33 @@ static void test_fuzz_batch_a(void)
     rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
     CHECK(rc == 0 && !isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(2, 1, ...) still computed (rc %d)", rc);
     if (rc == 0) fa_free(r, 1);
+    /* xsf's int recurrence coefficients overflow beyond |n| = 645 (CI fuzz, legendre.h:584): 645 computes, 646 is NaN */
+    sy[0] = arg_int(645);
+    rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
+    CHECK(rc == 0 && !isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(645, 1, ...) computed (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    sy[0] = arg_int(646);
+    rc = fa_call("special.sph_harm_y", 4, sy, r, 1);
+    CHECK(rc == 0 && isnan(((double *)r[0].arr.data)[0]), "sph_harm_y(646, 1, ...) is NaN, not an int overflow (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    /* CI fuzz (np_shape.c:687): np.roll with a scalar shift and axis=() read axes[0] uninitialised and indexed with it.
+       NumPy broadcasts the shift against zero axes: nothing rolls and the result is a copy */
+    double rl[3] = {1, 2, 3};
+    int64_t rls[1] = {3};
+    tsr_arg noax; memset(&noax, 0, sizeof noax); noax.kind = 5; noax.count = 0;
+    tsr_arg ra[3] = {arg_arr(rl, 1, rls), arg_int(1), noax};
+    rc = fa_call("np.roll", 3, ra, r, 1);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 3 && ((double *)r[0].arr.data)[0] == 1 && ((double *)r[0].arr.data)[2] == 3,
+          "np.roll(a, 1, axis=()) is an unrolled copy (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    /* CI fuzz timeout: invhilbert is O(n^3) (three O(n) binomials per entry); n beyond 700 is refused */
+    tsr_arg ih[1] = {arg_int(701)};
+    CHECK(fa_call("slinalg.invhilbert", 1, ih, r, 1) == TSR_EARG, "invhilbert(701) refused (work out of reach)");
+    ih[0] = arg_int(3);
+    rc = fa_call("slinalg.invhilbert", 1, ih, r, 1);
+    CHECK(rc == 0 && r[0].arr.shape[0] == 3 && ((double *)r[0].arr.data)[0] == 9.0 && ((double *)r[0].arr.data)[1] == -36.0,
+          "invhilbert(3) still exact: [[9, -36, 30], ...] (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
     tsr_arg lw[2] = {arg_num(1.0), arg_num(NAN)};
     CHECK(fa_call("special.lambertw", 2, lw, r, 1) < 0, "lambertw with k = NaN refused");
     lw[1] = arg_num(1e300);
@@ -1924,6 +1951,165 @@ static void test_fuzz_batch_c(void)
     CHECK(tsr_allocated() == before, "fuzz batch C leaves no kernel allocation behind (%lld bytes)", (long long)(tsr_allocated() - before));
 }
 
+/* batch D: csgraph node indices and CSR arrays (C-O1, the CI csg_bfs_pred overflow), the BiasedUrn recursion's
+   pointer arithmetic, and the specfun int overflows reached through hyperu and the spheroidal radial functions.
+   Under `make sanitize` the calls below would stop at the old undefined behaviour. */
+static int bd_ufunc(const char *name, int method, int nin, int nout, double *in, int64_t n, double *out)
+{
+    const int id = tsr_fn_find(name);
+    if (id < 0) return -999;
+    void *data[16]; int64_t strides[16], shape[1] = {n};
+    for (int k = 0; k < nin; k++) { data[k] = in + k * n; strides[k] = 8; }
+    for (int k = 0; k < nout; k++) { data[nin + k] = out + k * n; strides[nin + k] = 8; }
+    return tsr_fn_ufunc(id, method, 0, 1, shape, nin + nout, data, strides);
+}
+
+static void test_fuzz_batch_d(void)
+{
+    tsr_result r[4];
+    const int64_t before = tsr_allocated();
+    double g[9] = {0, 1, 0, 0, 0, 1, 1, 0, 0};                     /* 3-node cycle */
+    int64_t s33[2] = {3, 3}, s13[2] = {1, 3}, s3[1] = {3}, s2[1] = {2};
+    const tsr_arg G = arg_arr(g, 2, s33);
+    const char *starts[3] = {"csgraph.breadth_first_order", "csgraph.depth_first_order", "csgraph.breadth_first_tree"};
+    for (int k = 0; k < 3; k++) {
+        tsr_arg a[2] = {G, arg_int(5)};
+        CHECK(fa_call(starts[k], 2, a, r, 2) == TSR_EARG, "%s with i_start past the nodes refused", starts[k]);
+        a[1] = arg_int(-1);
+        CHECK(fa_call(starts[k], 2, a, r, 2) == TSR_EARG, "%s with a negative i_start refused", starts[k]);
+        a[1] = arg_num(NAN);
+        CHECK(fa_call(starts[k], 2, a, r, 2) < 0, "%s with i_start = NaN refused", starts[k]);
+        a[1] = arg_int(2);
+        const int rc = fa_call(starts[k], 2, a, r, 2);
+        CHECK(rc == 0, "%s from node 2 still works (rc %d)", starts[k], rc);
+        if (rc == 0) fa_free(r, 2);
+    }
+    tsr_arg dft[2] = {G, arg_int(3)};
+    CHECK(fa_call("csgraph.depth_first_tree", 2, dft, r, 1) == TSR_EARG, "depth_first_tree with i_start = n refused");
+
+    /* csgraph_to_dense: indptr past the data, decreasing, not starting at 0; n_nodes beyond n*n */
+    double dat[2] = {1, 2}, ind[2] = {0, 1}, ptr_bad[4] = {0, 1, 9, 9}, ptr_dec[4] = {0, 2, 1, 2}, ptr_off[4] = {1, 1, 2, 2};
+    int64_t s4[1] = {4};
+    tsr_arg cd[4] = {arg_arr(dat, 1, s2), arg_arr(ind, 1, s2), arg_arr(ptr_bad, 1, s4), arg_int(3)};
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) == TSR_EARG, "csgraph_to_dense with indptr past the data refused");
+    cd[2] = arg_arr(ptr_dec, 1, s4);
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) == TSR_EARG, "csgraph_to_dense with a decreasing indptr refused");
+    cd[2] = arg_arr(ptr_off, 1, s4);
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) == TSR_EARG, "csgraph_to_dense with indptr[0] != 0 refused");
+    cd[3] = arg_num(1e19);
+    CHECK(fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1) < 0, "csgraph_to_dense with a huge n_nodes refused");
+    double ptr_ok[4] = {0, 1, 2, 2};
+    cd[2] = arg_arr(ptr_ok, 1, s4); cd[3] = arg_int(3);
+    int rc = fa_call("csgraph.csgraph_to_dense", 4, cd, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[0] == 1.0 && ((double *)r[0].arr.data)[4] == 2.0, "csgraph_to_dense still builds (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+
+    /* predecessors that do not match the graph were read past their end */
+    double p13[3] = {-9999, 0, 1}, p2[2] = {-9999, 0};
+    tsr_arg cdm[2] = {G, arg_arr(p13, 2, s13)};
+    CHECK(fa_call("csgraph.construct_dist_matrix", 2, cdm, r, 1) == TSR_EARG, "construct_dist_matrix with 1x3 predecessors for 3 nodes refused");
+    tsr_arg rp[2] = {G, arg_arr(p2, 1, s2)};
+    CHECK(fa_call("csgraph.reconstruct_path", 2, rp, r, 1) == TSR_EARG, "reconstruct_path with 2 predecessors for 3 nodes refused");
+    rp[1] = arg_arr(p13, 1, s3);
+    rc = fa_call("csgraph.reconstruct_path", 2, rp, r, 1);
+    CHECK(rc == 0, "reconstruct_path with matching predecessors still works (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+
+    /* maximum_flow / yen: no float->int cast of NaN or non-integral capacities and indices */
+    double cap[9] = {0, 3, 0, 0, 0, 2, 0, 0, 0};
+    tsr_arg mf[3] = {arg_arr(cap, 2, s33), arg_int(0), arg_int(2)};
+    rc = fa_call("csgraph.maximum_flow", 3, mf, r, 2);
+    CHECK(rc == 0 && fa_num(&r[0]) == 2.0, "maximum_flow 0->2 is 2 (rc %d)", rc);
+    if (rc == 0) fa_free(r, 2);
+    mf[1] = arg_num(NAN);
+    CHECK(fa_call("csgraph.maximum_flow", 3, mf, r, 2) < 0, "maximum_flow with source = NaN refused");
+    cap[1] = 1.5; mf[1] = arg_int(0);
+    CHECK(fa_call("csgraph.maximum_flow", 3, mf, r, 2) == TSR_EARG, "maximum_flow with a non-integral capacity refused");
+    cap[1] = NAN;
+    CHECK(fa_call("csgraph.maximum_flow", 3, mf, r, 2) == TSR_EARG, "maximum_flow with a NaN capacity refused");
+    tsr_arg ye[4] = {G, arg_int(0), arg_int(2), arg_num(NAN)};
+    CHECK(fa_call("csgraph.yen", 4, ye, r, 2) < 0, "yen with K = NaN refused");
+
+    /* BiasedUrn (Wallenius): pmf through the recursion (lower limit moving) and cdf through the table method.
+       On x86-64 the values are the pre-fix bits (dist_disc.cpp now indexes instead of stepping pointers below the
+       buffer). aarch64 compilers contract a*b+c into one FMA (the kernel is built with -ffp-contract=off only for
+       the reproducible-f32 and numpy-random code), so two values differ there in the last bits; Linux and macOS
+       aarch64 agree, and the aarch64 pin guards against drift (no pre-fix aarch64 bits were recorded). */
+    enum { W = 4 };
+    double win[6 * W], wout[W];
+    for (int i = 0; i < W; i++) { win[i] = 2 + i; win[W + i] = 60; win[2 * W + i] = 30; win[3 * W + i] = 25; win[4 * W + i] = 0.1 + i; win[5 * W + i] = 0; }
+    rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, win, W, wout);
+#if defined(__aarch64__)
+    const double wexp0 = 0x1.6f3fc1ff1f474p-3, wexp3 = 0x1.cfdd2c2779e1dp-35;
+#else
+    const double wexp0 = 0x1.6f3fc1ff1f476p-3, wexp3 = 0x1.cfdd2c2779e1ep-35;
+#endif
+    CHECK(rc == 0 && wout[0] == wexp0 && wout[1] == 0x1.2cb5830c138e2p-23 && wout[2] == 0x1.203a553569e89p-31
+          && wout[3] == wexp3, "nchypergeom_wallenius.pmf through the recursion keeps its bits (rc %d, %a %a %a %a)", rc, wout[0], wout[1], wout[2], wout[3]);
+    double wsum = 0, wsx[6 * 26], wso[26];
+    for (int i = 0; i <= 25; i++) { wsx[i] = i; wsx[26 + i] = 60; wsx[52 + i] = 30; wsx[78 + i] = 25; wsx[104 + i] = 2.5; wsx[130 + i] = 0; }
+    rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, wsx, 26, wso);
+    for (int i = 0; i <= 25; i++) wsum += wso[i];
+    CHECK(rc == 0 && fabs(wsum - 1.0) < 1e-9, "nchypergeom_wallenius pmf sums to 1 over its support (%.17g)", wsum);
+    rc = bd_ufunc("stats.nchypergeom_wallenius", 2, 6, 1, wsx, 26, wso);
+    CHECK(rc == 0 && fabs(wso[25] - 1.0) < 1e-9 && wso[10] <= wso[20], "nchypergeom_wallenius cdf (table method) (rc %d)", rc);
+
+    /* specfun: chgubi's digit estimate (hyperu with huge a) and the rmn1/rmn2l work size (c = -inf) were signed
+       int overflows on (int) of a non-finite value; the results keep SciPy's x86-64 bits */
+    double hin[3 * 3] = {1e300, 1e200, 1, 2, 1, 1, 1, 2, 0.5}, hout[3];
+    rc = bd_ufunc("special.hyperu", 0, 3, 1, hin, 3, hout);
+    CHECK(rc == 0 && isnan(hout[0]) && isnan(hout[1]) && hout[2] == 0x1.d887be0f4bed8p-1, "hyperu with huge a is NaN, hyperu(1, 1, 0.5) keeps its bits (rc %d)", rc);
+    double pin[4 * 2] = {0, 1, 1, 3, -INFINITY, 2.5, 1.5, 1.2}, pout[2 * 2];
+    const char *rad[4] = {"special.pro_rad1", "special.pro_rad2", "special.obl_rad1", "special.obl_rad2"};
+    /* c = -inf is outside the domain. SciPy's x86-64 result is (0, nan), an artifact of x86's conversion of a NaN to
+       int (the parity fixtures record it, so x86-64 keeps it); on aarch64 the second-kind radial functions give
+       (nan, nan) for the same input. Pinned per architecture, like yn (platform-debt PD-20). */
+    for (int k = 0; k < 4; k++) {
+        rc = bd_ufunc(rad[k], 0, 4, 2, pin, 2, pout);
+#if defined(__aarch64__)
+        const int rad_ok = (k == 1 || k == 3) ? isnan(pout[0]) && isnan(pout[2]) : pout[0] == 0.0 && isnan(pout[2]);
+#else
+        const int rad_ok = pout[0] == 0.0 && isnan(pout[2]);
+#endif
+        CHECK(rc == 0 && rad_ok, "%s at c = -inf keeps its pinned value (rc %d; got %a %a %a %a)", rad[k], rc, pout[0], pout[1], pout[2], pout[3]);
+    }
+
+    /* min_weight_full_bipartite_matching: NaN/inf weights broke the potentials and the unmatched p[j] = 0 wrote at
+       index -1 (fuzz D-N1); an infeasible graph returned a "matching" through missing edges */
+    double bw[4] = {1, 2, 3, 4};
+    tsr_arg bm[1] = {arg_arr(bw, 2, (int64_t[]){2, 2})};
+    rc = fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2);
+    CHECK(rc == 0 && ((int64_t *)r[1].arr.data)[0] == 0 && ((int64_t *)r[1].arr.data)[1] == 1, "bipartite matching of [[1,2],[3,4]] (rc %d)", rc);
+    if (rc == 0) fa_free(r, 2);
+    bw[1] = NAN;
+    CHECK(fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2) == TSR_EARG, "bipartite matching with a NaN weight refused");
+    bw[1] = INFINITY;
+    CHECK(fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2) == TSR_EARG, "bipartite matching with an infinite weight refused");
+    double bz[4] = {1, 2, 0, 0};                                         /* row 1 has no edge */
+    bm[0] = arg_arr(bz, 2, (int64_t[]){2, 2});
+    CHECK(fa_call("csgraph.min_weight_full_bipartite_matching", 1, bm, r, 2) == TSR_EARG, "bipartite matching without a full matching refused");
+
+    /* invpascal: O(n^4) symmetric / O(n^3) triangular work timed out the CI fuzz run (seed 1); now one binomial row
+       per k with sl_binom's exact arithmetic (same bits) and a bound on the symmetric work */
+    tsr_arg ip[2] = {arg_int(8), arg_str("symmetric")};
+    rc = fa_call("slinalg.invpascal", 2, ip, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[3 * 8 + 5] == 0x1.b08p+9 && ((double *)r[0].arr.data)[5 * 8 + 2] == -0x1.0e8p+9,
+          "invpascal(8) symmetric keeps its values (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    ip[1] = arg_str("upper");
+    rc = fa_call("slinalg.invpascal", 2, ip, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[3 * 8 + 5] == 0x1.4p+3 && signbit(((double *)r[0].arr.data)[5 * 8 + 2]),
+          "invpascal(8) upper keeps its values, -0.0 below the diagonal (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    ip[0] = arg_int(1861); ip[1] = arg_str("symmetric");
+    CHECK(fa_call("slinalg.invpascal", 2, ip, r, 1) == TSR_EARG, "invpascal(1861) symmetric refused (work bound)");
+    ip[0] = arg_int(3000); ip[1] = arg_str("lower");
+    rc = fa_call("slinalg.invpascal", 2, ip, r, 1);
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[1 * 3000 + 0] == -1.0, "invpascal(3000) lower is computed (O(n^2)) (rc %d)", rc);
+    if (rc == 0) fa_free(r, 1);
+    CHECK(tsr_allocated() == before, "batch D leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 static void test_abi_runtime(void)
 {
     /* version and capability negotiation: one version source */
@@ -2027,16 +2213,29 @@ static void test_abi_runtime(void)
     /* fork: a child of a process that computed with threads runs serial until set again; the parent keeps its count
        (POSIX only: Windows has no fork; platform-debt PD-15) */
 #if !defined(_WIN32)
+    /* the parent really runs a threaded region first (above TSR_PAR_MIN), so the OpenMP runtime's worker pool exists
+       at fork time; the child must run the same kernel serially and finish (an alarm turns a deadlock into a failure) */
+    const int64_t fn_[1] = {(int64_t)1 << 18}, fs8[1] = {8};
+    double *fa = (double *)malloc(sizeof(double) * (size_t)fn_[0]), *fo = (double *)malloc(sizeof(double) * (size_t)fn_[0]);
+    for (int64_t i = 0; i < fn_[0]; i++) fa[i] = (double)(i % 7) * 0.25;
     tsr_set_threads(4);
-    (void)tsr_get_threads();                                    /* as a kernel would, before a parallel region */
+    tsr_unary(U_EXP, TSR_F64, 1, fn_, fa, fs8, fo, fs8);       /* parallel region in the parent */
+    const double fwant = fo[(int64_t)1 << 17];                 /* the threaded result: the serial child must match */
     fflush(NULL);
     pid_t pid = fork();
-    if (pid == 0) _exit(tsr_get_threads() == 1 ? 0 : 3);
+    if (pid == 0) {
+        alarm(20);
+        if (tsr_get_threads() != 1) _exit(3);
+        fo[(int64_t)1 << 17] = 0.0;
+        if (tsr_unary(U_EXP, TSR_F64, 1, fn_, fa, fs8, fo, fs8) != 0) _exit(4);
+        _exit(fo[(int64_t)1 << 17] == fwant ? 0 : 5);
+    }
     int status = -1;
     CHECK(pid > 0 && waitpid(pid, &status, 0) == pid && WIFEXITED(status) && WEXITSTATUS(status) == 0,
-          "forked child runs serial (status %d)", status);
+          "forked child of a threaded parent runs a kernel serially, same bits, no deadlock (status %d)", status);
     CHECK(tsr_get_threads() == (tsr_openmp() ? 4 : 1), "parent keeps its thread count");
     tsr_set_threads(1);
+    free(fa); free(fo);
 #endif
 
     /* distribution errors are per calling thread: a failing call on one thread never leaks into the other */
@@ -2274,6 +2473,187 @@ static void test_numerics_review(void)
     } else CHECK(0, "logsumexp axis=1 failed: %s", tsr_fn_error());
 }
 
+/* The registry's input gate (fn_gate.c, ADR 0016): every tsr_fn_* entry point refuses structurally invalid
+   input before any routine, loop or core reads it, and still accepts the edge cases that are valid (empty
+   arrays with no data, reversed views whose offset points at the end of the block, broadcast strides). */
+void fn_results_free(tsr_result *res, int n);   /* fn.h */
+int fn_gate_array(const tsr_array *a, int with_data, const char *what, int k);   /* fn.h */
+static int fn_gate_array_for_test(const tsr_array *a) { return fn_gate_array(a, 2, "output", 0); }
+static int gate_routine(int id, tsr_arg a)
+{
+    tsr_result r[4];
+    const int rc = tsr_fn_routine(id, 1, &a, 4, r);
+    if (rc >= 0) fn_results_free(r, 4);
+    return rc;
+}
+
+static void test_arg_gate(void)
+{
+    const int uq = tsr_fn_find("np.unique");
+    CHECK(uq >= 0, "np.unique is registered");
+    double v[4] = {3.0, 1.0, 2.0, 1.0};
+    const int64_t s4[1] = {4};
+    tsr_arg ok = arg_arr(v, 1, s4);
+    CHECK(gate_routine(uq, ok) == 0, "a valid array passes the gate");
+
+    tsr_arg a = ok; a.kind = 9;
+    CHECK(gate_routine(uq, a) == TSR_EARG && strstr(tsr_fn_error(), "argument 0"), "unknown kind (%s)", tsr_fn_error());
+    a = arg_num(1.0); a.flags = 4;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "undefined flag bits on a number");
+    a = arg_int(3); a.num = 4.0;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "integer and double disagree");
+    a = arg_str("x"); a.str = NULL;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "NULL string");
+    a = arg_none(); a.kind = 4; a.flags = 1;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "flag bits on a bool");
+    a = ok; a.flags = 1;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "undefined flag bit on an array");
+    a = ok; a.arr.dtype = 99;
+    CHECK(gate_routine(uq, a) == TSR_ETYPE, "unknown dtype");
+    a = ok; a.arr.ndim = 33;
+    CHECK(gate_routine(uq, a) == TSR_EDIM, "ndim above 32");
+    a = ok; a.arr.ndim = -1;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "negative ndim");
+    a = ok; a.arr.shape[0] = -4;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "negative dimension");
+    a = ok; a.arr.ndim = 2; a.arr.shape[0] = (int64_t)1 << 40; a.arr.shape[1] = (int64_t)1 << 40; a.arr.strides[1] = 0;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "element count overflow");
+    a = ok; a.arr.data = NULL;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "NULL data with elements");
+    a = ok; a.arr.strides[0] = -8;
+    CHECK(gate_routine(uq, a) == TSR_EARG && strstr(tsr_fn_error(), "before the start"), "reversed view reaching before its block (%s)", tsr_fn_error());
+    a = ok; a.arr.offset = 3;
+    CHECK(gate_routine(uq, a) == TSR_EARG && strstr(tsr_fn_error(), "aligned"), "misaligned float64 elements");
+    a = ok; a.arr.strides[0] = INT64_MAX / 2;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "stride extent overflow");
+    a = ok; a.arr.offset = INT64_MAX - 8;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "offset overflow");
+    tsr_arg nest[5];
+    for (int k = 0; k < 5; k++) { nest[k] = arg_none(); nest[k].kind = 5; nest[k].count = 1; nest[k].items = k < 4 ? &nest[k + 1] : &ok; }
+    CHECK(gate_routine(uq, nest[0]) == TSR_EARG, "sequences nested deeper than 4");
+    a = arg_none(); a.kind = 5; a.count = 2; a.items = NULL;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "sequence items NULL");
+    a.count = -1; a.items = &ok;
+    CHECK(gate_routine(uq, a) == TSR_EARG, "negative sequence length");
+    tsr_result r[2];
+    CHECK(tsr_fn_routine(uq, -1, &ok, 2, r) == TSR_EARG, "negative argument count");
+
+    /* valid edge cases still pass */
+    const int64_t s0[1] = {0};
+    a = arg_arr(NULL, 1, s0);
+    CHECK(gate_routine(uq, a) == 0, "an empty array may have no data");
+    a = ok; a.arr.offset = 24; a.arr.strides[0] = -8;            /* v[::-1] */
+    tsr_result rr[4];
+    int rc = tsr_fn_routine(uq, 1, &a, 4, rr);
+    CHECK(rc == 0 && rr[0].kind == 3 && rr[0].arr.shape[0] == 3, "a reversed view with its offset at the end passes (%d)", rc);
+    if (rc == 0) fn_results_free(rr, 4);
+
+    /* ufunc: the strided operand set */
+    const int erf = tsr_fn_find("special.erf");
+    double x[4] = {0.0, 0.5, 1.0, 2.0}, y[4];
+    void *data[2] = {x, y};
+    int64_t shape[1] = {4}, strides[2] = {8, 8};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == 0, "ufunc: valid operands pass");
+    shape[0] = -4;
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == TSR_EARG, "ufunc: negative dimension");
+    shape[0] = 4; strides[0] = INT64_MAX / 2;
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == TSR_EARG, "ufunc: stride overflow");
+    strides[0] = 0;                                               /* broadcast input: valid */
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, strides) == 0, "ufunc: a broadcast (stride 0) input passes");
+    int64_t big[2] = {(int64_t)1 << 40, (int64_t)1 << 40}, st2[4] = {0, 0, 0, 0};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 2, big, 2, data, st2) == TSR_EARG, "ufunc: element count overflow");
+    /* an empty operand set visits no element, so the gate accepts any stride; the element loop must not do
+       stride arithmetic on it either (fuzz_abi: INT64_MAX * 8 in the dimension-merge test, signed overflow) */
+    int64_t zsh[2] = {0, 8}, zst[4] = {8, INT64_MAX, 8, INT64_MAX};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 2, zsh, 2, data, zst) == 0, "ufunc: a zero-length axis with an extreme stride is a no-op");
+    /* operands are loaded through typed pointers: misaligned steps or first elements are refused (fuzz_abi: rvs) */
+    int64_t mst[2] = {4, 8};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, mst) == TSR_EARG && strstr(tsr_fn_error(), "aligned"),
+          "ufunc: a misaligned float64 step (%s)", tsr_fn_error());
+    void *mdata[2] = {(char *)x + 1, y};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 0, NULL, 2, mdata, NULL) == TSR_EARG, "ufunc: a misaligned 0-d operand");
+    /* outputs may not alias through a zero stride (write races, unbounded work); inputs may (broadcast) */
+    int64_t ost[2] = {8, 0};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, shape, 2, data, ost) == TSR_EARG && strstr(tsr_fn_error(), "alias"),
+          "ufunc: a zero-stride output is refused (%s)", tsr_fn_error());
+    int64_t one4[1] = {1}, ost1[2] = {8, 0};
+    CHECK(tsr_fn_ufunc(erf, 0, TSR_F64, 1, one4, 2, data, ost1) == 0, "ufunc: a zero stride on a length-1 output axis is fine");
+
+    /* gufunc: input and output arrays */
+    const int med = tsr_fn_find("np.median");
+    tsr_array in, out;
+    tsr_array_init(&in, TSR_F64, 1, s4, v);
+    double m = 0.0;
+    tsr_array_init(&out, TSR_F64, 0, NULL, &m);
+    const uint64_t axm[1] = {1};
+    CHECK(tsr_fn_gufunc(med, 1, &in, axm, 0, NULL, 1, &out) == 0 && m == 1.5, "gufunc: valid arrays pass (median %g)", m);
+    tsr_array bad = in; bad.dtype = 42;
+    CHECK(tsr_fn_gufunc(med, 1, &bad, axm, 0, NULL, 1, &out) == TSR_ETYPE, "gufunc: unknown input dtype");
+    bad = in; bad.shape[0] = -1;
+    CHECK(tsr_fn_gufunc(med, 1, &bad, axm, 0, NULL, 1, &out) == TSR_EARG, "gufunc: negative input dimension");
+    tsr_array bo = out; bo.offset = 4;
+    CHECK(tsr_fn_gufunc(med, 1, &in, axm, 0, NULL, 1, &bo) == TSR_EARG, "gufunc: misaligned output");
+    bo = out; bo.data = NULL;
+    CHECK(tsr_fn_gufunc(med, 1, &in, axm, 0, NULL, 1, &bo) == TSR_EARG, "gufunc: NULL output data");
+    {
+        tsr_array ob;                                             /* a length-3 output with stride 0 */
+        const int64_t s3[1] = {3};
+        double m3 = 0.0;
+        tsr_array_init(&ob, TSR_F64, 1, s3, &m3);
+        ob.strides[0] = 0;
+        CHECK(fn_gate_array_for_test(&ob) == TSR_EARG, "gufunc: a zero-stride output array is refused");
+    }
+    CHECK(tsr_fn_gufunc(med, 2, &in, axm, 0, NULL, 1, &out) == TSR_EARG, "gufunc: wrong input count");
+    /* empty core slices: two loop iterations over an input with no elements, NULL data and a negative offset (all
+       valid for an empty array). The gather must form no address from NULL (fuzz_abi; the sanitize build checks it). */
+    tsr_array em;
+    const int64_t s20[2] = {2, 0};
+    tsr_array_init(&em, TSR_F64, 2, s20, NULL);
+    em.offset = -16;
+    em.strides[0] = INT64_MIN;                                   /* any stride is valid on an empty array */
+    double m2[2] = {0.0, 0.0};
+    const int64_t s2[1] = {2};
+    tsr_array out2;
+    tsr_array_init(&out2, TSR_F64, 1, s2, m2);
+    const uint64_t ax1[1] = {2};
+    const int rce = tsr_fn_gufunc(med, 1, &em, ax1, 0, NULL, 1, &out2);
+    CHECK(rce == 0 || rce == TSR_EARG, "gufunc: median over empty slices of a NULL-data array returns cleanly (%d)", rce);
+    int32_t ond[1];
+    int64_t osh[32];
+    bad = in; bad.ndim = 40;
+    CHECK(tsr_fn_gufunc_shape(med, 1, &bad, axm, 0, NULL, ond, osh) == TSR_EDIM, "gufunc_shape: ndim above 32");
+    bad = in; bad.data = NULL;
+    CHECK(tsr_fn_gufunc_shape(med, 1, &bad, axm, 0, NULL, ond, osh) == 0, "gufunc_shape reads no data");
+
+    /* random and rvs */
+    const int sn = tsr_fn_find("random.standard_normal");
+    uint64_t st[6];
+    tsr_pcg64_seed(st, 0, 7, 0, 1);
+    double g[4];
+    void *gd[1] = {g};
+    int64_t gs[1] = {4}, gst[1] = {8};
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, TSR_F64) == 0, "random: valid output passes");
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, 7) == TSR_ETYPE, "random: unknown output dtype");
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 0, gd, gst, TSR_F64) == TSR_EARG, "random: no operands");
+    gs[0] = -2;
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, TSR_F64) == TSR_EARG, "random: negative dimension");
+    gs[0] = (int64_t)1 << 40; gst[0] = 0;                         /* 2^40 draws into one slot: refused, not run */
+    CHECK(tsr_fn_random(sn, st, NULL, 1, gs, 1, gd, gst, TSR_F64) == TSR_EARG, "random: a zero-stride output is refused");
+    gs[0] = 4; gst[0] = 8;
+    const int norm = tsr_fn_find("stats.norm");
+    double loc = 0.0, scale = 1.0, z[4];
+    void *nd[3] = {&loc, &scale, z};
+    int64_t ns[1] = {4}, nst[3] = {0, 0, 8};
+    CHECK(tsr_fn_rvs(norm, st, 1, ns, 3, nd, nst) == 0, "rvs: valid operands pass");
+    nd[1] = NULL;
+    CHECK(tsr_fn_rvs(norm, st, 1, ns, 3, nd, nst) == TSR_EARG, "rvs: NULL operand");
+    nd[1] = &scale;
+    ns[0] = INT64_MAX / 16;                                       /* the scratch size (np + 1) * n * 8 overflowed */
+    nst[2] = 8;                                                   /* a real output step: the gate passes, the scratch size overflows */
+    CHECK(tsr_fn_rvs(norm, st, 1, ns, 3, nd, nst) == TSR_ENOMEM, "rvs: scratch size overflow is refused");
+    CHECK(tsr_allocated() == 0, "the gate leaks nothing (%lld bytes)", (long long)tsr_allocated());
+}
+
 /* Memory ownership (ADR 0015): the layer that allocates memory frees it. The teardown of routine results is
    the kernel's own (tsr_fn_results_free), every failed tsr_fn_routine leaves its result slots empty, and in an
    ownership-checked build (make sanitize) each kind of violation is a hard, reported failure. */
@@ -2399,8 +2779,10 @@ int main(void)
     test_fuzz_batch_a();
     test_fuzz_batch_b();
     test_fuzz_batch_c();
+    test_fuzz_batch_d();
     test_ci_regressions();
     test_abi_runtime();
+    test_arg_gate();
     test_ownership();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);

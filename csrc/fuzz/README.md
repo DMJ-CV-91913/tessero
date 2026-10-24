@@ -11,7 +11,7 @@ in `fuzz/corpus/<name>/` and are replayed first so a crash in a committed seed i
 `slice npy mmap_plan json npy_write`.
 
 `FUZZ_REG_TARGETS` (drive public routines through `tsr_fn_routine`; link the whole kernel, C + C++ + LAPACK):
-`einsum hist textio dtype routines`.
+`einsum hist textio dtype routines abi`.
 
 | target | entry points |
 |--------|--------------|
@@ -20,6 +20,7 @@ in `fuzz/corpus/<name>/` and are replayed first so a crash in a committed seed i
 | `hist` | `np.histogram`, `np.histogram_bin_edges`, `np.histogram2d`, `np.histogramdd` |
 | `textio` | `np.loadtxt`, `np.genfromtxt`, `np.fromfile` (content in a private temp file) |
 | `dtype` | `.npy` descr parser, `io_dtype`, `np.promote_types`/`can_cast`/`result_type` dtype tables |
+| `abi` | the input gate (ADR 0016): malformed `tsr_arg`/`tsr_array`/operand sets sent to random routines and to `tsr_fn_ufunc`/`gufunc`/`random`/`rvs` must be refused; valid ones run on exactly-sized blocks |
 | `routines` | every registry routine (slot from the first bytes), fuzzed arg kinds; file-opening routines denied |
 
 The shared harness helpers are in `fuzz/fuzz_common.h`: a byte reader (edge-value doubles: NaN, Inf, huge,
@@ -47,12 +48,8 @@ Throughput measured on the shared host (gcc 13, ASan+UBSan, nice -19, 1 thread):
 
 ## Open findings
 
-Bytes are hex; run `printf '<hex>' | xxd -r -p > in && ./fuzzsa_routines -runs=0 in` (default routine table,
-no `TSR_FUZZ_ONLY`). Found by the batch C campaign's first full-table replay, outside batch C, not fixed there:
-
-| id | routine | site | reproducer |
-|----|---------|------|------------|
-| C-O1 | a `scipy_csgraph.c` routine | store past a 1-byte-per-node block at scipy_csgraph.c:215 (heap overflow) | default-table mutation, input not kept; reproduce with `make fuzz-standalone FUZZ_TARGETS= FUZZ_REG_TARGETS=routines FUZZ_RUNS=20000 FUZZ_DEFS=-DFUZZ_SKIP_KNOWN` |
+None. C-O1 (the batch C campaign's csgraph overflow) is fixed in batch D below. Bytes of new findings are hex; run
+`printf '<hex>' | xxd -r -p > in && ./fuzzsa_routines -runs=0 in` (default routine table, no `TSR_FUZZ_ONLY`).
 
 The float->int cast class (F11) is closed in the batch A, batch B and batch C files; `fuzz/known_ubsan.supp` keeps it
 suppressed under `FUZZ_SKIP_KNOWN` per source file for every other file (it no longer has a blanket
@@ -63,6 +60,30 @@ registry routines. Most are one systemic gap -- a public routine trusts an argum
 coefficient-array length, a rank, a NaN/Inf number) without validating it before using it to index or allocate.
 
 ## Fixed findings
+
+PR #57 CI follow-up (`np_shape.c`, `np_linalg.c`, `cxx/special_complex.inc`). Regression checks in `tests/test_main.c`;
+reproducers `fuzz/corpus/routines/regress_*` (default table, CI seed 1).
+
+| id | routine(s) | was | now |
+|----|-----------|-----|-----|
+| E-1 | `np.roll` | a scalar shift with `axis=()` read `axes[0]` uninitialised and indexed `tot[]` with it (`np_shape.c:687`) | the shift broadcasts against the axes as in NumPy: zero axes, nothing rolls (a copy) |
+| E-2 | `slinalg.invhilbert` | O(n^3) work (three O(n) binomials per entry) with no bound: a CI timeout | n above 700 refused (about 2^30 multiplies); entries overflow to inf near n = 270 anyway |
+| E-3 | `special.sph_harm_y`, `special.lambertw` | orders and the branch index cast to int unchecked; xsf negated m = INT_MIN and its int recurrence overflowed beyond n = 645 | orders beyond +-645, NaN or infinite give NaN; a NaN or huge `k` is refused |
+
+Batch D (`scipy_csgraph.c`, `np_linalg.c`, `cxx/dist_disc.cpp`, vendored `xsf/specfun/specfun.h`). Regression checks in
+`tests/test_main.c` (`test_fuzz_batch_d`); reproducers `fuzz/corpus/routines/D-*` (default table; each fails on the
+unpatched tree and replays clean). `scipy_csgraph.c` is off the `float-cast-overflow` suppression list.
+
+| id | routine(s) | was | now |
+|----|-----------|-----|-----|
+| C-O1 | `csgraph.depth_first_order`, `breadth_first_order`, `breadth_first_tree`, `depth_first_tree` | `i_start` neither range-checked nor converted safely: `vis[start]` stored past the one-byte-per-node block (heap overflow at :215, and at :272 in `csg_bfs_pred` from CI libFuzzer) | `i_start` is a Python int in `[0, n)` (`fn_arg_i64`), else refused |
+| D-N1 | `csgraph.min_weight_full_bipartite_matching` | NaN/inf weights broke the potentials (no column chosen, `j1 = -1`), and the unmatched `p[j] = 0` wrote the result at index -1; an infeasible graph returned a matching through missing edges | finite weights below the no-edge cost required; "no full matching exists" (SciPy's ValueError) when none exists |
+| D-N2 | `csgraph.csgraph_to_dense` | `indptr` values indexed `data`/`indices` unchecked; `n_nodes * n_nodes` could overflow | `indptr` must start at 0, never decrease and stay within the data (a valid CSR); `n_nodes` bounded |
+| D-N3 | `csgraph.construct_dist_matrix`, `reconstruct_path` | predecessors not matching the graph's shape were read past their end | shape checked against the graph |
+| D-N4 | `csgraph.maximum_flow`, `yen` | node indices, capacities and `K` cast from doubles unchecked (NaN/huge) | checked conversions; capacities must be integers (SciPy) |
+| D-T1 | `slinalg.invpascal` | O(n^4) symmetric / O(n^3) triangular work (`sl_binom` per entry, O(k) each): CI standalone fuzz (seed 1) timed out | one binomial row per k with `sl_binom`'s exact arithmetic (bit-identical), O(n^2) / O(n^3); symmetric refused above n = 1860 (2^30 multiply-adds) |
+| D-U1 | `stats.nchypergeom_wallenius` (BiasedUrn recursion and table method) | pointers `p1`/`p2` stepped below the start of the buffer (UB) | integer offsets into the buffer: same elements, same order, bit-identical |
+| D-U2 | `special.hyperu` (`chgubi`), `special.pro_rad*`/`obl_rad*` (`rmn1`, `rmn2l`) | `(int)` of a non-finite value then int arithmetic that overflowed (`15 - INT_MIN`, `2 * (INT_MIN + 25)`) | vendored helpers (Tessera local modification) give x86-64's cvttsd2si result and two's-complement wrapping explicitly: defined, and bit-identical to SciPy's fixtures |
 
 Batch C (`scipy_interpolate.c`, `scipy_cluster_hier.c`). Regression checks in `tests/test_main.c`
 (`test_fuzz_batch_c`); reproducers committed as `fuzz/corpus/routines/A-N*` and `C-N*` (default table) and

@@ -1677,7 +1677,7 @@ int f_friedmanchisquare(const void *, const tsr_arg *args, int nargs, tsr_result
                     }
                 }
                 const double kk = (double)k, nn = (double)n;
-                const double c = 1 - ties / (double)(k * (k * k - 1) * n);
+                const double c = 1 - ties / (kk * (kk * kk - 1) * nn);   /* in double: k*(k*k-1)*n overflowed int */
                 for (auto &v : colsum) v = v * v;
                 const double ssbn = psum(colsum.data(), k);
                 const double stat = (12.0 / (double)(k * n * (k + 1)) * ssbn - 3 * nn * (kk + 1)) / c;
@@ -2539,7 +2539,7 @@ int r_tukey_hsd(const void *, const tsr_arg *args, int nargs, tsr_result *res, i
             double v = 0.0; for (double x : g[i].v) { const double dd = x - mu; v += dd * dd; }
             vars[i] = v / (double)(ni - 1);
         }
-        vector<double> se(k * k), df(k * k);
+        vector<double> se((size_t)k * k), df((size_t)k * k);
         if (equal_var) {
             double num = 0.0;
             for (int i = 0; i < k; i++) num += vars[i] * (ns[i] - 1.0);

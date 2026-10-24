@@ -2,8 +2,8 @@
 
 ## Security reports
 
-Do not use the issue tracker or this file to report a vulnerability. Use GitHub **private vulnerability
-reporting** on this repository (Security tab, "Report a vulnerability"); `SECURITY.md` describes the process,
+Do not use the issue tracker or this file to report a vulnerability. Email **security@tessero.org**
+(GitHub private vulnerability reporting is not enabled); `SECURITY.md` describes the process,
 the scope and the disclosure timeline.
 
 ## Current maintainers
