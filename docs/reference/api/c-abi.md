@@ -30,9 +30,18 @@ int tsr_simd_level(void);                 /* 0 baseline, 1 AVX2 (x86-64-v3), 2 A
 ## Memory: 64-byte aligned, NOT zero-filled, counted against a budget
 
 ```c
+/* Memory ownership (ADR 0015): the layer that allocates memory frees it. A block from tsr_alloc, tsr_calloc or
+   tsr_alloc_n is released only with tsr_free(p, bytes), where bytes is exactly the size requested (for tsr_alloc_n:
+   n*elsize + pad), never with free()/efree()/FFI::free; and tsr_free never
+   receives memory from another allocator. Strings this header returns (tsr_version, tsr_fn_name, tsr_fn_error,
+   tsr_mmap_error, tsr_ufunc_name, ...) are static or thread-local: never freed. The kernel calls back into no
+   caller code: no function in this header takes a callback. */
 void *tsr_alloc(int64_t bytes);           /* NULL when out of memory, over budget, or (no budget) larger than the RAM */
 void *tsr_calloc(int64_t bytes);          /* zero-filled variant */
 void tsr_free(void *p, int64_t bytes);
+/* 1 when this build checks memory ownership (-DTSR_OWNERSHIP_CHECK, ADR 0015): tsr_free aborts on a pointer tsr_alloc
+   did not return, a double free or a wrong size, and free() of a tsr_alloc pointer is an invalid free. 0 in release. */
+int tsr_ownership_check(void);
 int64_t tsr_allocated(void);
 int64_t tsr_peak(void);
 void tsr_set_budget(int64_t bytes);       /* 0 = unlimited */
@@ -132,7 +141,9 @@ int tsr_ufunc(int id, int loop_dtype, int32_t ndim, const int64_t *shape,
 
 ```c
 *ndim = -1 derives a 1-D shape from the file size. tsr_mmap_plan is the pure validation step (no I/O).
-   The data pointer stays valid until tsr_mmap_close(handle). Mapped bytes are not counted by tsr_allocated. */
+   The data pointer stays valid until tsr_mmap_close(handle). Mapped bytes are not counted by tsr_allocated.
+   Ownership (ADR 0015): the handle owns the mapping; release it only with tsr_mmap_close (never tsr_free or free
+   on handle or data), exactly once, after the last use of data. */
 int tsr_mmap_plan(int dtype, int mode, int32_t *ndim, int64_t *shape, int64_t offset, int64_t file_size,
                   int64_t granularity, int64_t *bytes, int64_t *map_start, int64_t *map_length, int64_t *new_size);
 int tsr_mmap_open(const char *path, int mode, int dtype, int32_t *ndim, int64_t *shape, int64_t offset,
@@ -328,12 +339,18 @@ Entries are numbered 0 .. tsr_fn_count()-1; tsr_fn_info() describes one as JSON 
    stats 8 (outputs mean, var, skew, kurtosis), entropy 9, support 10 (inputs shapes..., loc[, scale]).
    tsr_fn_gufunc: axmask[i] selects the core axes of input i; outputs are allocated by the caller with the
    shapes from tsr_fn_gufunc_shape (out_shape is nout x 32). params follow the order of info "params".
-   tsr_fn_routine: arguments of any kind (numbers, strings, arrays, null, sequences); results the caller adopts
-   (arrays are tsr_alloc blocks of `bytes` bytes). A sequence argument (info "seq"/"variadic": numpy's
-   `arrays` list or `*args`) is kind 5 with `count` items at `items`; a sequence result (info "out_seq":
-   numpy's list/tuple of arrays) is kind 6 whose arr.data is a tsr_alloc block of arr.shape[0] tsr_result
-   (`bytes` bytes), each owned by the caller like a top-level result. tsr_fn_error() describes the last
-   failure on this thread. */
+   tsr_fn_routine: arguments of any kind (numbers, strings, arrays, null, sequences); results the caller adopts.
+   Memory ownership (ADR 0015): argument memory stays the caller's and is only read or written during the call
+   (no kernel, thread-local or OpenMP worker keeps a pointer to it afterwards). A result of kind 2 (a
+   NUL-terminated string, e.g. a dtype name) or kind 3 (an array) owns arr.data, a tsr_alloc block of `bytes`
+   bytes: the caller releases it with tsr_free(arr.data, bytes), or hands it to a structure that will. A
+   sequence argument (info "seq"/"variadic": numpy's `arrays` list or `*args`) is kind 5 with `count` items at
+   `items`; a sequence result (info "out_seq": numpy's list/tuple of arrays) is kind 6: arr.ndim is 1,
+   arr.shape[0] is the item count n, and arr.data is a tsr_alloc block of `bytes` bytes (at least
+   n * sizeof(tsr_result)) holding n results, each owned by the caller like a top-level result. Release a kind 6
+   by releasing each item, then tsr_free(arr.data, bytes); tsr_fn_results_free does exactly that. On failure
+   (a negative return) tsr_fn_routine has already released any partial results and every slot is kind 0, so
+   there is nothing to free. tsr_fn_error() describes the last failure on this thread. */
 typedef struct tsr_arg {
     int32_t kind;                          /* 0 null, 1 number, 2 string, 3 array, 4 bool, 5 sequence */
     int32_t flags;                         /* kind 1: bit 0 set when the number was an integer, exactly in ival;
@@ -347,8 +364,9 @@ typedef struct tsr_arg {
     int64_t ival;                          /* kind 1 with flags bit 0 */
 } tsr_arg;
 typedef struct tsr_result {
-    int32_t kind;                          /* 0 none, 1 float, 3 array (arr.data from tsr_alloc: the caller owns it), 4 bool, 5 int,
-                                              6 sequence (arr.data: arr.shape[0] tsr_result) */
+    int32_t kind;                          /* 0 none, 1 float, 2 string, 3 array, 4 bool, 5 int, 6 sequence (arr.data:
+                                              arr.shape[0] tsr_result). Kinds 2, 3 and 6 own arr.data, a tsr_alloc
+                                              block of `bytes` bytes the caller frees (tsr_fn_results_free) */
     int32_t flags;
     double num;
     tsr_array arr;
@@ -361,6 +379,11 @@ int tsr_fn_find(const char *name);
 int64_t tsr_fn_info(int id, char *buf, int64_t cap);
 int tsr_fn_arity(int id, int method, int *nin, int *nout);
 const char *tsr_fn_error(void);
+/* Release routine results the caller did not take over (ADR 0015). For each of the n results: kind 2 (a string)
+   and kind 3 (an array) free arr.data with tsr_free(arr.data, bytes); kind 6 (a sequence) first releases its
+   arr.shape[0] items the same way, then frees its own block; other kinds own no memory. Each result is reset to
+   kind 0, so a second call is a no-op. Safe after any tsr_fn_routine return: the slots are always initialised. */
+void tsr_fn_results_free(tsr_result *res, int64_t n);
 int tsr_fn_ufunc(int id, int method, int dtype, int32_t ndim, const int64_t *shape, int nop, void **data,
                  const int64_t *strides);
 /* numpy.random.Generator methods (kind "random"): one variate per element of the output (the last operand,
