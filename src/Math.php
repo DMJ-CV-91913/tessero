@@ -76,7 +76,7 @@ final class Math
         'power' => ['pow', 2, true, 'x ** y'],
         'mod' => ['mod', 2, true, 'remainder with the sign of y (Python %)'],
         'remainder' => ['mod', 2, true, 'alias of mod'],
-        'floorDivide' => ['floorDiv', 2, true, 'floor(x / y)'],
+        'floorDivide' => ['floorDiv', 2, true, 'x // y (NumPy floor_divide: the floor of the exact quotient)'],
         'maximum' => ['maximum', 2, true, 'element-wise maximum, NaN propagates'],
         'minimum' => ['minimum', 2, true, 'element-wise minimum, NaN propagates'],
         'arctan2' => ['atan2', 2, true, 'angle of (x=y2, y=x1): atan2(x1, x2)'],
@@ -418,7 +418,7 @@ final class Math
         return self::apply('remainder', $x, $y, $out);
     }
 
-    /** floor(x / y). */
+    /** x // y as NumPy floor_divide: the floor of the exact quotient (1.0 // 0.1 is 9.0, not floor(1.0 / 0.1)). */
     public static function floorDivide(mixed $x, mixed $y, ?NDArray $out = null): NDArray
     {
         return self::apply('floorDivide', $x, $y, $out);
