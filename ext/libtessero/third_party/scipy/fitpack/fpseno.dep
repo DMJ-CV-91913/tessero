@@ -1,3 +1,0 @@
-libtessero/third_party/scipy/fitpack/fpseno.lo: \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/fitpack/fpseno.c \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/fitpack/f2c.h

@@ -1,4 +1,0 @@
-libtessero/src/selfcheck.lo: \
- /home/tessero/tw-merge/ext/libtessero/src/selfcheck.c \
- /home/tessero/tw-merge/ext/libtessero/src/internal.h \
- /home/tessero/tw-merge/ext/libtessero/src/../include/tessero.h
