@@ -167,7 +167,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $step = $div > 0 ? ($stop - $start) / $div : 0.0;
         $out = self::empty([$num], DType::Float64);
         if ($num > 0) {
-            Library::ffi()->tsr_arange(0, $num, $start, $step, $out->ptr());
+            if (($rc = Library::ffi()->tsr_arange(0, $num, $start, $step, $out->ptr())) !== 0) {
+                Library::check($rc, 'linspace');
+            }
             if ($endpoint && $num > 1) {
                 $out->buffer->write(($num - 1) * 8, pack('d', $stop));
             }
@@ -554,8 +556,13 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if ($need === 0) {
             return '';
         }
+        if ($need < 0) {
+            Library::check((int) $need, 'toJson');
+        }
         $buf = Buffer::allocate($need);
-        $ffi->tsr_array_json(FFI::addr($meta), $buf->ptr(), $need);
+        if ($ffi->tsr_array_json(FFI::addr($meta), $buf->ptr(), $need) !== $need) {
+            throw new TesseroException('toJson: the kernel wrote an unexpected length.');
+        }
 
         return $buf->read(0, $need);
     }
@@ -988,9 +995,14 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $ffi = Library::ffi();
         $mp = $ffi->cast('uint8_t*', $m->ptr());
         $n = $ffi->tsr_count_true($m->size, $mp);
+        if ($n < 0) {
+            Library::check($n, 'filter');
+        }
         $out = self::empty([$n], $this->dtype);
-        if ($n > 0) {
-            $ffi->tsr_compress($this->dtype->itemsize(), $src->size, $src->ptr(), $mp, $out->ptr());
+        // tsr_compress writes one element per true mask entry: it must agree with the count the output was sized by
+        if ($n > 0 && ($k = $ffi->tsr_compress($this->dtype->itemsize(), $src->size, $src->ptr(), $mp, $out->ptr())) !== $n) {
+            Library::check($k, 'filter');
+            throw new TesseroException('filter: mask changed between counting and compressing.');
         }
 
         return $out;
@@ -1743,7 +1755,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         }
         if ($k === 0) {
             $zero = Buffer::allocate(16, true);
-            Library::ffi()->tsr_fill($dt->value, $m * $n, $c->ptr($co), $zero->ptr());
+            Library::check(Library::ffi()->tsr_fill($dt->value, $m * $n, $c->ptr($co), $zero->ptr()), 'matmul');
 
             return;
         }

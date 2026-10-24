@@ -8,6 +8,7 @@ use FFI;
 use FFI\CData;
 use Tessero\DType;
 use Tessero\Exceptions\LibraryUnavailable;
+use Tessero\Exceptions\ShapeError;
 
 /**
  * Optional BLAS + LAPACKE binding (OpenBLAS, LP64 / 32-bit integers).
@@ -73,6 +74,7 @@ final class Blas
         return self::$library;
     }
 
+    /** @internal raw BLAS/LAPACKE binding; see Library::ffi() */
     public static function ffi(): FFI
     {
         return self::load() ?? throw new LibraryUnavailable(
@@ -81,9 +83,24 @@ final class Blas
         );
     }
 
-    /** Call a BLAS/LAPACKE symbol by its unprefixed name. */
+    /** Largest dimension / leading dimension an LP64 BLAS takes: its integers are 32-bit. */
+    public const INT_MAX = 0x7FFFFFFF;
+
+    /**
+     * Call a BLAS/LAPACKE symbol by its unprefixed name. Integer arguments must fit the library's 32-bit
+     * int: PHP FFI silently truncates a wider value (2^32 + 3 becomes 3), which would make LAPACK work on
+     * a different size than the buffers have.
+     *
+     * @internal
+     */
     public static function call(string $fn, mixed ...$args): mixed
     {
+        foreach ($args as $a) {
+            if (is_int($a) && ($a > self::INT_MAX || $a < -self::INT_MAX - 1)) {
+                throw new ShapeError("{$fn}: dimension {$a} exceeds the 32-bit integer range of the BLAS/LAPACK library.");
+            }
+        }
+
         return self::ffi()->{self::$prefix . $fn}(...$args);
     }
 
@@ -97,6 +114,10 @@ final class Blas
     /** C = A (m x k) @ B (k x n), all row-major and contiguous. */
     public static function gemm(DType $dt, int $m, int $n, int $k, CData $a, CData $b, CData $c): void
     {
+        if ($m > self::INT_MAX || $n > self::INT_MAX || $k > self::INT_MAX || $m < 0 || $n < 0 || $k < 0) {
+            // m, n, k double as the leading dimensions (lda = k, ldb = ldc = n); FFI would truncate them
+            throw new ShapeError("matmul: dimensions ({$m}x{$k} @ {$k}x{$n}) exceed the 32-bit integer range of the BLAS library.");
+        }
         $ffi = self::ffi();
         $base = Library::ffi();
         if ($dt === DType::Float64) {
@@ -112,7 +133,7 @@ final class Blas
         }
     }
 
-    /** Pointer of the given C type in the BLAS FFI scope at an absolute address. */
+    /** Pointer of the given C type in the BLAS FFI scope at an absolute address. @internal */
     public static function ptr(string $type, int $address): CData
     {
         return self::ffi()->cast($type, $address);
@@ -149,7 +170,13 @@ final class Blas
         if (! in_array($enable, ['1', 'on', 'true', 'yes'], true) && ! ($enable === 'preload' && PHP_SAPI === 'cli')) {
             return null;
         }
-        foreach (self::candidates() as $path) {
+        try {
+            $candidates = self::candidates();
+        } catch (LibraryUnavailable $e) {
+            self::$tried = false;                               // a refused TESSERO_BLAS fails every call, not just the first
+            throw $e;
+        }
+        foreach ($candidates as $path) {
             foreach (self::PREFIXES as $prefix) {
                 try {
                     $ffi = FFI::cdef(str_replace('{P}', $prefix, self::CDEF), $path);
@@ -161,7 +188,7 @@ final class Blas
                 self::$ffi = $ffi;
                 self::$prefix = $prefix;
                 self::$library = $path;
-                $threads = getenv('TESSERO_BLAS_THREADS');
+                $threads = getenv('TESSERO_BLAS_THREADS', true);
                 if ($threads !== false && $threads !== '') {
                     $ffi->{$prefix . 'openblas_set_num_threads'}((int) $threads);
                 } elseif (PHP_SAPI !== 'cli') {
@@ -208,23 +235,39 @@ final class Blas
         return null;
     }
 
-    /** @return list<string> */
+    /**
+     * Libraries to try, in order. $TESSERO_BLAS (process environment only) must be an absolute path to a
+     * file that neither it nor its directory is group- or world-writable (Library::trustedFile). Bare
+     * sonames are resolved by the dynamic loader's system search on Linux/macOS; on Windows a bare DLL name
+     * is also searched in the working directory (the web root under php-cgi), so it is tried only in the
+     * CLI. The per-user SciPy wheel under $HOME is searched only in the CLI too: under a web SAPI $HOME is
+     * often writable by the web server.
+     *
+     * @return list<string>
+     */
     private static function candidates(): array
     {
+        $cli = PHP_SAPI === 'cli' || PHP_SAPI === 'phpdbg';
         $out = [];
-        $env = getenv('TESSERO_BLAS');
+        $env = getenv('TESSERO_BLAS', true);
         if (is_string($env) && $env !== '') {
-            $out[] = $env;
+            $out[] = Library::trustedFile($env, 'TESSERO_BLAS');
         }
         array_push($out, 'libopenblas.so.0', 'libopenblas.so', 'liblapacke.so.3', '/opt/homebrew/opt/openblas/lib/libopenblas.dylib',
-            '/usr/local/opt/openblas/lib/libopenblas.dylib', 'libopenblas.dll');
-        $home = getenv('HOME') ?: '/root';
-        foreach ([
+            '/usr/local/opt/openblas/lib/libopenblas.dylib');
+        if ($cli || PHP_OS_FAMILY !== 'Windows') {
+            $out[] = 'libopenblas.dll';                         // never loaded outside Windows; bare name only in the CLI there
+        }
+        $patterns = [
             '/usr/local/lib/python3*/dist-packages/scipy.libs/libscipy_openblas-*.so',
             '/usr/lib/python3*/site-packages/scipy.libs/libscipy_openblas-*.so',
             '/usr/local/lib/python3*/site-packages/scipy.libs/libscipy_openblas-*.so',
-            $home . '/.local/lib/python3*/site-packages/scipy.libs/libscipy_openblas-*.so',
-        ] as $pattern) {
+        ];
+        $home = getenv('HOME', true);
+        if ($cli && is_string($home) && str_starts_with($home, '/')) {
+            $patterns[] = $home . '/.local/lib/python3*/site-packages/scipy.libs/libscipy_openblas-*.so';
+        }
+        foreach ($patterns as $pattern) {
             foreach (glob($pattern) ?: [] as $match) {
                 if (! str_contains(basename($match), 'openblas64')) {
                     $out[] = $match;
