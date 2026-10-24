@@ -6,10 +6,11 @@
 #
 # CI builds this image and runs the checks at the end on every commit.
 
-ARG PHP_VERSION=8.4
+# Base images are pinned by digest (reproducible builds; Dependabot's docker ecosystem proposes digest updates).
+# To move to another PHP version, change both tags and their digests together.
 
 # ---------------------------------------------------------------- build stage
-FROM php:${PHP_VERSION}-cli-bookworm AS build
+FROM php:8.4-cli-bookworm@sha256:496b5e02fe9fe44fcfb715023b931048111dc4e0bc719789d83c906be9f04b05 AS build
 RUN apt-get update \
  && apt-get install -y --no-install-recommends $PHPIZE_DEPS libffi-dev liblapacke-dev libopenblas-dev \
  && rm -rf /var/lib/apt/lists/*
@@ -23,7 +24,7 @@ RUN cd /src/ext && phpize && ./configure --enable-tessero && make -j"$(nproc)" \
  && make install
 
 # ---------------------------------------------------------------- runtime stage
-FROM php:${PHP_VERSION}-fpm-bookworm
+FROM php:8.4-fpm-bookworm@sha256:df5a5113e1179ddf4560cd15727eb3812f6457829756d2a96c6c11bb4c250089
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libgomp1 libopenblas0-pthread liblapacke libffi-dev \
  && docker-php-ext-install ffi opcache \

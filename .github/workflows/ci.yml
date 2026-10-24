@@ -10,6 +10,21 @@ on:
 permissions:
   contents: read
 
+# a newer push to the same pull request supersedes the running checks; main and tags always finish
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Runner images. The native library is BUILT on ubuntu-22.04 (glibc 2.35 baseline, so the binary loads on older
+# distributions). Everything that EXECUTES linear algebra runs on ubuntu-24.04, the reference platform
+# (LAPACK 3.12, OpenBLAS 0.3.26): Ubuntu 22.04 ships LAPACKE 3.10.0, whose LAPACKE_dgeev_work rejects ldvl=1 for
+# jobvl='N' ("Wrong parameter 10") and whose LAPACKE_dtgsen passes iwork=NULL to dtgsen for ijob=0 (segfault in
+# dtgsen_). Both are fixed upstream in LAPACK 3.11. The parity-ffi-lapack310 job keeps running the parity suite on
+# 22.04 so the kernel-side workaround can be verified there; see docs/project/security-review-2026-10.md.
+#
+# Determinism: every action is pinned to a commit SHA, tool versions are pinned (composer, mkdocs-material, the PHP
+# built for the ASan job), fuzzing uses fixed seeds where the harness takes one, and no step retries on failure.
+
 jobs:
   # ---------------------------------------------------------------- native library, 6 platforms
   native:
@@ -23,7 +38,8 @@ jobs:
           - { platform: linux-x86_64,      runner: ubuntu-22.04 }            # glibc 2.35 baseline for wide compatibility
           - { platform: linux-aarch64,     runner: ubuntu-22.04-arm }
           - { platform: linux-musl-x86_64, runner: ubuntu-latest, container: 'alpine:3.20' }
-          # tier 2: no LAPACK linkage on these targets yet (csrc/Makefile), so they cannot block a release
+          # tier 2: no LAPACK linkage on these targets yet (csrc/Makefile), so they cannot block a release.
+          # continue-on-error keeps a failing tier-2 leg from failing the workflow or the jobs that need `native`.
           - { platform: darwin-arm64,      runner: macos-14,       tier2: true }
           - { platform: darwin-x86_64,     runner: macos-15-intel, tier2: true }   # macos-13 is retired: jobs on it never start
           - { platform: windows-x86_64,    runner: windows-latest, tier2: true }
@@ -32,7 +48,7 @@ jobs:
       run:
         shell: ${{ matrix.platform == 'windows-x86_64' && 'msys2 {0}' || 'sh' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - if: matrix.container
         # Alpine ships no libblas.so: point -lblas at OpenBLAS
@@ -40,7 +56,7 @@ jobs:
       - if: runner.os == 'Linux' && !matrix.container
         run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - if: matrix.platform == 'windows-x86_64'
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with: { msystem: MINGW64, install: 'make mingw-w64-x86_64-gcc' }
       - name: build
         run: make -C csrc
@@ -54,16 +70,16 @@ jobs:
           readelf -dW "$so" | grep -Eq 'BIND_NOW|FLAGS.*NOW' || { echo "::error::no BIND_NOW"; exit 1; }
           ! readelf -lW "$so" | grep GNU_STACK | grep -q RWE || { echo "::error::executable stack"; exit 1; }
           readelf -W --dyn-syms "$so" | grep -q __stack_chk_fail || { echo "::error::no stack protector"; exit 1; }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lib-${{ matrix.platform }}
           path: lib/${{ matrix.platform }}/
 
   sanitizers:
     name: ASan + UBSan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - run: make -C csrc sanitize
@@ -72,17 +88,20 @@ jobs:
 
   fuzz:
     name: fuzz (libFuzzer, 60 s per target)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
+      # `make fuzz` runs libFuzzer for a fixed wall time; it does not pass -seed yet (csrc/Makefile is owned by the
+      # kernel workstream: the proposal is `-seed=$${FUZZ_SEED:-1}` next to -max_total_time). The standalone driver
+      # below is fully deterministic: fixed seed, fixed number of runs.
       - name: coverage-guided (clang + compiler-rt) - slice parser, .npy header, memmap planning, JSON writer
         run: make -C csrc fuzz FUZZ_TIME=60 BUILD=./build-fuzz
       - name: standalone mutation driver under gcc ASan + UBSan (the harness used where libFuzzer is missing)
-        run: make -C csrc fuzz-standalone FUZZ_RUNS=200000 BUILD=./build-fuzzsa
+        run: FUZZ_SEED=1 make -C csrc fuzz-standalone FUZZ_RUNS=200000 BUILD=./build-fuzzsa
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: fuzz-crashes, path: 'csrc/crash-*' }
 
   repro:
@@ -91,12 +110,45 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-latest, ubuntu-22.04-arm]
+        runner: [ubuntu-24.04, ubuntu-22.04-arm]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - name: scalar vs SIMD vs 1 and 4 threads produce identical bytes
         run: bash csrc/repro/run_determinism.sh
+
+  # Reproducible-builds check (informational). Builds libtessero twice from the same commit in two directories of
+  # different depth and compares the hashes. The flags that make the build path-independent (-ffile-prefix-map,
+  # SOURCE_DATE_EPOCH) belong in csrc/Makefile; until they land this job reports, it does not gate.
+  reproducible-build:
+    name: libtessero builds bit-for-bit reproducibly (informational)
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
+      - name: build in two directories and compare
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          a="$RUNNER_TEMP/a"; b="$RUNNER_TEMP/build-b/a/much/deeper/tree"
+          mkdir -p "$a" "$b"
+          git archive HEAD csrc | tar -x -C "$a"
+          git archive HEAD csrc | tar -x -C "$b"
+          make -C "$a/csrc" -j"$(nproc)" >/dev/null
+          make -C "$b/csrc" -j"$(nproc)" >/dev/null
+          ha="$(sha256sum < "$a/lib/linux-x86_64/libtessero.so")"; hb="$(sha256sum < "$b/lib/linux-x86_64/libtessero.so")"
+          echo "first:  $ha"; echo "second: $hb"
+          if [ "$ha" = "$hb" ]; then
+            echo "### libtessero is reproducible across build directories" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::libtessero differs between build directories"
+            { echo "### libtessero is NOT reproducible across build directories"; echo '```';
+              cmp -l "$a/lib/linux-x86_64/libtessero.so" "$b/lib/linux-x86_64/libtessero.so" | wc -l | sed 's/$/ differing bytes/';
+              diff <(strings -a "$a/lib/linux-x86_64/libtessero.so") <(strings -a "$b/lib/linux-x86_64/libtessero.so") | head -40;
+              echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
   # ---------------------------------------------------------------- PHP matrix
   php:
@@ -106,29 +158,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-14, windows-latest]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-14, windows-latest]
         php: ['8.2', '8.3', '8.4', '8.5']
         jit: ['off', 'tracing', 'function']
     continue-on-error: ${{ startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'windows') }}   # tier 2 (no LAPACK linkage yet)
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { pattern: 'lib-*', path: lib, merge-multiple: false }
       - name: arrange prebuilt binaries
         shell: bash
         run: for d in lib/lib-*; do mv "$d" "lib/${d#lib/lib-}"; done; ls -R lib
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: ffi, opcache, zip
+          tools: composer:2.10.3
           ini-values: >-
             ffi.enable=1, opcache.enable_cli=1, memory_limit=1G,
             opcache.jit=${{ matrix.jit == 'off' && 'disable' || matrix.jit }}, opcache.jit_buffer_size=${{ matrix.jit == 'off' && '0' || '128M' }}
       - name: OpenBLAS for linalg (Linux/macOS)
         shell: bash
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y libopenblas0 liblapacke; fi
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke; fi
           if [ "$RUNNER_OS" = "macOS" ]; then brew install openblas; fi
       - run: composer install --no-interaction --no-progress
       - run: php bin/tessero doctor || true
@@ -139,60 +192,81 @@ jobs:
     needs: native
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.4', extensions: ffi, opcache }
-      - run: sudo apt-get install -y libopenblas0 liblapacke
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.4', extensions: 'ffi, opcache' }
+      - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
       - run: bash tests/e2e/preload.sh
 
   # ---------------------------------------------------------------- NumPy/SciPy parity (ADR 0002, 0011, 0012)
   parity-records:
     name: generated parity files and coverage claims are current
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with: { python-version: '3.11' }
       - run: pip install -r tools/parity/requirements.txt
       - run: python3 tools/parity/census.py --check
       - run: python3 tools/parity/gen_registry.py --check
       - run: python3 tools/parity/report.py --check
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.4' }
       - run: php tools/parity/claims-check.php
 
   parity-ffi:
     name: NumPy/SciPy fixtures (FFI)
     needs: native
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.4', extensions: ffi }
-      - run: sudo apt-get install -y libopenblas0 liblapacke
+      - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
       - run: php -d ffi.enable=1 tools/parity/gen-facades.php --check
+      - run: php -d ffi.enable=1 -d memory_limit=8G tools/parity/run-tests.php --backend=ffi --no-record
+
+  # The same parity suite against Ubuntu 22.04's LAPACK 3.10.0 / OpenBLAS 0.3.20 (the oldest runtime the
+  # glibc-2.35 binary targets). Informational until the kernel stops depending on the two LAPACKE 3.10 defects
+  # described at the top of this file. Two further differences there are LAPACK-implementation dependent, not
+  # defects: slinalg.eig_banded (eigenvector sign) and slinalg.subspace_angles call 5 (an angle of 2.6e-8 that
+  # the older LAPACK returns as 0).
+  parity-ffi-lapack310:
+    name: NumPy/SciPy fixtures (FFI) on LAPACK 3.10 (Ubuntu 22.04, informational)
+    needs: native
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.4', extensions: ffi }
+      - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
+      - run: dpkg -l | grep -Ei 'lapack|openblas'
       - run: php -d ffi.enable=1 -d memory_limit=8G tools/parity/run-tests.php --backend=ffi --no-record
 
   # ---------------------------------------------------------------- ext-tessero (native backend)
   sync:
     name: ext/libtessero matches csrc
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - run: bash tools/sync-ext.sh --check
 
   extension:
     name: ext-tessero PHP ${{ matrix.php }} ${{ matrix.ts }}
     needs: [native, sync]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -201,13 +275,13 @@ jobs:
         include:
           - { php: '8.4', ts: 'zts' }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         env: { phpts: "${{ matrix.ts == 'zts' && 'ts' || 'nts' }}" }
-        with: { php-version: '${{ matrix.php }}', extensions: ffi, tools: 'phpize, php-config, composer' }
+        with: { php-version: '${{ matrix.php }}', extensions: ffi, tools: 'phpize, php-config, composer:2.10.3' }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - name: build
         run: cd ext && phpize && ./configure --enable-tessero && make -j"$(nproc)"
@@ -222,7 +296,6 @@ jobs:
         run: cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests
       - name: module exports only get_module
         run: test "$(nm -D --defined-only ext/modules/tessero.so | awk '$2 ~ /[TtWwi]/ {print $3}' | grep -v '^_' | sort -u)" = "get_module"
-      - run: sudo apt-get install -y libopenblas0 liblapacke
       - run: composer install --no-interaction --no-progress
       - name: extension parity + both backends in one process
         run: php -d extension=$PWD/ext/modules/tessero.so -d ffi.enable=1 vendor/bin/phpunit --testsuite ext,unit
@@ -233,67 +306,105 @@ jobs:
       - name: without OpenMP
         run: cd ext && make clean && ./configure --enable-tessero --disable-tessero-openmp && make -j"$(nproc)" && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests
 
+  # ext-tessero under AddressSanitizer + UBSan. A stock PHP binary cannot load a sanitized module through
+  # LD_PRELOAD: PHP opens extensions with RTLD_DEEPBIND, which the sanitizer runtime refuses (the module then
+  # silently fails to load and every phpt is skipped as "Required extension missing"). php-src turns DEEPBIND off
+  # when PHP itself is built with --enable-address-sanitizer, so this job builds PHP that way (cached per version).
   extension-asan:
     name: ext-tessero under ASan + UBSan
     needs: [native, sync]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      PHP_ASAN_VERSION: '8.4.27'
+      PHP_ASAN_SHA256: 'dcf93923b0e38e0d5252b25b796520b5a47761a08b3488b6d0b5d1115764d3f0'   # php.net releases JSON
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.4', extensions: ffi, tools: 'phpize, php-config, composer' }
-      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
-      - name: build with sanitizers
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev libxml2-dev libonig-dev libffi-dev pkg-config
+      - id: php-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/php-asan
+          key: php-asan-${{ env.PHP_ASAN_VERSION }}-ubuntu-24.04-v1
+      - name: build PHP ${{ env.PHP_ASAN_VERSION }} with ASan + UBSan
+        if: steps.php-cache.outputs.cache-hit != 'true'
         run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL "https://www.php.net/distributions/php-${PHP_ASAN_VERSION}.tar.xz" -o php.tar.xz
+          echo "${PHP_ASAN_SHA256}  php.tar.xz" | sha256sum -c -
+          tar -xf php.tar.xz && cd "php-${PHP_ASAN_VERSION}"
+          ./configure --prefix="$HOME/php-asan" --disable-all --enable-cli --disable-cgi --disable-phpdbg \
+            --enable-address-sanitizer --enable-undefined-sanitizer \
+            --with-ffi --enable-dom --with-libxml --enable-xml --enable-xmlwriter --enable-simplexml \
+            --enable-tokenizer --enable-mbstring --enable-ctype --enable-filter --enable-phar
+          make -j"$(nproc)" >/dev/null
+          make install >/dev/null
+      - name: build the extension with sanitizers against that PHP
+        run: |
+          export PATH="$HOME/php-asan/bin:$PATH"
+          php -v && php -m
           cd ext && phpize
-          ./configure --enable-tessero --disable-tessero-harden CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" LDFLAGS="-fsanitize=address,undefined"
+          ./configure --with-php-config="$HOME/php-asan/bin/php-config" --enable-tessero --disable-tessero-harden \
+            CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" \
+            LDFLAGS="-fsanitize=address,undefined"
           make -j"$(nproc)"
-      - name: phpt + extension parity under ASan
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.4', tools: 'composer:2.10.3' }   # only to resolve vendor/; the tests run on the ASan PHP
+      - run: composer install --no-interaction --no-progress
+      - name: phpt + phpunit + extension parity under ASan
         env:
           USE_ZEND_ALLOC: '0'
           ZEND_DONT_UNLOAD_MODULES: '1'
           # libgomp allocates a small thread-pool descriptor once at start-up and never frees it
           LSAN_OPTIONS: 'suppressions=${{ github.workspace }}/.github/lsan.supp:print_suppressions=0'
+          ASAN_OPTIONS: 'detect_leaks=1:abort_on_error=1'
           UBSAN_OPTIONS: 'print_stacktrace=1:halt_on_error=1'
+        shell: bash   # -eo pipefail: the phpt result must survive the tee
         run: |
-          export LD_PRELOAD="$(gcc -print-file-name=libasan.so) $(gcc -print-file-name=libubsan.so)"
-          cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests && cd ..
-          composer install --no-interaction --no-progress
-          php -d extension=$PWD/ext/modules/tessero.so vendor/bin/phpunit --testsuite ext
-          php -d extension=$PWD/ext/modules/tessero.so -d memory_limit=8G tools/parity/run-tests.php --backend=ext --no-record
+          export PATH="$HOME/php-asan/bin:$PATH"
+          php -d extension="$PWD/ext/modules/tessero.so" -r 'exit(extension_loaded("tessero") ? 0 : 1);' \
+            || { echo "::error::the sanitized module does not load"; exit 1; }
+          (cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests | tee phpt.log)
+          ! grep -q 'Required extension missing' ext/phpt.log || { echo "::error::phpt skipped: module not loaded"; exit 1; }
+          php -d extension="$PWD/ext/modules/tessero.so" vendor/bin/phpunit --testsuite ext
+          php -d extension="$PWD/ext/modules/tessero.so" -d memory_limit=8G tools/parity/run-tests.php --backend=ext --no-record
 
   # ---------------------------------------------------------------- Laravel
   laravel:
     name: tessero/laravel unit tests
     needs: native
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.4', extensions: ffi, tools: composer }
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.4', extensions: ffi, tools: 'composer:2.10.3', ini-values: ffi.enable=1 }
+      # libtessero links liblapacke: without the runtime libraries it does not load and no backend is found
+      - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
       - run: composer install --no-interaction --no-progress
       - run: php -d ffi.enable=1 vendor/bin/phpunit --testsuite laravel
 
   laravel-app:
     name: service provider in Laravel ${{ matrix.laravel }}
     needs: [native, extension]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         laravel: ['10', '11', '12']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { path: tessero, persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: tessero/lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.3', extensions: ffi, tools: composer, ini-values: ffi.enable=1 }
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.3', extensions: ffi, tools: 'composer:2.10.3', ini-values: ffi.enable=1 }
+      - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
       - name: fresh application with tessero/laravel from this checkout
         run: |
           composer create-project laravel/laravel:^${{ matrix.laravel }}.0 app --no-interaction --prefer-dist
@@ -319,51 +430,80 @@ jobs:
           test "$(curl -s localhost:8123/nd)" = "[[1.5,2.0],[3.0,4.0]]"
           curl -s localhost:8123/lp | php -r '$r = json_decode(stream_get_contents(STDIN), true); exit(abs($r["fun"] + 2600) < 1e-9 ? 0 : 1);'
 
+  # Informational by design: this job installs the LATEST NumPy/SciPy from PyPI (unpinned) to show early when a new
+  # upstream release changes a reference value. The pinned contract (tools/parity/requirements.txt and the
+  # committed fixtures) is enforced by parity-records, parity-ffi and the extension jobs; an upstream change here
+  # must not block unrelated work, so the job never fails the workflow.
   parity-refresh:
-    name: parity fixtures match the latest NumPy/SciPy
+    name: parity fixtures match the latest NumPy/SciPy (informational)
     needs: native
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    env:
+      # the pinned numerical environment of tools/parity/gen-fixtures.sh (tools/parity/fixture_env.py, ADR 0012):
+      # the generators refuse to write a fixture without it
+      NPY_DISABLE_CPU_FEATURES: 'X86_V4 AVX512_ICL AVX512_SPR'
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with: { python-version: '3.12' }
-      - run: pip install numpy scipy
+      - run: pip install numpy scipy && pip list | grep -Ei '^(numpy|scipy) '
       - run: python tests/fixtures/generate_parity.py
       - run: python tests/fixtures/generate_ufunc.py
       - run: python tests/fixtures/generate_npy.py
-      - uses: shivammathur/setup-php@v2
-        with: { php-version: '8.4', extensions: ffi }
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with: { php-version: '8.4', extensions: ffi, tools: 'composer:2.10.3', ini-values: ffi.enable=1 }
+      - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
       - run: composer install --no-interaction --no-progress
       - run: vendor/bin/phpunit --testsuite parity
       - run: vendor/bin/phpunit --filter 'MathTest|FilesTest'
 
+  # Performance guard. bench/run.php carries absolute per-case gates (milliseconds) written for a developer
+  # machine; they are reported but do not block, because "rng normal 1M" (gate 20 ms) is above its gate on every
+  # machine measured (35 ms on a GitHub runner, 64 ms on the reference host). The blocking gate compares against
+  # numbers measured on the GitHub ubuntu-24.04 x86-64 runner (.github/bench-baseline.json): a case fails when it
+  # is more than 2x its baseline + 1 ms, and the run fails when the geometric mean of all ratios exceeds 1.35.
+  # Run-to-run noise on shared runners is about +-15% per case and a few percent on the geometric mean.
   bench:
     name: benchmark gates
     needs: native
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.4', extensions: ffi }
-      - run: sudo apt-get install -y libopenblas0 liblapacke
-      - run: php -d ffi.enable=1 -d memory_limit=2G bench/run.php
+      - run: sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke
+      - run: lscpu | grep -E 'Model name|^CPU\(s\)'
+      - name: absolute gates of bench/run.php (reported, not blocking; see the comment on this job)
+        continue-on-error: true
+        run: php -d ffi.enable=1 -d memory_limit=2G bench/run.php
+      - name: regression gate against the runner baseline
+        run: |
+          php -d ffi.enable=1 -d memory_limit=2G bench/run.php --json --no-gates > bench.json
+          python3 .github/scripts/bench_compare.py .github/bench-baseline.json bench.json
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: bench-results, path: bench.json, if-no-files-found: ignore }
 
   docs:
     name: documentation site and examples
     needs: native
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { name: lib-linux-x86_64, path: lib/linux-x86_64 }
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with: { php-version: '8.4', extensions: ffi, tools: 'phpize, php-config' }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - name: build the extension (the API reference documents both backends)
@@ -374,34 +514,61 @@ jobs:
           git diff --exit-code docs/reference/api || (echo "::error::run tools/gen-api-docs.php and commit the result"; exit 1)
       - name: examples in the guides
         run: php -d ffi.enable=1 -d extension=$PWD/ext/modules/tessero.so tests/docs/examples.php
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with: { python-version: '3.12' }
-      - run: pip install mkdocs-material
+      - run: pip install mkdocs-material==9.7.7
       - run: mkdocs build --strict
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: docs-site, path: site/ }
 
   docker:
     name: reference Docker image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
       - run: docker build -f docker/Dockerfile -t tessero-fpm .
       - run: docker run --rm tessero-fpm php -d ffi.enable=1 /opt/tessero/bin/tessero doctor
 
+  # Tier-2 legs (macOS, Windows) cannot block a release: their jobs are continue-on-error, so `needs` treats a
+  # failed tier-2 leg as finished. Informational jobs (parity-refresh, parity-ffi-lapack310, reproducible-build)
+  # are deliberately not listed.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [native, php, preload, sync, extension, extension-asan, laravel, laravel-app, sanitizers, fuzz, repro, parity-records, parity-ffi, docs, docker]
-    runs-on: ubuntu-latest
+    needs: [native, php, preload, sync, extension, extension-asan, laravel, laravel-app, sanitizers, fuzz, repro, parity-records, parity-ffi, bench, docs, docker]
+    runs-on: ubuntu-24.04
     permissions:
-      contents: write
+      contents: write       # create the GitHub release and upload its assets
+      id-token: write       # Sigstore keyless signing (cosign, attestations)
+      attestations: write   # build-provenance and SBOM attestations
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with: { pattern: 'lib-*', path: dist }
-      - run: for d in dist/lib-*; do p="${d#dist/lib-}"; mkdir -p lib/$p && cp $d/* lib/$p/; done && cp LICENSE THIRD_PARTY_NOTICES.md lib/ && tar czf tessero-binaries.tgz lib
-      - run: sha256sum tessero-binaries.tgz lib/*/* > SHA256SUMS && cat SHA256SUMS
-      - uses: softprops/action-gh-release@v2
-        with: { files: 'tessero-binaries.tgz,SHA256SUMS' }
+      - name: package the binaries with LICENSE, THIRD_PARTY_NOTICES and every third-party licence text
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          for d in dist/lib-*; do p="${d#dist/lib-}"; mkdir -p "lib/$p" && cp "$d"/* "lib/$p/"; done
+          cp LICENSE THIRD_PARTY_NOTICES.md lib/
+          find csrc/third_party licenses -type f \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'NOTICE*' \) \
+            -exec install -D -m 0644 {} lib/licenses/{} \;
+          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime="@${SOURCE_DATE_EPOCH}" -cf - lib | gzip -n -9 > tessero-binaries.tgz
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with: { python-version: '3.12' }
+      - name: CycloneDX SBOM (vendored C/C++ components are not detectable by scanners)
+        run: python3 tools/sbom.py --version "${GITHUB_REF_NAME#v}" --output tessero.cdx.json
+      - name: checksums
+        run: |
+          { sha256sum tessero-binaries.tgz tessero.cdx.json; find lib -type f | LC_ALL=C sort | xargs sha256sum; } > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with: { subject-path: 'tessero-binaries.tgz' }
+      - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with: { subject-path: 'tessero-binaries.tgz', sbom-path: 'tessero.cdx.json' }
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with: { cosign-release: 'v3.0.6' }
+      - name: sign SHA256SUMS (Sigstore keyless; verify with cosign verify-blob, see RELEASING.md)
+        run: cosign sign-blob --yes --bundle SHA256SUMS.sigstore.json SHA256SUMS
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with: { files: 'tessero-binaries.tgz,SHA256SUMS,SHA256SUMS.sigstore.json,tessero.cdx.json' }

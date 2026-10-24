@@ -1,0 +1,31 @@
+# Dependabot version updates. Security updates are configured in the repository settings.
+version: 2
+updates:
+  # every `uses:` is pinned to a commit SHA with the tag in a trailing comment; Dependabot updates both
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ['*'] }
+
+  - package-ecosystem: composer
+    directory: /
+    schedule: { interval: weekly }
+
+  - package-ecosystem: composer
+    directory: /laravel
+    schedule: { interval: weekly }
+
+  # tools/parity: the pinned numerical environment (ADR 0012). NumPy and SciPy are part of the parity contract:
+  # moving them means regenerating every fixture with tools/parity/gen-fixtures.sh, so they are updated by hand.
+  - package-ecosystem: pip
+    directory: /tools/parity
+    schedule: { interval: weekly }
+    ignore:
+      - dependency-name: numpy
+      - dependency-name: scipy
+
+  # base images are pinned by digest in docker/Dockerfile
+  - package-ecosystem: docker
+    directory: /docker
+    schedule: { interval: weekly }
