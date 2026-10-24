@@ -4,10 +4,28 @@
 
 ## Methods
 
+### abiVersion
+
+```php
+static abiVersion()
+```
+
+### feature
+
+```php
+static feature(string $name)
+```
+
 ### fft
 
 ```php
 static fft($x, bool $inverse = …)
+```
+
+### getBlasThreads
+
+```php
+static getBlasThreads()
 ```
 
 ### getEpsilon
@@ -104,6 +122,18 @@ static peakMemory()
 
 ```php
 static random(int $seed, $shape, float $a = …, float $b = …)
+```
+
+### selfcheck
+
+```php
+static selfcheck(): array
+```
+
+### setBlasThreads
+
+```php
+static setBlasThreads(int $value)
 ```
 
 ### setEpsilon

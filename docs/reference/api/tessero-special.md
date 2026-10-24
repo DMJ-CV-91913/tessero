@@ -11,7 +11,7 @@ The native extension provides the same class as Tessero\Ext\Special.
 
 | Name | Value |
 |---|---|
-| `FUNCTIONS` | `{"agm":"agm","airy":"airy","airye":"airye","bdtr":"bdtr","bdtrc":"bdtrc","bdtri":"bdtri","bdtrik":"bdtrik","bdtrin":"bdtrin","bei":"bei","beip":"beip","ber":"ber","berp":"berp","besselpoly":"besselpoly","beta":"beta","betainc":"betainc","betaincc":"betaincc","betainccinv":"betainccinv","betaincinv":"betaincinv","betaln":"betaln","binom":"binom","boxcox":"boxcox","boxcox1p":"boxcox1p","btdtria":"btdtria","btdtrib":"btdtrib","cbrt":"cbrt","chdtr":"chdtr","chdtrc":"chdtrc","chdtri":"chdtri","chdtriv":"chdtriv","chndtr":"chndtr","chndtridf":"chndtridf","chndtrinc":"chndtrinc","chndtrix":"chndtrix","cosdg":"cosdg","cosm1":"cosm1","cotdg":"cotdg","dawsn":"dawsn","digamma":"digamma","ellipe":"ellipe","ellipeinc":"ellipeinc","ellipj":"ellipj","ellipk":"ellipk","ellipkinc":"ellipkinc","ellipkm1":"ellipkm1","elliprc":"elliprc","elliprd":"elliprd","elliprf":"elliprf","elliprg":"elliprg","elliprj":"elliprj","entr":"entr","erf":"erf","erfc":"erfc","erfcinv":"erfcinv","erfcx":"erfcx","erfi":"erfi","erfinv":"erfinv","eval_chebyc":"evalChebyc","eval_chebys":"evalChebys","eval_chebyt":"evalChebyt","eval_chebyu":"evalChebyu","eval_gegenbauer":"evalGegenbauer","eval_genlaguerre":"evalGenlaguerre","eval_hermite":"evalHermite","eval_hermitenorm":"evalHermitenorm","eval_jacobi":"evalJacobi","eval_laguerre":"evalLaguerre","eval_legendre":"evalLegendre","eval_sh_chebyt":"evalShChebyt","eval_sh_chebyu":"evalShChebyu","eval_sh_jacobi":"evalShJacobi","eval_sh_legendre":"evalShLegendre","exp1":"exp1","exp10":"exp10","exp2":"exp2","expi":"expi","expit":"expit","expm1":"expm1","expn":"expn","exprel":"exprel","fdtr":"fdtr","fdtrc":"fdtrc","fdtri":"fdtri","fdtridfd":"fdtridfd","fresnel":"fresnel","gamma":"gamma","gammainc":"gammainc","gammaincc":"gammaincc","gammainccinv":"gammainccinv","gammaincinv":"gammaincinv","gammaln":"gammaln","gammasgn":"gammasgn","gdtr":"gdtr","gdtrc":"gdtrc","gdtria":"gdtria","gdtrib":"gdtrib","gdtrix":"gdtrix","huber":"huber","hyp0f1":"hyp0f1","hyp1f1":"hyp1f1","hyp2f1":"hyp2f1","hyperu":"hyperu","i0":"i0","i0e":"i0e","i1":"i1","i1e":"i1e","inv_boxcox":"invBoxcox","inv_boxcox1p":"invBoxcox1p","it2i0k0":"it2i0k0","it2j0y0":"it2j0y0","it2struve0":"it2struve0","itairy":"itairy","iti0k0":"iti0k0","itj0y0":"itj0y0","itmodstruve0":"itmodstruve0","itstruve0":"itstruve0","iv":"iv","ive":"ive","j0":"j0","j1":"j1","jn":"jn","jv":"jv","jve":"jve","k0":"k0","k0e":"k0e","k1":"k1","k1e":"k1e","kei":"kei","keip":"keip","ker":"ker","kerp":"kerp","kl_div":"klDiv","kn":"kn","kolmogi":"kolmogi","kolmogorov":"kolmogorov","kv":"kv","kve":"kve","log1p":"log1p","log_expit":"logExpit","log_ndtr":"logNdtr","log_wright_bessel":"logWrightBessel","loggamma":"loggamma","logit":"logit","lpmv":"lpmv","mathieu_a":"mathieuA","mathieu_b":"mathieuB","mathieu_cem":"mathieuCem","mathieu_modcem1":"mathieuModcem1","mathieu_modcem2":"mathieuModcem2","mathieu_modsem1":"mathieuModsem1","mathieu_modsem2":"mathieuModsem2","mathieu_sem":"mathieuSem","modstruve":"modstruve","nbdtr":"nbdtr","nbdtrc":"nbdtrc","nbdtri":"nbdtri","nbdtrik":"nbdtrik","nbdtrin":"nbdtrin","ncfdtr":"ncfdtr","ncfdtri":"ncfdtri","ncfdtridfd":"ncfdtridfd","ncfdtridfn":"ncfdtridfn","ncfdtrinc":"ncfdtrinc","nctdtr":"nctdtr","nctdtridf":"nctdtridf","nctdtrinc":"nctdtrinc","nctdtrit":"nctdtrit","ndtr":"ndtr","ndtri":"ndtri","ndtri_exp":"ndtriExp","nrdtrimn":"nrdtrimn","nrdtrisd":"nrdtrisd","obl_ang1":"oblAng1","obl_ang1_cv":"oblAng1Cv","obl_cv":"oblCv","obl_rad1":"oblRad1","obl_rad1_cv":"oblRad1Cv","obl_rad2":"oblRad2","obl_rad2_cv":"oblRad2Cv","owens_t":"owensT","pbdv":"pbdv","pbvv":"pbvv","pbwa":"pbwa","pdtr":"pdtr","pdtrc":"pdtrc","pdtri":"pdtri","pdtrik":"pdtrik","poch":"poch","powm1":"powm1","pro_ang1":"proAng1","pro_ang1_cv":"proAng1Cv","pro_cv":"proCv","pro_rad1":"proRad1","pro_rad1_cv":"proRad1Cv","pro_rad2":"proRad2","pro_rad2_cv":"proRad2Cv","pseudo_huber":"pseudoHuber","psi":"psi","radian":"radian","rel_entr":"relEntr","rgamma":"rgamma","round":"round","shichi":"shichi","sici":"sici","sindg":"sindg","smirnov":"smirnov","smirnovi":"smirnovi","spence":"spence","stdtr":"stdtr","stdtridf":"stdtridf","stdtrit":"stdtrit","struve":"struve","tandg":"tandg","tklmbda":"tklmbda","voigt_profile":"voigtProfile","wright_bessel":"wrightBessel","wrightomega":"wrightomega","xlog1py":"xlog1py","xlogy":"xlogy","y0":"y0","y1":"y1","yn":"yn","yv":"yv","yve":"yve","zetac":"zetac"}` |
+| `FUNCTIONS` | `{"agm":"agm","ai_zeros":"aiZeros","airy":"airy","airye":"airye","assoc_laguerre":"assocLaguerre","bdtr":"bdtr","bdtrc":"bdtrc","bdtri":"bdtri","bdtrik":"bdtrik","bdtrin":"bdtrin","bei":"bei","bei_zeros":"beiZeros","beip":"beip","beip_zeros":"beipZeros","ber":"ber","ber_zeros":"berZeros","bernoulli":"bernoulli","berp":"berp","berp_zeros":"berpZeros","besselpoly":"besselpoly","beta":"beta","betainc":"betainc","betaincc":"betaincc","betainccinv":"betainccinv","betaincinv":"betaincinv","betaln":"betaln","bi_zeros":"biZeros","binom":"binom","boxcox":"boxcox","boxcox1p":"boxcox1p","btdtria":"btdtria","btdtrib":"btdtrib","c_roots":"cRoots","cbrt":"cbrt","cg_roots":"cgRoots","chdtr":"chdtr","chdtrc":"chdtrc","chdtri":"chdtri","chdtriv":"chdtriv","chndtr":"chndtr","chndtridf":"chndtridf","chndtrinc":"chndtrinc","chndtrix":"chndtrix","comb":"comb","cosdg":"cosdg","cosm1":"cosm1","cotdg":"cotdg","dawsn":"dawsn","digamma":"digamma","diric":"diric","ellip_harm":"ellipHarm","ellip_harm_2":"ellipHarm2","ellip_normal":"ellipNormal","ellipe":"ellipe","ellipeinc":"ellipeinc","ellipj":"ellipj","ellipk":"ellipk","ellipkinc":"ellipkinc","ellipkm1":"ellipkm1","elliprc":"elliprc","elliprd":"elliprd","elliprf":"elliprf","elliprg":"elliprg","elliprj":"elliprj","entr":"entr","erf":"erf","erf_zeros":"erfZeros","erfc":"erfc","erfcinv":"erfcinv","erfcx":"erfcx","erfi":"erfi","erfinv":"erfinv","euler":"euler","eval_chebyc":"evalChebyc","eval_chebys":"evalChebys","eval_chebyt":"evalChebyt","eval_chebyu":"evalChebyu","eval_gegenbauer":"evalGegenbauer","eval_genlaguerre":"evalGenlaguerre","eval_hermite":"evalHermite","eval_hermitenorm":"evalHermitenorm","eval_jacobi":"evalJacobi","eval_laguerre":"evalLaguerre","eval_legendre":"evalLegendre","eval_sh_chebyt":"evalShChebyt","eval_sh_chebyu":"evalShChebyu","eval_sh_jacobi":"evalShJacobi","eval_sh_legendre":"evalShLegendre","exp1":"exp1","exp10":"exp10","exp2":"exp2","expi":"expi","expit":"expit","expm1":"expm1","expn":"expn","exprel":"exprel","factorial":"factorial","factorial2":"factorial2","factorialk":"factorialk","fdtr":"fdtr","fdtrc":"fdtrc","fdtri":"fdtri","fdtridfd":"fdtridfd","fresnel":"fresnel","fresnel_zeros":"fresnelZeros","fresnelc_zeros":"fresnelcZeros","fresnels_zeros":"fresnelsZeros","gamma":"gamma","gammainc":"gammainc","gammaincc":"gammaincc","gammainccinv":"gammainccinv","gammaincinv":"gammaincinv","gammaln":"gammaln","gammasgn":"gammasgn","gdtr":"gdtr","gdtrc":"gdtrc","gdtria":"gdtria","gdtrib":"gdtrib","gdtrix":"gdtrix","h1vp":"h1vp","h2vp":"h2vp","h_roots":"hRoots","hankel1":"hankel1","hankel1e":"hankel1e","hankel2":"hankel2","hankel2e":"hankel2e","he_roots":"heRoots","huber":"huber","hyp0f1":"hyp0f1","hyp1f1":"hyp1f1","hyp2f1":"hyp2f1","hyperu":"hyperu","i0":"i0","i0e":"i0e","i1":"i1","i1e":"i1e","inv_boxcox":"invBoxcox","inv_boxcox1p":"invBoxcox1p","it2i0k0":"it2i0k0","it2j0y0":"it2j0y0","it2struve0":"it2struve0","itairy":"itairy","iti0k0":"iti0k0","itj0y0":"itj0y0","itmodstruve0":"itmodstruve0","itstruve0":"itstruve0","iv":"iv","ive":"ive","ivp":"ivp","j0":"j0","j1":"j1","j_roots":"jRoots","jn":"jn","jn_zeros":"jnZeros","jnjnp_zeros":"jnjnpZeros","jnp_zeros":"jnpZeros","jnyn_zeros":"jnynZeros","js_roots":"jsRoots","jv":"jv","jve":"jve","jvp":"jvp","k0":"k0","k0e":"k0e","k1":"k1","k1e":"k1e","kei":"kei","kei_zeros":"keiZeros","keip":"keip","keip_zeros":"keipZeros","kelvin":"kelvin","kelvin_zeros":"kelvinZeros","ker":"ker","ker_zeros":"kerZeros","kerp":"kerp","kerp_zeros":"kerpZeros","kl_div":"klDiv","kn":"kn","kolmogi":"kolmogi","kolmogorov":"kolmogorov","kv":"kv","kve":"kve","kvp":"kvp","l_roots":"lRoots","la_roots":"laRoots","lambertw":"lambertw","lmbda":"lmbda","log1p":"log1p","log_expit":"logExpit","log_ndtr":"logNdtr","log_softmax":"logSoftmax","log_wright_bessel":"logWrightBessel","loggamma":"loggamma","logit":"logit","logsumexp":"logsumexp","lpmv":"lpmv","mathieu_a":"mathieuA","mathieu_b":"mathieuB","mathieu_cem":"mathieuCem","mathieu_even_coef":"mathieuEvenCoef","mathieu_modcem1":"mathieuModcem1","mathieu_modcem2":"mathieuModcem2","mathieu_modsem1":"mathieuModsem1","mathieu_modsem2":"mathieuModsem2","mathieu_odd_coef":"mathieuOddCoef","mathieu_sem":"mathieuSem","modfresnelm":"modfresnelm","modfresnelp":"modfresnelp","modstruve":"modstruve","multigammaln":"multigammaln","nbdtr":"nbdtr","nbdtrc":"nbdtrc","nbdtri":"nbdtri","nbdtrik":"nbdtrik","nbdtrin":"nbdtrin","ncfdtr":"ncfdtr","ncfdtri":"ncfdtri","ncfdtridfd":"ncfdtridfd","ncfdtridfn":"ncfdtridfn","ncfdtrinc":"ncfdtrinc","nctdtr":"nctdtr","nctdtridf":"nctdtridf","nctdtrinc":"nctdtrinc","nctdtrit":"nctdtrit","ndtr":"ndtr","ndtri":"ndtri","ndtri_exp":"ndtriExp","nrdtrimn":"nrdtrimn","nrdtrisd":"nrdtrisd","obl_ang1":"oblAng1","obl_ang1_cv":"oblAng1Cv","obl_cv":"oblCv","obl_cv_seq":"oblCvSeq","obl_rad1":"oblRad1","obl_rad1_cv":"oblRad1Cv","obl_rad2":"oblRad2","obl_rad2_cv":"oblRad2Cv","owens_t":"owensT","p_roots":"pRoots","pbdn_seq":"pbdnSeq","pbdv":"pbdv","pbdv_seq":"pbdvSeq","pbvv":"pbvv","pbvv_seq":"pbvvSeq","pbwa":"pbwa","pdtr":"pdtr","pdtrc":"pdtrc","pdtri":"pdtri","pdtrik":"pdtrik","perm":"perm","poch":"poch","polygamma":"polygamma","powm1":"powm1","pro_ang1":"proAng1","pro_ang1_cv":"proAng1Cv","pro_cv":"proCv","pro_cv_seq":"proCvSeq","pro_rad1":"proRad1","pro_rad1_cv":"proRad1Cv","pro_rad2":"proRad2","pro_rad2_cv":"proRad2Cv","ps_roots":"psRoots","pseudo_huber":"pseudoHuber","psi":"psi","radian":"radian","rel_entr":"relEntr","rgamma":"rgamma","roots_chebyc":"rootsChebyc","roots_chebys":"rootsChebys","roots_chebyt":"rootsChebyt","roots_chebyu":"rootsChebyu","roots_gegenbauer":"rootsGegenbauer","roots_genlaguerre":"rootsGenlaguerre","roots_hermite":"rootsHermite","roots_hermitenorm":"rootsHermitenorm","roots_jacobi":"rootsJacobi","roots_laguerre":"rootsLaguerre","roots_legendre":"rootsLegendre","roots_sh_chebyt":"rootsShChebyt","roots_sh_chebyu":"rootsShChebyu","roots_sh_jacobi":"rootsShJacobi","roots_sh_legendre":"rootsShLegendre","round":"round","s_roots":"sRoots","shichi":"shichi","sici":"sici","sinc":"sinc","sindg":"sindg","smirnov":"smirnov","smirnovi":"smirnovi","softmax":"softmax","softplus":"softplus","spence":"spence","sph_harm_y":"sphHarmY","spherical_in":"sphericalIn","spherical_jn":"sphericalJn","spherical_kn":"sphericalKn","spherical_yn":"sphericalYn","stdtr":"stdtr","stdtridf":"stdtridf","stdtrit":"stdtrit","struve":"struve","t_roots":"tRoots","tandg":"tandg","tklmbda":"tklmbda","ts_roots":"tsRoots","u_roots":"uRoots","us_roots":"usRoots","voigt_profile":"voigtProfile","wofz":"wofz","wright_bessel":"wrightBessel","wrightomega":"wrightomega","xlog1py":"xlog1py","xlogy":"xlogy","y0":"y0","y0_zeros":"y0Zeros","y1":"y1","y1_zeros":"y1Zeros","y1p_zeros":"y1pZeros","yn":"yn","yn_zeros":"ynZeros","ynp_zeros":"ynpZeros","yv":"yv","yve":"yve","yvp":"yvp","zeta":"zeta","zetac":"zetac"}` |
 
 ## Methods
 
@@ -24,6 +24,16 @@ static agm(mixed $a, mixed $b, ?Tessero\NDArray $out = null): Tessero\NDArray|fl
 Compute the arithmetic-geometric mean of `a` and `b`.
 
 scipy.special.agm
+
+### aiZeros
+
+```php
+static aiZeros(mixed $nt): mixed
+```
+
+First nt zeros of Ai and Ai' with the associated values (scipy.special.ai_zeros).
+
+scipy.special.ai_zeros
 
 ### airy
 
@@ -52,6 +62,16 @@ static apply(string $name, mixed ...$args): mixed
 ```
 
 Call a function by its SciPy/NumPy name: Special::apply('log_ndtr', $x).
+
+### assocLaguerre
+
+```php
+static assocLaguerre(mixed $x, mixed $n, mixed $k, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Associated Laguerre polynomial L_n^k(x) (= eval_genlaguerre(n, k, x)).
+
+scipy.special.assoc_laguerre
 
 ### bdtr
 
@@ -113,6 +133,16 @@ Kelvin function bei.
 
 scipy.special.bei
 
+### beiZeros
+
+```php
+static beiZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin function bei (scipy.special.bei_zeros).
+
+scipy.special.bei_zeros
+
 ### beip
 
 ```php
@@ -122,6 +152,16 @@ static beip(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Derivative of the Kelvin function bei.
 
 scipy.special.beip
+
+### beipZeros
+
+```php
+static beipZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin derivative bei' (scipy.special.beip_zeros).
+
+scipy.special.beip_zeros
 
 ### ber
 
@@ -133,6 +173,26 @@ Kelvin function ber.
 
 scipy.special.ber
 
+### berZeros
+
+```php
+static berZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin function ber (scipy.special.ber_zeros).
+
+scipy.special.ber_zeros
+
+### bernoulli
+
+```php
+static bernoulli(mixed $n): mixed
+```
+
+The first n+1 Bernoulli numbers (scipy.special.bernoulli).
+
+scipy.special.bernoulli
+
 ### berp
 
 ```php
@@ -142,6 +202,16 @@ static berp(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Derivative of the Kelvin function ber.
 
 scipy.special.berp
+
+### berpZeros
+
+```php
+static berpZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin derivative ber' (scipy.special.berp_zeros).
+
+scipy.special.berp_zeros
 
 ### besselpoly
 
@@ -213,6 +283,16 @@ Natural logarithm of absolute value of beta function.
 
 scipy.special.betaln
 
+### biZeros
+
+```php
+static biZeros(mixed $nt): mixed
+```
+
+First nt zeros of Bi and Bi' with the associated values (scipy.special.bi_zeros).
+
+scipy.special.bi_zeros
+
 ### binom
 
 ```php
@@ -263,6 +343,16 @@ btdtria(a, p, x, out=None).
 
 scipy.special.btdtrib
 
+### cRoots
+
+```php
+static cRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_chebyc (scipy.special.c_roots).
+
+scipy.special.c_roots
+
 ### cbrt
 
 ```php
@@ -272,6 +362,16 @@ static cbrt(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Element-wise cube root of `x`.
 
 scipy.special.cbrt
+
+### cgRoots
+
+```php
+static cgRoots(mixed $n, mixed $alpha, mixed $mu = false): mixed
+```
+
+Alias of roots_gegenbauer (scipy.special.cg_roots).
+
+scipy.special.cg_roots
 
 ### chdtr
 
@@ -353,6 +453,16 @@ Inverse to `chndtr` vs `x`.
 
 scipy.special.chndtrix
 
+### comb
+
+```php
+static comb(mixed $N, mixed $k, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+The number of combinations of N things taken k at a time (scipy.special.comb, exact=False, repetition=False).
+
+scipy.special.comb
+
 ### cosdg
 
 ```php
@@ -402,6 +512,46 @@ static digamma(mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 The digamma function (alias of psi).
 
 scipy.special.digamma
+
+### diric
+
+```php
+static diric(mixed $x, mixed $n, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Periodic sinc (Dirichlet) function.
+
+scipy.special.diric
+
+### ellipHarm
+
+```php
+static ellipHarm(mixed $h2, mixed $k2, mixed $n, mixed $p, mixed $s): mixed
+```
+
+Ellipsoidal harmonic (Lame function of the first kind) E^p_n(s) (scipy.special.ellip_harm).
+
+scipy.special.ellip_harm
+
+### ellipHarm2
+
+```php
+static ellipHarm2(mixed $h2, mixed $k2, mixed $n, mixed $p, mixed $s): mixed
+```
+
+Ellipsoidal harmonic of the second kind F^p_n(s) (scipy.special.ellip_harm_2).
+
+scipy.special.ellip_harm_2
+
+### ellipNormal
+
+```php
+static ellipNormal(mixed $h2, mixed $k2, mixed $n, mixed $p): mixed
+```
+
+Normalization constant for ellipsoidal harmonics (scipy.special.ellip_normal).
+
+scipy.special.ellip_normal
 
 ### ellipe
 
@@ -533,6 +683,16 @@ Returns the error function of complex argument.
 
 scipy.special.erf
 
+### erfZeros
+
+```php
+static erfZeros(mixed $nt): mixed
+```
+
+First nt complex zeros of erf (scipy.special.erf_zeros).
+
+scipy.special.erf_zeros
+
 ### erfc
 
 ```php
@@ -582,6 +742,16 @@ static erfinv(mixed $y, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Inverse of the error function.
 
 scipy.special.erfinv
+
+### euler
+
+```php
+static euler(mixed $n): mixed
+```
+
+The first n+1 Euler numbers (scipy.special.euler).
+
+scipy.special.euler
 
 ### evalChebyc
 
@@ -813,6 +983,36 @@ Relative error exponential, ``(exp(x) - 1)/x``.
 
 scipy.special.exprel
 
+### factorial
+
+```php
+static factorial(mixed $n, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+The factorial n! as gamma(n+1), 0 for n<0 (scipy.special.factorial, exact=False).
+
+scipy.special.factorial
+
+### factorial2
+
+```php
+static factorial2(mixed $n): mixed
+```
+
+Double factorial n!! (scipy.special.factorial2, exact=False).
+
+scipy.special.factorial2
+
+### factorialk
+
+```php
+static factorialk(mixed $n, mixed $k): mixed
+```
+
+Order-k multifactorial (scipy.special.factorialk, exact=False).
+
+scipy.special.factorialk
+
 ### fdtr
 
 ```php
@@ -862,6 +1062,36 @@ static fresnel(mixed $z, ?array $out = null): array
 Fresnel integrals.
 
 scipy.special.fresnel
+
+### fresnelZeros
+
+```php
+static fresnelZeros(mixed $nt): mixed
+```
+
+First nt complex zeros of the Fresnel sine and cosine integrals (scipy.special.fresnel_zeros).
+
+scipy.special.fresnel_zeros
+
+### fresnelcZeros
+
+```php
+static fresnelcZeros(mixed $nt): mixed
+```
+
+First nt complex zeros of the Fresnel cosine integral (scipy.special.fresnelc_zeros).
+
+scipy.special.fresnelc_zeros
+
+### fresnelsZeros
+
+```php
+static fresnelsZeros(mixed $nt): mixed
+```
+
+First nt complex zeros of the Fresnel sine integral (scipy.special.fresnels_zeros).
+
+scipy.special.fresnels_zeros
 
 ### gamma
 
@@ -982,6 +1212,86 @@ static gdtrix(mixed $a, mixed $b, mixed $p, ?Tessero\NDArray $out = null): Tesse
 Inverse of `gdtr` vs x.
 
 scipy.special.gdtrix
+
+### h1vp
+
+```php
+static h1vp(mixed $v, mixed $z, mixed $n = 1): mixed
+```
+
+First derivative of the Hankel function of the first kind (scipy.special.h1vp).
+
+scipy.special.h1vp
+
+### h2vp
+
+```php
+static h2vp(mixed $v, mixed $z, mixed $n = 1): mixed
+```
+
+First derivative of the Hankel function of the second kind (scipy.special.h2vp).
+
+scipy.special.h2vp
+
+### hRoots
+
+```php
+static hRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_hermite (scipy.special.h_roots).
+
+scipy.special.h_roots
+
+### hankel1
+
+```php
+static hankel1(mixed $v, mixed $z): mixed
+```
+
+Hankel function of the first kind (scipy.special.hankel1).
+
+scipy.special.hankel1
+
+### hankel1e
+
+```php
+static hankel1e(mixed $v, mixed $z): mixed
+```
+
+Exponentially scaled Hankel function of the first kind (scipy.special.hankel1e).
+
+scipy.special.hankel1e
+
+### hankel2
+
+```php
+static hankel2(mixed $v, mixed $z): mixed
+```
+
+Hankel function of the second kind (scipy.special.hankel2).
+
+scipy.special.hankel2
+
+### hankel2e
+
+```php
+static hankel2e(mixed $v, mixed $z): mixed
+```
+
+Exponentially scaled Hankel function of the second kind (scipy.special.hankel2e).
+
+scipy.special.hankel2e
+
+### heRoots
+
+```php
+static heRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_hermitenorm (scipy.special.he_roots).
+
+scipy.special.he_roots
 
 ### huber
 
@@ -1193,6 +1503,16 @@ Exponentially scaled modified Bessel function of the first kind.
 
 scipy.special.ive
 
+### ivp
+
+```php
+static ivp(mixed $v, mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+First derivative of the modified Bessel function of the first kind (scipy.special.ivp, n=1).
+
+scipy.special.ivp
+
 ### j0
 
 ```php
@@ -1213,6 +1533,16 @@ Bessel function of the first kind of order 1.
 
 scipy.special.j1
 
+### jRoots
+
+```php
+static jRoots(mixed $n, mixed $alpha, mixed $beta, mixed $mu = false): mixed
+```
+
+Alias of roots_jacobi (scipy.special.j_roots).
+
+scipy.special.j_roots
+
 ### jn
 
 ```php
@@ -1222,6 +1552,56 @@ static jn(mixed $n, mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|flo
 Bessel function of the first kind of real order and complex argument (alias of jv).
 
 scipy.special.jn
+
+### jnZeros
+
+```php
+static jnZeros(mixed $n, mixed $nt): mixed
+```
+
+First nt positive zeros of the Bessel function Jn (scipy.special.jn_zeros).
+
+scipy.special.jn_zeros
+
+### jnjnpZeros
+
+```php
+static jnjnpZeros(mixed $nt): mixed
+```
+
+First nt zeros of Jn and Jn' by magnitude with their order/rank/type (scipy.special.jnjnp_zeros).
+
+scipy.special.jnjnp_zeros
+
+### jnpZeros
+
+```php
+static jnpZeros(mixed $n, mixed $nt): mixed
+```
+
+First nt positive zeros of the Bessel derivative Jn' (scipy.special.jnp_zeros).
+
+scipy.special.jnp_zeros
+
+### jnynZeros
+
+```php
+static jnynZeros(mixed $n, mixed $nt): mixed
+```
+
+First nt zeros of Jn, Jn', Yn, Yn' (scipy.special.jnyn_zeros).
+
+scipy.special.jnyn_zeros
+
+### jsRoots
+
+```php
+static jsRoots(mixed $n, mixed $p1, mixed $q1, mixed $mu = false): mixed
+```
+
+Alias of roots_sh_jacobi (scipy.special.js_roots).
+
+scipy.special.js_roots
 
 ### jv
 
@@ -1242,6 +1622,16 @@ static jve(mixed $v, mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|fl
 Exponentially scaled Bessel function of the first kind of order `v`.
 
 scipy.special.jve
+
+### jvp
+
+```php
+static jvp(mixed $v, mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+First derivative of the Bessel function of the first kind (scipy.special.jvp, n=1).
+
+scipy.special.jvp
 
 ### k0
 
@@ -1293,6 +1683,16 @@ Kelvin function kei.
 
 scipy.special.kei
 
+### keiZeros
+
+```php
+static keiZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin function kei (scipy.special.kei_zeros).
+
+scipy.special.kei_zeros
+
 ### keip
 
 ```php
@@ -1302,6 +1702,36 @@ static keip(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Derivative of the Kelvin function kei.
 
 scipy.special.keip
+
+### keipZeros
+
+```php
+static keipZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin derivative kei' (scipy.special.keip_zeros).
+
+scipy.special.keip_zeros
+
+### kelvin
+
+```php
+static kelvin(mixed $x): mixed
+```
+
+Kelvin functions as complex pairs (scipy.special.kelvin).
+
+scipy.special.kelvin
+
+### kelvinZeros
+
+```php
+static kelvinZeros(mixed $nt): mixed
+```
+
+First nt zeros of all eight Kelvin functions (scipy.special.kelvin_zeros).
+
+scipy.special.kelvin_zeros
 
 ### ker
 
@@ -1313,6 +1743,16 @@ Kelvin function ker.
 
 scipy.special.ker
 
+### kerZeros
+
+```php
+static kerZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin function ker (scipy.special.ker_zeros).
+
+scipy.special.ker_zeros
+
 ### kerp
 
 ```php
@@ -1322,6 +1762,16 @@ static kerp(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Derivative of the Kelvin function ker.
 
 scipy.special.kerp
+
+### kerpZeros
+
+```php
+static kerpZeros(mixed $nt): mixed
+```
+
+First nt positive zeros of the Kelvin derivative ker' (scipy.special.kerp_zeros).
+
+scipy.special.kerp_zeros
 
 ### klDiv
 
@@ -1383,6 +1833,56 @@ Exponentially scaled modified Bessel function of the second kind.
 
 scipy.special.kve
 
+### kvp
+
+```php
+static kvp(mixed $v, mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1).
+
+scipy.special.kvp
+
+### lRoots
+
+```php
+static lRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_laguerre (scipy.special.l_roots).
+
+scipy.special.l_roots
+
+### laRoots
+
+```php
+static laRoots(mixed $n, mixed $alpha, mixed $mu = false): mixed
+```
+
+Alias of roots_genlaguerre (scipy.special.la_roots).
+
+scipy.special.la_roots
+
+### lambertw
+
+```php
+static lambertw(mixed $z, mixed $k = 0, mixed $tol = 1.0E-8): mixed
+```
+
+Lambert W function, branch k (scipy.special.lambertw).
+
+scipy.special.lambertw
+
+### lmbda
+
+```php
+static lmbda(mixed $v, mixed $x): mixed
+```
+
+Lambda function L_v(x) and its derivative for a sequence of orders (scipy.special.lmbda).
+
+scipy.special.lmbda
+
 ### log1p
 
 ```php
@@ -1413,6 +1913,16 @@ Logarithm of Gaussian cumulative distribution function.
 
 scipy.special.log_ndtr
 
+### logSoftmax
+
+```php
+static logSoftmax(mixed $x, mixed $axis = null): mixed
+```
+
+log of softmax over an axis (scipy.special.log_softmax; real).
+
+scipy.special.log_softmax
+
 ### logWrightBessel
 
 ```php
@@ -1442,6 +1952,16 @@ static logit(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Logit ufunc for ndarrays.
 
 scipy.special.logit
+
+### logsumexp
+
+```php
+static logsumexp(mixed $a, mixed $axis = null, mixed $keepdims = false): mixed
+```
+
+Stable log of the sum of exponentials over an axis (scipy.special.logsumexp; real a, no b/return_sign).
+
+scipy.special.logsumexp
 
 ### lpmv
 
@@ -1483,6 +2003,16 @@ Even Mathieu function and its derivative.
 
 scipy.special.mathieu_cem
 
+### mathieuEvenCoef
+
+```php
+static mathieuEvenCoef(mixed $m, mixed $q): mixed
+```
+
+Fourier coefficients of the even Mathieu function ce_m (scipy.special.mathieu_even_coef).
+
+scipy.special.mathieu_even_coef
+
 ### mathieuModcem1
 
 ```php
@@ -1523,6 +2053,16 @@ Odd modified Mathieu function of the second kind and its derivative.
 
 scipy.special.mathieu_modsem2
 
+### mathieuOddCoef
+
+```php
+static mathieuOddCoef(mixed $m, mixed $q): mixed
+```
+
+Fourier coefficients of the odd Mathieu function se_m (scipy.special.mathieu_odd_coef).
+
+scipy.special.mathieu_odd_coef
+
 ### mathieuSem
 
 ```php
@@ -1533,6 +2073,26 @@ Odd Mathieu function and its derivative.
 
 scipy.special.mathieu_sem
 
+### modfresnelm
+
+```php
+static modfresnelm(mixed $x): mixed
+```
+
+Modified Fresnel negative integrals F-(x) and K-(x) (scipy.special.modfresnelm).
+
+scipy.special.modfresnelm
+
+### modfresnelp
+
+```php
+static modfresnelp(mixed $x): mixed
+```
+
+Modified Fresnel positive integrals F+(x) and K+(x) (scipy.special.modfresnelp).
+
+scipy.special.modfresnelp
+
 ### modstruve
 
 ```php
@@ -1542,6 +2102,16 @@ static modstruve(mixed $v, mixed $x, ?Tessero\NDArray $out = null): Tessero\NDAr
 Modified Struve function.
 
 scipy.special.modstruve
+
+### multigammaln
+
+```php
+static multigammaln(mixed $a, mixed $d): mixed
+```
+
+Log of the multivariate gamma function (scipy.special.multigammaln).
+
+scipy.special.multigammaln
 
 ### nbdtr
 
@@ -1763,6 +2333,16 @@ Characteristic value of oblate spheroidal function.
 
 scipy.special.obl_cv
 
+### oblCvSeq
+
+```php
+static oblCvSeq(mixed $m, mixed $n, mixed $c): mixed
+```
+
+Oblate spheroidal characteristic values for modes m..n (scipy.special.obl_cv_seq).
+
+scipy.special.obl_cv_seq
+
 ### oblRad1
 
 ```php
@@ -1813,6 +2393,26 @@ Owen's T Function.
 
 scipy.special.owens_t
 
+### pRoots
+
+```php
+static pRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_legendre (scipy.special.p_roots).
+
+scipy.special.p_roots
+
+### pbdnSeq
+
+```php
+static pbdnSeq(mixed $n, mixed $z): mixed
+```
+
+Complex parabolic cylinder Dn(z) and derivatives for a sequence of orders (scipy.special.pbdn_seq).
+
+scipy.special.pbdn_seq
+
 ### pbdv
 
 ```php
@@ -1823,6 +2423,16 @@ Parabolic cylinder function D.
 
 scipy.special.pbdv
 
+### pbdvSeq
+
+```php
+static pbdvSeq(mixed $v, mixed $x): mixed
+```
+
+Parabolic cylinder Dv(x) and derivatives for a sequence of orders (scipy.special.pbdv_seq).
+
+scipy.special.pbdv_seq
+
 ### pbvv
 
 ```php
@@ -1832,6 +2442,16 @@ static pbvv(mixed $v, mixed $x, ?array $out = null): array
 Parabolic cylinder function V.
 
 scipy.special.pbvv
+
+### pbvvSeq
+
+```php
+static pbvvSeq(mixed $v, mixed $x): mixed
+```
+
+Parabolic cylinder Vv(x) and derivatives for a sequence of orders (scipy.special.pbvv_seq).
+
+scipy.special.pbvv_seq
 
 ### pbwa
 
@@ -1883,6 +2503,16 @@ Inverse to `pdtr` vs `k`.
 
 scipy.special.pdtrik
 
+### perm
+
+```php
+static perm(mixed $N, mixed $k, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Number of permutations of N things taken k at a time (non-exact, via the Pochhammer symbol).
+
+scipy.special.perm
+
 ### poch
 
 ```php
@@ -1892,6 +2522,16 @@ static poch(mixed $z, mixed $m, ?Tessero\NDArray $out = null): Tessero\NDArray|f
 Pochhammer symbol.
 
 scipy.special.poch
+
+### polygamma
+
+```php
+static polygamma(mixed $n, mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Polygamma function of order n: the (n+1)-th derivative of the logarithm of the gamma function (scipy.special.polygamma).
+
+scipy.special.polygamma
 
 ### powm1
 
@@ -1933,6 +2573,16 @@ Characteristic value of prolate spheroidal function.
 
 scipy.special.pro_cv
 
+### proCvSeq
+
+```php
+static proCvSeq(mixed $m, mixed $n, mixed $c): mixed
+```
+
+Prolate spheroidal characteristic values for modes m..n (scipy.special.pro_cv_seq).
+
+scipy.special.pro_cv_seq
+
 ### proRad1
 
 ```php
@@ -1972,6 +2622,16 @@ static proRad2Cv(mixed $m, mixed $n, mixed $c, mixed $cv, mixed $x, ?array $out 
 Prolate spheroidal radial function pro_rad2 for precomputed characteristic value.
 
 scipy.special.pro_rad2_cv
+
+### psRoots
+
+```php
+static psRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_sh_legendre (scipy.special.ps_roots).
+
+scipy.special.ps_roots
 
 ### pseudoHuber
 
@@ -2023,6 +2683,156 @@ Reciprocal of the gamma function.
 
 scipy.special.rgamma
 
+### rootsChebyc
+
+```php
+static rootsChebyc(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Chebyshev 1st-kind quadrature on [-2, 2] (scipy.special.roots_chebyc).
+
+scipy.special.roots_chebyc
+
+### rootsChebys
+
+```php
+static rootsChebys(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Chebyshev 2nd-kind quadrature on [-2, 2] (scipy.special.roots_chebys).
+
+scipy.special.roots_chebys
+
+### rootsChebyt
+
+```php
+static rootsChebyt(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Chebyshev 1st-kind quadrature (scipy.special.roots_chebyt).
+
+scipy.special.roots_chebyt
+
+### rootsChebyu
+
+```php
+static rootsChebyu(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Chebyshev 2nd-kind quadrature (scipy.special.roots_chebyu).
+
+scipy.special.roots_chebyu
+
+### rootsGegenbauer
+
+```php
+static rootsGegenbauer(mixed $n, mixed $alpha, mixed $mu = false): mixed
+```
+
+Gauss-Gegenbauer quadrature (scipy.special.roots_gegenbauer).
+
+scipy.special.roots_gegenbauer
+
+### rootsGenlaguerre
+
+```php
+static rootsGenlaguerre(mixed $n, mixed $alpha, mixed $mu = false): mixed
+```
+
+generalized Gauss-Laguerre quadrature (scipy.special.roots_genlaguerre).
+
+scipy.special.roots_genlaguerre
+
+### rootsHermite
+
+```php
+static rootsHermite(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Hermite (physicists) quadrature (scipy.special.roots_hermite).
+
+scipy.special.roots_hermite
+
+### rootsHermitenorm
+
+```php
+static rootsHermitenorm(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Hermite (probabilists) quadrature (scipy.special.roots_hermitenorm).
+
+scipy.special.roots_hermitenorm
+
+### rootsJacobi
+
+```php
+static rootsJacobi(mixed $n, mixed $alpha, mixed $beta, mixed $mu = false): mixed
+```
+
+Gauss-Jacobi quadrature (scipy.special.roots_jacobi).
+
+scipy.special.roots_jacobi
+
+### rootsLaguerre
+
+```php
+static rootsLaguerre(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Laguerre quadrature (scipy.special.roots_laguerre).
+
+scipy.special.roots_laguerre
+
+### rootsLegendre
+
+```php
+static rootsLegendre(mixed $n, mixed $mu = false): mixed
+```
+
+Gauss-Legendre quadrature (scipy.special.roots_legendre).
+
+scipy.special.roots_legendre
+
+### rootsShChebyt
+
+```php
+static rootsShChebyt(mixed $n, mixed $mu = false): mixed
+```
+
+Shifted Gauss-Chebyshev 1st-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyt).
+
+scipy.special.roots_sh_chebyt
+
+### rootsShChebyu
+
+```php
+static rootsShChebyu(mixed $n, mixed $mu = false): mixed
+```
+
+Shifted Gauss-Chebyshev 2nd-kind quadrature on [0, 1] (scipy.special.roots_sh_chebyu).
+
+scipy.special.roots_sh_chebyu
+
+### rootsShJacobi
+
+```php
+static rootsShJacobi(mixed $n, mixed $p1, mixed $q1, mixed $mu = false): mixed
+```
+
+shifted Gauss-Jacobi on [0, 1] quadrature (scipy.special.roots_sh_jacobi).
+
+scipy.special.roots_sh_jacobi
+
+### rootsShLegendre
+
+```php
+static rootsShLegendre(mixed $n, mixed $mu = false): mixed
+```
+
+shifted Gauss-Legendre on [0, 1] quadrature (scipy.special.roots_sh_legendre).
+
+scipy.special.roots_sh_legendre
+
 ### round
 
 ```php
@@ -2032,6 +2842,16 @@ static round(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Round to the nearest integer.
 
 scipy.special.round
+
+### sRoots
+
+```php
+static sRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_chebys (scipy.special.s_roots).
+
+scipy.special.s_roots
 
 ### shichi
 
@@ -2052,6 +2872,16 @@ static sici(mixed $x, ?array $out = null): array
 Sine and cosine integrals.
 
 scipy.special.sici
+
+### sinc
+
+```php
+static sinc(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Normalized sinc, sin(pi x)/(pi x) with sinc(0)=1 (scipy.special.sinc).
+
+scipy.special.sinc
 
 ### sindg
 
@@ -2083,6 +2913,26 @@ Inverse to `smirnov`.
 
 scipy.special.smirnovi
 
+### softmax
+
+```php
+static softmax(mixed $x, mixed $axis = null): mixed
+```
+
+exp(x) normalised over an axis (scipy.special.softmax; real).
+
+scipy.special.softmax
+
+### softplus
+
+```php
+static softplus(mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Softplus, log(1 + exp(x)), evaluated stably (scipy.special.softplus).
+
+scipy.special.softplus
+
 ### spence
 
 ```php
@@ -2092,6 +2942,56 @@ static spence(mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|float
 Spence's function, also known as the dilogarithm.
 
 scipy.special.spence
+
+### sphHarmY
+
+```php
+static sphHarmY(mixed $n, mixed $m, mixed $theta, mixed $phi): mixed
+```
+
+Spherical harmonic Y_n^m (scipy.special.sph_harm_y).
+
+scipy.special.sph_harm_y
+
+### sphericalIn
+
+```php
+static sphericalIn(mixed $n, mixed $z, mixed $derivative, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Modified spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_in).
+
+scipy.special.spherical_in
+
+### sphericalJn
+
+```php
+static sphericalJn(mixed $n, mixed $z, mixed $derivative, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_jn).
+
+scipy.special.spherical_jn
+
+### sphericalKn
+
+```php
+static sphericalKn(mixed $n, mixed $z, mixed $derivative, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Modified spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_kn).
+
+scipy.special.spherical_kn
+
+### sphericalYn
+
+```php
+static sphericalYn(mixed $n, mixed $z, mixed $derivative, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_yn).
+
+scipy.special.spherical_yn
 
 ### stdtr
 
@@ -2133,6 +3033,16 @@ Struve function.
 
 scipy.special.struve
 
+### tRoots
+
+```php
+static tRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_chebyt (scipy.special.t_roots).
+
+scipy.special.t_roots
+
 ### tandg
 
 ```php
@@ -2153,6 +3063,36 @@ Cumulative distribution function of the Tukey lambda distribution.
 
 scipy.special.tklmbda
 
+### tsRoots
+
+```php
+static tsRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_sh_chebyt (scipy.special.ts_roots).
+
+scipy.special.ts_roots
+
+### uRoots
+
+```php
+static uRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_chebyu (scipy.special.u_roots).
+
+scipy.special.u_roots
+
+### usRoots
+
+```php
+static usRoots(mixed $n, mixed $mu = false): mixed
+```
+
+Alias of roots_sh_chebyu (scipy.special.us_roots).
+
+scipy.special.us_roots
+
 ### voigtProfile
 
 ```php
@@ -2162,6 +3102,16 @@ static voigtProfile(mixed $x, mixed $sigma, mixed $gamma, ?Tessero\NDArray $out 
 Voigt profile.
 
 scipy.special.voigt_profile
+
+### wofz
+
+```php
+static wofz(mixed $z): mixed
+```
+
+Faddeeva function w(z) = exp(-z^2) erfc(-iz) (scipy.special.wofz).
+
+scipy.special.wofz
 
 ### wrightBessel
 
@@ -2213,6 +3163,16 @@ Bessel function of the second kind of order 0.
 
 scipy.special.y0
 
+### y0Zeros
+
+```php
+static y0Zeros(mixed $nt): mixed
+```
+
+First nt zeros of Y0 and the value of Y0' there (scipy.special.y0_zeros).
+
+scipy.special.y0_zeros
+
 ### y1
 
 ```php
@@ -2223,6 +3183,26 @@ Bessel function of the second kind of order 1.
 
 scipy.special.y1
 
+### y1Zeros
+
+```php
+static y1Zeros(mixed $nt): mixed
+```
+
+First nt zeros of Y1 and the value of Y1' there (scipy.special.y1_zeros).
+
+scipy.special.y1_zeros
+
+### y1pZeros
+
+```php
+static y1pZeros(mixed $nt): mixed
+```
+
+First nt zeros of Y1' and the value of Y1 there (scipy.special.y1p_zeros).
+
+scipy.special.y1p_zeros
+
 ### yn
 
 ```php
@@ -2232,6 +3212,26 @@ static yn(mixed $n, mixed $x, ?Tessero\NDArray $out = null): Tessero\NDArray|flo
 Bessel function of the second kind of integer order and real argument.
 
 scipy.special.yn
+
+### ynZeros
+
+```php
+static ynZeros(mixed $n, mixed $nt): mixed
+```
+
+First nt positive zeros of the Bessel function Yn (scipy.special.yn_zeros).
+
+scipy.special.yn_zeros
+
+### ynpZeros
+
+```php
+static ynpZeros(mixed $n, mixed $nt): mixed
+```
+
+First nt positive zeros of the Bessel derivative Yn' (scipy.special.ynp_zeros).
+
+scipy.special.ynp_zeros
 
 ### yv
 
@@ -2252,6 +3252,26 @@ static yve(mixed $v, mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|fl
 Exponentially scaled Bessel function of the second kind of real order.
 
 scipy.special.yve
+
+### yvp
+
+```php
+static yvp(mixed $v, mixed $z, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+First derivative of the Bessel function of the second kind (scipy.special.yvp, n=1).
+
+scipy.special.yvp
+
+### zeta
+
+```php
+static zeta(mixed $x, mixed $q, ?Tessero\NDArray $out = null): Tessero\NDArray|float
+```
+
+Hurwitz zeta function (scipy.special.zeta).
+
+scipy.special.zeta
 
 ### zetac
 

@@ -13,13 +13,15 @@ is the native counterpart of memory_limit.
 
 ## Methods
 
-### adopt
+### adopter
 
 ```php
-static adopt(int $address, int $bytes): self
+static adopter(): Closure
 ```
 
-Take ownership of a tsr_alloc() block the kernel returned (routine results): freed with tsr_free($bytes).
+A closure that takes ownership of a tsr_alloc() block (freed with tsr_free($bytes)), handed out to
+Tessero\Native\Registry only. PHP has no friend classes, so the caller is checked once here, not on
+every call; Registry caches the closure.
 
 ### allocate
 
@@ -42,13 +44,21 @@ static mapped(int $address, int $bytes, int $handle, string $path, string $mode)
 A file mapping from tsr_mmap_open(): $address is element 0, $handle is unmapped by tsr_mmap_close()
 when the last array over it is gone. Mapped bytes are outside the memory budget.
 
-### wrap
+### __serialize
 
 ```php
-static wrap(int $address, int $bytes, mixed $keepAlive): self
+__serialize(): array
 ```
 
-Wrap memory owned by someone else (e.g. an FFI array); $keepAlive keeps it reachable.
+Buffers are never serialized. unserialize() creates objects without the constructor, so a forged payload
+could otherwise name any address and size, and __destruct would free (or unmap) it. Serialize the NDArray
+instead: its __serialize copies the data and its __unserialize validates it.
+
+### __unserialize
+
+```php
+__unserialize(array $data): void
+```
 
 ### flush
 
