@@ -54,6 +54,7 @@ binding, and the Zend extension embeds a second copy of the same kernel. Before 
 
 ### ABI version, soname and capability query
 
+- Native C and C++ consumers include `csrc/include/tessero_native.h` (standard types, include guard, C linkage); `tessero.h` stays declarations-only because FFI parses it verbatim. `make abi-check` compiles the wrapper standalone in C and C++.
 - One version source: `csrc/include/tessero_version.h` (`TSR_VERSION_STRING`, `TSR_ABI_VERSION`). `tsr_version()`
   and `tsr_abi_version()` return it, the Makefile reads the soname from it and the extension's
   `PHP_TESSERO_VERSION` is defined from it.
