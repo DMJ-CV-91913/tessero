@@ -1698,6 +1698,212 @@ static void test_fuzz_batch_b(void)
     CHECK(fzb_call("windows.dpss", 3, (tsr_arg[]){arg_int(4096), arg_num(17), arg_int(4096)}, 1, r) == TSR_EARG, "N13 dpss(4096, 17, Kmax=4096) refused, not run for minutes");
 }
 
+/* fuzz batch C: interpolate.splantider/splder/insert/spalde/NdPPoly/NdBSpline and the hierarchy routines trusted
+   their (t, c, k) sizes and linkage ids. Each case was an out-of-bounds access, a stack overflow, a cast of an
+   unchecked double or an uninitialized output; each now runs (sizes SciPy accepts) or refuses as SciPy does. */
+static int fzc_run(const char *name, int nargs, tsr_arg *args, int nres, tsr_result *res)
+{
+    const int id = tsr_fn_find(name);
+    return id < 0 ? 1 : tsr_fn_routine(id, nargs, args, nres, res);   /* caller frees on 0 */
+}
+
+static void test_fuzz_batch_c(void)
+{
+    tsr_result r[3];
+    const int64_t before = tsr_allocated();
+    /* ---- splantider (A-N1): a c longer than len(t)+2n+2 was copied into a buffer of that size (heap write), and a k
+       with no core left read cnew[-k] (heap read before the block) */
+    double t4[4] = {0, 1, 2, 3}, c50[50], one = 2.0;
+    for (int i = 0; i < 50; i++) c50[i] = i + 1;
+    int64_t s4[1] = {4}, s50[1] = {50}, s1[1] = {1}, s2[1] = {2};
+    tsr_arg ta = arg_arr(t4, 1, s4);
+    if (fzc_run("interpolate.splantider", 4, (tsr_arg[]){ta, arg_arr(c50, 1, s50), arg_int(0), arg_int(1)}, 3, r) == 0) {
+        const double *cc = (const double *)r[1].arr.data;
+        CHECK(r[0].arr.shape[0] == 6 && r[1].arr.shape[0] == 6 && r[2].ival == 1 && cc[0] == 0.0 && cc[1] == 1.0 && cc[3] == 6.0,
+              "A-N1 splantider with len(c) > len(t) uses c[:len(t)-k-1] (SciPy)");
+        free_results(r, 3);
+    } else CHECK(0, "A-N1 splantider long c failed: %s", tsr_fn_error());
+    CHECK(fzb_call("interpolate.splantider", 3, (tsr_arg[]){ta, arg_arr(c50, 1, s50), arg_int(7)}, 3, r) == TSR_EINDEX,
+          "A-N1 splantider with k >= len(t)-1 is SciPy's IndexError (was cnew[-k])");
+    CHECK(fzb_call("interpolate.splantider", 3, (tsr_arg[]){ta, arg_arr(c50, 1, s2), arg_int(0)}, 3, r) == TSR_EARG,
+          "splantider: c shorter than the core does not broadcast");
+    CHECK(fzb_call("interpolate.splantider", 3, (tsr_arg[]){ta, arg_arr(&one, 1, s1), arg_int(0)}, 3, r) == 0,
+          "splantider: a one-element c broadcasts");
+    CHECK(fzb_call("interpolate.splantider", 3, (tsr_arg[]){ta, arg_arr(c50, 1, s4), arg_num(NAN)}, 3, r) == TSR_ETYPE, "splantider(k=NaN) refused, no cast");
+    CHECK(fzb_call("interpolate.splantider", 3, (tsr_arg[]){ta, arg_arr(c50, 1, s4), arg_num(1.5)}, 3, r) == TSR_ETYPE, "splantider(k=1.5) is a TypeError");
+    CHECK(fzb_call("interpolate.splantider", 3, (tsr_arg[]){ta, arg_arr(c50, 1, s4), arg_int(-1)}, 3, r) == TSR_EARG, "splantider(k=-1) refused");
+    CHECK(fzb_call("interpolate.splantider", 4, (tsr_arg[]){ta, arg_arr(c50, 1, s4), arg_int(0), arg_num(1e300)}, 3, r) == TSR_EARG,
+          "splantider(n=1e300) refused, no cast");
+    CHECK(fzb_call("interpolate.splantider", 4, (tsr_arg[]){ta, arg_arr(c50, 1, s4), arg_int(0), arg_int(INT32_MAX)}, 3, r) == TSR_EARG,
+          "splantider(n=2^31-1): the work bound refuses it");
+    /* splder: n = 0 returns (t, c, k) as given; a negative n is splantider (SciPy); repeated knots raise */
+    double tc[8] = {0, 0, 0, 0, 1, 1, 1, 1}, cc4[8] = {1, 2, 3, 4, 0, 0, 0, 0};
+    int64_t s8[1] = {8};
+    tsr_arg tca = arg_arr(tc, 1, s8), cca = arg_arr(cc4, 1, s8);
+    if (fzc_run("interpolate.splder", 4, (tsr_arg[]){tca, arg_arr(cc4, 1, s4), arg_int(3), arg_int(0)}, 3, r) == 0) {
+        CHECK(r[1].arr.shape[0] == 4 && r[2].ival == 3, "splder(n=0) returns c unchanged (length 4)");
+        free_results(r, 3);
+    } else CHECK(0, "splder(n=0) failed: %s", tsr_fn_error());
+    if (fzc_run("interpolate.splder", 4, (tsr_arg[]){tca, cca, arg_int(3), arg_int(-1)}, 3, r) == 0) {
+        CHECK(r[0].arr.shape[0] == 10 && r[2].ival == 4, "splder(n=-1) is splantider(n=1)");
+        free_results(r, 3);
+    } else CHECK(0, "splder(n=-1) failed: %s", tsr_fn_error());
+    double trep[8] = {0, 0, 0, 0, 0, 1, 1, 1};
+    CHECK(fzb_call("interpolate.splder", 3, (tsr_arg[]){arg_arr(trep, 1, s8), cca, arg_int(3)}, 3, r) == TSR_EARG,
+          "splder with internal repeated knots raises (SciPy's FloatingPointError -> ValueError)");
+    CHECK(fzb_call("interpolate.splder", 4, (tsr_arg[]){arg_arr(tc, 1, s4), cca, arg_int(3), arg_int(2)}, 3, r) == TSR_EARG,
+          "splder with too few knots for n passes refused");
+    /* insert: x at the right end of the base interval found no interval and used l = 0 (ccur[-k]) */
+    if (fzc_run("interpolate.insert", 4, (tsr_arg[]){arg_num(1.0), tca, cca, arg_int(3)}, 3, r) == 0) {
+        CHECK(r[0].arr.shape[0] == 9, "insert at the right end of the base interval");
+        free_results(r, 3);
+    } else CHECK(0, "insert(x=t[n-k-1]) failed: %s", tsr_fn_error());
+    CHECK(fzb_call("interpolate.insert", 4, (tsr_arg[]){arg_num(2.0), tca, cca, arg_int(3)}, 3, r) == TSR_EARG, "insert outside the base interval: Invalid input data");
+    CHECK(fzb_call("interpolate.insert", 4, (tsr_arg[]){arg_num(0.5), tca, cca, arg_int(9)}, 3, r) == TSR_EARG, "insert with k too large for t refused");
+    /* spalde and NdBSpline evaluated through a d[8] stack buffer: k >= 8 overflowed it */
+    double t20[20], c10[10], xs[3] = {0.0, 0.5, 1.0};
+    for (int i = 0; i < 20; i++) t20[i] = i < 10 ? 0.0 : 1.0;
+    for (int i = 0; i < 10; i++) c10[i] = 1.0;
+    int64_t s20[1] = {20}, s10[1] = {10}, s3[1] = {3};
+    if (fzc_run("interpolate.spalde", 4, (tsr_arg[]){arg_arr(t20, 1, s20), arg_arr(c10, 1, s10), arg_int(9), arg_arr(xs, 1, s3)}, 1, r) == 0) {
+        const double *d = (const double *)r[0].arr.data;
+        CHECK(r[0].arr.shape[1] == 10 && fabs(d[0] - 1.0) < 1e-12 && fabs(d[1]) < 1e-9, "spalde with k = 9 (constant spline: f = 1, f' = 0)");
+        free_results(r, 1);
+    } else CHECK(0, "spalde k=9 failed: %s", tsr_fn_error());
+    double xo[1] = {2.0};
+    CHECK(fzb_call("interpolate.spalde", 4, (tsr_arg[]){tca, cca, arg_int(3), arg_arr(xo, 1, s1)}, 1, r) == TSR_EARG, "spalde outside t(k)..t(n-k-1) raises");
+    CHECK(fzb_call("interpolate.spalde", 4, (tsr_arg[]){arg_arr(tc, 1, s4), cca, arg_int(3), arg_arr(xs, 1, s3)}, 1, r) == TSR_EARG, "spalde with too few knots refused");
+    double cxy[100], xi3[6] = {0.5, 0.5, 0.5, 0.2, 0.2, 0.2};
+    for (int i = 0; i < 100; i++) cxy[i] = 1.0;
+    int64_t sc[2] = {10, 10}, sxi2[2] = {3, 2}, sxi3[2] = {2, 3};
+    tsr_arg t20a = arg_arr(t20, 1, s20);
+    if (fzc_run("interpolate.NdBSpline", 6, (tsr_arg[]){t20a, t20a, arg_arr(cxy, 2, sc), arg_int(9), arg_int(9), arg_arr(xi3, 2, sxi2)}, 1, r) == 0) {
+        CHECK(fabs(((const double *)r[0].arr.data)[0] - 1.0) < 1e-12, "NdBSpline with kx = ky = 9");
+        free_results(r, 1);
+    } else CHECK(0, "NdBSpline k=9 failed: %s", tsr_fn_error());
+    CHECK(fzb_call("interpolate.NdBSpline", 6, (tsr_arg[]){t20a, t20a, arg_arr(cxy, 2, sc), arg_int(9), arg_int(9), arg_arr(xi3, 2, sxi3)}, 1, r) == TSR_EARG,
+          "NdBSpline with xi of shape (n, 3) refused (read xi[2t+1] of another row)");
+    CHECK(fzb_call("interpolate.NdBSpline", 6, (tsr_arg[]){ta, t20a, arg_arr(cxy, 2, sc), arg_int(9), arg_int(9), arg_arr(xi3, 2, sxi2)}, 1, r) == TSR_EARG,
+          "NdBSpline with a knot vector shorter than c.shape[0] + k + 1 refused");
+    double c4d[4] = {1, 1, 1, 1}, xb2[2] = {0, 1};
+    int64_t s4d[4] = {1, 1, 2, 2}, sxi1[2] = {6, 1};
+    CHECK(fzb_call("interpolate.NdPPoly", 4, (tsr_arg[]){arg_arr(c4d, 4, s4d), arg_arr(xb2, 1, s2), arg_arr(xb2, 1, s2), arg_arr(xi3, 2, sxi2)}, 1, r) == TSR_EARG,
+          "NdPPoly with too few breakpoints refused (read xb[mx])");
+    CHECK(fzb_call("interpolate.NdPPoly", 4, (tsr_arg[]){arg_arr(c4d, 4, s4d), arg_arr(t4, 1, s3), arg_arr(t4, 1, s3), arg_arr(xi3, 2, sxi1)}, 1, r) == TSR_EARG,
+          "NdPPoly with xi of shape (n, 1) refused");
+
+    /* ---- hierarchy (A-N2): ids naming clusters not yet formed, repeated or non-finite indexed Z, R and buffers out
+       of bounds; SciPy's _is_valid_linkage refuses them with its messages */
+    int64_t z2[2] = {2, 4}, z1[2] = {1, 4}, z0[2] = {0, 4}, r1[2] = {1, 4};
+    double Zok[8] = {0, 1, 1, 2, 2, 3, 2, 3}, Zbefore[8] = {0, 5, 1, 2, 1, 2, 2, 3}, Zrep[8] = {0, 1, 1, 2, 0, 1, 2, 2};
+    double Znan[8] = {0, NAN, 1, 2, 2, 3, 2, 3}, Zneg[8] = {0, 1, -1, 2, 2, 3, 2, 3};
+    tsr_arg zok = arg_arr(Zok, 2, z2);
+    CHECK(fzb_call("hierarchy.fcluster", 2, (tsr_arg[]){arg_arr(Zbefore, 2, z2), arg_num(1.0)}, 1, r) == TSR_EARG,
+          "A-N2 fcluster with a cluster used before it is formed refused (incon_collect read past Z)");
+    CHECK(fzb_call("hierarchy.fcluster", 2, (tsr_arg[]){arg_arr(Zrep, 2, z2), arg_num(1.0)}, 1, r) == TSR_EARG, "fcluster with a cluster used twice refused");
+    CHECK(fzb_call("hierarchy.fcluster", 2, (tsr_arg[]){arg_arr(Znan, 2, z2), arg_num(1.0)}, 1, r) == TSR_EARG, "fcluster with a NaN id refused, no cast");
+    CHECK(fzb_call("hierarchy.inconsistent", 1, (tsr_arg[]){arg_arr(Zneg, 2, z2)}, 1, r) == TSR_EARG, "inconsistent with a negative distance refused");
+    CHECK(fzb_call("hierarchy.cophenet", 1, (tsr_arg[]){arg_arr(Zok, 2, z0)}, 1, r) == TSR_EARG, "cophenet on an empty Z refused");
+    double Zone[4] = {0, 7, 1, 2};
+    CHECK(fzb_call("hierarchy.leaves_list", 1, (tsr_arg[]){arg_arr(Zone, 2, z1)}, 1, r) == TSR_EARG, "a one-row Z naming cluster 7 refused");
+    if (fzc_run("hierarchy.fcluster", 3, (tsr_arg[]){zok, arg_num(0.5), arg_str("distance")}, 1, r) == 0) {
+        const int64_t *T = (const int64_t *)r[0].arr.data;
+        CHECK(r[0].arr.shape[0] == 3 && T[0] != T[1] && T[1] != T[2] && T[0] != T[2], "fcluster distance 0.5 on a valid Z: three clusters");
+        free_results(r, 1);
+    } else CHECK(0, "fcluster valid failed: %s", tsr_fn_error());
+    double mc1[1] = {1.0}, R1[4] = {1, 0, 1, 0}, Rneg[8] = {1, -1, 1, 0, 1, 0, 1, 0};
+    CHECK(fzb_call("hierarchy.fcluster", 6, (tsr_arg[]){zok, arg_num(1.0), arg_str("monocrit"), arg_int(2), arg_none(), arg_arr(mc1, 1, s1)}, 1, r) == TSR_EARG,
+          "fcluster monocrit shorter than Z refused (read past it)");
+    CHECK(fzb_call("hierarchy.fcluster", 5, (tsr_arg[]){zok, arg_num(1.0), arg_str("inconsistent"), arg_int(2), arg_arr(R1, 2, r1)}, 1, r) == TSR_EARG,
+          "fcluster with an R of fewer rows than Z refused");
+    CHECK(fzb_call("hierarchy.fcluster", 5, (tsr_arg[]){zok, arg_num(1.0), arg_str("inconsistent"), arg_int(2), arg_arr(Rneg, 2, z2)}, 1, r) == TSR_EARG,
+          "fcluster with a negative standard deviation in R refused");
+    CHECK(fzb_call("hierarchy.fcluster", 4, (tsr_arg[]){zok, arg_num(1.0), arg_str("inconsistent"), arg_num(NAN)}, 1, r) == TSR_EARG, "fcluster depth=NaN refused, no cast");
+    CHECK(fzb_call("hierarchy.fcluster", 4, (tsr_arg[]){zok, arg_num(1.0), arg_str("inconsistent"), arg_int(0)}, 1, r) == 0, "fcluster depth=0 runs (SciPy: the node alone)");
+    CHECK(fzb_call("hierarchy.fcluster", 3, (tsr_arg[]){zok, arg_num(2.5), arg_str("maxclust")}, 1, r) == TSR_ETYPE, "fcluster maxclust t=2.5 is a TypeError");
+    CHECK(fzb_call("hierarchy.fcluster", 3, (tsr_arg[]){zok, arg_num(NAN), arg_str("maxclust_monocrit")}, 1, r) == TSR_EARG ||
+          fzb_call("hierarchy.fcluster", 3, (tsr_arg[]){zok, arg_num(NAN), arg_str("maxclust_monocrit")}, 1, r) == TSR_ETYPE, "fcluster maxclust_monocrit t=NaN refused");
+    CHECK(fzb_call("hierarchy.fcluster", 3, (tsr_arg[]){zok, arg_num(1.0), arg_str("bogus")}, 1, r) == TSR_EARG, "fcluster invalid criterion");
+    CHECK(fzb_call("hierarchy.maxinconsts", 2, (tsr_arg[]){zok, arg_arr(R1, 2, r1)}, 2, r) == TSR_EARG, "maxinconsts with R of fewer rows refused (read past R)");
+    CHECK(fzb_call("hierarchy.maxRstat", 3, (tsr_arg[]){zok, arg_arr(Zok, 2, z2), arg_num(1.0)}, 3, r) == TSR_ETYPE, "maxRstat with a float i is a TypeError");
+    double Tneg[3] = {-1, -1, 5}, Tfrac[3] = {1, 1.5, 2};
+    if (fzc_run("hierarchy.leaders", 2, (tsr_arg[]){zok, arg_arr(Tneg, 1, s3)}, 2, r) == 0) {
+        CHECK(r[0].arr.shape[0] == 2, "leaders with label -1 (was the internal 'mixed' marker)");
+        free_results(r, 2);
+    } else CHECK(0, "leaders with -1 labels failed: %s", tsr_fn_error());
+    CHECK(fzb_call("hierarchy.leaders", 2, (tsr_arg[]){zok, arg_arr(Tfrac, 1, s3)}, 2, r) == TSR_ETYPE, "leaders with a non-integer label is a TypeError");
+    double I1[3] = {-5, -5, 3}, I2[3] = {7, 7, -2}, I3[3] = {7, 8, -2};
+    if (fzc_run("hierarchy.is_isomorphic", 2, (tsr_arg[]){arg_arr(I1, 1, s3), arg_arr(I2, 1, s3)}, 2, r) == 0) {
+        CHECK(r[0].num == 1.0, "is_isomorphic with negative labels (indexed d1[-5])");
+        free_results(r, 2);
+    } else CHECK(0, "is_isomorphic failed: %s", tsr_fn_error());
+    if (fzc_run("hierarchy.is_isomorphic", 2, (tsr_arg[]){arg_arr(I1, 1, s3), arg_arr(I3, 1, s3)}, 2, r) == 0) {
+        CHECK(r[0].num == 0.0, "is_isomorphic: a split label is not isomorphic");
+        free_results(r, 2);
+    } else CHECK(0, "is_isomorphic (2) failed: %s", tsr_fn_error());
+    CHECK(fzb_call("hierarchy.is_isomorphic", 2, (tsr_arg[]){arg_arr(I1, 1, s3), arg_arr(I1, 1, s2)}, 2, r) == TSR_EARG, "is_isomorphic lengths differ: SciPy's ValueError");
+    double M99[6] = {1, 2, 1, 99, 3, 2};
+    int64_t m3[2] = {2, 3};
+    CHECK(fzb_call("hierarchy.from_mlab_linkage", 1, (tsr_arg[]){arg_arr(M99, 2, m3)}, 1, r) == TSR_EARG, "from_mlab_linkage with id 99 refused (indexed sz[98])");
+    double X1[2] = {0, 1}, ynan[3] = {1, NAN, 2};
+    int64_t x1[2] = {1, 2};
+    CHECK(fzb_call("hierarchy.linkage", 1, (tsr_arg[]){arg_arr(X1, 2, x1)}, 1, r) == TSR_EARG, "linkage of one observation refused (was a (-1, 4) Z)");
+    CHECK(fzb_call("hierarchy.linkage", 1, (tsr_arg[]){arg_arr(X1, 1, (int64_t[]){0})}, 1, r) == TSR_EARG, "linkage of an empty condensed matrix refused");
+    CHECK(fzb_call("hierarchy.linkage", 1, (tsr_arg[]){arg_arr(ynan, 1, s3)}, 1, r) == TSR_EARG, "linkage with a NaN distance refused (SciPy)");
+    CHECK(fzb_call("hierarchy.fclusterdata", 2, (tsr_arg[]){arg_arr(X1, 2, x1), arg_num(1.0)}, 1, r) == TSR_EARG, "fclusterdata of one observation refused");
+    double X3[6] = {0, 0, 1, 0, 5, 5};
+    int64_t x3[2] = {3, 2};
+    CHECK(fzb_call("hierarchy.fclusterdata", 3, (tsr_arg[]){arg_arr(X3, 2, x3), arg_num(1.0), arg_str("monocrit")}, 1, r) == TSR_EARG,
+          "fclusterdata criterion=monocrit refused (read a NULL monocrit)");
+    CHECK(fzb_call("hierarchy.cut_tree", 3, (tsr_arg[]){zok, arg_int(2), arg_arr(Zok, 1, s1)}, 1, r) == TSR_EARG, "cut_tree with both n_clusters and height refused");
+    CHECK(fzb_call("hierarchy.cut_tree", 2, (tsr_arg[]){zok, arg_num(NAN)}, 1, r) == 0, "cut_tree n_clusters=NaN runs (searchsorted puts NaN last), no cast");
+    /* a 3000-merge chain at a depth beyond it: the inconsistency statistic walks it iteratively */
+    enum { CH = 3000 };
+    double *Zc = (double *)malloc(sizeof(double) * 4 * CH);
+    if (Zc) {
+        for (int i = 0; i < CH; i++) { Zc[i * 4] = i == 0 ? 0 : CH + i; Zc[i * 4 + 1] = i + 1; Zc[i * 4 + 2] = i + 1; Zc[i * 4 + 3] = i + 2; }
+        if (fzc_run("hierarchy.inconsistent", 2, (tsr_arg[]){arg_arr(Zc, 2, (int64_t[]){CH, 4}), arg_int(INT32_MAX)}, 1, r) == 0) {
+            const double *R = (const double *)r[0].arr.data;
+            CHECK(R[(CH - 1) * 4 + 2] == CH && R[2] == 1, "inconsistent on a 3000-deep chain counts every merge below the root");
+            free_results(r, 1);
+        } else CHECK(0, "inconsistent chain failed: %s", tsr_fn_error());
+        free(Zc);
+    }
+
+    /* C-N1 / C-N2 (batch C campaign): PPoly and BPoly took x and the shape of c unchecked. A short x was read past
+       its end (pp_interval, x[i+1]); m = 0 made pp_interval return -1; an empty first axis of c wrote binom[0]
+       into a 0-byte block. SciPy's _PPolyBase refusals now come first. */
+    {
+        double pc[4] = {2.0, 1.0, 3.0, 4.0}, px2[2] = {0.0, 1.0}, px3[3] = {0.0, 1.0, 2.0}, pxn[3] = {0.0, 2.0, 1.0};
+        double pxnan[2] = {0.0, NAN}, pq[1] = {0.5};
+        const int64_t s21[2] = {2, 1}, s12[2] = {1, 2}, s01[2] = {0, 1}, s22[2] = {2, 2}, n1[1] = {1}, n2[1] = {2}, n3[1] = {3};
+        const tsr_arg q = arg_arr(pq, 1, n1);
+        CHECK(fzb_call("interpolate.BPoly", 3, (tsr_arg[]){arg_arr(pc, 2, s12), arg_arr(px2, 1, n2), q}, 1, r) == TSR_EARG,
+              "C-N1 BPoly with 2 intervals in c but 2 breakpoints refused (read past x)");
+        CHECK(fzb_call("interpolate.BPoly", 3, (tsr_arg[]){arg_arr(pc, 2, s01), arg_arr(px2, 1, n2), q}, 1, r) == TSR_EARG,
+              "C-N2 BPoly with an empty coefficient axis refused (write past binom)");
+        CHECK(fzb_call("interpolate.PPoly", 3, (tsr_arg[]){arg_arr(pc, 2, s21), arg_arr(px2, 1, n1), q}, 1, r) == TSR_EARG,
+              "PPoly with one breakpoint refused");
+        CHECK(fzb_call("interpolate.PPoly", 3, (tsr_arg[]){arg_arr(pc, 2, s22), arg_arr(pxn, 1, n3), q}, 1, r) == TSR_EARG,
+              "PPoly with non-monotonic x refused");
+        CHECK(fzb_call("interpolate.PPoly", 3, (tsr_arg[]){arg_arr(pc, 2, s21), arg_arr(pxnan, 1, n2), q}, 1, r) == TSR_EARG,
+              "PPoly with a NaN breakpoint refused");
+        if (fzc_run("interpolate.PPoly", 3, (tsr_arg[]){arg_arr(pc, 2, s21), arg_arr(px2, 1, n2), q}, 1, r) == 0) {
+            CHECK(((const double *)r[0].arr.data)[0] == 2.0, "PPoly([[2],[1]], [0,1])(0.5) = 2");
+            free_results(r, 1);
+        } else CHECK(0, "PPoly valid failed: %s", tsr_fn_error());
+        /* C-N3 (batch C campaign): a one-row Z naming the same leaf twice reached cophenet's pair index -1 */
+        double zsame[4] = {0.0, 0.0, 1.0, 2.0};
+        CHECK(fzb_call("hierarchy.cophenet", 1, (tsr_arg[]){arg_arr(zsame, 2, (int64_t[]){1, 4})}, 1, r) == TSR_EARG,
+              "C-N3 cophenet on a one-row Z joining leaf 0 with itself refused (wrote out[-1])");
+        if (fzc_run("interpolate.BPoly", 3,(tsr_arg[]){arg_arr(pc, 2, s22), arg_arr(px3, 1, n3), q}, 1, r) == 0) {
+            CHECK(((const double *)r[0].arr.data)[0] == 2.5, "BPoly([[2,1],[3,4]], [0,1,2])(0.5) = 2*(1-s) + 3*s = 2.5");
+            free_results(r, 1);
+        } else CHECK(0, "BPoly valid failed: %s", tsr_fn_error());
+    }
+    CHECK(tsr_allocated() == before, "fuzz batch C leaves no kernel allocation behind (%lld bytes)", (long long)(tsr_allocated() - before));
+}
+
 static void test_abi_runtime(void)
 {
     /* version and capability negotiation: one version source */
@@ -2076,6 +2282,7 @@ int main(void)
     test_security_regressions();
     test_fuzz_batch_a();
     test_fuzz_batch_b();
+    test_fuzz_batch_c();
     test_ci_regressions();
     test_abi_runtime();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
