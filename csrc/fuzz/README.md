@@ -11,7 +11,7 @@ in `fuzz/corpus/<name>/` and are replayed first so a crash in a committed seed i
 `slice npy mmap_plan json npy_write`.
 
 `FUZZ_REG_TARGETS` (drive public routines through `tsr_fn_routine`; link the whole kernel, C + C++ + LAPACK):
-`einsum hist textio dtype routines`.
+`einsum hist textio dtype routines abi`.
 
 | target | entry points |
 |--------|--------------|
@@ -20,6 +20,7 @@ in `fuzz/corpus/<name>/` and are replayed first so a crash in a committed seed i
 | `hist` | `np.histogram`, `np.histogram_bin_edges`, `np.histogram2d`, `np.histogramdd` |
 | `textio` | `np.loadtxt`, `np.genfromtxt`, `np.fromfile` (content in a private temp file) |
 | `dtype` | `.npy` descr parser, `io_dtype`, `np.promote_types`/`can_cast`/`result_type` dtype tables |
+| `abi` | the input gate (ADR 0016): malformed `tsr_arg`/`tsr_array`/operand sets sent to random routines and to `tsr_fn_ufunc`/`gufunc`/`random`/`rvs` must be refused; valid ones run on exactly-sized blocks |
 | `routines` | every registry routine (slot from the first bytes), fuzzed arg kinds; file-opening routines denied |
 
 The shared harness helpers are in `fuzz/fuzz_common.h`: a byte reader (edge-value doubles: NaN, Inf, huge,

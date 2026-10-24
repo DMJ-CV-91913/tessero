@@ -229,6 +229,20 @@ void fn_results_free(tsr_result *res, int n);
 tsr_result *fn_result_seq(tsr_result *r, int64_t n);
 /* a routine argument as a contiguous float64 copy (tsr_alloc); *n elements; NULL on failure or when not an array */
 double *fn_arg_doubles(const tsr_arg *a, int64_t *n);
+
+/* The registry's input gate (fn_gate.c, ADR 0016): structural checks run by every tsr_fn_* entry point before
+   dispatch. Each returns TSR_OK, or TSR_EARG / TSR_EDIM / TSR_ETYPE with the message set (tsr_fn_error).
+   fn_gate_array: dtype, ndim, dimensions, overflow-free element count; with_data also checks the data pointer,
+     that every element lies at or after data (offset and negative strides), no address wrap, and alignment;
+     with_data == 2 (an output) also refuses a zero stride on an axis longer than 1.
+   fn_gate_args: every tsr_arg (kind, flag bits, integer/double agreement, strings, arrays, bounded sequences).
+   fn_gate_strided: a broadcast operand set (shape plus nop pointers with strides[o * ndim + d] and element
+     sizes elsize[o]; the last nout are outputs): non-negative dimensions, non-NULL operands, aligned first elements
+     and steps, stride extents within the address range, and no zero stride on an output axis longer than 1. */
+int fn_gate_array(const tsr_array *a, int with_data, const char *what, int k);
+int fn_gate_args(int nargs, const tsr_arg *args);
+int fn_gate_strided(int32_t ndim, const int64_t *shape, int nop, void *const *data, const int64_t *strides, const int64_t *elsize,
+                    int nout);
 void fn_free_doubles(double *p, int64_t n);
 double tsr_psum(const double *x, int64_t n);           /* NumPy's pairwise summation (reduce.c) */
 /* sum as numpy.add.reduce would: pairwise over a contiguous core, first + x1 + x2 ... otherwise */

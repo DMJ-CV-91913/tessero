@@ -373,6 +373,16 @@ typedef struct {
     int64_t size;
 } fn_iter;
 
+/* a * b on int64, 0 when it overflows */
+static int fn_mul_i64(int64_t a, int64_t b, int64_t *out)
+{
+    if (a == 0 || b == 0) { *out = 0; return 1; }
+    if (a == INT64_MIN || b == INT64_MIN) return 0;
+    if ((a < 0 ? -a : a) > INT64_MAX / (b < 0 ? -b : b)) return 0;
+    *out = a * b;
+    return 1;
+}
+
 /* drop size-1 dims, merge dims contiguous for every operand */
 static int fn_iter_init(fn_iter *it, int nop, int32_t ndim, const int64_t *shape, const int64_t *strides)
 {
@@ -380,12 +390,15 @@ static int fn_iter_init(fn_iter *it, int nop, int32_t ndim, const int64_t *shape
     it->nd = 0;
     it->size = tsr_shape_size(ndim, shape);
     if (it->size < 0) return TSR_ENOMEM;
+    if (it->size == 0) return TSR_OK;              /* nothing to visit: the strides are never used (ADR 0016) */
     for (int32_t d = 0; d < ndim; d++) {
         if (shape[d] == 1) continue;
         if (it->nd > 0) {
             int merge = 1;
-            for (int o = 0; o < nop; o++)
-                if (it->st[o][it->nd - 1] != strides[o * ndim + d] * shape[d]) { merge = 0; break; }
+            for (int o = 0; o < nop; o++) {
+                int64_t span;
+                if (!fn_mul_i64(strides[o * ndim + d], shape[d], &span) || it->st[o][it->nd - 1] != span) { merge = 0; break; }
+            }
             if (merge) {
                 it->shape[it->nd - 1] *= shape[d];
                 for (int o = 0; o < nop; o++) it->st[o][it->nd - 1] = strides[o * ndim + d];
@@ -533,7 +546,12 @@ int tsr_fn_ufunc(int id, int method, int dtype, int32_t ndim, const int64_t *sha
         if (dist_arity(ds, method, &job.nin, &job.nout) != TSR_OK) return TSR_EARG;
     }
     if (nop != job.nin + job.nout || nop > FN_MAXOP) return TSR_EARG;
-    for (int o = 0; o < nop; o++) if (!data[o]) return TSR_EARG;
+    {
+        int64_t es[FN_MAXOP];
+        for (int o = 0; o < nop; o++) es[o] = job.cplx ? 16 : job.f32 ? 4 : 8;
+        const int g = fn_gate_strided(ndim, shape, nop, data, strides, es, job.nout);   /* input gate (ADR 0016) */
+        if (g != TSR_OK) return g;
+    }
     static const int64_t zero[FN_MAXOP * 1] = {0};
     int rc;
     (void)dist_take_error();                      /* no stale failure from an earlier call */
@@ -560,6 +578,15 @@ int tsr_fn_random(int id, uint64_t *state, const double *params, int32_t ndim, c
     if (!d || d->kind != FN_RANDOM || !state || !data) return TSR_EARG;
     if (ndim < 0 || ndim > TSR_MAXDIM || (ndim > 0 && (!shape || !strides))) return TSR_EARG;
     g_err[0] = '\0';
+    if (nop < 1 || nop > FN_MAXOP) return TSR_EARG;
+    if (out_dtype != TSR_F64 && out_dtype != TSR_I64 && out_dtype != TSR_F32) return TSR_ETYPE;
+    {
+        int64_t es[FN_MAXOP];
+        for (int o = 0; o < nop; o++) es[o] = 8;
+        if (out_dtype == TSR_F32) es[nop - 1] = 4;
+        const int g = fn_gate_strided(ndim, shape, nop, data, strides, es, 1);   /* input gate (ADR 0016) */
+        if (g != TSR_OK) return g;
+    }
     return tsr_random_run(d, state, params, ndim, shape, nop, data, strides, out_dtype);
 }
 
@@ -572,12 +599,20 @@ int tsr_fn_rvs(int id, uint64_t *state, int32_t ndim, const int64_t *shape, int 
     const int np = ds->nshape + (ds->discrete ? 1 : 2);
     if (nop != np + 1 || np > 16) return TSR_EARG;
     g_err[0] = '\0';
+    {
+        int64_t es[FN_MAXOP];
+        for (int o = 0; o < nop; o++) es[o] = 8;
+        const int g = fn_gate_strided(ndim, shape, nop, data, strides, es, 1);   /* input gate (ADR 0016) */
+        if (g != TSR_OK) return g;
+    }
     const int64_t size = tsr_shape_size(ndim, shape);
     if (size < 0) return TSR_ENOMEM;
     if (size == 0) return TSR_OK;
+    const int64_t buf_bytes = tsr_bytes_n(size, (int64_t)(np + 1) * (int64_t)sizeof(double), 0);
+    if (buf_bytes < 0) return TSR_ENOMEM;
     /* the parameters broadcast to the output, contiguous in C order (SciPy's _rvs draws whole arrays: a
        distribution may draw all of one variate before the next, so the kernel hands it every element) */
-    double *buf = (double *)tsr_alloc((size_t)(np + 1) * (size_t)size * sizeof(double));
+    double *buf = (double *)tsr_alloc(buf_bytes);
     if (!buf) return TSR_ENOMEM;
     const double *params[16];
     for (int k = 0; k < np; k++) params[k] = buf + (size_t)k * (size_t)size;
@@ -597,7 +632,7 @@ int tsr_fn_rvs(int id, uint64_t *state, int32_t ndim, const int64_t *shape, int 
     const char *why = dist_take_error();
     if (rc != 0 || why) {
         fn_set_error("%s", why ? why : "rvs failed");
-        tsr_free(buf, (size_t)(np + 1) * (size_t)size * sizeof(double));
+        tsr_free(buf, buf_bytes);
         return TSR_EARG;
     }
     memset(idx, 0, sizeof idx);
@@ -607,7 +642,7 @@ int tsr_fn_rvs(int id, uint64_t *state, int32_t ndim, const int64_t *shape, int 
         *(double *)p = out[e];
         for (int32_t d = ndim - 1; d >= 0; d--) { if (++idx[d] < shape[d]) break; idx[d] = 0; }
     }
-    tsr_free(buf, (size_t)(np + 1) * (size_t)size * sizeof(double));
+    tsr_free(buf, buf_bytes);
     return TSR_OK;
 }
 
@@ -824,6 +859,12 @@ int tsr_fn_gufunc_shape(int id, int nin, const tsr_array *in, const uint64_t *ax
 {
     const fn_def *d = def_of(id);
     if (!d || d->kind != FN_GUFUNC || !in || !axmask || !out_ndim || !out_shape) return TSR_EARG;
+    if (nin != d->nin) return TSR_EARG;
+    g_err[0] = '\0';
+    for (int i = 0; i < nin; i++) {
+        const int gr = fn_gate_array(&in[i], 0, "input", i);   /* input gate (ADR 0016) */
+        if (gr != TSR_OK) return gr;
+    }
     gplan g;
     const int r = gplan_make(d, nin, in, axmask, keepdims, params, &g);
     if (r != TSR_OK) return r;
@@ -903,7 +944,16 @@ int tsr_fn_gufunc(int id, int nin, const tsr_array *in, const uint64_t *axmask, 
 {
     const fn_def *d = def_of(id);
     if (!d || d->kind != FN_GUFUNC || !in || !axmask || !out || nout != d->nout) return TSR_EARG;
+    if (nin != d->nin) return TSR_EARG;
     g_err[0] = '\0';
+    for (int i = 0; i < nin; i++) {
+        const int gr = fn_gate_array(&in[i], 1, "input", i);   /* input gate (ADR 0016) */
+        if (gr != TSR_OK) return gr;
+    }
+    for (int o = 0; o < nout; o++) {
+        const int gr = fn_gate_array(&out[o], 2, "output", o);
+        if (gr != TSR_OK) return gr;
+    }
     gplan g;
     int r = gplan_make(d, nin, in, axmask, keepdims, params, &g);
     if (r != TSR_OK) return r;
@@ -955,10 +1005,10 @@ int tsr_fn_gufunc(int id, int nin, const tsr_array *in, const uint64_t *axmask, 
     unsigned flags = 0;
     if (nin > 0 && g.core_nd[0] > 0 && in[0].ndim > 1) {
         int best = -1;
-        int64_t bs = 0;
+        uint64_t bs = 0;
         for (int32_t k = 0; k < in[0].ndim; k++) {
             if (in[0].shape[k] <= 1) continue;
-            const int64_t s = in[0].strides[k] < 0 ? -in[0].strides[k] : in[0].strides[k];
+            const uint64_t s = in[0].strides[k] < 0 ? 0u - (uint64_t)in[0].strides[k] : (uint64_t)in[0].strides[k];
             if (best < 0 || s < bs) { best = k; bs = s; }
         }
         if (best >= 0 && !(axmask[0] & ((uint64_t)1 << best))) flags |= FN_SEQUENTIAL;
@@ -973,12 +1023,17 @@ int tsr_fn_gufunc(int id, int nin, const tsr_array *in, const uint64_t *axmask, 
         && (in[0].dtype == TSR_I64 || in[0].dtype == TSR_I32 || in[0].dtype == TSR_U8 || in[0].dtype == TSR_BOOL);
     if (int_mode) flags |= FN_INT64;
     int64_t idx[TSR_MAXDIM] = {0};
+    int in_empty[4] = {0, 0, 0, 0};                 /* no elements: data may be NULL, so form no address from it */
+    for (int i = 0; i < nin && i < 4; i++) in_empty[i] = tsr_array_size(&in[i]) == 0;
     r = TSR_OK;
     for (int64_t L = 0; L < loops && r == TSR_OK; L++) {
         int64_t n[4];
         for (int i = 0; i < nin; i++) {
-            const char *base = (const char *)in[i].data + in[i].offset;
-            for (int c = 0; c < g.loop_nd; c++) base += idx[c] * g.in_loop_st[i][c];
+            const char *base = NULL;
+            if (!in_empty[i]) {
+                base = (const char *)in[i].data + in[i].offset;
+                for (int c = 0; c < g.loop_nd; c++) base += idx[c] * g.in_loop_st[i][c];
+            }
             if (int_mode && i == 0) gather_i64(&g, i, in[i].dtype, base, (int64_t *)xs[i]);
             else gather(&g, i, in[i].dtype, base, xs[i]);
             n[i] = g.core_n[i];
@@ -1137,6 +1192,10 @@ int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result 
     const fn_def *d = def_of(id);
     if (!d || d->kind != FN_ROUTINE || !res || nres < d->nout || (nargs > 0 && !args)) return TSR_EARG;
     g_err[0] = '\0';
+    {
+        const int g = fn_gate_args(nargs, args);   /* input gate (ADR 0016): no routine runs on malformed arguments */
+        if (g != TSR_OK) return g;
+    }
     /* routines read their declared positional slots without checking nargs (the PHP bindings always pass them
        all); a direct C caller passing fewer would make them read past `args`. Pad the missing trailing slots
        with kind 0 ("absent"), which every routine already treats as the default. */
