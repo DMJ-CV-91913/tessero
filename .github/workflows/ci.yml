@@ -459,6 +459,10 @@ jobs:
       fail-fast: false
       matrix:
         laravel: ['10', '11', '12']
+    # Composer (2.9+) refuses every laravel/framework 10.x and 11.x release: they are affected by security advisories
+    # (PKSA-b41t-wbzk-9q51 and others) that will not be fixed on those lines. Whether to keep ^10 || ^11 in
+    # composer.json is the owner's decision; until then those legs report without blocking.
+    continue-on-error: ${{ matrix.laravel != '12' }}
     env:
       # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
       # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
@@ -476,8 +480,10 @@ jobs:
         run: |
           composer create-project laravel/laravel:^${{ matrix.laravel }}.0 app --no-interaction --prefer-dist
           cd app
-          composer config repositories.tessero path ../tessero
-          composer config repositories.tessero-laravel path ../tessero/laravel
+          # a pull-request checkout is a detached merge commit, so composer cannot apply the 0.2.x-dev branch alias
+          # and tessero/laravel's "tessero/tessero": "^0.2" would not match dev-<sha>: state the version explicitly
+          composer config repositories.tessero '{"type": "path", "url": "../tessero", "options": {"versions": {"tessero/tessero": "0.2.x-dev"}}}'
+          composer config repositories.tessero-laravel '{"type": "path", "url": "../tessero/laravel", "options": {"versions": {"tessero/laravel": "0.2.x-dev"}}}'
           composer require tessero/tessero:@dev tessero/laravel:@dev --no-interaction
       - name: provider boots, config publishes, doctor and macro work
         run: |
