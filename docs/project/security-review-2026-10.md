@@ -69,6 +69,15 @@ by these changes (the reference host passes the same suites):
 * macOS and Windows: no LAPACK linkage (tier 2, non-blocking). `macos-13` was retired; the leg now uses
   `macos-15-intel` (it had left every `ci` run on `main` queued forever).
 
+## Input sanitization gate (2026-10-24)
+
+Owner directive: sanitize inputs before code executes. Every registry entry point now runs a structural gate
+before dispatch (`csrc/src/fn_gate.c`, [ADR 0016](../architecture/adr/0016-input-sanitization-gate.md)): argument
+kinds and flag bits, strings, array dtype, rank, dimensions, element-count and stride-extent overflow, NULL data,
+elements before their block, alignment, and bounded sequences. No routine runs on input it refuses, for the PHP
+bindings and for native callers alike. `fuzz/fuzz_abi.c` sends every structure it classifies invalid to a random
+routine and fails if the call is accepted.
+
 ## Backlog (prioritised)
 
 P0
