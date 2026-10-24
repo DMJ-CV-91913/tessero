@@ -206,11 +206,12 @@ extern "C" int tsr_scplx_sph_harm_y(const void *ctx, const tsr_arg *args, int na
     for (int64_t q = 0; q < n; q++) {
         int64_t o0 = a[0].a.offset, o1 = a[1].a.offset, o2 = a[2].a.offset, o3 = a[3].a.offset;
         for (int d = 0; d < nd; d++) { o0 += ix[d] * st[0][d]; o1 += ix[d] * st[1][d]; o2 += ix[d] * st[2][d]; o3 += ix[d] * st[3][d]; }
-        /* xsf takes int orders and negates m, and its recurrences run |n| and |m| steps: an order that is NaN, an
-           infinity or beyond +-2^20 (work out of reach; INT_MIN would overflow on negation) gives NaN, never a
-           float->int cast of an unchecked value */
+        /* xsf takes int orders and its recurrence coefficients are int products: (2n+1)*(4(n-1)^2-1) in
+           sph_legendre_p_recurrence_n overflows int once |n| > 645 (SciPy's own result there is undefined
+           behaviour). An order that is NaN, an infinity or beyond +-645 gives NaN, never a float->int cast of an
+           unchecked value or an int overflow. */
         const int64_t n64 = fn_dbl_i64(rd_real(&a[0].a, o0), INT64_MIN), m64 = fn_dbl_i64(rd_real(&a[1].a, o1), INT64_MIN);
-        const int64_t lim = (int64_t)1 << 20;
+        const int64_t lim = 645;
         if (n64 < -lim || n64 > lim || m64 < -lim || m64 > lim) {
             out[2 * q] = out[2 * q + 1] = std::numeric_limits<double>::quiet_NaN();
         } else {
