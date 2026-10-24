@@ -1,3 +1,0 @@
-libtessero/third_party/scipy/fitpack/fpader.lo: \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/fitpack/fpader.c \
- /home/tessero/tw-merge/ext/libtessero/third_party/scipy/fitpack/f2c.h
