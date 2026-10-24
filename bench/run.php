@@ -96,7 +96,11 @@ $cases = [
     'fft 2^20 complex' => [fn () => Fft::fft($sig), 200.0],
     'rfft 2^20 real' => [fn () => Fft::rfft($sig), 150.0],
     'fft 1_000_003 (prime, Bluestein)' => [fn () => Fft::fft($sig->slice('0:1000003')), 1500.0],
-    'rng normal 1M' => [fn () => $rng->normal(size: 1_000_000), 20.0],
+    // measured 2026-10 (median of 15): 25-28 ms on an idle 16-core AVX2 desktop, 26 ms for the hardened build,
+    // 34 ms on GitHub's ubuntu-24.04 runners -- NumPy's ziggurat costs ~25 ns per draw, so the old 20 ms gate
+    // failed everywhere. 100 ms is ~3-4x the measurements, like the other gates: it still catches a scalar or
+    // per-element-allocation fallback (10x), not machine noise.
+    'rng normal 1M' => [fn () => $rng->normal(size: 1_000_000), 100.0],
     'PHP list -> NDArray 1M' => [fn () => NDArray::fromFlat($phpA, [1_000_000]), 120.0],
     'NDArray -> PHP list 1M' => [fn () => $a->toList(), 150.0],
     'linprog 200x200 dense' => [fn () => LinearProgramming::linprog($lpC, $lpA, $lpB), 150.0],

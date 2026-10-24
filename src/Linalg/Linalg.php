@@ -249,8 +249,9 @@ final class Linalg
         $wi = NDArray::empty([max(1, $n)]);
         $vr = NDArray::empty([max(1, $n), max(1, $n)]);
         $dummy = NDArray::empty([1]);
+        // ldvl = max(1, n) even though jobvl is N: LAPACKE < 3.11 (e.g. OpenBLAS 0.3.20) rejects ldvl < n in row-major.
         $info = Blas::call('LAPACKE_dgeev', self::ROW, 'N', 'V', $n, self::d($work), max(1, $n), self::d($wr), self::d($wi),
-            self::d($dummy), 1, self::d($vr), max(1, $n));
+            self::d($dummy), max(1, $n), self::d($vr), max(1, $n));
         if ($info > 0) {
             throw new ConvergenceError('eig: the QR algorithm failed to compute all eigenvalues.');
         }
