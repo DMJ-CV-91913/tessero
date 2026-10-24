@@ -28,12 +28,12 @@ request start, so runtime changes last for one request.
 
 | Variable | Read by | Effect |
 |---|---|---|
-| `TESSERO_LIB` | FFI package, preload | absolute path of `libtessero` to load instead of the bundled binary |
-| `TESSERO_BLAS` | FFI package, preload | absolute path of an LP64 OpenBLAS/LAPACKE library |
+| `TESSERO_LIB` | FFI package, preload | absolute path of `libtessero` to load instead of the bundled binary; process environment only, refused when relative or when the file or its directory is group/world-writable |
+| `TESSERO_BLAS` | FFI package, preload | absolute path of an LP64 OpenBLAS/LAPACKE library; same checks as `TESSERO_LIB` |
 | `TESSERO_BLAS_THREADS` | FFI package | OpenBLAS threads (default: 1 outside the CLI) |
 | `TESSERO_BACKEND` | Laravel | `auto`, `ext`, `ffi` |
 | `TESSERO_THREADS` | Laravel | → `threads` |
-| `TESSERO_MEMORY_BUDGET` | Laravel | → `memory_budget` (bytes) |
+| `TESSERO_MEMORY_BUDGET` | Laravel; FFI package outside the CLI | → `memory_budget` (bytes). The FFI package also reads it at load in non-CLI SAPIs: a positive value sets the budget, `0` or `-1` opts out of the default max(256 MiB, `memory_limit`) |
 | `TESSERO_EPSILON` | Laravel | → `epsilon` |
 | `TESSERO_CAST_FORMAT` | Laravel | `json` or `binary` |
 | `TESSERO_MAX_ELEMENTS` | Laravel | default `max_elements` |
