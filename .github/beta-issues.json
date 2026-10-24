@@ -81,7 +81,7 @@
     "beta-exit"
    ],
    "estimate": "1",
-   "context": "The bridge is covered by package tests only. It needs a real application: Laravel 12, database casts, queued jobs, Horizon, Octane (Swoole, RoadRunner, FrankenPHP).",
+   "context": "The bridge is covered by package tests only. It needs a real application: Laravel 12/13, database casts, queued jobs, Horizon, Octane (Swoole, RoadRunner, FrankenPHP).",
    "acceptance": [
     "Sample app: casts round-trip through MySQL/PostgreSQL/SQLite",
     "Jobs that allocate arrays run 10 000 times under Horizon with memory_in_use back at baseline",

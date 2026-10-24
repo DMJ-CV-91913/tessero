@@ -468,8 +468,8 @@ jobs:
       fail-fast: false
       matrix:
         # Laravel 12 is the minimum: Composer refuses every laravel/framework 10.x and 11.x release (security
-        # advisories such as PKSA-b41t-wbzk-9q51 that will not be fixed on those lines). Laravel 12 only (owner decision 2026-10-24).
-        laravel: ['12']
+        # advisories such as PKSA-b41t-wbzk-9q51 that will not be fixed on those lines). Laravel 12 minimum, newer majors supported (owner decision 2026-10-24); add each new major here.
+        laravel: ['12', '13']
     env:
       # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
       # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
