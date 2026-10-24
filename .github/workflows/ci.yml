@@ -162,6 +162,8 @@ jobs:
         php: ['8.2', '8.3', '8.4', '8.5']
         jit: ['off', 'tracing', 'function']
     continue-on-error: ${{ startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'windows') }}   # tier 2 (no LAPACK linkage yet)
+    env:
+      OPENBLAS_NUM_THREADS: '1'   # the fixture contract (ADR 0012); the x86-64 kernel is pinned in the OpenBLAS step
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -183,6 +185,8 @@ jobs:
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y libopenblas0 liblapacke; fi
+          # one OpenBLAS kernel on x86-64 whatever the runner's CPU model (tools/parity/fixture_env.py)
+          if [ "$(uname -m)" = x86_64 ]; then echo "OPENBLAS_CORETYPE=Haswell" >> "$GITHUB_ENV"; fi
           if [ "$RUNNER_OS" = "macOS" ]; then brew install openblas; fi
       - run: composer install --no-interaction --no-progress
       - name: environment (the JIT must really be on in the jit legs)
@@ -197,6 +201,11 @@ jobs:
     name: FPM-style preload (ffi.enable=preload, non-CLI SAPI)
     needs: native
     runs-on: ubuntu-22.04
+    env:
+      # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
+      # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -228,6 +237,11 @@ jobs:
     name: NumPy/SciPy fixtures (FFI)
     needs: native
     runs-on: ubuntu-24.04
+    env:
+      # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
+      # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -249,6 +263,11 @@ jobs:
     needs: native
     runs-on: ubuntu-22.04
     continue-on-error: true
+    env:
+      # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
+      # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -280,6 +299,11 @@ jobs:
         ts: ['nts']
         include:
           - { php: '8.4', ts: 'zts' }
+    env:
+      # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
+      # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -335,6 +359,8 @@ jobs:
     env:
       PHP_ASAN_VERSION: ${{ matrix.php }}
       PHP_ASAN_SHA256: ${{ matrix.sha256 }}
+      OPENBLAS_CORETYPE: Haswell   # the fixture contract, as in the other test jobs
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -384,16 +410,28 @@ jobs:
           export PATH="$HOME/php-asan/bin:$PATH"
           php -d extension="$PWD/ext/modules/tessero.so" -r 'exit(extension_loaded("tessero") ? 0 : 1);' \
             || { echo "::error::the sanitized module does not load"; exit 1; }
-          (cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests | tee phpt.log)
+          # all three suites run even when one fails, so one report shows every sanitizer finding
+          failed=""
+          if ! (cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests | tee phpt.log); then
+            failed="$failed phpt"
+            for f in ext/tests/*.diff; do echo "::group::$f"; cat "$f" "${f%.diff}.out"; echo "::endgroup::"; done
+          fi
           ! grep -q 'Required extension missing' ext/phpt.log || { echo "::error::phpt skipped: module not loaded"; exit 1; }
-          php -d extension="$PWD/ext/modules/tessero.so" vendor/bin/phpunit --testsuite ext
-          php -d extension="$PWD/ext/modules/tessero.so" -d memory_limit=8G tools/parity/run-tests.php --backend=ext --no-record
+          php -d extension="$PWD/ext/modules/tessero.so" -d ffi.enable=1 vendor/bin/phpunit --testsuite ext,unit || failed="$failed phpunit"
+          php -d extension="$PWD/ext/modules/tessero.so" -d memory_limit=8G tools/parity/run-tests.php --backend=ext --no-record \
+            || failed="$failed parity"
+          if [ -n "$failed" ]; then echo "::error::failed under ASan:$failed"; exit 1; fi
 
   # ---------------------------------------------------------------- Laravel
   laravel:
     name: tessero/laravel unit tests
     needs: native
     runs-on: ubuntu-24.04
+    env:
+      # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
+      # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
@@ -414,6 +452,11 @@ jobs:
       fail-fast: false
       matrix:
         laravel: ['10', '11', '12']
+    env:
+      # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
+      # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { path: tessero, persist-credentials: false }
@@ -517,6 +560,11 @@ jobs:
     name: documentation site and examples
     needs: native
     runs-on: ubuntu-24.04
+    env:
+      # the fixture contract (ADR 0012, tools/parity/fixture_env.py): one OpenBLAS kernel and one BLAS thread, so
+      # reductions through BLAS keep one summation order whatever CPU model the runner happens to have
+      OPENBLAS_CORETYPE: Haswell
+      OPENBLAS_NUM_THREADS: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
