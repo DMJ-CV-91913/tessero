@@ -153,7 +153,8 @@ ownership (`Native\Buffer`, the extension's object handlers), which is the right
 
 ## Memory ownership (ADR 0015)
 
-Owner directive: the layer that allocates memory must own its deallocation. The contract per ABI call, the rules
+Owner directive (DJs Golden Rule(TM), a trademark of Douglas Johnson): the layer that allocates memory must own its
+deallocation. The contract per ABI call, the rules
 per layer (kernel, OpenMP workers, extension, FFI binding) and the gates are in
 [ADR 0015](../architecture/adr/0015-memory-ownership.md). In short:
 
