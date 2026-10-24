@@ -18,20 +18,22 @@ stage() {                       # $1 = target directory
 }
 
 rewrite() {                     # $1 = config.m4, $2 = config.w32: write the source lists between the markers
-    local c cxx repro fitpack
+    local c cxx repro fitpack nprand
     # repro_f32.c is listed on its own: it must build with contraction and fast-math off (as in csrc/Makefile)
-    c="$(cd "$ROOT/csrc/src" && ls *.c | grep -vx 'repro_f32.c' | sed 's|^|libtessero/src/|' | tr '\n' ' ')libtessero/third_party/scipy/cdflib.c libtessero/third_party/scipy/_cosine.c libtessero/third_party/scipy/quadpack/quadpack.c libtessero/third_party/scipy/zeros/brentq.c $(cd "$ROOT/csrc/third_party/numpy/random/src" && ls *.c | sed 's|^|libtessero/third_party/numpy/random/src/|' | tr '\n' ' ')"
+    c="$(cd "$ROOT/csrc/src" && ls *.c | grep -vx 'repro_f32.c' | sed 's|^|libtessero/src/|' | tr '\n' ' ')libtessero/third_party/scipy/cdflib.c libtessero/third_party/scipy/_cosine.c libtessero/third_party/scipy/quadpack/quadpack.c libtessero/third_party/scipy/zeros/brentq.c "
+    # numpy/random is listed on its own too: it builds with contraction off (as in csrc/Makefile)
+    nprand="$(cd "$ROOT/csrc/third_party/numpy/random/src" && ls *.c | sed 's|^|libtessero/third_party/numpy/random/src/|' | tr '\n' ' ')"
     # the f2c-translated FITPACK (csrc/Makefile FITPACKC): scipy_interpolate.c calls curfit_/surfit_/...
     fitpack="$(cd "$ROOT/csrc/third_party/scipy/fitpack" && ls *.c | sed 's|^|libtessero/third_party/scipy/fitpack/|' | tr '\n' ' ')"
     c="$c$fitpack"
     repro="$( [ -f "$ROOT/csrc/src/repro_f32.c" ] && echo libtessero/src/repro_f32.c || true )"
     cxx="$(cd "$ROOT/csrc/cxx" && ls *.cpp | sed 's|^|libtessero/cxx/|' | tr '\n' ' ')libtessero/third_party/scipy/wright.cc"
-    python3 - "$1" "$2" "$c" "$cxx" "$repro" <<'PY'
+    python3 - "$1" "$2" "$c" "$cxx" "$repro" "$nprand" <<'PY'
 import re, sys
-m4, w32, c, cxx, repro = sys.argv[1:6]
+m4, w32, c, cxx, repro, nprand = sys.argv[1:7]
 s = open(m4).read()
 s = re.sub(r'(dnl BEGIN sources \(tools/sync-ext\.sh\)\n).*?(\n\s*dnl END sources)',
-           lambda m: m.group(1) + f'  TESSERO_KERNEL="{c.strip()}"\n  TESSERO_KERNEL_CXX="{cxx.strip()}"\n  TESSERO_KERNEL_REPRO="{repro.strip()}"' + m.group(2), s, flags=re.S)
+           lambda m: m.group(1) + f'  TESSERO_KERNEL="{c.strip()}"\n  TESSERO_KERNEL_CXX="{cxx.strip()}"\n  TESSERO_KERNEL_REPRO="{repro.strip()}"\n  TESSERO_KERNEL_NPRAND="{nprand.strip()}"' + m.group(2), s, flags=re.S)
 open(m4, 'w').write(s)
 s = open(w32).read()
 csrc = ' '.join(x.split('/')[-1] for x in (c + ' ' + repro).split() if x.startswith('libtessero/src/'))

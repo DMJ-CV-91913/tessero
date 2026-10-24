@@ -4217,6 +4217,9 @@ static int r_pro_cv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, i
 static int pb_seq(const tsr_arg *a, int na, tsr_result *r, int vv)
 {
     double v = seq_argf(a, na, 0), x = seq_argf(a, na, 1);
+    /* SciPy's int(v) raises for NaN and +-inf; an order past int would need an array of 2^31 or more */
+    if (!isfinite(v)) { fn_set_error("%s_seq: cannot convert float %s to integer", vv ? "pbvv" : "pbdv", isnan(v) ? "NaN" : "infinity"); return TSR_EARG; }
+    if (!(fabs(v) < 2147483646.0)) { fn_set_error("%s_seq: order too large", vv ? "pbvv" : "pbdv"); return TSR_ENOMEM; }
     int n = (int)v, n1 = n < 1 ? 1 : n;
     double v0 = v - n;
     int64_t len = (int64_t)n1 + 1;

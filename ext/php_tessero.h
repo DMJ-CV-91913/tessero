@@ -124,6 +124,8 @@ extern zend_class_entry *tsr_ce_special, *tsr_ce_stats, *tsr_ce_np, *tsr_ce_dist
 void tsr_register_generator(const zend_function_entry *registry_methods, int n);
 uint64_t *tsr_generator_state(zval *obj);
 void tsr_register_fn(void);
+void tsr_unregister_fn(void);   /* MSHUTDOWN: frees what tsr_register_fn allocated */
+void *tsr_pkeep(void *p);       /* records a persistent MINIT allocation for tsr_unregister_fn to free */
 void tsr_fn_dist_call(int id, int method, zval *args, int nargs, zval *rv);
 void tsr_fn_call_routine(const char *name, zval *args, int nargs, zval *rv);
 void tsr_fn_call_gufunc(const char *name, zval *args, int nargs, zval *rv);
