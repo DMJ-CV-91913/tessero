@@ -10,7 +10,9 @@
  *
  * Determinism: the routine table depends only on the registry contents, so an input replays the same call
  * on the same build. Replaying a saved input with TSR_FUZZ_VERBOSE=1 prints the routine and argument count
- * before the call; TSR_FUZZ_LIST=1 prints the slot table.
+ * before the call; TSR_FUZZ_LIST=1 prints the slot table. TSR_FUZZ_ONLY=prefix[,prefix...] keeps only the routines
+ * whose names start with one of the prefixes (a campaign focused on some modules; slot numbers then index the
+ * reduced table, so saved inputs replay with the same TSR_FUZZ_ONLY).
  */
 #include "fuzz_common.h"
 
@@ -38,31 +40,18 @@ static int denied(const char *name, const char *info)
    corpus files keep their meaning). Remove an entry once its fix lands. */
 static const char *const KNOWN[] = {
     "special.ellip_harm", "special.ellip_harm_2", "special.ellip_normal",  /* F2: p < 1 indexes z[-1] */
-    "signal.stft",                                                          /* F3: free() of a tsr_alloc block */
     "np.einsum",                                                            /* F5: 0-length label overread */
     "np.histogram", "np.histogram_bin_edges",                               /* F7: bins * 8 wraps */
-    "signal.lp2bp_zpk", "signal.lp2hp_zpk",                                 /* F12/F14: output store out of bounds */
     "stats.boxcox_normplot", "stats.yeojohnson_normplot", "stats.probplot",  /* F13: offset on a NULL pointer in stat_osm */
     "stats.ecdf",                                                           /* F18: 2-D input runs unbounded */
-    /* F16/F17/F19/F25/F28/F29/F32: the whole npoly.* module (chebint, chebmulx, chebmul, chebdiv, lag2poly,
-       herm2poly, hermeint, ...) shares one class of bug -- a coefficient-array length or integer order drives an
-       allocation or index with no bounds check. Skipped by prefix below; the maintainer audits the module. */
     "sparse.diags", "sparse.eye_array", "sparse.eye", "sparse.spdiags",      /* F31/F33: dimension product overflow */
-    "signal.lp2lp",                                                         /* F21: sig_normalize heap overflow */
-    "signal.lp2bs_zpk", "signal.bilinear_zpk",                              /* F22/F37: complex store out of bounds in the zpk pipeline */
     "special.mathieu_odd_coef", "special.mathieu_even_coef",                /* F23: index 256 in mathieu_coef_run */
-    "windows.tukey",                                                        /* F24: leaked tsr allocation */
-    "signal.zpk2sos", "signal.iirdesign", "signal.dbode",                   /* F30/F35/F38: heap overflow in the filter routines */
-    "signal.welch", "signal.csd",                                           /* F39: calloc count*size overflow */
     "stats.chisquare", "stats.power_divergence",                            /* F34: null f_exp dereference in stats_fn_tests */
-    "signal.peak_widths", "signal.peak_prominences",                        /* F26: wild read in peak_prom_core */
     "distance.minkowski_distance",                                          /* F36: 0-d input indexes shape[-1] (same class as F15) */
-    "windows.chebwin",                                                      /* F27: runs past the timeout */
 };
 
 static int known(const char *name)
 {
-    if (strncmp(name, "npoly.", 6) == 0) return 1;      /* F32: npoly.* argument-validation class (see note above) */
     for (size_t i = 0; i < sizeof KNOWN / sizeof KNOWN[0]; i++) if (strcmp(name, KNOWN[i]) == 0) return 1;
     return 0;
 }
@@ -70,17 +59,32 @@ static int known(const char *name)
 
 static int g_ids[4096], g_nargs[4096], g_n = -1;
 
+/* name starts with one of the comma-separated prefixes in list */
+static int only_match(const char *list, const char *name)
+{
+    for (const char *p = list; *p;) {
+        const char *e = strchr(p, ',');
+        const size_t l = e ? (size_t)(e - p) : strlen(p);
+        if (l && strncmp(name, p, l) == 0) return 1;
+        if (!e) break;
+        p = e + 1;
+    }
+    return 0;
+}
+
 static void build_table(void)
 {
     char info[8192];
     g_n = 0;
     const int count = tsr_fn_count();
+    const char *only = getenv("TSR_FUZZ_ONLY");
     for (int id = 0; id < count && g_n < 4096; id++) {
         const int64_t len = tsr_fn_info(id, info, sizeof info);
         if (len <= 0 || len >= (int64_t)sizeof info) continue;
         if (!strstr(info, "\"kind\":\"routine\"")) continue;
         const char *name = tsr_fn_name(id);
         if (!name || denied(name, info)) continue;
+        if (only && *only && !only_match(only, name)) continue;
         int declared = 0;                                /* count the strings in "args":[...] */
         const char *a = strstr(info, "\"args\":[");
         if (a) {
