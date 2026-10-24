@@ -21,6 +21,15 @@ use Tessero\Native\Library;
  * Use it through NDArray::memmap(), NDArray::openMemmap() and
  * NDArray::load($path, $mmapMode).
  *
+ * Operator notes (see docs/operations/security.md):
+ *   - A mapping reads the file's pages directly. If another process truncates the file while it is
+ *     mapped, touching the lost pages raises SIGBUS and kills the PHP worker; it cannot be caught.
+ *     Map only files no other process shortens (write new data to a new file and rename it).
+ *   - Mode 'w+' creates or truncates the target. It refuses a path that is a symbolic link, but the
+ *     check and the kernel's open() are separate steps (a race remains in a directory other users can
+ *     write), so create maps only in directories owned by the application.
+ *   - Paths must be local files and must never come from request input.
+ *
  * @internal
  */
 final class MemoryMap
@@ -42,6 +51,9 @@ final class MemoryMap
         } elseif ($m === 'w') {
             throw new \ValueError("NDArray::memmap(): Argument #3 (\$shape) is required with mode 'w+'");
         }
+        if ($m === 'w') {
+            self::refuseSymlink($filename);
+        }
         $path = self::resolve($filename);
 
         return self::map($path, $m, $dtype, $shape, $offset, false);
@@ -58,6 +70,7 @@ final class MemoryMap
             throw new \ValueError("NDArray::openMemmap(): Argument #3 (\$shape) is required with mode 'w+'");
         }
         self::checkShape($shape, 3);
+        self::refuseSymlink($filename);
         $path = self::resolve($filename);
         $ffi = Library::ffi();
         $n = count($shape);
@@ -173,13 +186,25 @@ final class MemoryMap
         }
     }
 
+    /**
+     * 'w+' truncates its target: refuse a path that is a symbolic link, so a planted link cannot redirect
+     * the write onto another file. Best effort only: the kernel's open() follows links, so a link created
+     * after this check still wins the race (documented above).
+     */
+    private static function refuseSymlink(string $filename): void
+    {
+        if ($filename !== '' && ! str_contains($filename, "\0") && ! IoGuard::isStreamWrapper($filename) && @is_link($filename)) {
+            throw new TesseroException("memmap: '{$filename}' is a symbolic link; mode 'w+' refuses to create or truncate through a link");
+        }
+    }
+
     /** Absolute path, refusing stream wrappers and paths outside open_basedir (as ext-tessero does). */
     private static function resolve(string $filename): string
     {
         if ($filename === '' || str_contains($filename, "\0")) {
             throw new \ValueError('NDArray::memmap(): Argument #1 ($filename) cannot be empty');
         }
-        if (str_contains($filename, '://')) {
+        if (IoGuard::isStreamWrapper($filename)) {
             throw new \ValueError('NDArray::memmap(): Argument #1 ($filename) must be a local file path (stream wrappers cannot be memory-mapped)');
         }
         $basedir = (string) ini_get('open_basedir');
