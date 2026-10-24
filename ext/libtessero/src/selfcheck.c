@@ -11,23 +11,56 @@
 #include "internal.h"
 #include <stdio.h>
 
-/* Frozen canonical FNV-1a of the KAT gemm_f32 output bytes. Baked 2026-10-20 from matching runs on
-   x86-64 under BOTH gcc-13.3 (Ubuntu 24.04 default) and gcc-12.4 -- the fast dispatched path and the
-   no-clone explicit-fma reference agreed on this value under both compilers, which is the determinism
-   this guard enforces. A build that produces any other digest is non-canonical (mock / non-FMA /
-   wrong-clone) and tsr_selfcheck returns negative. Override at build with -DTSR_CANON_GEMM_F32_KAT=0x...
-   only if the canonical form is deliberately re-baselined (and re-verify cross-supplier). */
+/* Frozen canonical digest of the KAT gemm_f32 output (FNV-1a over the little-endian bit patterns, see
+   tsr__kat_digest). A build that produces any other digest is non-canonical (mock / non-FMA / wrong order /
+   wrong clone) and tsr_selfcheck returns negative. Override at build with -DTSR_CANON_GEMM_F32_KAT=0x...
+   only if the canonical form is deliberately re-baselined (and re-verify cross-supplier); 0 = bootstrap.
+
+   History. The first KAT (baked 2026-10-20, 0x06adeb12fccd30c0) multiplied 8x8 matrices of k/64 with
+   |k| <= 200: every product and every partial sum was exact in f32, so FMA vs mul+add, any summation order
+   and cblas_sgemm all gave the SAME digest and it could not detect what it claimed to. The KAT below uses
+   full-mantissa inputs (all 23 fraction bits random), exponents 2^-8..2^8 and both signs, and an odd
+   K = 67 reduction, so a two-rounding mul+add, a reordered sum or a double accumulator each change the bits
+   (proved by test_numerics_review against the deliberately wrong variants in tsr_selfcheck_digest).
+
+   CANDIDATE golden (2026-10-23): computed on the build/reference host (x86-64, AVX2+FMA, no AVX-512,
+   gcc 13.3) where the dispatched tsr_gemm (1 and 4 OpenMP threads), the no-clone fmaf reference and a
+   standalone scalar -O0 -ffp-contract=off reference agreed, while OpenBLAS cblas_sgemm (8aac4968efdebd4b),
+   a double accumulator (36ff49cef2514bab), mul+add and reversed-k all gave other digests. It becomes
+   APPROVED once a second independent host reproduces it (the GOLDENS.md process). */
 #ifndef TSR_CANON_GEMM_F32_KAT
-#define TSR_CANON_GEMM_F32_KAT 0x06adeb12fccd30c0ULL
+#define TSR_CANON_GEMM_F32_KAT 0x86bbab2bc87f8e3bULL
 #endif
 
+#define TSR_KAT_M 8
 #define TSR_KAT_N 8
+#define TSR_KAT_K 67                                /* odd and >= 67: no power-of-two pairing of the sum */
+
+/* PCG32 (O'Neill, pcg32_random_r): a fixed, portable integer stream, so the inputs are the same bits on
+   every platform. */
+static uint32_t tsr__pcg32(uint64_t *s)
+{
+    const uint64_t old = *s;
+    *s = old * 6364136223846793005ULL + 1442695040888963407ULL;
+    const uint32_t xs = (uint32_t)(((old >> 18) ^ old) >> 27), rot = (uint32_t)(old >> 59);
+    return (xs >> rot) | (xs << ((-rot) & 31u));
+}
+
+/* one full-mantissa float: random sign, exponent in [-8, 8], all 23 fraction bits random */
+static float tsr__kat_value(uint64_t *s)
+{
+    const uint32_t r = tsr__pcg32(s), q = tsr__pcg32(s);
+    const uint32_t bits = (q & 0x80000000u) | ((uint32_t)(127 + (int)(q % 17u) - 8) << 23) | (r & 0x007FFFFFu);
+    float f;
+    memcpy(&f, &bits, sizeof f);
+    return f;
+}
 
 static void tsr__kat_fill(float *a, float *b)
 {
-    uint32_t s = 0x01234567u;                       /* fixed seed -> fixed, portable input */
-    for (int i = 0; i < TSR_KAT_N * TSR_KAT_N; i++) { s = s * 1664525u + 1013904223u; a[i] = (float)((int)((s >> 9) % 400) - 200) / 64.0f; }
-    for (int i = 0; i < TSR_KAT_N * TSR_KAT_N; i++) { s = s * 1664525u + 1013904223u; b[i] = (float)((int)((s >> 9) % 400) - 200) / 64.0f; }
+    uint64_t s = 0x853c49e6748fea9bULL;               /* fixed seed -> fixed, portable input */
+    for (int i = 0; i < TSR_KAT_M * TSR_KAT_K; i++) a[i] = tsr__kat_value(&s);
+    for (int i = 0; i < TSR_KAT_K * TSR_KAT_N; i++) b[i] = tsr__kat_value(&s);
 }
 
 /* Reference: explicit round-once fmaf, fixed i/p/j order, no SIMD clone. The canonical truth. */
@@ -36,35 +69,74 @@ __attribute__((target("default")))
 #endif
 static void tsr__kat_ref(const float *a, const float *b, float *c)
 {
-    for (int i = 0; i < TSR_KAT_N; i++) for (int j = 0; j < TSR_KAT_N; j++) c[i * TSR_KAT_N + j] = 0.0f;
-    for (int i = 0; i < TSR_KAT_N; i++)
-        for (int p = 0; p < TSR_KAT_N; p++) {
-            float s = a[i * TSR_KAT_N + p]; const float *bp = b + p * TSR_KAT_N; float *ci = c + i * TSR_KAT_N;
+    for (int i = 0; i < TSR_KAT_M * TSR_KAT_N; i++) c[i] = 0.0f;
+    for (int i = 0; i < TSR_KAT_M; i++)
+        for (int p = 0; p < TSR_KAT_K; p++) {
+            float s = a[i * TSR_KAT_K + p]; const float *bp = b + p * TSR_KAT_N; float *ci = c + i * TSR_KAT_N;
             for (int j = 0; j < TSR_KAT_N; j++) ci[j] = fmaf(s, bp[j], ci[j]);
         }
 }
 
-static uint64_t tsr__fnv(const void *p, size_t n)
+/* Deliberately NON-canonical variants, kept so the test can prove the digest is sensitive to them.
+   reverse == 0: the same order with a separate multiply and add (two roundings: what a build without
+   round-once FMA computes; the volatile product stops the compiler from contracting it back into an FMA).
+   reverse == 1: round-once fmaf but the k sum in reverse order (a reordered / blocked / BLAS reduction). */
+static void tsr__kat_wrong(const float *a, const float *b, float *c, int reverse)
 {
-    const uint8_t *b = p; uint64_t h = 1469598103934665603ULL;
-    for (size_t i = 0; i < n; i++) { h ^= b[i]; h *= 1099511628211ULL; }
+    for (int i = 0; i < TSR_KAT_M * TSR_KAT_N; i++) c[i] = 0.0f;
+    for (int i = 0; i < TSR_KAT_M; i++)
+        for (int q = 0; q < TSR_KAT_K; q++) {
+            const int p = reverse ? TSR_KAT_K - 1 - q : q;
+            float s = a[i * TSR_KAT_K + p]; const float *bp = b + p * TSR_KAT_N; float *ci = c + i * TSR_KAT_N;
+            for (int j = 0; j < TSR_KAT_N; j++) {
+                if (reverse) ci[j] = fmaf(s, bp[j], ci[j]);
+                else { volatile float prod = s * bp[j]; ci[j] = ci[j] + prod; }
+            }
+        }
+}
+
+/* FNV-1a over the IEEE bit patterns, little-endian byte order fixed explicitly, so the digest does not
+   depend on host endianness */
+static uint64_t tsr__kat_digest(const float *c, int n)
+{
+    uint64_t h = 1469598103934665603ULL;
+    for (int i = 0; i < n; i++) {
+        uint32_t u;
+        memcpy(&u, &c[i], sizeof u);
+        for (int k = 0; k < 4; k++) { h ^= (u >> (8 * k)) & 0xFFu; h *= 1099511628211ULL; }
+    }
     return h;
 }
 
-/* FP-environment probes (added 2026-10-20). The gemm KAT pins the reduction ORDER and the
- * round-once contraction of the accumulation via digest equality. These pin the rest of the
- * floating-point environment that the canonical digest silently rides on -- round-once FMA,
- * denormal preservation (no flush-to-zero), and signed zero -- so a build whose arithmetic
- * environment is non-canonical (fast-math, FTZ, a contracted mul-add) returns negative here
- * instead of shipping a plausible-but-different digest. This is the CPU twin of the SPIR-V
+uint64_t tsr_selfcheck_digest(int variant)
+{
+    float a[TSR_KAT_M * TSR_KAT_K], b[TSR_KAT_K * TSR_KAT_N], c[TSR_KAT_M * TSR_KAT_N];
+    tsr__kat_fill(a, b);
+    switch (variant) {
+    case 0: tsr__kat_ref(a, b, c); break;
+    case 1: tsr_gemm(TSR_F32, 0, 0, TSR_KAT_M, TSR_KAT_N, TSR_KAT_K, 1.0, a, TSR_KAT_K, b, TSR_KAT_N, 0.0, c, TSR_KAT_N); break;
+    case 2: tsr__kat_wrong(a, b, c, 0); break;
+    case 3: tsr__kat_wrong(a, b, c, 1); break;
+    default: return 0;
+    }
+    return tsr__kat_digest(c, TSR_KAT_M * TSR_KAT_N);
+}
+
+uint64_t tsr_selfcheck_canonical(void) { return (uint64_t)TSR_CANON_GEMM_F32_KAT; }
+
+/* FP-environment probes (added 2026-10-20). They pin behaviour the canonical digest silently rides on:
+ * a correctly rounded fmaf, denormal preservation (no flush-to-zero) and signed zero. The CONTROL REGISTER
+ * itself (MXCSR / FPCR rounding mode, FTZ/DAZ, trap masks, on every OpenMP worker) is read directly by
+ * tsr_fpenv_check (fpenv.c), which tsr_selfcheck runs first. This is the CPU twin of the SPIR-V
  * float_controls pinning on the GPU side (see talario docs/determinism/float-controls-hardening.md).
  * Inputs are volatile so the probe measures the RUNTIME environment, not a compile-time fold. */
 static int tsr__fp_env_probe(void)
 {
-    /* (1) round-once FMA. a = b = 1 + 2^-23 (the float just above 1.0). The exact product is
-       1 + 2^-22 + 2^-46; c = -(the rounded product) = -(1 + 2^-22). A round-once fmaf keeps the
-       low 2^-46 term (result 2^-46); a contracted or mul-then-round path rounds the product first
-       and yields exactly 0. */
+    /* (1) libm fmaf is correctly rounded. a = b = 1 + 2^-23 (the float just above 1.0). The exact product
+       is 1 + 2^-22 + 2^-46; c = -(the rounded product) = -(1 + 2^-22). A correct fmaf keeps the low 2^-46
+       term (result 2^-46); an fmaf that rounds the product first (a broken libm or a naive software
+       fallback) yields exactly 0. This is an explicit library call, so it does NOT test whether the
+       compiler contracts a*b+c in kernels: that is what the KAT's mul+add sensitivity covers. */
     volatile float a = 0x1.000002p0f, b = 0x1.000002p0f, c = -0x1.000004p0f;
     if (fmaf((float)a, (float)b, (float)c) != 0x1p-46f) return -3;
 
@@ -84,16 +156,12 @@ static int tsr__fp_env_probe(void)
 
 int tsr_selfcheck(void)
 {
-    float a[TSR_KAT_N * TSR_KAT_N], b[TSR_KAT_N * TSR_KAT_N];
-    float cf[TSR_KAT_N * TSR_KAT_N], cr[TSR_KAT_N * TSR_KAT_N];
-    int env = tsr__fp_env_probe();                            /* FP environment before the KAT */
-    if (env != 0) return env;                                 /* -3 contracted, -4 FTZ, -5 signed-zero */
-    tsr__kat_fill(a, b);
-    tsr__kat_ref(a, b, cr);                                   /* no-clone explicit-fma reference */
-    tsr_gemm(TSR_F32, 0, 0, TSR_KAT_N, TSR_KAT_N, TSR_KAT_N,  /* the library's real dispatched path */
-             1.0, a, TSR_KAT_N, b, TSR_KAT_N, 0.0, cf, TSR_KAT_N);
-    const uint64_t hf = tsr__fnv(cf, sizeof cf);
-    const uint64_t hr = tsr__fnv(cr, sizeof cr);
+    /* the control registers first: an unmasked trap would fault inside the probes below */
+    if (tsr_fpenv_check(NULL, 0) != 0) return -6;             /* -6 FP control register non-canonical */
+    int env = tsr__fp_env_probe();
+    if (env != 0) return env;                                 /* -3 fmaf not round-once, -4 FTZ, -5 signed-zero */
+    const uint64_t hf = tsr_selfcheck_digest(1);              /* the library's real dispatched path */
+    const uint64_t hr = tsr_selfcheck_digest(0);              /* no-clone explicit-fma reference */
     const uint64_t want = (uint64_t)TSR_CANON_GEMM_F32_KAT;
 
     if (want == 0ULL) {                                       /* bootstrap: emit the value to bake */

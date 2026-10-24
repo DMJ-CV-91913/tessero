@@ -3759,9 +3759,10 @@ static int r_logsumexp(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     const tsr_arg *axa = argk(args, nargs, 1);
     if (is_none(axa) || n == 0) {                                /* reduce the whole array to a scalar */
         const int64_t tot = tsr_shape_size(n, src.a.shape);
-        double m = -INFINITY; for (int64_t i = 0; i < tot; i++) if (d[i] > m) m = d[i];
+        int nan_ = 0; double m = -INFINITY; for (int64_t i = 0; i < tot; i++) { if (d[i] > m) m = d[i]; else if (d[i] != d[i]) nan_ = 1; }
         double out;
-        if (tot == 0 || m == -INFINITY) out = -INFINITY;
+        if (nan_) out = NAN;                                     /* any NaN gives NaN (scipy), even beside only -inf */
+        else if (tot == 0 || m == -INFINITY) out = -INFINITY;
         else { if (m == INFINITY) m = 0.0;                       /* scipy shifts by 0 for a non-finite max: inf - inf would give NaN */
                double s = 0.0; for (int64_t i = 0; i < tot; i++) s += exp(d[i] - m); out = m + log(s); }
         own z;
@@ -3789,9 +3790,10 @@ static int r_logsumexp(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     for (int64_t o = 0; o < outer; o++)
         for (int64_t i = 0; i < inner; i++) {
             const double *base = d + (o * L) * inner + i;
-            double m = -INFINITY; for (int64_t j = 0; j < L; j++) { const double v = base[j * inner]; if (v > m) m = v; }
+            int nan_ = 0; double m = -INFINITY; for (int64_t j = 0; j < L; j++) { const double v = base[j * inner]; if (v > m) m = v; else if (v != v) nan_ = 1; }
             double r;
-            if (L == 0 || m == -INFINITY) r = -INFINITY;
+            if (nan_) r = NAN;
+            else if (L == 0 || m == -INFINITY) r = -INFINITY;
             else { if (m == INFINITY) m = 0.0;
                    double s = 0.0; for (int64_t j = 0; j < L; j++) s += exp(base[j * inner] - m); r = m + log(s); }
             out[o * inner + i] = r;
