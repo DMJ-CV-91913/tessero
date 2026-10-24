@@ -74,8 +74,8 @@ int tsr_get_threads(void);
  * casts float -> uint8 through a 32-bit truncation: 300.0 -> 44, -1.0 -> 255, 1e10 -> 0). In-range values
  * truncate toward zero exactly as the plain cast does. No branch in loops: on x86-64 the int64 forms ARE the
  * cvttsd2si / cvttss2si instruction (an intrinsic has defined semantics, unlike the C cast), elsewhere a
- * compare pair + select; the int32 forms are compare + select, which the vectoriser keeps vectorised. The
- * ...f variants take float (comparing in float keeps float loops vectorised).
+ * compare pair + select; the int32 forms clamp an invalid input to -2^31 before the cast. The ...f variants
+ * take float. Contiguous float -> int32/uint8 casts use the packed cvtt instructions directly (elementwise.c).
  */
 #if defined(__x86_64__) || defined(_M_X64)
 #include <emmintrin.h>
