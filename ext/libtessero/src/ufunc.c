@@ -167,6 +167,11 @@ LOOP2(l_fpow_d, double, double, pow(a, b))
 LOOP2(l_fpow_fd, float, double, pow((double)a, (double)b))
 
 /* lgamma writes the global `signgam` in most libms: use the reentrant form and never share it across threads */
+#if defined(__APPLE__)
+/* Apple's libm has the reentrant forms but <math.h> declares them only under _REENTRANT */
+extern double lgamma_r(double, int *);
+extern float lgammaf_r(float, int *);
+#endif
 static double lgamma_safe(double x)
 {
 #if defined(__GLIBC__) || defined(__APPLE__) || defined(__FreeBSD__)

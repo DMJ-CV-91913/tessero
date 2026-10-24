@@ -32,6 +32,8 @@ else ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S)))
   LIBNAME := tessero
   SHARED := -shared -static-libgcc
   OPENMP ?=
+  # MinGW hides M_PI, M_LN2, ... under strict -std=c++17 (__STRICT_ANSI__); MSVC needs the same define (config.w32)
+  PLATFORM_DEFS := -D_USE_MATH_DEFINES
   ifeq ($(LAPACK),)
     MINGW_PREFIX ?= /mingw64
     LAPACK := -lopenblas
@@ -72,8 +74,8 @@ WARN := -Wall -Wextra -Wno-unused-parameter -Wshadow -Wno-sign-compare -Wno-type
 OPENMP ?= -fopenmp
 CFLAGS ?= -O3 -std=gnu11 -fPIC -fno-math-errno -fno-trapping-math -fvisibility=default $(OPENMP) $(WARN)
 LDLIBS := -lm $(LAPACK)
-CFLAGS += $(LAPACK_INC)
-CXXFLAGS += $(LAPACK_INC)
+CFLAGS += $(LAPACK_INC) $(PLATFORM_DEFS)
+CXXFLAGS += $(LAPACK_INC) $(PLATFORM_DEFS)
 
 # ---- compiler and linker hardening (OpenSSF "Compiler Options Hardening Guide for C and C++"). Every flag is
 #      probed, so a toolchain that lacks one drops it instead of failing. None changes floating-point semantics;
