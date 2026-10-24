@@ -2012,14 +2012,22 @@ static void test_fuzz_batch_d(void)
     tsr_arg ye[4] = {G, arg_int(0), arg_int(2), arg_num(NAN)};
     CHECK(fa_call("csgraph.yen", 4, ye, r, 2) < 0, "yen with K = NaN refused");
 
-    /* BiasedUrn (Wallenius): pmf through the recursion (lower limit moving) and cdf through the table method;
-       the values are the pre-fix bits (dist_disc.cpp now indexes instead of stepping pointers below the buffer) */
+    /* BiasedUrn (Wallenius): pmf through the recursion (lower limit moving) and cdf through the table method.
+       On x86-64 the values are the pre-fix bits (dist_disc.cpp now indexes instead of stepping pointers below the
+       buffer). aarch64 compilers contract a*b+c into one FMA (the kernel is built with -ffp-contract=off only for
+       the reproducible-f32 and numpy-random code), so two values differ there in the last bits; Linux and macOS
+       aarch64 agree, and the aarch64 pin guards against drift (no pre-fix aarch64 bits were recorded). */
     enum { W = 4 };
     double win[6 * W], wout[W];
     for (int i = 0; i < W; i++) { win[i] = 2 + i; win[W + i] = 60; win[2 * W + i] = 30; win[3 * W + i] = 25; win[4 * W + i] = 0.1 + i; win[5 * W + i] = 0; }
     rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, win, W, wout);
-    CHECK(rc == 0 && wout[0] == 0x1.6f3fc1ff1f476p-3 && wout[1] == 0x1.2cb5830c138e2p-23 && wout[2] == 0x1.203a553569e89p-31
-          && wout[3] == 0x1.cfdd2c2779e1ep-35, "nchypergeom_wallenius.pmf through the recursion keeps its bits (rc %d, %a %a %a %a)", rc, wout[0], wout[1], wout[2], wout[3]);
+#if defined(__aarch64__)
+    const double wexp0 = 0x1.6f3fc1ff1f474p-3, wexp3 = 0x1.cfdd2c2779e1dp-35;
+#else
+    const double wexp0 = 0x1.6f3fc1ff1f476p-3, wexp3 = 0x1.cfdd2c2779e1ep-35;
+#endif
+    CHECK(rc == 0 && wout[0] == wexp0 && wout[1] == 0x1.2cb5830c138e2p-23 && wout[2] == 0x1.203a553569e89p-31
+          && wout[3] == wexp3, "nchypergeom_wallenius.pmf through the recursion keeps its bits (rc %d, %a %a %a %a)", rc, wout[0], wout[1], wout[2], wout[3]);
     double wsum = 0, wsx[6 * 26], wso[26];
     for (int i = 0; i <= 25; i++) { wsx[i] = i; wsx[26 + i] = 60; wsx[52 + i] = 30; wsx[78 + i] = 25; wsx[104 + i] = 2.5; wsx[130 + i] = 0; }
     rc = bd_ufunc("stats.nchypergeom_wallenius", 0, 6, 1, wsx, 26, wso);
@@ -2035,9 +2043,17 @@ static void test_fuzz_batch_d(void)
     CHECK(rc == 0 && isnan(hout[0]) && isnan(hout[1]) && hout[2] == 0x1.d887be0f4bed8p-1, "hyperu with huge a is NaN, hyperu(1, 1, 0.5) keeps its bits (rc %d)", rc);
     double pin[4 * 2] = {0, 1, 1, 3, -INFINITY, 2.5, 1.5, 1.2}, pout[2 * 2];
     const char *rad[4] = {"special.pro_rad1", "special.pro_rad2", "special.obl_rad1", "special.obl_rad2"};
+    /* c = -inf is outside the domain. SciPy's x86-64 result is (0, nan), an artifact of x86's conversion of a NaN to
+       int (the parity fixtures record it, so x86-64 keeps it); on aarch64 the second-kind radial functions give
+       (nan, nan) for the same input. Pinned per architecture, like yn (platform-debt PD-20). */
     for (int k = 0; k < 4; k++) {
         rc = bd_ufunc(rad[k], 0, 4, 2, pin, 2, pout);
-        CHECK(rc == 0 && pout[0] == 0.0 && isnan(pout[2]), "%s at c = -inf keeps SciPy's (0, nan) (rc %d; got %a %a %a %a)", rad[k], rc, pout[0], pout[1], pout[2], pout[3]);
+#if defined(__aarch64__)
+        const int rad_ok = (k == 1 || k == 3) ? isnan(pout[0]) && isnan(pout[2]) : pout[0] == 0.0 && isnan(pout[2]);
+#else
+        const int rad_ok = pout[0] == 0.0 && isnan(pout[2]);
+#endif
+        CHECK(rc == 0 && rad_ok, "%s at c = -inf keeps its pinned value (rc %d; got %a %a %a %a)", rad[k], rc, pout[0], pout[1], pout[2], pout[3]);
     }
 
     /* min_weight_full_bipartite_matching: NaN/inf weights broke the potentials and the unmatched p[j] = 0 wrote at
