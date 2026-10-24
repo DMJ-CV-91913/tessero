@@ -1,0 +1,10 @@
+libtessero/cxx/stats_fn_desc.lo: \
+ /home/tessero/tw-merge/ext/libtessero/cxx/stats_fn_desc.cpp \
+ /home/tessero/tw-merge/ext/libtessero/cxx/stats_dist.hpp \
+ /home/tessero/tw-merge/ext/libtessero/cxx/gen_sc.hpp \
+ /home/tessero/tw-merge/ext/libtessero/third_party/numpy/include/numpy/random/distributions.h \
+ /home/tessero/tw-merge/ext/libtessero/third_party/numpy/include/numpy/npy_shim.h \
+ /home/tessero/tw-merge/ext/libtessero/third_party/numpy/include/numpy/random/bitgen.h \
+ /home/tessero/tw-merge/ext/libtessero/cxx/../src/fn.h \
+ /home/tessero/tw-merge/ext/libtessero/cxx/../src/internal.h \
+ /home/tessero/tw-merge/ext/libtessero/cxx/../src/../include/tessero.h
