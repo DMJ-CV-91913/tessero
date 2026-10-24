@@ -753,7 +753,7 @@ static const zend_function_entry generator_methods[] = {
 void tsr_register_generator(const zend_function_entry *registry_methods, int n)
 {
     const int nfixed = (int)(sizeof generator_methods / sizeof generator_methods[0]) - 1;
-    zend_function_entry *all = pecalloc((size_t)(nfixed + n + 1), sizeof(zend_function_entry), 1);
+    zend_function_entry *all = tsr_pkeep(pecalloc((size_t)(nfixed + n + 1), sizeof(zend_function_entry), 1));
     memcpy(all, generator_methods, sizeof(zend_function_entry) * (size_t)nfixed);
     memcpy(all + nfixed, registry_methods, sizeof(zend_function_entry) * (size_t)n);
     zend_class_entry ce;

@@ -20,6 +20,10 @@ t('where ok', fn () => X::where([true, false], 1.0, 2.0)->toList());
 $a = [1.0];
 $a[] = &$a;
 t('self reference', fn () => X::array([X::zeros([1]), $a]));
+// $a holds a reference to itself: a cycle PHP frees only in its cycle collector, which does not run at exit
+// (plain PHP leaks these 224 bytes under ASan too). Collect it, so the leak check sees the extension alone.
+unset($a);
+gc_collect_cycles();
 $deep = X::zeros([1]);
 for ($i = 0; $i < 40; $i++) { $deep = [$deep]; }
 t('nested 40 deep', fn () => X::array($deep));

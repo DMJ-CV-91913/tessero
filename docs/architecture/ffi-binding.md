@@ -73,9 +73,10 @@ made of many small calls.
 ## Operators
 
 PHP classes cannot overload operators. When `ext-tessero` is loaded,
-`Tessero\Internal\OperandBase` becomes an alias of `Tessero\Ext\Operand`, a
-class the extension gives a `do_operation` handler. `NDArray` extends
-`OperandBase`, so `$a + $b` dispatches to `add()`. Without the extension
+`Tessero\Internal\OperandBase` extends `Tessero\Ext\Operand`, a class the
+extension gives a `do_operation` handler (a subclass rather than an alias:
+PHP 8.2 cannot alias an internal class). `NDArray` extends `OperandBase`, so
+`$a + $b` dispatches to `add()`. Without the extension
 `OperandBase` is an empty class, and the methods still work.
 
 ## JIT interaction

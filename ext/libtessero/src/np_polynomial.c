@@ -573,7 +573,8 @@ static int r_polyroots(const void *vx, const tsr_arg *a, int n, tsr_result *r, i
             else {
                 for (int64_t i = 1; i < m; i++) M[i * m + (i - 1)] = 1.0;
                 for (int64_t i = 0; i < m; i++) M[i * m + (m - 1)] -= c[i] / c[nc - 1];
-                lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)m, M, (lapack_int)m, wr, wi, NULL, 1, NULL, 1);
+                /* ldvl/ldvr = max(1,n): LAPACKE < 3.11 row-major rejects ld < n even when the job is N */
+                lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)m, M, (lapack_int)m, wr, wi, NULL, (lapack_int)(m > 0 ? m : 1), NULL, (lapack_int)(m > 0 ? m : 1));
                 if (info != 0) { fn_set_error("npoly.polyroots: eigenvalue iteration did not converge"); rc = TSR_ECONVERGE; }
                 else { qsort(wr, m, sizeof(double), npoly_cmp); double *o = npoly_out1(r, m);
                     if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < m; i++) o[i] = wr[i]; }
@@ -911,7 +912,8 @@ static int rb_roots(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int
         else { int64_t m = nc - 1; double *M = malloc(m * m * sizeof(double)), *wr = malloc(m * sizeof(double)), *wi = malloc(m * sizeof(double));
             if (!M || !wr || !wi) rc = TSR_ENOMEM;
             else { B->companion(c, nc, M);
-                lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)m, M, (lapack_int)m, wr, wi, NULL, 1, NULL, 1);
+                /* ldvl/ldvr = max(1,n): LAPACKE < 3.11 row-major rejects ld < n even when the job is N */
+                lapack_int info = LAPACKE_dgeev(LAPACK_ROW_MAJOR, 'N', 'N', (lapack_int)m, M, (lapack_int)m, wr, wi, NULL, (lapack_int)(m > 0 ? m : 1), NULL, (lapack_int)(m > 0 ? m : 1));
                 if (info != 0) { fn_set_error("npoly.roots: eigenvalue iteration did not converge"); rc = TSR_ECONVERGE; }
                 else { qsort(wr, m, sizeof(double), npoly_cmp); double *o = npoly_out1(r, m); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < m; i++) o[i] = wr[i]; } }
             free(M); free(wr); free(wi); }

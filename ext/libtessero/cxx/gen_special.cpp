@@ -208,8 +208,8 @@ extern "C" void tsr_special_obl_rad1_cv(const void *, const double *i, double *o
 extern "C" void tsr_special_obl_rad2(const void *, const double *i, double *o) { TSR_GUARD(2, if (!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))) { o[0] = NAN; o[1] = NAN; } else { xsf::oblate_radial2_nocv(i[0], i[1], i[2], i[3], o[0], o[1]); }) }
 extern "C" void tsr_special_obl_rad2_cv(const void *, const double *i, double *o) { TSR_GUARD(2, if (!(std::fabs(i[0]) <= 1000 && std::fabs(i[1]) <= 1000 && (std::fabs(i[2]) <= 1000 || i[2] == -INFINITY))) { o[0] = NAN; o[1] = NAN; } else { xsf::oblate_radial2(i[0], i[1], i[2], i[3], i[4], o[0], o[1]); }) }
 extern "C" void tsr_special_owens_t(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = scipy_xsfw::xsf_owens_t(i[0], i[1]);) }
-extern "C" void tsr_special_pbdv(const void *, const double *i, double *o) { TSR_GUARD(2, xsf::pbdv(i[0], i[1], o[0], o[1]);) }
-extern "C" void tsr_special_pbvv(const void *, const double *i, double *o) { TSR_GUARD(2, xsf::pbvv(i[0], i[1], o[0], o[1]);) }
+extern "C" void tsr_special_pbdv(const void *, const double *i, double *o) { TSR_GUARD(2, if (!(std::fabs(i[0]) < 2147483646.0)) { o[0] = NAN; o[1] = NAN; } else { xsf::pbdv(i[0], i[1], o[0], o[1]); }) }
+extern "C" void tsr_special_pbvv(const void *, const double *i, double *o) { TSR_GUARD(2, if (!(std::fabs(i[0]) < 2147483646.0)) { o[0] = NAN; o[1] = NAN; } else { xsf::pbvv(i[0], i[1], o[0], o[1]); }) }
 extern "C" void tsr_special_pbwa(const void *, const double *i, double *o) { TSR_GUARD(2, xsf::pbwa(i[0], i[1], o[0], o[1]);) }
 extern "C" void tsr_special_pdtr(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = scipy_xsfw::xsf_pdtr(i[0], i[1]);) }
 extern "C" void tsr_special_pdtrc(const void *, const double *i, double *o) { TSR_GUARD(1, o[0] = scipy_xsfw::xsf_pdtrc(i[0], i[1]);) }
