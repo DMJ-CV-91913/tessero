@@ -202,8 +202,10 @@ jobs:
         # functions that use it. The parity gate itself runs natively in ci.yml.
         run: |
           set +e
+          # pcre.jit=0: PCRE2's JIT code (unsymbolised ??? frames) scans with 16-byte loads that can read past the end
+          # of a PHP string, a known Valgrind false positive no suppression can match; Tessero frames stay fully checked
           valgrind --error-exitcode=99 --track-origins=yes --leak-check=no \
-            "$(command -v php)" -d ffi.enable=1 -d memory_limit=8G -d opcache.enable_cli=0 \
+            "$(command -v php)" -d ffi.enable=1 -d memory_limit=8G -d opcache.enable_cli=0 -d pcre.jit=0 \
             tools/parity/run-tests.php --backend=ffi --no-record --module=special 2>&1 | tee valgrind-ffi.log
           rc=${PIPESTATUS[0]}
           set -e

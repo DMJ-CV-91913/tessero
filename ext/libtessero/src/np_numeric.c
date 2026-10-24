@@ -2395,7 +2395,7 @@ static int r_polydiv(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     const int du = u1.dtype == TSR_F32 ? TSR_F32 : TSR_F64, dv = v1.dtype == TSR_F32 ? TSR_F32 : TSR_F64;
     const int dt = promote2(du, dv);
     const int64_t M = u1.shape[0] - 1, N = v1.shape[0] - 1;
-    const int64_t nq = M - N + 1 > 1 ? M - N + 1 : 1;
+    const int64_t nq = M > N ? M - N + 1 : 1;              /* M, N >= 0: no overflow */
     const int64_t wb = (M + N + nq + 4) * 8 + 64;
     double *w = (double *)tsr_calloc(wb);
     if (!w) return TSR_ENOMEM;

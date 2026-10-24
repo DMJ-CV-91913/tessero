@@ -3115,7 +3115,7 @@ static int cp_div(const double complex *u, int64_t nu, const double complex *v, 
 {
     const int64_t m = nu - 1, n = nv - 1;
     const double complex scale = 1.0 / v[0];
-    const int64_t lq = (m - n + 1 > 1) ? (m - n + 1) : 1;
+    const int64_t lq = m > n ? m - n + 1 : 1;                /* m, n >= 0: no overflow */
     double complex *Q = (double complex *)calloc((size_t)lq, sizeof(double complex));
     double complex *R = (double complex *)malloc(sizeof(double complex) * (size_t)nu);
     if (!Q || !R) { free(Q); free(R); return TSR_ENOMEM; }

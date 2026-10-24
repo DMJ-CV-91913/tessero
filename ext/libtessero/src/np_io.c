@@ -355,6 +355,7 @@ static int r_savetxt(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int64_t rows = ndim <= 1 ? n : args[1].arr.shape[0];
     int64_t cols = ndim <= 1 ? 1 : args[1].arr.shape[1];
 
+    /* a new file gets 0666 minus the process umask, as NumPy's open(fname, "w") does: intended, not world-writable */
     FILE *fp = fopen(fname, "w");
     if (!fp) { fn_free_doubles(a, n); fn_set_error("savetxt: could not open '%s'", fname); return TSR_EARG; }
     long written = 0;
