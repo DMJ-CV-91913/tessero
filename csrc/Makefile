@@ -116,6 +116,12 @@ endif
 # library is byte-identical whatever directory it is built in (probed: GCC >= 8, clang >= 10)
 CFLAGS += $(call try_cc,-ffile-prefix-map=$(CURDIR)=.)
 CXXFLAGS += $(call try_cxx,-ffile-prefix-map=$(CURDIR)=.)
+# code placement (probed): every function starts on a 64-byte boundary, so a hot loop's offset within its cache
+# lines no longer depends on how much code the linker placed before it. Without it the hardening flags above
+# (more code) moved linprog's inner loop and cost +22% from layout alone (ABBA, A/A -0.1%); with it linprog is
+# back to the unhardened time and no benchmark case regresses. Layout only: instructions and results are unchanged.
+CFLAGS += $(call try_cc,-falign-functions=64)
+CXXFLAGS += $(call try_cxx,-falign-functions=64)
 
 # exports: the version script (GNU ld, gold, lld; probed, so another linker just skips it) keeps every symbol
 # that is not tsr_* local, plus the tsr_ helpers listed in it that are internal
