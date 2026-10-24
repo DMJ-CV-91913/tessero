@@ -1094,6 +1094,12 @@ void fn_results_free(tsr_result *res, int n)
     }
 }
 
+void tsr_fn_results_free(tsr_result *res, int64_t n)
+{
+    if (!res || n <= 0) return;
+    fn_results_free(res, n > INT32_MAX ? INT32_MAX : (int)n);
+}
+
 tsr_result *fn_result_seq(tsr_result *r, int64_t n)
 {
     if (n < 0 || n > ((int64_t)1 << 40) / (int64_t)sizeof(tsr_result)) { fn_set_error("Maximum allowed size exceeded"); return NULL; }
@@ -1134,6 +1140,8 @@ void fn_free_doubles(double *p, int64_t n) { if (p) tsr_free(p, n > 8 ? n * 8 : 
 
 int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result *res)
 {
+    /* every result slot is empty before any return, so a caller may always hand res to tsr_fn_results_free */
+    if (res) for (int k = 0; k < nres; k++) memset(&res[k], 0, sizeof res[k]);
     const fn_def *d = def_of(id);
     if (!d || d->kind != FN_ROUTINE || !res || nres < d->nout || (nargs > 0 && !args)) return TSR_EARG;
     g_err[0] = '\0';
@@ -1150,7 +1158,6 @@ int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result 
         args = padded;
         nargs = declared;
     }
-    for (int k = 0; k < nres; k++) memset(&res[k], 0, sizeof res[k]);
     const int rc = fn_call_routine(d->routine, d->ctx, args, nargs, res, nres);
     free(padded);
     if (rc < 0) fn_results_free(res, nres);
