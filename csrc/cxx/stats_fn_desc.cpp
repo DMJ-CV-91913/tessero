@@ -1504,6 +1504,10 @@ int r_freq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int
         const double delta = le - fe, step = delta / (double)nb;
         for (int64_t i = 0; i <= nb; i++) edges[i] = (step == 0 ? ((double)i / (double)nb) * delta : (double)i * step) + fe;
         edges[nb] = le;
+        /* np.histogram's check: a spread that overflows (le - fe = inf) gives NaN edges, and the bin index
+           of every sample was then an undefined float->int cast */
+        for (int64_t i = 0; i < nb; i++)
+            if (!(edges[i] < edges[i + 1])) { fn_set_error("Too many bins for data range. Cannot create %lld finite-sized bins.", (long long)nb); return TSR_EARG; }
     }
     vector<double> hist((size_t)nb, 0.0);
     {
@@ -1539,7 +1543,7 @@ int r_freq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int
     }
     int rc = emit_arr(&res[0], 1, &nb, hist.data(), false);
     if (rc != TSR_OK) return rc;
-    if (lim_int) fn_result_int(&res[1], (int64_t)lower);
+    if (lim_int) fn_result_int(&res[1], fn_dbl_i64(lower, INT64_MIN));   /* an int64 limit near 2^63 rounds up */
     else fn_result_num(&res[1], lower);
     fn_result_num(&res[2], binsize);
     fn_result_int(&res[3], extra);
@@ -1610,7 +1614,8 @@ int r_lmoment(const void *, const tsr_arg *args, int nargs, tsr_result *res, int
        MemoryError, never a double -> int overflow here */
     double nmax = 0;
     for (double v : order) nmax = std::max(nmax, v);
-    if (nmax > 100000000.0) { fn_set_error("Unable to allocate memory for %.0f L-moments", nmax); return TSR_ENOMEM; }
+    /* SciPy builds an nmax x nmax weight matrix: past 65536 (32 GiB) that is its MemoryError */
+    if (nmax > 65536.0) { fn_set_error("Unable to allocate memory for %.0f L-moments", nmax); return TSR_ENOMEM; }
     int nm = (int)nmax;
     vector<double> out((size_t)(no * nl + 1));
     for (int64_t o = 0; o < nl; o++) {
@@ -1628,7 +1633,10 @@ int r_lmoment(const void *, const tsr_arg *args, int nargs, tsr_result *res, int
             for (int64_t j = 0; j < n; j++) bj[j] = sc::binom((double)j, (double)rr);
             bk[rr] = blas_dot(bj.data(), x, n) / sc::binom(N - 1, (double)rr) / N;
         }
-        for (int rr = 0; rr < nm; rr++) {
+        /* lm[rr] for rr >= n is NaN below whatever it computes: skip it (the quadratic loop made a large order
+           with a short sample run for minutes) */
+        const int nmn = (int)std::min<int64_t>(n, nm);
+        for (int rr = 0; rr < nmn; rr++) {
             vector<double> prk(nm);
             for (int k = 0; k < nm; k++)
                 prk[k] = std::pow(-1.0, (double)(rr - k)) * sc::binom((double)rr, (double)k) * sc::binom((double)(rr + k), (double)k);
@@ -2073,8 +2081,13 @@ static int r_ecdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 {
     (void)ctx; (void)nargs; (void)nres;
     if (args[0].kind != 3) { fn_set_error("ecdf: sample must be an array"); return TSR_EARG; }
+    if (args[0].arr.ndim != 1) { fn_set_error("`sample` must be a one-dimensional sequence."); return TSR_EARG; }   /* scipy */
     int64_t ls; double *s = fn_arg_doubles(&args[0], &ls);
     if (!s) return TSR_ENOMEM;
+    /* a NaN never equals itself, so the tie loop below never advanced past it (and std::sort needs a strict weak
+       order): refuse it as SciPy does */
+    for (int64_t i = 0; i < ls; i++)
+        if (std::isnan(s[i])) { fn_free_doubles(s, ls); fn_set_error("`sample` must not contain nan."); return TSR_EARG; }
     std::vector<double> v(s, s + ls); std::sort(v.begin(), v.end());
     std::vector<double> q, p;
     for (int64_t i = 0; i < ls;) { double val = v[i]; int64_t j = i; while (j < ls && v[j] == val) j++; q.push_back(val); p.push_back((double)j / (double)ls); i = j; }
@@ -2091,6 +2104,7 @@ static int r_ecdf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 /* Filliben's order-statistic medians mapped through the normal quantile (for probplot / normplot). */
 static void stat_osm(double *a, int64_t n)
 {
+    if (n <= 0) return;                                   /* empty sample: nothing to fill (a may be null) */
     if (n == 1) { a[0] = sc::ndtri(0.5); return; }
     double last = std::pow(0.5, 1.0 / (double)n);
     a[n - 1] = sc::ndtri(last);
@@ -2146,6 +2160,7 @@ static int r_probplot(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int rc = orr ? TSR_OK : TSR_ENOMEM;
     if (rc == TSR_OK) {
         double slope, intercept, r = stat_linr(osm.data(), osr.data(), n, &slope, &intercept);
+        if (n == 0) r = 0.0;                              /* scipy: (nan, nan, 0.0) for an empty sample */
         for (int64_t i = 0; i < n; i++) { om[i] = osm[i]; orr[i] = osr[i]; }
         fn_result_num(&res[2], slope); fn_result_num(&res[3], intercept); fn_result_num(&res[4], r);
     }
@@ -2157,10 +2172,20 @@ static int stat_normplot(const tsr_arg *args, int nargs, tsr_result *res, int ye
 {
     if (args[0].kind != 3) { fn_set_error("normplot: x must be an array"); return TSR_EARG; }
     const double la = args[1].num, lb = args[2].num;
-    const int64_t N = (nargs > 3 && args[3].kind == 1) ? ((args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num) : 80;
+    int64_t N = 80;
+    if (nargs > 3 && args[3].kind == 1) {
+        int rc = fn_arg_i64(&args[3], 1, INT64_MIN, INT64_MAX, "N", &N);
+        if (rc < 0) return rc;
+        if (N < 0) { fn_set_error("Number of samples, %lld, must be non-negative.", (long long)N); return TSR_EARG; }
+    }
     int64_t lx; double *x = fn_arg_doubles(&args[0], &lx);
     if (!x) return TSR_ENOMEM;
     const int64_t n = lx;
+    if (n > 0 && !(lb > la)) { fn_free_doubles(x, lx); fn_set_error("`lb` has to be larger than `la`."); return TSR_EARG; }
+    if (n > 0 && !yeo)
+        for (int64_t i = 0; i < n; i++)
+            if (x[i] <= 0.0) { fn_free_doubles(x, lx); fn_set_error("Data must be positive."); return TSR_EARG; }
+    if (n == 0) N = 0;                                    /* scipy returns the empty sample: no lambdas */
     std::vector<double> osm(n), y(n);
     stat_osm(osm.data(), n);
     int64_t sh[1] = {N};

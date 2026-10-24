@@ -370,20 +370,38 @@ static int r_distance_matrix(const void *ctx, const tsr_arg *args, int nargs, ts
     return TSR_OK;
 }
 
-/* per-point Minkowski between x and y ((m,k) vs (m,k) or (k,); both (k,) -> scalar). root applies the 1/p power. */
+/* x as rows of k values: the array itself when its last axis already has k entries, otherwise (a 0-d array or a
+   last axis of 1, broadcast as NumPy does) a malloc'ed copy with the single value repeated; NULL when out of memory */
+static double *spt_rows(double *X, int64_t rows, int64_t kx, int64_t k)
+{
+    if (kx == k) return X;
+    double *R = (double *)malloc((size_t)(rows * k > 0 ? rows * k : 1) * sizeof(double));
+    if (R) for (int64_t i = 0; i < rows; i++) for (int64_t d = 0; d < k; d++) R[i * k + d] = X[i];
+    return R;
+}
+
+/* per-point Minkowski between x and y, each 0-d, (k,) or (m, k), broadcast as NumPy does (scipy sums |y - x|^p
+   over the last axis); both at most 1-D -> a scalar. root applies the 1/p power. */
 static int spt_pointwise(const tsr_arg *args, int nargs, tsr_result *res, int root)
 {
     if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("minkowski_distance: x and y must be arrays"); return TSR_EARG; }
     double p = spt_read_p(args, nargs, 2); int inf = isinf(p);
     const tsr_array *xa = &args[0].arr, *ya = &args[1].arr;
-    int64_t k = xa->shape[xa->ndim - 1];
-    if (ya->shape[ya->ndim - 1] != k) { fn_set_error("minkowski_distance: last dimension mismatch"); return TSR_EARG; }
-    int64_t m = xa->ndim == 2 ? xa->shape[0] : (ya->ndim == 2 ? ya->shape[0] : 1);
-    int scalar = (xa->ndim == 1 && ya->ndim == 1);
-    int64_t lx, ly; double *X = fn_arg_doubles(&args[0], &lx); if (!X) return TSR_ENOMEM;
-    double *Y = fn_arg_doubles(&args[1], &ly); if (!Y) { fn_free_doubles(X, lx); return TSR_ENOMEM; }
+    if (xa->ndim > 2 || ya->ndim > 2) { fn_set_error("minkowski_distance: inputs with more than 2 dimensions are not supported"); return TSR_EDIM; }
+    /* a 0-d input has no last axis (it indexed shape[-1]): it broadcasts like a length-1 axis */
+    const int64_t kx = xa->ndim ? xa->shape[xa->ndim - 1] : 1, ky = ya->ndim ? ya->shape[ya->ndim - 1] : 1;
+    const int64_t mx = xa->ndim == 2 ? xa->shape[0] : 1, my = ya->ndim == 2 ? ya->shape[0] : 1;
+    if ((kx != ky && kx != 1 && ky != 1) || (mx != my && mx != 1 && my != 1)) {
+        fn_set_error("operands could not be broadcast together"); return TSR_EARG;
+    }
+    const int64_t k = kx == 1 ? ky : kx, m = mx == 1 ? my : mx;
+    int scalar = (xa->ndim <= 1 && ya->ndim <= 1);
+    int64_t lx, ly; double *X0 = fn_arg_doubles(&args[0], &lx); if (!X0) return TSR_ENOMEM;
+    double *Y0 = fn_arg_doubles(&args[1], &ly); if (!Y0) { fn_free_doubles(X0, lx); return TSR_ENOMEM; }
+    double *X = spt_rows(X0, mx, kx, k), *Y = X ? spt_rows(Y0, my, ky, k) : NULL;
     int rc = TSR_OK;
-    if (scalar) {
+    if (!X || !Y) rc = TSR_ENOMEM;
+    else if (scalar) {
         double s = spt_mink_p(X, Y, k, p, inf);
         fn_result_num(&res[0], (root && !inf) ? pow(s, 1.0 / p) : s);
     } else {
@@ -391,13 +409,15 @@ static int spt_pointwise(const tsr_arg *args, int nargs, tsr_result *res, int ro
         double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
         if (!out) rc = TSR_ENOMEM;
         else for (int64_t i = 0; i < m; i++) {
-            const double *xi = xa->ndim == 2 ? &X[i * k] : X;
-            const double *yi = ya->ndim == 2 ? &Y[i * k] : Y;
+            const double *xi = mx > 1 ? &X[i * k] : X;
+            const double *yi = my > 1 ? &Y[i * k] : Y;
             double s = spt_mink_p(xi, yi, k, p, inf);
             out[i] = (root && !inf) ? pow(s, 1.0 / p) : s;
         }
     }
-    fn_free_doubles(X, lx); fn_free_doubles(Y, ly);
+    if (X && X != X0) free(X);
+    if (Y && Y != Y0) free(Y);
+    fn_free_doubles(X0, lx); fn_free_doubles(Y0, ly);
     return rc;
 }
 static int r_minkowski_distance(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)

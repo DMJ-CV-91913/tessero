@@ -37,26 +37,17 @@ static int denied(const char *name, const char *info)
 /* open findings: routines skipped at call time (not removed from the table, so slot numbers and therefore
    corpus files keep their meaning). Remove an entry once its fix lands. */
 static const char *const KNOWN[] = {
-    "special.ellip_harm", "special.ellip_harm_2", "special.ellip_normal",  /* F2: p < 1 indexes z[-1] */
     "signal.stft",                                                          /* F3: free() of a tsr_alloc block */
-    "np.einsum",                                                            /* F5: 0-length label overread */
-    "np.histogram", "np.histogram_bin_edges",                               /* F7: bins * 8 wraps */
     "signal.lp2bp_zpk", "signal.lp2hp_zpk",                                 /* F12/F14: output store out of bounds */
-    "stats.boxcox_normplot", "stats.yeojohnson_normplot", "stats.probplot",  /* F13: offset on a NULL pointer in stat_osm */
-    "stats.ecdf",                                                           /* F18: 2-D input runs unbounded */
     /* F16/F17/F19/F25/F28/F29/F32: the whole npoly.* module (chebint, chebmulx, chebmul, chebdiv, lag2poly,
        herm2poly, hermeint, ...) shares one class of bug -- a coefficient-array length or integer order drives an
        allocation or index with no bounds check. Skipped by prefix below; the maintainer audits the module. */
-    "sparse.diags", "sparse.eye_array", "sparse.eye", "sparse.spdiags",      /* F31/F33: dimension product overflow */
     "signal.lp2lp",                                                         /* F21: sig_normalize heap overflow */
     "signal.lp2bs_zpk", "signal.bilinear_zpk",                              /* F22/F37: complex store out of bounds in the zpk pipeline */
-    "special.mathieu_odd_coef", "special.mathieu_even_coef",                /* F23: index 256 in mathieu_coef_run */
     "windows.tukey",                                                        /* F24: leaked tsr allocation */
     "signal.zpk2sos", "signal.iirdesign", "signal.dbode",                   /* F30/F35/F38: heap overflow in the filter routines */
     "signal.welch", "signal.csd",                                           /* F39: calloc count*size overflow */
-    "stats.chisquare", "stats.power_divergence",                            /* F34: null f_exp dereference in stats_fn_tests */
     "signal.peak_widths", "signal.peak_prominences",                        /* F26: wild read in peak_prom_core */
-    "distance.minkowski_distance",                                          /* F36: 0-d input indexes shape[-1] (same class as F15) */
     "windows.chebwin",                                                      /* F27: runs past the timeout */
 };
 
@@ -170,16 +161,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (verbose) fprintf(stderr, "routine: %s nargs %d\n", tsr_fn_name(g_ids[slot]), nargs);
 #ifdef FUZZ_SKIP_KNOWN
     if (known(tsr_fn_name(g_ids[slot]))) { fz_release(&pool); return 0; }
-    /* F20: special.*_seq / order-like integer arguments drive O(n) to O(n^2) work and memory with no cap
-       (special.pbvv_seq(n=2^20) ran past the timeout). Clamp integer arguments of special.* to 1000. */
-    if (strncmp(tsr_fn_name(g_ids[slot]), "special.", 8) == 0)
-        for (int i = 0; i < nargs; i++)
-            if (args[i].kind == 1 && (args[i].ival > 1000 || args[i].num > 1000.0)) args[i] = fz_arg_int(1000);
-    /* F15: the ndimage rank/morphology filters (windowed_rank_buf) index stride[-1] for a 0-d input */
-    if (strncmp(tsr_fn_name(g_ids[slot]), "ndimage.", 8) == 0 && nargs > 0 && args[0].kind == 3 && args[0].arr.ndim == 0) {
-        fz_release(&pool);
-        return 0;
-    }
 #endif
     fz_call(g_ids[slot], nargs, nargs ? args : NULL);
     fz_release(&pool);
