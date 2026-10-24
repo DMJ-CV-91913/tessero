@@ -299,6 +299,15 @@ jobs:
         with: { persist-credentials: false }
       - run: bash tools/sync-ext.sh --check
 
+  ownership:
+    name: memory ownership lint (ADR 0015)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: bash tools/check-ownership-selftest.sh     # every rule fires on a planted violation
+      - run: bash tools/check-ownership.sh               # the tree has none
+
   extension:
     name: ext-tessero PHP ${{ matrix.php }} ${{ matrix.ts }}
     needs: [sync]
@@ -378,7 +387,7 @@ jobs:
         with: { persist-credentials: false }
       - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev libxml2-dev libonig-dev libffi-dev zlib1g-dev libzip-dev pkg-config
       - name: build libtessero (FFI backend, compared byte for byte with the extension) with this runner's compiler
-        run: make -C csrc -j"$(nproc)"
+        run: make -C csrc -j"$(nproc)" OWNERSHIP_CHECK=1   # ADR 0015: tsr_free aborts on a foreign pointer, double free or wrong size
       - id: php-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -407,7 +416,7 @@ jobs:
           php -v && php -m
           cd ext && phpize
           ./configure --with-php-config="$HOME/php-asan/bin/php-config" --enable-tessero --disable-tessero-harden \
-            CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" \
+            CFLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined -DTSR_OWNERSHIP_CHECK" \
             LDFLAGS="-fsanitize=address,undefined"
           make -j"$(nproc)"
       - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
@@ -426,6 +435,8 @@ jobs:
           export PATH="$HOME/php-asan/bin:$PATH"
           php -d extension="$PWD/ext/modules/tessero.so" -r 'exit(extension_loaded("tessero") ? 0 : 1);' \
             || { echo "::error::the sanitized module does not load"; exit 1; }
+          php -d extension="$PWD/ext/modules/tessero.so" -r 'exit(\Tessero\Ext\Engine::feature("ownership_check") ? 0 : 1);' \
+            || { echo "::error::the sanitized module is not built with the ownership check (ADR 0015)"; exit 1; }
           # all three suites run even when one fails, so one report shows every sanitizer finding
           failed=""
           if ! (cd ext && NO_INTERACTION=1 REPORT_EXIT_STATUS=1 make test TESTS=tests | tee phpt.log); then
@@ -622,7 +633,7 @@ jobs:
   # are deliberately not listed.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [native, php, preload, sync, extension, extension-asan, laravel, laravel-app, sanitizers, fuzz, repro, parity-records, parity-ffi, bench, docs, docker]
+    needs: [native, php, preload, sync, ownership, extension, extension-asan, laravel, laravel-app, sanitizers, fuzz, repro, parity-records, parity-ffi, bench, docs, docker]
     runs-on: ubuntu-24.04
     permissions:
       contents: write       # create the GitHub release and upload its assets
