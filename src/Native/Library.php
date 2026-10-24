@@ -263,8 +263,29 @@ final class Library
         return in_array($sapi, ['cli', 'phpdbg', 'embed'], true) ? null : 1;
     }
 
+    /**
+     * Security floor (owner decision 2026-10-24): only PHP releases that carry the 2026-10-21 security fixes,
+     * 8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on each branch. Mirrors the extension's MINIT check and the
+     * composer.json "php" constraints (tests/Unit/PhpSecurityTest.php keeps the three in step).
+     */
+    public static function phpPatched(int $versionId): bool
+    {
+        return match (true) {
+            $versionId < 80200 => false,
+            $versionId < 80300 => $versionId >= 80235,
+            $versionId < 80400 => $versionId >= 80336,
+            $versionId < 80500 => $versionId >= 80427,
+            $versionId < 80600 => $versionId >= 80512,
+            default => true,
+        };
+    }
+
     private static function load(): FFI
     {
+        if (! self::phpPatched(PHP_VERSION_ID)) {
+            throw new LibraryUnavailable('PHP ' . PHP_VERSION . ' is not a security-patched release: Tessero needs '
+                . '8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on its branch.');
+        }
         if (! extension_loaded('ffi')) {
             throw new LibraryUnavailable('ext-ffi is not loaded.');
         }
