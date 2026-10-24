@@ -120,6 +120,16 @@ static mode(): string
 static path(): ?string
 ```
 
+### phpPatched
+
+```php
+static phpPatched(int $versionId): bool
+```
+
+Security floor (owner decision 2026-10-24): only PHP releases that carry the 2026-10-21 security fixes,
+8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on each branch. Mirrors the extension's MINIT check and the
+composer.json "php" constraints (tests/Unit/PhpSecurityTest.php keeps the three in step).
+
 ### platform
 
 ```php

@@ -507,17 +507,9 @@ static int fill_seq(zval *z, tsr_arg *a, keep_list *kl, tsr_arg **block)
     return SUCCESS;
 }
 
-/* release a kernel result that will not be adopted (arrays, and sequences recursively) */
-static void fn_results_free_ext(tsr_result *r)
-{
-    if (r->kind == 3 && r->arr.data) tsr_free(r->arr.data, r->bytes);
-    if (r->kind == 6 && r->arr.data) {
-        tsr_result *items = (tsr_result *)r->arr.data;
-        for (int64_t j = 0; j < r->arr.shape[0]; j++) fn_results_free_ext(&items[j]);
-        tsr_free(r->arr.data, r->bytes);
-    }
-    r->kind = 0;
-}
+/* release a kernel result that will not be adopted: the kernel's own teardown (strings, arrays, sequences with
+   their items), so the layer that allocated the blocks also defines how they are freed (ADR 0015) */
+static void fn_results_free_ext(tsr_result *r) { tsr_fn_results_free(r, 1); }
 
 /* a kernel result as a zval (kind 6 -> a PHP list); frees what it cannot adopt */
 static int result_zval(tsr_result *r, zval *out)
@@ -541,7 +533,7 @@ static int result_zval(tsr_result *r, zval *out)
         array_init_size(out, (uint32_t)n);
         for (int64_t j = 0; j < n; j++) {
             if (ok == FAILURE) {                      /* after a failure: release the rest */
-                if (items[j].kind == 3 || items[j].kind == 6) fn_results_free_ext(&items[j]);
+                fn_results_free_ext(&items[j]);
                 continue;
             }
             zval v;
@@ -641,7 +633,7 @@ static void call_routine(const fn_bind *b, zend_execute_data *execute_data, zval
         int present = 0, last = -1, failed = 0;
         for (int k = 0; k < nres; k++) {
             ZVAL_UNDEF(&vals[k]);
-            if (failed) { if (res[k].kind == 3 || res[k].kind == 6) fn_results_free_ext(&res[k]); continue; }
+            if (failed) { fn_results_free_ext(&res[k]); continue; }
             if (res[k].kind == 0) continue;
             if (result_zval(&res[k], &vals[k]) == FAILURE) { failed = 1; continue; }
             present++;

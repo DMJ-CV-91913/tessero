@@ -203,6 +203,11 @@ abi-check: $(OUT)/$(LIBNAME).$(EXT)
 	@nm -D --defined-only $< | awk '{print $$3}' | sed 's/@.*//' | grep -v -e '^TESSERO_' -e '\.resolver$$' | sort -u > $(BUILD)/abi.exported
 	@diff -u $(BUILD)/abi.header $(BUILD)/abi.exported && echo "abi-check: $$(wc -l < $(BUILD)/abi.exported) exported symbols == tessero.h declarations" \
 	    && readelf -d $< | grep -q 'SONAME.*$(SONAME)' && echo "abi-check: soname $(SONAME)"
+	@# native consumers include tessero_native.h: it must compile on its own, in C and in C++
+	@printf '#include "tessero_native.h"\n#include "tessero_native.h"\nint main(void){return 0;}\n' > $(BUILD)/abi_hdr.c
+	@$(CC) -std=c11 -Wall -Werror -Iinclude -fsyntax-only $(BUILD)/abi_hdr.c \
+	    && $(CXX) -x c++ -std=c++17 -Wall -Werror -Iinclude -fsyntax-only $(BUILD)/abi_hdr.c \
+	    && echo "abi-check: tessero_native.h compiles standalone (C and C++)"
 	@# a second copy already in the global scope (Talario's) must not capture this library's internal calls
 	@$(CC) -O1 -o $(BUILD)/abi_interpose tests/abi_interpose.c $(call try_so,-ldl)
 	@cp $< $(BUILD)/libtessero-other-copy.$(EXT)
@@ -219,7 +224,14 @@ $(BUILD)/test_opt: $(OBJ_C) tests/test_main.c $(OBJ_CXX)
 	$(CC) $(CFLAGS) -c -o $(BUILD)/test_main.o tests/test_main.c
 	$(CXX) $(CFLAGS) $(OBJ_C) $(BUILD)/test_main.o $(OBJ_CXX) $(CXXLINK) -o $@ $(LDLIBS)
 
-SAN := -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+# OWNERSHIP_CHECK=1: any build checks memory ownership (ADR 0015); never the release default
+OWNERSHIP_CHECK ?= 0
+ifeq ($(OWNERSHIP_CHECK),1)
+  CFLAGS += -DTSR_OWNERSHIP_CHECK
+endif
+# the sanitizer builds always check memory ownership (ADR 0015): tsr_free aborts on a foreign pointer, a double free
+# or a wrong size, and free() of a tsr_alloc pointer is an invalid free
+SAN := -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer -DTSR_OWNERSHIP_CHECK
 OBJ_CXX_SAN = $(patsubst %,$(BUILD)/cxx_san/%.o,$(notdir $(SRC_CXX)))
 
 $(BUILD)/cxx_san/%.cpp.o: cxx/%.cpp cxx/*.hpp src/fn.h
@@ -262,7 +274,7 @@ FUZZ_TIMEOUT ?= 25
 # fuzz/fuzz_*.c, and fuzz/known_ubsan.supp) so a long run keeps exploring; the default (empty) reports them
 FUZZ_DEFS ?=
 FUZZ_UBSAN := halt_on_error=1:abort_on_error=1:print_stacktrace=1$(if $(findstring FUZZ_SKIP_KNOWN,$(FUZZ_DEFS)),:suppressions=$(abspath fuzz/known_ubsan.supp))
-FUZZ_FLAGS := -O1 -g -std=gnu11 -Ithird_party/numpy/include -fno-math-errno -fno-trapping-math -fno-omit-frame-pointer -DTSR_NO_CLONES $(LAPACK_INC) $(WARN)
+FUZZ_FLAGS := -O1 -g -std=gnu11 -Ithird_party/numpy/include -fno-math-errno -fno-trapping-math -fno-omit-frame-pointer -DTSR_NO_CLONES -DTSR_OWNERSHIP_CHECK $(LAPACK_INC) $(WARN)
 FUZZ_CXXFLAGS := -O1 -g -std=c++17 -DBOOST_MATH_STANDALONE -fno-omit-frame-pointer $(TP_INC) $(LAPACK_INC) -Icxx
 FUZZ_CLANG ?= clang
 FUZZ_CLANGXX ?= clang++
