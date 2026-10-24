@@ -9,8 +9,26 @@ Process-wide settings and diagnostics.
 | Name | Value |
 |---|---|
 | `VERSION` | `'0.2.0'` |
+| `ABI_VERSION` | `2` |
 
 ## Methods
+
+### abiVersion
+
+```php
+static abiVersion(): int
+```
+
+The C ABI generation of the loaded libtessero.
+
+### feature
+
+```php
+static feature(string $name): bool
+```
+
+Whether the loaded build has a capability: "repro_f32", "gemm_canonical", "lapack", "openblas_threads",
+"openmp" or "fpenv_check". Unknown names give false.
 
 ### info
 
@@ -42,11 +60,25 @@ static peakMemory(): int
 static rng(array|int|null $seed = null): Tessero\Random\Generator
 ```
 
+### selfcheck
+
+```php
+static selfcheck(): array
+```
+
+Numerical self-check of the loaded libtessero (docs/reference/numerical-guarantees.md): the FP control state
+of this thread and the OpenMP workers, then the known-answer tests. fpenv is 0 when the FP environment is
+canonical (round to nearest, no flush-to-zero, traps masked), else a bitmask named in fpenv_reason;
+selfcheck is 0 when every probe matches, a negative code otherwise (tessero.h).
+
 ### setBlasThreads
 
 ```php
 static setBlasThreads(int $threads): void
 ```
+
+Cap the BLAS thread pools: the BLAS this package loads over FFI (Linalg) and the one libtessero links
+(matmul). Web SAPIs default to 1 (TESSERO_BLAS_THREADS overrides), since php-fpm runs a worker per core.
 
 ### setMemoryBudget
 
