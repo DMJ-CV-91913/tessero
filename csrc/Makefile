@@ -223,26 +223,78 @@ clean:
 
 # ---- fuzzing (see csrc/fuzz/): coverage-guided with libFuzzer (clang + compiler-rt), or the standalone
 #      mutation driver under ASan + UBSan anywhere. Corpora live in fuzz/corpus/<target>.
-FUZZ_TARGETS := slice npy mmap_plan json
+FUZZ_TARGETS := slice npy mmap_plan json npy_write
 # the fuzzed parsers do not need the function registry (C++): build without it
 FUZZ_SRC := $(filter-out src/gen_%_table.c src/np_%.c src/scipy_%.c third_party/scipy/cdflib.c $(NPRAND) $(SCIPYC),$(SRC))
+# registry targets drive public routines (tsr_fn_routine): they link the whole kernel (C + C++ + LAPACK),
+# compiled once per mode into $(BUILD)/fuzzobj_lf (libFuzzer, clang) or $(BUILD)/fuzzobj_sa (standalone, $(CC))
+FUZZ_REG_TARGETS := einsum hist textio dtype routines
 FUZZ_TIME ?= 60
 FUZZ_RUNS ?= 200000
-FUZZ_FLAGS := -O1 -g -std=gnu11 -Ithird_party/numpy/include -fno-math-errno -fno-trapping-math -fno-omit-frame-pointer -DTSR_NO_CLONES $(WARN)
+FUZZ_TIMEOUT ?= 25
+# FUZZ_DEFS=-DFUZZ_SKIP_KNOWN steers the registry targets around open findings (the FUZZ_SKIP_KNOWN blocks in
+# fuzz/fuzz_*.c, and fuzz/known_ubsan.supp) so a long run keeps exploring; the default (empty) reports them
+FUZZ_DEFS ?=
+FUZZ_UBSAN := halt_on_error=1:abort_on_error=1:print_stacktrace=1$(if $(findstring FUZZ_SKIP_KNOWN,$(FUZZ_DEFS)),:suppressions=$(abspath fuzz/known_ubsan.supp))
+FUZZ_FLAGS := -O1 -g -std=gnu11 -Ithird_party/numpy/include -fno-math-errno -fno-trapping-math -fno-omit-frame-pointer -DTSR_NO_CLONES $(LAPACK_INC) $(WARN)
+FUZZ_CXXFLAGS := -O1 -g -std=c++17 -DBOOST_MATH_STANDALONE -fno-omit-frame-pointer $(TP_INC) $(LAPACK_INC) -Icxx
+FUZZ_CLANG ?= clang
+FUZZ_CLANGXX ?= clang++
+# clang's -fsanitize=undefined includes float-cast-overflow, gcc's does not: name it so both modes report the same.
+# UBSan checks are built recoverable and made fatal at run time (UBSAN_OPTIONS halt_on_error=1, FUZZ_UBSAN): the
+# same stop-at-first-report behaviour as -fno-sanitize-recover, but a suppressions file can then exempt a finding.
+FUZZ_SAN_LF := -fsanitize=address,undefined -fno-sanitize-recover=all -fsanitize-recover=undefined
+FUZZ_SAN_SA := -fsanitize=address,undefined,float-cast-overflow -fno-sanitize-recover=all -fsanitize-recover=undefined,float-cast-overflow
+FUZZ_OBJ_LF = $(patsubst %,$(BUILD)/fuzzobj_lf/%.o,$(basename $(notdir $(SRC) $(SRC_CXX))))
+FUZZ_OBJ_SA = $(patsubst %,$(BUILD)/fuzzobj_sa/%.o,$(basename $(notdir $(SRC) $(SRC_CXX))))
 
-fuzz:
+define FUZZ_C_RULES
+$(BUILD)/fuzzobj_lf/$(basename $(notdir $(1))).o: $(1) src/*.h include/tessero.h
+	@mkdir -p $$(@D)
+	$(FUZZ_CLANG) $(FUZZ_FLAGS) -w -fsanitize=fuzzer-no-link $(FUZZ_SAN_LF) -c -o $$@ $$<
+$(BUILD)/fuzzobj_sa/$(basename $(notdir $(1))).o: $(1) src/*.h include/tessero.h
+	@mkdir -p $$(@D)
+	$(CC) $(FUZZ_FLAGS) -w $(FUZZ_SAN_SA) -c -o $$@ $$<
+endef
+define FUZZ_CXX_RULES
+$(BUILD)/fuzzobj_lf/$(basename $(notdir $(1))).o: $(1) cxx/*.hpp src/fn.h
+	@mkdir -p $$(@D)
+	$(FUZZ_CLANGXX) $(FUZZ_CXXFLAGS) -w -fsanitize=fuzzer-no-link $(FUZZ_SAN_LF) -c -o $$@ $$<
+$(BUILD)/fuzzobj_sa/$(basename $(notdir $(1))).o: $(1) cxx/*.hpp src/fn.h
+	@mkdir -p $$(@D)
+	$(CXX) $(FUZZ_CXXFLAGS) -w $(FUZZ_SAN_SA) -c -o $$@ $$<
+endef
+$(foreach s,$(SRC),$(eval $(call FUZZ_C_RULES,$(s))))
+$(foreach s,$(SRC_CXX),$(eval $(call FUZZ_CXX_RULES,$(s))))
+
+fuzz: $(if $(FUZZ_REG_TARGETS),$(FUZZ_OBJ_LF))
 	@mkdir -p $(BUILD)
 	@for t in $(FUZZ_TARGETS); do \
 	    clang $(FUZZ_FLAGS) -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all \
 	        -DTSR_NO_REGISTRY -o $(BUILD)/fuzz_$$t $(FUZZ_SRC) fuzz/fuzz_$$t.c $(LDLIBS) || exit 1; \
 	    mkdir -p $(BUILD)/corpus_$$t; \
-	    $(BUILD)/fuzz_$$t -max_total_time=$(FUZZ_TIME) -max_len=4096 $(BUILD)/corpus_$$t fuzz/corpus/$$t || exit 1; \
+	    $(BUILD)/fuzz_$$t -max_total_time=$(FUZZ_TIME) -max_len=4096 -seed=$${FUZZ_SEED:-1} $(BUILD)/corpus_$$t fuzz/corpus/$$t || exit 1; \
+	done
+	@for t in $(FUZZ_REG_TARGETS); do \
+	    $(FUZZ_CLANG) $(FUZZ_FLAGS) -fsanitize=fuzzer $(FUZZ_SAN_LF) $(FUZZ_DEFS) -c -o $(BUILD)/fuzzobj_lf/target_$$t.o fuzz/fuzz_$$t.c || exit 1; \
+	    $(FUZZ_CLANGXX) -fsanitize=fuzzer $(FUZZ_SAN_LF) -o $(BUILD)/fuzz_$$t $(BUILD)/fuzzobj_lf/target_$$t.o $(FUZZ_OBJ_LF) $(LDLIBS) || exit 1; \
+	    mkdir -p $(BUILD)/corpus_$$t; \
+	    UBSAN_OPTIONS=$(FUZZ_UBSAN) $(BUILD)/fuzz_$$t -max_total_time=$(FUZZ_TIME) -timeout=$(FUZZ_TIMEOUT) -max_len=4096 -seed=$${FUZZ_SEED:-1} \
+	        $(BUILD)/corpus_$$t fuzz/corpus/$$t || exit 1; \
 	done
 
-fuzz-standalone:
+fuzz-standalone: $(if $(FUZZ_REG_TARGETS),$(FUZZ_OBJ_SA))
 	@mkdir -p $(BUILD)
 	@for t in $(FUZZ_TARGETS); do \
 	    $(CC) $(FUZZ_FLAGS) -fsanitize=address,undefined -fno-sanitize-recover=all \
 	        -DTSR_NO_REGISTRY -o $(BUILD)/fuzzsa_$$t $(FUZZ_SRC) fuzz/fuzz_$$t.c fuzz/driver.c $(LDLIBS) || exit 1; \
-	    ASAN_OPTIONS=detect_leaks=1 $(BUILD)/fuzzsa_$$t -runs=$(FUZZ_RUNS) -seed=$${FUZZ_SEED:-1} fuzz/corpus/$$t || exit 1; \
+	    ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=abort_on_error=1:print_stacktrace=1 $(BUILD)/fuzzsa_$$t -runs=$(FUZZ_RUNS) -seed=$${FUZZ_SEED:-1} fuzz/corpus/$$t || exit 1; \
+	done
+	@for t in $(FUZZ_REG_TARGETS); do \
+	    $(CC) $(FUZZ_FLAGS) $(FUZZ_SAN_SA) $(FUZZ_DEFS) -c -o $(BUILD)/fuzzobj_sa/target_$$t.o fuzz/fuzz_$$t.c || exit 1; \
+	    $(CC) $(FUZZ_FLAGS) $(FUZZ_SAN_SA) -c -o $(BUILD)/fuzzobj_sa/target_driver.o fuzz/driver.c || exit 1; \
+	    $(CXX) $(FUZZ_SAN_SA) -o $(BUILD)/fuzzsa_$$t $(BUILD)/fuzzobj_sa/target_$$t.o $(BUILD)/fuzzobj_sa/target_driver.o \
+	        $(FUZZ_OBJ_SA) $(LDLIBS) || exit 1; \
+	    ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=$(FUZZ_UBSAN) $(BUILD)/fuzzsa_$$t -runs=$(FUZZ_RUNS) -seed=$${FUZZ_SEED:-1} -timeout=$(FUZZ_TIMEOUT) \
+	        -artifact_prefix=$(BUILD)/fuzzsa_$$t- fuzz/corpus/$$t || exit 1; \
 	done

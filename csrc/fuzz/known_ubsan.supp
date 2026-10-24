@@ -1,0 +1,13 @@
+# UBSan suppressions for OPEN fuzzing findings, used only when FUZZ_DEFS contains -DFUZZ_SKIP_KNOWN so a long
+# run keeps exploring past them. Default fuzzing (and CI without FUZZ_DEFS) reports them. Remove a line when its
+# fix lands. Memory-safety findings cannot be suppressed here: the harnesses steer around those instead.
+# F1: np.fromfile text mode casts NaN/Inf/out-of-range values to an integer dtype (np_io.c io_store)
+float-cast-overflow:io_store
+# F6: np.loadtxt / np.genfromtxt memcpy from a NULL buffer when the file yields no values (np_io.c)
+nonnull-attribute:r_loadtxt
+nonnull-attribute:r_genfromtxt
+# F11 (systemic): routines and their helpers cast numeric arguments to int64/int without a range check, e.g.
+# (int64_t)args[k].num with NaN/Inf/1e300 (about 140 direct sites, scipy_signal.c the most, plus helpers such as
+# fw2_read_hsize). Suppressing the cast itself keeps the x86 result (INT64_MIN) flowing, so any memory error it
+# leads to downstream is still reported. This covers every float-cast-overflow while the class is open.
+float-cast-overflow:*
