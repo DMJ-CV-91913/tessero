@@ -203,6 +203,11 @@ abi-check: $(OUT)/$(LIBNAME).$(EXT)
 	@nm -D --defined-only $< | awk '{print $$3}' | sed 's/@.*//' | grep -v -e '^TESSERO_' -e '\.resolver$$' | sort -u > $(BUILD)/abi.exported
 	@diff -u $(BUILD)/abi.header $(BUILD)/abi.exported && echo "abi-check: $$(wc -l < $(BUILD)/abi.exported) exported symbols == tessero.h declarations" \
 	    && readelf -d $< | grep -q 'SONAME.*$(SONAME)' && echo "abi-check: soname $(SONAME)"
+	@# native consumers include tessero_native.h: it must compile on its own, in C and in C++
+	@printf '#include "tessero_native.h"\n#include "tessero_native.h"\nint main(void){return 0;}\n' > $(BUILD)/abi_hdr.c
+	@$(CC) -std=c11 -Wall -Werror -Iinclude -fsyntax-only $(BUILD)/abi_hdr.c \
+	    && $(CXX) -x c++ -std=c++17 -Wall -Werror -Iinclude -fsyntax-only $(BUILD)/abi_hdr.c \
+	    && echo "abi-check: tessero_native.h compiles standalone (C and C++)"
 	@# a second copy already in the global scope (Talario's) must not capture this library's internal calls
 	@$(CC) -O1 -o $(BUILD)/abi_interpose tests/abi_interpose.c $(call try_so,-ldl)
 	@cp $< $(BUILD)/libtessero-other-copy.$(EXT)
