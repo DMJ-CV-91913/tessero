@@ -271,6 +271,8 @@ static int sp_diag_csr(tsr_result *res, int64_t m, int64_t n, int64_t nd, const 
                        sp_diag_get get, const void *ctx)
 {
     if (m > INT32_MAX || n > INT32_MAX) { fn_set_error("sparse: the shape is too large for int32 indices"); return TSR_ENOMEM; }
+    /* indptr alone takes m + 1 int32: refuse a shape whose result cannot fit before any work is done */
+    if (!tsr_fits(((double)m + 1.0) * (double)sizeof(int32_t))) { fn_set_error("sparse: the shape is too large"); return TSR_ENOMEM; }
     /* the diagonals that intersect the matrix, in ascending offset order (stable): columns ascend in a row */
     int64_t *ord = (int64_t *)malloc((size_t)(nd > 0 ? nd : 1) * sizeof(int64_t));
     if (!ord) return TSR_ENOMEM;
@@ -281,6 +283,15 @@ static int sp_diag_csr(tsr_result *res, int64_t m, int64_t n, int64_t nd, const 
         while (q > 0 && off[ord[q - 1]] > off[p]) { ord[q] = ord[q - 1]; q--; }
         ord[q] = p;
     }
+    /* rows outside [rlo, rhi) meet no diagonal and stay empty in indptr: only the rows a diagonal crosses are
+       scanned (diags([x], [2**30]) infers m = 2**30 + 1 but holds one entry; scanning every row timed out) */
+    int64_t rlo = m, rhi = 0;
+    for (int64_t q = 0; q < no; q++) {
+        const int64_t k = off[ord[q]], lo = k < 0 ? -k : 0, hi = n - k < m ? n - k : m;
+        if (lo < rlo) rlo = lo;
+        if (hi > rhi) rhi = hi;
+    }
+    if (rlo > rhi) rlo = rhi = 0;
     double *data = NULL; int32_t *ind = NULL, *iptr = NULL;
     int64_t nnz = 0;
     for (int pass = 0; pass < 2; pass++) {
@@ -293,8 +304,9 @@ static int sp_diag_csr(tsr_result *res, int64_t m, int64_t n, int64_t nd, const 
             if (!iptr) { free(ord); return TSR_ENOMEM; }
             iptr[0] = 0;
             nnz = 0;
+            for (int64_t i = 0; i < rlo; i++) iptr[i + 1] = 0;
         }
-        for (int64_t i = 0; i < m; i++) {
+        for (int64_t i = rlo; i < rhi; i++) {
             for (int64_t q = 0; q < no; ) {
                 const int64_t k = off[ord[q]], j = i + k;
                 int64_t r = q;
@@ -313,6 +325,7 @@ static int sp_diag_csr(tsr_result *res, int64_t m, int64_t n, int64_t nd, const 
             }
             if (pass == 1) iptr[i + 1] = (int32_t)nnz;
         }
+        if (pass == 1) for (int64_t i = rhi; i < m; i++) iptr[i + 1] = (int32_t)nnz;
     }
     free(ord);
     sp_shape(&res[3], m, n);
