@@ -1351,6 +1351,27 @@ static void test_fuzz_batch_a(void)
     CHECK(rc == 0 && r[0].arr.shape[0] == 3 && ((double *)r[0].arr.data)[0] == 9.0 && ((double *)r[0].arr.data)[1] == -36.0,
           "invhilbert(3) still exact: [[9, -36, 30], ...] (rc %d)", rc);
     if (rc == 0) fa_free(r, 1);
+    /* CI fuzz timeout (main): sparse.diags with a huge offset inferred a 2^30-row shape and scanned every row for
+       one entry. Only the rows a diagonal crosses are scanned now; the empty rows still appear in indptr. */
+    {
+        double dv2[2] = {1, 2}, offm3[1] = {-3}, offbig[1] = {16777216.0};
+        tsr_arg dsq; memset(&dsq, 0, sizeof dsq); dsq.kind = 5; dsq.items = dl; dsq.count = 1;
+        dl[0] = arg_arr(dv2, 1, s2);
+        tsr_arg dd[2] = {dsq, arg_arr(offm3, 1, s1)};
+        rc = fa_call("sparse.diags", 2, dd, r, 4);
+        const int32_t *ip = rc == 0 ? (const int32_t *)r[2].arr.data : NULL;
+        CHECK(rc == 0 && r[2].arr.shape[0] == 6 && ip[0] == 0 && ip[3] == 0 && ip[4] == 1 && ip[5] == 2 &&
+              ((int32_t *)r[1].arr.data)[0] == 0 && ((int32_t *)r[1].arr.data)[1] == 1,
+              "sparse.diags([1, 2], -3): leading empty rows in indptr, entries at (3,0), (4,1) (rc %d)", rc);
+        if (rc == 0) fa_free(r, 4);
+        dd[1] = arg_arr(offbig, 1, s1);
+        rc = fa_call("sparse.diags", 2, dd, r, 4);
+        ip = rc == 0 ? (const int32_t *)r[2].arr.data : NULL;
+        CHECK(rc == 0 && r[2].arr.shape[0] == 16777219 && ip[1] == 1 && ip[2] == 2 && ip[16777218] == 2 &&
+              ((int32_t *)r[1].arr.data)[1] == 16777217,
+              "sparse.diags([1, 2], 2^24): trailing empty rows in indptr, entries at (0,2^24), (1,2^24+1) (rc %d)", rc);
+        if (rc == 0) fa_free(r, 4);
+    }
     /* CI fuzz (main): a NaN matrix reaching LAPACKE_dgeev corrupted the caller's heap on LAPACKE's NaN-check path,
        before it returned -5. dgeev/dgees are now never called with a non-finite matrix; the routine reports the
        same failure. Under the sanitizer + ownership-check build any heap damage here aborts the test. */
