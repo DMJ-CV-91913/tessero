@@ -204,6 +204,22 @@ int tsr_fpenv_canonicalize(void);
 uint64_t tsr_selfcheck_digest(int variant);
 uint64_t tsr_selfcheck_canonical(void);
 
+/* ---- opt-in GPU-matching profile (2026-10): tiny numbers and NaN bits. Nothing changes unless called. ----
+   tsr_fpenv_flush_enter: switch the CALLING thread to flush-to-zero (x86-64 FTZ + DAZ, aarch64 FPCR.FZ), the
+   behaviour of NVIDIA GPUs, which flush subnormal inputs and results; stores the previous control word in
+   *saved. Returns 0, -1 if saved is NULL, -2 where the target has no flush control. tsr_fpenv_flush_leave:
+   restores that word exactly (0, or -2). Inside a scope tsr_fpenv_check is non-zero and tsr_selfcheck is -6.
+   tsr_flush_subnormal_f32: subnormals -> signed zero in place; returns how many changed.
+   tsr_canon_nan_f32: every NaN -> the canonical quiet NaN 0x7FC00000 in place; returns how many changed.
+   tsr_nan_first_f32: index of the first NaN, or -1. Integer bit operations only; the caller owns x.
+   C does not model the FP control word: keep the work between enter and leave in called functions (or behind
+   volatile stores), or an optimiser may move a pure FP expression across the scope boundary. */
+int tsr_fpenv_flush_enter(uint64_t *saved);
+int tsr_fpenv_flush_leave(uint64_t saved);
+int64_t tsr_flush_subnormal_f32(float *x, int64_t n);
+int64_t tsr_canon_nan_f32(float *x, int64_t n);
+int64_t tsr_nan_first_f32(const float *x, int64_t n);
+
 /* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);
 /* real input: rows x n float64 -> rows x (n/2 + 1) complex128 (half the work of tsr_fft); irfft is the inverse

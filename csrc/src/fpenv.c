@@ -14,6 +14,7 @@
 #include "internal.h"
 #include <fenv.h>
 #include <stdio.h>
+#include <string.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -136,4 +137,99 @@ int tsr_fpenv_canonicalize(void)
     }
 #endif
     return tsr_fpenv_check(NULL, 0);
+}
+
+
+/* ---- opt-in GPU-matching profile: tiny numbers and NaN bits (2026-10) ----------------------------
+ * NVIDIA GPUs flush subnormal inputs and results to signed zero and expose no preserve mode, while the
+ * canonical environment above keeps subnormals (IEEE-754), and NaN results can carry different bit patterns
+ * on different processors. These functions let a caller reproduce the GPU's behaviour on the CPU, or
+ * normalise outputs, WITHOUT changing any existing function: nothing here runs unless it is called.
+ *
+ * tsr_fpenv_flush_enter / tsr_fpenv_flush_leave: switch the CALLING THREAD to flush-to-zero (x86-64 MXCSR
+ * FTZ + DAZ; aarch64 FPCR.FZ) for a scope and restore its previous control word exactly. A multi-threaded
+ * caller enters and leaves on each of its own threads. Inside a scope tsr_fpenv_check reports the thread as
+ * non-canonical and tsr_selfcheck returns -6, by design.
+ * tsr_flush_subnormal_f32 / tsr_canon_nan_f32 rewrite values in place with integer bit operations only (no
+ * FP arithmetic, so the result does not depend on the FP environment); tsr_nan_first_f32 locates the first
+ * NaN. Ownership: the caller owns x; nothing is allocated. */
+int tsr_fpenv_flush_enter(uint64_t *saved)
+{
+    if (!saved) return -1;
+#if defined(__x86_64__) || (defined(__i386__) && defined(__SSE__))
+    uint32_t csr;
+    __asm__ volatile("stmxcsr %0" : "=m"(csr));
+    *saved = csr;
+    csr |= (1u << 15) | (1u << 6);                              /* FTZ: results flushed; DAZ: inputs read as zero */
+    __asm__ volatile("ldmxcsr %0" : : "m"(csr));
+    return 0;
+#elif defined(__aarch64__)
+    uint64_t fpcr;
+    __asm__ volatile("mrs %0, fpcr" : "=r"(fpcr));
+    *saved = fpcr;
+    fpcr |= (uint64_t)1u << 24;                                 /* FZ: subnormal inputs and results flushed */
+    __asm__ volatile("msr fpcr, %0" : : "r"(fpcr));
+    return 0;
+#else
+    *saved = 0;
+    return -2;                                                  /* no flush control on this target */
+#endif
+}
+
+int tsr_fpenv_flush_leave(uint64_t saved)
+{
+#if defined(__x86_64__) || (defined(__i386__) && defined(__SSE__))
+    uint32_t csr = (uint32_t)saved;
+    __asm__ volatile("ldmxcsr %0" : : "m"(csr));
+    return 0;
+#elif defined(__aarch64__)
+    __asm__ volatile("msr fpcr, %0" : : "r"(saved));
+    return 0;
+#else
+    (void)saved;
+    return -2;
+#endif
+}
+
+int64_t tsr_flush_subnormal_f32(float *x, int64_t n)
+{
+    if (!x || n <= 0) return 0;
+    int64_t changed = 0;
+    for (int64_t i = 0; i < n; i++) {
+        uint32_t b;
+        memcpy(&b, &x[i], sizeof b);
+        if ((b & 0x7F800000u) == 0u && (b & 0x007FFFFFu) != 0u) {   /* subnormal -> signed zero */
+            b &= 0x80000000u;
+            memcpy(&x[i], &b, sizeof b);
+            changed++;
+        }
+    }
+    return changed;
+}
+
+int64_t tsr_canon_nan_f32(float *x, int64_t n)
+{
+    if (!x || n <= 0) return 0;
+    int64_t changed = 0;
+    for (int64_t i = 0; i < n; i++) {
+        uint32_t b;
+        memcpy(&b, &x[i], sizeof b);
+        if ((b & 0x7F800000u) == 0x7F800000u && (b & 0x007FFFFFu) != 0u && b != 0x7FC00000u) {
+            b = 0x7FC00000u;                                    /* the canonical quiet NaN */
+            memcpy(&x[i], &b, sizeof b);
+            changed++;
+        }
+    }
+    return changed;
+}
+
+int64_t tsr_nan_first_f32(const float *x, int64_t n)
+{
+    if (!x || n <= 0) return -1;
+    for (int64_t i = 0; i < n; i++) {
+        uint32_t b;
+        memcpy(&b, &x[i], sizeof b);
+        if ((b & 0x7F800000u) == 0x7F800000u && (b & 0x007FFFFFu) != 0u) return i;
+    }
+    return -1;
 }

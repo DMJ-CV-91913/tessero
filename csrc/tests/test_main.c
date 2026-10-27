@@ -2784,6 +2784,49 @@ static void test_ownership(void)
 #endif
 }
 
+
+/* Opt-in GPU-matching profile (2026-10): flush scope and the subnormal / NaN helpers. */
+static uint32_t fp_bits(float v) { uint32_t b; memcpy(&b, &v, sizeof b); return b; }
+static float fp_from(uint32_t b) { float v; memcpy(&v, &b, sizeof v); return v; }
+static void test_fp_flush_profile(void)
+{
+    CHECK(tsr_feature("fp_flush_profile") == 1, "feature fp_flush_profile");
+    float s[7] = {fp_from(0x000AE398u), fp_from(0x800AE398u), 1.0f, 0.0f, fp_from(0x80000000u),
+                  fp_from(0x00800000u), fp_from(0x00000001u)};
+    CHECK(tsr_flush_subnormal_f32(s, 7) == 3, "flush_subnormal counts 3");
+    CHECK(fp_bits(s[0]) == 0u && fp_bits(s[1]) == 0x80000000u && fp_bits(s[6]) == 0u, "subnormals -> signed zero");
+    CHECK(s[2] == 1.0f && fp_bits(s[5]) == 0x00800000u && fp_bits(s[4]) == 0x80000000u, "normals and zeros untouched");
+    CHECK(tsr_flush_subnormal_f32(NULL, 3) == 0 && tsr_flush_subnormal_f32(s, 0) == 0, "flush_subnormal degenerate");
+
+    float q[6] = {1.0f, fp_from(0x7FC00001u), fp_from(0xFFC00000u), fp_from(0x7F800001u),
+                  fp_from(0x7F800000u), fp_from(0x7FC00000u)};
+    CHECK(tsr_nan_first_f32(q, 6) == 1, "nan_first finds index 1");
+    CHECK(tsr_canon_nan_f32(q, 6) == 3, "canon_nan rewrites 3 non-canonical NaNs");
+    CHECK(fp_bits(q[1]) == 0x7FC00000u && fp_bits(q[2]) == 0x7FC00000u && fp_bits(q[3]) == 0x7FC00000u,
+          "NaN payloads, sign and signalling NaN -> 0x7FC00000");
+    CHECK(fp_bits(q[4]) == 0x7F800000u && q[0] == 1.0f, "infinity and normals untouched");
+    CHECK(tsr_nan_first_f32(q, 1) == -1 && tsr_nan_first_f32(NULL, 4) == -1, "nan_first none / NULL");
+
+    uint64_t saved = 0;
+    CHECK(tsr_fpenv_flush_enter(NULL) == -1, "flush_enter rejects NULL");
+#if defined(__x86_64__) || defined(__aarch64__)
+    /* volatile stores pin each multiply inside its scope: C does not model the FP control word, so an
+       optimiser may otherwise compute a pure product after tsr_fpenv_flush_leave */
+    volatile float tiny = fp_from(0x000AE398u), one = 1.0f, in_scope, after;
+    CHECK(tsr_fpenv_flush_enter(&saved) == 0, "flush_enter");
+    in_scope = tiny * one;
+    const int env_in = tsr_fpenv_check_thread(NULL, 0);
+    CHECK(tsr_fpenv_flush_leave(saved) == 0, "flush_leave");
+    after = tiny * one;
+    if (env_in != 0) {   /* 0 only under an emulator that ignores FP control writes */
+        CHECK(fp_bits(in_scope) == 0u, "inside the scope a subnormal product flushes to zero (%08x)", fp_bits(in_scope));
+        CHECK(env_in & 1, "fpenv reports flush-to-zero inside the scope (%d)", env_in);
+    }
+    CHECK(fp_bits(after) == 0x000AE398u, "after leave the subnormal is preserved again (%08x)", fp_bits(after));
+    CHECK(tsr_fpenv_check_thread(NULL, 0) == 0, "fpenv canonical again after leave");
+#endif
+}
+
 int main(void)
 {
     test_alloc();
@@ -2809,6 +2852,7 @@ int main(void)
     test_rfft();
     test_size_overflow();
     test_numerics_review();
+    test_fp_flush_profile();
     test_security_regressions();
     test_fuzz_batch_a();
     test_fuzz_batch_b();

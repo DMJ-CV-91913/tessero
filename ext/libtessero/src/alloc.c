@@ -245,6 +245,7 @@ int tsr_feature(const char *name)
     if (strcmp(name, "openblas_threads") == 0) { tsr_blas_resolve(); return g_blas_set != NULL; }
     if (strcmp(name, "openmp") == 0) return tsr_openmp();
     if (strcmp(name, "fpenv_check") == 0) return 1;     /* fpenv.c: tsr_fpenv_check / tsr_fpenv_check_thread */
+    if (strcmp(name, "fp_flush_profile") == 0) return 1; /* fpenv.c: flush scope + subnormal/NaN helpers */
     if (strcmp(name, "ownership_check") == 0) return tsr_ownership_check();   /* -DTSR_OWNERSHIP_CHECK build (ADR 0015) */
     if (strcmp(name, "nodelete") == 0) return tsr_linked_nodelete();   /* linked -z nodelete (ADR 0014) */
     return 0;

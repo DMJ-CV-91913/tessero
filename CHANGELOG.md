@@ -9,6 +9,13 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Added
 
+- **Opt-in GPU-matching floating-point profile** (`csrc/src/fpenv.c`, declared in `tessero.h`; feature
+  `fp_flush_profile`). NVIDIA GPUs flush subnormal values to zero and expose no preserve mode, and NaN results can
+  carry different bit patterns on different processors. `tsr_fpenv_flush_enter` / `tsr_fpenv_flush_leave` switch
+  the calling thread to flush-to-zero for a scope and restore its previous state exactly; `tsr_flush_subnormal_f32`
+  and `tsr_canon_nan_f32` normalise arrays in place with integer bit operations; `tsr_nan_first_f32` finds the
+  first NaN. Additive only: no existing function, default, golden or self-check changes, and nothing runs unless
+  called.
 - **Reproducible-f32 transcendental primitives** (`tsr_repro_rsqrt_f32`, `tsr_repro_exp2_f32`,
   `tsr_repro_exp_f32`, `tsr_repro_erf_f32`; `csrc/src/repro_f32.c`, declared in
   `csrc/include/tessero.h`). A **new, original contribution, NOT part of the ported NumPy/SciPy
@@ -30,8 +37,8 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 - **Reproducible backward composites** (gradients of `gelu_tanh`, `erf`, `sigmoid`, `tanh`, `rmsnorm`,
   `layernorm`, and the norm `gamma` gradient) in the single header `csrc/include/tessero_repro_f32.h`. Goldens
   recorded in `csrc/repro/GOLDENS.md`, approved on two hosts.
-- Talario's GPU kernels mirror these definitions and match them bit for bit on NVIDIA A10, A100 and H100 PCIe
-  (attested at 1024 x 1024 by Talario); other GPUs are not yet attested.
+- Talario's GPU kernels mirror these definitions and match them bit for bit on twelve NVIDIA GPU models across four
+  generations, Ampere to Blackwell (attested at 1024 x 1024 by Talario); other GPUs are not yet attested.
 - **NumPy/SciPy parity program** (`prompts/numpy-scipy-parity-program.md`, ADR 0011, ADR 0012). Coverage is
   measured, not asserted. `tools/parity/census.py` lists every public symbol of NumPy 2.4.4 and SciPy 1.17.1,
   and `tools/parity/report.py` classifies each one from the code and the recorded fixture runs
