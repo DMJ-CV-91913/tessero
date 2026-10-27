@@ -14,7 +14,8 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   carry different bit patterns on different processors. `tsr_fpenv_flush_enter` / `tsr_fpenv_flush_leave` switch
   the calling thread to flush-to-zero for a scope and restore its previous state exactly; `tsr_flush_subnormal_f32`
   and `tsr_canon_nan_f32` normalise arrays in place with integer bit operations; `tsr_nan_first_f32` finds the
-  first NaN. Additive only: no existing function, default, golden or self-check changes, and nothing runs unless
+  first NaN, with f64 twins of the three array helpers. The flush scope is for f32 work only: NVIDIA GPUs keep f64
+  subnormals, so f64 inside a scope would diverge. Additive only: no existing function, default, golden or self-check changes, and nothing runs unless
   called.
 - **Reproducible-f32 transcendental primitives** (`tsr_repro_rsqrt_f32`, `tsr_repro_exp2_f32`,
   `tsr_repro_exp_f32`, `tsr_repro_erf_f32`; `csrc/src/repro_f32.c`, declared in

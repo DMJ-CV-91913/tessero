@@ -233,3 +233,49 @@ int64_t tsr_nan_first_f32(const float *x, int64_t n)
     }
     return -1;
 }
+
+/* f64 twins. NVIDIA GPUs keep f64 subnormals (their flush applies to f32 only), so f64 work should normally NOT
+ * be flushed; canonical NaN and the first-NaN locator are useful in f64 regardless. */
+int64_t tsr_flush_subnormal_f64(double *x, int64_t n)
+{
+    if (!x || n <= 0) return 0;
+    int64_t changed = 0;
+    for (int64_t i = 0; i < n; i++) {
+        uint64_t b;
+        memcpy(&b, &x[i], sizeof b);
+        if ((b & 0x7FF0000000000000ull) == 0u && (b & 0x000FFFFFFFFFFFFFull) != 0u) {
+            b &= 0x8000000000000000ull;
+            memcpy(&x[i], &b, sizeof b);
+            changed++;
+        }
+    }
+    return changed;
+}
+
+int64_t tsr_canon_nan_f64(double *x, int64_t n)
+{
+    if (!x || n <= 0) return 0;
+    int64_t changed = 0;
+    for (int64_t i = 0; i < n; i++) {
+        uint64_t b;
+        memcpy(&b, &x[i], sizeof b);
+        if ((b & 0x7FF0000000000000ull) == 0x7FF0000000000000ull && (b & 0x000FFFFFFFFFFFFFull) != 0u &&
+            b != 0x7FF8000000000000ull) {
+            b = 0x7FF8000000000000ull;                          /* the canonical quiet NaN */
+            memcpy(&x[i], &b, sizeof b);
+            changed++;
+        }
+    }
+    return changed;
+}
+
+int64_t tsr_nan_first_f64(const double *x, int64_t n)
+{
+    if (!x || n <= 0) return -1;
+    for (int64_t i = 0; i < n; i++) {
+        uint64_t b;
+        memcpy(&b, &x[i], sizeof b);
+        if ((b & 0x7FF0000000000000ull) == 0x7FF0000000000000ull && (b & 0x000FFFFFFFFFFFFFull) != 0u) return i;
+    }
+    return -1;
+}

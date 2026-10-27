@@ -2807,6 +2807,20 @@ static void test_fp_flush_profile(void)
     CHECK(fp_bits(q[4]) == 0x7F800000u && q[0] == 1.0f, "infinity and normals untouched");
     CHECK(tsr_nan_first_f32(q, 1) == -1 && tsr_nan_first_f32(NULL, 4) == -1, "nan_first none / NULL");
 
+    {   /* f64 twins */
+        const uint64_t sub = 0x000123456789ABCDull, nsub = 0x800123456789ABCDull, dmin = 0x0010000000000000ull;
+        const uint64_t q1 = 0x7FF8000000000001ull, q2 = 0xFFF8000000000000ull, sn = 0x7FF0000000000001ull, inf = 0x7FF0000000000000ull;
+        uint64_t raw[6] = {sub, nsub, dmin, q1, q2, sn}; double d[6]; memcpy(d, raw, sizeof d);
+        CHECK(tsr_flush_subnormal_f64(d, 6) == 2, "f64 flush counts 2");
+        memcpy(raw, d, sizeof raw);
+        CHECK(raw[0] == 0u && raw[1] == 0x8000000000000000ull && raw[2] == dmin, "f64 subnormals -> signed zero, min normal kept");
+        CHECK(tsr_nan_first_f64(d, 6) == 3, "f64 nan_first finds index 3");
+        CHECK(tsr_canon_nan_f64(d, 6) == 3, "f64 canon_nan rewrites 3");
+        memcpy(raw, d, sizeof raw);
+        CHECK(raw[3] == 0x7FF8000000000000ull && raw[4] == 0x7FF8000000000000ull && raw[5] == 0x7FF8000000000000ull, "f64 NaN -> 0x7FF8000000000000");
+        double one_inf; memcpy(&one_inf, &inf, sizeof one_inf);
+        CHECK(tsr_canon_nan_f64(&one_inf, 1) == 0 && tsr_nan_first_f64(&one_inf, 1) == -1, "f64 infinity untouched");
+    }
     uint64_t saved = 0;
     CHECK(tsr_fpenv_flush_enter(NULL) == -1, "flush_enter rejects NULL");
 #if defined(__x86_64__) || defined(__aarch64__)

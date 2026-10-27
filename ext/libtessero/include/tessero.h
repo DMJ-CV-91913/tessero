@@ -213,12 +213,18 @@ uint64_t tsr_selfcheck_canonical(void);
    tsr_canon_nan_f32: every NaN -> the canonical quiet NaN 0x7FC00000 in place; returns how many changed.
    tsr_nan_first_f32: index of the first NaN, or -1. Integer bit operations only; the caller owns x.
    C does not model the FP control word: keep the work between enter and leave in called functions (or behind
-   volatile stores), or an optimiser may move a pure FP expression across the scope boundary. */
+   volatile stores), or an optimiser may move a pure FP expression across the scope boundary.
+   SCOPE IS FOR f32 WORK ONLY: the CPU flush bits also flush f64, but NVIDIA GPUs keep f64 subnormals, so f64
+   inside a scope would diverge from the GPU (and from NumPy). f64 twins of the array helpers (NaN
+   0x7FF8000000000000) follow; flushing f64 is normally not wanted. */
 int tsr_fpenv_flush_enter(uint64_t *saved);
 int tsr_fpenv_flush_leave(uint64_t saved);
 int64_t tsr_flush_subnormal_f32(float *x, int64_t n);
 int64_t tsr_canon_nan_f32(float *x, int64_t n);
 int64_t tsr_nan_first_f32(const float *x, int64_t n);
+int64_t tsr_flush_subnormal_f64(double *x, int64_t n);
+int64_t tsr_canon_nan_f64(double *x, int64_t n);
+int64_t tsr_nan_first_f64(const double *x, int64_t n);
 
 /* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);
