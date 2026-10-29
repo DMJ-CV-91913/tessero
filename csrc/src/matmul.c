@@ -77,22 +77,46 @@ int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_
    this fallback is interchangeable with cblas_{s,d}gemm. op(A) is m x k, op(B) is k x n, C is m x n. A is read
    as m x k (lda >= k) when not transposed or k x m (lda >= m) when transposed; B as k x n (ldb >= n) or n x k
    (ldb >= k). When beta == 0, C is overwritten (its prior contents, which may be uninitialised, are not read). */
+/* Rows are independent: row i of C depends only on row i of op(A), all of op(B) and row i of C, and every element
+   runs the same fma chain over p = 0..k-1 whichever thread computes it. Splitting the row loop into fixed contiguous
+   blocks across threads (Series N9-1) therefore gives the same bits at any thread count, including 1. Threads are used
+   only when there are at least two rows and the work (m*n*k multiply-adds) reaches TSR_GEMM_PAR_MIN. */
+#define TSR_GEMM_PAR_MIN ((double)(1 << 20))
+#define GEMM_ROW(T, i)                                                                                   \
+    {                                                                                                    \
+        T *ci = c + (i) * ldc;                                                                           \
+        if (beta == (T)0) { for (int64_t j = 0; j < n; j++) ci[j] = (T)0; }                              \
+        else if (beta != (T)1) { for (int64_t j = 0; j < n; j++) ci[j] = beta * ci[j]; }                 \
+        for (int64_t p = 0; p < k; p++) {                                                                \
+            T s = alpha * (ta ? a[p * lda + (i)] : a[(i) * lda + p]);                                    \
+            if (tb) { for (int64_t j = 0; j < n; j++) ci[j] = TSR_RFMA(T, s, b[j * ldb + p], ci[j]); }    \
+            else { const T *bp = b + p * ldb; for (int64_t j = 0; j < n; j++) ci[j] = TSR_RFMA(T, s, bp[j], ci[j]); } \
+        }                                                                                                \
+    }
+#ifdef _OPENMP
+#  define GEMM_ROWS(T)                                                                                   \
+    {                                                                                                    \
+        const int threads = tsr_get_threads();                                                           \
+        if (threads > 1 && m > 1 && (double)m * (double)n * (double)k >= TSR_GEMM_PAR_MIN) {             \
+            const int nt = (int64_t)threads < m ? threads : (int)m;                                      \
+            const int64_t chunk = (m + nt - 1) / nt;                                                     \
+            _Pragma("omp parallel for num_threads(nt) schedule(static)")                                \
+            for (int t = 0; t < nt; t++) {                                                               \
+                const int64_t lo = t * chunk, hi = lo + chunk < m ? lo + chunk : m;                      \
+                for (int64_t i = lo; i < hi; i++) GEMM_ROW(T, i)                                         \
+            }                                                                                            \
+        } else {                                                                                         \
+            for (int64_t i = 0; i < m; i++) GEMM_ROW(T, i)                                               \
+        }                                                                                                \
+    }
+#else
+#  define GEMM_ROWS(T) { for (int64_t i = 0; i < m; i++) GEMM_ROW(T, i) }
+#endif
 #define GEMM(NAME, T)                                                                                    \
     TSR_CLONES static void NAME(int ta, int tb, int64_t m, int64_t n, int64_t k,                         \
                                 T alpha, const T *a, int64_t lda, const T *b, int64_t ldb,               \
                                 T beta, T *c, int64_t ldc)                                               \
-    {                                                                                                    \
-        for (int64_t i = 0; i < m; i++) {                                                                \
-            T *ci = c + i * ldc;                                                                         \
-            if (beta == (T)0) { for (int64_t j = 0; j < n; j++) ci[j] = (T)0; }                          \
-            else if (beta != (T)1) { for (int64_t j = 0; j < n; j++) ci[j] = beta * ci[j]; }             \
-            for (int64_t p = 0; p < k; p++) {                                                            \
-                T s = alpha * (ta ? a[p * lda + i] : a[i * lda + p]);                                    \
-                if (tb) { for (int64_t j = 0; j < n; j++) ci[j] = TSR_RFMA(T, s, b[j * ldb + p], ci[j]); }\
-                else { const T *bp = b + p * ldb; for (int64_t j = 0; j < n; j++) ci[j] = TSR_RFMA(T, s, bp[j], ci[j]); } \
-            }                                                                                            \
-        }                                                                                                \
-    }
+    GEMM_ROWS(T)
 GEMM(gemm_f64, double)
 GEMM(gemm_f32, float)
 

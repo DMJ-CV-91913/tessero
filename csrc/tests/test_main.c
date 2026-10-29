@@ -306,6 +306,36 @@ static void test_gemm(void)
 
     CHECK(tsr_gemm(TSR_I64, 0, 0, m, n, k, 1.0, A, k, B, n, 0.0, C, n) == TSR_ETYPE, "gemm rejects int");
 
+    /* Series N9-1: the threaded tsr_gemm gives the same bits at 1, 2, 3, 4 and 8 threads (rows split in fixed blocks;
+       every element keeps its fma chain). 96 x 80 x 192 exceeds the threading threshold; all four transpose cases. */
+    {
+        const int64_t tm = 96, tn = 80, tk = 192;
+        float *ta_ = malloc(tm * tk * 4), *tb_ = malloc(tk * tn * 4), *ref = malloc(tm * tn * 4), *got = malloc(tm * tn * 4);
+        double *dta = malloc(tm * tk * 8), *dtb = malloc(tk * tn * 8), *dref = malloc(tm * tn * 8), *dgot = malloc(tm * tn * 8);
+        for (int64_t i = 0; i < tm * tk; i++) { ta_[i] = (float)sin(0.37 * i + 0.5); dta[i] = sin(0.37 * i + 0.5); }
+        for (int64_t i = 0; i < tk * tn; i++) { tb_[i] = (float)cos(0.29 * i + 1.5); dtb[i] = cos(0.29 * i + 1.5); }
+        const int saved = tsr_get_threads();
+        int same = 1;
+        for (int tr = 0; tr < 4; tr++) {
+            const int xa = tr & 1, xb = (tr >> 1) & 1;
+            const int64_t la = xa ? tm : tk, lb = xb ? tk : tn;
+            tsr_set_threads(1);
+            tsr_gemm(TSR_F32, xa, xb, tm, tn, tk, 1.0, ta_, la, tb_, lb, 0.0, ref, tn);
+            tsr_gemm(TSR_F64, xa, xb, tm, tn, tk, 1.0, dta, la, dtb, lb, 0.0, dref, tn);
+            const int counts[4] = { 2, 3, 4, 8 };
+            for (int q = 0; q < 4; q++) {
+                tsr_set_threads(counts[q]);
+                for (int64_t i = 0; i < tm * tn; i++) { got[i] = 1.0f; dgot[i] = 1.0; }
+                tsr_gemm(TSR_F32, xa, xb, tm, tn, tk, 1.0, ta_, la, tb_, lb, 0.0, got, tn);
+                tsr_gemm(TSR_F64, xa, xb, tm, tn, tk, 1.0, dta, la, dtb, lb, 0.0, dgot, tn);
+                if (memcmp(ref, got, tm * tn * 4) != 0 || memcmp(dref, dgot, tm * tn * 8) != 0) same = 0;
+            }
+        }
+        tsr_set_threads(saved);
+        CHECK(same, "gemm bit-identical at 1, 2, 3, 4, 8 threads (f32 and f64, all transposes)");
+        free(ta_); free(tb_); free(ref); free(got); free(dta); free(dtb); free(dref); free(dgot);
+    }
+
     free(A); free(AT); free(B); free(BT); free(C); free(C2); free(Af); free(Bf); free(Cf);
 }
 
