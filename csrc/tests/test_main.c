@@ -278,6 +278,19 @@ static void test_gemm(void)
     err = 0; for (int64_t i = 0; i < m * n; i++) err = fmax(err, fabs(C2[i] - C[i]));
     CHECK(err < 1e-12, "gemm NT matches NN err %.3e", err);
 
+    /* NT with beta = 1 and beta = 3 (the backward-gradient form): bit-identical to the same call on an explicit B */
+    {
+        double *C3 = malloc(m * n * 8), *C4 = malloc(m * n * 8);
+        for (int bi = 0; bi < 2; bi++) {
+            const double bv = bi ? 3.0 : 1.0;
+            for (int64_t i = 0; i < m * n; i++) C3[i] = C4[i] = sin(0.37 * i + 0.2);
+            tsr_gemm(TSR_F64, 0, 1, m, n, k, 1.0, A, k, BT, k, bv, C3, n);
+            tsr_gemm(TSR_F64, 0, 0, m, n, k, 1.0, A, k, B, n, bv, C4, n);
+            CHECK(memcmp(C3, C4, (size_t)(m * n) * 8) == 0, "gemm NT (packed B) bit-identical to NN, beta %.0f", bv);
+        }
+        free(C3); free(C4);
+    }
+
     /* TT: both transposed */
     tsr_gemm(TSR_F64, 1, 1, m, n, k, 1.0, AT, m, BT, k, 0.0, C2, n);
     err = 0; for (int64_t i = 0; i < m * n; i++) err = fmax(err, fabs(C2[i] - C[i]));

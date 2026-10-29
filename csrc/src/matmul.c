@@ -112,11 +112,25 @@ int tsr_matmul(int dtype, int64_t m, int64_t n, int64_t k, const void *a, int64_
 #else
 #  define GEMM_ROWS(T) { for (int64_t i = 0; i < m; i++) GEMM_ROW(T, i) }
 #endif
+/* Transposed B (Series N9): the row loop would read B with stride ldb in its innermost loop, which defeats the cache
+   (measured about 9x slower than the contiguous case). When there are at least two rows, B is first copied once into a
+   contiguous k x n scratch (op(B) itself) and the contiguous loop runs on it: every element of C still runs the same
+   fma chain over the same values in the same order, so the result is bit-identical. If the scratch cannot be had, the
+   strided loop runs as before. */
 #define GEMM(NAME, T)                                                                                    \
     TSR_CLONES static void NAME(int ta, int tb, int64_t m, int64_t n, int64_t k,                         \
                                 T alpha, const T *a, int64_t lda, const T *b, int64_t ldb,               \
                                 T beta, T *c, int64_t ldc)                                               \
-    GEMM_ROWS(T)
+    {                                                                                                    \
+        T *bt = NULL;                                                                                    \
+        if (tb && m > 1 && k > 0 && n > 0 && (bt = (T *)tsr_scratch_n(k * n, sizeof(T))) != NULL) {      \
+            for (int64_t j = 0; j < n; j++)                                                              \
+                for (int64_t p = 0; p < k; p++) bt[p * n + j] = b[j * ldb + p];                          \
+            b = bt; ldb = n; tb = 0;                                                                     \
+        }                                                                                                \
+        GEMM_ROWS(T)                                                                                     \
+        free(bt);                                                                                        \
+    }
 GEMM(gemm_f64, double)
 GEMM(gemm_f32, float)
 
