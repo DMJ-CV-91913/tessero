@@ -100,6 +100,18 @@
 #define TSR_GELU_A        0.044715f
 #define TSR_GELU_DA       0.134145f
 #define TSR_TWO_RSQRTPI   1.1283791670955126f
+#define TSR_LOG_SQRT2     0x3FB504F3u
+#define TSR_LOG_ONE       0x3F800000u
+#define TSR_LOG_MANT      0x007FFFFFu
+#define TSR_LOG_C0        7.0376836292E-2f
+#define TSR_LOG_C1        -1.1514610310E-1f
+#define TSR_LOG_C2        1.1676998740E-1f
+#define TSR_LOG_C3        -1.2420140846E-1f
+#define TSR_LOG_C4        1.4249322787E-1f
+#define TSR_LOG_C5        -1.6668057665E-1f
+#define TSR_LOG_C6        2.0000714765E-1f
+#define TSR_LOG_C7        -2.4999993993E-1f
+#define TSR_LOG_C8        3.3333331174E-1f
 /* END TSR_REPRO_CONSTANTS */
 
 /* ---- exact bit reinterpretation (no aliasing hazard) ---- */
@@ -278,6 +290,69 @@ static inline float tsr__exp_f32(float x) {
     er = er + 1.0f;                              /* e^r */
 
     return tsr__canon_f32(tsr__scale2_f32(er, n));
+}
+
+/*
+ * log(x), natural logarithm. NaN and x < 0 -> canonical NaN; +-0 (and subnormal, after canon) -> -Inf; +Inf -> +Inf.
+ * x = m * 2^e with m in [sqrt(1/2), sqrt(2)) by integer bit operations, then a fixed polynomial in m - 1 in fmaf and
+ * the two-part ln2 of tsr__exp_f32. No libm, no hardware log.
+ */
+static inline float tsr__log_f32(float x) {
+    x = tsr__canon_f32(x);
+    uint32_t b = tsr__bits_from_f32(x);
+    if (tsr__isnan_bits(b)) return x;
+    if ((b & 0x7FFFFFFFu) == 0u) return tsr__f32_from_bits(0x80000000u | TSR_POS_INF);
+    if ((b & 0x80000000u) != 0u) return tsr__f32_from_bits(TSR_CANON_NAN);
+    if (b == TSR_POS_INF)        return x;
+    int e = (int)(b >> 23) - 127;
+    uint32_t mb = (b & TSR_LOG_MANT) | TSR_LOG_ONE;
+    if (mb > TSR_LOG_SQRT2) { mb -= 0x00800000u; e += 1; }
+    float f = tsr__f32_from_bits(mb) - 1.0f;
+    float z = f * f;
+    float p = fmaf(TSR_LOG_C0, f, TSR_LOG_C1);
+    p = fmaf(p, f, TSR_LOG_C2);
+    p = fmaf(p, f, TSR_LOG_C3);
+    p = fmaf(p, f, TSR_LOG_C4);
+    p = fmaf(p, f, TSR_LOG_C5);
+    p = fmaf(p, f, TSR_LOG_C6);
+    p = fmaf(p, f, TSR_LOG_C7);
+    p = fmaf(p, f, TSR_LOG_C8);
+    float k = (float)e;
+    float y = (p * f) * z;
+    y = fmaf(k, TSR_LN2_LO, y);
+    y = fmaf(-0.5f, z, y);
+    float r = f + y;
+    r = fmaf(k, TSR_LN2_HI, r);
+    return tsr__canon_f32(r);
+}
+
+/* sqrt(x) = x * rsqrt(x), the same ~1 ULP on every device. NaN and x < 0 -> canonical NaN; +-0 -> +-0; +Inf -> +Inf. */
+static inline float tsr__sqrt_f32(float x) {
+    x = tsr__canon_f32(x);
+    uint32_t b = tsr__bits_from_f32(x);
+    if (tsr__isnan_bits(b)) return x;
+    if ((b & 0x7FFFFFFFu) == 0u) return x;
+    if ((b & 0x80000000u) != 0u) return tsr__f32_from_bits(TSR_CANON_NAN);
+    if (b == TSR_POS_INF)        return x;
+    return tsr__canon_f32(x * tsr__rrsqrt_f32(x));
+}
+
+/* x^a = exp(a * log|x|). a == 0 and x == 1 -> 1. A negative base needs an integer a, else canonical NaN. */
+static inline float tsr__pow_f32(float x, float a) {
+    x = tsr__canon_f32(x);
+    a = tsr__canon_f32(a);
+    uint32_t xb = tsr__bits_from_f32(x), ab = tsr__bits_from_f32(a);
+    if ((ab & 0x7FFFFFFFu) == 0u || xb == TSR_LOG_ONE) return 1.0f;
+    if (tsr__isnan_bits(xb) || tsr__isnan_bits(ab)) return tsr__f32_from_bits(TSR_CANON_NAN);
+    float neg = 1.0f;
+    float base = x;
+    if ((xb & 0x80000000u) != 0u && (xb & 0x7FFFFFFFu) != 0u) {
+        float t = floorf(a);
+        if (!(t == a)) return tsr__f32_from_bits(TSR_CANON_NAN);
+        if (floorf(a * 0.5f) * 2.0f != a) neg = -1.0f;
+        base = tsr__f32_from_bits(xb & 0x7FFFFFFFu);
+    }
+    return neg * tsr__exp_f32(a * tsr__log_f32(base));
 }
 
 /*

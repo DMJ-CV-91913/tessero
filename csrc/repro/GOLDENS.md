@@ -40,6 +40,9 @@ identical == reproducible, and that hash is the golden.
 | rsqrt | `a55f20e5934645f1a554a0fddfa094531b13aa8b95b360ed8a44a24dc220e53f` | scalar == avx2 == 4-thread | <= 2 ULP |
 | exp2  | `d7b57bb03e2c26b20642f0697daf64a366bedd9d7a3ee5edd79d8dae502aabba` | scalar == avx2 == 4-thread | <= 1 ULP |
 | exp   | `7c0748f832cf0c6ea64d0382af76615033014602c90e882437dac5108d0aa336` | scalar == avx2 == 4-thread | <= 1 ULP |
+| log   | `65782bbab2371e23da72848e0ba80867eab91aeaf9786e797ad0f22c37ede9b5` | scalar == avx2 == 4-thread | <= 1 ULP |
+| sqrt  | `806149a47f6d542c9898aa969460b9d2dc705320bd1c0ea22536889e644067c8` | scalar == avx2 == 4-thread | <= 2 ULP |
+| pow (a = 2.5) | `8b2ee146bfb67498cc32885e9ed1c0af37c47654acfb2bd4280c03eea8b170b2` | scalar == avx2 == 4-thread | <= 36 ULP |
 | erf   | `aebea57c4f009254b1dfd67953c209441bad55acb561ef3ca5f1f3b75e5f8797` | scalar == avx2 == 4-thread | <= 5 ULP, max abs err 2.9e-7 |
 
 The rsqrt golden is byte-for-byte the same hash the original proof-of-concept produced,

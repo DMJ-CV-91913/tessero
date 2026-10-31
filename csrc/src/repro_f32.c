@@ -93,6 +93,42 @@ int tsr_repro_exp_f32(int64_t n, const float *x, float *y) {
     return 0;
 }
 
+int tsr_repro_log_f32(int64_t n, const float *x, float *y) {
+    if (n < 0) return -1;
+    if (n > 0 && (!x || !y)) return -1;
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
+#endif
+    for (int64_t i = 0; i < n; ++i) {
+        y[i] = tsr__log_f32(x[i]);
+    }
+    return 0;
+}
+
+int tsr_repro_sqrt_f32(int64_t n, const float *x, float *y) {
+    if (n < 0) return -1;
+    if (n > 0 && (!x || !y)) return -1;
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
+#endif
+    for (int64_t i = 0; i < n; ++i) {
+        y[i] = tsr__sqrt_f32(x[i]);
+    }
+    return 0;
+}
+
+int tsr_repro_pow_f32(int64_t n, const float *x, float a, float *y) {
+    if (n < 0) return -1;
+    if (n > 0 && (!x || !y)) return -1;
+#ifdef _OPENMP
+#pragma omp parallel for num_threads(tsr_repro_threads()) schedule(static)
+#endif
+    for (int64_t i = 0; i < n; ++i) {
+        y[i] = tsr__pow_f32(x[i], a);
+    }
+    return 0;
+}
+
 int tsr_repro_erf_f32(int64_t n, const float *x, float *y) {
     if (n < 0) return -1;
     if (n > 0 && (!x || !y)) return -1;

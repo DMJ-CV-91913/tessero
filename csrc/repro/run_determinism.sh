@@ -51,7 +51,7 @@ echo
 echo "================= determinism across SIMD level and thread count ================="
 FAIL=0
 declare -A GOLDEN
-for fn in rsqrt exp2 exp erf recip tanh sigmoid gelu_tanh softmax rmsnorm layernorm gelu_tanh_bwd erf_bwd sigmoid_bwd tanh_bwd rmsnorm_bwd layernorm_bwd; do
+for fn in rsqrt exp2 exp log sqrt pow erf recip tanh sigmoid gelu_tanh softmax rmsnorm layernorm gelu_tanh_bwd erf_bwd sigmoid_bwd tanh_bwd rmsnorm_bwd layernorm_bwd; do
   HS=$(OMP_NUM_THREADS=1 "$TMP/dt_scalar" "$fn" | h)
   HA1=$(OMP_NUM_THREADS=1 "$TMP/dt_avx2"  "$fn" | h)
   HA4=$(OMP_NUM_THREADS=4 "$TMP/dt_avx2"  "$fn" | h)
@@ -75,11 +75,11 @@ done
 
 echo
 echo "================= edge inputs (classified, not hashed) ================="
-for fn in rsqrt exp2 exp erf recip tanh; do OMP_NUM_THREADS=1 "$TMP/dt_avx2" "$fn" edges; done
+for fn in rsqrt exp2 exp log sqrt pow erf recip tanh; do OMP_NUM_THREADS=1 "$TMP/dt_avx2" "$fn" edges; done
 
 echo
 echo "================= accuracy vs double reference ================="
-for fn in rsqrt exp2 exp erf recip tanh; do OMP_NUM_THREADS=1 "$TMP/dt_avx2" "$fn" accuracy; done
+for fn in rsqrt exp2 exp log sqrt pow erf recip tanh; do OMP_NUM_THREADS=1 "$TMP/dt_avx2" "$fn" accuracy; done
 
 echo
 echo "================= canonical spec (exact hex floats) ================="
@@ -88,7 +88,7 @@ echo "================= canonical spec (exact hex floats) ================="
 echo
 if [ "$FAIL" = 0 ]; then
   echo "RESULT: ALL BIT-IDENTICAL across SIMD level and thread count. Goldens:"
-  for fn in rsqrt exp2 exp erf recip tanh sigmoid gelu_tanh softmax rmsnorm layernorm gelu_tanh_bwd erf_bwd sigmoid_bwd tanh_bwd rmsnorm_bwd layernorm_bwd; do echo "  GOLDEN($fn,f32,N=2^20) = ${GOLDEN[$fn]}"; done
+  for fn in rsqrt exp2 exp log sqrt pow erf recip tanh sigmoid gelu_tanh softmax rmsnorm layernorm gelu_tanh_bwd erf_bwd sigmoid_bwd tanh_bwd rmsnorm_bwd layernorm_bwd; do echo "  GOLDEN($fn,f32,N=2^20) = ${GOLDEN[$fn]}"; done
 else
   echo "RESULT: a primitive DIFFERED across builds. Investigate (fast-math / contraction leak)."
   exit 1

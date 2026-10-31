@@ -78,6 +78,7 @@ static void gen_input(const char *fn, float *x) {
     if      (!strcmp(fn, "rsqrt")) gen_rsqrt(x);
     else if (!strcmp(fn, "exp2"))  gen_span(x, -30.0f, 30.0f);
     else if (!strcmp(fn, "exp"))   gen_span(x, -20.0f, 20.0f);
+    else if (!strcmp(fn, "log") || !strcmp(fn, "sqrt") || !strcmp(fn, "pow")) gen_rsqrt(x);
     else if (!strcmp(fn, "erf"))   gen_span(x, -4.0f, 4.0f);
     else if (!strcmp(fn, "recip")) gen_recip(x);
     else if (!strcmp(fn, "tanh"))  gen_tanh(x);
@@ -92,6 +93,9 @@ static int run_fn(const char *fn, int64_t n, const float *x, float *y) {
     if (!strcmp(fn, "rsqrt")) return tsr_repro_rsqrt_f32(n, x, y);
     if (!strcmp(fn, "exp2"))  return tsr_repro_exp2_f32(n, x, y);
     if (!strcmp(fn, "exp"))   return tsr_repro_exp_f32(n, x, y);
+    if (!strcmp(fn, "log"))   return tsr_repro_log_f32(n, x, y);
+    if (!strcmp(fn, "sqrt"))  return tsr_repro_sqrt_f32(n, x, y);
+    if (!strcmp(fn, "pow"))   return tsr_repro_pow_f32(n, x, 2.5f, y);
     if (!strcmp(fn, "erf"))   return tsr_repro_erf_f32(n, x, y);
     if (!strcmp(fn, "recip")) return tsr_repro_recip_f32(n, x, y);
     if (!strcmp(fn, "tanh"))  return tsr_repro_tanh_f32(n, x, y);
@@ -135,6 +139,9 @@ static double ref_fn(const char *fn, double v) {
     if (!strcmp(fn, "rsqrt")) return 1.0 / sqrt(v);
     if (!strcmp(fn, "exp2"))  return exp2(v);
     if (!strcmp(fn, "exp"))   return exp(v);
+    if (!strcmp(fn, "log"))   return log(v);
+    if (!strcmp(fn, "sqrt"))  return sqrt(v);
+    if (!strcmp(fn, "pow"))   return pow(v, 2.5);
     if (!strcmp(fn, "erf"))   return erf(v);
     if (!strcmp(fn, "recip")) return 1.0 / v;
     if (!strcmp(fn, "tanh"))  return tanh(v);
