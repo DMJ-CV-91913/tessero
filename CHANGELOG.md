@@ -16,6 +16,13 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   byte-identical on every CPU, thread count and input alignment; `sort()` (radix) stays the default. When to use
   which, with measurements: `docs/project/benchmarks.md`.
 
+### Performance
+
+- **`sortSimd()` sorts in place at the data's own width**: 8 float32/int32 keys per AVX2 vector instead of 4 widened
+  64-bit keys, integers without any conversion, floats mapped to order-preserving integers in place (the map is its
+  own inverse), and no scratch buffer. 1M random values: float32 24.8 -> 18.0 ms, int32 24.0 -> 17.0 ms, int64
+  25.3 -> 22.0 ms, float64 25.2 -> 23.3 ms; sorted input about twice as fast. Output unchanged, byte for byte.
+
 ## [0.3.0] - 2026-11-05
 
 Everything since 0.2.0: the NumPy/SciPy parity program, the security hardening, and the speed work below. The C ABI

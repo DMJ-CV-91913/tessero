@@ -137,41 +137,52 @@ Reproduce: the scripts are in `bench/` (`scipy_bench.php`, `scipy_bench.py`), ru
 ## Choosing a sort: sort(), sortSimd(), sortRuns()
 
 Three sorts with the same result (C: `tsr_sort`, `tsr_sort_simd`, `tsr_sort_runs`; PHP: `NDArray::sort()`,
-`sortSimd()`, `sortRuns()`, on both backends). All three turn the values into the same order-preserving integer keys
-(NaN last, -0.0 before +0.0) and sort them by comparison only, so the output is byte-identical whatever the algorithm,
-the CPU's SIMD level, the thread count or the alignment of the input; the test suite checks this for every dtype.
-`sort()` stays the default and the choice is purely about speed:
+`sortSimd()`, `sortRuns()`, on both backends). All three order the values by the same order-preserving integer keys
+(NaN last, -0.0 before +0.0) and by comparison only, so the output is byte-identical whatever the algorithm, the
+CPU's SIMD level, the thread count or the alignment of the input; the test suite checks this for every dtype,
+including infinities, NaN payloads, subnormals and the integer extremes. `sort()` stays the default and the choice
+is purely about speed:
 
 | function | algorithm | strengths | weaknesses |
 |---|---|---|---|
-| `sort()` | LSD radix sort | the same speed whatever the order of the input; few-valued integer data | does not exploit sorted or duplicate-heavy input |
-| `sortSimd()` | AVX2 quicksort (median-of-9 pivot, vector partition, sorting-network leaves) | random data at every size; many duplicates; already sorted or reversed input | gains little on large nearly sorted or interleaved data; without AVX2 it runs the radix sort |
-| `sortRuns()` | natural (run-adaptive) merge sort | mostly sorted data: values appended to a sorted array, a few edited values, sorted or reversed input | 2-3x slower than the others on random data |
+| `sort()` | LSD radix sort on 64-bit keys in a scratch buffer | the same speed whatever the order of the input | does not exploit sorted or duplicate-heavy input; float32/int32 pay for 64-bit keys |
+| `sortSimd()` | AVX2 quicksort in place at the data's own width (8 float32/int32 or 4 float64/int64 keys per vector), no scratch buffer | random data at every size; many duplicates; sorted or reversed input | gains little on large nearly sorted or interleaved data; without AVX2 it runs the radix sort |
+| `sortRuns()` | natural (run-adaptive) merge sort | mostly sorted data: values appended to a sorted array, a few edited values | 2-3x slower than the others on random data |
 
 Milliseconds, float64, one thread, median of repeated runs through the C library (same machine as above, while
 another benchmark was running, so treat small differences as noise; the fastest is in bold):
 
 | data, n = 1,000,000 | sort | sortSimd | sortRuns |
 |---|---|---|---|
-| random | 32.5 | **25.6** | 76.6 |
-| 10 distinct values | 21.1 | **7.5** | 39.4 |
-| sorted / reversed | 25.6 / 25.8 | 3.9 / 4.5 | **2.9 / 3.7** |
-| sorted, 1% of values moved | 30.0 | **23.6** | 24.9 |
-| sorted, 1% random values appended | 31.8 | 24.2 | **19.3** |
-| interleaved (two sorted sequences) | 24.3 | **23.2** | 31.2 |
-| integer-valued doubles (1000 values) | 20.3 | **11.6** | 56.2 |
+| random | 31.2 | **23.4** | 75.7 |
+| 10 distinct values | 21.1 | **5.5** | 39.5 |
+| sorted / reversed | 24.2 / 24.7 | **2.0 / 2.4** | 2.9 / 3.5 |
+| sorted, 1% of values moved | 28.8 | **21.5** | 24.6 |
+| sorted, 1% random values appended | 30.6 | 22.1 | **19.2** |
+| interleaved (two sorted sequences) | 23.3 | **21.3** | 31.7 |
+| integer-valued doubles (1000 values) | 20.2 | **9.8** | 56.8 |
 
 | data, n = 100,000 | sort | sortSimd | sortRuns |
 |---|---|---|---|
-| random | 3.58 | **2.14** | 5.82 |
-| 10 distinct values | 1.83 | **0.59** | 2.74 |
-| sorted / reversed | 2.13 / 2.51 | 0.27 / 0.31 | **0.21 / 0.25** |
-| sorted, 1% of values moved | 2.53 | 1.99 | **1.39** |
-| sorted, 1% random values appended | 2.71 | 2.03 | **1.04** |
+| random | 3.31 | **2.02** | 5.83 |
+| 10 distinct values | 1.84 | **0.44** | 2.80 |
+| sorted / reversed | 2.01 / 2.40 | **0.14 / 0.17** | 0.21 / 0.25 |
+| sorted, 1% of values moved | 2.34 | 1.87 | **1.42** |
+| sorted, 1% random values appended | 2.55 | 1.91 | **1.05** |
+
+Against NumPy, 1,000,000 random values, one thread (NumPy 2.4.4 `np.sort`, which on this AVX2 machine dispatches to
+Intel's x86-simd-sort vector quicksort):
+
+| dtype | NumPy | sort | sortSimd |
+|---|---|---|---|
+| float64 | **14.1** | 31.9 | 23.3 |
+| float32 | **7.5** | 33.6 | 18.0 |
+| int64 | **17.1** | 24.3 | 22.0 |
+| int32 | **6.8** | 23.6 | 17.0 |
 
 Rule of thumb: `sortRuns()` when the data is known to be mostly in order, `sortSimd()` for everything else on an
-AVX2 machine, `sort()` when a steady, input-independent time matters more than the best case. NumPy's `np.sort`
-(13.6 ms for 1M random values in the table above) is still faster than all three on random data.
+AVX2 machine, `sort()` when a steady, input-independent time matters more than the best case. NumPy is still faster
+on random data; the remaining gap is in the small partitions and leaves (work in progress).
 
 ## Correctness, not just speed
 

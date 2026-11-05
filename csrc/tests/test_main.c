@@ -2209,8 +2209,9 @@ static void test_fuzz_batch_d(void)
 }
 
 /* tsr_sort, tsr_sort_simd and tsr_sort_runs return the same bytes: every dtype, NaN, -0.0/+0.0, duplicates, sorted,
-   reversed and interleaved data, sizes 0..300 and 100000, element-aligned starts that are not 32-byte aligned (the
-   AVX2 loads are unaligned), 1 and 4 threads */
+   reversed and interleaved data, +-inf, NaN payloads and signs, subnormals, the integer extremes, sizes 0..300
+   and 100000, element-aligned starts that are not 32-byte aligned (the AVX2 loads are unaligned), 1 and 4
+   threads */
 static void test_sort_variants(void)
 {
     static const int dts[] = {TSR_F64, TSR_F32, TSR_I64, TSR_I32, TSR_U8};
@@ -2226,8 +2227,8 @@ static void test_sort_variants(void)
             const int dt = dts[d];
             const int64_t isz = dt == TSR_F64 || dt == TSR_I64 ? 8 : dt == TSR_U8 ? 1 : 4;
             for (int64_t n = 0; n <= big; n = n < 300 ? n + 1 : (n < big ? big : big + 1)) {
-                for (int pattern = 0; pattern < 6; pattern++) {
-                    if (n > 300 && pattern > 3) continue;
+                for (int pattern = 0; pattern < 7; pattern++) {
+                    if (n > 300 && (pattern == 4 || pattern == 5)) continue;
                     for (int64_t i = 0; i < n; i++) {
                         st ^= st << 13; st ^= st >> 7; st ^= st << 17;
                         double v = (double)(int64_t)(st >> 40) - 8388608.0;                     /* random */
@@ -2242,6 +2243,17 @@ static void test_sort_variants(void)
                         else if (dt == TSR_I64) { int64_t x = isnan(v) ? 7 : (int64_t)v; memcpy(p, &x, 8); }
                         else if (dt == TSR_I32) { int32_t x = isnan(v) ? 7 : (int32_t)v; memcpy(p, &x, 4); }
                         else { uint8_t x = isnan(v) ? 7 : (uint8_t)((int64_t)v & 255); memcpy(p, &x, 1); }
+                        if (pattern == 6) {                                                    /* extremes, as raw bits */
+                            static const uint64_t e64[] = {0x7ff0000000000000ULL, 0xfff0000000000000ULL, 0x7ff8000000000000ULL,
+                                0xfff8000000000001ULL, 0x7ff0000000000001ULL, 0x0000000000000001ULL, 0x8000000000000001ULL,
+                                0x7fefffffffffffffULL, 0xffefffffffffffffULL, 0x8000000000000000ULL, 0, 0x3ff0000000000000ULL,
+                                0x7fffffffffffffffULL, 0xffffffffffffffffULL};
+                            static const uint32_t e32[] = {0x7f800000u, 0xff800000u, 0x7fc00000u, 0xffc00001u, 0x7f800001u, 1u,
+                                0x80000001u, 0x7f7fffffu, 0xff7fffffu, 0x80000000u, 0, 0x3f800000u, 0x7fffffffu, 0xffffffffu};
+                            const int64_t r = (int64_t)(st % 14);
+                            if (dt == TSR_F64 || dt == TSR_I64) memcpy(p, &e64[r], 8);  /* as ints: both extremes, -1, 0 */
+                            else if (dt == TSR_F32 || dt == TSR_I32) memcpy(p, &e32[r], 4);
+                        }
                     }
                     memcpy(a + 8, src + 8, (size_t)(n * isz)); memcpy(b + 8, src + 8, (size_t)(n * isz)); memcpy(c + 8, src + 8, (size_t)(n * isz));
                     const int ra = tsr_sort(dt, n, a + 8), rb = tsr_sort_simd(dt, n, b + 8), rc = tsr_sort_runs(dt, n, c + 8);

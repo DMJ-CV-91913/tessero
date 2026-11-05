@@ -176,15 +176,16 @@ static int value_sort(uint64_t *keys, int64_t n)
 }
 
 /*
- * tsr_sort_simd's sorter: an AVX2 quicksort of the same keys tsr_sort radix-sorts, so the two return the same bits.
- * Keys are compared as int64 (the order-preserving uint64 key with its top bit flipped). Partition: four vectors
- * (16 keys) per step from the end with less free space, lanes below the pivot moved left by a permutation table
- * and stored from both ends, 16 keys held back at each end so a full store always fits, branchless scalar tails.
- * Pivot: median of nine. Keys equal to a minimum pivot are split off in one more pass (many duplicates stay linear);
- * a depth limit falls back to heapsort. Leaves of up to 16 keys: Batcher's network. Already ascending input
- * returns at once and non-increasing input is reversed. Faster than the radix sort on random, duplicate-heavy and
- * sorted data, close to it on large nearly sorted or interleaved data; its time depends on the input and on AVX2,
- * so it is a separate entry point and the radix sort stays the default (docs/project/benchmarks.md).
+ * tsr_sort_simd's sorter: an AVX2 quicksort (sort_qs.h) run in place on the caller's buffer at the data's own
+ * width, 8 keys per vector for float32/int32 and 4 for float64/int64. Integers are sorted as they are. Floats are
+ * first turned, in place, into signed integers of the same width with the same order as tsr_sort's keys
+ * (u ^ ((u >> 63) & 0x7fff...): negatives get their magnitude bits flipped, so -0.0 sorts before +0.0), NaNs being
+ * counted and dropped in the same pass; the map is its own inverse and is undone after the sort, and the NaNs are
+ * written back at the end as tsr_sort writes them. The map is a bijection of the bit patterns, so the output is
+ * byte-identical to tsr_sort. No scratch buffer, no allocation. Faster than the radix sort on random,
+ * duplicate-heavy and sorted data, close to it on large nearly sorted or interleaved data; its time depends on the
+ * input and on AVX2, so it is a separate entry point and the radix sort stays the default
+ * (docs/project/benchmarks.md).
  */
 #if defined(__GNUC__) && defined(__x86_64__)                      /* GCC and clang; MSVC uses the radix sort */
 #include <immintrin.h>
@@ -198,153 +199,125 @@ static int value_sort(uint64_t *keys, int64_t n)
 #ifndef TSR_NOINIT
 #  define TSR_NOINIT
 #endif
-#define QS_LEAF 16
+/* the keys overlay the caller's float or integer data */
+typedef int64_t qs_i64 __attribute__((__may_alias__));
+typedef int32_t qs_i32 __attribute__((__may_alias__));
+
 /* for each 4-bit lane mask (lanes below the pivot), the 32-bit-element permutation that moves those lanes first */
-static const int32_t qs_perm[16][8] = {
+static const int32_t qs_perm64[16][8] = {
     {0, 1, 2, 3, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7}, {2, 3, 0, 1, 4, 5, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7},
     {4, 5, 0, 1, 2, 3, 6, 7}, {0, 1, 4, 5, 2, 3, 6, 7}, {2, 3, 4, 5, 0, 1, 6, 7}, {0, 1, 2, 3, 4, 5, 6, 7},
     {6, 7, 0, 1, 2, 3, 4, 5}, {0, 1, 6, 7, 2, 3, 4, 5}, {2, 3, 6, 7, 0, 1, 4, 5}, {0, 1, 2, 3, 6, 7, 4, 5},
     {4, 5, 6, 7, 0, 1, 2, 3}, {0, 1, 4, 5, 6, 7, 2, 3}, {2, 3, 4, 5, 6, 7, 0, 1}, {0, 1, 2, 3, 4, 5, 6, 7},
 };
+/* the same for 8 lanes, one nibble per output lane (lane j's source is nibble j): set lanes first, then the rest */
+static const uint32_t qs_perm32[256] = {
+    0x76543210, 0x76543210, 0x76543201, 0x76543210, 0x76543102, 0x76543120, 0x76543021, 0x76543210,
+    0x76542103, 0x76542130, 0x76542031, 0x76542310, 0x76541032, 0x76541320, 0x76540321, 0x76543210,
+    0x76532104, 0x76532140, 0x76532041, 0x76532410, 0x76531042, 0x76531420, 0x76530421, 0x76534210,
+    0x76521043, 0x76521430, 0x76520431, 0x76524310, 0x76510432, 0x76514320, 0x76504321, 0x76543210,
+    0x76432105, 0x76432150, 0x76432051, 0x76432510, 0x76431052, 0x76431520, 0x76430521, 0x76435210,
+    0x76421053, 0x76421530, 0x76420531, 0x76425310, 0x76410532, 0x76415320, 0x76405321, 0x76453210,
+    0x76321054, 0x76321540, 0x76320541, 0x76325410, 0x76310542, 0x76315420, 0x76305421, 0x76354210,
+    0x76210543, 0x76215430, 0x76205431, 0x76254310, 0x76105432, 0x76154320, 0x76054321, 0x76543210,
+    0x75432106, 0x75432160, 0x75432061, 0x75432610, 0x75431062, 0x75431620, 0x75430621, 0x75436210,
+    0x75421063, 0x75421630, 0x75420631, 0x75426310, 0x75410632, 0x75416320, 0x75406321, 0x75463210,
+    0x75321064, 0x75321640, 0x75320641, 0x75326410, 0x75310642, 0x75316420, 0x75306421, 0x75364210,
+    0x75210643, 0x75216430, 0x75206431, 0x75264310, 0x75106432, 0x75164320, 0x75064321, 0x75643210,
+    0x74321065, 0x74321650, 0x74320651, 0x74326510, 0x74310652, 0x74316520, 0x74306521, 0x74365210,
+    0x74210653, 0x74216530, 0x74206531, 0x74265310, 0x74106532, 0x74165320, 0x74065321, 0x74653210,
+    0x73210654, 0x73216540, 0x73206541, 0x73265410, 0x73106542, 0x73165420, 0x73065421, 0x73654210,
+    0x72106543, 0x72165430, 0x72065431, 0x72654310, 0x71065432, 0x71654320, 0x70654321, 0x76543210,
+    0x65432107, 0x65432170, 0x65432071, 0x65432710, 0x65431072, 0x65431720, 0x65430721, 0x65437210,
+    0x65421073, 0x65421730, 0x65420731, 0x65427310, 0x65410732, 0x65417320, 0x65407321, 0x65473210,
+    0x65321074, 0x65321740, 0x65320741, 0x65327410, 0x65310742, 0x65317420, 0x65307421, 0x65374210,
+    0x65210743, 0x65217430, 0x65207431, 0x65274310, 0x65107432, 0x65174320, 0x65074321, 0x65743210,
+    0x64321075, 0x64321750, 0x64320751, 0x64327510, 0x64310752, 0x64317520, 0x64307521, 0x64375210,
+    0x64210753, 0x64217530, 0x64207531, 0x64275310, 0x64107532, 0x64175320, 0x64075321, 0x64753210,
+    0x63210754, 0x63217540, 0x63207541, 0x63275410, 0x63107542, 0x63175420, 0x63075421, 0x63754210,
+    0x62107543, 0x62175430, 0x62075431, 0x62754310, 0x61075432, 0x61754320, 0x60754321, 0x67543210,
+    0x54321076, 0x54321760, 0x54320761, 0x54327610, 0x54310762, 0x54317620, 0x54307621, 0x54376210,
+    0x54210763, 0x54217630, 0x54207631, 0x54276310, 0x54107632, 0x54176320, 0x54076321, 0x54763210,
+    0x53210764, 0x53217640, 0x53207641, 0x53276410, 0x53107642, 0x53176420, 0x53076421, 0x53764210,
+    0x52107643, 0x52176430, 0x52076431, 0x52764310, 0x51076432, 0x51764320, 0x50764321, 0x57643210,
+    0x43210765, 0x43217650, 0x43207651, 0x43276510, 0x43107652, 0x43176520, 0x43076521, 0x43765210,
+    0x42107653, 0x42176530, 0x42076531, 0x42765310, 0x41076532, 0x41765320, 0x40765321, 0x47653210,
+    0x32107654, 0x32176540, 0x32076541, 0x32765410, 0x31076542, 0x31765420, 0x30765421, 0x37654210,
+    0x21076543, 0x21765430, 0x20765431, 0x27654310, 0x10765432, 0x17654320, 0x07654321, 0x76543210,
+};
 
-static void qs_sift(int64_t *a, int64_t n, int64_t i)
-{
-    for (;;) {
-        int64_t c = 2 * i + 1;
-        if (c >= n) return;
-        if (c + 1 < n && a[c + 1] > a[c]) c++;
-        if (a[i] >= a[c]) return;
-        const int64_t t = a[i]; a[i] = a[c]; a[c] = t; i = c;
-    }
-}
-static void qs_heapsort(int64_t *a, int64_t n)
-{
-    for (int64_t i = n / 2 - 1; i >= 0; i--) qs_sift(a, n, i);
-    for (int64_t e = n - 1; e > 0; e--) { const int64_t t = a[0]; a[0] = a[e]; a[e] = t; qs_sift(a, e, 0); }
-}
+#define QS_T qs_i64
+#define QS_N 64
+#define QS_L 4
+#define QS_MAX INT64_MAX
+#define QS_SET1(q) _mm256_set1_epi64x(q)
+#define QS_CMPGT(a, b) _mm256_cmpgt_epi64(a, b)
+#define QS_MASK(m) _mm256_movemask_pd(_mm256_castsi256_pd(m))
+#define QS_PERM(m) _mm256_loadu_si256((const __m256i *)qs_perm64[m])
+#include "sort_qs.h"
+#undef QS_T
+#undef QS_N
+#undef QS_L
+#undef QS_MAX
+#undef QS_SET1
+#undef QS_CMPGT
+#undef QS_MASK
+#undef QS_PERM
 
-__attribute__((target("avx2"))) static inline void qs_store(__m256i v, __m256i pv, int64_t *a, int64_t *lw, int64_t *rw)
-{
-    const int m = _mm256_movemask_pd(_mm256_castsi256_pd(_mm256_cmpgt_epi64(pv, v)));
-    const __m256i w = _mm256_permutevar8x32_epi32(v, _mm256_loadu_si256((const __m256i *)qs_perm[m]));
-    _mm256_storeu_si256((__m256i *)(a + *lw), w);
-    _mm256_storeu_si256((__m256i *)(a + *rw - 4), w);
-    *lw += __builtin_popcount(m);
-    *rw -= 4 - __builtin_popcount(m);
-}
+#define QS_T qs_i32
+#define QS_N 32
+#define QS_L 8
+#define QS_MAX INT32_MAX
+#define QS_SET1(q) _mm256_set1_epi32(q)
+#define QS_CMPGT(a, b) _mm256_cmpgt_epi32(a, b)
+#define QS_MASK(m) _mm256_movemask_ps(_mm256_castsi256_ps(m))
+#define QS_PERM(m) _mm256_srlv_epi32(_mm256_set1_epi32((int)qs_perm32[m]), _mm256_setr_epi32(0, 4, 8, 12, 16, 20, 24, 28))
+#include "sort_qs.h"
+#undef QS_T
+#undef QS_N
+#undef QS_L
+#undef QS_MAX
+#undef QS_SET1
+#undef QS_CMPGT
+#undef QS_MASK
+#undef QS_PERM
 
-/* keys < q to the left, in place; returns how many */
-__attribute__((target("avx2"))) static int64_t qs_partition(int64_t *a, int64_t n, int64_t q)
+__attribute__((target("avx2"))) static int simd_sort_inplace(int dtype, int64_t n, void *data)
 {
-    if (n < 64) {
-        TSR_NOINIT int64_t buf[64];
-        int64_t lw = 0, rw = n;
-        memcpy(buf, a, (size_t)n * 8);
-        for (int64_t i = 0; i < n; i++) { const int64_t x = buf[i], lt = x < q; a[lw] = x; a[rw - 1] = x; lw += lt; rw -= 1 - lt; }
-        return lw;
-    }
-    const __m256i pv = _mm256_set1_epi64x(q);
-    TSR_NOINIT int64_t hold[32];
-    memcpy(hold, a, 16 * 8);
-    memcpy(hold + 16, a + n - 16, 16 * 8);
-    int64_t lr = 16, rr = n - 16, lw = 0, rw = n;
-    while (rr - lr >= 16) {
-        const int64_t *src;
-        if (lr - lw <= rw - rr) { src = a + lr; lr += 16; } else { rr -= 16; src = a + rr; }
-        const __m256i v0 = _mm256_loadu_si256((const __m256i *)src), v1 = _mm256_loadu_si256((const __m256i *)(src + 4));
-        const __m256i v2 = _mm256_loadu_si256((const __m256i *)(src + 8)), v3 = _mm256_loadu_si256((const __m256i *)(src + 12));
-        qs_store(v0, pv, a, &lw, &rw); qs_store(v1, pv, a, &lw, &rw);
-        qs_store(v2, pv, a, &lw, &rw); qs_store(v3, pv, a, &lw, &rw);
-    }
-    while (rr - lr >= 4) {                                     /* free space >= 32 + read: single vectors are safe */
-        __m256i v;
-        if (lr - lw <= rw - rr) { v = _mm256_loadu_si256((const __m256i *)(a + lr)); lr += 4; }
-        else { rr -= 4; v = _mm256_loadu_si256((const __m256i *)(a + rr)); }
-        qs_store(v, pv, a, &lw, &rw);
-    }
-    TSR_NOINIT int64_t buf[36];
-    int nb = 0;
-    for (int64_t i = lr; i < rr; i++) buf[nb++] = a[i];
-    for (int i = 0; i < 32; i++) buf[nb++] = hold[i];
-    for (int i = 0; i < nb; i++) { const int64_t x = buf[i], lt = x < q; a[lw] = x; a[rw - 1] = x; lw += lt; rw -= 1 - lt; }
-    return lw;
-}
-
-static inline int64_t qs_med3(int64_t x, int64_t y, int64_t z)
-{
-    return x < y ? (y < z ? y : (x < z ? z : x)) : (x < z ? x : (y < z ? z : y));
-}
-
-#define QS_CAS(x, y) do { const int64_t a_ = v[x], b_ = v[y]; v[x] = a_ < b_ ? a_ : b_; v[y] = a_ < b_ ? b_ : a_; } while (0)
-/* up to 16 keys: Batcher's odd-even merge network (63 compare-exchanges, branchless), padded with INT64_MAX */
-static void qs_leaf(int64_t *a, int64_t n)
-{
-    if (n < 2) return;
-    if (n <= 6) {
-        for (int64_t i = 1; i < n; i++) {
-            const int64_t k = a[i];
-            int64_t j = i - 1;
-            while (j >= 0 && a[j] > k) { a[j + 1] = a[j]; j--; }
-            a[j + 1] = k;
+    switch (dtype) {
+    case TSR_I64: qs_sort64((qs_i64 *)data, n); return TSR_OK;
+    case TSR_I32: qs_sort32((qs_i32 *)data, n); return TSR_OK;
+    case TSR_F64: {
+        qs_i64 *k = (qs_i64 *)data;
+        int64_t m = 0;
+        for (int64_t i = 0; i < n; i++) {
+            const int64_t u = k[i];
+            if ((u & INT64_MAX) > 0x7ff0000000000000LL) continue;                /* NaN */
+            k[m++] = u ^ ((u >> 63) & INT64_MAX);
         }
-        return;
+        qs_sort64(k, m);
+        for (int64_t i = 0; i < m; i++) k[i] ^= (k[i] >> 63) & INT64_MAX;
+        double *d = (double *)data;
+        for (int64_t i = m; i < n; i++) d[i] = NAN;
+        return TSR_OK;
     }
-    TSR_NOINIT int64_t v[16];
-    for (int64_t i = 0; i < n; i++) v[i] = a[i];
-    for (int64_t i = n; i < 16; i++) v[i] = INT64_MAX;
-    QS_CAS(0, 1); QS_CAS(2, 3); QS_CAS(4, 5); QS_CAS(6, 7); QS_CAS(8, 9); QS_CAS(10, 11); QS_CAS(12, 13); QS_CAS(14, 15);
-    QS_CAS(0, 2); QS_CAS(1, 3); QS_CAS(4, 6); QS_CAS(5, 7); QS_CAS(8, 10); QS_CAS(9, 11); QS_CAS(12, 14); QS_CAS(13, 15);
-    QS_CAS(1, 2); QS_CAS(5, 6); QS_CAS(9, 10); QS_CAS(13, 14);
-    QS_CAS(0, 4); QS_CAS(1, 5); QS_CAS(2, 6); QS_CAS(3, 7); QS_CAS(8, 12); QS_CAS(9, 13); QS_CAS(10, 14); QS_CAS(11, 15);
-    QS_CAS(2, 4); QS_CAS(3, 5); QS_CAS(10, 12); QS_CAS(11, 13);
-    QS_CAS(1, 2); QS_CAS(3, 4); QS_CAS(5, 6); QS_CAS(9, 10); QS_CAS(11, 12); QS_CAS(13, 14);
-    QS_CAS(0, 8); QS_CAS(1, 9); QS_CAS(2, 10); QS_CAS(3, 11); QS_CAS(4, 12); QS_CAS(5, 13); QS_CAS(6, 14); QS_CAS(7, 15);
-    QS_CAS(4, 8); QS_CAS(5, 9); QS_CAS(6, 10); QS_CAS(7, 11);
-    QS_CAS(2, 4); QS_CAS(3, 5); QS_CAS(6, 8); QS_CAS(7, 9); QS_CAS(10, 12); QS_CAS(11, 13);
-    QS_CAS(1, 2); QS_CAS(3, 4); QS_CAS(5, 6); QS_CAS(7, 8); QS_CAS(9, 10); QS_CAS(11, 12); QS_CAS(13, 14);
-    for (int64_t i = 0; i < n; i++) a[i] = v[i];
-}
-#undef QS_CAS
-
-static void qs_rec(int64_t *a, int64_t n, int depth)
-{
-    while (n > QS_LEAF) {
-        if (depth-- <= 0) { qs_heapsort(a, n); return; }
-        const int64_t p = qs_med3(qs_med3(a[0], a[n / 8], a[n / 4]), qs_med3(a[3 * n / 8], a[n / 2], a[5 * n / 8]),
-                                  qs_med3(a[3 * n / 4], a[7 * n / 8], a[n - 1]));
-        int64_t m = qs_partition(a, n, p);
-        if (m == 0) {                                          /* p is the minimum: split off every key equal to it */
-            m = p == INT64_MAX ? n : qs_partition(a, n, p + 1);
-            a += m; n -= m;
-            continue;
+    case TSR_F32: {
+        qs_i32 *k = (qs_i32 *)data;
+        int64_t m = 0;
+        for (int64_t i = 0; i < n; i++) {
+            const int32_t u = k[i];
+            if ((u & INT32_MAX) > 0x7f800000) continue;                           /* NaN */
+            k[m++] = u ^ ((u >> 31) & INT32_MAX);
         }
-        if (m < n - m) { qs_rec(a, m, depth); a += m; n -= m; }
-        else { qs_rec(a + m, n - m, depth); n = m; }
+        qs_sort32(k, m);
+        for (int64_t i = 0; i < m; i++) k[i] ^= (k[i] >> 31) & INT32_MAX;
+        float *d = (float *)data;
+        for (int64_t i = m; i < n; i++) d[i] = NAN;
+        return TSR_OK;
     }
-    qs_leaf(a, n);
-}
-
-/* sort uint64 keys (as tsr_sort's value_sort does) with the AVX2 quicksort */
-static int simd_value_sort(uint64_t *keys, int64_t n)
-{
-    if (n < 2) return TSR_OK;
-    for (int64_t i = 0; i < n; i++) keys[i] ^= 0x8000000000000000ULL;        /* unsigned order -> signed order */
-    int64_t *a = (int64_t *)keys;
-    int64_t i = 1;
-    while (i < n && a[i - 1] <= a[i]) i++;
-    if (i < n) {
-        int64_t j = 1;
-        while (i == 1 && j < n && a[j - 1] >= a[j]) j++;
-        if (i == 1 && j >= n) {                                 /* non-increasing: reverse */
-            for (int64_t l = 0, r = n - 1; l < r; l++, r--) { const int64_t t = a[l]; a[l] = a[r]; a[r] = t; }
-        } else {
-            int depth = 4;
-            for (int64_t t = n; t > 1; t >>= 1) depth += 2;
-            qs_rec(a, n, depth);
-        }
+    default:
+        return TSR_ETYPE;                                                          /* not reached: see tsr_sort_simd */
     }
-    for (int64_t k = 0; k < n; k++) keys[k] ^= 0x8000000000000000ULL;
-    return TSR_OK;
 }
 #endif
 
@@ -419,13 +392,10 @@ static int runs_value_sort(uint64_t *keys, int64_t n)
     return TSR_OK;
 }
 
-enum { SORT_RADIX = 0, SORT_SIMD = 1, SORT_RUNS = 2 };
+enum { SORT_RADIX = 0, SORT_RUNS = 1 };
 
 static int sort_keys(int algo, uint64_t *keys, int64_t n)
 {
-#ifdef TSR_HAVE_AVX2_SORT
-    if (algo == SORT_SIMD) return simd_value_sort(keys, n);
-#endif
     if (algo == SORT_RUNS) return runs_value_sort(keys, n);
     return value_sort(keys, n);
 }
@@ -440,9 +410,10 @@ int tsr_sort(int dtype, int64_t n, void *data)
 int tsr_sort_simd(int dtype, int64_t n, void *data)
 {
 #ifdef TSR_HAVE_AVX2_SORT
-    if (__builtin_cpu_supports("avx2")) return sort_impl(dtype, n, data, SORT_SIMD);
+    if (n >= 2 && (dtype == TSR_F64 || dtype == TSR_F32 || dtype == TSR_I64 || dtype == TSR_I32) && __builtin_cpu_supports("avx2"))
+        return simd_sort_inplace(dtype, n, data);
 #endif
-    return sort_impl(dtype, n, data, SORT_RADIX);                 /* no AVX2: the radix sort, same result */
+    return sort_impl(dtype, n, data, SORT_RADIX);   /* no AVX2, or uint8/bool (counting sort): the same result */
 }
 
 int tsr_sort_runs(int dtype, int64_t n, void *data)
