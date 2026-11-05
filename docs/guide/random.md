@@ -38,7 +38,8 @@ languages and lets tests compare them exactly.
 The distribution methods run NumPy's `distributions.c`, compiled into the kernel, on the Generator's PCG64
 stream. They take NumPy's arguments, with array parameters broadcast, `size:`, and `dtype: 'float32'`
 where NumPy has it. They reject invalid parameters as NumPy does. The multivariate methods
-(`multivariate_normal`, `dirichlet`, `multinomial`) are not implemented yet.
+`multivariateNormal`, `dirichlet`, `multinomial` and `multivariateHypergeometric` are implemented too.
+`multivariateNormal` supports only NumPy's default `method: 'svd'`; other methods throw.
 
 Seeds: a non-negative int, a list of ints (like NumPy's entropy lists), or
 `null` for 128 bits from the operating system.
