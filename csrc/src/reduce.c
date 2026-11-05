@@ -35,6 +35,38 @@ PAIRWISE(psum_u8, uint8_t)
 /* NumPy's pairwise sum of a contiguous float64 run (shared with the registry functions) */
 double tsr_psum(const double *x, int64_t n) { return psum_f64((const char *)x, n, 8); }
 
+/* The pairwise sum of the squared deviations (x[j] - mu)^2 of a strided row, without a row-sized buffer: the same
+   split as psum_f64 over a materialised array, and each leaf (at most 128 values) squares its values into a
+   128-value block that psum_block then sums. The block is filled before an out-of-line call, so every square is
+   rounded to a double before it is added, as when the array was materialised; a fused multiply-add cannot merge the
+   two. The result is therefore the one the buffered version gave, bit for bit, on every target. The caller owns the
+   block (declared once per call: a local array in each leaf would be zero-filled on every call under
+   -ftrivial-auto-var-init=zero, csrc/Makefile HARDEN, which made axis reductions slower than the buffer was). */
+#if defined(_MSC_VER)
+#  define TSR_NOINLINE __declspec(noinline)
+#else
+#  define TSR_NOINLINE __attribute__((noinline))
+#endif
+static TSR_NOINLINE double psum_block(const double *d, int64_t n) { return psum_f64((const char *)d, n, 8); }
+#define PAIRWISE_DEV(NAME, T)                                                              \
+    static double NAME(const char *p, int64_t n, int64_t s, double mu, double *d)          \
+    {                                                                                      \
+        if (n <= 128) {                                                                    \
+            for (int64_t i = 0; i < n; i++) {                                              \
+                const double v = (double)*(const T *)(p + i * s) - mu;                     \
+                d[i] = v * v;                                                              \
+            }                                                                              \
+            return psum_block(d, n);                                                       \
+        }                                                                                  \
+        int64_t h = (n / 2) & ~(int64_t)7;                                                 \
+        return NAME(p, h, s, mu, d) + NAME(p + h * s, n - h, s, mu, d);                    \
+    }
+PAIRWISE_DEV(devsum_f64, double)
+PAIRWISE_DEV(devsum_f32, float)
+PAIRWISE_DEV(devsum_i64, int64_t)
+PAIRWISE_DEV(devsum_i32, int32_t)
+PAIRWISE_DEV(devsum_u8, uint8_t)
+
 static void store(int dt, char *o, double d, int64_t i, int use_int)
 {
     switch (dt) {
@@ -220,22 +252,16 @@ int tsr_moments(int dtype, int32_t ndim, const int64_t *shape, const void *in, c
        value either way. The iterator still walks a valid array (mean's), nothing is written through it. */
     const int want_m2 = m2 != NULL;
     if (!want_m2) { m2 = mean; sm2 = smean; }
-    double *dev = want_m2 && L > 0 ? (double *)tsr_alloc(L * 8) : NULL;   /* squared deviations of one row */
-    if (want_m2 && L > 0 && !dev) return TSR_ENOMEM;
 
-#define TWOPASS(T, PSUM)                                                            \
+    /* M2 = pairwise sum of (x - mean)^2, summed block by block without a row buffer (devsum_*) */
+    double blk[128];
+#define TWOPASS(PSUM, DEVSUM)                                                       \
     for (int64_t i = 0; i < n; i++) {                                               \
         const char *q = p[0] + i * it.st[0][nd - 1];                                \
         double mu = 0, M = 0;                                                       \
         if (L > 0) {                                                                \
             mu = PSUM(q, L, sL) / (double)L;                                        \
-            if (want_m2) {                                                          \
-                for (int64_t j = 0; j < L; j++) {                                   \
-                    const double d = (double)*(const T *)(q + j * sL) - mu;         \
-                    dev[j] = d * d;                                                 \
-                }                                                                   \
-                M = psum_f64((const char *)dev, L, 8);                              \
-            }                                                                       \
+            if (want_m2) M = DEVSUM(q, L, sL, mu, blk);                             \
         }                                                                           \
         *(double *)(p[1] + i * it.st[1][nd - 1]) = mu;                              \
         if (want_m2) *(double *)(p[2] + i * it.st[2][nd - 1]) = M;                  \
@@ -247,19 +273,18 @@ int tsr_moments(int dtype, int32_t ndim, const int64_t *shape, const void *in, c
     const int64_t *zs[3] = {&zst[0], &zst[1], &zst[2]};
     if (ond == 0) rc = tsr_iter_init(&it, 3, 1, &unit_shape, zs);
     else rc = tsr_iter_init(&it, 3, ond, oshape, st);
-    if (rc != TSR_OK || it.size == 0) { if (dev) tsr_free(dev, L * 8); return rc; }
+    if (rc != TSR_OK || it.size == 0) return rc;
     const void *base[3] = {in, mean, m2};
     int nd = it.nd;
     TSR_ITER_OUTER(it, base, {
         switch (dtype) {
-        case TSR_F64: TWOPASS(double, psum_f64) break;
-        case TSR_F32: TWOPASS(float, psum_f32) break;
-        case TSR_I64: TWOPASS(int64_t, psum_i64) break;
-        case TSR_I32: TWOPASS(int32_t, psum_i32) break;
-        default: TWOPASS(uint8_t, psum_u8) break;
+        case TSR_F64: TWOPASS(psum_f64, devsum_f64) break;
+        case TSR_F32: TWOPASS(psum_f32, devsum_f32) break;
+        case TSR_I64: TWOPASS(psum_i64, devsum_i64) break;
+        case TSR_I32: TWOPASS(psum_i32, devsum_i32) break;
+        default: TWOPASS(psum_u8, devsum_u8) break;
         }
     });
-    if (dev) tsr_free(dev, L * 8);
     return TSR_OK;
 #undef TWOPASS
 }

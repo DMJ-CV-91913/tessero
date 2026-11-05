@@ -160,8 +160,9 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 Measured as a native PHP app (FFI backend) against a native Python app (NumPy 2.4.4) on the same machine, one
 thread, `bench/run.php` vs `bench/numpy_bench.py`. Every change below returns the same bits as before: 1,001 cases
 compared byte for byte against the previous library, plus parity (1845 functions on both backends), the
-AddressSanitizer + UBSan C tests and a ThreadSanitizer run of the FFT cache. Across the 21 shared bench cases the
-geometric mean went from 1.21x to 1.10x NumPy's time.
+AddressSanitizer + UBSan C tests and a ThreadSanitizer run of the FFT cache (the second round below: 1,135 cases,
+same checks). Across the 21 shared bench cases the geometric mean went from 1.21x to 1.10x NumPy's time after the
+first round.
 
 - **Random variates with scalar parameters** (`normal`, `exponential`, `gamma`, ... on both backends): the draw loop
   validated the same scalar parameters once per element, parsing argument names each time, and recomputed every
@@ -177,6 +178,13 @@ geometric mean went from 1.21x to 1.10x NumPy's time.
   values 2.02 -> 0.39 ms (NumPy 0.34).
 - **`min` / `max` of contiguous float64 use AVX2** when the CPU has it, with exact fix-ups so the first NaN and the
   first of tied -0.0 / 0.0 are returned as before: 1M values 1.13 -> 0.33 ms. Other CPUs keep the scalar loop.
+- **FFT without copies around the transform**: `tsr_fft` stages its input through a buffer only when input and
+  output overlap, and the new `tsr_fft_real` transforms real input directly (the plan's first step reads `x` as
+  `(x, 0.0)`, so the conversion pass to complex128 goes away). `Fft::fft` / `ifft` call them out of place, `rfft` /
+  `irfft` no longer copy their input or the inner result, and `Tessero\Ext` `Engine::fft` transforms out of place.
+  `fft` 2^20 of real input 66 -> 49 ms (NumPy 52), complex 67 -> 51 ms (NumPy 47), `rfft` 37 -> 34 ms.
+- **`var` / `std` without a row buffer**: the squared deviations are summed in 128-value blocks with the same split
+  and rounding as the buffered sum, so the result is unchanged. 1M values 2.0 -> 1.1 ms (NumPy 2.9).
 
 ### Earlier in this cycle
 

@@ -416,21 +416,20 @@ PHP_METHOD(Engine, fft)
         Z_PARAM_BOOL(inverse)
     ZEND_PARSE_PARAMETERS_END();
     if (as_contig(x, 6, return_value) == FAILURE) RETURN_THROWS();
-    /* as_contig may have returned the caller's own contiguous complex array: transform a copy */
+    /* as_contig may have returned the caller's own contiguous complex array: transform it out of place into a new
+       one (no copy of the input, and the kernel needs no staging pass) */
     tsr_obj *o = Z_TSR_P(return_value);
     if (o->a.ndim == 0) { zend_throw_exception(tsr_ce_shape_exception, "fft needs at least one dimension", 0); RETURN_THROWS(); }
     zval C;
     int64_t n = o->a.shape[o->a.ndim - 1];
     tsr_ndarray_new(&C, 6, o->a.ndim, o->a.shape, 0);
-    memcpy(ptr0(&C), ptr0(return_value), (size_t)(tsr_array_size(&o->a) * 16));
+    int64_t rows = n ? tsr_array_size(&o->a) / n : 0;
+    if (rows > 0) {
+        int rc = tsr_fft(n, rows, inverse, ptr0(return_value), ptr0(&C));
+        if (rc != 0) { zval_ptr_dtor(&C); tsr_throw_rc(rc, "fft"); RETURN_THROWS(); }
+    }
     zval_ptr_dtor(return_value);
     ZVAL_COPY_VALUE(return_value, &C);
-    int64_t rows = n ? tsr_array_size(&Z_TSR_P(return_value)->a) / n : 0;
-    if (rows > 0) {
-        double *p = ptr0(return_value);
-        int rc = tsr_fft(n, rows, inverse, p, p);
-        if (rc != 0) { tsr_throw_rc(rc, "fft"); RETURN_THROWS(); }
-    }
 }
 
 static int rng_state(zend_long seed, uint64_t st[6])

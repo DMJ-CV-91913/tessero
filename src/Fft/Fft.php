@@ -43,7 +43,7 @@ final class Fft
             throw new ShapeError("Invalid number of FFT data points ({$len}).");
         }
         $x = self::fitLength($x, $len, $ax);
-        $work = $x->moveAxis($ax, -1)->copy();                  // rows x len, contiguous
+        $work = $x->moveAxis($ax, -1)->contiguous();            // rows x len, C order; the kernel only reads it
         $h = intdiv($len, 2) + 1;
         $rows = intdiv($work->size(), $len);
         $outShape = $work->shape();
@@ -75,7 +75,7 @@ final class Fft
             throw new ShapeError('irfft: invalid output length.');
         }
         $h = intdiv($n, 2) + 1;
-        $work = self::fitLength($x, $h, $ax)->moveAxis($ax, -1)->copy();
+        $work = self::fitLength($x, $h, $ax)->moveAxis($ax, -1)->contiguous();   // the kernel only reads it
         $rows = intdiv($work->size(), $h);
         $outShape = $work->shape();
         $outShape[count($outShape) - 1] = $n;
@@ -352,24 +352,27 @@ final class Fft
             throw new ShapeError('fft needs at least one dimension.');
         }
         $ax = NDArray::normAxis($axis, count($x->shape()));
-        $fresh = $x->dtype() !== DType::Complex128;
-        $x = $x->astype(DType::Complex128);
+        // real input stays real: tsr_fft_real reads it as (x, 0) pairs, bit for bit the complex conversion it replaces
+        $real = $x->dtype() !== DType::Complex128;
+        $x = $x->astype($real ? DType::Float64 : DType::Complex128);
         $len = $n ?? $x->shape()[$ax];
         if ($len < 1) {
             throw new ShapeError("Invalid number of FFT data points ({$len}).");
         }
         if ($len !== $x->shape()[$ax]) {
             $x = self::fitLength($x, $len, $ax);
-            $fresh = false;
         }
-        $last = $ax === count($x->shape()) - 1;
-        // transform in place when we already own a contiguous complex copy along the last axis
-        $work = $fresh && $last && $x->isContiguous() ? $x : $x->moveAxis($ax, -1)->copy();
+        // rows along the last axis, C order (a view when already so), transformed out of place into a new array:
+        // the input is never copied for the kernel
+        $src = $x->moveAxis($ax, -1)->contiguous();
+        $work = NDArray::empty($src->shape(), DType::Complex128);
         $rows = intdiv($work->size(), $len);
         if ($rows > 0) {
             $ffi = Library::ffi();
-            $p = $ffi->cast('double*', $work->ptr());
-            Library::check($ffi->tsr_fft($len, $rows, $inverse ? 1 : 0, $p, $p), 'fft');
+            $in = $ffi->cast('double*', $src->ptr());
+            $out = $ffi->cast('double*', $work->ptr());
+            Library::check($real ? $ffi->tsr_fft_real($len, $rows, $inverse ? 1 : 0, $in, $out)
+                : $ffi->tsr_fft($len, $rows, $inverse ? 1 : 0, $in, $out), 'fft');
         }
         $scale = match ($norm) {
             'backward' => 1.0,

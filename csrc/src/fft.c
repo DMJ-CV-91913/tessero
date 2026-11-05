@@ -173,6 +173,23 @@ static void rec(const plan_t *pl, cpx *out, const cpx *in, int64_t fstride, int6
     butterfly(pl, pl->ltw[fi], out, fstride, m, p, inverse, scratch);
 }
 
+/* rec for real input: the leaf reads x[q * istride] as (x, 0.0), exactly what converting the input to complex first
+   would hold, so the transform is the same bit for bit without that conversion pass */
+static void rec_real(const plan_t *pl, cpx *out, const double *in, int64_t fstride, int64_t istride, int fi, int inverse,
+                     cpx *scratch)
+{
+    int64_t p = pl->factors[fi];
+    int64_t m = 1;
+    for (int j = fi + 1; j < pl->nf; j++) m *= pl->factors[j];
+    if (m == 1) {
+        for (int64_t q = 0; q < p; q++) out[q] = (cpx){in[q * istride], 0.0};
+    } else {
+        for (int64_t q = 0; q < p; q++)
+            rec_real(pl, out + q * m, in + q * istride, fstride * p, istride * p, fi + 1, inverse, scratch);
+    }
+    butterfly(pl, pl->ltw[fi], out, fstride, m, p, inverse, scratch);
+}
+
 static void plan_free(plan_t *pl)
 {
     for (int fi = 0; fi < pl->nf; fi++) pl_free(pl->cached, pl->ltw[fi], pl->ltw_len[fi] * (int64_t)sizeof(cpx));
@@ -227,6 +244,12 @@ static void run_plan(const plan_t *pl, const cpx *in, cpx *out, int inverse, cpx
 {
     if (pl->n == 1) { out[0] = in[0]; return; }
     rec(pl, out, in, 1, 1, 0, inverse, scratch);
+}
+
+static void run_plan_real(const plan_t *pl, const double *in, cpx *out, int inverse, cpx *scratch)
+{
+    if (pl->n == 1) { out[0] = (cpx){in[0], 0.0}; return; }
+    rec_real(pl, out, in, 1, 1, 0, inverse, scratch);
 }
 
 /* Bluestein: X_k = w_k * sum_j (x_j w_j) conj(w_{k-j}), w_k = exp(-/+ i pi k^2 / n). Read-only once built; the two
@@ -461,7 +484,10 @@ static void fft_release(fft_ref *r)
     FFT_UNLOCK();
 }
 
-int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out)
+/* rows x n complex (or real, real_in) -> rows x n complex. The input is staged row by row through a buffer only when
+   it overlaps the output (an in-place transform) or a real row feeds Bluestein; otherwise the plan reads it directly,
+   which saves a pass over the data (and, for real input, the conversion to complex the caller would do). */
+static int fft_rows(int64_t n, int64_t rows, int inverse, const double *in, int real_in, double *out)
 {
     if (n < 1 || rows < 0 || !in || !out) return TSR_EARG;
     if (rows == 0) return TSR_OK;
@@ -469,29 +495,49 @@ int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out)
     factorize(n, f, &maxp);
     const int use_blue = maxp > TSR_FFT_MAX_RADIX;
     const double scale = inverse ? 1.0 / (double)n : 1.0;
+    const uintptr_t ib = (uintptr_t)in, ie = ib + (uintptr_t)(rows * n * (real_in ? 1 : 2)) * sizeof(double);
+    const uintptr_t ob = (uintptr_t)out, oe = ob + (uintptr_t)(rows * n * 2) * sizeof(double);
+    const int stage = (ib < oe && ob < ie) || (use_blue && real_in);
 
     fft_ref ref;
     int rc = fft_acquire(use_blue ? K_BLUE : K_PLAN, n, inverse, &ref);
     if (rc != TSR_OK) return rc;
-    /* per-call memory: the row staging buffer (input may alias output), the generic butterfly's scratch and,
-       for Bluestein, its two length-M work buffers */
+    /* per-call memory: the row staging buffer, the generic butterfly's scratch and, for Bluestein, its two
+       length-M work buffers */
     const int64_t M = use_blue ? ((const blue_t *)ref.obj)->M : 0;
-    const int64_t nscr = use_blue ? 0 : maxp + 1;
-    const int64_t work = (n + nscr + 2 * M) * (int64_t)sizeof(cpx);
-    cpx *tmp = (cpx *)tsr_alloc(work);
-    if (!tmp) { fft_release(&ref); return TSR_ENOMEM; }
-    cpx *scratch = tmp + n, *wa = scratch + nscr, *wb = wa + M;
+    const int64_t nstage = stage ? n : 0, nscr = use_blue ? 0 : maxp + 1;
+    const int64_t work = (nstage + nscr + 2 * M) * (int64_t)sizeof(cpx);
+    cpx *tmp = work > 0 ? (cpx *)tsr_alloc(work) : NULL;
+    if (work > 0 && !tmp) { fft_release(&ref); return TSR_ENOMEM; }
+    cpx *scratch = tmp + nstage, *wa = scratch + nscr, *wb = wa + M;
     for (int64_t r = 0; r < rows; r++) {
-        memcpy(tmp, in + 2 * n * r, (size_t)n * sizeof(cpx));
-        if (use_blue) blue_run((const blue_t *)ref.obj, tmp, (cpx *)(out + 2 * n * r), wa, wb);
-        else run_plan((const plan_t *)ref.obj, tmp, (cpx *)(out + 2 * n * r), inverse, scratch);
+        cpx *o = (cpx *)(out + 2 * n * r);
+        const cpx *src = real_in ? NULL : (const cpx *)(in + 2 * n * r);
+        if (stage) {
+            if (real_in) { const double *x = in + n * r; for (int64_t i = 0; i < n; i++) tmp[i] = (cpx){x[i], 0.0}; }
+            else memcpy(tmp, src, (size_t)n * sizeof(cpx));
+            src = tmp;
+        }
+        if (use_blue) blue_run((const blue_t *)ref.obj, src, o, wa, wb);
+        else if (real_in && !stage) run_plan_real((const plan_t *)ref.obj, in + n * r, o, inverse, scratch);
+        else run_plan((const plan_t *)ref.obj, src, o, inverse, scratch);
     }
-    tsr_free(tmp, work);
+    if (tmp) tsr_free(tmp, work);
     fft_release(&ref);
     if (rc == TSR_OK && inverse) {
         for (int64_t i = 0; i < 2 * n * rows; i++) out[i] *= scale;
     }
     return rc;
+}
+
+int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out)
+{
+    return fft_rows(n, rows, inverse, in, 0, out);
+}
+
+int tsr_fft_real(int64_t n, int64_t rows, int inverse, const double *in, double *out)
+{
+    return fft_rows(n, rows, inverse, in, 1, out);
 }
 
 /*
@@ -528,8 +574,7 @@ int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out)
     if (n % 2 == 1) {
         cpx *buf = (cpx *)tsr_alloc(n * rows * (int64_t)sizeof(cpx));
         if (!buf) return TSR_ENOMEM;
-        for (int64_t i = 0; i < n * rows; i++) buf[i] = (cpx){in[i], 0.0};
-        int rc = tsr_fft(n, rows, 0, (double *)buf, (double *)buf);
+        int rc = tsr_fft_real(n, rows, 0, in, (double *)buf);
         if (rc == TSR_OK)
             for (int64_t r = 0; r < rows; r++) memcpy(out + 2 * h * r, buf + n * r, (size_t)h * sizeof(cpx));
         tsr_free(buf, n * rows * (int64_t)sizeof(cpx));
@@ -538,11 +583,11 @@ int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out)
     const int64_t m = n / 2;
     cpx *Z = (cpx *)tsr_alloc(m * rows * (int64_t)sizeof(cpx));
     if (!Z) return TSR_ENOMEM;
-    memcpy(Z, in, (size_t)(n * rows) * sizeof(double));              /* (x0 + i x1, x2 + i x3, ...) */
     fft_ref wref;
     if (fft_acquire(K_RTW, n, 0, &wref) != TSR_OK) { tsr_free(Z, m * rows * (int64_t)sizeof(cpx)); return TSR_ENOMEM; }
     const tw_t W = *(const tw_t *)wref.obj;
-    int rc = tsr_fft(m, rows, 0, (double *)Z, (double *)Z);
+    /* the input read as m complex values (x0 + i x1, x2 + i x3, ...), transformed straight into Z */
+    int rc = tsr_fft(m, rows, 0, in, (double *)Z);
     if (rc == TSR_OK) {
         for (int64_t r = 0; r < rows; r++) {
             const cpx *z = Z + m * r;
@@ -604,8 +649,8 @@ int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out)
             z[k].im = ei + orr;
         }
     }
-    int rc = tsr_fft(m, rows, 1, (double *)Z, (double *)Z);
-    if (rc == TSR_OK) memcpy(out, Z, (size_t)(n * rows) * sizeof(double));
+    /* m complex results are the n real outputs (interleaved re, im = x[2j], x[2j+1]): transform straight into out */
+    int rc = tsr_fft(m, rows, 1, (double *)Z, out);
     fft_release(&wref);
     tsr_free(Z, m * rows * (int64_t)sizeof(cpx));
     return rc;

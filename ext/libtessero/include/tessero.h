@@ -235,8 +235,12 @@ int64_t tsr_flush_subnormal_f64(double *x, int64_t n);
 int64_t tsr_canon_nan_f64(double *x, int64_t n);
 int64_t tsr_nan_first_f64(const double *x, int64_t n);
 
-/* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out ---- */
+/* ---- FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out (else the two
+   must not overlap; a separate out saves a copy) ---- */
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);
+/* the same transform of real input: rows x n float64 -> rows x n complex128 (the full spectrum, bit for bit what tsr_fft
+   gives for (x, 0) pairs, without that conversion pass); in and out must not overlap */
+int tsr_fft_real(int64_t n, int64_t rows, int inverse, const double *in, double *out);
 /* real input: rows x n float64 -> rows x (n/2 + 1) complex128 (half the work of tsr_fft); irfft is the inverse
    (rows x (n/2 + 1) complex -> rows x n real, scaled by 1/n, imaginary parts of the DC/Nyquist bins ignored) */
 int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);
