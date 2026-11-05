@@ -370,7 +370,9 @@ static void tw_free(tw_t *w) { pl_free(w->cached, w->t, w->len * (int64_t)sizeof
  * in use is never evicted, and a lookup that finds the cache full of busy entries builds a private copy. The cached
  * values are the ones a fresh build computes, so results are bit-identical with or without the cache. */
 #define TSR_FFT_CACHE_SLOTS 16
-#define TSR_FFT_CACHE_BYTES ((int64_t)64 << 20)
+#ifndef TSR_FFT_CACHE_BYTES
+#  define TSR_FFT_CACHE_BYTES ((int64_t)64 << 20)   /* build with -DTSR_FFT_CACHE_BYTES=... to change the cap */
+#endif
 
 enum { K_PLAN, K_BLUE, K_RTW };
 

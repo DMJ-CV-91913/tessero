@@ -185,6 +185,11 @@ first round.
   `fft` 2^20 of real input 66 -> 49 ms (NumPy 52), complex 67 -> 51 ms (NumPy 47), `rfft` 37 -> 34 ms.
 - **`var` / `std` without a row buffer**: the squared deviations are summed in 128-value blocks with the same split
   and rounding as the buffered sum, so the result is unchanged. 1M values 2.0 -> 1.1 ms (NumPy 2.9).
+- **Reductions to a scalar** (`sum`, `prod`, `min`, `max`, `argmin`, `argmax`, `any`, `all`, `mean`, `var`, `std`
+  with no axis, FFI backend): the same kernel call writes into a reused result slot instead of a new 0-d array with
+  its own shape and stride descriptors, which was most of the cost of a small reduction. 10 values: `sum` 7.0 ->
+  1.9 us (NumPy 1.0), `mean` 7.1 -> 1.6 us (NumPy 2.7), `var` 21.5 -> 1.7 us (NumPy 9.1).
+- The FFT plan cache cap can be set at build time (`-DTSR_FFT_CACHE_BYTES=...`, default 64 MiB).
 
 ### Earlier in this cycle
 

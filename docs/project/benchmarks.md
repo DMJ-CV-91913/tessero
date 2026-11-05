@@ -67,9 +67,13 @@ single-pass mean and the AVX2 min/max), before the FFT copy removal. Outside the
 A 2^20 complex FFT spends about 35 ms in butterfly arithmetic and 16 ms in the recursion's strided reads of its input
 (a sequential copy of the same 16 MB takes 1.6 ms); the time around the kernel call is now under a millisecond.
 
+Reductions to a scalar on small arrays (FFI backend, per call): `sum` of 10 values 1.9 us (NumPy 1.0), `max` 1.9 us
+(1.1), `mean` 1.6 us (2.7), `var` 1.7 us (9.1).
+
 Known gaps, largest first: `sort` (radix sort with a fixed cost of about 26 ms even on sorted input, against NumPy's
-AVX2 quicksort), Bluestein lengths (their plans exceed the 64 MiB FFT cache), `rfft` (1.3x), and a fixed cost of about
-7 us per reduction call against NumPy's 1 us, which dominates small arrays.
+AVX2 quicksort), Bluestein lengths (their plans, about 112 MB at 1,000,003 points, exceed the 64 MiB FFT cache: 490 ms
+per call against NumPy's 260; with a 256 MiB cap a repeated call takes about 220 ms), `rfft` (1.3x), and `sum` / `max`
+of 1M values (1.1-1.25x).
 
 Reproduce:
 

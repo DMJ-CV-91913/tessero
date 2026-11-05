@@ -1430,6 +1430,22 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             return $axis === null && ! $keepdims ? $res->item() : $res;
         }
         $n = count($this->shape);
+        if ($axis === null && ! $keepdims && $this->size > 0) {
+            // full reduction to a scalar: the same kernel call as below, into a reused slot instead of a new 0-d array
+            // (a small sum() spent most of its time creating that array and its shape/stride descriptors)
+            $flat = $src->contiguous();
+            $outDt = self::reduceDtype($op, $flat->dtype);
+            $s = self::scalarSlots();
+            $s->shape[0] = $flat->size;
+            $s->stride[0] = $flat->dtype->itemsize();
+            Library::check(Library::ffi()->tsr_reduce(
+                $op, $flat->dtype->value, 1, $s->shape, $flat->ptr(), $s->stride, 0, $outDt->value, $s->bytes, $s->none,
+            ), 'reduce');
+            $v = unpack($outDt->packFormat(), FFI::string($s->bytes, $outDt->itemsize()))[1];
+
+            // as item() reads a bool (any/all, and min/max of a bool array through its uint8 view)
+            return $outDt === DType::Bool || ($this->dtype === DType::Bool && ($op === Abi::R_MIN || $op === Abi::R_MAX)) ? $v !== 0 : $v;
+        }
         if ($axis === null) {
             $flat = $src->contiguous();
             $flat = new self($flat->buffer, $flat->dtype, [$flat->size], null, $flat->offset);
@@ -1477,15 +1493,47 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         return $r;
     }
 
-    private function reduceAxis(int $op, int $axis): self
+    /** result dtype of a reduction */
+    private static function reduceDtype(int $op, DType $dt): DType
     {
-        $dt = $this->dtype;
-        $outDt = match ($op) {
+        return match ($op) {
             Abi::R_SUM, Abi::R_PROD => $dt->isFloat() ? $dt : DType::Int64,
             Abi::R_MIN, Abi::R_MAX => $dt,
             Abi::R_ARGMIN, Abi::R_ARGMAX => DType::Int64,
             default => DType::Bool,
         };
+    }
+
+    /** @var object{bytes: CData, mean: CData, m2: CData, values: CData, shape: CData, stride: CData, none: CData}|null */
+    private static ?object $slots = null;
+
+    /**
+     * Reused FFI memory for reductions to a scalar: a 16-byte result slot (also read as two doubles by moments) and
+     * one-element shape/stride descriptors. Each call fills and reads them before returning, so one set serves all.
+     */
+    private static function scalarSlots(): object
+    {
+        if (self::$slots === null) {
+            $ffi = Library::ffi();
+            $values = $ffi->new('double[2]');
+            self::$slots = (object) [
+                'values' => $values,
+                'bytes' => $ffi->cast('void*', FFI::addr($values[0])),
+                'mean' => $ffi->cast('double*', FFI::addr($values[0])),
+                'm2' => $ffi->cast('double*', FFI::addr($values[1])),
+                'shape' => $ffi->new('int64_t[1]'),
+                'stride' => $ffi->new('int64_t[1]'),
+                'none' => $ffi->new('int64_t[1]'),
+            ];
+        }
+
+        return self::$slots;
+    }
+
+    private function reduceAxis(int $op, int $axis): self
+    {
+        $dt = $this->dtype;
+        $outDt = self::reduceDtype($op, $dt);
         $shape = $this->shape;
         $len = $shape[$axis];
         array_splice($shape, $axis, 1);
@@ -1519,6 +1567,19 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     {
         $src = $this->dtype === DType::Bool ? $this->view(DType::UInt8) : $this;
         $n = count($this->shape);
+        if ($axis === null && ! $keepdims && $this->size > 0 && $this->dtype !== DType::Complex128) {
+            // mean / var of the whole array: the same kernel call as below, into the reused scalar slots
+            $flat = $src->contiguous();
+            $s = self::scalarSlots();
+            $s->shape[0] = $flat->size;
+            $s->stride[0] = $flat->dtype->itemsize();
+            Library::check(Library::ffi()->tsr_moments(
+                $flat->dtype->value, 1, $s->shape, $flat->ptr(), $s->stride, 0, $s->mean, $s->none,
+                $variance ? $s->m2 : null, $variance ? $s->none : null,
+            ), 'moments');
+
+            return $variance ? $s->values[1] / (max(0, $this->size - $ddof) ?: NAN) : $s->values[0];
+        }
         if ($axis === null) {
             $c = $src->contiguous();
             $src = new self($c->buffer, $c->dtype, [$c->size], null, $c->offset);
