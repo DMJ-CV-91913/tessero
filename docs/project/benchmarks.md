@@ -85,6 +85,55 @@ OPENBLAS_NUM_THREADS=1 php -d ffi.enable=1 bench/run.php --json --no-gates > tes
 OPENBLAS_NUM_THREADS=1 python3 bench/numpy_bench.py --json > numpy.json
 ```
 
+## Tessero in a PHP app vs SciPy in a Python app
+
+The same machine and conditions as the NumPy table: Intel Core i7-4790 (Haswell, AVX2), one thread
+(`OPENBLAS_NUM_THREADS=1`), PHP 8.5.12 (FFI backend) against Python with SciPy 1.17.1 / NumPy 2.4.4, median of
+repeated runs (the optimize cases repeat each call 200 times). Both sides build bit-identical inputs from the same
+seeds: Tessero's generator reproduces NumPy's stream. The optimize cases use each environment's natural code: a
+PHP closure for the objective in Tessero, `scipy.optimize.rosen` (vectorised NumPy) in SciPy. Measured 2026-11-05 on
+0.3.0. A ratio below 1 means Tessero is faster.
+
+| case | Tessero ms | SciPy ms | ratio |
+|---|---|---|---|
+| optimize.minimize rosen BFGS n=5 | 0.333 | 10.3 | 0.03 |
+| optimize.minimize_scalar brent | 0.00285 | 0.0331 | 0.09 |
+| optimize.brentq | 0.00287 | 0.00965 | 0.30 |
+| optimize.linprog 200x200 dense (SciPy: HiGHS) | 9.14 | 25.7 | 0.36 |
+| special.logsumexp 1M | 8.11 | 21.4 | 0.38 |
+| stats.zscore 1M | 10.1 | 14.3 | 0.70 |
+| stats.describe 1M | 31.1 | 41.2 | 0.76 |
+| stats.ttest_ind 100k vs 100k | 1.18 | 1.45 | 0.81 |
+| stats.pearsonr 1M | 25.4 | 30.6 | 0.83 |
+| linalg.solve 600x600 | 6.2 | 6.63 | 0.94 |
+| special.jv(1.5, x) 1M | 751 | 779 | 0.96 |
+| linalg.svd 300x300 | 22.4 | 22.1 | 1.01 |
+| linalg.inv 600x600 | 18.2 | 17.8 | 1.03 |
+| linalg.eigh 300x300 | 12.2 | 10.8 | 1.12 |
+| stats.norm.cdf 1M | 47.2 | 40.6 | 1.16 |
+| spatial.distance.pdist 2000x3 | 8.54 | 7.25 | 1.18 |
+| spatial.distance.cdist 1000x1000x3 | 4.29 | 3.59 | 1.20 |
+| linalg.lu_factor 600x600 | 6.54 | 5.37 | 1.22 |
+| signal.convolve 10k * 101 | 0.355 | 0.282 | 1.26 |
+| linalg.det 600x600 | 6.34 | 4.94 | 1.28 |
+| special.erf 1M | 25.2 | 18.9 | 1.33 |
+| special.expit 1M | 10.4 | 7.84 | 1.33 |
+| special.gamma 1M | 24.4 | 17.0 | 1.44 |
+| signal.lfilter order 2, 1M | 9.2 | 4.5 | 2.04 |
+| ndimage.uniform_filter 1000x1000 | 31.5 | 12.7 | 2.48 |
+| ndimage.gaussian_filter 1000x1000 | 68.1 | 16.8 | 4.05 |
+| signal.fftconvolve 100k * 1001 | 250 | 3.51 | 71.4 |
+
+Both sides return the same answers: `linprog` reaches the same optimum to 12 digits (HiGHS takes 83 iterations,
+Tessero's simplex 109); BFGS stops at the same point after the same 25 iterations (183 function evaluations against
+SciPy's 180), though Tessero reports a precision-loss status where SciPy reports success, an open discrepancy.
+Known gaps: `signal.fftconvolve` transforms at the exact length (101,000 = 2^3 5^3 101 here, a Bluestein transform)
+where SciPy pads to a fast length; the `ndimage` filters and `lfilter` are scalar loops; `lu_factor` and `det` still
+pay LAPACKE's row-major copies (the fix used for `solve` applies); `linalg.expm` does not yet handle matrices with
+complex eigenvalues (a general random matrix raises), so it is not in the table.
+
+Reproduce: the scripts are in `bench/` (`scipy_bench.php`, `scipy_bench.py`), run under the same conditions.
+
 ## Correctness, not just speed
 
 Every performance figure sits on top of verified correctness, generated from recorded test runs against real
