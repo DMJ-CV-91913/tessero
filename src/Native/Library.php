@@ -137,8 +137,27 @@ final class Library
      */
     private static function cdefBesideItsDlls(string $header, string $path): FFI
     {
+        return self::besideItsDlls($path, static fn (): FFI => FFI::cdef($header, $path));
+    }
+
+    /**
+     * Run $load (which loads the library at $path) with the library's directory as the DLL directory on Windows,
+     * restoring the previous setting after; elsewhere $load just runs. Shared by the cdef loader and the opcache
+     * preload script (resources/preload.php, FFI::load), so both find the runtime DLLs bundled next to tessero.dll
+     * without PATH changes (platform-debt PD-18).
+     *
+     * @internal
+     *
+     * @template T
+     *
+     * @param callable(): T $load
+     *
+     * @return T
+     */
+    public static function besideItsDlls(string $path, callable $load): mixed
+    {
         if (PHP_OS_FAMILY !== 'Windows') {
-            return FFI::cdef($header, $path);
+            return $load();
         }
         $k32 = FFI::cdef(
             'unsigned long GetDllDirectoryA(unsigned long nBufferLength, char *lpBuffer);'
@@ -151,7 +170,7 @@ final class Library
         $previous = $n > 0 && $n < 32768 ? FFI::string($buf) : null;
         $k32->SetDllDirectoryA(dirname($path));
         try {
-            return FFI::cdef($header, $path);
+            return $load();
         } finally {
             $k32->SetDllDirectoryA($previous);
         }

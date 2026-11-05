@@ -42,7 +42,9 @@ declare(strict_types=1);
             error_log('[tessero] preload: cannot write a temporary header in ' . $tmp);
         } else {
             try {
-                FFI::load($file);
+                // on Windows the bundled OpenBLAS / MinGW runtime DLLs next to tessero.dll resolve only with that
+                // directory as the DLL directory, as in the cdef loader (platform-debt PD-18)
+                \Tessero\Native\Library::besideItsDlls($lib, static fn () => FFI::load($file));
             } finally {
                 @unlink($file);
             }

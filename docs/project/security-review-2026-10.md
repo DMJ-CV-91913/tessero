@@ -142,8 +142,8 @@ Added by the 2026-10-24 validation
 * Done (PR #57): exact per-architecture pins for the batch D Wallenius and radial c = -inf checks on aarch64.
 * Done (PR #57): the security contact is security@tessero.org (GitHub private vulnerability reporting stays
   disabled by owner decision).
-* Open (owner): point the "protect: main" ruleset at the default branch; its branch condition is empty, so main is
-  not protected against force pushes.
+* Done (owner, 2026-10-24): the "protect: main" ruleset targets the default branch and blocks force pushes and
+  deletion of main (verified active 2026-11-05).
 
 ## The outside advisory ("omni-panel")
 

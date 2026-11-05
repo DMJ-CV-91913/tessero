@@ -38,6 +38,17 @@ Integer address of any pointer CData (void* is routed through char*: a direct vo
 static available(): bool
 ```
 
+### besideItsDlls
+
+```php
+static besideItsDlls(string $path, callable $load): mixed
+```
+
+Run $load (which loads the library at $path) with the library's directory as the DLL directory on Windows,
+restoring the previous setting after; elsewhere $load just runs. Shared by the cdef loader and the opcache
+preload script (resources/preload.php, FFI::load), so both find the runtime DLLs bundled next to tessero.dll
+without PATH changes (platform-debt PD-18).
+
 ### check
 
 ```php

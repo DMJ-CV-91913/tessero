@@ -241,6 +241,12 @@ From the memory-safety review (`docs/project/memory-safety-review.md`):
 
 ### Fixed
 
+- **Windows: the DLL exports only the C ABI.** MinGW exported every non-static function (1621 symbols, including
+  vendored and internal ones); a `.def` file generated from `tessero.h` limits it to the 141 declared functions,
+  and `make abi-check` compares the DLL's export table with the header (platform-debt PD-12).
+- **Windows: BLAS thread control works.** `tsr_set_blas_threads` / `Tessero::setBlasThreads()` were a no-op on
+  Windows (the lookup used `dlsym`); they now find OpenBLAS / MKL with `GetProcAddress`, and the `openblas_threads`
+  feature is reported (PD-11).
 - **`scipy.linalg.pascal` is O(n^2)**: every entry was a separate O(n) binomial product, so a large `n` ran for
   minutes (a CI fuzzing timeout). Entries now come from one binomial row per row or anti-diagonal, the same
   function `invpascal` uses, with identical values: `pascal(2000)` 12.3 s -> 0.19 s.

@@ -187,12 +187,12 @@ static void tsr_blas_resolve(void)
         while (atomic_load_explicit(&g_blas_state, memory_order_acquire) != 2) { }
         return;
     }
+    static const char *const setters[] = {"openblas_set_num_threads", "goto_set_num_threads", "MKL_Set_Num_Threads"};
+    static const char *const getters[] = {"openblas_get_num_threads", NULL, "MKL_Get_Max_Threads"};
 #if !defined(_WIN32)
     void *self = NULL;
     Dl_info info;
     if (dladdr((void *)&tsr_blas_resolve, &info) && info.dli_fname) self = dlopen(info.dli_fname, RTLD_LAZY | RTLD_NOLOAD);
-    static const char *const setters[] = {"openblas_set_num_threads", "goto_set_num_threads", "MKL_Set_Num_Threads"};
-    static const char *const getters[] = {"openblas_get_num_threads", NULL, "MKL_Get_Max_Threads"};
     for (size_t i = 0; i < sizeof setters / sizeof setters[0] && !g_blas_set; i++) {
         void *s = tsr_blas_sym(self, setters[i]);
         if (!s) continue;
@@ -200,6 +200,21 @@ static void tsr_blas_resolve(void)
         if (getters[i]) g_blas_get = (tsr_blas_get_fn)tsr_blas_sym(self, getters[i]);
     }
     if (self) dlclose(self);   /* drops the reference RTLD_NOLOAD took; the object itself stays loaded */
+#else
+    /* Windows has no dlsym: look the functions up in the BLAS DLL this library imports (already loaded, so
+       GetModuleHandle takes no reference), by the names OpenBLAS and MKL ship under (platform-debt PD-11) */
+    static const char *const dlls[] = {"libopenblas.dll", "openblas.dll", "libopenblas64_.dll", "mkl_rt.dll", "mkl_rt.2.dll"};
+    for (size_t d = 0; d < sizeof dlls / sizeof dlls[0] && !g_blas_set; d++) {
+        HMODULE m = GetModuleHandleA(dlls[d]);
+        if (!m) continue;
+        for (size_t i = 0; i < sizeof setters / sizeof setters[0] && !g_blas_set; i++) {
+            FARPROC s = GetProcAddress(m, setters[i]);
+            if (!s) continue;
+            g_blas_set = (tsr_blas_set_fn)(void (*)(void))s;
+            FARPROC g = getters[i] ? GetProcAddress(m, getters[i]) : NULL;
+            if (g) g_blas_get = (tsr_blas_get_fn)(void (*)(void))g;
+        }
+    }
 #endif
     atomic_store_explicit(&g_blas_state, 2, memory_order_release);
 }

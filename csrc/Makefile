@@ -43,6 +43,10 @@ else ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S)))
   # next to it. Windows resolves a DLL's imports through the process search path, not the DLL's own directory, so
   # without them the library loads only with $(MINGW_PREFIX)/bin on PATH (platform-debt PD-3)
   BUNDLE_DLLS ?= 1
+  # the DLL's export list: exactly the functions declared in tessero.h. PE has no symbol visibility and MinGW exports
+  # every non-static function by default (1600+ internal and vendored symbols); a .def file limits it the way the
+  # version script does on ELF (platform-debt PD-12). `make abi-check` compares the result with the header.
+  WIN_DEF = $(BUILD)/tessero.def
   ifeq ($(LAPACK),)
     LAPACK := -lopenblas
     LAPACK_INC := $(if $(wildcard $(MINGW_PREFIX)/include/openblas/lapacke.h),-I$(MINGW_PREFIX)/include/openblas)
@@ -205,9 +209,9 @@ $(BUILD)/c/cdflib.o: third_party/scipy/cdflib.c
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) $(VIS) -w -MMD -MP -c -o $@ $<
 
-$(OUT)/$(LIBNAME).$(EXT): $(OBJ_C) $(OBJ_CXX) libtessero.map
+$(OUT)/$(LIBNAME).$(EXT): $(OBJ_C) $(OBJ_CXX) libtessero.map $(WIN_DEF)
 	@mkdir -p $(OUT)
-	$(CXX) $(CFLAGS) $(OBJ_C) $(OBJ_CXX) $(SHARED) $(VERSION_SCRIPT) $(CXXLINK) -o $@ $(LDLIBS)
+	$(CXX) $(CFLAGS) $(OBJ_C) $(OBJ_CXX) $(WIN_DEF) $(SHARED) $(VERSION_SCRIPT) $(CXXLINK) -o $@ $(LDLIBS)
 ifneq ($(SONAME),)
 	@# programs linked with -ltessero record the soname: give the loader a file of that name next to the library
 	ln -sf $(LIBNAME).$(EXT) $(OUT)/$(SONAME)
@@ -251,8 +255,23 @@ else
 	rm -f '$(DESTDIR)$(LIBDIR)/$(LIBNAME).$(EXT)' $(if $(SONAME),'$(DESTDIR)$(LIBDIR)/$(SONAME)')
 endif
 
+# Windows: the .def export list, generated from the header with the same extraction abi-check uses
+$(BUILD)/tessero.def: include/tessero.h
+	@mkdir -p $(BUILD)
+	@{ echo EXPORTS; $(CC) -E -P -x c include/tessero.h | grep -oE '\btsr_[a-z0-9_]+[[:space:]]*\(' | sed 's/[[:space:]]*(//' | sort -u; } > $@
+
 # The exported dynamic symbols must be exactly the functions declared in include/tessero.h (ifunc resolvers of
 # exported multiversioned functions aside). Fails on any extra or missing export.
+ifeq ($(EXT),dll)
+abi-check: $(OUT)/$(LIBNAME).$(EXT)
+	@mkdir -p $(BUILD)
+	@$(CC) -E -P -x c include/tessero.h | grep -oE '\btsr_[a-z0-9_]+[[:space:]]*\(' | sed 's/[[:space:]]*(//' | sort -u > $(BUILD)/abi.header
+	@objdump -p $< | awk '/Ordinal\/Name Pointer/ {t = 1; next} t && /^$$/ {exit} t && /\]/ {print $$NF}' | sort -u > $(BUILD)/abi.exported
+	@# comm, not diff: MSYS2 ships diff only in the optional diffutils package
+	@d="$$(LC_ALL=C comm -3 $(BUILD)/abi.header $(BUILD)/abi.exported)"; if [ -n "$$d" ]; then \
+	    echo "abi-check: DLL exports differ from tessero.h (left: declared only, right: exported only):"; echo "$$d"; exit 1; fi; \
+	    echo "abi-check: $$(wc -l < $(BUILD)/abi.exported) DLL exports == tessero.h declarations"
+else
 abi-check: $(OUT)/$(LIBNAME).$(EXT)
 	@mkdir -p $(BUILD)
 	@$(CC) -E -P -x c include/tessero.h | grep -oE '\btsr_[a-z0-9_]+[[:space:]]*\(' | sed 's/[[:space:]]*(//' | sort -u > $(BUILD)/abi.header
@@ -268,6 +287,7 @@ abi-check: $(OUT)/$(LIBNAME).$(EXT)
 	@$(CC) -O1 -o $(BUILD)/abi_interpose tests/abi_interpose.c $(call try_so,-ldl)
 	@cp $< $(BUILD)/libtessero-other-copy.$(EXT)
 	@$(BUILD)/abi_interpose $(abspath $(BUILD))/libtessero-other-copy.$(EXT) $(abspath $<)
+endif
 
 # header dependencies of the C++ and vendored objects (-MMD)
 -include $(wildcard $(BUILD)/cxx/*.d $(BUILD)/c/*.d)
