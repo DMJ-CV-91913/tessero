@@ -2192,6 +2192,14 @@ static void test_abi_runtime(void)
     /* version and capability negotiation: one version source */
     CHECK(tsr_abi_version() == TSR_ABI_VERSION && TSR_ABI_VERSION == 2, "abi version %d", tsr_abi_version());
     CHECK(strcmp(tsr_version(), TSR_VERSION_STRING) == 0, "tsr_version %s", tsr_version());
+    {
+        /* "unknown", or 40 lowercase hex digits optionally followed by "-dirty" */
+        const char *c = tsr_build_commit();
+        int hex = 0;
+        while (c[hex] && ((c[hex] >= '0' && c[hex] <= '9') || (c[hex] >= 'a' && c[hex] <= 'f'))) hex++;
+        CHECK(strcmp(c, "unknown") == 0 || (hex == 40 && (c[40] == '\0' || strcmp(c + 40, "-dirty") == 0)),
+              "tsr_build_commit %s", c);
+    }
     CHECK(tsr_feature("repro_f32") == 1 && tsr_feature("gemm_canonical") == 1 && tsr_feature("lapack") == 1, "features present");
     CHECK(tsr_feature("openmp") == tsr_openmp(), "openmp feature matches tsr_openmp");
     const int fpenv = tsr_feature("fpenv_check");

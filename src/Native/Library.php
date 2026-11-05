@@ -145,7 +145,7 @@ final class Library
             . ' int SetDllDirectoryA(const char *lpPathName);',
             'kernel32.dll'
         );
-        $buf = FFI::new('char[32768]');
+        $buf = $k32->new('char[32768]');   // through the instance: a static FFI::new() is deprecated since PHP 8.3
         $n = $k32->GetDllDirectoryA(32768, $buf);
         // 0: none set. The buffer is NUL-terminated; the returned count has been seen one short, so it only gates
         $previous = $n > 0 && $n < 32768 ? FFI::string($buf) : null;

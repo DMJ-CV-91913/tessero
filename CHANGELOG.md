@@ -9,6 +9,18 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Added
 
+- **`make -C csrc install`** (`PREFIX`, default `/usr/local`; `DESTDIR`, `INCLUDEDIR`, `LIBDIR`, `BINDIR`). It installs
+  the library and the public headers (`tessero.h`, `tessero_version.h`, `tessero_native.h`, `tessero_repro_f32.h`), so
+  a native consumer builds against `--with-tessero=$PREFIX` and can compare a vendored `tessero_repro_f32.h` with the
+  installed one. `make uninstall` removes them again.
+- **`tsr_build_commit()`**: the git commit the library was built from (`-dirty` when `csrc/` had uncommitted
+  changes, `unknown` outside a checkout unless `make TSR_BUILD_COMMIT=<sha>`). `Tessero::info()`, `vendor/bin/tessero
+  info` and `tessero:doctor --json` report it as `commit`, so a deployment can check that its library matches the
+  commit in `composer.lock`. `tsr_version()` alone is the same for every commit of a release. Additive, so the ABI stays 2.
+- **Windows: `make -C csrc` copies the MinGW runtime DLLs next to `tessero.dll`** (OpenBLAS, gfortran, quadmath,
+  winpthread, ...; `BUNDLE_DLLS=0` turns it off). The FFI loader already searches that directory while it loads the
+  library, so a fresh build now loads without `$MINGW_PREFIX/bin` on `PATH`. Before, only CI did the copy.
+
 - **Opt-in GPU-matching floating-point profile** (`csrc/src/fpenv.c`, declared in `tessero.h`; feature
   `fp_flush_profile`). NVIDIA GPUs flush subnormal values to zero and expose no preserve mode, and NaN results can
   carry different bit patterns on different processors. `tsr_fpenv_flush_enter` / `tsr_fpenv_flush_leave` switch
@@ -177,6 +189,8 @@ From the memory-safety review (`docs/project/memory-safety-review.md`):
 
 ### Fixed
 
+- **Windows FFI loader: no `Calling FFI::new() statically is deprecated` notice** on every load
+  (`Library::cdefBesideItsDlls` built its buffer with a static `FFI::new()`; it now uses the kernel32 FFI instance).
 - **Registry routine errors now use Tessero's exception classes.** On both backends, an index error from a
   registry routine is `IndexError` (`IndexException` in the extension), and a dtype or type error is
   `DTypeError` (`DTypeException`); these used to be PHP's `ValueError`. FFI messages name the method in

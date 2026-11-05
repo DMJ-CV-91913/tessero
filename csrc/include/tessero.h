@@ -17,6 +17,10 @@
  */
 
 const char *tsr_version(void);
+/* The git commit the library was built from (40 hex digits, "-dirty" appended when csrc/ had uncommitted changes),
+   or "unknown" for a build outside a git checkout without TSR_BUILD_COMMIT set (csrc/Makefile). tsr_version names
+   the release only; this tells two builds of the same release apart. */
+const char *tsr_build_commit(void);
 int tsr_simd_level(void);                 /* 0 baseline, 1 AVX2 (x86-64-v3), 2 AVX-512 (x86-64-v4), 3 NEON */
 
 /* ---- memory: 64-byte aligned, NOT zero-filled, counted against a budget ---- */

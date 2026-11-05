@@ -115,6 +115,7 @@ final class Tessero
         return [
             'tessero' => self::VERSION,
             'libtessero' => (string) $ffi->tsr_version(),
+            'commit' => (string) $ffi->tsr_build_commit(),
             'abi' => $ffi->tsr_abi_version(),
             'features' => array_values(array_filter(
                 ['repro_f32', 'gemm_canonical', 'lapack', 'openblas_threads', 'openmp', 'fpenv_check'],

@@ -17,6 +17,10 @@
  */
 
 const char *tsr_version(void);
+/* The git commit the library was built from (40 hex digits, "-dirty" appended when csrc/ had uncommitted changes),
+   or "unknown" for a build outside a git checkout without TSR_BUILD_COMMIT set (csrc/Makefile). tsr_version names
+   the release only; this tells two builds of the same release apart. */
+const char *tsr_build_commit(void);
 int tsr_simd_level(void);                 /* 0 baseline, 1 AVX2 (x86-64-v3), 2 AVX-512 (x86-64-v4), 3 NEON */
 
 /* ---- memory: 64-byte aligned, NOT zero-filled, counted against a budget ---- */
@@ -85,6 +89,9 @@ int tsr_repro_rsqrt_f32(int64_t n, const float *x, float *y);   /* 1/sqrt(x) */
 int tsr_repro_exp2_f32 (int64_t n, const float *x, float *y);   /* 2^x       */
 int tsr_repro_exp_f32  (int64_t n, const float *x, float *y);   /* e^x       */
 int tsr_repro_erf_f32  (int64_t n, const float *x, float *y);   /* erf(x)    */
+int tsr_repro_log_f32  (int64_t n, const float *x, float *y);   /* ln(x)     */
+int tsr_repro_sqrt_f32 (int64_t n, const float *x, float *y);   /* sqrt(x)   */
+int tsr_repro_pow_f32  (int64_t n, const float *x, float a, float *y);   /* x^a */
 int tsr_repro_recip_f32(int64_t n, const float *x, float *y);   /* 1/x, any f32 input */
 int tsr_repro_tanh_f32 (int64_t n, const float *x, float *y);   /* tanh(x)   */
 /* composites: one definition of the composition, mirrored by the Talario GPU shaders */

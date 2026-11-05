@@ -40,6 +40,11 @@ static _Atomic int64_t g_budget = 0;
 
 const char *tsr_version(void) { return TSR_VERSION_STRING; }
 int tsr_abi_version(void) { return TSR_ABI_VERSION; }
+/* csrc/Makefile defines TSR_BUILD_COMMIT for this file only; other builds (the Zend extension) report "unknown" */
+#ifndef TSR_BUILD_COMMIT
+#  define TSR_BUILD_COMMIT "unknown"
+#endif
+const char *tsr_build_commit(void) { return TSR_BUILD_COMMIT; }
 
 #ifdef _OPENMP
 #  include <omp.h>

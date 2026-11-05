@@ -37,8 +37,13 @@ else ifneq (,$(findstring MINGW,$(UNAME_S))$(findstring MSYS,$(UNAME_S)))
   OPENMP ?=
   # MinGW hides M_PI, M_LN2, ... under strict -std=c++17 (__STRICT_ANSI__); MSVC needs the same define (config.w32)
   PLATFORM_DEFS := -D_USE_MATH_DEFINES
+  # the MSYS2 environment root (its shells export MINGW_PREFIX): OpenBLAS headers, and the runtime DLLs bundled below
+  MINGW_PREFIX ?= /mingw64
+  # BUNDLE_DLLS=1 (default): copy the MinGW runtime DLLs tessero.dll imports (OpenBLAS, gfortran, winpthread, ...)
+  # next to it. Windows resolves a DLL's imports through the process search path, not the DLL's own directory, so
+  # without them the library loads only with $(MINGW_PREFIX)/bin on PATH (platform-debt PD-3)
+  BUNDLE_DLLS ?= 1
   ifeq ($(LAPACK),)
-    MINGW_PREFIX ?= /mingw64
     LAPACK := -lopenblas
     LAPACK_INC := $(if $(wildcard $(MINGW_PREFIX)/include/openblas/lapacke.h),-I$(MINGW_PREFIX)/include/openblas)
   endif
@@ -56,6 +61,16 @@ CC ?= cc
 CXX ?= c++
 BUILD ?= ./build
 OUT := ../lib/$(PLATFORM)
+# tsr_build_commit(): the commit of this checkout, "-dirty" when csrc/ differs from it. Only a checkout of this repo
+# counts (../.git): a copy without one (a Composer dist install, a tarball) would otherwise report the commit of
+# whatever repository encloses it. Such builds say "unknown" unless given TSR_BUILD_COMMIT=<sha>. The value is
+# kept in $(BUILD)/build_commit.txt, rewritten only when it changes, so a new commit rebuilds alloc.o and nothing else.
+ifeq ($(origin TSR_BUILD_COMMIT),undefined)
+  TSR_GIT_HEAD := $(if $(wildcard $(CURDIR)/../.git),$(shell git -C $(CURDIR) rev-parse --verify -q HEAD 2>/dev/null))
+  TSR_BUILD_COMMIT := $(if $(TSR_GIT_HEAD),$(TSR_GIT_HEAD)$(shell git -C $(CURDIR) diff --quiet HEAD -- . 2>/dev/null || echo -dirty),unknown)
+endif
+TSR_COMMIT_FILE := $(BUILD)/build_commit.txt
+$(shell mkdir -p $(BUILD) && { [ "$$(cat $(TSR_COMMIT_FILE) 2>/dev/null)" = '$(TSR_BUILD_COMMIT)' ] || printf '%s\n' '$(TSR_BUILD_COMMIT)' > $(TSR_COMMIT_FILE); })
 # numpy/random distributions (vendored, for numpy.random.Generator and scipy.stats rvs)
 NPRAND := third_party/numpy/random/src/distributions.c third_party/numpy/random/src/logfactorial.c \
   third_party/numpy/random/src/random_hypergeometric.c third_party/numpy/random/src/random_mvhg_count.c \
@@ -157,6 +172,9 @@ OBJ_C = $(patsubst %.c,$(BUILD)/c/%.o,$(notdir $(SRC)))
 $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h include/tessero_version.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) $(VIS) -Ithird_party/numpy/include -c -o $@ $<
+# alloc.c defines tsr_build_commit(); the generic rule above builds it, with the commit added
+$(BUILD)/c/alloc.o: CFLAGS += -DTSR_BUILD_COMMIT='"$(TSR_BUILD_COMMIT)"'
+$(BUILD)/c/alloc.o: $(TSR_COMMIT_FILE)
 # repro_f32.c: the reproducible-f32 primitives MUST compile with contraction and fast-math OFF so
 # the compiler cannot contract or reassociate the non-fma arithmetic. This is what keeps the result
 # bit-identical across SIMD level, thread count and compiler (see csrc/repro/GOLDENS.md). The flags
@@ -193,6 +211,44 @@ $(OUT)/$(LIBNAME).$(EXT): $(OBJ_C) $(OBJ_CXX) libtessero.map
 ifneq ($(SONAME),)
 	@# programs linked with -ltessero record the soname: give the loader a file of that name next to the library
 	ln -sf $(LIBNAME).$(EXT) $(OUT)/$(SONAME)
+endif
+ifeq ($(EXT)$(BUNDLE_DLLS),dll1)
+	@# ldd lists the imports transitively; keep those under the MSYS2 root (the system DLLs stay where they are)
+	ldd $@ | awk -v p='$(MINGW_PREFIX)/' 'index($$3, p) == 1 {print $$3}' | sort -u | xargs -r -I{} cp {} $(OUT)/
+	@ls $(OUT)
+endif
+
+# make install [PREFIX=/usr/local] [DESTDIR=...]: the library and the public headers, so a native consumer (Talario)
+# builds with --with-tessero=$(PREFIX). tessero_repro_f32.h is installed verbatim: consumers that vendor it compare
+# their copy with $(PREFIX)/include/tessero_repro_f32.h byte for byte. On Windows the DLL and its bundled runtime
+# DLLs go to bin/, where the loader looks for them.
+PREFIX ?= /usr/local
+DESTDIR ?=
+INCLUDEDIR ?= $(PREFIX)/include
+LIBDIR ?= $(PREFIX)/lib
+BINDIR ?= $(PREFIX)/bin
+PUBLIC_HEADERS := tessero.h tessero_version.h tessero_native.h tessero_repro_f32.h
+
+install: $(OUT)/$(LIBNAME).$(EXT)
+	install -d '$(DESTDIR)$(INCLUDEDIR)'
+	install -m 644 $(addprefix include/,$(PUBLIC_HEADERS)) '$(DESTDIR)$(INCLUDEDIR)/'
+ifeq ($(EXT),dll)
+	install -d '$(DESTDIR)$(BINDIR)'
+	install -m 755 $(OUT)/*.dll '$(DESTDIR)$(BINDIR)/'
+else
+	install -d '$(DESTDIR)$(LIBDIR)'
+	install -m 755 $(OUT)/$(LIBNAME).$(EXT) '$(DESTDIR)$(LIBDIR)/'
+ifneq ($(SONAME),)
+	ln -sf $(LIBNAME).$(EXT) '$(DESTDIR)$(LIBDIR)/$(SONAME)'
+endif
+endif
+
+uninstall:
+	rm -f $(addprefix '$(DESTDIR)$(INCLUDEDIR)'/,$(PUBLIC_HEADERS))
+ifeq ($(EXT),dll)
+	rm -f '$(DESTDIR)$(BINDIR)/$(LIBNAME).$(EXT)'
+else
+	rm -f '$(DESTDIR)$(LIBDIR)/$(LIBNAME).$(EXT)' $(if $(SONAME),'$(DESTDIR)$(LIBDIR)/$(SONAME)')
 endif
 
 # The exported dynamic symbols must be exactly the functions declared in include/tessero.h (ifunc resolvers of
@@ -257,7 +313,7 @@ sanitize: $(BUILD)/test_san
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all portable test sanitize clean fuzz fuzz-standalone abi-check
+.PHONY: all portable test sanitize clean fuzz fuzz-standalone abi-check install uninstall
 
 # ---- fuzzing (see csrc/fuzz/): coverage-guided with libFuzzer (clang + compiler-rt), or the standalone
 #      mutation driver under ASan + UBSan anywhere. Corpora live in fuzz/corpus/<target>.

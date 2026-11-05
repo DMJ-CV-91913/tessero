@@ -37,7 +37,7 @@ switch ($cmd) {
             exit(0);
         }
         foreach ($info as $k => $v) {
-            printf("%-14s %s\n", $k, is_bool($v) ? ($v ? 'yes' : 'no') : (string) ($v ?? '-'));
+            printf("%-14s %s\n", $k, is_bool($v) ? ($v ? 'yes' : 'no') : (is_array($v) ? implode(', ', $v) : (string) ($v ?? '-')));
         }
         exit(0);
 

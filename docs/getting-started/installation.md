@@ -89,7 +89,20 @@ make -C csrc                 # lib/<os>-<arch>/libtessero.{so,dylib,dll}
 make -C csrc test            # 174 C checks
 make -C csrc sanitize        # the same under ASan + UBSan
 make -C csrc OPENMP=         # without OpenMP
+sudo make -C csrc install    # library + public headers under PREFIX (default /usr/local)
 ```
+
+`make install` puts the library in `$PREFIX/lib` (on Windows the DLLs go to `$PREFIX/bin`) and `tessero.h`,
+`tessero_version.h`, `tessero_native.h` and `tessero_repro_f32.h` in `$PREFIX/include`, which is the layout a
+native consumer such as Talario expects from `--with-tessero=$PREFIX`. `DESTDIR` stages a package build.
+
+The library records the commit it was built from: `vendor/bin/tessero info` and `tessero:doctor --json` show it
+as `commit`, so you can check a deployed library against the reference in `composer.lock`. A build outside a git
+checkout reports `unknown`; pass `make -C csrc TSR_BUILD_COMMIT=<sha>` there.
+
+On Windows (MSYS2 MINGW64), `make -C csrc` also copies the MinGW runtime DLLs that `tessero.dll` needs
+(OpenBLAS, gfortran, winpthread, ...) next to it, and the FFI loader searches that directory, so `PATH` needs no
+change. Keep those DLLs with `tessero.dll` if you move it.
 
 GCC 9+ or Clang 12+ on Linux; Apple Clang on macOS (built without OpenMP);
 MinGW-w64 on Windows.
