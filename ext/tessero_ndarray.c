@@ -2274,7 +2274,7 @@ static void sort_impl(INTERNAL_FUNCTION_PARAMETERS, int arg)
     int64_t len = a->shape[a->ndim - 1];
     int64_t rows = len ? tsr_array_size(a) / len : 0;
     int dt = a->dtype == D_BOOL ? D_U8 : a->dtype;
-    if (arg) {
+    if (arg == 1) {                                   /* argsort; 0 sort, 2 sortSimd, 3 sortRuns */
         if (tsr_ndarray_new(return_value, D_I64, a->ndim, a->shape, 0) == FAILURE) { zval_ptr_dtor(&C); RETURN_THROWS(); }
         int64_t *out = (int64_t *)elem0(&Z_TSR_P(return_value)->a);
         int rc = 0;
@@ -2285,12 +2285,14 @@ static void sort_impl(INTERNAL_FUNCTION_PARAMETERS, int arg)
         return;
     }
     int rc = 0;
-    for (int64_t r = 0; r < rows && rc == 0; r++) rc = tsr_sort(dt, len, elem0(a) + r * len * ITEMSIZE[dt]);
+    for (int64_t r = 0; r < rows && rc == 0; r++) rc = (arg == 2 ? tsr_sort_simd : arg == 3 ? tsr_sort_runs : tsr_sort)(dt, len, elem0(a) + r * len * ITEMSIZE[dt]);
     if (rc != 0) { zval_ptr_dtor(&C); tsr_throw_rc(rc, "sort"); RETURN_THROWS(); }
     RETURN_COPY_VALUE(&C);
 }
 PHP_METHOD(NDArray, sort) { sort_impl(INTERNAL_FUNCTION_PARAM_PASSTHRU, 0); }
 PHP_METHOD(NDArray, argsort) { sort_impl(INTERNAL_FUNCTION_PARAM_PASSTHRU, 1); }
+PHP_METHOD(NDArray, sortSimd) { sort_impl(INTERNAL_FUNCTION_PARAM_PASSTHRU, 2); }
+PHP_METHOD(NDArray, sortRuns) { sort_impl(INTERNAL_FUNCTION_PARAM_PASSTHRU, 3); }
 
 /* ---- matrix product ---- */
 
@@ -2843,6 +2845,8 @@ static const zend_function_entry ndarray_methods[] = {
     PHP_ME(NDArray, cumsum, ai_axis, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, cumprod, ai_axis, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, sort, ai_none, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, sortSimd, ai_none, ZEND_ACC_PUBLIC)
+    PHP_ME(NDArray, sortRuns, ai_none, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, argsort, ai_none, ZEND_ACC_PUBLIC)
     PHP_ME(NDArray, matmul, ai_one, ZEND_ACC_PUBLIC)
     TSR_FE("dot", zim_NDArray_matmul, ai_one)

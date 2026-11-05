@@ -7,6 +7,15 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ## [Unreleased]
 
+### Added
+
+- **Two more sorts with the same result as `sort()`**: `NDArray::sortSimd()` (C `tsr_sort_simd`, an AVX2 quicksort:
+  faster on random data, many duplicates and sorted input; the radix sort where AVX2 is missing) and
+  `NDArray::sortRuns()` (C `tsr_sort_runs`, a natural merge sort: fastest on mostly sorted data, slowest on random
+  data), on both backends. All three sort the same order-preserving keys by comparison only, so their output is
+  byte-identical on every CPU, thread count and input alignment; `sort()` (radix) stays the default. When to use
+  which, with measurements: `docs/project/benchmarks.md`.
+
 ## [0.3.0] - 2026-11-05
 
 Everything since 0.2.0: the NumPy/SciPy parity program, the security hardening, and the speed work below. The C ABI

@@ -1014,6 +1014,36 @@ one call into C, no PHP string handling. Returns a view.
 sort(int $axis = -1): self
 ```
 
+Sorted copy along an axis (numpy.sort; NaN last). Radix sort: the same speed whatever the order of the input;
+the default.
+
+sortSimd() and sortRuns() return exactly the same values with other algorithms (all three sort the same
+order-preserving keys by comparison only, so the result never depends on the algorithm, the CPU, the thread
+count or the memory layout of the input). Pick by the data:
+  sort()      radix: predictable, input-independent time; does not exploit sorted or duplicate-heavy input.
+  sortSimd()  AVX2 quicksort: fastest on random data, on many duplicates and on already sorted or reversed
+              input; little gain on large nearly sorted or interleaved data. Without AVX2 it runs the
+              radix sort.
+  sortRuns()  natural merge sort: best on mostly sorted data (rows appended to a sorted array, a few
+              values edited, concatenated sorted batches); 2-3x slower than the others on random data.
+Measured figures: docs/project/benchmarks.md.
+
+### sortRuns
+
+```php
+sortRuns(int $axis = -1): self
+```
+
+Sorted copy along an axis with the natural merge sort: the same values as sort(); see sort() for when to use it.
+
+### sortSimd
+
+```php
+sortSimd(int $axis = -1): self
+```
+
+Sorted copy along an axis with the AVX2 quicksort: the same values as sort(); see sort() for when to use it.
+
 ### sqrt
 
 ```php

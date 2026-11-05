@@ -1640,7 +1640,40 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
 
     // ------------------------------------------------------------------ sorting
 
+    /**
+     * Sorted copy along an axis (numpy.sort; NaN last). Radix sort: the same speed whatever the order of the input;
+     * the default.
+     *
+     * sortSimd() and sortRuns() return exactly the same values with other algorithms (all three sort the same
+     * order-preserving keys by comparison only, so the result never depends on the algorithm, the CPU, the thread
+     * count or the memory layout of the input). Pick by the data:
+     *   sort()      radix: predictable, input-independent time; does not exploit sorted or duplicate-heavy input.
+     *   sortSimd()  AVX2 quicksort: fastest on random data, on many duplicates and on already sorted or reversed
+     *               input; little gain on large nearly sorted or interleaved data. Without AVX2 it runs the
+     *               radix sort.
+     *   sortRuns()  natural merge sort: best on mostly sorted data (rows appended to a sorted array, a few
+     *               values edited, concatenated sorted batches); 2-3x slower than the others on random data.
+     * Measured figures: docs/project/benchmarks.md.
+     */
     public function sort(int $axis = -1): self
+    {
+        return $this->sortWith('tsr_sort', $axis);
+    }
+
+    /** Sorted copy along an axis with the AVX2 quicksort: the same values as sort(); see sort() for when to use it. */
+    public function sortSimd(int $axis = -1): self
+    {
+        return $this->sortWith('tsr_sort_simd', $axis);
+    }
+
+    /** Sorted copy along an axis with the natural merge sort: the same values as sort(); see sort() for when to use it. */
+    public function sortRuns(int $axis = -1): self
+    {
+        return $this->sortWith('tsr_sort_runs', $axis);
+    }
+
+    /** @param 'tsr_sort'|'tsr_sort_simd'|'tsr_sort_runs' $kernel */
+    private function sortWith(string $kernel, int $axis): self
     {
         if ($this->dtype === DType::Complex128) {
             throw new DTypeError('Sorting complex arrays is not supported.');
@@ -1656,7 +1689,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $ffi = Library::ffi();
         $rowBytes = $len * $dt->itemsize();
         for ($r = 0; $r < $rows; $r++) {
-            Library::check($ffi->tsr_sort($dt->value, $len, $work->buffer->ptr($work->offset + $r * $rowBytes)), 'sort');
+            Library::check($ffi->{$kernel}($dt->value, $len, $work->buffer->ptr($work->offset + $r * $rowBytes)), 'sort');
         }
 
         return $work->moveAxis(-1, $axis)->contiguous();

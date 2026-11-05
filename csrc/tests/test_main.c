@@ -2208,6 +2208,54 @@ static void test_fuzz_batch_d(void)
     CHECK(tsr_allocated() == before, "batch D leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* tsr_sort, tsr_sort_simd and tsr_sort_runs return the same bytes: every dtype, NaN, -0.0/+0.0, duplicates, sorted,
+   reversed and interleaved data, sizes 0..300 and 100000, element-aligned starts that are not 32-byte aligned (the
+   AVX2 loads are unaligned), 1 and 4 threads */
+static void test_sort_variants(void)
+{
+    static const int dts[] = {TSR_F64, TSR_F32, TSR_I64, TSR_I32, TSR_U8};
+    const int saved = tsr_get_threads();
+    uint64_t st = 0x9E3779B97F4A7C15ULL;
+    int bad = 0, cases = 0;
+    const int64_t big = 100000;
+    unsigned char *src = malloc((size_t)(big + 8) * 8), *a = malloc((size_t)(big + 8) * 8),
+                  *b = malloc((size_t)(big + 8) * 8), *c = malloc((size_t)(big + 8) * 8);
+    for (int threads = 1; threads <= 4; threads += 3) {
+        tsr_set_threads(threads);
+        for (size_t d = 0; d < sizeof dts / sizeof dts[0]; d++) {
+            const int dt = dts[d];
+            const int64_t isz = dt == TSR_F64 || dt == TSR_I64 ? 8 : dt == TSR_U8 ? 1 : 4;
+            for (int64_t n = 0; n <= big; n = n < 300 ? n + 1 : (n < big ? big : big + 1)) {
+                for (int pattern = 0; pattern < 6; pattern++) {
+                    if (n > 300 && pattern > 3) continue;
+                    for (int64_t i = 0; i < n; i++) {
+                        st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+                        double v = (double)(int64_t)(st >> 40) - 8388608.0;                     /* random */
+                        if (pattern == 1) v = (double)(st % 5) - 2.0;                           /* duplicates */
+                        if (pattern == 2) v = (double)i;                                        /* sorted */
+                        if (pattern == 3) v = (double)(n - i);                                  /* reversed */
+                        if (pattern == 4) v = i % 2 ? (double)i : (double)(n - i);              /* interleaved */
+                        if (pattern == 5) v = i % 7 == 0 ? (i % 2 ? -0.0 : 0.0) : (i % 11 == 0 ? NAN : v);
+                        unsigned char *p = src + 8 + i * isz;                                   /* +8: element-aligned, not 32-byte aligned */
+                        if (dt == TSR_F64) memcpy(p, &v, 8);
+                        else if (dt == TSR_F32) { float f = (float)v; memcpy(p, &f, 4); }
+                        else if (dt == TSR_I64) { int64_t x = isnan(v) ? 7 : (int64_t)v; memcpy(p, &x, 8); }
+                        else if (dt == TSR_I32) { int32_t x = isnan(v) ? 7 : (int32_t)v; memcpy(p, &x, 4); }
+                        else { uint8_t x = isnan(v) ? 7 : (uint8_t)((int64_t)v & 255); memcpy(p, &x, 1); }
+                    }
+                    memcpy(a + 8, src + 8, (size_t)(n * isz)); memcpy(b + 8, src + 8, (size_t)(n * isz)); memcpy(c + 8, src + 8, (size_t)(n * isz));
+                    const int ra = tsr_sort(dt, n, a + 8), rb = tsr_sort_simd(dt, n, b + 8), rc = tsr_sort_runs(dt, n, c + 8);
+                    cases++;
+                    if (ra || rb || rc || memcmp(a + 8, b + 8, (size_t)(n * isz)) || memcmp(a + 8, c + 8, (size_t)(n * isz))) bad++;
+                }
+            }
+        }
+    }
+    tsr_set_threads(saved);
+    free(src); free(a); free(b); free(c);
+    CHECK(bad == 0, "tsr_sort == tsr_sort_simd == tsr_sort_runs, byte for byte (%d of %d cases differ)", bad, cases);
+}
+
 static void test_abi_runtime(void)
 {
     /* version and capability negotiation: one version source */
@@ -2946,6 +2994,7 @@ int main(void)
     test_fuzz_batch_d();
     test_ci_regressions();
     test_abi_runtime();
+    test_sort_variants();
     test_arg_gate();
     test_ownership();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
