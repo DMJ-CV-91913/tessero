@@ -832,6 +832,9 @@ finish:
    the Chebyshev polynomials to be of significantly lower degree (about 1/4)
    compared to fitting the whole [0,1] interval with a single polynomial. */
 double erfcx_y100(double y100) {
+    /* Tessero: a NaN y100 (x is NaN) reached the final return through (int)y100, undefined behaviour for NaN;
+       take that return directly (on x86-64 the cast gave INT_MIN, no case matched). Same result. */
+    if (y100 != y100) return 1.0;
     switch ((int)y100) {
     case 0: {
         double t = 2 * y100 - 1;
@@ -1973,6 +1976,9 @@ double erfcx(double x) {
    the Chebyshev polynomials to be of significantly lower degree (about 1/30)
    compared to fitting the whole [0,1] interval with a single polynomial. */
 double w_im_y100(double y100, double x) {
+    /* Tessero: a NaN y100 (x is NaN) reached the NaN return at the end through (int)y100, which is undefined
+       behaviour for NaN (found by fuzzing under UBSan); take that return directly. Same result. */
+    if (y100 != y100) return std::numeric_limits<double>::quiet_NaN();
     switch ((int)y100) {
     case 0: {
         double t = 2 * y100 - 1;

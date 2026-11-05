@@ -37,11 +37,13 @@ jobs:
       # while still failing on a new one.
       matrix:
         include:
-          - { target: slice,     args: "FUZZ_TARGETS=slice" }
-          - { target: npy,       args: "FUZZ_TARGETS=npy" }
-          - { target: mmap_plan, args: "FUZZ_TARGETS=mmap_plan" }
-          - { target: json,      args: "FUZZ_TARGETS=json" }
-          - { target: npy_write, args: "FUZZ_TARGETS=npy_write" }
+          # FUZZ_REG_TARGETS= : without it a parser job also ran every registry target (the Makefile default),
+          # without FUZZ_SKIP_KNOWN, so one registry finding failed all of these jobs at once
+          - { target: slice,     args: "FUZZ_TARGETS=slice FUZZ_REG_TARGETS=" }
+          - { target: npy,       args: "FUZZ_TARGETS=npy FUZZ_REG_TARGETS=" }
+          - { target: mmap_plan, args: "FUZZ_TARGETS=mmap_plan FUZZ_REG_TARGETS=" }
+          - { target: json,      args: "FUZZ_TARGETS=json FUZZ_REG_TARGETS=" }
+          - { target: npy_write, args: "FUZZ_TARGETS=npy_write FUZZ_REG_TARGETS=" }
           - { target: einsum,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=einsum FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
           - { target: hist,      args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=hist FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
           - { target: textio,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=textio FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }

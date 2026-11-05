@@ -68,6 +68,9 @@ are unchanged; the parity fixtures verify that.
   The registry additionally returns NaN for |m|, |n| > 1000 or finite |c| > 1000 (`guard:` in
   `spec/special.yaml`).
 - `xsf/xsf/specfun/specfun.h`, `qstar`: for m = 0 the original reads `ap[-1]`; Tessero returns NaN.
+- `xsf/xsf/faddeeva.h`, `w_im_y100` and `erfcx_y100`: for a NaN argument the originals reach their final return
+  through `(int)NaN`, which is undefined behaviour (UBSan, nightly fuzzing); Tessero takes that return directly
+  (NaN, and 1.0 for `erfcx_y100`), the value x86-64 already produced.
 - `xsf/xsf/specfun/specfun.h`, the spheroidal work arrays (`cbk`, `rmn2l`, `rmn2so`, `rmn2sp`, `rswfp`, `rswfo`,
   `segv`, ...): every buffer is value-initialised (`new T[n]()`, and `calloc(1, size)` for the `malloc(size)` of
   `sphd_wave.h` and `par_cyl.h`, with the original size expression). The originals leave some uninitialised, and
