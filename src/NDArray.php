@@ -1539,12 +1539,12 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $shape = $src->shape;
         array_splice($shape, $ax, 1);
         $mean = self::empty($shape, DType::Float64);
-        $m2 = self::empty($shape, DType::Float64);
+        $m2 = $variance ? self::empty($shape, DType::Float64) : null;   // mean alone: the kernel skips the second pass
         if ($mean->size > 0) {
             Library::check(Library::ffi()->tsr_moments(
                 $src->dtype->value, count($src->shape), Library::i64($src->shape), $src->ptr(), Library::i64($src->strides),
                 $ax, Library::ffi()->cast('double*', $mean->ptr()), Library::i64($mean->strides),
-                Library::ffi()->cast('double*', $m2->ptr()), Library::i64($m2->strides),
+                $m2 === null ? null : Library::ffi()->cast('double*', $m2->ptr()), $m2 === null ? null : Library::i64($m2->strides),
             ), 'moments');
         }
         $r = $variance ? $m2->div(max(0, $len - $ddof) ?: NAN) : $mean;

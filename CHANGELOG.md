@@ -155,6 +155,29 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   (`tests/fixtures/generate_npy.py`).
 - Error code -9 `TSR_EIO` for operating-system I/O errors.
 
+### Performance
+
+Measured as a native PHP app (FFI backend) against a native Python app (NumPy 2.4.4) on the same machine, one
+thread, `bench/run.php` vs `bench/numpy_bench.py`. Every change below returns the same bits as before: 1,001 cases
+compared byte for byte against the previous library, plus parity (1845 functions on both backends), the
+AddressSanitizer + UBSan C tests and a ThreadSanitizer run of the FFT cache. Across the 21 shared bench cases the
+geometric mean went from 1.21x to 1.10x NumPy's time.
+
+- **Random variates with scalar parameters** (`normal`, `exponential`, `gamma`, ... on both backends): the draw loop
+  validated the same scalar parameters once per element, parsing argument names each time, and recomputed every
+  operand's address per element. Scalars are now checked once and drawn in a tight loop into a contiguous output, in
+  the same order. `normal(size: 1M)` 35 -> 10.8 ms (NumPy 11.4), `exponential` 19.8 -> 5.4 ms, `random` 7.9 -> 3.8 ms.
+- **FFT plan cache**: plans (twiddle tables), Bluestein chirps and real-FFT twiddles are kept by length and
+  direction, up to 64 MiB in all, least recently used out first, read-only and reference-counted so threads share
+  them. Rebuilding the plan was more than half the time of a 2^20 transform. A plan of only radix 2-5 factors also
+  drops its full twiddle table, halving its memory. Cached memory is outside the `tsr_alloc` budget (it is bounded by
+  the cap); a plan too large for the cache is built and freed per call, as before. `fft 2^20` 83 -> 66 ms,
+  `rfft 2^20` 64 -> 37 ms; `scipy.signal` routines that transform segment by segment reuse one plan.
+- **`mean` no longer computes the variance's second pass** (`tsr_moments` accepts NULL `m2`; both backends): 1M
+  values 2.02 -> 0.39 ms (NumPy 0.34).
+- **`min` / `max` of contiguous float64 use AVX2** when the CPU has it, with exact fix-ups so the first NaN and the
+  first of tied -0.0 / 0.0 are returned as before: 1M values 1.13 -> 0.33 ms. Other CPUs keep the scalar loop.
+
 ### Earlier in this cycle
 
 - **Universal functions** `Tessero\Ext\Math`: 74 element-wise functions with

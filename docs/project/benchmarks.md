@@ -35,6 +35,43 @@ OPENBLAS_NUM_THREADS=4 /tmp/gemm_bench 1024
 host (OpenBLAS ×4), FFI and ext are within noise of each other on all operations; memory-bound ops (`add`,
 `sum`) are limited by bandwidth, compute-bound `matmul` by OpenBLAS.
 
+## Tessero in a PHP app vs NumPy in a Python app
+
+The same cases, timed the way an application sees them: `bench/run.php` in PHP (FFI backend) against
+`bench/numpy_bench.py` in Python, median of repeated runs, one thread for both (`OPENBLAS_NUM_THREADS=1`). Intel Core
+i7-4790 (Haswell, AVX2), PHP 8.5.12, NumPy 2.4.4 / SciPy 1.17.1. A ratio below 1 means Tessero is faster.
+
+| case | Tessero ms | NumPy ms | ratio |
+|---|---|---|---|
+| exp 1M / log 1M | 4.18 / 4.32 | 5.53 / 5.21 | 0.76 / 0.83 |
+| PHP list -> array 1M (Python list -> array) | 21.1 | 34.3 | 0.61 |
+| add, multiply, sqrt, transpose, boolean mask 1M | | | 0.93 - 1.04 |
+| rng normal 1M | 10.8 | 11.5 | 0.95 |
+| matmul 600x600 / svd 300x300 | 9.01 / 22.3 | 8.94 / 21.9 | 1.01 / 1.02 |
+| solve / cholesky 600x600 | 6.65 / 4.66 | 5.79 / 4.02 | 1.15 / 1.16 |
+| array -> PHP list 1M | 28.9 | 24.6 | 1.18 |
+| fft 2^20 complex | 66.3 | 51.3 | 1.29 |
+| sum 1M | 0.48 | 0.35 | 1.38 |
+| rfft 2^20 real | 36.8 | 20.7 | 1.78 |
+| fft 1,000,003 (prime, Bluestein) | 468 | 261 | 1.80 |
+| sort 1M | 31.4 | 13.6 | 2.31 |
+
+Geometric mean over the 21 shared cases: **1.10x** NumPy's time (1.21x before the plan cache, the scalar-parameter
+draw loop, the single-pass mean and the AVX2 min/max). Outside the bench set: `mean` 1M 0.39 ms (NumPy 0.34), `max`
+1M 0.33 ms (0.26), `exponential` 1M 5.4 ms (6.45).
+
+Known gaps, largest first: `sort` (radix sort with a fixed cost of about 26 ms even on sorted input, against NumPy's
+AVX2 quicksort), Bluestein lengths (their plans exceed the 64 MiB FFT cache), the per-call cost of `fft`/`rfft`
+outside the transform, and a fixed cost of about 7 us per reduction call against NumPy's 1 us, which dominates small
+arrays.
+
+Reproduce:
+
+```sh
+OPENBLAS_NUM_THREADS=1 php -d ffi.enable=1 bench/run.php --json --no-gates > tessero.json
+OPENBLAS_NUM_THREADS=1 python3 bench/numpy_bench.py --json > numpy.json
+```
+
 ## Correctness, not just speed
 
 Every performance figure sits on top of verified correctness, generated from recorded test runs against real

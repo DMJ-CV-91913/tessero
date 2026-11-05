@@ -257,19 +257,25 @@ int tsr_random_run(const fn_def *d, uint64_t *state, const double *params, int32
     int64_t idx[TSR_MAXDIM];
     /* the message buffers live outside the element loop: declared inside it, -ftrivial-auto-var-init=zero
        (csrc/Makefile HARDEN) zero-filled 192 bytes per element and made normal() about 35% slower */
-    char msg[160], name[32];
-    /* pass 1: check every element's parameters (numpy raises before drawing) */
+    char msg[160], names[8][32];
+    for (int o = 0; o < nin; o++) arg_name(d->args, o, names[o], sizeof names[o]);
+    /* an input whose strides are all zero (a broadcast scalar) has one value for every element */
+    int all_scalar = 1;
+    for (int o = 0; o < nin; o++)
+        for (int32_t a = 0; a < ndim; a++) if (strides[o * ndim + a] != 0) all_scalar = 0;
+    /* pass 1: check every element's parameters (numpy raises before drawing); when every input is a scalar the
+       elements all see the same values, so one check stands for all of them. An empty output checks nothing. */
     if (nin > 0) {
         memset(idx, 0, sizeof idx);
-        for (int64_t e = 0; e < size; e++) {
+        const int64_t checks = all_scalar && size > 0 ? 1 : size;
+        for (int64_t e = 0; e < checks; e++) {
             for (int o = 0; o < nin; o++) {
                 const char *q = (const char *)data[o];
                 for (int32_t a = 0; a < ndim; a++) q += idx[a] * strides[o * ndim + a];
                 p[o] = *(const double *)q;
             }
             for (int o = 0; o < nin; o++) {
-                arg_name(d->args, o, name, sizeof name);
-                if (d->cons && d->cons[o] && check_cons(d->cons[o], p[o], name, msg, sizeof msg)) {
+                if (d->cons && d->cons[o] && check_cons(d->cons[o], p[o], names[o], msg, sizeof msg)) {
                     fn_set_error("%s", msg);
                     return TSR_EARG;
                 }
@@ -282,6 +288,24 @@ int tsr_random_run(const fn_def *d, uint64_t *state, const double *params, int32
         }
     }
     /* pass 2: draw, serially and in C order (the stream order is NumPy's) */
+    /* fast path: scalar inputs and a C-contiguous output. The same draws in the same order as the loop below,
+       without recomputing every operand's address per element (normal() of 1M scalars: 36 -> ~11 ms) */
+    if (all_scalar && size > 0) {
+        const int64_t item = out_dtype == TSR_F32 ? 4 : 8;
+        int contiguous = 1;
+        int64_t want = item;
+        for (int32_t a = ndim - 1; a >= 0; a--) {
+            if (shape[a] > 1 && strides[nin * ndim + a] != want) contiguous = 0;
+            want *= shape[a];
+        }
+        if (contiguous) {
+            for (int o = 0; o < nin; o++) p[o] = *(const double *)data[o];
+            if (out_dtype == TSR_I64) { int64_t *y = (int64_t *)data[nin]; for (int64_t e = 0; e < size; e++) y[e] = d->rdraw_i(&bg, p); }
+            else if (out_dtype == TSR_F32) { float *y = (float *)data[nin]; for (int64_t e = 0; e < size; e++) y[e] = d->rdraw_f(&bg, p); }
+            else { double *y = (double *)data[nin]; for (int64_t e = 0; e < size; e++) y[e] = d->rdraw(&bg, p); }
+            return TSR_OK;
+        }
+    }
     memset(idx, 0, sizeof idx);
     for (int64_t e = 0; e < size; e++) {
         for (int o = 0; o <= nin; o++) {

@@ -777,7 +777,9 @@ static int moments_core(tsr_obj *src, zend_long axis, zend_bool has_axis, int va
     tsr_obj *m = Z_TSR(M), *v = Z_TSR(V);
     int64_t n = tsr_array_size(&m->a);
     int rc = n > 0 && len > 0 ? tsr_moments(a.dtype, a.ndim, a.shape, elem0(&a), a.strides, (int32_t)axis,
-                                           (double *)elem0(&m->a), m->a.strides, (double *)elem0(&v->a), v->a.strides) : 0;
+                                           (double *)elem0(&m->a), m->a.strides,
+                                           /* mean alone: NULL skips the kernel's second pass */
+                                           var ? (double *)elem0(&v->a) : NULL, var ? v->a.strides : NULL) : 0;
     zval_ptr_dtor(&C);
     if (rc != 0) { zval_ptr_dtor(&M); zval_ptr_dtor(&V); tsr_throw_rc(rc, "moments"); return FAILURE; }
     double *out = (double *)elem0(var ? &v->a : &m->a);

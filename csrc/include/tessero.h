@@ -146,6 +146,8 @@ int64_t tsr_npy_write_header(int dtype, int32_t ndim, const int64_t *shape, int 
 /* ---- reductions along one axis; out has the shape without that axis ---- */
 int tsr_reduce(int op, int dtype, int32_t ndim, const int64_t *shape, const void *in, const int64_t *sin,
                int32_t axis, int out_dtype, void *out, const int64_t *sout);
+/* mean and M2 (sum of squared deviations) along axis, as numpy.mean / numpy.var compute them; m2 and sm2 may be NULL
+   when only the mean is wanted, which skips the second pass */
 int tsr_moments(int dtype, int32_t ndim, const int64_t *shape, const void *in, const int64_t *sin,
                 int32_t axis, double *mean, const int64_t *smean, double *m2, const int64_t *sm2);
 

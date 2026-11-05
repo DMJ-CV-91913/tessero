@@ -49,7 +49,56 @@ static void store(int dt, char *o, double d, int64_t i, int use_int)
     }
 }
 
-#define REDUCE_FLOAT(NAME, T, PSUM)                                                         \
+/* min/max of a contiguous float64 run with AVX2: 16 lanes of vmaxpd/vminpd plus a NaN flag, then fix-ups that give
+   exactly the scalar loop's answer below: the first NaN (its own bits) when there is one, and the first zero when the
+   result is a zero, so -0.0 / 0.0 ties keep the earlier element. vmaxpd(v, m) is "v > m ? v : m", the scalar test.
+   About 3x the scalar loop on 1M values. Returns 0 (not handled) without AVX2 or for short runs. */
+#if defined(__GNUC__) && !defined(__clang__) && defined(__x86_64__)
+#include <immintrin.h>
+__attribute__((target("avx2"))) static double minmax_f64_avx2(int want_min, const double *x, int64_t L)
+{
+    __m256d m0 = _mm256_loadu_pd(x), m1 = _mm256_loadu_pd(x + 4), m2 = _mm256_loadu_pd(x + 8), m3 = _mm256_loadu_pd(x + 12);
+    __m256d un = _mm256_or_pd(_mm256_or_pd(_mm256_cmp_pd(m0, m1, _CMP_UNORD_Q), _mm256_cmp_pd(m2, m3, _CMP_UNORD_Q)),
+                              _mm256_setzero_pd());
+    int64_t i = 16;
+    for (; i + 16 <= L; i += 16) {
+        const __m256d a = _mm256_loadu_pd(x + i), b = _mm256_loadu_pd(x + i + 4);
+        const __m256d c = _mm256_loadu_pd(x + i + 8), d = _mm256_loadu_pd(x + i + 12);
+        un = _mm256_or_pd(un, _mm256_or_pd(_mm256_cmp_pd(a, b, _CMP_UNORD_Q), _mm256_cmp_pd(c, d, _CMP_UNORD_Q)));
+        if (want_min) { m0 = _mm256_min_pd(a, m0); m1 = _mm256_min_pd(b, m1); m2 = _mm256_min_pd(c, m2); m3 = _mm256_min_pd(d, m3); }
+        else { m0 = _mm256_max_pd(a, m0); m1 = _mm256_max_pd(b, m1); m2 = _mm256_max_pd(c, m2); m3 = _mm256_max_pd(d, m3); }
+    }
+    double t[16];
+    _mm256_storeu_pd(t, m0); _mm256_storeu_pd(t + 4, m1); _mm256_storeu_pd(t + 8, m2); _mm256_storeu_pd(t + 12, m3);
+    int nan = !_mm256_testz_pd(un, un);
+    double best = t[0];
+    for (int j = 1; j < 16; j++) { nan |= t[j] != t[j]; best = want_min ? (t[j] < best ? t[j] : best) : (t[j] > best ? t[j] : best); }
+    nan |= t[0] != t[0];
+    for (; i < L; i++) { const double v = x[i]; nan |= v != v; best = want_min ? (v < best ? v : best) : (v > best ? v : best); }
+    if (nan) { for (int64_t k = 0; k < L; k++) if (x[k] != x[k]) return x[k]; }
+    if (best == 0.0) { for (int64_t k = 0; k < L; k++) if (x[k] == 0.0) return x[k]; }
+    return best;
+}
+#define TSR_HAVE_AVX2_MINMAX 1
+#endif
+static int minmax_f64_fast(int op, int64_t L, const char *p, int64_t s, double *res)
+{
+#ifdef TSR_HAVE_AVX2_MINMAX
+    if ((op == R_MIN || op == R_MAX) && s == 8 && L >= 64 && __builtin_cpu_supports("avx2")) {
+        *res = minmax_f64_avx2(op == R_MIN, (const double *)p, L);
+        return 1;
+    }
+#endif
+    (void)op; (void)L; (void)p; (void)s; (void)res;
+    return 0;
+}
+static int minmax_none(int op, int64_t L, const char *p, int64_t s, double *res)
+{
+    (void)op; (void)L; (void)p; (void)s; (void)res;
+    return 0;
+}
+
+#define REDUCE_FLOAT(NAME, T, PSUM, FAST)                                                   \
     static int NAME(int op, int64_t L, const char *p, int64_t s, int odt, char *o)          \
     {                                                                                       \
         switch (op) {                                                                       \
@@ -57,6 +106,7 @@ static void store(int dt, char *o, double d, int64_t i, int use_int)
         case R_PROD: { double r = 1; for (int64_t i = 0; i < L; i++) r *= *(const T *)(p + i * s); store(odt, o, r, 0, 0); return TSR_OK; } \
         case R_MIN: case R_MAX: case R_ARGMIN: case R_ARGMAX: {                             \
             if (L == 0) return TSR_EARG;                                                    \
+            { double fr; if (FAST(op, L, p, s, &fr)) { store(odt, o, fr, 0, 0); return TSR_OK; } } \
             int want_min = (op == R_MIN || op == R_ARGMIN);                                 \
             T best = *(const T *)p; int64_t bi = 0;                                         \
             for (int64_t i = 1; i < L && best == best; i++) { /* first NaN wins, as NumPy */ \
@@ -71,8 +121,8 @@ static void store(int dt, char *o, double d, int64_t i, int use_int)
         default: return TSR_EARG;                                                           \
         }                                                                                   \
     }
-REDUCE_FLOAT(red_f64, double, psum_f64)
-REDUCE_FLOAT(red_f32, float, psum_f32)
+REDUCE_FLOAT(red_f64, double, psum_f64, minmax_f64_fast)
+REDUCE_FLOAT(red_f32, float, psum_f32, minmax_none)
 
 #define REDUCE_INT(NAME, T)                                                                 \
     static int NAME(int op, int64_t L, const char *p, int64_t s, int odt, char *o)          \
@@ -166,8 +216,12 @@ int tsr_moments(int dtype, int32_t ndim, const int64_t *shape, const void *in, c
     int rc = prepare(ndim, shape, sin, axis, oshape, ostr, &ond);
     if (rc != TSR_OK) return rc;
     int64_t L = shape[axis], sL = sin[axis];
-    double *dev = L > 0 ? (double *)tsr_alloc(L * 8) : NULL;   /* squared deviations of one row */
-    if (L > 0 && !dev) return TSR_ENOMEM;
+    /* m2 NULL: the mean alone (numpy.mean). The second pass and its row buffer are skipped; the mean is the same
+       value either way. The iterator still walks a valid array (mean's), nothing is written through it. */
+    const int want_m2 = m2 != NULL;
+    if (!want_m2) { m2 = mean; sm2 = smean; }
+    double *dev = want_m2 && L > 0 ? (double *)tsr_alloc(L * 8) : NULL;   /* squared deviations of one row */
+    if (want_m2 && L > 0 && !dev) return TSR_ENOMEM;
 
 #define TWOPASS(T, PSUM)                                                            \
     for (int64_t i = 0; i < n; i++) {                                               \
@@ -175,14 +229,16 @@ int tsr_moments(int dtype, int32_t ndim, const int64_t *shape, const void *in, c
         double mu = 0, M = 0;                                                       \
         if (L > 0) {                                                                \
             mu = PSUM(q, L, sL) / (double)L;                                        \
-            for (int64_t j = 0; j < L; j++) {                                       \
-                const double d = (double)*(const T *)(q + j * sL) - mu;             \
-                dev[j] = d * d;                                                     \
+            if (want_m2) {                                                          \
+                for (int64_t j = 0; j < L; j++) {                                   \
+                    const double d = (double)*(const T *)(q + j * sL) - mu;         \
+                    dev[j] = d * d;                                                 \
+                }                                                                   \
+                M = psum_f64((const char *)dev, L, 8);                              \
             }                                                                       \
-            M = psum_f64((const char *)dev, L, 8);                                  \
         }                                                                           \
         *(double *)(p[1] + i * it.st[1][nd - 1]) = mu;                              \
-        *(double *)(p[2] + i * it.st[2][nd - 1]) = M;                               \
+        if (want_m2) *(double *)(p[2] + i * it.st[2][nd - 1]) = M;                  \
     }
 
     const int64_t *st[3] = {ostr, smean, sm2};
