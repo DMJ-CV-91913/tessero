@@ -25,6 +25,7 @@ use Tessero\Exceptions\ShapeError;
 final class Blas
 {
     public const ROW_MAJOR = 101;
+    public const COL_MAJOR = 102;
     public const NO_TRANS = 111;
     public const TRANS = 112;
 

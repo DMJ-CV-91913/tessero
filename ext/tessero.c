@@ -78,11 +78,30 @@ static void tsr_apply_blas_threads(void)
     if (n > 0 && n != tsr_blas_applied && tsr_set_blas_threads((int)(n > INT_MAX ? INT_MAX : n)) == 0) tsr_blas_applied = n;
 }
 
+/* FFT plan cache: a web SAPI runs many workers, each with its own cache outside the memory budget, so it gets 32 MiB
+ * (power-of-two transforms up to 2^20 points stay cached); the CLI keeps the library's 256 MiB.
+ * TESSERO_FFT_CACHE_BYTES (bytes, 0 = no caching) overrides both. Applied once per process, so a later
+ * Engine::setFftCacheLimit() sticks. */
+static int tsr_fft_cache_applied = 0;
+static void tsr_apply_fft_cache(void)
+{
+    if (tsr_fft_cache_applied) return;
+    tsr_fft_cache_applied = 1;
+    const char *env = getenv("TESSERO_FFT_CACHE_BYTES");
+    if (env && *env) {
+        char *end;
+        const long long v = strtoll(env, &end, 10);
+        if (*end == '\0' && v >= 0) { tsr_set_fft_cache_limit((int64_t)v); return; }
+    }
+    if (!tsr_sapi_is_cli()) tsr_set_fft_cache_limit((int64_t)32 << 20);
+}
+
 static void tsr_apply_process_settings(void)
 {
     tsr_set_threads((int)TESSERO_G(threads));
     tsr_set_budget(tsr_effective_budget());
     tsr_apply_blas_threads();
+    tsr_apply_fft_cache();
 }
 
 static ZEND_INI_MH(OnUpdateThreads)
@@ -183,6 +202,19 @@ PHP_METHOD(Engine, setMemoryBudget)
 
 PHP_METHOD(Engine, memoryBudget) { ZEND_PARSE_PARAMETERS_NONE(); RETURN_LONG(tsr_budget()); }
 
+/* FFT plan cache cap in bytes (default 256 MiB, 0 = no caching); process-wide, outside the memory budget */
+PHP_METHOD(Engine, setFftCacheLimit)
+{
+    zend_long b;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_LONG(b)
+    ZEND_PARSE_PARAMETERS_END();
+    tsr_set_fft_cache_limit(b < 0 ? 0 : (int64_t)b);
+}
+
+PHP_METHOD(Engine, fftCacheLimit) { ZEND_PARSE_PARAMETERS_NONE(); RETURN_LONG(tsr_fft_cache_limit()); }
+PHP_METHOD(Engine, fftCacheBytes) { ZEND_PARSE_PARAMETERS_NONE(); RETURN_LONG(tsr_fft_cache_bytes()); }
+
 /* Caps the thread pool of the process's BLAS (OpenBLAS / MKL). Process-wide; under NTS the next request starts
    from tessero.blas_threads again. Returns false when no controllable BLAS is loaded. */
 PHP_METHOD(Engine, setBlasThreads)
@@ -275,6 +307,9 @@ static const zend_function_entry engine_methods[] = {
     E_ME(memoryBudget, ai_e_none)
     E_ME(memoryInUse, ai_e_none)
     E_ME(peakMemory, ai_e_none)
+    E_ME(setFftCacheLimit, ai_e_long)
+    E_ME(fftCacheLimit, ai_e_none)
+    E_ME(fftCacheBytes, ai_e_none)
     E_ME(setBlasThreads, ai_e_long)
     E_ME(getBlasThreads, ai_e_none)
     E_ME(abiVersion, ai_e_none)

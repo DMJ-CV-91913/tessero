@@ -366,12 +366,15 @@ static void tw_free(tw_t *w) { pl_free(w->cached, w->t, w->len * (int64_t)sizeof
 /* ---------------------------------------------------------------- plan cache
  * NumPy (pocketfft) keeps recent plans; rebuilding one costs n cos/sin pairs, more than the transform itself at
  * 2^20 points (about 54 of 93 ms). Plans, Bluestein chirps and real-FFT twiddles are cached by (kind, n, direction)
- * up to TSR_FFT_CACHE_BYTES in all, least recently used out first. An entry is read-only and reference-counted: one
+ * up to the limit in all (tsr_set_fft_cache_limit, default TSR_FFT_CACHE_BYTES), least recently used out first. An entry is read-only and reference-counted: one
  * in use is never evicted, and a lookup that finds the cache full of busy entries builds a private copy. The cached
  * values are the ones a fresh build computes, so results are bit-identical with or without the cache. */
 #define TSR_FFT_CACHE_SLOTS 16
+/* the default cap, 256 MiB: enough for a cached Bluestein transform of about 1M points (about 112 MB), the size at
+   which rebuilding the plan per call costs more than the transform. tsr_set_fft_cache_limit changes it at run time;
+   -DTSR_FFT_CACHE_BYTES=... changes the default. */
 #ifndef TSR_FFT_CACHE_BYTES
-#  define TSR_FFT_CACHE_BYTES ((int64_t)64 << 20)   /* build with -DTSR_FFT_CACHE_BYTES=... to change the cap */
+#  define TSR_FFT_CACHE_BYTES ((int64_t)256 << 20)
 #endif
 
 enum { K_PLAN, K_BLUE, K_RTW };
@@ -386,6 +389,7 @@ typedef struct {
 static fft_slot g_fft_slots[TSR_FFT_CACHE_SLOTS];
 static int64_t g_fft_bytes;
 static uint64_t g_fft_clock;
+static int64_t g_fft_cap = TSR_FFT_CACHE_BYTES;   /* read and written under the lock */
 #ifdef _WIN32
 static SRWLOCK g_fft_lock = SRWLOCK_INIT;
 #  define FFT_LOCK() AcquireSRWLockExclusive(&g_fft_lock)
@@ -445,10 +449,11 @@ static int fft_acquire(int kind, int64_t n, int inverse, fft_ref *r)
         FFT_UNLOCK();
         return TSR_OK;
     }
+    const int64_t cap = g_fft_cap;
     FFT_UNLOCK();
     /* build outside the lock: other lengths stay available meanwhile */
     const int64_t bytes = obj_bytes(kind, n);
-    const int cacheable = bytes <= TSR_FFT_CACHE_BYTES;
+    const int cacheable = bytes <= cap;
     int rc;
     r->obj = obj_build(kind, n, inverse, cacheable, &rc);
     if (!r->obj) return rc;
@@ -462,7 +467,7 @@ static int fft_acquire(int kind, int64_t n, int inverse, fft_ref *r)
                 if (!c->obj) { if (!empty) empty = c; }
                 else if (c->refs == 0 && (!lru || c->used < lru->used)) lru = c;
             }
-            if (empty && g_fft_bytes + bytes <= TSR_FFT_CACHE_BYTES) {
+            if (empty && g_fft_bytes + bytes <= g_fft_cap) {
                 *empty = (fft_slot){r->obj, kind, inverse, 1, n, bytes, ++g_fft_clock};
                 g_fft_bytes += bytes;
                 r->slot = empty;
@@ -478,12 +483,53 @@ static int fft_acquire(int kind, int64_t n, int inverse, fft_ref *r)
     return TSR_OK;
 }
 
+/* evict idle entries, least recently used first, until the cache fits the cap (entries in use stay until released) */
+static void fft_trim_locked(void)
+{
+    while (g_fft_bytes > g_fft_cap) {
+        fft_slot *lru = NULL;
+        for (int i = 0; i < TSR_FFT_CACHE_SLOTS; i++) {
+            fft_slot *c = &g_fft_slots[i];
+            if (c->obj && c->refs == 0 && (!lru || c->used < lru->used)) lru = c;
+        }
+        if (!lru) return;
+        obj_destroy(lru->kind, lru->obj);
+        g_fft_bytes -= lru->bytes;
+        lru->obj = NULL;
+    }
+}
+
 static void fft_release(fft_ref *r)
 {
     if (!r->slot) { obj_destroy(r->kind, r->obj); return; }
     FFT_LOCK();
     r->slot->refs--;
+    fft_trim_locked();   /* the cap may have been lowered while this entry was in use */
     FFT_UNLOCK();
+}
+
+int64_t tsr_fft_cache_limit(void)
+{
+    FFT_LOCK();
+    const int64_t cap = g_fft_cap;
+    FFT_UNLOCK();
+    return cap;
+}
+
+void tsr_set_fft_cache_limit(int64_t bytes)
+{
+    FFT_LOCK();
+    g_fft_cap = bytes < 0 ? 0 : bytes;
+    fft_trim_locked();
+    FFT_UNLOCK();
+}
+
+int64_t tsr_fft_cache_bytes(void)
+{
+    FFT_LOCK();
+    const int64_t b = g_fft_bytes;
+    FFT_UNLOCK();
+    return b;
 }
 
 /* rows x n complex (or real, real_in) -> rows x n complex. The input is staged row by row through a buffer only when

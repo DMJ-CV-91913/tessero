@@ -40,10 +40,19 @@ final class Linalg
             throw new ShapeError("solve: b has {$B->shape()[0]} rows, A is {$n}x{$n}.");
         }
         $nrhs = $vector ? 1 : $B->shape()[1];
-        $a = $A->copy();
-        $x = $B->copy();
+        // LAPACK gets the column-major copy of A that LAPACKE's row-major dgesv would build, made once here by the
+        // tiled transpose and never copied back (solve discards the LU factors): same matrix in, same result out.
+        // One right-hand side has the same layout in both orders; several go through a column-major copy.
+        $a = $A->transpose()->copy();
         $ipiv = Blas::ffi()->new('int[' . max(1, $n) . ']');
-        $info = Blas::call('LAPACKE_dgesv', self::ROW, $n, $nrhs, self::d($a), max(1, $n), $ipiv, self::d($x), max(1, $nrhs));
+        if ($nrhs === 1) {
+            $x = $B->copy();
+            $info = Blas::call('LAPACKE_dgesv', Blas::COL_MAJOR, $n, 1, self::d($a), max(1, $n), $ipiv, self::d($x), max(1, $n));
+        } else {
+            $xt = $B->transpose()->copy();
+            $info = Blas::call('LAPACKE_dgesv', Blas::COL_MAJOR, $n, $nrhs, self::d($a), max(1, $n), $ipiv, self::d($xt), max(1, $n));
+            $x = $xt->transpose()->copy();
+        }
         self::info($info, 'solve', singular: true);
 
         return $x;
@@ -144,12 +153,15 @@ final class Linalg
             return self::stacked($A, fn (NDArray $m): NDArray => self::cholesky($m, $upper), $A->shape());
         }
         $n = $A->shape()[0];
-        $l = $A->copy();
-        $info = Blas::call('LAPACKE_dpotrf', self::ROW, $upper ? 'U' : 'L', $n, self::d($l), max(1, $n));
+        // factored in a column-major copy (what LAPACKE's row-major dpotrf builds, without its copy back); the
+        // transposed view of it is the factor in row-major order
+        $t = $A->transpose()->copy();
+        $info = Blas::call('LAPACKE_dpotrf', Blas::COL_MAJOR, $upper ? 'U' : 'L', $n, self::d($t), max(1, $n));
         if ($info > 0) {
             throw new NotPositiveDefinite("cholesky: leading minor of order {$info} is not positive definite.");
         }
         self::info($info, 'cholesky');
+        $l = $t->transpose();
 
         return $upper ? self::triu($l) : self::tril($l);
     }

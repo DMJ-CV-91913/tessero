@@ -428,6 +428,27 @@ static void test_fft(void)
     for (int i = 0; i < 16; i++) r[i] = i;
     tsr_fft(4, 2, 0, r, r);
     CHECK(r[0] == 12 && r[1] == 16 && r[8] == 44 && r[9] == 48, "in-place multi-row");
+
+    /* plan cache: same bits cached, uncached and real-input; the limit bounds what is held */
+    {
+        const int64_t n = 1000, saved = tsr_fft_cache_limit();
+        double *x = malloc(2 * n * 8), *xr = malloc(n * 8), *a = malloc(2 * n * 8), *b = malloc(2 * n * 8), *c = malloc(2 * n * 8);
+        for (int64_t i = 0; i < n; i++) { xr[i] = sin(0.37 * i) + 0.1 * i; x[2 * i] = xr[i]; x[2 * i + 1] = 0.0; }
+        tsr_set_fft_cache_limit(0);
+        CHECK(tsr_fft_cache_bytes() == 0, "fft cache emptied at limit 0 (%lld)", (long long)tsr_fft_cache_bytes());
+        tsr_fft(n, 1, 0, x, a);                                   /* uncached */
+        CHECK(tsr_fft_cache_bytes() == 0, "nothing cached at limit 0");
+        tsr_set_fft_cache_limit((int64_t)64 << 20);
+        tsr_fft(n, 1, 0, x, b);                                   /* builds and caches */
+        CHECK(tsr_fft_cache_bytes() > 0, "plan cached");
+        tsr_fft_real(n, 1, 0, xr, c);                              /* cached plan, real input */
+        CHECK(memcmp(a, b, (size_t)(2 * n * 8)) == 0 && memcmp(a, c, (size_t)(2 * n * 8)) == 0, "fft cached == uncached == real input");
+        tsr_set_fft_cache_limit(-5);
+        CHECK(tsr_fft_cache_limit() == 0 && tsr_fft_cache_bytes() == 0, "negative limit clamps to 0 and frees");
+        tsr_set_fft_cache_limit(saved);
+        CHECK(tsr_fft_cache_limit() == saved, "limit restored");
+        free(x); free(xr); free(a); free(b); free(c);
+    }
 }
 
 static void test_rng(void)

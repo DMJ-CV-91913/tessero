@@ -246,6 +246,25 @@ final class Library
         if ($threads !== null) {
             $ffi->tsr_set_blas_threads($threads);
         }
+        // Every php-fpm worker holds its own FFT plan cache: web SAPIs get a small one, the CLI the library's 256 MiB
+        $fftCache = self::defaultFftCache(PHP_SAPI, getenv('TESSERO_FFT_CACHE_BYTES', true));
+        if ($fftCache !== null) {
+            $ffi->tsr_set_fft_cache_limit($fftCache);
+        }
+    }
+
+    /**
+     * The FFT plan cache limit to apply at load, or null to keep the library default (256 MiB): TESSERO_FFT_CACHE_BYTES
+     * (bytes, 0 = no caching) wins, and otherwise web SAPIs get 32 MiB (power-of-two transforms up to 2^20 points stay
+     * cached), since a server runs many workers and each holds its own cache outside the memory budget.
+     */
+    public static function defaultFftCache(string $sapi, string|false $env): ?int
+    {
+        if ($env !== false && $env !== '' && preg_match('/^\d+$/', $env) === 1) {
+            return (int) $env;
+        }
+
+        return in_array($sapi, ['cli', 'phpdbg', 'embed'], true) ? null : 32 << 20;
     }
 
     /**

@@ -60,6 +60,28 @@ final class AbiFeatureTest extends TestCase
         $this->assertSame(1, Library::defaultBlasThreads('fpm-fcgi', 'many'));   // malformed: keep the safe default
     }
 
+    public function testFftCacheDefaults(): void
+    {
+        $this->assertNull(Library::defaultFftCache('cli', false));                 // the library default, 256 MiB
+        $this->assertNull(Library::defaultFftCache('phpdbg', ''));
+        $this->assertSame(32 << 20, Library::defaultFftCache('fpm-fcgi', false));
+        $this->assertSame(32 << 20, Library::defaultFftCache('apache2handler', 'lots'));   // malformed: safe default
+        $this->assertSame(0, Library::defaultFftCache('fpm-fcgi', '0'));
+        $this->assertSame(268435456, Library::defaultFftCache('cli', '268435456'));
+    }
+
+    public function testFftCacheLimitRoundTrip(): void
+    {
+        $saved = Tessero::fftCacheLimit();
+        Tessero::setFftCacheLimit(0);
+        $this->assertSame(0, Tessero::fftCacheLimit());
+        $this->assertSame(0, Tessero::fftCacheBytes());
+        Tessero::setFftCacheLimit(-1);
+        $this->assertSame(0, Tessero::fftCacheLimit());
+        Tessero::setFftCacheLimit($saved);
+        $this->assertSame($saved, Tessero::fftCacheLimit());
+    }
+
     public function testSetBlasThreadsReachesTheLinkedBlas(): void
     {
         if (! Tessero::feature('openblas_threads')) {

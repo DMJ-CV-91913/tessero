@@ -44,6 +44,27 @@ final class Tessero
     }
 
     /**
+     * Cap the FFT plan cache of this process in bytes (default 256 MiB, 0 = no caching). Repeated transforms of one
+     * length reuse the cached plan; a prime length near 1M points needs about 112 MB of it. The cache is outside the
+     * memory budget and each php-fpm worker holds its own, so lower it there. Lowering it frees idle plans at once.
+     */
+    public static function setFftCacheLimit(int $bytes): void
+    {
+        Library::ffi()->tsr_set_fft_cache_limit(max(0, $bytes));
+    }
+
+    public static function fftCacheLimit(): int
+    {
+        return Library::ffi()->tsr_fft_cache_limit();
+    }
+
+    /** Bytes the FFT plan cache holds now. */
+    public static function fftCacheBytes(): int
+    {
+        return Library::ffi()->tsr_fft_cache_bytes();
+    }
+
+    /**
      * Cap the BLAS thread pools: the BLAS this package loads over FFI (Linalg) and the one libtessero links
      * (matmul). Web SAPIs default to 1 (TESSERO_BLAS_THREADS overrides), since php-fpm runs a worker per core.
      */

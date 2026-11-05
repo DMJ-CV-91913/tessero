@@ -48,7 +48,8 @@ i7-4790 (Haswell, AVX2), PHP 8.5.12, NumPy 2.4.4 / SciPy 1.17.1. A ratio below 1
 | add, multiply, sqrt, transpose, boolean mask 1M | | | 0.93 - 1.04 |
 | rng normal 1M | 10.8 | 11.5 | 0.95 |
 | matmul 600x600 / svd 300x300 | 9.01 / 22.3 | 8.94 / 21.9 | 1.01 / 1.02 |
-| solve / cholesky 600x600 | 6.65 / 4.66 | 5.79 / 4.02 | 1.15 / 1.16 |
+| solve / cholesky 600x600 (separate run) | 5.19 / 4.55 | 5.70 / 6.05 | 0.91 / 0.75 |
+| solve / cholesky 2000x2000 (separate run) | 140 / 101 | 143 / 101 | 0.98 / 1.00 |
 | array -> PHP list 1M | 28.9 | 24.6 | 1.18 |
 | fft 2^20 (real input, as the bench passes it) | 49.5 | 52.4 | 0.94 |
 | fft / ifft 2^20 complex input | 51.0 / 50.6 | 47.4 / 48.3 | 1.08 / 1.05 |
@@ -70,10 +71,12 @@ A 2^20 complex FFT spends about 35 ms in butterfly arithmetic and 16 ms in the r
 Reductions to a scalar on small arrays (FFI backend, per call): `sum` of 10 values 1.9 us (NumPy 1.0), `max` 1.9 us
 (1.1), `mean` 1.6 us (2.7), `var` 1.7 us (9.1).
 
+Bluestein lengths: a repeated 1,000,003-point `fft` takes about 220 ms (NumPy 260) under the CLI's 256 MiB FFT cache;
+under a web SAPI's 32 MiB default the plan (about 112 MB) is rebuilt per call, about 490 ms.
+
 Known gaps, largest first: `sort` (radix sort with a fixed cost of about 26 ms even on sorted input, against NumPy's
-AVX2 quicksort), Bluestein lengths (their plans, about 112 MB at 1,000,003 points, exceed the 64 MiB FFT cache: 490 ms
-per call against NumPy's 260; with a 256 MiB cap a repeated call takes about 220 ms), `rfft` (1.3x), and `sum` / `max`
-of 1M values (1.1-1.25x).
+AVX2 quicksort), `cholesky` of small matrices (100x100: 0.16 ms against 0.05, the triangle masking), `rfft` (1.3x),
+and `sum` / `max` of 1M values (1.1-1.25x).
 
 Reproduce:
 

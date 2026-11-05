@@ -66,6 +66,36 @@ reports array references to it (`get_gc`).
 To check for leaks in a worker, log `memoryInUse()` at the end of each
 job. It should return to the same baseline.
 
+### The FFT plan cache
+
+FFT plans (twiddle tables, Bluestein chirps) are kept between calls, so a
+repeated transform of one length does not rebuild them: rebuilding is more
+than half the time of a 2^20-point FFT. The cache holds only the lengths a
+process has transformed, least recently used out first, up to a limit per
+process:
+
+| process | default limit |
+|---|---|
+| CLI (scripts, queue workers, `artisan`) | 256 MiB |
+| web SAPI (php-fpm, Apache) | 32 MiB |
+
+The cache is outside the memory budget, and every php-fpm worker holds its
+own, so the worst case is the limit times the number of workers that run
+FFTs (`pm.max_children`). 32 MiB keeps power-of-two transforms up to 2^20
+points cached; a prime length near 1M points (Bluestein) needs about 112 MB
+and is rebuilt per call under the web default (about 490 ms against 220 ms
+cached).
+
+- `TESSERO_FFT_CACHE_BYTES=n` (bytes; `0` turns caching off) sets the limit
+  for every SAPI, on both backends.
+- `Tessero::setFftCacheLimit($bytes)` / `Tessero\Ext\Engine::setFftCacheLimit($bytes)`
+  change it at run time; lowering it frees idle plans at once.
+  `fftCacheBytes()` reports what is held.
+
+Size it as: free RAM you are willing to give FFT plans, divided by the number
+of worker processes that run FFTs. Results are the same with or without the
+cache.
+
 ## Threads
 
 ```ini

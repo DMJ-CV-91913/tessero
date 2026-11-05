@@ -189,7 +189,16 @@ first round.
   with no axis, FFI backend): the same kernel call writes into a reused result slot instead of a new 0-d array with
   its own shape and stride descriptors, which was most of the cost of a small reduction. 10 values: `sum` 7.0 ->
   1.9 us (NumPy 1.0), `mean` 7.1 -> 1.6 us (NumPy 2.7), `var` 21.5 -> 1.7 us (NumPy 9.1).
-- The FFT plan cache cap can be set at build time (`-DTSR_FFT_CACHE_BYTES=...`, default 64 MiB).
+- **FFT plan cache limit is a setting**: `tsr_set_fft_cache_limit` / `tsr_fft_cache_limit` / `tsr_fft_cache_bytes`,
+  `Tessero::setFftCacheLimit()` / `fftCacheLimit()` / `fftCacheBytes()` and the same on `Tessero\Ext\Engine`. The
+  library default rises to 256 MiB, enough to keep a Bluestein plan of about 1M points (a repeated 1,000,003-point
+  `fft` 490 -> about 220 ms, NumPy 260). Web SAPIs get 32 MiB, since each php-fpm worker holds its own cache outside
+  the memory budget (power-of-two transforms up to 2^20 points still fit); `TESSERO_FFT_CACHE_BYTES` overrides both,
+  `0` turns caching off. See docs/operations/memory-and-threads.md.
+- **`solve` / `cholesky` without LAPACKE's row-major copies**: `Tessero\Linalg\Linalg` and the kernel's
+  `linalg.solve` / `linalg.cholesky` give LAPACK the column-major copy LAPACKE's row-major wrapper would build, made
+  once with a tiled transpose, and skip its copy back. LAPACK sees the identical matrix, so results are unchanged.
+  `solve` 600x600 6.1 -> 5.2 ms (NumPy 5.7), 2000x2000 197 -> 140 ms (NumPy 143); `cholesky` 2000x2000 111 -> 101 ms.
 
 ### Earlier in this cycle
 
