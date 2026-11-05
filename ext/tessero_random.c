@@ -582,23 +582,25 @@ static PHP_METHOD(Generator, multivariateHypergeometric)
     const int hid = tsr_fn_find("random.hypergeometric");
     if (hid < 0) { efree(colors); zval_ptr_dtor(return_value); zend_throw_error(NULL, "random.hypergeometric not registered"); RETURN_THROWS(); }
     double dummy[1] = { 0.0 };
+    /* NumPy's random_multivariate_hypergeometric_marginals: past half the population draw the complement and
+     * flip it; stop drawing once nothing is left to sample. */
+    const int more_than_half = nsample > total / 2;
+    const int64_t draw = more_than_half ? total - nsample : nsample;
     for (int64_t r = 0; r < rows; r++) {
-        int64_t remaining = total, ns = nsample;
-        for (int64_t j = 0; j < K - 1; j++) {
-            int64_t rv = 0;
-            if (ns > 0 && remaining > 0) {
-                double ng = (double)colors[j], nb = (double)(remaining - colors[j]), nns = (double)ns;
-                int64_t res_i = 0;
-                void *ptrs[4] = { &ng, &nb, &nns, &res_i };
-                int rc = tsr_fn_random(hid, st, dummy, 0, NULL, 4, ptrs, NULL, TSR_I64);
-                if (rc < 0) { efree(colors); zval_ptr_dtor(return_value); zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: sampling failed", 0); RETURN_THROWS(); }
-                rv = res_i;
-            }
-            out[r * K + j] = rv;
-            ns -= rv;
+        int64_t remaining = total, ns = draw;
+        for (int64_t j = 0; j < K; j++) out[r * K + j] = 0;
+        for (int64_t j = 0; ns > 0 && j + 1 < K; j++) {
             remaining -= colors[j];
+            double ng = (double)colors[j], nb = (double)remaining, nns = (double)ns;
+            int64_t res_i = 0;
+            void *ptrs[4] = { &ng, &nb, &nns, &res_i };
+            int rc = tsr_fn_random(hid, st, dummy, 0, NULL, 4, ptrs, NULL, TSR_I64);
+            if (rc < 0) { efree(colors); zval_ptr_dtor(return_value); zend_throw_exception(tsr_ce_exception, "multivariate_hypergeometric: sampling failed", 0); RETURN_THROWS(); }
+            out[r * K + j] = res_i;
+            ns -= res_i;
         }
-        out[r * K + (K - 1)] = ns;
+        if (ns > 0) out[r * K + (K - 1)] = ns;
+        if (more_than_half) for (int64_t j = 0; j < K; j++) out[r * K + j] = colors[j] - out[r * K + j];
     }
     efree(colors);
 }

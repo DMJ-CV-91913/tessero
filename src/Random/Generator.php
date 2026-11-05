@@ -379,19 +379,27 @@ final class Generator
         }
         [$shape, $rows] = self::size($size);
         $rows = max(1, $rows);
+        // NumPy's random_multivariate_hypergeometric_marginals: past half the population it draws the
+        // complement and flips it, and it stops drawing once nothing is left to sample.
+        $moreThanHalf = $nsample > intdiv($total, 2);
+        $draw = $moreThanHalf ? $total - $nsample : $nsample;
         $out = [];
         for ($i = 0; $i < $rows; $i++) {
+            $row = array_fill(0, $k, 0);
             $remaining = $total;
-            $ns = $nsample;
-            for ($j = 0; $j < $k - 1; $j++) {
-                $ng = $colors[$j];
-                $nb = $remaining - $colors[$j];
-                $r = ($ns > 0 && $remaining > 0) ? $this->hypergeometric($ng, $nb, $ns) : 0;
-                $out[] = $r;
-                $ns -= $r;
+            $ns = $draw;
+            for ($j = 0; $ns > 0 && $j + 1 < $k; $j++) {
                 $remaining -= $colors[$j];
+                $r = $this->hypergeometric($colors[$j], $remaining, $ns);
+                $row[$j] = $r;
+                $ns -= $r;
             }
-            $out[] = $ns;
+            if ($ns > 0) {
+                $row[$k - 1] = $ns;
+            }
+            foreach ($row as $j => $v) {
+                $out[] = $moreThanHalf ? $colors[$j] - $v : $v;
+            }
         }
 
         return NDArray::array($out, DType::Int64)->reshape([...$shape, $k]);
