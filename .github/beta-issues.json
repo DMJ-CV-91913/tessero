@@ -1,7 +1,7 @@
 {
  "generated": "2026-09-28",
- "version": "0.2.0",
- "revision": 3,
+ "version": "0.3.0",
+ "revision": 4,
  "issues": [
   {
    "id": "TSR-001",
@@ -604,6 +604,9 @@
     "random"
    ],
    "estimate": "1",
+   "status": "resolved",
+   "resolvedIn": 4,
+   "resolution": "multivariateNormal (method 'svd'), dirichlet, multinomial, multivariateHypergeometric, permuted and bytes are implemented on both backends (Tessero\\Random\\Generator, Tessero\\Ext\\Random\\Generator); GitHub issue closed.",
    "context": "The 33 univariate Generator methods draw bit-identical streams from NumPy's own distribution code on both backends. The multivariate methods and permuted/bytes remain.",
    "acceptance": [
     "Stream-identical to NumPy for each method, fixtures on both backends"

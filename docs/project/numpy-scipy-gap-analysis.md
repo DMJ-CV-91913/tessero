@@ -48,7 +48,7 @@ on both backends. *Bit-identical* means the same bytes or iterates as NumPy/SciP
 | Sorting and searching | NumPy fixtures on both backends | sort 30 ms vs 7.5 (NumPy uses AVX-512 quicksort) | extension sorts flattened only |
 | Linear algebra | LAPACK via FFI, fixtures | matmul at parity (OpenBLAS) | extension linalg; `einsum`/`tensordot`/`outer`/`kron`; `matrix_power`, `multi_dot`; complex decompositions |
 | FFT | fixtures, round-trip properties | complex 2^20: 73 ms vs 35; rfft 36–55 vs 14 | n-D transforms; extension rfft/fft2/helpers |
-| Random | **bit-identical** streams for every `Generator` distribution method (NumPy's own distribution code) | normal 9.3 ms vs 14.1 (faster) | `multivariate_normal`, `dirichlet`, `multinomial`, `permuted`, `bytes`; extension `choice`/`shuffle` verification |
+| Random | **bit-identical** streams for every `Generator` distribution method (NumPy's own distribution code) | normal 9.3 ms vs 14.1 (faster) | extension `choice`/`shuffle` verification (the multivariate methods, `permuted` and `bytes` are implemented on both backends) |
 | I/O and memory | **byte-identical** `.npy`; fuzzed header and memmap planner | memmap zero-copy on both | CSV (`loadtxt`/`savetxt`), Arrow/Parquet; extension `.npz` |
 | Dtypes | NumPy 2 promotion table | n/a | int8/16, uint16/32/64, float16, complex64, datetime64 |
 | Polynomials / signal basics | `convolve`/`correlate` fixtures | n/a | `polyfit`/`polyval`/`roots`, `interp`, `gradient`/`trapezoid` |

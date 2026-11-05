@@ -2,7 +2,7 @@
 
 # Open issues (beta)
 
-Tessero 0.2.0 is in beta; this open-issues list is at revision **v3** (it is bumped as
+Tessero 0.3.0 is in beta; this open-issues list is at revision **v4** (it is bumped as
 issues are resolved). It is the tracked list of what stands between the beta and a stable release, ranked by
 priority. The same list is imported into GitHub Issues with `php tools/beta-issues.php create`; after the
 import, GitHub is the source of truth and this page is a snapshot from 2026-09-28.
@@ -12,9 +12,9 @@ import, GitHub is the source of truth and this page is a snapshot from 2026-09-2
 | P0 | 12 |
 | P1 | 19 |
 | P2 | 10 |
-| P3 | 13 |
-| **Total open** | **54** |
-| Resolved | 2 |
+| P3 | 12 |
+| **Total open** | **53** |
+| Resolved | 3 |
 
 The feature items (P3) come from the [NumPy/SciPy gap analysis](numpy-scipy-gap-analysis.md). The steps for testing outside the
 Linux review host are in the [live-testing checklist](../operations/live-testing.md).
@@ -84,7 +84,6 @@ Linux review host are in the [live-testing checklist](../operations/live-testing
 | [TSR-306](#tsr-306) | Polynomials and signal basics | feature, numpy | 1 |
 | [TSR-307](#tsr-307) | CSV and Arrow/Parquet I/O | feature, io | 1 + 3-4 |
 | [TSR-308](#tsr-308) | More dtypes: int8/16, uint16/32/64, float16, complex64 | feature, dtypes | 2 |
-| [TSR-309](#tsr-309) | Random: multivariate_normal, dirichlet, multinomial, multivariate_hypergeometric, permuted, bytes | feature, random | 1 |
 | [TSR-310](#tsr-310) | einsum, tensordot, outer, kron, cross | feature, linalg | 1 |
 | [TSR-311](#tsr-311) | Constrained minimize (SLSQP) and minimize_scalar | feature, optimize | 2 |
 | [TSR-312](#tsr-312) | scipy.signal basics | feature, scipy | 2-3 |
@@ -539,16 +538,6 @@ Acceptance criteria:
 - NumPy 2 promotion table extended; ufunc loops generated for each type
 - The .npy reader accepts them
 
-### TSR-309
-
-**Random: multivariate_normal, dirichlet, multinomial, multivariate_hypergeometric, permuted, bytes** (P3; feature, random)
-
-The 33 univariate Generator methods draw bit-identical streams from NumPy's own distribution code on both backends. The multivariate methods and permuted/bytes remain.
-
-Acceptance criteria:
-
-- Stream-identical to NumPy for each method, fixtures on both backends
-
 ### TSR-310
 
 **einsum, tensordot, outer, kron, cross** (P3; feature, linalg)
@@ -718,10 +707,11 @@ Acceptance criteria:
 
 ## Resolved
 
-Closed during the beta (newest list revision v3).
+Closed during the beta (newest list revision v4).
 
 | ID | Issue | Resolved in | How |
 |---|---|---|---|
+| TSR-309 | Random: multivariate_normal, dirichlet, multinomial, multivariate_hypergeometric, permuted, bytes | v4 | multivariateNormal (method 'svd'), dirichlet, multinomial, multivariateHypergeometric, permuted and bytes are implemented on both backends (Tessero\Random\Generator, Tessero\Ext\Random\Generator); GitHub issue closed. |
 | TSR-403 | CODEOWNERS and issue/PR templates | v2 | CODEOWNERS + bug/feature/config issue templates + PR checklist template added (commit 20b6fa2). |
 | TSR-117 | scipy.stats.poisson_binom needs array-valued shape parameters | v3 | Implemented as a per-call PoissonBinom : Disc in the kernel (pmf by discrete convolution; cdf/ppf/stats/entropy/moment/rvs follow via the rv_discrete machinery), exposed on both backends (Tessero\Stats\PoissonBinom and Ext\Stats::poissonBinom, plus a poissonBinomPmf shortcut); SciPy fixtures pass on both. |
 

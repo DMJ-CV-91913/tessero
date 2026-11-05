@@ -16,7 +16,7 @@ Every row is a commonly used NumPy or SciPy function (or group). ● supported, 
 | numpy: sorting and searching | 3 | 3 (100 %) | 3 (100 %) |
 | numpy: linear algebra (numpy.linalg + products) | 8 | 6 (75 %) | 6 (75 %) |
 | numpy: FFT | 5 | 5 (100 %) | 5 (100 %) |
-| numpy: random (Generator) | 8 | 7 (88 %) | 7 (88 %) |
+| numpy: random (Generator) | 9 | 9 (100 %) | 9 (100 %) |
 | numpy: I/O and memory | 7 | 7 (100 %) | 6 (86 %) |
 | numpy: dtypes | 6 | 2 (33 %) | 1 (17 %) |
 | numpy: polynomials and signal basics | 4 | 4 (100 %) | 4 (100 %) |
@@ -31,7 +31,7 @@ Every row is a commonly used NumPy or SciPy function (or group). ● supported, 
 | scipy.integrate | 3 | 2 (67 %) | 1 (33 %) |
 | scipy.spatial, cluster, ndimage | 5 | 3 (60 %) | 0 (0 %) |
 | Beyond NumPy/SciPy (Tessero additions) | 3 | 2 (67 %) | 2 (67 %) |
-| **All areas** | **181** | **151 (83 %)** | **129 (71 %)** |
+| **All areas** | **182** | **153 (84 %)** | **131 (72 %)** |
 
 Counts are rows, not NumPy symbols: a row can group several related functions. The [gap analysis](numpy-scipy-gap-analysis.md) interprets these numbers.
 
@@ -170,7 +170,8 @@ Every public NumPy/SciPy symbol of the reference versions, from `tools/parity/ce
 | choice permutation shuffle | ● | ◐ | extension: no choice — `R::choice` `R::permutation` `R::shuffle` `XR::permutation` `XR::shuffle` |
 | exponential | ● | ● | `R::exponential` `XR::exponential` |
 | gamma beta poisson binomial lognormal chisquare | ● | ● | NumPy's own distribution code — `R::gamma` `R::beta` `R::poisson` `R::binomial` `R::lognormal` `R::chisquare` `XR::gamma` `XR::beta` `XR::poisson` `XR::binomial` `XR::lognormal` `XR::chisquare` |
-| multivariate_normal dirichlet multinomial | — | — |  |
+| multivariate_normal dirichlet multinomial multivariate_hypergeometric | ● | ● | multivariate_normal: method 'svd' only — `R::multivariateNormal` `R::dirichlet` `R::multinomial` `R::multivariateHypergeometric` `XR::multivariateNormal` `XR::dirichlet` `XR::multinomial` `XR::multivariateHypergeometric` |
+| permuted bytes | ● | ● | `R::permuted` `R::bytes` `XR::permuted` `XR::bytes` |
 | student_t weibull triangular laplace logistic gumbel pareto geometric | ● | ● | `R::standardT` `R::weibull` `R::triangular` `R::laplace` `R::logistic` `R::gumbel` `R::pareto` `R::geometric` `XR::standardT` `XR::weibull` `XR::triangular` `XR::laplace` `XR::logistic` `XR::gumbel` `XR::pareto` `XR::geometric` |
 | getState / setState (persist streams) | ● | ● | `R::getState` `R::setState` `XR::getState` `XR::setState` |
 

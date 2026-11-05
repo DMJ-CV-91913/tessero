@@ -148,7 +148,8 @@ area("numpy: random (Generator)", [
     ("choice permutation shuffle", "R::choice R::permutation R::shuffle", "XR::permutation XR::shuffle", "~X extension: no choice"),
     ("exponential", "R::exponential", "XR::exponential", ""),
     ("gamma beta poisson binomial lognormal chisquare", "R::gamma R::beta R::poisson R::binomial R::lognormal R::chisquare", "XR::gamma XR::beta XR::poisson XR::binomial XR::lognormal XR::chisquare", "NumPy's own distribution code"),
-    ("multivariate_normal dirichlet multinomial", "", "", ""),
+    ("multivariate_normal dirichlet multinomial multivariate_hypergeometric", "R::multivariateNormal R::dirichlet R::multinomial R::multivariateHypergeometric", "XR::multivariateNormal XR::dirichlet XR::multinomial XR::multivariateHypergeometric", "multivariate_normal: method 'svd' only"),
+    ("permuted bytes", "R::permuted R::bytes", "XR::permuted XR::bytes", ""),
     ("student_t weibull triangular laplace logistic gumbel pareto geometric", "R::standardT R::weibull R::triangular R::laplace R::logistic R::gumbel R::pareto R::geometric", "XR::standardT XR::weibull XR::triangular XR::laplace XR::logistic XR::gumbel XR::pareto XR::geometric", ""),
     ("getState / setState (persist streams)", "R::getState R::setState", "XR::getState XR::setState", ""),
 ])
