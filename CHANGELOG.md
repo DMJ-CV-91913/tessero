@@ -7,6 +7,13 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-05
+
+Everything since 0.2.0: the NumPy/SciPy parity program, the security hardening, and the speed work below. The C ABI
+gains functions only, so it stays at generation 2 (`libtessero.so.2`); see `docs/operations/upgrading.md` for the
+behaviour changes. The library and the PHP package check that their versions match, so update both together
+(`make -C csrc` after updating the package).
+
 ### Added
 
 - **`make -C csrc install`** (`PREFIX`, default `/usr/local`; `DESTDIR`, `INCLUDEDIR`, `LIBDIR`, `BINDIR`). It installs

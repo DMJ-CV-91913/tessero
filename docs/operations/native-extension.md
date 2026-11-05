@@ -34,7 +34,7 @@ pie install tessero/tessero-ext
 
 PIE (the PHP Foundation's installer) builds the release source for the
 running PHP and writes the INI file. Pin a version in production:
-`pie install tessero/tessero-ext:0.2.0`.
+`pie install tessero/tessero-ext:0.3.0`.
 
 ## Packaging for a fleet
 

@@ -8,7 +8,7 @@ Process-wide settings and diagnostics.
 
 | Name | Value |
 |---|---|
-| `VERSION` | `'0.2.0'` |
+| `VERSION` | `'0.3.0'` |
 | `ABI_VERSION` | `2` |
 
 ## Methods

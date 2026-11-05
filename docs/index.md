@@ -60,7 +60,7 @@ backward-composite goldens are all confirmed on two independent hosts.
 
 ## Status
 
-Version **0.2.0**, pre-1.0. The API is usable and heavily tested, but it can
+Version **0.3.0**, pre-1.0. The API is usable and heavily tested, but it can
 still change between minor versions; [Upgrading](operations/upgrading.md) lists
 every change. The platform has been built and verified on Linux x86-64 with
 PHP 8.4. Other platforms are built by CI and are listed as unverified until CI

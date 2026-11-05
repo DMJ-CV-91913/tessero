@@ -13,7 +13,7 @@ use Tessero\Random\Generator;
  */
 final class Tessero
 {
-    public const VERSION = '0.2.0';
+    public const VERSION = '0.3.0';
 
     /** The libtessero C ABI generation this package is written against (csrc/include/tessero_version.h, ADR 0014). */
     public const ABI_VERSION = 2;
