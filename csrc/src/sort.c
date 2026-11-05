@@ -254,6 +254,10 @@ static const uint32_t qs_perm32[256] = {
 #include "sort_net.h"
 
 /* quicksort leaves: insertion sort for a handful of keys, else the smallest network that holds them */
+/* parallel sort: tasks down to parts of n / (threads * QS_PAR_SPLIT) keys, at least QS_PAR_MINPART */
+#define QS_PAR_SPLIT 16
+#define QS_PAR_MINPART ((int64_t)1 << 14)
+
 #define QS_INSERTION(T)                                                                     \
     for (int64_t i = 1; i < n; i++) {                                                       \
         const T k = a[i];                                                                   \
@@ -457,9 +461,10 @@ __attribute__((target("avx2"))) static int64_t f64_drop_nans(double *d, int64_t 
 
 __attribute__((target("avx2"))) static int simd_sort_inplace(int dtype, int64_t n, void *data)
 {
+    const int threads = tsr_get_threads();
     switch (dtype) {
-    case TSR_I64: qs_sort64((qs_i64 *)data, n); return TSR_OK;
-    case TSR_I32: qs_sort32((qs_i32 *)data, n); return TSR_OK;
+    case TSR_I64: qs_sort64((qs_i64 *)data, n, threads); return TSR_OK;
+    case TSR_I32: qs_sort32((qs_i32 *)data, n, threads); return TSR_OK;
     case TSR_F64: {
         double *d = (double *)data;
         int64_t m;
@@ -468,12 +473,12 @@ __attribute__((target("avx2"))) static int simd_sort_inplace(int dtype, int64_t 
                the integer keys instead */
             qs_i64 *k = (qs_i64 *)data;
             m = f64_to_keys(k, n);
-            qs_sort64(k, m);
+            qs_sort64(k, m, threads);
             f64_from_keys(k, m);
         } else {
             int64_t nneg = 0;
             m = f64_drop_nans(d, n, &nneg);
-            qs_sortd(d, m);
+            qs_sortd(d, m, threads);
             /* the zeros are one run [lo, hi), signs mixed by min/max: rewrite it as nneg times -0.0, then +0.0 */
             int64_t lo = 0, hi = m;
             while (lo < hi) { const int64_t mid = lo + (hi - lo) / 2; if (d[mid] < 0.0) lo = mid + 1; else hi = mid; }
@@ -487,7 +492,7 @@ __attribute__((target("avx2"))) static int simd_sort_inplace(int dtype, int64_t 
     case TSR_F32: {
         qs_i32 *k = (qs_i32 *)data;
         const int64_t m = f32_to_keys(k, n);
-        qs_sort32(k, m);
+        qs_sort32(k, m, threads);
         f32_from_keys(k, m);
         float *d = (float *)data;
         for (int64_t i = m; i < n; i++) d[i] = NAN;

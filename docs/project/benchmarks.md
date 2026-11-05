@@ -180,6 +180,29 @@ Intel's x86-simd-sort vector quicksort):
 | int64 | 17.1 | 24.3 | **16.7** |
 | int32 | **6.8** | 24.0 | 7.4 |
 
+`sortSimd()` also uses the threads set with `Tessero::setThreads()` (extension: `Engine::setMaxThreads()` or
+the `tessero.threads` ini setting) for arrays of 131,072 values or more; NumPy's sort is single-threaded. The
+partitions near the top of the sort become tasks for the other threads, and the pivots do not depend on the thread
+count, so the output is the one-thread output, byte for byte (tested at 1 and 4 threads). Random values, same
+machine (4 cores, 8 hardware threads; a separate benchmark occupied one core during these runs):
+
+| dtype, 1,000,000 values | NumPy | sortSimd 1 thread | 2 threads | 4 threads |
+|---|---|---|---|---|
+| float64 | 14.1 | 15.9 | 9.0 | **5.7** |
+| float32 | 7.5 | 7.9 | 4.5 | **3.4** |
+| int64 | 17.1 | 16.7 | 9.4 | **6.5** |
+| int32 | 6.8 | 7.5 | 4.1 | **2.8** |
+
+| dtype, 10,000,000 values | NumPy | sortSimd 1 thread | 4 threads |
+|---|---|---|---|
+| float64 | 176 | 194 | **90** |
+| float32 | 92 | 98 | **48** |
+| int64 | 206 | 200 | **86** |
+| int32 | 84 | 90 | **41** |
+
+At 1M values four threads sort 2.2-2.6x faster than NumPy; at 10M the gain is about 2x, as the sort becomes
+limited by memory bandwidth. Eight threads (hyper-threads) add nothing on this machine.
+
 Rule of thumb: `sortSimd()` on an AVX2 machine, `sortRuns()` for mostly sorted data where AVX2 is missing, `sort()`
 when a steady, input-independent time matters more than the best case.
 

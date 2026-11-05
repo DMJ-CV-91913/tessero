@@ -86,12 +86,17 @@ static inline QS_T QS_FN(qs_med3)(QS_T x, QS_T y, QS_T z)
     return x < y ? (y < z ? y : (x < z ? z : x)) : (x < z ? x : (y < z ? z : y));
 }
 
+static inline QS_T QS_FN(qs_pivot)(const QS_T *a, int64_t n)
+{
+    return QS_FN(qs_med3)(QS_FN(qs_med3)(a[0], a[n / 8], a[n / 4]), QS_FN(qs_med3)(a[3 * n / 8], a[n / 2], a[5 * n / 8]),
+                          QS_FN(qs_med3)(a[3 * n / 4], a[7 * n / 8], a[n - 1]));
+}
+
 static void QS_FN(qs_rec)(QS_T *a, int64_t n, int depth)
 {
     while (n > QS_LEAFMAX) {
         if (depth-- <= 0) { QS_FN(qs_heapsort)(a, n); return; }
-        const QS_T p = QS_FN(qs_med3)(QS_FN(qs_med3)(a[0], a[n / 8], a[n / 4]), QS_FN(qs_med3)(a[3 * n / 8], a[n / 2], a[5 * n / 8]),
-                                      QS_FN(qs_med3)(a[3 * n / 4], a[7 * n / 8], a[n - 1]));
+        const QS_T p = QS_FN(qs_pivot)(a, n);
         int64_t m = QS_FN(qs_partition)(a, n, p);
         if (m == 0) {                                          /* p is the minimum: split off every key equal to it */
             m = p == QS_MAX ? n : QS_FN(qs_partition)(a, n, QS_NEXT(p));
@@ -104,8 +109,35 @@ static void QS_FN(qs_rec)(QS_T *a, int64_t n, int depth)
     QS_FN(qs_leaf)(a, n);
 }
 
-/* ascending input returns at once and non-increasing input is reversed (equal keys are interchangeable) */
-static void QS_FN(qs_sort)(QS_T *a, int64_t n)
+#ifdef _OPENMP
+/* the top of the recursion on several threads: the left part of each partition becomes an OpenMP task until the
+   parts are below cutoff, then each part is sorted serially. The parts are disjoint and the pivots are the serial
+   sort's, so the result is the serial sort's whatever the thread count or the order the tasks run in. */
+static void QS_FN(qs_rec_par)(QS_T *a, int64_t n, int depth, int64_t cutoff)
+{
+    while (n > cutoff) {
+        if (depth-- <= 0) { QS_FN(qs_heapsort)(a, n); return; }
+        const QS_T p = QS_FN(qs_pivot)(a, n);
+        int64_t m = QS_FN(qs_partition)(a, n, p);
+        if (m == 0) {
+            m = p == QS_MAX ? n : QS_FN(qs_partition)(a, n, QS_NEXT(p));
+            a += m; n -= m;
+            continue;
+        }
+        QS_T *l = a;
+        const int64_t ln = m;
+        const int ld = depth;
+#pragma omp task firstprivate(l, ln, ld, cutoff)
+        QS_FN(qs_rec_par)(l, ln, ld, cutoff);
+        a += m; n -= m;
+    }
+    QS_FN(qs_rec)(a, n, depth);
+}
+#endif
+
+/* ascending input returns at once and non-increasing input is reversed (equal keys are interchangeable); arrays of
+   TSR_PAR_MIN keys or more use up to threads threads */
+static void QS_FN(qs_sort)(QS_T *a, int64_t n, int threads)
 {
     if (n < 2) return;
     int64_t i = 1;
@@ -121,6 +153,18 @@ static void QS_FN(qs_sort)(QS_T *a, int64_t n)
     }
     int depth = 4;
     for (int64_t t = n; t > 1; t >>= 1) depth += 2;
+#ifdef _OPENMP
+    if (threads > 1 && n >= TSR_PAR_MIN) {
+        int64_t cutoff = n / ((int64_t)threads * QS_PAR_SPLIT);
+        if (cutoff < QS_PAR_MINPART) cutoff = QS_PAR_MINPART;
+#pragma omp parallel num_threads(threads)
+#pragma omp single nowait
+        QS_FN(qs_rec_par)(a, n, depth, cutoff);
+        return;
+    }
+#else
+    (void)threads;
+#endif
     QS_FN(qs_rec)(a, n, depth);
 }
 

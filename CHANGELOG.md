@@ -27,6 +27,10 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   compares and min/max; the zeros' signs are restored afterwards, and denormals-are-zero mode falls back to integer
   keys). 1M random values: float64 23.3 -> 15.9 ms, float32 18.0 -> 7.8 ms, int64 22.0 -> 16.7 ms (NumPy 17.1),
   int32 17.0 -> 7.4 ms. Now the fastest of the three sorts on almost every input. Output unchanged, byte for byte.
+- **`sortSimd()` is multithreaded** from 131,072 values, using the threads set with `Tessero::setThreads()`
+  (OpenMP tasks for the top partitions; the pivots do not depend on the thread count, so the output is the
+  one-thread output, byte for byte). 1M random values with 4 threads: float64 5.7 ms, float32 3.4, int64 6.5,
+  int32 2.8 -- 2.2-2.6x faster than NumPy's single-threaded sort (14.1 / 7.5 / 17.1 / 6.8 ms).
 
 ## [0.3.0] - 2026-11-05
 

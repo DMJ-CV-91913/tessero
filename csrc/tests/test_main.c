@@ -2209,16 +2209,16 @@ static void test_fuzz_batch_d(void)
 }
 
 /* tsr_sort, tsr_sort_simd and tsr_sort_runs return the same bytes: every dtype, NaN, -0.0/+0.0, duplicates, sorted,
-   reversed and interleaved data, +-inf, NaN payloads and signs, subnormals, the integer extremes, sizes 0..300
-   and 100000, element-aligned starts that are not 32-byte aligned (the AVX2 loads are unaligned), 1 and 4
-   threads */
+   reversed and interleaved data, +-inf, NaN payloads and signs, subnormals, the integer extremes, sizes 0..300,
+   100000 and 300000 (the parallel sort), element-aligned starts that are not 32-byte aligned (the AVX2 loads are
+   unaligned), 1 and 4 threads */
 static void test_sort_variants(void)
 {
     static const int dts[] = {TSR_F64, TSR_F32, TSR_I64, TSR_I32, TSR_U8};
     const int saved = tsr_get_threads();
     uint64_t st = 0x9E3779B97F4A7C15ULL;
     int bad = 0, cases = 0;
-    const int64_t big = 100000;
+    const int64_t big = 300000;                                      /* > TSR_PAR_MIN: the parallel path */
     unsigned char *src = malloc((size_t)(big + 8) * 8), *a = malloc((size_t)(big + 8) * 8),
                   *b = malloc((size_t)(big + 8) * 8), *c = malloc((size_t)(big + 8) * 8);
     for (int threads = 1; threads <= 4; threads += 3) {
@@ -2226,7 +2226,7 @@ static void test_sort_variants(void)
         for (size_t d = 0; d < sizeof dts / sizeof dts[0]; d++) {
             const int dt = dts[d];
             const int64_t isz = dt == TSR_F64 || dt == TSR_I64 ? 8 : dt == TSR_U8 ? 1 : 4;
-            for (int64_t n = 0; n <= big; n = n < 300 ? n + 1 : (n < big ? big : big + 1)) {
+            for (int64_t n = 0; n <= big; n = n < 300 ? n + 1 : (n == 300 ? 100000 : (n < big ? big : big + 1))) {
                 for (int pattern = 0; pattern < 7; pattern++) {
                     if (n > 300 && (pattern == 4 || pattern == 5)) continue;
                     for (int64_t i = 0; i < n; i++) {

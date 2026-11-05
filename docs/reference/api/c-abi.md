@@ -203,8 +203,9 @@ int tsr_sort(int dtype, int64_t n, void *data);                       /* ascendi
    keys by comparison only, so the output does not depend on the algorithm, SIMD level, thread count or alignment).
    tsr_sort: radix, steady speed whatever the order of the input; the default. tsr_sort_simd: AVX2 quicksort in place,
    the fastest of the three on almost every input (about 2x the radix sort on random data, much more on sorted or
-   duplicate-heavy data); the radix sort where AVX2 is missing. tsr_sort_runs: natural merge sort, for data that is
-   already mostly sorted (appended or lightly edited) on machines without AVX2; slowest on random data. */
+   duplicate-heavy data), multithreaded (tsr_set_threads) from 131072 values; the radix sort where AVX2 is missing.
+   tsr_sort_runs: natural merge sort, for data that is already mostly sorted (appended or lightly edited) on machines
+   without AVX2; slowest on random data. */
 int tsr_sort_simd(int dtype, int64_t n, void *data);
 int tsr_sort_runs(int dtype, int64_t n, void *data);
 int tsr_argsort(int dtype, int64_t n, const void *data, int64_t *out); /* stable */
