@@ -22,6 +22,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   64-bit keys, integers without any conversion, floats mapped to order-preserving integers in place (the map is its
   own inverse), and no scratch buffer. 1M random values: float32 24.8 -> 18.0 ms, int32 24.0 -> 17.0 ms, int64
   25.3 -> 22.0 ms, float64 25.2 -> 23.3 ms; sorted input about twice as fast. Output unchanged, byte for byte.
+- **`sortSimd()` leaves go to in-register AVX2 sorting networks** (up to 64 keys for 64-bit data, 128 for 32-bit;
+  generated straight-line code, `tools/gen-sort-net.php`), and float64 is sorted as doubles (one-instruction
+  compares and min/max; the zeros' signs are restored afterwards, and denormals-are-zero mode falls back to integer
+  keys). 1M random values: float64 23.3 -> 15.9 ms, float32 18.0 -> 7.8 ms, int64 22.0 -> 16.7 ms (NumPy 17.1),
+  int32 17.0 -> 7.4 ms. Now the fastest of the three sorts on almost every input. Output unchanged, byte for byte.
 
 ## [0.3.0] - 2026-11-05
 

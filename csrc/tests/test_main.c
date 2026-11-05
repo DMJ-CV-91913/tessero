@@ -2268,9 +2268,41 @@ static void test_sort_variants(void)
     CHECK(bad == 0, "tsr_sort == tsr_sort_simd == tsr_sort_runs, byte for byte (%d of %d cases differ)", bad, cases);
 }
 
-static void test_abi_runtime(void)
+/* the AVX2 sort compares float64 values directly unless the CPU treats subnormals as zero (MXCSR DAZ/FTZ): then it
+   must fall back to integer keys and still match tsr_sort byte for byte, subnormals and signed zeros included */
+static void test_sort_daz(void)
 {
-    /* version and capability negotiation: one version source */
+#if defined(__x86_64__) && defined(__GNUC__)
+    enum { N = 4000 };
+    static double src[N], a[N], b[N];
+    static float sf[N], af[N], bf[N];
+    uint64_t st = 12345;
+    for (int i = 0; i < N; i++) {
+        st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+        uint64_t u = st % 3 == 0 ? (st >> 12) : st;                                   /* many subnormals */
+        if (i % 17 == 0) u = i % 2 ? 0x8000000000000000ULL : 0;
+        if (i % 29 == 0) u = 0x7ff8000000000000ULL;
+        memcpy(&src[i], &u, 8);
+        uint32_t v = st % 3 == 0 ? (uint32_t)(st >> 41) : (uint32_t)st;
+        if (i % 17 == 0) v = i % 2 ? 0x80000000u : 0;
+        if (i % 29 == 0) v = 0x7fc00000u;
+        memcpy(&sf[i], &v, 4);
+    }
+    int bad = 0;
+    for (int mode = 0; mode < 2; mode++) {
+        memcpy(a, src, sizeof a); memcpy(b, src, sizeof b); memcpy(af, sf, sizeof af); memcpy(bf, sf, sizeof bf);
+        const unsigned csr = __builtin_ia32_stmxcsr();
+        if (mode) __builtin_ia32_ldmxcsr(csr | 0x8040);
+        const int r = tsr_sort(TSR_F64, N, a) | tsr_sort_simd(TSR_F64, N, b) | tsr_sort(TSR_F32, N, af) | tsr_sort_simd(TSR_F32, N, bf);
+        __builtin_ia32_ldmxcsr(csr);
+        if (r || memcmp(a, b, sizeof a) || memcmp(af, bf, sizeof af)) bad++;
+    }
+    CHECK(bad == 0, "tsr_sort_simd == tsr_sort on subnormals and signed zeros, with and without DAZ/FTZ (%d modes differ)", bad);
+#endif
+}
+
+static void test_abi_runtime(void)
+{    /* version and capability negotiation: one version source */
     CHECK(tsr_abi_version() == TSR_ABI_VERSION && TSR_ABI_VERSION == 2, "abi version %d", tsr_abi_version());
     CHECK(strcmp(tsr_version(), TSR_VERSION_STRING) == 0, "tsr_version %s", tsr_version());
     {
@@ -3007,6 +3039,7 @@ int main(void)
     test_ci_regressions();
     test_abi_runtime();
     test_sort_variants();
+    test_sort_daz();
     test_arg_gate();
     test_ownership();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());

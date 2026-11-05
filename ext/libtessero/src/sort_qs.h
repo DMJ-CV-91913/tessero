@@ -1,15 +1,18 @@
 /*
  * AVX2 quicksort of signed integer keys, included by sort.c once per key width with
- *   QS_T      key type (a may_alias int64 or int32 typedef: the keys live in the caller's float or int buffer)
+ *   QS_T      key type (a may_alias int64 or int32 typedef: the keys live in the caller's float or int buffer; or
+ *             double, for float64 data without NaNs sorted as itself)
  *   QS_N      name suffix (64 / 32)
  *   QS_L      keys per 256-bit vector (4 / 8)
- *   QS_MAX    largest key
+ *   QS_MAX    largest key; QS_NEXT(p) the next key above p (x <= p is x < QS_NEXT(p))
  *   QS_SET1, QS_CMPGT, QS_MASK, QS_PERM   the width's broadcast, compare, lane mask and left-pack permutation
+ *   QS_LEAFMAX  the largest leaf, sorted by qs_leaf<QS_N>(a, n) (defined before the include: sorting networks)
  * Partition: four vectors (4 * QS_L keys) per step from the end with less free space, the lanes below the pivot
  * moved left by a permutation and stored from both ends; 4 * QS_L keys are held back at each end so a full store
  * always fits, and the tails are branchless scalar loops. Pivot: median of nine. Keys equal to a minimum pivot are
  * split off in one more pass (many duplicates stay linear); a depth limit falls back to heapsort. Leaves of up to
- * 16 keys: Batcher's network. Comparison only, so the result is the sorted keys whatever the path taken.
+ * QS_LEAFMAX keys go to in-register sorting networks (sort_net.h). Comparison only, so the result is the sorted
+ * keys whatever the path taken.
  */
 #define QS_CAT_(a, b) a##b
 #define QS_CAT(a, b) QS_CAT_(a, b)
@@ -83,46 +86,15 @@ static inline QS_T QS_FN(qs_med3)(QS_T x, QS_T y, QS_T z)
     return x < y ? (y < z ? y : (x < z ? z : x)) : (x < z ? x : (y < z ? z : y));
 }
 
-#define QS_CAS(x, y) do { const QS_T a_ = v[x], b_ = v[y]; v[x] = a_ < b_ ? a_ : b_; v[y] = a_ < b_ ? b_ : a_; } while (0)
-/* up to 16 keys: Batcher's odd-even merge network (63 compare-exchanges, branchless), padded with QS_MAX */
-static void QS_FN(qs_leaf)(QS_T *a, int64_t n)
-{
-    if (n < 2) return;
-    if (n <= 6) {
-        for (int64_t i = 1; i < n; i++) {
-            const QS_T k = a[i];
-            int64_t j = i - 1;
-            while (j >= 0 && a[j] > k) { a[j + 1] = a[j]; j--; }
-            a[j + 1] = k;
-        }
-        return;
-    }
-    TSR_NOINIT QS_T v[16];
-    for (int64_t i = 0; i < n; i++) v[i] = a[i];
-    for (int64_t i = n; i < 16; i++) v[i] = QS_MAX;
-    QS_CAS(0, 1); QS_CAS(2, 3); QS_CAS(4, 5); QS_CAS(6, 7); QS_CAS(8, 9); QS_CAS(10, 11); QS_CAS(12, 13); QS_CAS(14, 15);
-    QS_CAS(0, 2); QS_CAS(1, 3); QS_CAS(4, 6); QS_CAS(5, 7); QS_CAS(8, 10); QS_CAS(9, 11); QS_CAS(12, 14); QS_CAS(13, 15);
-    QS_CAS(1, 2); QS_CAS(5, 6); QS_CAS(9, 10); QS_CAS(13, 14);
-    QS_CAS(0, 4); QS_CAS(1, 5); QS_CAS(2, 6); QS_CAS(3, 7); QS_CAS(8, 12); QS_CAS(9, 13); QS_CAS(10, 14); QS_CAS(11, 15);
-    QS_CAS(2, 4); QS_CAS(3, 5); QS_CAS(10, 12); QS_CAS(11, 13);
-    QS_CAS(1, 2); QS_CAS(3, 4); QS_CAS(5, 6); QS_CAS(9, 10); QS_CAS(11, 12); QS_CAS(13, 14);
-    QS_CAS(0, 8); QS_CAS(1, 9); QS_CAS(2, 10); QS_CAS(3, 11); QS_CAS(4, 12); QS_CAS(5, 13); QS_CAS(6, 14); QS_CAS(7, 15);
-    QS_CAS(4, 8); QS_CAS(5, 9); QS_CAS(6, 10); QS_CAS(7, 11);
-    QS_CAS(2, 4); QS_CAS(3, 5); QS_CAS(6, 8); QS_CAS(7, 9); QS_CAS(10, 12); QS_CAS(11, 13);
-    QS_CAS(1, 2); QS_CAS(3, 4); QS_CAS(5, 6); QS_CAS(7, 8); QS_CAS(9, 10); QS_CAS(11, 12); QS_CAS(13, 14);
-    for (int64_t i = 0; i < n; i++) a[i] = v[i];
-}
-#undef QS_CAS
-
 static void QS_FN(qs_rec)(QS_T *a, int64_t n, int depth)
 {
-    while (n > 16) {
+    while (n > QS_LEAFMAX) {
         if (depth-- <= 0) { QS_FN(qs_heapsort)(a, n); return; }
         const QS_T p = QS_FN(qs_med3)(QS_FN(qs_med3)(a[0], a[n / 8], a[n / 4]), QS_FN(qs_med3)(a[3 * n / 8], a[n / 2], a[5 * n / 8]),
                                       QS_FN(qs_med3)(a[3 * n / 4], a[7 * n / 8], a[n - 1]));
         int64_t m = QS_FN(qs_partition)(a, n, p);
         if (m == 0) {                                          /* p is the minimum: split off every key equal to it */
-            m = p == QS_MAX ? n : QS_FN(qs_partition)(a, n, (QS_T)(p + 1));
+            m = p == QS_MAX ? n : QS_FN(qs_partition)(a, n, QS_NEXT(p));
             a += m; n -= m;
             continue;
         }

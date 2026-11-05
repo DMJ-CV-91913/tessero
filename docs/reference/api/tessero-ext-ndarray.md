@@ -724,6 +724,18 @@ slice(string $spec)
 sort()
 ```
 
+### sortRuns
+
+```php
+sortRuns()
+```
+
+### sortSimd
+
+```php
+sortSimd()
+```
+
 ### sqrt
 
 ```php

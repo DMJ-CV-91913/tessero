@@ -201,10 +201,10 @@ int tsr_cumulative(int op, int dtype, int64_t outer, int64_t len, int64_t inner,
 int tsr_sort(int dtype, int64_t n, void *data);                       /* ascending, NaN last */
 /* The same sort by other algorithms, for other data: identical results (all three sort the same order-preserving
    keys by comparison only, so the output does not depend on the algorithm, SIMD level, thread count or alignment).
-   tsr_sort: radix, steady speed whatever the order of the input; the default. tsr_sort_simd: AVX2 quicksort, faster
-   on random data, on many duplicates and on sorted input, close to radix on large nearly sorted or interleaved
-   data; the radix sort where AVX2 is missing. tsr_sort_runs: natural merge sort, fastest on data that
-   is already mostly sorted (appended or lightly edited), slowest on random data. */
+   tsr_sort: radix, steady speed whatever the order of the input; the default. tsr_sort_simd: AVX2 quicksort in place,
+   the fastest of the three on almost every input (about 2x the radix sort on random data, much more on sorted or
+   duplicate-heavy data); the radix sort where AVX2 is missing. tsr_sort_runs: natural merge sort, for data that is
+   already mostly sorted (appended or lightly edited) on machines without AVX2; slowest on random data. */
 int tsr_sort_simd(int dtype, int64_t n, void *data);
 int tsr_sort_runs(int dtype, int64_t n, void *data);
 int tsr_argsort(int dtype, int64_t n, const void *data, int64_t *out); /* stable */

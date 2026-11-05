@@ -1021,11 +1021,11 @@ sortSimd() and sortRuns() return exactly the same values with other algorithms (
 order-preserving keys by comparison only, so the result never depends on the algorithm, the CPU, the thread
 count or the memory layout of the input). Pick by the data:
   sort()      radix: predictable, input-independent time; does not exploit sorted or duplicate-heavy input.
-  sortSimd()  AVX2 quicksort: fastest on random data, on many duplicates and on already sorted or reversed
-              input; little gain on large nearly sorted or interleaved data. Without AVX2 it runs the
+  sortSimd()  AVX2 quicksort: the fastest of the three on almost every input, about twice the radix sort
+              on random data and much more on sorted or duplicate-heavy data. Without AVX2 it runs the
               radix sort.
-  sortRuns()  natural merge sort: best on mostly sorted data (rows appended to a sorted array, a few
-              values edited, concatenated sorted batches); 2-3x slower than the others on random data.
+  sortRuns()  natural merge sort: for mostly sorted data (rows appended to a sorted array, a few values
+              edited) where AVX2 is missing; 2-3x slower than the others on random data.
 Measured figures: docs/project/benchmarks.md.
 
 ### sortRuns
