@@ -97,7 +97,8 @@ int fn_gate_array(const tsr_array *a, int with_data, const char *what, int k)
         fn_set_error("%s %d: strides and offset overflow the address range", what, k);
         return TSR_EARG;
     }
-    if (lo < 0) { fn_set_error("%s %d: an element lies %lld bytes before the start of its block", what, k, (long long)-lo); return TSR_EARG; }
+    /* negated as unsigned: lo can be INT64_MIN, whose negation overflows int64 */
+    if (lo < 0) { fn_set_error("%s %d: an element lies %llu bytes before the start of its block", what, k, 0ULL - (unsigned long long)lo); return TSR_EARG; }
     if (with_data == 2)                            /* an output: every element its own address (no write races) */
         for (int32_t d = 0; d < a->ndim; d++)
             if (a->shape[d] > 1 && a->strides[d] == 0) {
