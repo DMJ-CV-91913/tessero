@@ -344,13 +344,16 @@ function comparePartition(string $method, array $case, mixed $got, string $array
         $s2 = $lane;
         usort($s1, static fn ($x, $y) => $key($x) <=> $key($y));
         usort($s2, static fn ($x, $y) => $key($x) <=> $key($y));
-        if (array_map('strval', $s1) !== array_map('strval', $s2)) {
+        // values compared as text, so -0.0 and 0.0 differ; NaN spelled out ("NAN", what strval gives) because PHP 8.5
+        // warns when a NaN float is converted to a string
+        $sv = static fn (float $x): string => is_nan($x) ? 'NAN' : strval($x);
+        if (array_map($sv, $s1) !== array_map($sv, $s2)) {
             return 'not a permutation of the input lane';
         }
         foreach ($kths as $k) {
             $k = $k < 0 ? $k + $len : $k;
-            if (strval($lane[$k]) !== strval($s1[$k])) {
-                return "kth {$k}: got {$lane[$k]} want {$s1[$k]}";
+            if ($sv($lane[$k]) !== $sv($s1[$k])) {
+                return "kth {$k}: got {$sv($lane[$k])} want {$sv($s1[$k])}";
             }
             for ($i = 0; $i < $len; $i++) {
                 if (($i < $k && $key($lane[$i]) > $key($lane[$k])) || ($i > $k && $key($lane[$i]) < $key($lane[$k]))) {
