@@ -22,6 +22,18 @@ static feature(string $name)
 static fft($x, bool $inverse = …)
 ```
 
+### fftCacheBytes
+
+```php
+static fftCacheBytes()
+```
+
+### fftCacheLimit
+
+```php
+static fftCacheLimit()
+```
+
 ### getBlasThreads
 
 ```php
@@ -140,6 +152,12 @@ static setBlasThreads(int $value)
 
 ```php
 static setEpsilon(float $value)
+```
+
+### setFftCacheLimit
+
+```php
+static setFftCacheLimit(int $value)
 ```
 
 ### setMaxThreads

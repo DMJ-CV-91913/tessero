@@ -2085,9 +2085,27 @@ static int r_pascal(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     int64_t osh[2] = {n, n};
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
     if (!out) return TSR_ENOMEM;
-    for (int64_t i = 0; i < n; i++)
-        for (int64_t j = 0; j < n; j++)
-            out[i * n + j] = kind == 0 ? sl_binom(i + j, i) : kind == 1 ? sl_binom(i, j) : sl_binom(j, i);
+    if (n == 0) return TSR_OK;
+    /* every entry is a binomial C(k, i) taken from one row of sl_binom_row (bit-identical to sl_binom): row k = i of
+       the lower factor (the upper is its transpose), or the anti-diagonal i + j = k of the symmetric matrix. O(n^2)
+       instead of an O(n) product per entry (O(n^3)), which a fuzzed large n ran into (CI, seed 1, input 12636). */
+    const int64_t rows = kind == 0 ? 2 * n - 1 : n;
+    double *b = (double *)malloc((size_t)(kind == 0 ? 2 * n : n) * sizeof(double));      /* one binomial row */
+    if (!b) return TSR_ENOMEM;                                     /* res[0] is released by tsr_fn_routine */
+    if (kind != 0) memset(out, 0, (size_t)(n * n) * sizeof(double));
+    for (int64_t k = 0; k < rows; k++) {
+        sl_binom_row(k, b);
+        if (kind == 0) {
+            const int64_t lo = k - (n - 1) > 0 ? k - (n - 1) : 0, hi = k < n - 1 ? k : n - 1;
+            for (int64_t i = lo; i <= hi; i++) out[i * n + (k - i)] = b[i];         /* S[i][k-i] = C(k, i) */
+        } else {
+            for (int64_t i = 0; i <= k; i++) {
+                if (kind == 1) out[k * n + i] = b[i];                               /* L[k][i] = C(k, i) */
+                else out[i * n + k] = b[i];                                          /* U[i][k] = C(k, i) */
+            }
+        }
+    }
+    free(b);
     return TSR_OK;
 }
 

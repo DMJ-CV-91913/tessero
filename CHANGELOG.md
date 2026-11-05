@@ -234,6 +234,11 @@ From the memory-safety review (`docs/project/memory-safety-review.md`):
 
 ### Fixed
 
+- **`scipy.linalg.pascal` is O(n^2)**: every entry was a separate O(n) binomial product, so a large `n` ran for
+  minutes (a CI fuzzing timeout). Entries now come from one binomial row per row or anti-diagonal, the same
+  function `invpascal` uses, with identical values: `pascal(2000)` 12.3 s -> 0.19 s.
+- **API reference and `tools/parity/api.json` regenerated**: they predated several C ABI additions and the I/O
+  readers' size-limit parameters, which kept CI's "API reference is up to date" check failing.
 - **Windows FFI loader: no `Calling FFI::new() statically is deprecated` notice** on every load
   (`Library::cdefBesideItsDlls` built its buffer with a static `FFI::new()`; it now uses the kernel32 FFI instance).
 - **Registry routine errors now use Tessero's exception classes.** On both backends, an index error from a

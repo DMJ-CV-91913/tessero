@@ -30,6 +30,20 @@ static feature(string $name): bool
 Whether the loaded build has a capability: "repro_f32", "gemm_canonical", "lapack", "openblas_threads",
 "openmp" or "fpenv_check". Unknown names give false.
 
+### fftCacheBytes
+
+```php
+static fftCacheBytes(): int
+```
+
+Bytes the FFT plan cache holds now.
+
+### fftCacheLimit
+
+```php
+static fftCacheLimit(): int
+```
+
 ### info
 
 ```php
@@ -79,6 +93,16 @@ static setBlasThreads(int $threads): void
 
 Cap the BLAS thread pools: the BLAS this package loads over FFI (Linalg) and the one libtessero links
 (matmul). Web SAPIs default to 1 (TESSERO_BLAS_THREADS overrides), since php-fpm runs a worker per core.
+
+### setFftCacheLimit
+
+```php
+static setFftCacheLimit(int $bytes): void
+```
+
+Cap the FFT plan cache of this process in bytes (default 256 MiB, 0 = no caching). Repeated transforms of one
+length reuse the cached plan; a prime length near 1M points needs about 112 MB of it. The cache is outside the
+memory budget and each php-fpm worker holds its own, so lower it there. Lowering it frees idle plans at once.
 
 ### setMemoryBudget
 

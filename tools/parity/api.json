@@ -1371,7 +1371,7 @@
                 "name": "floorDivide",
                 "static": true,
                 "sig": "floorDivide(mixed $x, mixed $y, ?Tessero\\NDArray $out = null): Tessero\\NDArray",
-                "doc": "floor(x / y)."
+                "doc": "x // y as NumPy floor_divide: the floor of the exact quotient (1.0 // 0.1 is 9.0, not floor(1.0 / 0.1))."
             },
             {
                 "name": "maximum",
@@ -1630,10 +1630,46 @@
                 "doc": ""
             },
             {
+                "name": "setFftCacheLimit",
+                "static": true,
+                "sig": "setFftCacheLimit(int $bytes): void",
+                "doc": "Cap the FFT plan cache of this process in bytes (default 256 MiB, 0 = no caching). Repeated transforms of one length reuse the cached plan; a prime length near 1M points needs about 112 MB of it. The cache is outside the memory budget and each php-fpm worker holds its own, so lower it there. Lowering it frees idle plans at once."
+            },
+            {
+                "name": "fftCacheLimit",
+                "static": true,
+                "sig": "fftCacheLimit(): int",
+                "doc": ""
+            },
+            {
+                "name": "fftCacheBytes",
+                "static": true,
+                "sig": "fftCacheBytes(): int",
+                "doc": "Bytes the FFT plan cache holds now."
+            },
+            {
                 "name": "setBlasThreads",
                 "static": true,
                 "sig": "setBlasThreads(int $threads): void",
-                "doc": ""
+                "doc": "Cap the BLAS thread pools: the BLAS this package loads over FFI (Linalg) and the one libtessero links (matmul). Web SAPIs default to 1 (TESSERO_BLAS_THREADS overrides), since php-fpm runs a worker per core."
+            },
+            {
+                "name": "selfcheck",
+                "static": true,
+                "sig": "selfcheck(): array",
+                "doc": "Numerical self-check of the loaded libtessero (docs/reference/numerical-guarantees.md): the FP control state of this thread and the OpenMP workers, then the known-answer tests. fpenv is 0 when the FP environment is canonical (round to nearest, no flush-to-zero, traps masked), else a bitmask named in fpenv_reason; selfcheck is 0 when every probe matches, a negative code otherwise (tessero.h)."
+            },
+            {
+                "name": "abiVersion",
+                "static": true,
+                "sig": "abiVersion(): int",
+                "doc": "The C ABI generation of the loaded libtessero."
+            },
+            {
+                "name": "feature",
+                "static": true,
+                "sig": "feature(string $name): bool",
+                "doc": "Whether the loaded build has a capability: \"repro_f32\", \"gemm_canonical\", \"lapack\", \"openblas_threads\", \"openmp\" or \"fpenv_check\". Unknown names give false."
             },
             {
                 "name": "setThreads",
@@ -1661,7 +1697,8 @@
             }
         ],
         "constants": [
-            "VERSION"
+            "VERSION",
+            "ABI_VERSION"
         ]
     },
     {
@@ -7172,13 +7209,13 @@
                 "name": "save",
                 "static": true,
                 "sig": "save(string $path, Tessero\\NDArray $array): void",
-                "doc": ""
+                "doc": "$path must be a local file (stream wrappers are refused); never build it from request input."
             },
             {
                 "name": "load",
                 "static": true,
                 "sig": "load(string $path): Tessero\\NDArray",
-                "doc": ""
+                "doc": "$path must be a local file (stream wrappers are refused); never build it from request input."
             },
             {
                 "name": "encode",
@@ -7201,8 +7238,8 @@
             {
                 "name": "loadZ",
                 "static": true,
-                "sig": "loadZ(string $path): array",
-                "doc": ""
+                "sig": "loadZ(string $path, int $maxBytes = 268435456): array",
+                "doc": "Read every array of a .npz archive. The archive may inflate to at most $maxBytes in total (default 256 MiB, checked before decompressing) and hold at most IoGuard::MAX_ZIP_ENTRIES members."
             }
         ],
         "constants": [
@@ -7215,8 +7252,8 @@
             {
                 "name": "read",
                 "static": true,
-                "sig": "read(string $text): array",
-                "doc": "Parse Matrix Market text."
+                "sig": "read(string $text, int $maxElements = 67108864): array",
+                "doc": "Parse Matrix Market text. The dense result may hold at most $maxElements entries (see IoGuard); the size line is checked against that cap and against the data present before allocating."
             },
             {
                 "name": "info",
@@ -7290,13 +7327,13 @@
             {
                 "name": "read",
                 "static": true,
-                "sig": "read(string $bytes): array",
-                "doc": "Parse MAT v5 bytes into variables."
+                "sig": "read(string $bytes, int $maxBytes = 268435456, int $maxElements = 67108864): array",
+                "doc": "Parse MAT v5 bytes into variables. Compressed variables inflate to at most $maxBytes in total (default 256 MiB) and at most $maxElements values are decoded (see IoGuard); declared sizes are checked against the bytes present before any loop."
             },
             {
                 "name": "info",
                 "static": true,
-                "sig": "info(string $bytes): array",
+                "sig": "info(string $bytes, int $maxBytes = 268435456): array",
                 "doc": "whosmat: name/shape/class of every variable without decoding data."
             },
             {
@@ -7366,8 +7403,8 @@
             {
                 "name": "read",
                 "static": true,
-                "sig": "read(string $bytes): array",
-                "doc": "Parse netCDF-3 bytes."
+                "sig": "read(string $bytes, int $maxElements = 67108864): array",
+                "doc": "Parse netCDF-3 bytes. Header counts are checked against the bytes present and at most $maxElements values are decoded in total (see IoGuard); undefined dimension ids and nc_types are errors."
             },
             {
                 "name": "write",
@@ -7397,7 +7434,7 @@
             {
                 "name": "read",
                 "static": true,
-                "sig": "read(string $bytes): array",
+                "sig": "read(string $bytes, int $maxBytes = 268435456): array",
                 "doc": "Parse an IDL .sav byte string."
             }
         ],
@@ -7457,7 +7494,7 @@
             {
                 "name": "load",
                 "static": true,
-                "sig": "load(string $path): array",
+                "sig": "load(string $path, int $maxBytes = 268435456): array",
                 "doc": "scipy.sparse.load_npz: read a CSR .npz (scipy's or Tessero's own)."
             },
             {
@@ -11369,7 +11406,7 @@
                 "name": "__construct",
                 "static": false,
                 "sig": "__construct(array|int $seed)",
-                "doc": "(\u2192 init_by_array), exactly as numpy.random.RandomState accepts."
+                "doc": "(-> init_by_array), exactly as numpy.random.RandomState accepts."
             },
             {
                 "name": "nextUint32",
@@ -11393,7 +11430,7 @@
                 "name": "nextGauss",
                 "static": false,
                 "sig": "nextGauss(): float",
-                "doc": "A single standard normal (numpy legacy gauss: Box\u2013Muller polar)."
+                "doc": "A single standard normal (numpy legacy gauss: Box-Muller polar)."
             },
             {
                 "name": "standardNormal",
@@ -11405,7 +11442,7 @@
                 "name": "randomInterval",
                 "static": false,
                 "sig": "randomInterval(int $max): int",
-                "doc": "A uniform integer in [0, $max] by numpy's smallest-mask rejection (rk_interval). Uses a 32-bit draw when the range fits in 32 bits, else a 64-bit draw \u2014 matching numpy's legacy buffered path."
+                "doc": "A uniform integer in [0, $max] by numpy's smallest-mask rejection (rk_interval). Uses a 32-bit draw when the range fits in 32 bits, else a 64-bit draw -- matching numpy's legacy buffered path."
             },
             {
                 "name": "randint",
@@ -11423,7 +11460,7 @@
                 "name": "shuffle",
                 "static": false,
                 "sig": "shuffle(array $arr): void",
-                "doc": "In-place legacy Fisher\u2013Yates shuffle (numpy RandomState.shuffle)."
+                "doc": "In-place legacy Fisher-Yates shuffle (numpy RandomState.shuffle)."
             }
         ],
         "constants": [
@@ -12559,7 +12596,7 @@
                 "name": "floorDivide",
                 "static": true,
                 "sig": "floorDivide($x, $y, ?Tessero\\Ext\\NDArray $out = \u2026)",
-                "doc": "floor(x / y)"
+                "doc": "x // y (NumPy floor_divide: the floor of the exact quotient)"
             },
             {
                 "name": "maximum",
@@ -12873,9 +12910,57 @@
                 "doc": ""
             },
             {
+                "name": "setFftCacheLimit",
+                "static": true,
+                "sig": "setFftCacheLimit(int $value)",
+                "doc": ""
+            },
+            {
+                "name": "fftCacheLimit",
+                "static": true,
+                "sig": "fftCacheLimit()",
+                "doc": ""
+            },
+            {
+                "name": "fftCacheBytes",
+                "static": true,
+                "sig": "fftCacheBytes()",
+                "doc": ""
+            },
+            {
+                "name": "setBlasThreads",
+                "static": true,
+                "sig": "setBlasThreads(int $value)",
+                "doc": ""
+            },
+            {
+                "name": "getBlasThreads",
+                "static": true,
+                "sig": "getBlasThreads()",
+                "doc": ""
+            },
+            {
+                "name": "abiVersion",
+                "static": true,
+                "sig": "abiVersion()",
+                "doc": ""
+            },
+            {
+                "name": "feature",
+                "static": true,
+                "sig": "feature(string $name)",
+                "doc": ""
+            },
+            {
                 "name": "info",
                 "static": true,
                 "sig": "info()",
+                "doc": ""
+            },
+            {
+                "name": "selfcheck",
+                "static": true,
+                "sig": "selfcheck(): array",
                 "doc": ""
             },
             {
@@ -27599,13 +27684,13 @@
                 "name": "memmap",
                 "static": false,
                 "sig": "memmap(string $filename, string $mode = 'r+', ?array $shape = null, string $dtype = 'float64', int $offset = 0): Tessero\\Ext\\NDArray|Tessero\\NDArray",
-                "doc": "A memory-mapped array: the file's pages are the array's memory, so files larger than RAM can be processed. Modes as numpy.memmap: 'r', 'r+', 'w+', 'c'. Mapped bytes are not counted against memory_budget; info() reports them as memory_mapped. Both backends share libtessero's mapping code."
+                "doc": "A memory-mapped array: the file's pages are the array's memory, so files larger than RAM can be processed. Modes as numpy.memmap: 'r', 'r+', 'w+', 'c'. Mapped bytes are not counted against memory_budget; info() reports them as memory_mapped. Both backends share libtessero's mapping code. Paths must be local files (stream wrappers are refused) and must never come from request input; see docs/operations/security.md."
             },
             {
                 "name": "load",
                 "static": false,
                 "sig": "load(string $path, ?string $mmapMode = null): Tessero\\Ext\\NDArray|Tessero\\NDArray",
-                "doc": "Read a .npy file (numpy.load); with $mmapMode ('r', 'r+', 'c') it is memory-mapped instead."
+                "doc": "Read a .npy file (numpy.load); with $mmapMode ('r', 'r+', 'c') it is memory-mapped instead. Never pass a path from request input."
             },
             {
                 "name": "openMemmap",
@@ -27633,7 +27718,7 @@
             {
                 "name": "__construct",
                 "static": false,
-                "sig": "__construct(?int $ndim = null, ?array $shape = null, int $maxElements = 1000000, bool $allowBool = false)",
+                "sig": "__construct(?int $ndim = null, ?array $shape = null, ?int $maxElements = null, bool $allowBool = false)",
                 "doc": ""
             },
             {
@@ -27645,9 +27730,19 @@
             {
                 "name": "check",
                 "static": true,
-                "sig": "check(mixed $value, ?int $ndim = null, ?array $shape = null, int $maxElements = 1000000, bool $allowBool = false): ?string",
+                "sig": "check(mixed $value, ?int $ndim = null, ?array $shape = null, ?int $maxElements = null, bool $allowBool = false): ?string",
                 "doc": ""
+            },
+            {
+                "name": "configuredMaxElements",
+                "static": true,
+                "sig": "configuredMaxElements(): int",
+                "doc": "config('tessero.max_elements') when running inside Laravel, else DEFAULT_MAX_ELEMENTS."
             }
+        ],
+        "constants": [
+            "MAX_NDIM",
+            "DEFAULT_MAX_ELEMENTS"
         ]
     }
 ]

@@ -24,6 +24,10 @@
  */
 
 const char *tsr_version(void);
+/* The git commit the library was built from (40 hex digits, "-dirty" appended when csrc/ had uncommitted changes),
+   or "unknown" for a build outside a git checkout without TSR_BUILD_COMMIT set (csrc/Makefile). tsr_version names
+   the release only; this tells two builds of the same release apart. */
+const char *tsr_build_commit(void);
 int tsr_simd_level(void);                 /* 0 baseline, 1 AVX2 (x86-64-v3), 2 AVX-512 (x86-64-v4), 3 NEON */
 ```
 
@@ -107,6 +111,9 @@ int tsr_repro_rsqrt_f32(int64_t n, const float *x, float *y);   /* 1/sqrt(x) */
 int tsr_repro_exp2_f32 (int64_t n, const float *x, float *y);   /* 2^x       */
 int tsr_repro_exp_f32  (int64_t n, const float *x, float *y);   /* e^x       */
 int tsr_repro_erf_f32  (int64_t n, const float *x, float *y);   /* erf(x)    */
+int tsr_repro_log_f32  (int64_t n, const float *x, float *y);   /* ln(x)     */
+int tsr_repro_sqrt_f32 (int64_t n, const float *x, float *y);   /* sqrt(x)   */
+int tsr_repro_pow_f32  (int64_t n, const float *x, float a, float *y);   /* x^a */
 int tsr_repro_recip_f32(int64_t n, const float *x, float *y);   /* 1/x, any f32 input */
 int tsr_repro_tanh_f32 (int64_t n, const float *x, float *y);   /* tanh(x)   */
 /* composites: one definition of the composition, mirrored by the Talario GPU shaders */
@@ -173,6 +180,8 @@ int64_t tsr_npy_write_header(int dtype, int32_t ndim, const int64_t *shape, int 
 ```c
 int tsr_reduce(int op, int dtype, int32_t ndim, const int64_t *shape, const void *in, const int64_t *sin,
                int32_t axis, int out_dtype, void *out, const int64_t *sout);
+/* mean and M2 (sum of squared deviations) along axis, as numpy.mean / numpy.var compute them; m2 and sm2 may be NULL
+   when only the mean is wanted, which skips the second pass */
 int tsr_moments(int dtype, int32_t ndim, const int64_t *shape, const void *in, const int64_t *sin,
                 int32_t axis, double *mean, const int64_t *smean, double *m2, const int64_t *sm2);
 ```
@@ -248,10 +257,46 @@ uint64_t tsr_selfcheck_digest(int variant);
 uint64_t tsr_selfcheck_canonical(void);
 ```
 
+## Opt-in GPU-matching profile (2026-10): tiny numbers and NaN bits. Nothing changes unless called.
+
+```c
+tsr_fpenv_flush_enter: switch the CALLING thread to flush-to-zero (x86-64 FTZ + DAZ, aarch64 FPCR.FZ), the
+   behaviour of NVIDIA GPUs, which flush subnormal inputs and results; stores the previous control word in
+   *saved. Returns 0, -1 if saved is NULL, -2 where the target has no flush control. tsr_fpenv_flush_leave:
+   restores that word exactly (0, or -2). Inside a scope tsr_fpenv_check is non-zero and tsr_selfcheck is -6.
+   tsr_flush_subnormal_f32: subnormals -> signed zero in place; returns how many changed.
+   tsr_canon_nan_f32: every NaN -> the canonical quiet NaN 0x7FC00000 in place; returns how many changed.
+   tsr_nan_first_f32: index of the first NaN, or -1. Integer bit operations only; the caller owns x.
+   C does not model the FP control word: keep the work between enter and leave in called functions (or behind
+   volatile stores), or an optimiser may move a pure FP expression across the scope boundary.
+   SCOPE IS FOR f32 WORK ONLY: the CPU flush bits also flush f64, but NVIDIA GPUs keep f64 subnormals, so f64
+   inside a scope would diverge from the GPU (and from NumPy). f64 twins of the array helpers (NaN
+   0x7FF8000000000000) follow; flushing f64 is normally not wanted. */
+int tsr_fpenv_flush_enter(uint64_t *saved);
+int tsr_fpenv_flush_leave(uint64_t saved);
+int64_t tsr_flush_subnormal_f32(float *x, int64_t n);
+int64_t tsr_canon_nan_f32(float *x, int64_t n);
+int64_t tsr_nan_first_f32(const float *x, int64_t n);
+int64_t tsr_flush_subnormal_f64(double *x, int64_t n);
+int64_t tsr_canon_nan_f64(double *x, int64_t n);
+int64_t tsr_nan_first_f64(const double *x, int64_t n);
+```
+
 ## FFT on complex128 rows (interleaved re, im), any length; inverse scales by 1/n; in may equal out
 
 ```c
+/* otherwise in and out must not overlap; a separate out saves a copy */
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);
+/* the same transform of real input: rows x n float64 -> rows x n complex128 (the full spectrum, bit for bit what tsr_fft
+   gives for (x, 0) pairs, without that conversion pass); in and out must not overlap */
+int tsr_fft_real(int64_t n, int64_t rows, int inverse, const double *in, double *out);
+/* FFT plan cache: plans, Bluestein chirps and real-FFT twiddles are kept between calls, least recently used out first,
+   up to this many bytes per process (default 256 MiB; cached results are the ones a fresh build gives). 0 turns
+   caching off; lowering the limit frees idle plans at once. The cache's memory is outside tsr_set_budget's budget and
+   bounded by this limit: under php-fpm every worker holds its own, so lower it there. tsr_fft_cache_bytes: held now. */
+int64_t tsr_fft_cache_limit(void);
+void tsr_set_fft_cache_limit(int64_t bytes);
+int64_t tsr_fft_cache_bytes(void);
 /* real input: rows x n float64 -> rows x (n/2 + 1) complex128 (half the work of tsr_fft); irfft is the inverse
    (rows x (n/2 + 1) complex -> rows x n real, scaled by 1/n, imaginary parts of the DC/Nyquist bins ignored) */
 int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);

@@ -18,6 +18,7 @@ Linalg throws LibraryUnavailable.
 | Name | Value |
 |---|---|
 | `ROW_MAJOR` | `101` |
+| `COL_MAJOR` | `102` |
 | `NO_TRANS` | `111` |
 | `TRANS` | `112` |
 | `INT_MAX` | `2147483647` |

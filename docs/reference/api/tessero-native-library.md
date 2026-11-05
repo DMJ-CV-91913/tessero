@@ -68,6 +68,16 @@ environment) overrides it; 0 or a negative value opts out (unlimited). memory_li
 unlimited. Tessero::setMemoryBudget() changes the budget at any time; under FPM the default is
 re-applied when a request loads the library while the budget is 0.
 
+### defaultFftCache
+
+```php
+static defaultFftCache(string $sapi, string|false $env): ?int
+```
+
+The FFT plan cache limit to apply at load, or null to keep the library default (256 MiB): TESSERO_FFT_CACHE_BYTES
+(bytes, 0 = no caching) wins, and otherwise web SAPIs get 32 MiB (power-of-two transforms up to 2^20 points stay
+cached), since a server runs many workers and each holds its own cache outside the memory budget.
+
 ### ffi
 
 ```php
