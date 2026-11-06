@@ -78,8 +78,8 @@
  },
  "fixture_missing": [],
  "fixture_pass": {
-  "ext": 1554,
-  "ffi": 1554
+  "ext": 1555,
+  "ffi": 1555
  },
  "groups": {
   "NumPy core": {
@@ -662,7 +662,7 @@
   }
  },
  "numpy": "2.4.4",
- "registry_functions": 1560,
+ "registry_functions": 1561,
  "registry_untested": [
   "interpolate.spgrid",
   "interpolate.spherfit",

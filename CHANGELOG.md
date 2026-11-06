@@ -18,6 +18,10 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`Spatial\KDTree` is a k-d tree**: the queries ran an exhaustive search in PHP (10,000 queries in 100,000 points: hours);
+  they now run in the kernel (`distance.kdtree_query`, both backends: median splits, branch-and-bound, a k-best heap),
+  55 ms for that case with the tree build included (SciPy: 49 ms). Same neighbours, distances and order (nearest
+  first, ties by index); non-finite points are refused, as SciPy refuses them.
 - **Faster `median`, `percentile`/`quantile`, `unique`, `einsum`, `cov`, `trapezoid`, `maximum_filter`/`minimum_filter`**
   (1M values / 1000^2 images, single-threaded): median 144 -> 13 ms, percentile 119 -> 18 ms (introselect), unique
   97 -> 15 ms, the set routines likewise (their libc `qsort` replaced by `sortSimd` / the radix `tsr_argsort`), einsum

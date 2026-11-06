@@ -38,7 +38,7 @@ Reference versions: NumPy 2.4.4, SciPy 1.17.1. A symbol counts as implemented on
 | &nbsp;&nbsp;scipy.ndimage | 75 | 0 (0.0 %) | 75 | 75 (100.0 %) | 75 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 | &nbsp;&nbsp;scipy.constants | 164 | 1 (0.6 %) | 163 | 163 (100.0 %) | 163 (100.0 %) | 100.0 % / 100.0 % | 100.0 % |
 
-The kernel function registry holds 1560 functions; their fixtures pass on the FFI backend for 1554 and on the extension for 1554.
+The kernel function registry holds 1561 functions; their fixtures pass on the FFI backend for 1555 and on the extension for 1555.
 Registry functions without a recorded fixture run: interpolate.spgrid, interpolate.spherfit, interpolate.spherfit_lsq, linalg.qr_complex, np.cumulativeSimpson, np.cumulativeTrapezoid.
 
 Exclusions by category (definitions in `tools/parity/scope.yaml`):

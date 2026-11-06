@@ -39,6 +39,7 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `numpy.percentile` 1M (one q) | 119 ms | 18 ms | 9.1 ms | introselect (at most two order statistics) |
 | `numpy.unique` 1M | 97 ms | 15 ms | 8.7 ms | values sorted alone when no index is wanted; the stable argsort is the radix one |
 | `numpy.cov` 50 x 100k | 235 ms | 45 ms | 28 ms | one BLAS dgemm, as NumPy |
+| `spatial.KDTree` query, 10k points (k=5) in 100k | hours (exhaustive PHP search) | 55 ms, tree build included | 49 ms (build 31 + query 18) | a k-d tree in the kernel (`distance.kdtree_query`), the same neighbours, distances and order |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -48,7 +49,6 @@ factor was zero, so a NaN in a later operand propagates as in NumPy.
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
-| `spatial.KDTree` query, 100 points in 100k | 23 s | 0.2 ms | exhaustive search in PHP (no tree) | a kd-tree in the kernel |
 | `spatial.Delaunay`, 10k points | 35 s | 29 ms | Bowyer-Watson in PHP | a kernel implementation |
 | `cluster.hierarchy.linkage` ward, 2000 | 1.3 s | 57 ms | O(n^3) | nearest-neighbour chain, O(n^2) |
 | `spatial.ConvexHull`, 10k (2-D) | 28 ms | 1.3 ms | monotone chain in PHP | kernel implementation |

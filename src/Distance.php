@@ -34,6 +34,7 @@ final class Distance
     'is_valid_y' => 'isValidY',
     'jaccard' => 'jaccard',
     'jensenshannon' => 'jensenshannon',
+    'kdtree_query' => 'kdtreeQuery',
     'mahalanobis' => 'mahalanobis',
     'minkowski' => 'minkowski',
     'minkowski_distance' => 'minkowskiDistance',
@@ -225,6 +226,18 @@ final class Distance
     public static function jensenshannon(mixed $p, mixed $q, mixed $base = null): mixed
     {
         return Registry::routine('distance.jensenshannon', [$p, $q, $base]);
+    }
+
+    /**
+     * The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query).
+     *
+     * scipy.spatial.distance.kdtree_query
+     *
+     * @return mixed one array, or an array keyed by d, i when several results are requested
+     */
+    public static function kdtreeQuery(mixed $data, mixed $x, mixed $k = 1): mixed
+    {
+        return Registry::routine('distance.kdtree_query', [$data, $x, $k]);
     }
 
     /**

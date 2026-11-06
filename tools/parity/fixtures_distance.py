@@ -110,9 +110,22 @@ for (n, k) in ((6, 3), (8, 2), (5, 4)):
     pc_c.append({'args': [F.enc(a), F.enc(b)], 'kwargs': {},
                  'expect': {'dict': {'mtx1': F.enc(np.asarray(m1, float)), 'mtx2': F.enc(np.asarray(m2, float)),
                                      'disparity': F.enc_result(float(disp), [])}}, 'compare': 'tol'})
+# distance.kdtree_query (the kernel behind Tessero\Spatial\KDTree): scipy.spatial.cKDTree(data).query(x, k) as
+# (len(x), min(k, n)) arrays. Random float points, so no tied distances (whose order SciPy leaves to its traversal);
+# its own generator, so the cases above keep their inputs. The last case asks for more neighbours than points.
+rng_kd = np.random.default_rng(20261106)
+kd_c = []
+for (n, m, nq, k) in ((50, 2, 12, 1), (200, 3, 20, 4), (31, 3, 7, 40)):
+    P = rng_kd.uniform(-5, 5, (n, m))
+    Q = rng_kd.uniform(-6, 6, (nq, m))
+    kk = min(k, n)
+    d, i = spt.cKDTree(P).query(Q, kk)
+    kd_c.append({'args': [F.enc(P), F.enc(Q), F.enc(k)], 'kwargs': {},
+                 'expect': {'dict': {'d': F.enc(np.asarray(d, float).reshape(nq, kk)),
+                                     'i': F.enc(np.asarray(i, np.int64).reshape(nq, kk))}}, 'compare': 'tol'})
 spatial_blocks = [{'fn': 'distance_matrix', 'cases': dm_c}, {'fn': 'minkowski_distance', 'cases': md_c},
                   {'fn': 'minkowski_distance_p', 'cases': mdp_c}, {'fn': 'geometric_slerp', 'cases': gs_c},
-                  {'fn': 'procrustes', 'cases': pc_c}]
+                  {'fn': 'procrustes', 'cases': pc_c}, {'fn': 'kdtree_query', 'cases': kd_c}]
 
 out = {'module': 'distance', 'scipy': __import__('scipy').__version__, 'env': F.fixture_env.env(),
        'calls': [{'fn': 'pdist', 'cases': pdist_cases}, {'fn': 'cdist', 'cases': cdist_cases},

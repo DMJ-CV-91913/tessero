@@ -515,6 +515,185 @@ static int r_procrustes(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     return rc;
 }
 
+/* ---- kd-tree k-nearest neighbours (scipy.spatial.cKDTree / KDTree .query, Euclidean) ----
+   Built per call: median splits on the widest axis down to leaves of KD_LEAF points, each node with its bounding
+   box. Each query keeps its k best (distance, index) pairs in a max-heap and enters a subtree only while the box's
+   lower-bound distance could still beat or tie the worst kept pair (with a relative margin, so rounding never
+   prunes a tie). Distances are sqrt(sum_j (p_j - q_j)^2), the axis sum in order, ties broken by the smaller index:
+   the same neighbours, distances and order as an exhaustive search (Tessero\Spatial\KDTree before 2026-11-06),
+   in about O(log n) per query instead of O(n log n). */
+#define KD_LEAF 16
+typedef struct { int64_t lo, hi, left, right; } kd_node;
+typedef struct { const double *p; int64_t m; int64_t *idx; kd_node *nodes; double *box; int64_t nn; } kd_tree;
+
+/* move the median (by coordinate dim) of idx[lo..hi) to position mid, smaller ones before it */
+static void kd_select(kd_tree *t, int64_t lo, int64_t hi, int64_t mid, int dim)
+{
+    int64_t *ix = t->idx;
+    const double *p = t->p;
+    const int64_t m = t->m;
+    hi--;
+    while (hi > lo) {
+        const double pv = p[ix[lo + (hi - lo) / 2] * m + dim];
+        int64_t i = lo, j = hi;
+        while (i <= j) {
+            while (p[ix[i] * m + dim] < pv) i++;
+            while (p[ix[j] * m + dim] > pv) j--;
+            if (i <= j) { const int64_t s = ix[i]; ix[i] = ix[j]; ix[j] = s; i++; j--; }
+        }
+        if (mid <= j) hi = j;
+        else if (mid >= i) lo = i;
+        else return;
+    }
+}
+
+static int64_t kd_build(kd_tree *t, int64_t lo, int64_t hi)
+{
+    const int64_t id = t->nn++, m = t->m;
+    kd_node *nd = &t->nodes[id];
+    nd->lo = lo; nd->hi = hi; nd->left = nd->right = -1;
+    double *bmin = t->box + id * 2 * m, *bmax = bmin + m;
+    for (int64_t j = 0; j < m; j++) { bmin[j] = INFINITY; bmax[j] = -INFINITY; }
+    for (int64_t r = lo; r < hi; r++) {
+        const double *pt = t->p + t->idx[r] * m;
+        for (int64_t j = 0; j < m; j++) { if (pt[j] < bmin[j]) bmin[j] = pt[j]; if (pt[j] > bmax[j]) bmax[j] = pt[j]; }
+    }
+    if (hi - lo <= KD_LEAF) return id;
+    int dim = 0;
+    double spread = -1.0;
+    for (int64_t j = 0; j < m; j++) if (bmax[j] - bmin[j] > spread) { spread = bmax[j] - bmin[j]; dim = (int)j; }
+    if (!(spread > 0.0)) return id;                       /* all points equal: one leaf */
+    const int64_t mid = lo + (hi - lo) / 2;
+    kd_select(t, lo, hi, mid, dim);
+    const int64_t l = kd_build(t, lo, mid);
+    const int64_t r = kd_build(t, mid, hi);
+    t->nodes[id].left = l; t->nodes[id].right = r;
+    return id;
+}
+
+typedef struct { double *d; int64_t *i; int64_t k, n; } kd_heap;   /* max-heap of the k best: (d, i) lexicographic */
+static inline int kd_worse(double da, int64_t ia, double db, int64_t ib) { return da > db || (da == db && ia > ib); }
+
+static void kd_sift_down(kd_heap *h, double d, int64_t i)
+{
+    int64_t c = 0;
+    for (;;) {
+        int64_t ch = 2 * c + 1;
+        if (ch >= h->n) break;
+        if (ch + 1 < h->n && kd_worse(h->d[ch + 1], h->i[ch + 1], h->d[ch], h->i[ch])) ch++;
+        if (!kd_worse(h->d[ch], h->i[ch], d, i)) break;
+        h->d[c] = h->d[ch]; h->i[c] = h->i[ch]; c = ch;
+    }
+    h->d[c] = d; h->i[c] = i;
+}
+
+static void kd_push(kd_heap *h, double d, int64_t i)
+{
+    if (h->n < h->k) {                                    /* sift up */
+        int64_t c = h->n++;
+        while (c > 0) { const int64_t pa = (c - 1) / 2; if (!kd_worse(d, i, h->d[pa], h->i[pa])) break; h->d[c] = h->d[pa]; h->i[c] = h->i[pa]; c = pa; }
+        h->d[c] = d; h->i[c] = i;
+        return;
+    }
+    if (!kd_worse(h->d[0], h->i[0], d, i)) return;        /* not better than the worst kept */
+    kd_sift_down(h, d, i);                                 /* replace the root */
+}
+
+/* the squared distance from q to the box of node id (0 inside) */
+static double kd_box_lb(const kd_tree *t, int64_t id, const double *q)
+{
+    const int64_t m = t->m;
+    const double *bmin = t->box + id * 2 * m, *bmax = bmin + m;
+    double lb = 0.0;
+    for (int64_t j = 0; j < m; j++) {
+        const double g = q[j] < bmin[j] ? bmin[j] - q[j] : q[j] > bmax[j] ? q[j] - bmax[j] : 0.0;
+        lb += g * g;
+    }
+    return lb;
+}
+
+static void kd_search(const kd_tree *t, int64_t id, const double *q, kd_heap *h)
+{
+    const int64_t m = t->m;
+    const kd_node *nd = &t->nodes[id];
+    if (h->n == h->k) {
+        const double w = h->d[0];
+        if (kd_box_lb(t, id, q) > w * w * (1.0 + 1e-12)) return;   /* nothing in here can beat or tie the worst kept */
+    }
+    if (nd->left < 0) {
+        for (int64_t r = nd->lo; r < nd->hi; r++) {
+            const int64_t pi = t->idx[r];
+            const double *pt = t->p + pi * m;
+            double s = 0.0;
+            for (int64_t j = 0; j < m; j++) { const double d = pt[j] - q[j]; s += d * d; }
+            kd_push(h, sqrt(s), pi);
+        }
+        return;
+    }
+    if (kd_box_lb(t, nd->left, q) <= kd_box_lb(t, nd->right, q)) { kd_search(t, nd->left, q, h); kd_search(t, nd->right, q, h); }
+    else { kd_search(t, nd->right, q, h); kd_search(t, nd->left, q, h); }
+}
+
+/* kdtree_query(data, x, k=1) -> (d, i), each (len(x), min(k, len(data))): the k nearest data rows of every row of
+   x, nearest first, ties by index */
+static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) {
+        fn_set_error("kdtree_query: data and x must be 2-D arrays"); return TSR_EARG;
+    }
+    const int64_t n = args[0].arr.shape[0], m = args[0].arr.shape[1], nq = args[1].arr.shape[0];
+    if (args[1].arr.shape[1] != m) { fn_set_error("kdtree_query: x must have %lld columns", (long long)m); return TSR_EARG; }
+    int64_t k = 1;
+    if (nargs > 2 && args[2].kind == 1) {
+        const double kv = (args[2].flags & 1) ? (double)args[2].ival : args[2].num;
+        if (!(kv >= 1 && kv <= 9.0e15) || kv != floor(kv)) { fn_set_error("kdtree_query: k must be a positive integer"); return TSR_EARG; }
+        k = (int64_t)kv;
+    }
+    if (n == 0) { fn_set_error("kdtree_query: the tree has no points"); return TSR_EARG; }
+    if (m == 0) { fn_set_error("kdtree_query: the points have no coordinates"); return TSR_EARG; }
+    const int64_t kk = k < n ? k : n;
+    int64_t td, tx;
+    double *P = fn_arg_doubles(&args[0], &td);
+    double *X = P ? fn_arg_doubles(&args[1], &tx) : NULL;
+    if (!P || !X) { if (P) fn_free_doubles(P, td); return TSR_ENOMEM; }
+    for (int64_t q = 0; q < n * m; q++)
+        if (!isfinite(P[q])) { fn_free_doubles(P, td); fn_free_doubles(X, tx); fn_set_error("kdtree_query: data must be finite"); return TSR_EARG; }
+    for (int64_t q = 0; q < nq * m; q++)
+        if (!isfinite(X[q])) { fn_free_doubles(P, td); fn_free_doubles(X, tx); fn_set_error("kdtree_query: x must be finite"); return TSR_EARG; }
+    const int64_t cap = n / 4 + 16;                       /* nodes: every leaf holds at least KD_LEAF / 2 points */
+    kd_tree t = { P, m, (int64_t *)tsr_alloc(n * 8), (kd_node *)tsr_alloc(cap * (int64_t)sizeof(kd_node)),
+                  (double *)tsr_alloc(cap * 2 * m * 8), 0 };
+    double *hd = (double *)tsr_alloc(kk * 8);
+    int64_t *hi = (int64_t *)tsr_alloc(kk * 8);
+    const int64_t osh[2] = {nq, kk};
+    double *od = (t.idx && t.nodes && t.box && hd && hi) ? (double *)fn_result_array(&res[0], TSR_F64, 2, osh) : NULL;
+    int64_t *oi = od ? (int64_t *)fn_result_array(&res[1], TSR_I64, 2, osh) : NULL;
+    int rc = oi ? TSR_OK : TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        for (int64_t r = 0; r < n; r++) t.idx[r] = r;
+        kd_build(&t, 0, n);
+        for (int64_t q = 0; q < nq; q++) {
+            kd_heap h = { hd, hi, kk, 0 };
+            kd_search(&t, 0, X + q * m, &h);
+            for (int64_t s = kk - 1; s >= 0; s--) {         /* pop the worst into the last free slot: ascending order */
+                od[q * kk + s] = h.d[0]; oi[q * kk + s] = h.i[0];
+                const double ld = h.d[h.n - 1];
+                const int64_t li = h.i[h.n - 1];
+                h.n--;
+                if (h.n > 0) kd_sift_down(&h, ld, li);
+            }
+        }
+    }
+    if (t.idx) tsr_free(t.idx, n * 8);
+    if (t.nodes) tsr_free(t.nodes, cap * (int64_t)sizeof(kd_node));
+    if (t.box) tsr_free(t.box, cap * 2 * m * 8);
+    if (hd) tsr_free(hd, kk * 8);
+    if (hi) tsr_free(hi, kk * 8);
+    fn_free_doubles(P, td); fn_free_doubles(X, tx);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("distance.procrustes", 3, "data1, data2", "mtx1, mtx2, disparity", r_procrustes, NULL, "Procrustes analysis: standardize and align two point sets (scipy.spatial.procrustes)."),
     ROUTINE("distance.distance_matrix", 1, "x, y, p=2, threshold=1000000", "D", r_distance_matrix, NULL, "Matrix of all pairwise Minkowski distances between two point sets (scipy.spatial.distance_matrix)."),
@@ -522,6 +701,7 @@ static const fn_def DEFS[] = {
     ROUTINE("distance.minkowski_distance_p", 1, "x, y, p=2", "d", r_minkowski_distance_p, NULL, "p-th power of the Minkowski distance, no final root (scipy.spatial.minkowski_distance_p)."),
     ROUTINE("distance.geometric_slerp", 1, "start, end, t", "out", r_geometric_slerp, NULL, "Geometric spherical linear interpolation between two unit vectors (scipy.spatial.geometric_slerp)."),
     ROUTINE("distance.pdist", 1, "X, metric=None, p=None", "out", r_pdist, NULL, "Pairwise distances between the rows of X, condensed (scipy.spatial.distance.pdist); real float64."),
+    ROUTINE("distance.kdtree_query", 2, "data, x, k=1", "d, i", r_kdtree_query, NULL, "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query)."),
     ROUTINE("distance.cdist", 1, "XA, XB, metric=None, p=None", "out", r_cdist, NULL, "Distances between each pair of rows of XA and XB (scipy.spatial.distance.cdist); real float64."),
     ROUTINE("distance.squareform", 1, "X", "out", r_squareform, NULL, "Convert between a condensed distance vector and a square form (scipy.spatial.distance.squareform)."),
     ROUTINE("distance.euclidean", 1, "u, v, w=None", "out", r_dmetric, &MET_EUCLID, "Euclidean distance between two 1-D arrays (scipy.spatial.distance.euclidean)."),

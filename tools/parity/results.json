@@ -62,6 +62,7 @@
         "distance.is_valid_y": "pass",
         "distance.jaccard": "pass",
         "distance.jensenshannon": "pass",
+        "distance.kdtree_query": "pass",
         "distance.mahalanobis": "pass",
         "distance.minkowski": "pass",
         "distance.minkowski_distance": "pass",
@@ -3690,7 +3691,8 @@
             "interpolate.BivariateSpline": null,
             "interpolate.SmoothSphereBivariateSpline": null,
             "interpolate.LSQSphereBivariateSpline": null,
-            "interpolate.RectSphereBivariateSpline": null
+            "interpolate.RectSphereBivariateSpline": null,
+            "distance.kdtree_query": 0
         },
         "ext": {
             "np.median": 0,
@@ -5535,7 +5537,8 @@
             "interpolate.BivariateSpline": null,
             "interpolate.SmoothSphereBivariateSpline": null,
             "interpolate.LSQSphereBivariateSpline": null,
-            "interpolate.RectSphereBivariateSpline": null
+            "interpolate.RectSphereBivariateSpline": null,
+            "distance.kdtree_query": 0
         }
     },
     "ext": {
@@ -5601,6 +5604,7 @@
         "distance.is_valid_y": "pass",
         "distance.jaccard": "pass",
         "distance.jensenshannon": "pass",
+        "distance.kdtree_query": "pass",
         "distance.mahalanobis": "pass",
         "distance.minkowski": "pass",
         "distance.minkowski_distance": "pass",

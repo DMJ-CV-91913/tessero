@@ -2237,6 +2237,67 @@ static void test_fuzz_batch_d(void)
     CHECK(tsr_allocated() == before, "batch D leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* distance.kdtree_query == an exhaustive search, exactly: the same distances (sqrt of the axis sum in order), the same
+   indices and order (nearest first, ties by index), on random points, integer grids full of equal distances,
+   duplicates, queries on data points, k = 1, 7 and k > n */
+static int kd_cmp(const void *a, const void *b)
+{
+    const double *x = a, *y = b;
+    return x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : (x[1] < y[1] ? -1 : x[1] > y[1]);
+}
+static void test_kdtree(void)
+{
+    const int id = tsr_fn_find("distance.kdtree_query");
+    CHECK(id >= 0, "distance.kdtree_query is registered");
+    if (id < 0) return;
+    const int64_t before = tsr_allocated();
+    uint64_t st = 4242;
+    int bad = 0, cases = 0;
+    for (int shape = 0; shape < 3; shape++) {
+        const int64_t n = shape == 2 ? 40 : 3000, m = shape == 1 ? 2 : 3, nq = 200;
+        double *P = malloc((size_t)(n * m) * 8), *Q = malloc((size_t)(nq * m) * 8), *pairs = malloc((size_t)n * 16);
+        for (int64_t i = 0; i < n * m; i++) {
+            st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+            P[i] = shape == 0 ? (double)(st >> 11) / 9007199254740992.0 : (double)(st % 9);   /* grids: many ties */
+        }
+        for (int64_t i = 0; i < 20; i++) memcpy(P + (n - 1 - i) * m, P + i * m, (size_t)m * 8);   /* duplicates */
+        for (int64_t i = 0; i < nq * m; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; Q[i] = shape == 0 ? (double)(st >> 11) / 9007199254740992.0 : (double)(st % 10) - 0.5 * (st % 2); }
+        memcpy(Q, P + 5 * m, (size_t)m * 8);                                                     /* a query on a point */
+        static const int64_t ks[] = {1, 7, 100};
+        for (int kc = 0; kc < 3; kc++) {
+            const int64_t k = ks[kc], kk = k < n ? k : n;
+            int64_t sp[2] = {n, m}, sq[2] = {nq, m};
+            tsr_arg a[3] = {arg_arr(P, 2, sp), arg_arr(Q, 2, sq), arg_num((double)k)};
+            tsr_result r[2];
+            cases++;
+            if (tsr_fn_routine(id, 3, a, 2, r) != 0) { bad++; continue; }
+            const double *d = r[0].arr.data;
+            const int64_t *ix = r[1].arr.data;
+            int ok = r[0].arr.shape[1] == kk;
+            for (int64_t q = 0; q < nq && ok; q++) {
+                for (int64_t i = 0; i < n; i++) {
+                    double s = 0.0;
+                    for (int64_t j = 0; j < m; j++) { const double df = P[i * m + j] - Q[q * m + j]; s += df * df; }
+                    pairs[2 * i] = sqrt(s); pairs[2 * i + 1] = (double)i;
+                }
+                qsort(pairs, (size_t)n, 16, kd_cmp);
+                for (int64_t t = 0; t < kk; t++)
+                    if (memcmp(&d[q * kk + t], &pairs[2 * t], 8) || ix[q * kk + t] != (int64_t)pairs[2 * t + 1]) { ok = 0; break; }
+            }
+            bad += !ok;
+            tsr_free(r[0].arr.data, r[0].bytes); tsr_free(r[1].arr.data, r[1].bytes);
+        }
+        free(P); free(Q); free(pairs);
+    }
+    CHECK(bad == 0, "kdtree_query == exhaustive search: distances, indices and order (%d of %d cases differ)", bad, cases);
+    double nanpt[3] = {0.0, NAN, 1.0};
+    int64_t s1[2] = {1, 3};
+    tsr_arg an[2] = {arg_arr(nanpt, 2, s1), arg_arr(nanpt, 2, s1)};
+    tsr_result rn[2];
+    CHECK(tsr_fn_routine(id, 2, an, 2, rn) == TSR_EARG, "kdtree_query refuses non-finite data");
+    CHECK(tsr_allocated() == before, "kdtree_query leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 /* scipy.fft dct / idct / dst / idst above DCT_DIRECT_MAX run through a real FFT (Makhoul): they must agree with the
    direct summations (computed here in long double) at sizes around the switch, odd, even and prime, and stay exact
    enough for a round trip at 1M points (where the direct sums would take hours) */
@@ -3430,6 +3491,7 @@ int main(void)
     test_ci_regressions();
     test_abi_runtime();
     test_fft_trig();
+    test_kdtree();
     test_sort_variants();
     test_sort_daz();
     test_sort_hardening();

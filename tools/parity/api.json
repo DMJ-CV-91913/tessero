@@ -960,7 +960,19 @@
                 "name": "sort",
                 "static": false,
                 "sig": "sort(int $axis = -1): self",
-                "doc": ""
+                "doc": "Sorted copy along an axis (numpy.sort; NaN last). Radix sort: the same speed whatever the order of the input; the default."
+            },
+            {
+                "name": "sortSimd",
+                "static": false,
+                "sig": "sortSimd(int $axis = -1): self",
+                "doc": "Sorted copy along an axis with the AVX2 quicksort: the same values as sort(); see sort() for when to use it."
+            },
+            {
+                "name": "sortRuns",
+                "static": false,
+                "sig": "sortRuns(int $axis = -1): self",
+                "doc": "Sorted copy along an axis with the natural merge sort: the same values as sort(); see sort() for when to use it."
             },
             {
                 "name": "nonzero",
@@ -2866,6 +2878,12 @@
                 "static": true,
                 "sig": "jensenshannon(mixed $p, mixed $q, mixed $base = null): mixed",
                 "doc": "Jensen-Shannon distance between two probability arrays (scipy.spatial.distance.jensenshannon)."
+            },
+            {
+                "name": "kdtreeQuery",
+                "static": true,
+                "sig": "kdtreeQuery(mixed $data, mixed $x, mixed $k = 1): mixed",
+                "doc": "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query)."
             },
             {
                 "name": "mahalanobis",
@@ -7582,7 +7600,7 @@
                 "name": "query",
                 "static": false,
                 "sig": "query(array $x, int $k = 1): array",
-                "doc": "The k nearest neighbours of each query point: [distances, indices]. For k == 1 each is a flat list (one value per query point); for k > 1 each is a list of k-length rows, as scipy.spatial.cKDTree.query returns."
+                "doc": "The k nearest neighbours of each query point: [distances, indices]. For k == 1 each is a flat list (one value per query point); for k > 1 each is a list of min(k, count()) -length rows, as scipy.spatial.cKDTree.query returns."
             }
         ]
     },
@@ -12279,6 +12297,18 @@
                 "name": "sort",
                 "static": false,
                 "sig": "sort()",
+                "doc": ""
+            },
+            {
+                "name": "sortSimd",
+                "static": false,
+                "sig": "sortSimd()",
+                "doc": ""
+            },
+            {
+                "name": "sortRuns",
+                "static": false,
+                "sig": "sortRuns()",
                 "doc": ""
             },
             {
@@ -25155,6 +25185,12 @@
                 "name": "pdist",
                 "static": true,
                 "sig": "pdist($X, $metric = null, $p = null)",
+                "doc": ""
+            },
+            {
+                "name": "kdtreeQuery",
+                "static": true,
+                "sig": "kdtreeQuery($data, $x, $k = 1)",
                 "doc": ""
             },
             {
