@@ -39,7 +39,7 @@ The distribution methods run NumPy's `distributions.c`, compiled into the kernel
 stream. They take NumPy's arguments, with array parameters broadcast, `size:`, and `dtype: 'float32'`
 where NumPy has it. They reject invalid parameters as NumPy does. The multivariate methods
 `multivariateNormal`, `dirichlet`, `multinomial` and `multivariateHypergeometric` are implemented too.
-`multivariateNormal` supports only NumPy's default `method: 'svd'`; other methods throw.
+`multivariateNormal` takes NumPy's `method:` `'svd'` (the default), `'cholesky'` or `'eigh'`, each factorisation computed as NumPy computes it.
 
 Seeds: a non-negative int, a list of ints (like NumPy's entropy lists), or
 `null` for 128 bits from the operating system.

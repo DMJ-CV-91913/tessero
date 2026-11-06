@@ -2237,6 +2237,54 @@ static void test_fuzz_batch_d(void)
     CHECK(tsr_allocated() == before, "batch D leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* tsr_unary_find / tsr_binary_find: every name maps to its code and back; the codes are the ones of ops.h */
+static void test_op_names(void)
+{
+    int ok = tsr_unary_find("exp") == U_EXP && tsr_unary_find("tanh") == U_TANH && tsr_unary_find("conjugate") == U_CONJ
+          && tsr_unary_find("abs") == U_ABS && tsr_unary_find("conj") == U_CONJ && tsr_unary_find("nope") == -1 && tsr_unary_find(NULL) == -1
+          && tsr_binary_find("add") == OP_ADD && tsr_binary_find("floor_divide") == OP_FLOORDIV && tsr_binary_find("true_divide") == OP_DIV
+          && tsr_binary_find("remainder") == OP_MOD && tsr_binary_find("nope") == -1 && tsr_unary_name(-1) == NULL && tsr_binary_name(20) == NULL;
+    for (int op = 0; op <= U_CONJ; op++) ok = ok && tsr_unary_name(op) && tsr_unary_find(tsr_unary_name(op)) == op;
+    for (int op = 0; op <= OP_FLOORDIV; op++) ok = ok && tsr_binary_name(op) && tsr_binary_find(tsr_binary_name(op)) == op;
+    ok = ok && tsr_unary_name(U_CONJ + 1) == NULL;
+    CHECK(ok, "op code names: tsr_unary_find / tsr_binary_find and back");
+}
+
+/* tsr_cholesky / tsr_solve / tsr_slogdet run the registry routines: the same bytes as calling them through the registry */
+static void test_linalg_typed(void)
+{
+    enum { N = 6, K = 3 };
+    double m[N * N], spd[N * N], b[N * K], l[N * N], x[N * K], sgn, lad;
+    for (int i = 0; i < N * N; i++) m[i] = sin(0.7 * i + 1.0);
+    for (int i = 0; i < N; i++) for (int j = 0; j < N; j++) {
+        double s = i == j ? (double)N : 0.0;
+        for (int k = 0; k < N; k++) s += m[i * N + k] * m[j * N + k];
+        spd[i * N + j] = s;
+    }
+    for (int i = 0; i < N * K; i++) b[i] = cos(0.3 * i);
+    const int64_t before = tsr_allocated();
+    int64_t sa[2] = {N, N}, sb[2] = {N, K};
+    tsr_result r[2];
+    int ok = tsr_cholesky(N, spd, l) == TSR_OK;
+    tsr_arg ca[1] = {arg_arr(spd, 2, sa)};
+    ok = ok && tsr_fn_routine(tsr_fn_find("linalg.cholesky"), 1, ca, 1, r) == 0 && !memcmp(r[0].arr.data, l, sizeof l);
+    tsr_fn_results_free(r, 1);
+    CHECK(ok, "tsr_cholesky == linalg.cholesky, byte for byte");
+    ok = tsr_solve(N, K, spd, b, x) == TSR_OK;
+    tsr_arg sa2[2] = {arg_arr(spd, 2, sa), arg_arr(b, 2, sb)};
+    ok = ok && tsr_fn_routine(tsr_fn_find("linalg.solve"), 2, sa2, 1, r) == 0 && !memcmp(r[0].arr.data, x, sizeof x);
+    tsr_fn_results_free(r, 1);
+    CHECK(ok, "tsr_solve == linalg.solve, byte for byte");
+    ok = tsr_slogdet(N, m, &sgn, &lad) == TSR_OK;
+    tsr_arg da[1] = {arg_arr(m, 2, sa)};
+    ok = ok && tsr_fn_routine(tsr_fn_find("linalg.slogdet"), 1, da, 2, r) == 0 && r[0].num == sgn && r[1].num == lad;
+    tsr_fn_results_free(r, 2);
+    CHECK(ok, "tsr_slogdet == linalg.slogdet (sign %g, log|det| %g)", sgn, lad);
+    double notpd[4] = {1.0, 2.0, 2.0, 1.0}, l2[4];
+    CHECK(tsr_cholesky(2, notpd, l2) == TSR_EARG, "tsr_cholesky refuses a matrix that is not positive definite");
+    CHECK(tsr_allocated() == before, "the typed linalg calls leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 /* distance.kdtree_query == an exhaustive search, exactly: the same distances (sqrt of the axis sum in order), the same
    indices and order (nearest first, ties by index), on random points, integer grids full of equal distances,
    duplicates, queries on data points, k = 1, 7 and k > n */
@@ -3492,6 +3540,8 @@ int main(void)
     test_abi_runtime();
     test_fft_trig();
     test_kdtree();
+    test_linalg_typed();
+    test_op_names();
     test_sort_variants();
     test_sort_daz();
     test_sort_hardening();

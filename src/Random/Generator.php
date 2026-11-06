@@ -42,10 +42,8 @@ final class Generator
                 if (! is_int($s) || $s < 0) {
                     throw new TesseroException('Seeds must be non-negative integers.');
                 }
-                if (is_array($seed) && $s > 0xFFFFFFFF) {
-                    throw new TesseroException('Seed array elements must fit in 32 bits.');
-                }
-                // an int seed becomes little-endian 32-bit words, as numpy's SeedSequence does
+                // an int seed, and each element of a seed list, becomes little-endian 32-bit words, as numpy's
+                // SeedSequence does: [2**40 + 7, 5] seeds as [7, 256, 5]
                 $words[] = $s & 0xFFFFFFFF;
                 if ($s > 0xFFFFFFFF) {
                     $words[] = ($s >> 32) & 0xFFFFFFFF;
@@ -102,14 +100,16 @@ final class Generator
     }
 
     /**
-     * Draw samples from a multivariate normal distribution (numpy.random.Generator.multivariate_normal,
-     * method 'svd'). $mean is the length-d mean vector and $cov the (d, d) covariance matrix; $size fixes the
-     * number of samples (null: one sample of shape (d,)). The SVD factorisation matches NumPy's.
+     * Draw samples from a multivariate normal distribution (numpy.random.Generator.multivariate_normal).
+     * $mean is the length-d mean vector and $cov the (d, d) covariance matrix; $size fixes the number of samples
+     * (null: one sample of shape (d,)). $method is numpy's: 'svd' (default), 'cholesky' (cov must be positive
+     * definite) or 'eigh'; each factorisation is computed as NumPy computes it, from the same normal stream.
      */
     public function multivariateNormal(mixed $mean, mixed $cov, int|array|null $size = null, string $checkValid = 'warn', float $tol = 1e-8, string $method = 'svd'): NDArray
     {
-        if ($method !== 'svd') {
-            throw new TesseroException("multivariateNormal: only method 'svd' is supported.");
+        $code = ['svd' => 0, 'cholesky' => 1, 'eigh' => 2][$method] ?? null;
+        if ($code === null) {
+            throw new TesseroException("multivariateNormal: method must be 'svd', 'cholesky' or 'eigh'.");
         }
         $meanA = NDArray::asArray($mean, DType::Float64);
         $covA = NDArray::asArray($cov, DType::Float64);
@@ -135,17 +135,19 @@ final class Generator
         }
         $out = NDArray::empty([$nrows, $dim], DType::Float64);
         $ffi = Library::ffi();
-        Library::check(
-            $ffi->tsr_pcg64_multivariate_normal(
-                $this->state,
-                $ffi->cast('double*', $meanA->ptr()),
-                $ffi->cast('double*', $covA->ptr()),
-                $dim,
-                $nrows,
-                $ffi->cast('double*', $out->ptr())
-            ),
-            'multivariate_normal'
+        $rc = $ffi->tsr_pcg64_multivariate_normal_method(
+            $this->state,
+            $ffi->cast('double*', $meanA->ptr()),
+            $ffi->cast('double*', $covA->ptr()),
+            $dim,
+            $nrows,
+            $code,
+            $ffi->cast('double*', $out->ptr())
         );
+        if ($rc !== 0 && $code === 1) {
+            throw new TesseroException('multivariateNormal: cov is not positive definite (the Cholesky factorisation failed).');
+        }
+        Library::check($rc, 'multivariate_normal');
 
         return $out->reshape($finalShape);
     }

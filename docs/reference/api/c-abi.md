@@ -96,6 +96,18 @@ int tsr_binary(int op, int dtype, int32_t ndim, const int64_t *shape,
                void *out, const int64_t *sout);
 int tsr_unary(int op, int dtype, int32_t ndim, const int64_t *shape,
               const void *in, const int64_t *sin, void *out, const int64_t *sout);
+/* The op codes of tsr_unary / tsr_binary by NumPy ufunc name, and back: unary 0 negative, 1 absolute, 2 square, 3 sign,
+   4 sqrt, 5 exp, 6 log, 7 log10, 8 log2, 9 sin, 10 cos, 11 tan, 12 arcsin, 13 arccos, 14 arctan, 15 sinh, 16 cosh,
+   17 tanh, 18 floor, 19 ceil, 20 rint, 21 expm1, 22 log1p, 23 reciprocal, 24 isnan, 25 isfinite, 26 isinf,
+   27 logical_not, 28 real, 29 imag, 30 cabs, 31 angle, 32 conjugate; binary 0 add, 1 subtract, 2 multiply, 3 divide,
+   4 power, 5 maximum, 6 minimum, 7 arctan2, 8 hypot, 9 mod, 10 equal, 11 not_equal, 12 less, 13 less_equal,
+   14 greater, 15 greater_equal, 16 logical_and, 17 logical_or, 18 logical_xor, 19 floor_divide. The codes are
+   stable within an ABI generation. find: -1 when unknown (aliases: abs, conj, true_divide, remainder); name: NULL
+   when out of range. Other element-wise functions: tsr_ufunc_find (loop ufuncs) and tsr_fn_find (the registry). */
+int tsr_unary_find(const char *name);
+const char *tsr_unary_name(int op);
+int tsr_binary_find(const char *name);
+const char *tsr_binary_name(int op);
 int tsr_where(int dtype, int32_t ndim, const int64_t *shape, const void *cond, const int64_t *sc,
               const void *a, const int64_t *sa, const void *b, const int64_t *sb, void *out, const int64_t *sout);
 ```
@@ -323,6 +335,9 @@ void tsr_pcg64_normal(uint64_t *state, int64_t n, double mean, double sd, double
 void tsr_pcg64_integers(uint64_t *state, int64_t n, int64_t low, int64_t high, int64_t *out); /* [low, high) */
 void tsr_pcg64_bytes(uint64_t *state, int64_t n, uint8_t *out);                       /* Generator.bytes */
 int tsr_pcg64_multivariate_normal(uint64_t *state, const double *mean, const double *cov, int64_t dim, int64_t n, double *out); /* Generator.multivariate_normal */
+/* the same with numpy's method=: 0 'svd', 1 'cholesky', 2 'eigh' (TSR_EARG when cov is not positive definite for 'cholesky') */
+int tsr_pcg64_multivariate_normal_method(uint64_t *state, const double *mean, const double *cov, int64_t dim, int64_t n,
+                                         int method, double *out);
 int tsr_pcg64_shuffle(uint64_t *state, int64_t n, int64_t itemsize, void *data);                 /* Generator.shuffle */
 ```
 
@@ -427,6 +442,14 @@ typedef struct tsr_result {
     int64_t bytes;                         /* size of the arr.data block, for tsr_free */
     int64_t ival;                          /* kind 5: the exact value (num holds it rounded to double) */
 } tsr_result;
+/* Typed entry points for the linear algebra most often called from C: each runs the registry routine of the same
+   name (linalg.cholesky, linalg.solve, linalg.slogdet), so the results equal the registry's and both PHP backends',
+   byte for byte. Row-major contiguous float64. tsr_cholesky: the lower factor L (numpy.linalg.cholesky; the upper
+   triangle zeroed), TSR_EARG when a is not positive definite. tsr_solve: x = a^-1 b for b of n x nrhs (numpy.linalg.solve).
+   tsr_slogdet: sign and log|det| (numpy.linalg.slogdet). tsr_fn_error() describes a failure. */
+int tsr_cholesky(int64_t n, const double *a, double *l);
+int tsr_solve(int64_t n, int64_t nrhs, const double *a, const double *b, double *x);
+int tsr_slogdet(int64_t n, const double *a, double *sign, double *logabsdet);
 int tsr_fn_count(void);
 const char *tsr_fn_name(int id);
 int tsr_fn_find(const char *name);

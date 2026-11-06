@@ -4764,3 +4764,63 @@ static const fn_def SCIPY_DEFS[] = {
     ROUTINE("slinalg.eig", 2, "a", "eigenvalues, eigenvectors", r_eig__g, &ALWAYS_COMPLEX, "Eigenvalues and right eigenvectors of a general matrix, complex (scipy.linalg.eig)."),
 };
 const fn_table TSR_SCIPY_LINALG_TABLE = {SCIPY_DEFS, (int)(sizeof SCIPY_DEFS / sizeof SCIPY_DEFS[0])};
+
+/* ---- typed C entry points for the numpy.linalg routines most often called from C (tessero.h): each runs the very
+   registry routine (linalg.cholesky / linalg.solve / linalg.slogdet), so the results are those of the registry and of
+   both PHP backends, byte for byte, without the caller packing tsr_arg / tsr_result. Row-major, contiguous float64. */
+static int la_typed(const char *name, int nargs, tsr_arg *args, int nres, tsr_result *res)
+{
+    const int id = tsr_fn_find(name);
+    if (id < 0) { fn_set_error("%s is not registered", name); return TSR_EARG; }
+    return tsr_fn_routine(id, nargs, args, nres, res);
+}
+
+static tsr_arg la_matrix(const double *a, int64_t rows, int64_t cols)
+{
+    tsr_arg x;
+    memset(&x, 0, sizeof x);
+    x.kind = 3;
+    const int64_t sh[2] = {rows, cols};
+    tsr_array_init(&x.arr, TSR_F64, 2, sh, (void *)a);
+    return x;
+}
+
+int tsr_cholesky(int64_t n, const double *a, double *l)
+{
+    if (n < 0 || (n > 0 && (!a || !l))) return TSR_EARG;
+    if (n == 0) return TSR_OK;
+    tsr_arg args[1] = {la_matrix(a, n, n)};
+    tsr_result r[1];
+    const int rc = la_typed("linalg.cholesky", 1, args, 1, r);
+    if (rc < 0) return rc;
+    memcpy(l, r[0].arr.data, (size_t)(n * n) * sizeof(double));
+    tsr_fn_results_free(r, 1);
+    return TSR_OK;
+}
+
+int tsr_solve(int64_t n, int64_t nrhs, const double *a, const double *b, double *x)
+{
+    if (n < 0 || nrhs < 0 || (n > 0 && nrhs > 0 && (!a || !b || !x))) return TSR_EARG;
+    if (n == 0 || nrhs == 0) return TSR_OK;
+    tsr_arg args[2] = {la_matrix(a, n, n), la_matrix(b, n, nrhs)};
+    tsr_result r[1];
+    const int rc = la_typed("linalg.solve", 2, args, 1, r);
+    if (rc < 0) return rc;
+    memcpy(x, r[0].arr.data, (size_t)(n * nrhs) * sizeof(double));
+    tsr_fn_results_free(r, 1);
+    return TSR_OK;
+}
+
+int tsr_slogdet(int64_t n, const double *a, double *sign, double *logabsdet)
+{
+    if (n < 0 || !sign || !logabsdet || (n > 0 && !a)) return TSR_EARG;
+    const double one = 1.0;
+    tsr_arg args[1] = {la_matrix(n > 0 ? a : &one, n, n)};
+    tsr_result r[2];
+    const int rc = la_typed("linalg.slogdet", 1, args, 2, r);
+    if (rc < 0) return rc;
+    *sign = r[0].kind == 3 ? ((const double *)r[0].arr.data)[0] : r[0].num;
+    *logabsdet = r[1].kind == 3 ? ((const double *)r[1].arr.data)[0] : r[1].num;
+    tsr_fn_results_free(r, 2);
+    return TSR_OK;
+}

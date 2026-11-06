@@ -213,9 +213,10 @@ method='marginals'): sequential univariate hypergeometric draws over the colours
 multivariateNormal(mixed $mean, mixed $cov, array|int|null $size = null, string $checkValid = 'warn', float $tol = 1.0E-8, string $method = 'svd'): Tessero\NDArray
 ```
 
-Draw samples from a multivariate normal distribution (numpy.random.Generator.multivariate_normal,
-method 'svd'). $mean is the length-d mean vector and $cov the (d, d) covariance matrix; $size fixes the
-number of samples (null: one sample of shape (d,)). The SVD factorisation matches NumPy's.
+Draw samples from a multivariate normal distribution (numpy.random.Generator.multivariate_normal).
+$mean is the length-d mean vector and $cov the (d, d) covariance matrix; $size fixes the number of samples
+(null: one sample of shape (d,)). $method is numpy's: 'svd' (default), 'cholesky' (cov must be positive
+definite) or 'eigh'; each factorisation is computed as NumPy computes it, from the same normal stream.
 
 ### negativeBinomial
 

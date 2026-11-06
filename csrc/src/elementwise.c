@@ -679,3 +679,38 @@ int tsr_where(int dtype, int32_t ndim, const int64_t *shape, const void *cond, c
     });
     return TSR_OK;
 }
+
+/* ---- the op codes of tsr_unary / tsr_binary by name (NumPy's ufunc names), for callers that look functions up
+   rather than compile in the codes. The codes are part of the ABI (mirrored in Tessero\Native\Abi). */
+static const char *const UNARY_NAMES[] = {
+    "negative", "absolute", "square", "sign", "sqrt", "exp", "log", "log10", "log2", "sin", "cos", "tan",
+    "arcsin", "arccos", "arctan", "sinh", "cosh", "tanh", "floor", "ceil", "rint", "expm1", "log1p",
+    "reciprocal", "isnan", "isfinite", "isinf", "logical_not", "real", "imag", "cabs", "angle", "conjugate"
+};
+static const char *const BINARY_NAMES[] = {
+    "add", "subtract", "multiply", "divide", "power", "maximum", "minimum", "arctan2", "hypot", "mod",
+    "equal", "not_equal", "less", "less_equal", "greater", "greater_equal", "logical_and", "logical_or",
+    "logical_xor", "floor_divide"
+};
+#define NAMES_N(t) ((int)(sizeof(t) / sizeof((t)[0])))
+
+const char *tsr_unary_name(int op) { return op >= 0 && op < NAMES_N(UNARY_NAMES) ? UNARY_NAMES[op] : NULL; }
+const char *tsr_binary_name(int op) { return op >= 0 && op < NAMES_N(BINARY_NAMES) ? BINARY_NAMES[op] : NULL; }
+
+int tsr_unary_find(const char *name)
+{
+    if (!name) return -1;
+    for (int i = 0; i < NAMES_N(UNARY_NAMES); i++) if (!strcmp(name, UNARY_NAMES[i])) return i;
+    if (!strcmp(name, "abs")) return 1;
+    if (!strcmp(name, "conj")) return NAMES_N(UNARY_NAMES) - 1;
+    return -1;
+}
+
+int tsr_binary_find(const char *name)
+{
+    if (!name) return -1;
+    for (int i = 0; i < NAMES_N(BINARY_NAMES); i++) if (!strcmp(name, BINARY_NAMES[i])) return i;
+    if (!strcmp(name, "true_divide")) return 3;
+    if (!strcmp(name, "remainder")) return 9;
+    return -1;
+}

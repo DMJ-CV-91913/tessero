@@ -84,6 +84,18 @@ final class NumericsTest extends TestCase
         $this->assertSame($a, $h->random(4)->toList());
     }
 
+    /** numpy's SeedSequence splits every element of a seed list into little-endian 32-bit words */
+    public function testSeedListElementsAbove32Bits(): void
+    {
+        $a = Generator::defaultRng([(1 << 40) + 7, 5])->random(4)->toList();
+        $this->assertSame(Generator::defaultRng([7, 256, 5])->random(4)->toList(), $a);
+        if (extension_loaded('tessero')) {
+            $x = \Tessero\Ext\Random\Generator::defaultRng([(1 << 40) + 7, 5])->random(4)->toList();
+            $this->assertSame(\Tessero\Ext\Random\Generator::defaultRng([7, 256, 5])->random(4)->toList(), $x);
+            $this->assertSame($a, $x);
+        }
+    }
+
     public function testShuffleOnNonContiguousRows(): void
     {
         $a = NDArray::arange(12)->reshape(4, 3);

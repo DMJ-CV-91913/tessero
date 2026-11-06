@@ -9,6 +9,16 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Added
 
+- **`Generator::multivariateNormal(..., method:)` takes `'cholesky'` and `'eigh'`** besides `'svd'`, on both
+  backends, each factorisation computed as NumPy computes it (C: `tsr_pcg64_multivariate_normal_method`). A cov that is
+  not positive definite fails `'cholesky'` with an error, as NumPy raises.
+- **Typed C entry points `tsr_cholesky`, `tsr_solve`, `tsr_slogdet`** (requested by a native consumer): row-major float64,
+  running the registry routines of the same name, so the results equal the registry's byte for byte, without packing
+  `tsr_arg` / `tsr_result`.
+- **`tsr_unary_find` / `tsr_binary_find` and `tsr_unary_name` / `tsr_binary_name`**: the core element-wise op codes by
+  NumPy ufunc name (`exp`, `tanh`, `add`, ...), which were documented only in an internal header. New page
+  `docs/reference/c-function-lookup.md`: the four ways to reach a function from C, and why registry ids may be kept
+  for a process but not across releases.
 - **Two more sorts with the same result as `sort()`**: `NDArray::sortSimd()` (C `tsr_sort_simd`, an AVX2 quicksort:
   faster on random data, many duplicates and sorted input; the radix sort where AVX2 is missing) and
   `NDArray::sortRuns()` (C `tsr_sort_runs`, a natural merge sort: fastest on mostly sorted data, slowest on random
@@ -44,6 +54,8 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`Generator::defaultRng([...])` refused list elements of 2^32 and above**; NumPy's `SeedSequence` splits every element
+  into little-endian 32-bit words (`[2**40 + 7, 5]` seeds as `[7, 256, 5]`), and both backends now do the same.
 - **`einsum` hid a NaN behind a zero**: once a running product reached 0 the remaining operands were skipped, so
   `einsum('i,i', [0], [nan])` gave 0; NumPy gives nan.
 - **`scipy.fft` dct / idct / dst / idst were O(N^2)** (direct sums; 1M points took hours): above 128 points they now run

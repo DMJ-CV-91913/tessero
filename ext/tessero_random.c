@@ -74,11 +74,14 @@ static int seed_words(zval *seed, uint32_t *words, int *n)
     if (Z_TYPE_P(seed) == IS_ARRAY) {
         zval *e;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(seed), e) {
-            if (Z_TYPE_P(e) != IS_LONG || Z_LVAL_P(e) < 0 || Z_LVAL_P(e) > 0xffffffffL || *n >= 64) {
-                zend_argument_value_error(1, "must be a list of at most 64 integers in [0, 2^32)");
+            /* each element becomes little-endian 32-bit words, as numpy's SeedSequence does: [2**40 + 7, 5] seeds as [7, 256, 5] */
+            if (Z_TYPE_P(e) != IS_LONG || Z_LVAL_P(e) < 0 || *n >= 63) {
+                zend_argument_value_error(1, "must be a list of non-negative integers (at most 64 32-bit words)");
                 return FAILURE;
             }
-            words[(*n)++] = (uint32_t)Z_LVAL_P(e);
+            const uint64_t v = (uint64_t)Z_LVAL_P(e);
+            words[(*n)++] = (uint32_t)(v & 0xffffffffu);
+            if (v > 0xffffffffu) words[(*n)++] = (uint32_t)(v >> 32);
         } ZEND_HASH_FOREACH_END();
         return SUCCESS;
     }
@@ -619,7 +622,8 @@ static PHP_METHOD(Generator, bytes)
     RETURN_STR(out);
 }
 
-/* multivariate_normal(mean, cov, size=null, check_valid='warn', tol=1e-8, method='svd'): SVD-factorised draws. */
+/* multivariate_normal(mean, cov, size=null, check_valid='warn', tol=1e-8, method='svd'): numpy's draws, method 'svd',
+   'cholesky' or 'eigh' (the kernel computes each factorisation as numpy does). */
 static PHP_METHOD(Generator, multivariateNormal)
 {
     zval *mean_z, *cov_z, *size = NULL, *cv = NULL, *tl = NULL;
@@ -634,9 +638,12 @@ static PHP_METHOD(Generator, multivariateNormal)
         Z_PARAM_STR_OR_NULL(method)
     ZEND_PARSE_PARAMETERS_END();
     (void)cv; (void)tl;
-    if (method && !zend_string_equals_literal(method, "svd")) {
-        zend_throw_exception(tsr_ce_exception, "multivariateNormal: only method 'svd' is supported.", 0);
-        RETURN_THROWS();
+    int mcode = 0;
+    if (method) {
+        if (zend_string_equals_literal(method, "svd")) mcode = 0;
+        else if (zend_string_equals_literal(method, "cholesky")) mcode = 1;
+        else if (zend_string_equals_literal(method, "eigh")) mcode = 2;
+        else { zend_throw_exception(tsr_ce_exception, "multivariateNormal: method must be 'svd', 'cholesky' or 'eigh'.", 0); RETURN_THROWS(); }
     }
     uint64_t *st = gen_of(Z_OBJ_P(ZEND_THIS))->st;
     const int64_t dim = (int64_t)zend_hash_num_elements(Z_ARRVAL_P(mean_z));
@@ -671,9 +678,14 @@ static PHP_METHOD(Generator, multivariateNormal)
     if (tsr_ndarray_new(return_value, TSR_F64, nd, oshape, 0) == FAILURE) { efree(mean); efree(cov); RETURN_THROWS(); }
     tsr_array *o = &Z_TSR_P(return_value)->a;
     double *out = (double *)((char *)o->data + o->offset);
-    int rc = tsr_pcg64_multivariate_normal(st, mean, cov, dim, nrows, out);
+    int rc = tsr_pcg64_multivariate_normal_method(st, mean, cov, dim, nrows, mcode, out);
     efree(mean); efree(cov);
-    if (rc < 0) { zval_ptr_dtor(return_value); zend_throw_exception(tsr_ce_exception, "multivariateNormal: SVD did not converge", 0); RETURN_THROWS(); }
+    if (rc < 0) {
+        zval_ptr_dtor(return_value);
+        zend_throw_exception(tsr_ce_exception, mcode == 1 ? "multivariateNormal: cov is not positive definite (the Cholesky factorisation failed)."
+                                                          : mcode == 2 ? "multivariateNormal: the eigendecomposition did not converge" : "multivariateNormal: SVD did not converge", 0);
+        RETURN_THROWS();
+    }
 }
 
 ZEND_BEGIN_ARG_INFO_EX(ai_default_rng, 0, 0, 0)

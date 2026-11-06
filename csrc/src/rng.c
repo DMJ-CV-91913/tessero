@@ -195,7 +195,52 @@ void tsr_pcg64_bytes(uint64_t *state, int64_t n, uint8_t *out)
    TSR_ENOMEM on allocation failure. out holds n*d doubles (row-major n x d). */
 int tsr_pcg64_multivariate_normal(uint64_t *state, const double *mean, const double *cov, int64_t dim, int64_t n, double *out)
 {
-    if (dim < 1 || n < 0) return TSR_EARG;
+    return tsr_pcg64_multivariate_normal_method(state, mean, cov, dim, n, 0, out);
+}
+
+/* The same with numpy's method= : 0 'svd' (above), 1 'cholesky', 2 'eigh'. numpy computes mean + X @ factor.T with
+   factor = l = cholesky(cov) (LAPACK potrf, lower), or factor = u * sqrt(|s|) where (s, u) = eigh(cov) (syevd, lower,
+   eigenvalues ascending); both decompositions run on the column-major copy, as numpy's linalg does (cov is
+   symmetric, so the data is the same). A cov that is not positive definite fails the Cholesky factorisation: TSR_EARG,
+   as numpy raises LinAlgError. */
+int tsr_pcg64_multivariate_normal_method(uint64_t *state, const double *mean, const double *cov, int64_t dim, int64_t n,
+                                         int method, double *out)
+{
+    if (dim < 1 || n < 0 || method < 0 || method > 2) return TSR_EARG;
+    if (method != 0) {
+        const size_t dd = (size_t)dim * (size_t)dim;
+        double *x = (double *)malloc((size_t)(n > 0 ? n : 1) * (size_t)dim * sizeof(double));
+        double *cc = (double *)malloc(dd * sizeof(double));
+        double *factor = (double *)malloc(dd * sizeof(double));
+        double *w = (double *)malloc((size_t)dim * sizeof(double));
+        if (!x || !cc || !factor || !w) { free(x); free(cc); free(factor); free(w); return TSR_ENOMEM; }
+        tsr_pcg64_normal(state, n * dim, 0.0, 1.0, x);          /* X ~ N(0,1), same stream as numpy */
+        memcpy(cc, cov, dd * sizeof(double));
+        lapack_int info;
+        if (method == 1) {
+            /* column-major cc: L(i, j) at cc[i + j dim]; X @ L.T means factor[k][j] = L(j, k) for j >= k */
+            info = LAPACKE_dpotrf(LAPACK_COL_MAJOR, 'L', (lapack_int)dim, cc, (lapack_int)dim);
+            if (info == 0)
+                for (int64_t k = 0; k < dim; k++)
+                    for (int64_t j = 0; j < dim; j++) factor[k * dim + j] = j >= k ? cc[j + k * dim] : 0.0;
+        } else {
+            /* column-major eigenvectors: U(i, k) at cc[i + k dim]; factor.T row k = sqrt(|s_k|) U(:, k) */
+            info = LAPACKE_dsyevd(LAPACK_COL_MAJOR, 'V', 'L', (lapack_int)dim, cc, (lapack_int)dim, w);
+            if (info == 0)
+                for (int64_t k = 0; k < dim; k++) {
+                    const double sq = sqrt(fabs(w[k]));
+                    for (int64_t j = 0; j < dim; j++) factor[k * dim + j] = cc[j + k * dim] * sq;
+                }
+        }
+        if (info != 0) { free(x); free(cc); free(factor); free(w); return TSR_EARG; }
+        if (n > 0) {
+            tsr_gemm(TSR_F64, 0, 0, n, dim, dim, 1.0, x, dim, factor, dim, 0.0, out, dim);   /* out = X @ factor.T */
+            for (int64_t r = 0; r < n; r++)
+                for (int64_t j = 0; j < dim; j++) out[r * dim + j] += mean[j];
+        }
+        free(x); free(cc); free(factor); free(w);
+        return TSR_OK;
+    }
     const size_t dd = (size_t)dim * (size_t)dim;
     double *x = (double *)malloc((size_t)(n > 0 ? n : 1) * (size_t)dim * sizeof(double));
     double *cc = (double *)malloc(dd * sizeof(double));

@@ -134,6 +134,7 @@ nav:
       - NumPy/SciPy to Tessero: reference/numpy-tessero.md
       - C ABI: reference/api/c-abi.md
       - Error codes: reference/error-codes.md
+      - "Calling Tessero from C": reference/c-function-lookup.md
   - Project:
       - Roadmap: project/roadmap.md
       - Open issues (beta): project/open-issues.md
