@@ -2347,17 +2347,30 @@ static void test_kdtree(void)
 }
 
 /* scipy.fft dct / idct / dst / idst above DCT_DIRECT_MAX run through a real FFT (Makhoul): they must agree with the
-   direct summations (computed here in long double) at sizes around the switch, odd, even and prime, and stay exact
-   enough for a round trip at 1M points (where the direct sums would take hours) */
+   direct summations at sizes around the switch, odd, even and prime, and stay exact enough for a round trip at 1M
+   points (where the direct sums would take hours). The reference must be accurate where long double is double
+   (macOS arm64, MSVC): the integer phase is reduced modulo the period 4N before it becomes an angle (an angle of
+   5e4 rad alone carries 1e-11 of error in double), and the sum is compensated (Neumaier). */
+static long double trig_phase(int sine, int64_t m, int64_t N)   /* sin or cos of pi m / (2N) */
+{
+    const long double pi = 3.141592653589793238462643383279502884L;
+    const long double t = pi * (long double)(m % (4 * N)) / (2.0L * N);
+    return sine ? sinl(t) : cosl(t);
+}
+static void trig_add(long double *s, long double *c, long double v)
+{
+    const long double t = *s + v;
+    *c += fabsl(*s) >= fabsl(v) ? (*s - t) + v : (v - t) + *s;
+    *s = t;
+}
 static long double trig_ref(int which, int type, const double *x, int64_t N, int64_t k)
 {
-    long double s = 0.0L;
-    const long double pi = 3.141592653589793238462643383279502884L;
-    if (which == 0 && type == 2) for (int64_t n = 0; n < N; n++) s += 2.0L * x[n] * cosl(pi * (2 * n + 1) * k / (2.0L * N));
-    if (which == 0 && type == 3) { s = x[0]; for (int64_t n = 1; n < N; n++) s += 2.0L * x[n] * cosl(pi * n * (2 * k + 1) / (2.0L * N)); }
-    if (which == 1 && type == 2) for (int64_t n = 0; n < N; n++) s += 2.0L * x[n] * sinl(pi * (2 * n + 1) * (k + 1) / (2.0L * N));
-    if (which == 1 && type == 3) { s = (k & 1) ? -x[N - 1] : x[N - 1]; for (int64_t n = 0; n < N - 1; n++) s += 2.0L * x[n] * sinl(pi * (n + 1) * (2 * k + 1) / (2.0L * N)); }
-    return s;
+    long double s = 0.0L, c = 0.0L;
+    if (which == 0 && type == 2) for (int64_t n = 0; n < N; n++) trig_add(&s, &c, 2.0L * x[n] * trig_phase(0, (2 * n + 1) * k, N));
+    if (which == 0 && type == 3) { s = x[0]; for (int64_t n = 1; n < N; n++) trig_add(&s, &c, 2.0L * x[n] * trig_phase(0, n * (2 * k + 1), N)); }
+    if (which == 1 && type == 2) for (int64_t n = 0; n < N; n++) trig_add(&s, &c, 2.0L * x[n] * trig_phase(1, (2 * n + 1) * (k + 1), N));
+    if (which == 1 && type == 3) { s = (k & 1) ? -x[N - 1] : x[N - 1]; for (int64_t n = 0; n < N - 1; n++) trig_add(&s, &c, 2.0L * x[n] * trig_phase(1, (n + 1) * (2 * k + 1), N)); }
+    return s + c;
 }
 static void test_fft_trig(void)
 {
