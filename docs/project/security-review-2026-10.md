@@ -127,10 +127,11 @@ P1
 
 P2
 * Done: SBOM, build provenance, cosign-signed checksums, CodeQL and OpenSSF Scorecard.
-* Done: nightly TSan and Valgrind. Open: a gcov coverage job.
+* Done: nightly TSan and Valgrind; line coverage of the C tests (`make -C csrc coverage`, nightly job, 2026-11-06).
 * Done: Smith complex division, `floor_divide` via `npy_divmod`, NaN-propagating `norm(inf)`, the documented
-  `long double` dependence. Partial: signed zero is documented and C-tested, but the PHP parity comparator does
-  not check it.
+  `long double` dependence. Signed zero: documented, C-tested, and checked by the PHP parity comparator for real
+  results (2026-11-06; complex parts and four rotation-based decompositions are exempt, with the reasons in
+  `tools/parity/run-tests.php`).
 * Done: thread-local error state in the C++ distribution layer; LAPACK 32-bit dimension guards (`TSR_LA_FIT`).
 
 Added by the 2026-10-24 validation

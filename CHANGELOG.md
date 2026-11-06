@@ -34,6 +34,19 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`scipy.fft` dct / idct / dst / idst were O(N^2)** (direct sums; 1M points took hours): above 128 points they now run
+  through one real FFT (Makhoul), 1M points in about 50 ms, agreeing with SciPy to 1e-16 of the output scale; small
+  sizes keep the exact direct sums. New fixture cases above the switch (129, 257, 1000 points; 3x130 and 130x3).
+- **`interpolate.CubicSpline` / `make_interp_spline` (k=3) solved their tridiagonal system densely** (n x n: 800 MB
+  and 8-17 s at 10,000 knots): now LAPACK `dgbsv` on the band, as SciPy does; 76 ms, O(n) memory.
+- **`sparse.linalg.lsmr` read `maxiter` from the `conlim` argument**, so a default call ran 100 million iterations
+  (15 s on a 10 x 6 system; the results were right): now 16 us. `lsmr` still ignores `damp`, `atol`, `btol` and
+  `conlim` and runs 4n iterations unless `maxiter` is given.
+- **`signal.butter`, `cheby1`, `cheby2`, `ellip`, `bessel`, `iirfilter` silently ignored `output=`**: they return
+  (b, a) only and now refuse `output='sos'` / `'zpk'` with an error instead of answering in the wrong format.
+- **Signed zeros now as NumPy / SciPy**: `np.modf(-0.0)` gives a `-0.0` fraction; `polymulx` and the polynomial
+  derivatives give `c[0]*0` (NumPy); `csgraph.laplacian` follows SciPy's operation order (off-diagonal zeros
+  `-0.0`); `slinalg.invpascal` triangular zeros are `+0.0` (SciPy's default exact=True result is integer).
 - **`sortSimd()` with threads under per-thread FP modes**: OpenMP worker threads keep their own MXCSR, so a worker
   left in denormals-are-zero mode compared subnormal float64 values as zero while the caller (not in DAZ) had
   chosen the double-compare path. Every thread of the sort now runs with the caller's MXCSR and restores its own.
@@ -42,6 +55,12 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Testing
 
+- **Speed sweep tooling**: `tools/parity/run-tests.php --time=OUT.json` times every passing fixture call,
+  `tools/parity/time_calls.py` times the same cases in NumPy/SciPy and `tools/parity/time_report.py` pairs them;
+  `bench/tier2_bench.{php,py}` (83 heavier calls) and `bench/sweep_report.py`. Results: `docs/project/speed-sweep.md`.
+- **The parity comparator checks the sign of exact zeros** in real results (complex parts and four rotation-based
+  decompositions exempt, each with its reason).
+- **`make -C csrc coverage`** (gcov line coverage of the C tests) and a nightly job that runs it.
 - **Sort risk register and hardening tests** (`docs/project/sort-design.md`): an independent qsort oracle over
   the documented order at every size 0..1100, the 0-1 principle exhaustively for the leaf networks, 15
   adversarial / structured / float-edge patterns at serial and parallel sizes, forced heapsort fallback, DAZ in

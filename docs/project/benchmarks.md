@@ -209,6 +209,17 @@ How the three work, why their outputs are identical, and the risk register with 
 Rule of thumb: `sortSimd()` on an AVX2 machine, `sortRuns()` for mostly sorted data where AVX2 is missing, `sort()`
 when a steady, input-independent time matters more than the best case.
 
+## Full sweep
+
+Every function family timed against NumPy/SciPy on the same inputs, single-threaded (2026-11-06); all the tables,
+the gaps that remain and how to reproduce: [speed sweep](speed-sweep.md).
+
+| tier | timed on both sides | geomean Tessero / reference | Tessero faster |
+|---|---|---|---|
+| `scipy.special` element-wise, 100,000 values | 212 functions | 1.05 | 31 |
+| heavier calls at realistic sizes | 80 cases | 2.05 | 26 |
+| per-call latency, every parity fixture call | 1,015 functions | 0.62 | 615 |
+
 ## Correctness, not just speed
 
 Every performance figure sits on top of verified correctness, generated from recorded test runs against real
