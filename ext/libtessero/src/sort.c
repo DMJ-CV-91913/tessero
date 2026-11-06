@@ -12,6 +12,19 @@
 #include "internal.h"
 #include <math.h>
 #include <stdlib.h>
+#ifdef _OPENMP
+#  include <omp.h>
+#endif
+
+/* scratch arrays filled before use: no -ftrivial-auto-var-init zero fill per call (csrc/Makefile HARDEN) */
+#if defined(__has_attribute)
+#  if __has_attribute(uninitialized)
+#    define TSR_NOINIT __attribute__((uninitialized))
+#  endif
+#endif
+#ifndef TSR_NOINIT
+#  define TSR_NOINIT
+#endif
 
 int tsr_sort_test_depth = 0;                                  /* internal.h: tests only */
 
@@ -118,10 +131,19 @@ static void ins_sort(uint64_t *a, int64_t n)
     }
 }
 
-static void lsd8(uint64_t *a, uint64_t *s, int64_t n, int hibit)
+/* The lsd8 histogram and msd_sort's per-level count tables live in a workspace allocated with the scratch buffer,
+   not on the stack: a thread's stack can be small (musl: 128 KB for pthreads and OpenMP workers), and on glibc the
+   static TLS of every loaded library is carved out of it (about 66 KB in a process with OpenBLAS), so 16 KB tables
+   per recursion level overflowed it (R15 in docs/project/sort-design.md). Each thread has RADIX_TABLES tables of
+   RADIX_TAB counts: [0] for lsd8 (8 passes x 256), [1 + L] for MSD level L. Level L sees at most 64 - 11 L key bits
+   and only levels above 16 bits run MSD, so L <= 4. */
+#define RADIX_TAB 2048
+#define RADIX_TABLES 6
+#define RADIX_STRIDE (RADIX_TABLES * RADIX_TAB + 72)   /* per thread; the pad keeps the regions off each other's cache sets */
+
+static void lsd8(uint64_t *restrict a, uint64_t *restrict s, int64_t n, int hibit, int64_t (*restrict h)[256])
 {
     const int passes = (hibit + 7) / 8;
-    int64_t h[8][256];
     memset(h, 0, sizeof(int64_t) * 256 * (size_t)passes);
     for (int64_t i = 0; i < n; i++) {
         const uint64_t k = a[i];
@@ -141,39 +163,77 @@ static void lsd8(uint64_t *a, uint64_t *s, int64_t n, int hibit)
 }
 
 #define MSD_BITS 11
-static void msd_sort(uint64_t *a, uint64_t *s, int64_t n, int hibit, int threads)
+/* ws: this thread's tables (at level 0, the base of every thread's). One table per level holds the counts, then
+   the bucket starts, and after the scatter the bucket ends (bucket d is [end[d-1], end[d])). A constant digit
+   loops instead of recursing. Only level 0 runs threads; a child on team thread t takes the tables at
+   ws + t x RADIX_STRIDE. */
+static void msd_sort(uint64_t *restrict a, uint64_t *restrict s, int64_t n, int hibit, int threads, int64_t *restrict ws, int level)
 {
-    if (n <= 32) { ins_sort(a, n); return; }
-    if (hibit <= 0) return;                                       /* all remaining keys are equal */
-    if (n <= 4096 || hibit <= 16) { lsd8(a, s, n, hibit); return; }
-    const int lo = hibit > MSD_BITS ? hibit - MSD_BITS : 0, w = hibit - lo, nb = 1 << w;
-    const uint64_t mask = ((uint64_t)1 << w) - 1;
-    int64_t cnt[1 << MSD_BITS], off[1 << MSD_BITS], pos[1 << MSD_BITS];
-    memset(cnt, 0, sizeof(int64_t) * (size_t)nb);
-    for (int64_t i = 0; i < n; i++) cnt[(a[i] >> lo) & mask]++;
-    int64_t sum = 0;
-    for (int d = 0; d < nb; d++) {
-        if (cnt[d] == n) { msd_sort(a, s, n, lo, threads); return; }   /* this digit is constant: skip it */
-        off[d] = pos[d] = sum;
-        sum += cnt[d];
+    int64_t *restrict const end = ws + (size_t)(1 + level) * RADIX_TAB;   /* a, s and the tables never overlap */
+    int lo, nb;
+    uint64_t mask;
+    for (;;) {
+        if (n <= 32) { ins_sort(a, n); return; }
+        if (hibit <= 0) return;                                   /* all remaining keys are equal */
+        if (n <= 4096 || hibit <= 16 || 1 + level >= RADIX_TABLES) { lsd8(a, s, n, hibit, (int64_t (*)[256])ws); return; }
+        lo = hibit > MSD_BITS ? hibit - MSD_BITS : 0;
+        nb = 1 << (hibit - lo);
+        mask = ((uint64_t)1 << (hibit - lo)) - 1;
+        memset(end, 0, sizeof(int64_t) * (size_t)nb);
+        for (int64_t i = 0; i < n; i++) end[(a[i] >> lo) & mask]++;
+        int constant = 0;
+        for (int d = 0; d < nb; d++) if (end[d] == n) { constant = 1; break; }
+        if (!constant) break;
+        hibit = lo;                                               /* this digit is constant: skip it */
     }
-    for (int64_t i = 0; i < n; i++) s[pos[(a[i] >> lo) & mask]++] = a[i];
+    int64_t sum = 0;
+    for (int d = 0; d < nb; d++) { const int64_t c = end[d]; end[d] = sum; sum += c; }
+    for (int64_t i = 0; i < n; i++) s[end[(a[i] >> lo) & mask]++] = a[i];
     memcpy(a, s, (size_t)n * 8);
     if (threads < 2 || n < TSR_PAR_MIN) threads = 1;
 #if defined(_OPENMP)
 #pragma omp parallel for num_threads(threads) schedule(dynamic, 16) if (threads > 1)
 #endif
-    for (int d = 0; d < nb; d++)
-        if (cnt[d] > 1) msd_sort(a + off[d], s + off[d], cnt[d], lo, 1);
+    for (int d = 0; d < nb; d++) {
+        const int64_t b = d ? end[d - 1] : 0, c = end[d] - b;
+#if defined(_OPENMP)
+        int64_t *const mine = ws + (size_t)omp_get_thread_num() * RADIX_STRIDE;
+#else
+        int64_t *const mine = ws;
+#endif
+        if (c > 1) msd_sort(a + b, s + b, c, lo, 1, mine, level + 1);
+    }
+}
+
+/* up to 4096 keys msd_sort would go straight to lsd8 and never recurse: the one table stays on the stack (a single
+   16 KB frame, kept out of the callers' frames) without the hardening zero fill, which cost small sorts 30% */
+#if defined(__GNUC__)
+__attribute__((noinline))
+#elif defined(_MSC_VER)
+__declspec(noinline)
+#endif
+static int value_sort_small(uint64_t *keys, int64_t n)
+{
+    int64_t h[8][256] TSR_NOINIT;
+    if (n <= 32) { ins_sort(keys, n); return TSR_OK; }
+    uint64_t *s = (uint64_t *)tsr_alloc(n * 8);
+    if (!s) return TSR_ENOMEM;
+    lsd8(keys, s, n, 64, h);
+    tsr_free(s, n * 8);
+    return TSR_OK;
 }
 
 static int value_sort(uint64_t *keys, int64_t n)
 {
     if (n < 2) return TSR_OK;
-    uint64_t *s = (uint64_t *)tsr_alloc(n * 8);
-    if (!s) return TSR_ENOMEM;
-    msd_sort(keys, s, n, 64, tsr_get_threads());
-    tsr_free(s, n * 8);
+    if (n <= 4096) return value_sort_small(keys, n);
+    const int threads = tsr_get_threads();
+    const int64_t team = threads > 1 && n >= TSR_PAR_MIN ? threads : 1;
+    const int64_t words = team * RADIX_STRIDE;                    /* the tables first, then the scratch keys */
+    int64_t *ws = (int64_t *)tsr_alloc((words + n) * 8);
+    if (!ws) return TSR_ENOMEM;
+    msd_sort(keys, (uint64_t *)(ws + words), n, 64, threads, ws, 0);
+    tsr_free(ws, (words + n) * 8);
     return TSR_OK;
 }
 
@@ -197,15 +257,6 @@ static int value_sort(uint64_t *keys, int64_t n)
 #if defined(__GNUC__) && defined(__x86_64__)                      /* GCC and clang; MSVC uses the radix sort */
 #include <immintrin.h>
 #define TSR_HAVE_AVX2_SORT 1
-/* scratch arrays filled before use: no -ftrivial-auto-var-init zero fill per call (csrc/Makefile HARDEN) */
-#if defined(__has_attribute)
-#  if __has_attribute(uninitialized)
-#    define TSR_NOINIT __attribute__((uninitialized))
-#  endif
-#endif
-#ifndef TSR_NOINIT
-#  define TSR_NOINIT
-#endif
 /* the keys overlay the caller's float or integer data */
 typedef int64_t qs_i64 __attribute__((__may_alias__));
 typedef int32_t qs_i32 __attribute__((__may_alias__));

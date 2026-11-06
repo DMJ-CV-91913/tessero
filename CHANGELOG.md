@@ -54,6 +54,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`sort()` (the radix sort) crashed on small thread stacks**: it kept up to 49 KB of count tables per recursion level
+  on the stack, which overflowed musl's 128 KB default for threads and OpenMP workers (Alpine; the CI musl job failed
+  from the sort commits on) and glibc threads whose stack is shared with large static TLS. The tables now live in the
+  heap block of the scratch buffer; results unchanged, speed equal or up to 8% faster at 10M values. Regression test
+  on a 128 KB thread at the full recursion depth.
 - **`Generator::defaultRng([...])` refused list elements of 2^32 and above**; NumPy's `SeedSequence` splits every element
   into little-endian 32-bit words (`[2**40 + 7, 5]` seeds as `[7, 256, 5]`), and both backends now do the same.
 - **`einsum` hid a NaN behind a zero**: once a running product reached 0 the remaining operands were skipped, so

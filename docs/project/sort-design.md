@@ -70,6 +70,7 @@ sorting and written back canonically, and the float64 path of `sortSimd`, which 
 | each of N application threads calls the multithreaded sort | each caller starts its own OpenMP team: N x threads workers (correct, oversubscribed) | set `Tessero::setThreads(1)` (extension: `tessero.threads=1`) when the application parallelizes itself |
 | called inside the application's own OpenMP parallel region | nested parallelism is off by default, so the sort runs serially (correct) | none |
 | worker threads left in a different MXCSR mode (DAZ/FTZ) than the caller | each team thread takes the caller's MXCSR for the sort | none |
+| application threads with small stacks (musl's 128 KB default, `pthread_attr_setstacksize`) | the sorts keep their tables on the heap and need a few KB of stack (R15) | none; note that on glibc a thread's stack size includes the static TLS of every loaded library |
 | the process forks after a threaded sort | the child runs serially until the thread count is set again (`alloc.c`, `pthread_atfork`) | set threads again in the child if needed |
 
 ## Risk register
@@ -93,7 +94,7 @@ refers to the mutation check below: the bug was planted on purpose and the suite
 | R12 | uninitialized scratch (`TSR_NOINIT` skips the hardening zero fill) | every scratch element is written before it is read | ASan + UBSan suite (`make sanitize`), fuzz under ASan | -- |
 | R13 | index arithmetic overflow | int64 indices; `lo + (hi - lo) / 2`; `p + 1` only below the maximum | extremes and integer limits (tests 3, `test_sort_variants`) | -- |
 | R14 | CPU / compiler / build differences (no AVX2, clang, MSVC, no OpenMP, non-x86) | AVX2 checked at run time; every fallback is the radix sort (same result); `#ifdef _OPENMP` | CI: Linux gcc, clang sanitizer and libFuzzer jobs, macOS Intel (Apple clang, no OpenMP), Windows (MinGW), ARM (radix path) | -- |
-| R15 | stack use | per-frame scratch <= about 1.3 KB; depth <= log2 n plus the heapsort cap | large-n tests, OpenMP worker stacks default | -- |
+| R15 | stack use, worst on **small thread stacks**: musl gives pthreads and OpenMP workers 128 KB, and on glibc the static TLS of every loaded library is carved out of the requested size (about 66 KB in a process with OpenBLAS, leaving about 62 KB of a 128 KB stack). Missed in the first review, which measured `sortSimd` only: the radix sort (`sort()`) kept three 2,048-entry tables per MSD level (49 KB) and recursed up to 5 levels; found by the CI musl job (segfault in the C tests) | `sortSimd`: per-frame scratch <= about 1.3 KB, depth <= log2 n plus the heapsort cap. Radix: the count tables (6 per team thread, 96 KB, regions padded off each other's cache sets) live in the heap block of the scratch buffer, so a level needs about 100 bytes of stack; sorts of up to 4,096 keys never recurse and keep their one 16 KB table in a single stack frame, without the hardening zero fill. A first fix that kept one 16 KB table per level on the stack still overflowed the TLS-reduced glibc stack. Speed against the old layout (10M float64, best of 7): equal on uniform and duplicate-heavy data at 1 and 4 threads, 8% faster on wide-range data; 1,000 keys equal | `test_sort_small_stacks`: a pthread with a 128 KB stack, keys built for the full 5-level depth, 1 and 4 threads, all three sorts against the oracle; the old code and the first fix both crash it; the full C suite with `OMP_STACKSIZE=128K`; CI musl job | caught by CI |
 | R16 | speed regressions (not correctness): time depends on the input and on AVX2 | radix stays the default | benchmarks (`docs/project/benchmarks.md`) | -- |
 
 ## Tests
@@ -104,6 +105,7 @@ refers to the mutation check below: the bug was planted on purpose and the suite
 | `test_sort_daz` | same | float64/float32 subnormals and signed zeros with and without DAZ/FTZ in the caller |
 | `test_sort_hardening` | same | an independent oracle (qsort over the documented order, so the radix sort is checked too) against all three sorts: (1) every size 0..1100; (2) 0-1 principle, exhaustive n <= 16; (3) 15 structured / adversarial / float-edge patterns at 1,000, 65,537 and 300,000 values; (4) heapsort forced; (5) DAZ in worker threads; (6) concurrent sorts from application OpenMP threads |
 | `test_sort_app_threads` | same (not on Windows) | 4 application pthreads each running the 4-thread sort at once |
+| `test_sort_small_stacks` | same (not on Windows) | a 128 KB pthread stack, keys that drive the radix sort to its full recursion depth, 1 and 4 threads (R15) |
 | fuzz `sort` | `csrc/fuzz/fuzz_sort.c` (CI 60 s per run, nightly) | random dtype / data, tiling past the parallel threshold with 4 threads (one input in eight), DAZ/FTZ, forced heapsort depth; oracle: the three outputs identical and ordered, NaNs last and canonical |
 | PHP byte-identity | ad hoc, both backends | `sort == sortSimd == sortRuns` on every axis; 4 threads vs 1 thread on 400,000 values |
 

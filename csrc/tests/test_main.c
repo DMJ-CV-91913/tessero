@@ -2799,6 +2799,44 @@ static void test_sort_app_threads(void)
     tsr_set_threads(saved);
     CHECK(ok == K, "concurrent multithreaded sorts from %d application pthreads are exact (%d ok)", (int)K, ok);
 }
+
+/* 8. small thread stacks: 128 KB is musl's default for pthreads and its OpenMP workers, and on glibc the static TLS
+      of the loaded libraries comes out of it (about 66 KB here). The radix sort once kept 49 KB of tables per level
+      on the stack and overflowed it. The keys have one random bit in each 11-bit MSD digit
+      (bits 20, 31, 42, 53, 62) over 20 random low bits, so every level splits in two buckets above 4096 keys and
+      the radix sort recurses to its full depth on the calling thread. */
+static void *th_small_worker(void *p)
+{
+    struct th_job *j = p;
+    enum { M = 300000 };
+    int64_t *v = malloc((size_t)M * 8);
+    for (int64_t i = 0; i < M; i++) {
+        const uint64_t r = th_rng(&j->seed);
+        uint64_t k = r & 0xFFFFF;
+        for (int b = 0; b < 5; b++) k |= ((r >> (20 + b)) & 1) << (int[]){20, 31, 42, 53, 62}[b];
+        v[i] = (int64_t)k;
+    }
+    j->ok = th_agree(TSR_I64, M, (const unsigned char *)v);
+    free(v);
+    return NULL;
+}
+static void test_sort_small_stacks(void)
+{
+    const int saved = tsr_get_threads();
+    int ok = 1;
+    for (int threads = 1; threads <= 4; threads += 3) {
+        tsr_set_threads(threads);
+        pthread_attr_t at;
+        pthread_attr_init(&at);
+        pthread_attr_setstacksize(&at, 128 * 1024);
+        pthread_t t;
+        struct th_job job = { TSR_I64, 0x5EED5EEDULL + (uint64_t)threads, 0 };
+        ok = ok && pthread_create(&t, &at, th_small_worker, &job) == 0 && pthread_join(t, NULL) == 0 && job.ok;
+        pthread_attr_destroy(&at);
+    }
+    tsr_set_threads(saved);
+    CHECK(ok, "the sorts run exact on a 128 KB thread stack at the radix sort's full recursion depth (1 and 4 threads)");
+}
 #endif
 
 static void test_abi_runtime(void)
@@ -3547,6 +3585,7 @@ int main(void)
     test_sort_hardening();
 #if !defined(_WIN32)
     test_sort_app_threads();
+    test_sort_small_stacks();
 #endif
     test_arg_gate();
     test_ownership();
