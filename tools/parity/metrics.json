@@ -674,8 +674,9 @@
    "total": 1846
   }
  },
- "registry_functions": 1561,
+ "registry_functions": 1562,
  "registry_untested": [
+  "distance.kdtree_build",
   "interpolate.spgrid",
   "interpolate.spherfit",
   "interpolate.spherfit_lsq",

@@ -96,6 +96,46 @@ final class NumericsTest extends TestCase
         }
     }
 
+    /** KDTree builds its tree once (constructor) and every query reuses it: results equal an exhaustive search */
+    public function testKdTreeQueriesMatchExhaustiveSearch(): void
+    {
+        $s = 12345;
+        $next = static function () use (&$s): float {
+            $s = ($s * 1103515245 + 12345) % 2147483648;            /* stays below 2^62: no float overflow */
+            return $s / 2147483648.0;
+        };
+        $pts = [];
+        for ($i = 0; $i < 500; $i++) {
+            $pts[] = [$next(), $next(), (float) ($i % 7)];          /* a coordinate with many ties */
+        }
+        $pts[499] = $pts[3];                                         /* a duplicate */
+        $qs = [$pts[10]];                                            /* a query on a data point */
+        for ($i = 0; $i < 49; $i++) {
+            $qs[] = [$next(), $next(), (float) ($i % 5)];
+        }
+        $tree = new \Tessero\Spatial\KDTree($pts);
+        foreach ([1, 4] as $k) {
+            [$d, $ix] = $tree->query($qs, $k);
+            [$d2, $ix2] = $tree->query($qs, $k);
+            $this->assertSame($d, $d2);
+            $this->assertSame($ix, $ix2);
+            foreach ($qs as $q => $x) {
+                $all = [];
+                foreach ($pts as $i => $p) {
+                    $sq = 0.0;
+                    foreach ($p as $j => $v) {
+                        $sq += ($v - $x[$j]) * ($v - $x[$j]);
+                    }
+                    $all[] = [sqrt($sq), $i];
+                }
+                usort($all, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+                $want = array_slice($all, 0, $k);
+                $this->assertSame($k === 1 ? $want[0][0] : array_column($want, 0), $d[$q]);
+                $this->assertSame($k === 1 ? $want[0][1] : array_column($want, 1), $ix[$q]);
+            }
+        }
+    }
+
     public function testShuffleOnNonContiguousRows(): void
     {
         $a = NDArray::arange(12)->reshape(4, 3);

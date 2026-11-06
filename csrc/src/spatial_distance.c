@@ -634,63 +634,239 @@ static void kd_search(const kd_tree *t, int64_t id, const double *q, kd_heap *h)
     else { kd_search(t, nd->right, q, h); kd_search(t, nd->left, q, h); }
 }
 
-/* kdtree_query(data, x, k=1) -> (d, i), each (len(x), min(k, len(data))): the k nearest data rows of every row of
-   x, nearest first, ties by index */
+/* A tree handed back by the caller (the idx, nodes, box outputs of an earlier call on the same data) is checked before
+   use, so a malformed one is refused and never read out of bounds: indices in range, node 0 the whole range, and
+   every inner node (at least two points) split exactly as kd_build splits, children after their parent. Each child
+   then holds at most half of its parent's points (rounded up), so the search depth stays below log2(n) + 2. Box
+   values are not checked: a wrong box only prunes wrongly. */
+static int kd_check_tree(const int64_t *idx, int64_t nidx, const int64_t *nd, int64_t nn, int64_t n)
+{
+    if (nidx != n || nn < 1 || nd[0] != 0 || nd[1] != n) return 0;
+    for (int64_t r = 0; r < n; r++) if (idx[r] < 0 || idx[r] >= n) return 0;
+    for (int64_t id = 0; id < nn; id++) {
+        const int64_t lo = nd[4 * id], hi = nd[4 * id + 1], l = nd[4 * id + 2], r = nd[4 * id + 3];
+        if (lo < 0 || hi > n || lo > hi) return 0;
+        if (l == -1 && r == -1) continue;                                 /* a leaf */
+        if (hi - lo < 2 || l <= id || r <= id || l >= nn || r >= nn) return 0;
+        const int64_t mid = lo + (hi - lo) / 2;
+        if (nd[4 * l] != lo || nd[4 * l + 1] != mid || nd[4 * r] != mid || nd[4 * r + 1] != hi) return 0;
+    }
+    return 1;
+}
+
+/* the integer-valued array argument a as int64 (exact below 2^53); NULL with *len = -1 when it holds a non-integer */
+static int64_t *kd_arg_i64(const tsr_arg *a, int64_t *len)
+{
+    int64_t t;
+    double *v = fn_arg_doubles(a, &t);
+    if (!v) { *len = 0; return NULL; }
+    int64_t *o = (int64_t *)tsr_alloc((t > 0 ? t : 1) * 8);
+    int ok = o != NULL;
+    for (int64_t q = 0; ok && q < t; q++) {
+        if (!(v[q] >= -9.0e15 && v[q] <= 9.0e15) || v[q] != floor(v[q])) ok = 0;
+        else o[q] = (int64_t)v[q];
+    }
+    fn_free_doubles(v, t);
+    if (!ok) { if (o) tsr_free(o, (t > 0 ? t : 1) * 8); *len = o ? -1 : 0; return NULL; }
+    *len = t;
+    return o;
+}
+
+/* The array arguments of the k-d tree are read in place when they already have the layout the code needs (C-contiguous
+   float64 or int64: what kdtree_build returns and what the PHP classes pass), else from a converted copy; *owned says
+   which. A query then costs no pass over the data beyond the finiteness check. */
+static const double *kd_f64(const tsr_arg *a, int64_t *len, int *owned)
+{
+    if (a->kind == 3 && a->arr.dtype == TSR_F64 && tsr_array_is_contiguous(&a->arr)) {
+        *owned = 0;
+        *len = tsr_array_size(&a->arr);
+        return (const double *)((const char *)a->arr.data + a->arr.offset);
+    }
+    *owned = 1;
+    return fn_arg_doubles(a, len);
+}
+
+static const int64_t *kd_i64(const tsr_arg *a, int64_t *len, int *owned)
+{
+    if (a->kind == 3 && a->arr.dtype == TSR_I64 && tsr_array_is_contiguous(&a->arr)) {
+        *owned = 0;
+        *len = tsr_array_size(&a->arr);
+        return (const int64_t *)((const char *)a->arr.data + a->arr.offset);
+    }
+    *owned = 1;
+    return kd_arg_i64(a, len);
+}
+
+static void kd_release_f64(const double *p, int64_t len, int owned) { if (owned && p) fn_free_doubles((double *)p, len); }
+static void kd_release_i64(const int64_t *p, int64_t len, int owned) { if (owned && p) tsr_free((void *)p, (len > 0 ? len : 1) * 8); }
+
+/* data checked: 2-D, at least one point with at least one coordinate, all finite (who names the caller) */
+static const double *kd_data(const tsr_arg *a, const char *who, int64_t *n, int64_t *m, int64_t *total, int *owned, int *rc)
+{
+    *rc = TSR_EARG;
+    if (a->kind != 3 || a->arr.ndim != 2) { fn_set_error("%s: data must be a 2-D array", who); return NULL; }
+    *n = a->arr.shape[0]; *m = a->arr.shape[1];
+    if (*n == 0) { fn_set_error("%s: the tree has no points", who); return NULL; }
+    if (*m == 0) { fn_set_error("%s: the points have no coordinates", who); return NULL; }
+    const double *P = kd_f64(a, total, owned);
+    if (!P) { *rc = TSR_ENOMEM; return NULL; }
+    for (int64_t q = 0; q < *n * *m; q++)
+        if (!isfinite(P[q])) { kd_release_f64(P, *total, *owned); fn_set_error("%s: data must be finite", who); return NULL; }
+    *rc = TSR_OK;
+    return P;
+}
+
+/* build the tree of P (n x m) into t: idx, nodes and box from tsr_alloc, sized by *cap; TSR_ENOMEM leaves nothing */
+static int kd_new_tree(kd_tree *t, const double *P, int64_t n, int64_t m, int64_t *cap)
+{
+    *cap = n / 4 + 16;                                    /* nodes: every leaf holds at least KD_LEAF / 2 points */
+    *t = (kd_tree){ P, m, (int64_t *)tsr_alloc(n * 8), (kd_node *)tsr_alloc(*cap * (int64_t)sizeof(kd_node)),
+                    (double *)tsr_alloc(*cap * 2 * m * 8), 0 };
+    if (!t->idx || !t->nodes || !t->box) {
+        if (t->idx) tsr_free(t->idx, n * 8);
+        if (t->nodes) tsr_free(t->nodes, *cap * (int64_t)sizeof(kd_node));
+        if (t->box) tsr_free(t->box, *cap * 2 * m * 8);
+        t->idx = NULL; t->nodes = NULL; t->box = NULL;
+        return TSR_ENOMEM;
+    }
+    for (int64_t r = 0; r < n; r++) t->idx[r] = r;
+    kd_build(t, 0, n);
+    return TSR_OK;
+}
+
+static void kd_free_tree(kd_tree *t, int64_t n, int64_t m, int64_t cap)
+{
+    tsr_free(t->idx, n * 8);
+    tsr_free(t->nodes, cap * (int64_t)sizeof(kd_node));
+    tsr_free(t->box, cap * 2 * m * 8);
+}
+
+/* kdtree_build(data) -> (idx, nodes, box): the k-d tree of data, idx (n,) the point order, nodes (nn, 4) the rows
+   (lo, hi, left, right) and box (nn, 2m) each node's bounding box (minima, then maxima). Passed to kdtree_query with
+   the same data, it spares the query the build (scipy.spatial.cKDTree builds once, in its constructor). */
+static int r_kdtree_build(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 1) { fn_set_error("kdtree_build: data must be a 2-D array"); return TSR_EARG; }
+    int64_t n, m, td, cap;
+    int rc, own;
+    const double *P = kd_data(&args[0], "kdtree_build", &n, &m, &td, &own, &rc);
+    if (!P) return rc;
+    kd_tree t;
+    rc = kd_new_tree(&t, P, n, m, &cap);
+    if (rc == TSR_OK) {
+        const int64_t nn = t.nn, ish[1] = {n}, nsh[2] = {nn, 4}, bsh[2] = {nn, 2 * m};
+        int64_t *oidx = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, ish);
+        int64_t *onodes = oidx ? (int64_t *)fn_result_array(&res[1], TSR_I64, 2, nsh) : NULL;
+        double *obox = onodes ? (double *)fn_result_array(&res[2], TSR_F64, 2, bsh) : NULL;
+        if (!obox) rc = TSR_ENOMEM;
+        else {
+            memcpy(oidx, t.idx, (size_t)n * 8);
+            for (int64_t id = 0; id < nn; id++) {
+                onodes[4 * id] = t.nodes[id].lo; onodes[4 * id + 1] = t.nodes[id].hi;
+                onodes[4 * id + 2] = t.nodes[id].left; onodes[4 * id + 3] = t.nodes[id].right;
+            }
+            memcpy(obox, t.box, (size_t)(nn * 2 * m) * 8);
+        }
+        kd_free_tree(&t, n, m, cap);
+    }
+    kd_release_f64(P, td, own);
+    return rc;
+}
+
+/* kdtree_query(data, x, k=1, idx=None, nodes=None, box=None) -> (d, i), each (len(x), min(k, len(data))): the k
+   nearest data rows of every row of x, nearest first, ties by index. With idx, nodes and box (kdtree_build of the
+   same data) the query searches that tree; without, it builds its own. */
 static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
+    _Static_assert(sizeof(kd_node) == 4 * sizeof(int64_t), "kd_node is one row of nodes");
     if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3 || args[1].arr.ndim != 2) {
         fn_set_error("kdtree_query: data and x must be 2-D arrays"); return TSR_EARG;
     }
-    const int64_t n = args[0].arr.shape[0], m = args[0].arr.shape[1], nq = args[1].arr.shape[0];
-    if (args[1].arr.shape[1] != m) { fn_set_error("kdtree_query: x must have %lld columns", (long long)m); return TSR_EARG; }
+    const int64_t nq = args[1].arr.shape[0];
+    if (args[1].arr.shape[1] != args[0].arr.shape[1]) {
+        fn_set_error("kdtree_query: x must have %lld columns", (long long)args[0].arr.shape[1]); return TSR_EARG;
+    }
     int64_t k = 1;
     if (nargs > 2 && args[2].kind == 1) {
         const double kv = (args[2].flags & 1) ? (double)args[2].ival : args[2].num;
         if (!(kv >= 1 && kv <= 9.0e15) || kv != floor(kv)) { fn_set_error("kdtree_query: k must be a positive integer"); return TSR_EARG; }
         k = (int64_t)kv;
     }
-    if (n == 0) { fn_set_error("kdtree_query: the tree has no points"); return TSR_EARG; }
-    if (m == 0) { fn_set_error("kdtree_query: the points have no coordinates"); return TSR_EARG; }
-    const int64_t kk = k < n ? k : n;
-    int64_t td, tx;
-    double *P = fn_arg_doubles(&args[0], &td);
-    double *X = P ? fn_arg_doubles(&args[1], &tx) : NULL;
-    if (!P || !X) { if (P) fn_free_doubles(P, td); return TSR_ENOMEM; }
-    for (int64_t q = 0; q < n * m; q++)
-        if (!isfinite(P[q])) { fn_free_doubles(P, td); fn_free_doubles(X, tx); fn_set_error("kdtree_query: data must be finite"); return TSR_EARG; }
-    for (int64_t q = 0; q < nq * m; q++)
-        if (!isfinite(X[q])) { fn_free_doubles(P, td); fn_free_doubles(X, tx); fn_set_error("kdtree_query: x must be finite"); return TSR_EARG; }
-    const int64_t cap = n / 4 + 16;                       /* nodes: every leaf holds at least KD_LEAF / 2 points */
-    kd_tree t = { P, m, (int64_t *)tsr_alloc(n * 8), (kd_node *)tsr_alloc(cap * (int64_t)sizeof(kd_node)),
-                  (double *)tsr_alloc(cap * 2 * m * 8), 0 };
-    double *hd = (double *)tsr_alloc(kk * 8);
-    int64_t *hi = (int64_t *)tsr_alloc(kk * 8);
-    const int64_t osh[2] = {nq, kk};
-    double *od = (t.idx && t.nodes && t.box && hd && hi) ? (double *)fn_result_array(&res[0], TSR_F64, 2, osh) : NULL;
-    int64_t *oi = od ? (int64_t *)fn_result_array(&res[1], TSR_I64, 2, osh) : NULL;
-    int rc = oi ? TSR_OK : TSR_ENOMEM;
-    if (rc == TSR_OK) {
-        for (int64_t r = 0; r < n; r++) t.idx[r] = r;
-        kd_build(&t, 0, n);
-        for (int64_t q = 0; q < nq; q++) {
-            kd_heap h = { hd, hi, kk, 0 };
-            kd_search(&t, 0, X + q * m, &h);
-            for (int64_t s = kk - 1; s >= 0; s--) {         /* pop the worst into the last free slot: ascending order */
-                od[q * kk + s] = h.d[0]; oi[q * kk + s] = h.i[0];
-                const double ld = h.d[h.n - 1];
-                const int64_t li = h.i[h.n - 1];
-                h.n--;
-                if (h.n > 0) kd_sift_down(&h, ld, li);
-            }
-        }
+    int given = 0, other = 0;
+    for (int a = 3; a < 6 && a < nargs; a++) {
+        if (args[a].kind == 3) given++;
+        else if (args[a].kind != 0) other = 1;
     }
-    if (t.idx) tsr_free(t.idx, n * 8);
-    if (t.nodes) tsr_free(t.nodes, cap * (int64_t)sizeof(kd_node));
-    if (t.box) tsr_free(t.box, cap * 2 * m * 8);
+    if (other || (given != 0 && given != 3)) {
+        fn_set_error("kdtree_query: pass all of idx, nodes and box (kdtree_build of the same data), or none"); return TSR_EARG;
+    }
+    int64_t n, m, td, tx, cap = 0;
+    int rc, ownp, ownx;
+    const double *P = kd_data(&args[0], "kdtree_query", &n, &m, &td, &ownp, &rc);
+    if (!P) return rc;
+    const double *X = kd_f64(&args[1], &tx, &ownx);
+    if (!X) { kd_release_f64(P, td, ownp); return TSR_ENOMEM; }
+    for (int64_t q = 0; q < nq * m; q++)
+        if (!isfinite(X[q])) { kd_release_f64(P, td, ownp); kd_release_f64(X, tx, ownx); fn_set_error("kdtree_query: x must be finite"); return TSR_EARG; }
+    const int64_t kk = k < n ? k : n;
+
+    int64_t nidx = 0, nnodes = 0, tbox = 0;
+    int owni = 0, ownn = 0, ownb = 0;
+    const int64_t *gidx = NULL, *gnodes = NULL;
+    const double *gbox = NULL;
+    kd_tree t = { P, m, NULL, NULL, NULL, 0 };
+    if (given) {                                          /* the caller's tree: checked, then searched in place */
+        gidx = kd_i64(&args[3], &nidx, &owni);
+        gnodes = gidx ? kd_i64(&args[4], &nnodes, &ownn) : NULL;
+        gbox = gnodes ? kd_f64(&args[5], &tbox, &ownb) : NULL;
+        if (!gidx || !gnodes || !gbox) rc = (nidx < 0 || nnodes < 0) ? TSR_EARG : TSR_ENOMEM;
+        else if (args[3].arr.ndim != 1 || args[4].arr.ndim != 2 || args[4].arr.shape[1] != 4 || args[5].arr.ndim != 2
+                 || args[5].arr.shape[1] != 2 * m || args[5].arr.shape[0] != args[4].arr.shape[0]
+                 || !kd_check_tree(gidx, nidx, gnodes, args[4].arr.shape[0], n)) rc = TSR_EARG;
+        if (rc == TSR_EARG) fn_set_error("kdtree_query: idx, nodes and box are not a tree of this data (pass kdtree_build's outputs)");
+        if (rc == TSR_OK) {                               /* only read below: the casts drop const for the struct */
+            t.nn = args[4].arr.shape[0];
+            t.idx = (int64_t *)gidx;
+            t.nodes = (kd_node *)gnodes;
+            t.box = (double *)gbox;
+        }
+    } else {
+        rc = kd_new_tree(&t, P, n, m, &cap);
+    }
+    double *hd = rc == TSR_OK ? (double *)tsr_alloc(kk * 8) : NULL;
+    int64_t *hi = hd ? (int64_t *)tsr_alloc(kk * 8) : NULL;
+    if (rc == TSR_OK && !hi) rc = TSR_ENOMEM;
+    if (rc == TSR_OK) {
+        const int64_t osh[2] = {nq, kk};
+        double *od = (double *)fn_result_array(&res[0], TSR_F64, 2, osh);
+        int64_t *oi = od ? (int64_t *)fn_result_array(&res[1], TSR_I64, 2, osh) : NULL;
+        if (!oi) rc = TSR_ENOMEM;
+        else
+            for (int64_t q = 0; q < nq; q++) {
+                kd_heap h = { hd, hi, kk, 0 };
+                kd_search(&t, 0, X + q * m, &h);
+                for (int64_t s = kk - 1; s >= 0; s--) {     /* pop the worst into the last free slot: ascending order */
+                    od[q * kk + s] = h.d[0]; oi[q * kk + s] = h.i[0];
+                    const double ld = h.d[h.n - 1];
+                    const int64_t li = h.i[h.n - 1];
+                    h.n--;
+                    if (h.n > 0) kd_sift_down(&h, ld, li);
+                }
+            }
+    }
+    if (given) {
+        kd_release_i64(gidx, nidx, owni);
+        kd_release_i64(gnodes, nnodes, ownn);
+        kd_release_f64(gbox, tbox, ownb);
+    } else if (t.idx) {
+        kd_free_tree(&t, n, m, cap);
+    }
     if (hd) tsr_free(hd, kk * 8);
     if (hi) tsr_free(hi, kk * 8);
-    fn_free_doubles(P, td); fn_free_doubles(X, tx);
+    kd_release_f64(P, td, ownp);
+    kd_release_f64(X, tx, ownx);
     return rc;
 }
 
@@ -701,7 +877,8 @@ static const fn_def DEFS[] = {
     ROUTINE("distance.minkowski_distance_p", 1, "x, y, p=2", "d", r_minkowski_distance_p, NULL, "p-th power of the Minkowski distance, no final root (scipy.spatial.minkowski_distance_p)."),
     ROUTINE("distance.geometric_slerp", 1, "start, end, t", "out", r_geometric_slerp, NULL, "Geometric spherical linear interpolation between two unit vectors (scipy.spatial.geometric_slerp)."),
     ROUTINE("distance.pdist", 1, "X, metric=None, p=None", "out", r_pdist, NULL, "Pairwise distances between the rows of X, condensed (scipy.spatial.distance.pdist); real float64."),
-    ROUTINE("distance.kdtree_query", 2, "data, x, k=1", "d, i", r_kdtree_query, NULL, "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query)."),
+    ROUTINE("distance.kdtree_query", 2, "data, x, k=1, idx=None, nodes=None, box=None", "d, i", r_kdtree_query, NULL, "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query); with idx, nodes and box from distance.kdtree_build of the same data it searches that tree instead of building one."),
+    ROUTINE("distance.kdtree_build", 3, "data", "idx, nodes, box", r_kdtree_build, NULL, "The k-d tree of data as arrays (point order, nodes, bounding boxes) for distance.kdtree_query, built once and searched by every query (scipy.spatial.cKDTree's constructor)."),
     ROUTINE("distance.cdist", 1, "XA, XB, metric=None, p=None", "out", r_cdist, NULL, "Distances between each pair of rows of XA and XB (scipy.spatial.distance.cdist); real float64."),
     ROUTINE("distance.squareform", 1, "X", "out", r_squareform, NULL, "Convert between a condensed distance vector and a square form (scipy.spatial.distance.squareform)."),
     ROUTINE("distance.euclidean", 1, "u, v, w=None", "out", r_dmetric, &MET_EUCLID, "Euclidean distance between two 1-D arrays (scipy.spatial.distance.euclidean)."),

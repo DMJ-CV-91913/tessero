@@ -7,14 +7,14 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 81 cases | **1.39** | 29 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 81 cases | **1.34** | 28 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 24 cases, within 10% either way on 13, and clearly slower on 44, mostly where an algorithm is not yet the best one
+on 23 cases, within 10% either way on 13, and clearly slower on 45, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -51,7 +51,7 @@ factor was zero, so a NaN in a later operand propagates as in NumPy.
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
 | `spatial.Delaunay`, 10k points | 67 s | 60 ms | Bowyer-Watson in PHP | a kernel implementation |
-| `spatial.KDTree` query, 100 points in 100k | 37 ms | 0.3 ms | the kernel k-d tree is rebuilt on every `query()` call (about 30 ms for 100k points); SciPy builds it once | keep the built tree between calls (large batches are already on par: 10k queries 55 ms vs 49 ms) |
+| `spatial.KDTree`, 100k points: build / 100 queries | 88 / 0.57 ms | 34 / 0.20 ms | the constructor converts the PHP point arrays (SciPy receives an ndarray) and builds the tree; a query passes the data and the tree to the kernel in place (until 2026-11-06 every query rebuilt the tree: 37 ms) | -- |
 | `cluster.hierarchy.linkage` ward, 2000 | 1.9 s | 65 ms | O(n^3) | nearest-neighbour chain, O(n^2) |
 | `spatial.ConvexHull`, 10k (2-D) | 36 ms | 1.6 ms | monotone chain in PHP | kernel implementation |
 | `optimize.curve_fit`, 1000 points | 10 ms | 0.6 ms | to be profiled | -- |
@@ -107,7 +107,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   cores), so each side ran three times, alternating, and each case keeps its best time. Against the first run, the
   cases no fix touched took a median 10% longer on the Tessero side and 17% longer on the SciPy side, a bias of about
   6% in Tessero's favour; memory-bound cases such as `map_coordinates` are the most sensitive. Ratios within 10% are
-  read as on par.
+  read as on par. The two `KDTree` rows were re-timed after `distance.kdtree_build` (the tree built once, in the
+  constructor, as SciPy does; before, the build row timed no tree at all and every query rebuilt it): best of three
+  alternating runs per side.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
   repetitions, median), `tools/parity/time_calls.py` times the same cases in NumPy/SciPy, and
   `tools/parity/time_report.py` pairs them case for case. Stateful calls (seeded generators, frozen distributions)
@@ -134,7 +136,6 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | numpy histogram 1M, 100 bins | 9.59 | 15.3 | 0.63 |
 | scipy.ndimage distance_transform_edt 512x512 | 11.6 | 17.6 | 0.66 |
 | scipy.stats mannwhitneyu 100k vs 100k | 23 | 33.9 | 0.68 |
-| scipy.spatial KDTree build 100k (3-D) | 27.5 | 39.8 | 0.69 |
 | scipy.stats skew 1M | 10.2 | 14.1 | 0.72 |
 | scipy.stats spearmanr 100k | 19.5 | 26.5 | 0.74 |
 | scipy.stats kurtosis 1M | 10.5 | 14.2 | 0.74 |
@@ -185,7 +186,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.signal savgol_filter 1M (31, 3) | 31 | 14.3 | 2.17 |
 | scipy.signal hilbert 1M | 122 | 52.2 | 2.35 |
 | scipy.signal convolve2d 500x500 * 5x5 | 38.8 | 15.5 | 2.51 |
+| scipy.spatial KDTree build 100k (3-D) | 88.2 | 33.8 | 2.61 |
 | scipy.fft dct 1M | 55.7 | 21 | 2.65 |
+| scipy.spatial KDTree query 100 points, k=5 | 0.568 | 0.204 | 2.78 |
 | scipy.ndimage laplace 1000x1000 | 35.1 | 11.8 | 2.97 |
 | scipy.ndimage label 1000x1000 | 19.9 | 6.7 | 2.98 |
 | scipy.ndimage sobel 1000x1000 | 29.7 | 9.05 | 3.29 |
@@ -198,7 +201,6 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.optimize curve_fit exp decay, 1000 points | 10.1 | 0.62 | 16.27 |
 | scipy.spatial ConvexHull 10k (2-D) | 35.5 | 1.61 | 22.03 |
 | scipy.cluster.hierarchy linkage ward 2000x3 | 1.86e+03 | 65 | 28.66 |
-| scipy.spatial KDTree query 100 points, k=5 | 36.8 | 0.303 | 121.54 |
 | scipy.spatial Delaunay 10k (2-D) | 6.72e+04 | 59.8 | 1122.89 |
 
 ## Tier 3, by module

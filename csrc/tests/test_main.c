@@ -2295,12 +2295,12 @@ static int kd_cmp(const void *a, const void *b)
 }
 static void test_kdtree(void)
 {
-    const int id = tsr_fn_find("distance.kdtree_query");
-    CHECK(id >= 0, "distance.kdtree_query is registered");
-    if (id < 0) return;
+    const int id = tsr_fn_find("distance.kdtree_query"), bid = tsr_fn_find("distance.kdtree_build");
+    CHECK(id >= 0 && bid >= 0, "distance.kdtree_query and distance.kdtree_build are registered");
+    if (id < 0 || bid < 0) return;
     const int64_t before = tsr_allocated();
     uint64_t st = 4242;
-    int bad = 0, cases = 0;
+    int bad = 0, cases = 0, reuse_bad = 0;
     for (int shape = 0; shape < 3; shape++) {
         const int64_t n = shape == 2 ? 40 : 3000, m = shape == 1 ? 2 : 3, nq = 200;
         double *P = malloc((size_t)(n * m) * 8), *Q = malloc((size_t)(nq * m) * 8), *pairs = malloc((size_t)n * 16);
@@ -2333,16 +2333,70 @@ static void test_kdtree(void)
                     if (memcmp(&d[q * kk + t], &pairs[2 * t], 8) || ix[q * kk + t] != (int64_t)pairs[2 * t + 1]) { ok = 0; break; }
             }
             bad += !ok;
-            tsr_free(r[0].arr.data, r[0].bytes); tsr_free(r[1].arr.data, r[1].bytes);
+            /* the same query on the tree of kdtree_build: the same bytes */
+            tsr_result tb[3];
+            if (tsr_fn_routine(bid, 1, a, 3, tb) != 0) reuse_bad++;
+            else {
+                tsr_arg a2[6] = {arg_arr(P, 2, sp), arg_arr(Q, 2, sq), arg_num((double)k),
+                                 arg_arr_dt(tb[0].arr.data, TSR_I64, 1, tb[0].arr.shape), arg_arr_dt(tb[1].arr.data, TSR_I64, 2, tb[1].arr.shape),
+                                 arg_arr(tb[2].arr.data, 2, tb[2].arr.shape)};
+                tsr_result r2[2];
+                if (tsr_fn_routine(id, 6, a2, 2, r2) != 0) reuse_bad++;
+                else {
+                    reuse_bad += memcmp(r2[0].arr.data, r[0].arr.data, (size_t)(nq * kk) * 8) || memcmp(r2[1].arr.data, r[1].arr.data, (size_t)(nq * kk) * 8);
+                    tsr_fn_results_free(r2, 2);
+                }
+                tsr_fn_results_free(tb, 3);
+            }
+            tsr_fn_results_free(r, 2);
         }
         free(P); free(Q); free(pairs);
     }
     CHECK(bad == 0, "kdtree_query == exhaustive search: distances, indices and order (%d of %d cases differ)", bad, cases);
+    CHECK(reuse_bad == 0, "kdtree_query on the tree of kdtree_build: the same distances and indices (%d of %d differ)", reuse_bad, cases);
+
+    /* kdtree_build's tree, then forged trees: each refused, nothing leaked */
+    enum { N = 100, M = 2 };
+    double P[N * M], Q0[M] = {0.5, 0.5};
+    for (int i = 0; i < N * M; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; P[i] = (double)(st >> 11) / 9007199254740992.0; }
+    int64_t sp[2] = {N, M}, s1[2] = {1, M};
+    tsr_arg ab[1] = {arg_arr(P, 2, sp)};
+    tsr_result t[3];
+    const int built = tsr_fn_routine(bid, 1, ab, 3, t) == 0;
+    CHECK(built && t[0].arr.shape[0] == N && t[1].arr.shape[0] >= 3 && t[1].arr.shape[1] == 4 && t[2].arr.shape[1] == 2 * M,
+          "kdtree_build returns idx (n), nodes (nn x 4) and box (nn x 2m)");
+    if (built) {
+        const int64_t nn = t[1].arr.shape[0];
+        int64_t *idx = malloc(N * 8), *nodes = malloc((size_t)nn * 32);
+        double *box = malloc((size_t)nn * 2 * M * 8), fidx[N];
+        int refused = 0, trials = 0;
+        for (int forge = 0; forge < 7; forge++) {
+            memcpy(idx, t[0].arr.data, N * 8); memcpy(nodes, t[1].arr.data, (size_t)nn * 32); memcpy(box, t[2].arr.data, (size_t)nn * 2 * M * 8);
+            int64_t sidx[1] = {N}, snodes[2] = {nn, 4}, sbox[2] = {nn, 2 * M}, sboxbad[2] = {nn, 2 * M - 1};
+            int nargs = 6;
+            tsr_arg af[6] = {arg_arr(P, 2, sp), arg_arr(Q0, 2, s1), arg_num(1.0), arg_arr_dt(idx, TSR_I64, 1, sidx),
+                             arg_arr_dt(nodes, TSR_I64, 2, snodes), arg_arr(box, 2, sbox)};
+            if (forge == 0) idx[7] = N;                                        /* index out of range */
+            if (forge == 1) nodes[4 * 1 + 1] += 1;                             /* the root's left child split off the median */
+            if (forge == 2) nodes[2] = 0;                                      /* the root its own child: a cycle */
+            if (forge == 3) { int64_t l = nodes[2]; while (nodes[4 * l + 2] >= 0) l = nodes[4 * l + 2];    /* a leaf turned inner */
+                              nodes[4 * l + 1] = nodes[4 * l] + 1; nodes[4 * l + 2] = nodes[4 * l + 3] = nn - 1; }
+            if (forge == 4) af[5] = arg_arr(box, 2, sboxbad);                  /* the box of the wrong width */
+            if (forge == 5) nargs = 5;                                         /* idx and nodes without box */
+            if (forge == 6) { for (int i = 0; i < N; i++) fidx[i] = (double)idx[i] + 0.25; af[3] = arg_arr(fidx, 1, sidx); }   /* non-integer */
+            tsr_result rf[2];
+            trials++;
+            refused += tsr_fn_routine(id, nargs, af, 2, rf) == TSR_EARG;
+        }
+        CHECK(refused == trials, "kdtree_query refuses forged trees (%d of %d refused)", refused, trials);
+        free(idx); free(nodes); free(box);
+        tsr_fn_results_free(t, 3);
+    }
     double nanpt[3] = {0.0, NAN, 1.0};
-    int64_t s1[2] = {1, 3};
-    tsr_arg an[2] = {arg_arr(nanpt, 2, s1), arg_arr(nanpt, 2, s1)};
-    tsr_result rn[2];
-    CHECK(tsr_fn_routine(id, 2, an, 2, rn) == TSR_EARG, "kdtree_query refuses non-finite data");
+    int64_t sn[2] = {1, 3};
+    tsr_arg an[2] = {arg_arr(nanpt, 2, sn), arg_arr(nanpt, 2, sn)};
+    tsr_result rn[3];
+    CHECK(tsr_fn_routine(id, 2, an, 2, rn) == TSR_EARG && tsr_fn_routine(bid, 1, an, 3, rn) == TSR_EARG, "kdtree_query and kdtree_build refuse non-finite data");
     CHECK(tsr_allocated() == before, "kdtree_query leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 

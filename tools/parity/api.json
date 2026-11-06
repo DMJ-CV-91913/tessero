@@ -960,7 +960,7 @@
                 "name": "sort",
                 "static": false,
                 "sig": "sort(int $axis = -1): self",
-                "doc": "Sorted copy along an axis (numpy.sort; NaN last). Radix sort: the same speed whatever the order of the input; the default."
+                "doc": "Sorted copy along an axis (numpy.sort; NaN last). The default: the AVX2 quicksort of sortSimd() where the CPU has AVX2 (faster than the radix sort at every size), the radix sort elsewhere."
             },
             {
                 "name": "sortSimd",
@@ -2880,10 +2880,16 @@
                 "doc": "Jensen-Shannon distance between two probability arrays (scipy.spatial.distance.jensenshannon)."
             },
             {
+                "name": "kdtreeBuild",
+                "static": true,
+                "sig": "kdtreeBuild(mixed $data): mixed",
+                "doc": "The k-d tree of data as arrays (point order, nodes, bounding boxes) for distance.kdtree_query, built once and searched by every query (scipy.spatial.cKDTree's constructor)."
+            },
+            {
                 "name": "kdtreeQuery",
                 "static": true,
-                "sig": "kdtreeQuery(mixed $data, mixed $x, mixed $k = 1): mixed",
-                "doc": "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query)."
+                "sig": "kdtreeQuery(mixed $data, mixed $x, mixed $k = 1, mixed $idx = null, mixed $nodes = null, mixed $box = null): mixed",
+                "doc": "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query); with idx, nodes and box from distance.kdtree_build of the same data it searches that tree instead of building one."
             },
             {
                 "name": "mahalanobis",
@@ -25190,7 +25196,13 @@
             {
                 "name": "kdtreeQuery",
                 "static": true,
-                "sig": "kdtreeQuery($data, $x, $k = 1)",
+                "sig": "kdtreeQuery($data, $x, $k = 1, $idx = null, $nodes = null, $box = null)",
+                "doc": ""
+            },
+            {
+                "name": "kdtreeBuild",
+                "static": true,
+                "sig": "kdtreeBuild($data)",
                 "doc": ""
             },
             {

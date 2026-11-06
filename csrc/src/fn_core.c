@@ -1180,6 +1180,11 @@ double *fn_arg_doubles(const tsr_arg *a, int64_t *n)
     if (size < 0) return NULL;
     double *out = (double *)tsr_alloc(size > 8 ? size * 8 : 64);
     if (!out) return NULL;
+    if (x->dtype == TSR_F64 && tsr_array_is_contiguous(x)) {   /* the same bytes as the loop below, in one copy */
+        if (size > 0) memcpy(out, (const char *)x->data + x->offset, (size_t)size * 8);
+        *n = size;
+        return out;
+    }
     int64_t idx[TSR_MAXDIM] = {0};
     for (int64_t k = 0; k < size; k++) {
         const char *p = (const char *)x->data + x->offset;

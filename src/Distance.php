@@ -34,6 +34,7 @@ final class Distance
     'is_valid_y' => 'isValidY',
     'jaccard' => 'jaccard',
     'jensenshannon' => 'jensenshannon',
+    'kdtree_build' => 'kdtreeBuild',
     'kdtree_query' => 'kdtreeQuery',
     'mahalanobis' => 'mahalanobis',
     'minkowski' => 'minkowski',
@@ -229,15 +230,27 @@ final class Distance
     }
 
     /**
-     * The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query).
+     * The k-d tree of data as arrays (point order, nodes, bounding boxes) for distance.kdtree_query, built once and searched by every query (scipy.spatial.cKDTree's constructor).
+     *
+     * scipy.spatial.distance.kdtree_build
+     *
+     * @return mixed one array, or an array keyed by idx, nodes, box when several results are requested
+     */
+    public static function kdtreeBuild(mixed $data): mixed
+    {
+        return Registry::routine('distance.kdtree_build', [$data]);
+    }
+
+    /**
+     * The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query); with idx, nodes and box from distance.kdtree_build of the same data it searches that tree instead of building one.
      *
      * scipy.spatial.distance.kdtree_query
      *
      * @return mixed one array, or an array keyed by d, i when several results are requested
      */
-    public static function kdtreeQuery(mixed $data, mixed $x, mixed $k = 1): mixed
+    public static function kdtreeQuery(mixed $data, mixed $x, mixed $k = 1, mixed $idx = null, mixed $nodes = null, mixed $box = null): mixed
     {
-        return Registry::routine('distance.kdtree_query', [$data, $x, $k]);
+        return Registry::routine('distance.kdtree_query', [$data, $x, $k, $idx, $nodes, $box]);
     }
 
     /**

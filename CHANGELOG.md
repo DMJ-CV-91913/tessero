@@ -35,6 +35,14 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`Spatial\KDTree` builds its tree once, in the constructor, and every query searches it** (new registry routine
+  `distance.kdtree_build`; `distance.kdtree_query` takes its idx/nodes/box). 100 queries in 100k points: 0.57 ms,
+  was 37 ms (SciPy 0.20 ms); the query reads the data and the tree in place. The constructor now pays the build
+  (88 ms with the conversion of the PHP point arrays; SciPy 34 ms from an ndarray), where the old timing built nothing.
+  A malformed tree is refused before use. `kdtree_build` has no SciPy counterpart, so it has no fixture; the C tests
+  and PHPUnit pin it (queries on its tree byte-identical to a fresh build and to an exhaustive search).
+- Routine arguments that are already contiguous float64 are copied with one `memcpy` instead of element by element
+  (`fn_arg_doubles`): the same bytes, less time per call in every routine that reads arrays.
 - **`Spatial\KDTree` is a k-d tree**: the queries ran an exhaustive search in PHP (10,000 queries in 100,000 points: hours);
   they now run in the kernel (`distance.kdtree_query`, both backends: median splits, branch-and-bound, a k-best heap),
   55 ms for that case with the tree build included (SciPy: 49 ms). Same neighbours, distances and order (nearest
