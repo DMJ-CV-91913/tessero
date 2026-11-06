@@ -480,6 +480,11 @@ static int windowed_rank(const tsr_arg *input, const int64_t *size, const int64_
     return rc;
 }
 
+typedef struct { int64_t size, origin; int mode, is_max; double cval; } mm1d_ctx;
+static void mm1d_line(const double *line, double *out, int64_t L, const void *vc);
+static int filter_lines(const double *in, double *out, const int64_t *shape, int32_t nd, int ax,
+                        void (*line)(const double *, double *, int64_t, const void *), const void *ctx);
+
 /* minimum/maximum/median_filter: input, size=None, mode, cval, origin. ctx picks the operation. */
 static int r_order_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -493,7 +498,27 @@ static int r_order_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     int64_t V; if ((rc = nd_window(size, nd, "order filter", &V)) < 0) return rc;
     int mode; double cval;
     if ((rc = rank_tail(args, nargs, nd, size, 2, &mode, &cval, origin)) < 0) return rc;
-    const int64_t pick = op == OP_MAX ? V - 1 : op == OP_MEDIAN ? V / 2 : 0;
+    if (op == OP_MAX || op == OP_MIN) {
+        /* a box minimum / maximum is separable, and SciPy computes it so: the 1-D filter along each axis whose size is
+           above 1, in axis order (exact: no rounding in a min or max) */
+        int64_t ti; double *in = fn_arg_doubles(&args[0], &ti);
+        double *out = in ? (double *)fn_result_array(&res[0], TSR_F64, nd, args[0].arr.shape) : NULL;
+        const int64_t tot = tsr_shape_size(nd, args[0].arr.shape);
+        double *tmp = out ? (double *)tsr_alloc(tot * 8 + 8) : NULL;
+        if (!in || !out || !tmp) { fn_free_doubles(in, ti); if (tmp) tsr_free(tmp, tot * 8 + 8); return TSR_ENOMEM; }
+        memcpy(out, in, (size_t)tot * sizeof(double));
+        rc = TSR_OK;
+        for (int d = 0; d < nd && rc == TSR_OK; d++) {
+            if (size[d] <= 1) continue;
+            const mm1d_ctx c = { size[d], origin[d], mode, op == OP_MAX, cval };
+            rc = filter_lines(out, tmp, args[0].arr.shape, nd, d, mm1d_line, &c);
+            if (rc == TSR_OK) memcpy(out, tmp, (size_t)tot * sizeof(double));
+        }
+        tsr_free(tmp, tot * 8 + 8);
+        fn_free_doubles(in, ti);
+        return rc;
+    }
+    const int64_t pick = op == OP_MEDIAN ? V / 2 : 0;
     return windowed_rank(&args[0], size, origin, mode, cval, pick, &res[0]);
 }
 
@@ -663,12 +688,21 @@ static void corr1d_line(const double *line, double *out, int64_t L, const void *
     }
 }
 
-typedef struct { int64_t size, origin; int mode, is_max; double cval; } mm1d_ctx;
-
 static void mm1d_line(const double *line, double *out, int64_t L, const void *vc)
 {
     const mm1d_ctx *c = (const mm1d_ctx *)vc;
     const int64_t center = c->size / 2;
+    /* the line extended once by the boundary mode (ext[t] is position t - center - origin), then the same window scan:
+       j ascending, strict comparison (the first maximum wins; NaN is never taken) */
+    double *ext = (double *)malloc((size_t)(L + c->size - 1) * sizeof(double));
+    if (ext) {
+        const int64_t lo = -center - c->origin, S = c->size;
+        for (int64_t t = 0; t < L + S - 1; t++) ext[t] = ext1d(line, t + lo, L, c->mode, c->cval);
+        if (c->is_max) for (int64_t i = 0; i < L; i++) { double best = -INFINITY; const double *w = ext + i; for (int64_t j = 0; j < S; j++) if (w[j] > best) best = w[j]; out[i] = best; }
+        else for (int64_t i = 0; i < L; i++) { double best = INFINITY; const double *w = ext + i; for (int64_t j = 0; j < S; j++) if (w[j] < best) best = w[j]; out[i] = best; }
+        free(ext);
+        return;
+    }
     for (int64_t i = 0; i < L; i++) {
         double best = c->is_max ? -INFINITY : INFINITY;
         for (int64_t j = 0; j < c->size; j++) {

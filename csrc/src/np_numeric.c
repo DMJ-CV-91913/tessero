@@ -1022,6 +1022,35 @@ static int r_trapezoid(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     if (y->ndim == 0) { fn_set_error("tuple index out of range"); return TSR_EARG; }
     if ((rc = norm_axis(a64, y->ndim, &ax)) < 0) return rc;
     const int64_t n = y->shape[ax];
+    /* fast path, 1-D float64 y with a real scalar dx: the same per-element operations as below, (dx * (y[i+1] + y[i])) /
+       2, written to one buffer instead of three full temporaries, then the same pairwise sum (bit-identical) */
+    if (y->ndim == 1 && y->dtype == TSR_F64 && is_none(argk(args, nargs, 1))) {
+        const tsr_arg *da = argk(args, nargs, 2);
+        double dx = 1.0;
+        int fast = 1;
+        if (!is_none(da)) {
+            harr hd;
+            if ((rc = get_arr(da, &hd, "dx")) < 0) return rc;
+            if (hd.a.ndim == 0 && hd.a.dtype != TSR_C128) dx = rd_f64(elem0(&hd.a), hd.a.dtype);
+            else fast = 0;
+        }
+        if (fast) {
+            const int64_t m = n > 0 ? n - 1 : 0, st = y->strides[0];
+            const char *b0 = elem0(y);
+            double *u = (double *)tsr_alloc(m * 8 + 8);
+            if (!u) return TSR_ENOMEM;
+            for (int64_t i = 0; i < m; i++) {
+                const double a = *(const double *)(b0 + (i + 1) * st), b = *(const double *)(b0 + i * st);
+                u[i] = (dx * (a + b)) / 2.0;
+            }
+            own z;
+            int64_t zsh[1] = {0};
+            if ((rc = own_new(&z, TSR_F64, 0, zsh)) < 0) { tsr_free(u, m * 8 + 8); return rc; }
+            ((double *)z.a.data)[0] = lane_sum(u, m, 1);
+            tsr_free(u, m * 8 + 8);
+            return own_emit(&res[0], &z);
+        }
+    }
     /* s = y[1:] + y[:-1] */
     tsr_array y1 = *y, y0 = *y;
     v_slice(&y1, ax, n > 0 ? 1 : 0, n);
@@ -3719,16 +3748,45 @@ static int r_einsum(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     if (nout == 0) { out = &scalar; }
     else { out = (double *)fn_result_array(&res[0], TSR_F64, (int32_t)nout, oshape); if (!out) { for (int o = 0; o < nop; o++) fn_free_doubles(data[o], dn[o]); return TSR_ENOMEM; } memset(out, 0, (size_t)outsize * sizeof(double)); }
 
-    int64_t cur[EINSUM_MAXLBL]; for (int L = 0; L < nlab; L++) cur[L] = 0;
-    for (int64_t it = 0; it < total; it++) {
-        double prod = 1.0;
-        for (int o = 0; o < nop && prod != 0.0; o++) {
-            const int32_t nd = ops[o].arr.ndim; int64_t off = 0;
-            for (int d = 0; d < nd; d++) { const int L = olab[o][d]; const int64_t i = (osz[o][d] == 1) ? 0 : cur[L]; off += i * ostr[o][d]; }
-            prod *= data[o][off];
+    /* every offset is linear in the label counters: per label, the stride it adds to each operand (summed over
+       repeated labels, 0 on broadcast dimensions) and to the output. The odometer runs over all labels but the last
+       (last label fastest, as before) and the last label is a strided inner loop: the same products, added to each
+       output element in the same order, without recomputing offsets (and vectorizable for products of matrices).
+       Every product is formed in full and added, as NumPy does (a zero no longer hides a NaN of a later operand). */
+    if (total > 0) {
+        int64_t lst[EINSUM_MAXOP][EINSUM_MAXLBL], ost[EINSUM_MAXLBL];
+        for (int L = 0; L < nlab; L++) {
+            ost[L] = 0;
+            for (int k = 0; k < nout; k++) if (outlab[k] == L) ost[L] += ostride_out[k];
+            for (int o = 0; o < nop; o++) {
+                lst[o][L] = 0;
+                for (int d = 0; d < ops[o].arr.ndim; d++) if (olab[o][d] == L && osz[o][d] != 1) lst[o][L] += ostr[o][d];
+            }
         }
-        if (prod != 0.0) { int64_t oo = 0; for (int k = 0; k < nout; k++) oo += cur[outlab[k]] * ostride_out[k]; out[oo] += prod; }
-        for (int L = nlab - 1; L >= 0; L--) { const int64_t s = lsize[L] ? lsize[L] : 1; if (++cur[L] < s) break; cur[L] = 0; }
+        const int last = nlab - 1;
+        const int64_t inner = last >= 0 && lsize[last] ? lsize[last] : 1, outer = total / inner;
+        const int64_t so = last >= 0 ? ost[last] : 0;
+        int64_t cur[EINSUM_MAXLBL]; for (int L = 0; L < nlab; L++) cur[L] = 0;
+        for (int64_t it = 0; it < outer; it++) {
+            int64_t off[EINSUM_MAXOP], oo = 0;
+            for (int o = 0; o < nop; o++) { off[o] = 0; for (int L = 0; L < last; L++) off[o] += cur[L] * lst[o][L]; }
+            for (int L = 0; L < last; L++) oo += cur[L] * ost[L];
+            double *op = out + oo;
+            if (nop == 2) {
+                const double *a = data[0] + off[0], *b = data[1] + off[1];
+                const int64_t sa = last >= 0 ? lst[0][last] : 0, sb = last >= 0 ? lst[1][last] : 0;
+                if (so == 0) { double acc = *op; for (int64_t t = 0; t < inner; t++) acc += a[t * sa] * b[t * sb]; *op = acc; }
+                else if (sa == 0 && sb == 1 && so == 1) { const double av = *a; for (int64_t t = 0; t < inner; t++) op[t] += av * b[t]; }
+                else for (int64_t t = 0; t < inner; t++) op[t * so] += a[t * sa] * b[t * sb];
+            } else {
+                for (int64_t t = 0; t < inner; t++) {
+                    double prod = 1.0;
+                    for (int o = 0; o < nop; o++) prod *= data[o][off[o] + t * (last >= 0 ? lst[o][last] : 0)];
+                    op[t * so] += prod;
+                }
+            }
+            for (int L = last - 1; L >= 0; L--) { const int64_t s = lsize[L] ? lsize[L] : 1; if (++cur[L] < s) break; cur[L] = 0; }
+        }
     }
 
     for (int o = 0; o < nop; o++) fn_free_doubles(data[o], dn[o]);

@@ -8,11 +8,14 @@
  */
 #include "fn.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
 void np_sort_doubles(double *x, int64_t n);
 void np_argsort_pairs(double *pairs, int64_t n);
+extern void cblas_dgemm(int Order, int TransA, int TransB, int M, int N, int K, double alpha, const double *A, int lda,
+                        const double *B, int ldb, double beta, double *C, int ldc);   /* the linked BLAS (matmul.c) */
 
 static inline int lt_nan(double a, double b) { return a < b || (b != b && a == a); }
 
@@ -238,8 +241,21 @@ static int unique1d(const double *x, int64_t n, int want_index, int want_inverse
         uniq_free(u);
         return TSR_ENOMEM;
     }
-    for (int64_t i = 0; i < n; i++) { pairs[2 * i] = x[i]; pairs[2 * i + 1] = (double)i; }
-    np_argsort_pairs(pairs, n);                          /* stable: first occurrence first (numpy mergesort) */
+    if (!want_index && !want_inverse) {
+        /* values (and counts) only: the values sorted alone, no (value, index) pairs. The stable sort would put the
+           first zero of the input first in the zero run, so that zero's sign is restored where both signs occur */
+        double *s = pairs;
+        memcpy(s, x, (size_t)n * sizeof(double));
+        np_sort_doubles(s, n);
+        int64_t z = 0;
+        while (z < n && s[z] < 0.0) z++;
+        if (z < n && s[z] == 0.0)
+            for (int64_t i = 0; i < n; i++) if (x[i] == 0.0) { s[z] = x[i]; break; }
+        for (int64_t i = n - 1; i >= 0; i--) { pairs[2 * i] = s[i]; pairs[2 * i + 1] = 0.0; }   /* spread in place, back to front */
+    } else {
+        for (int64_t i = 0; i < n; i++) { pairs[2 * i] = x[i]; pairs[2 * i + 1] = (double)i; }
+        np_argsort_pairs(pairs, n);                      /* stable: first occurrence first (numpy mergesort) */
+    }
     /* mask of first elements of each run; NaNs collapse to one when equal_nan */
     if (n > 0) mask[0] = 1;
     const double last = n > 0 ? pairs[2 * (n - 1)] : 0;
@@ -1364,13 +1380,24 @@ static int r_cov(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
             if (fact <= 0) fact = 0.0;
             for (int64_t i = 0; i < V; i++) for (int64_t j = 0; j < O; j++) X[i * O + j] -= avg[i];
             const double inv = 1.0 / fact;
-            for (int64_t i = 0; i < V; i++) {
-                for (int64_t k = 0; k < V; k++) {
-                    double s = 0;
-                    for (int64_t j = 0; j < O; j++) s += X[i * O + j] * (wt ? X[k * O + j] * wt[j] : X[k * O + j]);
-                    C[i * V + k] = s * inv;
+            /* numpy: c = dot(X, (X*w).T) * (1/fact), through BLAS: one dgemm with B transposed (the weights, if any, scale
+               a copy of X); the dot-product loop where a dimension exceeds the LP64 int */
+            double *Y = X;
+            if (wt && (Y = (double *)tsr_alloc(V * O * 8 + 8)) != NULL)
+                for (int64_t i = 0; i < V; i++) for (int64_t j = 0; j < O; j++) Y[i * O + j] = X[i * O + j] * wt[j];
+            if (Y && V <= INT_MAX && O <= INT_MAX && V > 0 && O > 0) {
+                cblas_dgemm(101, 111, 112, (int)V, (int)V, (int)O, 1.0, X, (int)O, Y, (int)O, 0.0, C, (int)V);
+                for (int64_t q = 0; q < V * V; q++) C[q] *= inv;
+            } else {
+                for (int64_t i = 0; i < V; i++) {
+                    for (int64_t k = 0; k < V; k++) {
+                        double s = 0;
+                        for (int64_t j = 0; j < O; j++) s += X[i * O + j] * (wt ? X[k * O + j] * wt[j] : X[k * O + j]);
+                        C[i * V + k] = s * inv;
+                    }
                 }
             }
+            if (Y && Y != X) tsr_free(Y, V * O * 8 + 8);
             if (corr) {
                 double *sd = tmp;                             /* O >= V is not guaranteed: reuse avg */
                 (void)sd;

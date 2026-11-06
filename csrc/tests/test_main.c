@@ -1066,6 +1066,27 @@ static void test_security_regressions(void)
         CHECK(((double *)er[0].arr.data)[2] == 3, "einsum identity still works");
         tsr_free(er[0].arr.data, er[0].bytes);
     } else CHECK(0, "einsum identity failed: %s", tsr_fn_error());
+    /* a zero factor must not hide a NaN of a later operand (numpy: 0 * nan = nan); and a matrix product through the
+       strided inner loop equals the plain triple loop, bit for bit (same summation order) */
+    {
+        double z2[2] = {0.0, 1.0}, n2[2] = {NAN, 2.0};
+        int64_t s2[1] = {2};
+        tsr_arg en[3] = {arg_str("i,i"), arg_arr(z2, 1, s2), arg_arr(n2, 1, s2)};
+        tsr_result eo[1];
+        const int rcn = tsr_fn_routine(id, 3, en, 1, eo);
+        CHECK(rcn == 0 && isnan(eo[0].kind == 1 ? eo[0].num : ((double *)eo[0].arr.data)[0]), "einsum('i,i', [0, 1], [nan, 2]) is nan");
+        if (rcn == 0 && eo[0].kind == 3) tsr_free(eo[0].arr.data, eo[0].bytes);
+        enum { EM = 7, EK = 9, EN = 5 };
+        double ea2[EM * EK], eb2[EK * EN], ref[EM * EN];
+        for (int i = 0; i < EM * EK; i++) ea2[i] = sin(1.0 + i) * 3.0;
+        for (int i = 0; i < EK * EN; i++) eb2[i] = cos(2.0 + i) * 5.0;
+        for (int i = 0; i < EM; i++) for (int k = 0; k < EN; k++) { double s = 0.0; for (int j = 0; j < EK; j++) s += ea2[i * EK + j] * eb2[j * EN + k]; ref[i * EN + k] = s; }
+        int64_t sa2[2] = {EM, EK}, sb2[2] = {EK, EN};
+        tsr_arg em[3] = {arg_str("ij,jk->ik"), arg_arr(ea2, 2, sa2), arg_arr(eb2, 2, sb2)};
+        const int rcm = tsr_fn_routine(id, 3, em, 1, eo);
+        CHECK(rcm == 0 && !memcmp(eo[0].arr.data, ref, sizeof ref), "einsum ij,jk->ik == the ascending-j triple loop, bit for bit");
+        if (rcm == 0) tsr_free(eo[0].arr.data, eo[0].bytes);
+    }
 
     /* histogramdd: 32 dimensions of 2^20 bins wrapped the bin-count product and under-allocated the counts */
     double sample[32];

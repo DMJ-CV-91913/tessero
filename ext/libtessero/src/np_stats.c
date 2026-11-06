@@ -23,7 +23,48 @@ static int cmp_d(const void *pa, const void *pb)
     return 0;
 }
 
-void np_sort_doubles(double *x, int64_t n) { if (n > 1) qsort(x, (size_t)n, sizeof(double), cmp_d); }
+/* NaN last, -0.0 before +0.0 (the order of tsr_sort); the AVX2 sort in place, qsort only if it cannot run */
+void np_sort_doubles(double *x, int64_t n)
+{
+    if (n > 1 && tsr_sort_simd(TSR_F64, n, x) != TSR_OK) qsort(x, (size_t)n, sizeof(double), cmp_d);
+}
+
+/* the total order of the NaN-free samples: -0.0 < +0.0, so "neither less" means the same bits */
+static inline int tlt(double a, double b) { return a < b || (a == b && signbit(a) && !signbit(b)); }
+
+/* introselect: the k-th smallest of a[0..n) (NaN-free) in the total order, partitioning a in place (left of k
+   nothing larger, right of k nothing smaller); three-way partitions keep runs of equal values linear, and after
+   2 log2(n) + 8 rounds the rest is sorted */
+static double np_select(double *a, int64_t n, int64_t k)
+{
+    int64_t lo = 0, hi = n - 1;
+    int budget = 8;
+    for (int64_t t = n; t > 1; t >>= 1) budget += 2;
+    while (hi > lo) {
+        if (budget-- == 0) { np_sort_doubles(a + lo, hi - lo + 1); return a[k]; }
+        const double x = a[lo], y = a[lo + (hi - lo) / 2], z = a[hi];
+        const double p = tlt(x, y) ? (tlt(y, z) ? y : (tlt(x, z) ? z : x)) : (tlt(x, z) ? x : (tlt(y, z) ? z : y));
+        int64_t lt = lo, i = lo, gt = hi;
+        while (i <= gt) {
+            const double v = a[i];
+            if (tlt(v, p)) { a[i++] = a[lt]; a[lt++] = v; }
+            else if (tlt(p, v)) { a[i] = a[gt]; a[gt--] = v; }
+            else i++;
+        }
+        if (k < lt) hi = lt - 1;
+        else if (k > gt) lo = gt + 1;
+        else return p;                                    /* a[lt..gt] all equal p, bit for bit */
+    }
+    return a[k];
+}
+
+/* the samples as the quantile code reads them: sorted, or selected index by index (one quantile, or the median) */
+typedef struct { double *v; int64_t n; int sorted; } qview;
+static double qtake(qview *w, int64_t i)
+{
+    if (i < 0) i += w->n;
+    return w->sorted ? w->v[i] : np_select(w->v, w->n, i);
+}
 
 static int has_nan(const double *x, int64_t n)
 {
@@ -40,12 +81,16 @@ static int64_t drop_nan(double *x, int64_t n)
 
 /* ---------------------------------------------------------------- median */
 
-static double median_sorted(const double *s, int64_t n)
+/* the median of the NaN-free samples v[0..n), by selection (NumPy partitions too): v is reordered */
+static double median_select(double *v, int64_t n)
 {
     if (n == 0) return FN_NAN;
     const int64_t h = n / 2;
-    if (n % 2 == 1) return s[h];
-    return (s[h - 1] + s[h]) / 2.0;                      /* numpy: mean of the two middle values */
+    const double hi = np_select(v, n, h);
+    if (n % 2 == 1) return hi;
+    double lo = v[0];                                    /* the largest of v[0..h): nothing there exceeds v[h] */
+    for (int64_t i = 1; i < h; i++) if (tlt(lo, v[i])) lo = v[i];
+    return (lo + hi) / 2.0;                              /* numpy: mean of the two middle values */
 }
 
 static int c_median(const void *ctx, const double *const *x, const int64_t *n, const double *p, double *const *out,
@@ -55,8 +100,7 @@ static int c_median(const void *ctx, const double *const *x, const int64_t *n, c
     int64_t m = n[0];
     if (ctx) m = drop_nan(v, m);                          /* nanmedian */
     else if (has_nan(v, m)) { out[0][0] = FN_NAN; return TSR_OK; }
-    np_sort_doubles(v, m);
-    out[0][0] = median_sorted(v, m);
+    out[0][0] = median_select(v, m);
     return TSR_OK;
 }
 
@@ -88,7 +132,6 @@ static int64_t discrete_index(double index, int closest)
     return (int64_t)r;
 }
 
-static inline double take(const double *s, int64_t n, int64_t i) { return s[i < 0 ? n + i : i]; }
 
 /* the discrete methods pick one sample: its index (negative: from the end), or INT64_MIN for the others */
 static int64_t discrete_pick(int64_t n, double q, int method)
@@ -104,12 +147,13 @@ static int64_t discrete_pick(int64_t n, double q, int method)
     }
 }
 
-/* one quantile of the sorted, NaN-free sample s[0..n) */
-static double quantile_sorted(const double *s, int64_t n, double q, int method)
+/* one quantile of the NaN-free sample (sorted, or selected on demand) */
+static double quantile_view(qview *s, double q, int method)
 {
+    const int64_t n = s->n;
     const double N = (double)n;
     const int64_t pick = discrete_pick(n, q, method);
-    if (pick != INT64_MIN) return take(s, n, pick);
+    if (pick != INT64_MIN) return qtake(s, pick);
     double v;
     switch (method) {
     case QM_LINEAR: v = (N - 1) * q; break;
@@ -131,7 +175,7 @@ static double quantile_sorted(const double *s, int64_t n, double q, int method)
     double gamma = v - (double)ip;
     if (method == QM_AVERAGED_INVERTED_CDF) gamma = (gamma == 0) ? 0.5 : 1.0;
     else if (method == QM_MIDPOINT) gamma = (fmod(v, 1.0) == 0) ? 0.0 : 0.5;
-    const double a = take(s, n, ip), b = take(s, n, in);
+    const double a = qtake(s, ip), b = qtake(s, in);
     /* numpy's _lerp: a + (b-a) t, or b - (b-a)(1-t) when t >= 0.5 */
     const double diff = b - a;
     double r = a + diff * gamma;
@@ -172,7 +216,7 @@ static int c_quantile(const void *ctx, const double *const *x, const int64_t *n,
             fn_set_error("cannot compute quantiles of an empty array");
             return TSR_EINDEX;
         }
-        qsort(iv, (size_t)m, sizeof *iv, cmp_i64);
+        if (m > 1 && tsr_sort_simd(TSR_I64, m, iv) != TSR_OK) qsort(iv, (size_t)m, sizeof *iv, cmp_i64);
         for (int64_t k = 0; k < nq; k++) {
             const double q = c->scale == 1.0 ? x[1][k] : x[1][k] / 100.0;
             const int64_t pick = discrete_pick(m, q, method);
@@ -190,10 +234,12 @@ static int c_quantile(const void *ctx, const double *const *x, const int64_t *n,
         fn_set_error("cannot compute quantiles of an empty array");
         return TSR_EINDEX;
     }
-    np_sort_doubles(v, m);
+    /* one quantile: selection (at most two order statistics); several: one sort, as before */
+    qview w = {v, m, nq > 1};
+    if (nq > 1) np_sort_doubles(v, m);
     for (int64_t k = 0; k < nq; k++) {
         const double q = c->scale == 1.0 ? x[1][k] : x[1][k] / 100.0;
-        out[0][k] = quantile_sorted(v, m, q, method);
+        out[0][k] = quantile_view(&w, q, method);
     }
     return TSR_OK;
 }
@@ -503,10 +549,26 @@ static int c_partition(const void *ctx, const double *const *x, const int64_t *n
 
 static int64_t partition_scratch(const int64_t *n, const double *p) { (void)p; return n[0] * 16 + 64; }
 
-/* stable sort of (value, index) pairs, NaN last: bottom-up merge sort */
+/* stable sort of (value, index) pairs, NaN last: the values' stable radix argsort (tsr_argsort: ties, -0.0/+0.0 and
+   NaNs keep their positions, as the merge sort below does), the pairs permuted by it; the merge sort when the
+   scratch cannot be had */
 void np_argsort_pairs(double *pairs, int64_t n)
 {
     if (n < 2) return;
+    double *vals = (double *)tsr_alloc(n * 8), *out = (double *)tsr_alloc(n * 16);
+    int64_t *perm = (int64_t *)tsr_alloc(n * 8);
+    if (vals && out && perm) {
+        for (int64_t i = 0; i < n; i++) vals[i] = pairs[2 * i];
+        if (tsr_argsort(TSR_F64, n, vals, perm) == TSR_OK) {
+            for (int64_t i = 0; i < n; i++) { out[2 * i] = pairs[2 * perm[i]]; out[2 * i + 1] = pairs[2 * perm[i] + 1]; }
+            memcpy(pairs, out, (size_t)n * 16);
+            tsr_free(vals, n * 8); tsr_free(out, n * 16); tsr_free(perm, n * 8);
+            return;
+        }
+    }
+    if (vals) tsr_free(vals, n * 8);
+    if (out) tsr_free(out, n * 16);
+    if (perm) tsr_free(perm, n * 8);
     double *tmp = (double *)tsr_alloc(n * 16);
     if (!tmp) {                                           /* fall back to insertion sort (stable) */
         for (int64_t i = 1; i < n; i++) {

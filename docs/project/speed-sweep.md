@@ -26,21 +26,33 @@ not yet the best one available (the gaps below).
 | `signal.butter`, `cheby1`, `cheby2`, `ellip`, `bessel`, `iirfilter` | `output='sos'` / `'zpk'` silently answered with (b, a) | wrong format, no error | refused with a clear error (convert with `tf2sos`) |
 | `np.modf`, `npoly` polymulx and the derivatives, `csgraph.laplacian`, `slinalg.invpascal` | the sign of an exact zero differed from NumPy / SciPy | -- | match; the parity comparator now checks the sign of real zeros |
 
+## Fixed after the sweep
+
+The quick gaps, closed the same day (tier-2 cases, single-threaded; results unchanged, checked by parity):
+
+| case | before | after | NumPy/SciPy | how |
+|---|---|---|---|---|
+| `numpy.trapezoid` 1M | 353 ms | 1.6 ms | 3.2 ms | 1-D float64 fast path: the same per-element operations into one buffer instead of three temporaries |
+| `numpy.einsum` ij,jk->ik 300^2 | 267 ms | 15 ms | 6.7 ms | offsets kept incrementally, the last label a strided (vectorizable) inner loop; same summation order |
+| `ndimage.maximum_filter` 5x5, 1000^2 | 822 ms | 25 ms | 19 ms | separable 1-D passes, as SciPy computes a box min/max |
+| `numpy.median` 1M | 144 ms | 13 ms | 8.4 ms | introselect instead of a full sort |
+| `numpy.percentile` 1M (one q) | 119 ms | 18 ms | 9.1 ms | introselect (at most two order statistics) |
+| `numpy.unique` 1M | 97 ms | 15 ms | 8.7 ms | values sorted alone when no index is wanted; the stable argsort is the radix one |
+| `numpy.cov` 50 x 100k | 235 ms | 45 ms | 28 ms | one BLAS dgemm, as NumPy |
+
+The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
+they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
+factor was zero, so a NaN in a later operand propagates as in NumPy.
+
 ## Known gaps, largest first
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
 | `spatial.KDTree` query, 100 points in 100k | 23 s | 0.2 ms | exhaustive search in PHP (no tree) | a kd-tree in the kernel |
 | `spatial.Delaunay`, 10k points | 35 s | 29 ms | Bowyer-Watson in PHP | a kernel implementation |
-| `numpy.trapezoid` 1M | 353 ms | 3.2 ms | to be profiled | -- |
-| `ndimage.maximum_filter` 5x5, 1000^2 | 822 ms | 19 ms | full window per pixel | separable 1-D passes (van Herk / Gil-Werman) |
-| `numpy.einsum` ij,jk->ik 300^2 | 267 ms | 6.7 ms | loops | matrix-product patterns to BLAS |
 | `cluster.hierarchy.linkage` ward, 2000 | 1.3 s | 57 ms | O(n^3) | nearest-neighbour chain, O(n^2) |
 | `spatial.ConvexHull`, 10k (2-D) | 28 ms | 1.3 ms | monotone chain in PHP | kernel implementation |
-| `numpy.median` / `percentile` 1M | 144 / 119 ms | 8 / 9 ms | full sort | selection (introselect) |
 | `optimize.curve_fit`, 1000 points | 9.9 ms | 0.6 ms | to be profiled | -- |
-| `numpy.unique` 1M | 97 ms | 8.7 ms | to be profiled | -- |
-| `numpy.cov` 50 x 100k | 235 ms | 28 ms | no BLAS | one `dsyrk` / `dgemm` |
 | `linalg.solve_triangular` 1000 | 4.2 ms | 0.6 ms | to be profiled | LAPACK `dtrtrs` |
 | `sparse.linalg` spsolve / cg / eigsh on sparse input | -- | 21-453 ms | the solvers take dense matrices only | sparse (CSR) operands |
 | `special.ellip_harm_2`, Kelvin-function zeros (tier 3) | 100-600x | -- | slow per-call algorithms | -- |

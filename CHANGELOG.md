@@ -18,6 +18,12 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **Faster `median`, `percentile`/`quantile`, `unique`, `einsum`, `cov`, `trapezoid`, `maximum_filter`/`minimum_filter`**
+  (1M values / 1000^2 images, single-threaded): median 144 -> 13 ms, percentile 119 -> 18 ms (introselect), unique
+  97 -> 15 ms, the set routines likewise (their libc `qsort` replaced by `sortSimd` / the radix `tsr_argsort`), einsum
+  ij,jk->ik 300^2 267 -> 15 ms (incremental offsets, strided inner loop, same summation order), cov 50 x 100k
+  235 -> 45 ms (one BLAS dgemm, as NumPy), trapezoid 353 -> 1.6 ms, maximum_filter 5x5 822 -> 25 ms (separable,
+  as SciPy). Values unchanged.
 - **`sortSimd()` sorts in place at the data's own width**: 8 float32/int32 keys per AVX2 vector instead of 4 widened
   64-bit keys, integers without any conversion, floats mapped to order-preserving integers in place (the map is its
   own inverse), and no scratch buffer. 1M random values: float32 24.8 -> 18.0 ms, int32 24.0 -> 17.0 ms, int64
@@ -34,6 +40,8 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`einsum` hid a NaN behind a zero**: once a running product reached 0 the remaining operands were skipped, so
+  `einsum('i,i', [0], [nan])` gave 0; NumPy gives nan.
 - **`scipy.fft` dct / idct / dst / idst were O(N^2)** (direct sums; 1M points took hours): above 128 points they now run
   through one real FFT (Makhoul), 1M points in about 50 ms, agreeing with SciPy to 1e-16 of the output scale; small
   sizes keep the exact direct sums. New fixture cases above the switch (129, 257, 1000 points; 3x130 and 130x3).
