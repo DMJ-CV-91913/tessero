@@ -141,6 +141,11 @@ CXXFLAGS += $(call try_cxx,-ffile-prefix-map=$(CURDIR)=.)
 # back to the unhardened time and no benchmark case regresses. Layout only: instructions and results are unchanged.
 CFLAGS += $(call try_cc,-falign-functions=64)
 CXXFLAGS += $(call try_cxx,-falign-functions=64)
+# COVERAGE=1: gcov instrumentation, unoptimized (`make coverage` builds and reports it in a directory of its own)
+ifeq ($(COVERAGE),1)
+CFLAGS += --coverage -O0
+CXXFLAGS += --coverage -O0
+endif
 
 # exports: the version script (GNU ld, gold, lld; probed, so another linker just skips it) keeps every symbol
 # that is not tsr_* local, plus the tsr_ helpers listed in it that are internal
@@ -330,10 +335,22 @@ test: $(BUILD)/test_opt
 sanitize: $(BUILD)/test_san
 	ASAN_OPTIONS=detect_leaks=1 $(BUILD)/test_san
 
+# line coverage of the C test suite (docs/project/security-review-2026-10.md P2): instrumented objects and test binary
+# in COV_BUILD, never the shared library. The per-file summary comes from gcovr when it is installed (it also writes
+# COV_BUILD/coverage.html), else from gcov.
+COV_BUILD ?= ./build-cov
+coverage:
+	$(MAKE) test COVERAGE=1 BUILD=$(COV_BUILD)
+	@if command -v gcovr >/dev/null 2>&1; then \
+	    gcovr -r . --object-directory $(COV_BUILD) --filter 'src/' --txt --print-summary --html-details $(COV_BUILD)/coverage.html; \
+	else \
+	    gcov -n -o $(COV_BUILD)/c $(filter src/%.c,$(SRC)) 2>/dev/null | grep -A1 "^File 'src/" | grep -v '^--$$' | paste - -; \
+	fi
+
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all portable test sanitize clean fuzz fuzz-standalone abi-check install uninstall
+.PHONY: all portable test sanitize coverage clean fuzz fuzz-standalone abi-check install uninstall
 
 # ---- fuzzing (see csrc/fuzz/): coverage-guided with libFuzzer (clang + compiler-rt), or the standalone
 #      mutation driver under ASan + UBSan anywhere. Corpora live in fuzz/corpus/<target>.

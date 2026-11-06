@@ -3,7 +3,7 @@ name: nightly
 # Long-running hardening that does not fit in a pull request: coverage-guided
 # fuzzing for 30 minutes per target, 5.5-hour soak runs of both backends in one
 # process each, the property tests with 50x more random cases, ThreadSanitizer
-# over the OpenMP kernels and Valgrind memcheck.
+# over the OpenMP kernels, Valgrind memcheck and line coverage of the C tests (gcov).
 # A 24-72 hour soak before each release is run by hand (docs/operations/soak-testing.md).
 #
 # A pull request that edits this file runs the TSan and Valgrind jobs once (the long jobs stay nightly-only),
@@ -218,3 +218,26 @@ jobs:
             exit 0
           fi
           echo "::error::valgrind exit status $rc"; exit 1
+
+  coverage:
+    name: C line coverage (gcov, C test suite)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev gcovr
+      - name: the C tests, instrumented
+        env:
+          OMP_NUM_THREADS: '2'
+          OPENBLAS_NUM_THREADS: '1'
+        shell: bash
+        run: make -C csrc coverage | tee coverage.txt
+      - name: summary
+        if: always()
+        shell: bash
+        run: |
+          { echo '### C line coverage (C test suite)'; echo '```'; grep -E '^(lines|functions|branches):|^TOTAL' coverage.txt || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: c-coverage, path: 'csrc/build-cov/coverage*.html', if-no-files-found: ignore }

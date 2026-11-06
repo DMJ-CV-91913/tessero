@@ -1,6 +1,7 @@
 # Build output and local scratch (not committed). The lib/ FFI binaries are built by
 # `make -C csrc`, not carried in git; releases ship them via packaging, not the repo.
 /csrc/build/
+/csrc/build-*/
 /lib/*/libtessero.so
 /lib/*/libtessero.dylib
 /lib/*/tessero.dll
