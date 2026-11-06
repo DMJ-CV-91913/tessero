@@ -49,7 +49,7 @@ jobs:
           - { platform: linux-musl-x86_64, runner: ubuntu-latest, container: 'alpine:3.20' }
           # tier 2: no LAPACK linkage on these targets yet (csrc/Makefile), so they cannot block a release.
           # continue-on-error keeps a failing tier-2 leg from failing the workflow or the jobs that need `native`.
-          - { platform: darwin-arm64,      runner: macos-14,       tier2: true }
+          - { platform: darwin-arm64,      runner: macos-15,       tier2: true }   # macos-14 is no longer accepted: jobs on it are cancelled before they start
           - { platform: darwin-x86_64,     runner: macos-15-intel, tier2: true }   # macos-13 is retired: jobs on it never start
           - { platform: windows-x86_64,    runner: windows-latest, tier2: true }
     continue-on-error: ${{ matrix.tier2 == true }}
@@ -174,7 +174,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-14, windows-latest]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-latest]
         php: ['8.2', '8.3', '8.4', '8.5']
         jit: ['off', 'tracing', 'function']
     continue-on-error: ${{ startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'windows') }}   # tier 2 (no LAPACK linkage yet)
