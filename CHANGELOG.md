@@ -32,6 +32,22 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   one-thread output, byte for byte). 1M random values with 4 threads: float64 5.7 ms, float32 3.4, int64 6.5,
   int32 2.8 -- 2.2-2.6x faster than NumPy's single-threaded sort (14.1 / 7.5 / 17.1 / 6.8 ms).
 
+### Fixed
+
+- **`sortSimd()` with threads under per-thread FP modes**: OpenMP worker threads keep their own MXCSR, so a worker
+  left in denormals-are-zero mode compared subnormal float64 values as zero while the caller (not in DAZ) had
+  chosen the double-compare path. Every thread of the sort now runs with the caller's MXCSR and restores its own.
+- **Registry input gate**: no signed overflow building the message for an element offset of INT64_MIN (found by
+  the libFuzzer CI job).
+
+### Testing
+
+- **Sort risk register and hardening tests** (`docs/project/sort-design.md`): an independent qsort oracle over
+  the documented order at every size 0..1100, the 0-1 principle exhaustively for the leaf networks, 15
+  adversarial / structured / float-edge patterns at serial and parallel sizes, forced heapsort fallback, DAZ in
+  worker threads, concurrent sorts from application OpenMP threads and pthreads, and a new fuzz target `sort`
+  (CI and nightly). A mutation check (planted bugs) confirmed the suite catches each one.
+
 ## [0.3.0] - 2026-11-05
 
 Everything since 0.2.0: the NumPy/SciPy parity program, the security hardening, and the speed work below. The C ABI

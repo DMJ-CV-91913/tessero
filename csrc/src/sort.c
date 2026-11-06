@@ -13,6 +13,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+int tsr_sort_test_depth = 0;                                  /* internal.h: tests only */
+
 static inline uint64_t key_f64(double v, int zero_equal)
 {
     uint64_t u;

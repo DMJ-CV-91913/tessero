@@ -203,6 +203,9 @@ machine (4 cores, 8 hardware threads; a separate benchmark occupied one core dur
 At 1M values four threads sort 2.2-2.6x faster than NumPy; at 10M the gain is about 2x, as the sort becomes
 limited by memory bandwidth. Eight threads (hyper-threads) add nothing on this machine.
 
+How the three work, why their outputs are identical, and the risk register with its tests:
+[sorting design](sort-design.md).
+
 Rule of thumb: `sortSimd()` on an AVX2 machine, `sortRuns()` for mostly sorted data where AVX2 is missing, `sort()`
 when a steady, input-independent time matters more than the best case.
 

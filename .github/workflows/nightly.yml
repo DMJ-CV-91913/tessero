@@ -44,6 +44,7 @@ jobs:
           - { target: mmap_plan, args: "FUZZ_TARGETS=mmap_plan FUZZ_REG_TARGETS=" }
           - { target: json,      args: "FUZZ_TARGETS=json FUZZ_REG_TARGETS=" }
           - { target: npy_write, args: "FUZZ_TARGETS=npy_write FUZZ_REG_TARGETS=" }
+          - { target: sort,      args: "FUZZ_TARGETS=sort FUZZ_REG_TARGETS=" }
           - { target: einsum,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=einsum FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
           - { target: hist,      args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=hist FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }
           - { target: textio,    args: "FUZZ_TARGETS= FUZZ_REG_TARGETS=textio FUZZ_DEFS=-DFUZZ_SKIP_KNOWN" }

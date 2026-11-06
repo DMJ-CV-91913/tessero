@@ -153,13 +153,22 @@ static void QS_FN(qs_sort)(QS_T *a, int64_t n, int threads)
     }
     int depth = 4;
     for (int64_t t = n; t > 1; t >>= 1) depth += 2;
+    if (tsr_sort_test_depth > 0) depth = tsr_sort_test_depth;
 #ifdef _OPENMP
     if (threads > 1 && n >= TSR_PAR_MIN) {
         int64_t cutoff = n / ((int64_t)threads * QS_PAR_SPLIT);
         if (cutoff < QS_PAR_MINPART) cutoff = QS_PAR_MINPART;
+        const unsigned int csr = _mm_getcsr();
 #pragma omp parallel num_threads(threads)
-#pragma omp single nowait
-        QS_FN(qs_rec_par)(a, n, depth, cutoff);
+        {
+            /* MXCSR is per thread: every thread compares as the caller does for the length of the sort (a worker
+               started under denormals-are-zero would see subnormal doubles as zero; docs/project/sort-design.md) */
+            const unsigned int own = _mm_getcsr();
+            _mm_setcsr(csr);
+#pragma omp single
+            QS_FN(qs_rec_par)(a, n, depth, cutoff);
+            _mm_setcsr(own);                                   /* after the single's barrier: every task has run */
+        }
         return;
     }
 #else

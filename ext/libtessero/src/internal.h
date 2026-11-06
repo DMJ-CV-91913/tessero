@@ -28,6 +28,8 @@ enum { TSR_OK = 0, TSR_EARG = -1, TSR_EINDEX = -2, TSR_ENOMEM = -3, TSR_ETYPE = 
 /* Parallel element-wise loops only above this many elements per call (OpenMP builds). */
 #define TSR_PAR_MIN ((int64_t)1 << 17)
 int tsr_get_threads(void);
+/* tests only: when > 0, caps tsr_sort_simd's recursion depth, forcing its heapsort fallback (sort.c) */
+extern int tsr_sort_test_depth;
 
 /*
  * Function multi-versioning: on x86-64 glibc, hot loops are compiled for

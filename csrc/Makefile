@@ -337,7 +337,7 @@ clean:
 
 # ---- fuzzing (see csrc/fuzz/): coverage-guided with libFuzzer (clang + compiler-rt), or the standalone
 #      mutation driver under ASan + UBSan anywhere. Corpora live in fuzz/corpus/<target>.
-FUZZ_TARGETS := slice npy mmap_plan json npy_write
+FUZZ_TARGETS := slice npy mmap_plan json npy_write sort
 # the fuzzed parsers do not need the function registry (C++): build without it
 FUZZ_SRC := $(filter-out src/gen_%_table.c src/np_%.c src/scipy_%.c third_party/scipy/cdflib.c $(NPRAND) $(SCIPYC),$(SRC))
 # registry targets drive public routines (tsr_fn_routine): they link the whole kernel (C + C++ + LAPACK),

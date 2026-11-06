@@ -150,3 +150,4 @@ nav:
       - Releasing: project/releasing.md
       - Upstream PHP bugs: project/upstream-bugs.md
       - Memory-safety review: project/memory-safety-review.md
+      - "Sorting: design and risk register": project/sort-design.md

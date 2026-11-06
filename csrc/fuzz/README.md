@@ -8,7 +8,7 @@ in `fuzz/corpus/<name>/` and are replayed first so a crash in a committed seed i
 ## Targets
 
 `FUZZ_TARGETS` (no function registry, built with `-DTSR_NO_REGISTRY`):
-`slice npy mmap_plan json npy_write`.
+`slice npy mmap_plan json npy_write sort`.
 
 `FUZZ_REG_TARGETS` (drive public routines through `tsr_fn_routine`; link the whole kernel, C + C++ + LAPACK):
 `einsum hist textio dtype routines abi`.
@@ -16,6 +16,7 @@ in `fuzz/corpus/<name>/` and are replayed first so a crash in a committed seed i
 | target | entry points |
 |--------|--------------|
 | `npy_write` | `tsr_npy_write_header` + round-trip through `tsr_npy_header` |
+| `sort` | `tsr_sort`, `tsr_sort_simd`, `tsr_sort_runs`: identical bytes and the documented order, with tiling past the parallel threshold, DAZ/FTZ and a forced heapsort depth (docs/project/sort-design.md) |
 | `einsum` | `np.einsum` (subscripts + 1-3 small operands) |
 | `hist` | `np.histogram`, `np.histogram_bin_edges`, `np.histogram2d`, `np.histogramdd` |
 | `textio` | `np.loadtxt`, `np.genfromtxt`, `np.fromfile` (content in a private temp file) |

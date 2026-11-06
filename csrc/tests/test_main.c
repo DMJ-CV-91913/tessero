@@ -5,6 +5,12 @@
 #include <string.h>
 #include <unistd.h>
 #include "../src/internal.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+#if !defined(_WIN32)
+#include <pthread.h>
+#endif
 #include "../src/ops.h"
 #include "../src/vmath.h"
 
@@ -2301,6 +2307,271 @@ static void test_sort_daz(void)
 #endif
 }
 
+/* ---- sort hardening: the risk register of docs/project/sort-design.md, one block per risk ----
+   Oracle: qsort over the documented total order (NaN last, written as the canonical NaN; -0.0 before +0.0), so the
+   radix sort is checked too, not trusted. Every case runs tsr_sort, tsr_sort_simd and tsr_sort_runs on copies. */
+static int64_t th_k64(uint64_t u) { const int64_t s = (int64_t)u; return s ^ ((s >> 63) & INT64_MAX); }
+static int32_t th_k32(uint32_t u) { const int32_t s = (int32_t)u; return s ^ ((s >> 31) & INT32_MAX); }
+static int th_cmp_f64(const void *x, const void *y)
+{
+    uint64_t a, b; memcpy(&a, x, 8); memcpy(&b, y, 8);
+    const int64_t p = th_k64(a), q = th_k64(b);
+    return p < q ? -1 : p > q;
+}
+static int th_cmp_f32(const void *x, const void *y)
+{
+    uint32_t a, b; memcpy(&a, x, 4); memcpy(&b, y, 4);
+    const int32_t p = th_k32(a), q = th_k32(b);
+    return p < q ? -1 : p > q;
+}
+static int th_cmp_i64(const void *x, const void *y) { int64_t a, b; memcpy(&a, x, 8); memcpy(&b, y, 8); return a < b ? -1 : a > b; }
+static int th_cmp_i32(const void *x, const void *y) { int32_t a, b; memcpy(&a, x, 4); memcpy(&b, y, 4); return a < b ? -1 : a > b; }
+static int64_t th_isz(int dt) { return dt == TSR_F64 || dt == TSR_I64 ? 8 : 4; }
+
+static void th_oracle(int dt, int64_t n, unsigned char *b)
+{
+    const int64_t isz = th_isz(dt);
+    int64_t m = 0;
+    if (dt == TSR_F64 || dt == TSR_F32) {                      /* NaNs out, then back at the end as NAN */
+        for (int64_t i = 0; i < n; i++) {
+            int nan;
+            if (dt == TSR_F64) { double v; memcpy(&v, b + i * 8, 8); nan = isnan(v); }
+            else { float v; memcpy(&v, b + i * 4, 4); nan = isnan(v); }
+            if (!nan) { memmove(b + m * isz, b + i * isz, (size_t)isz); m++; }
+        }
+    } else m = n;
+    qsort(b, (size_t)m, (size_t)isz, dt == TSR_F64 ? th_cmp_f64 : dt == TSR_F32 ? th_cmp_f32 : dt == TSR_I64 ? th_cmp_i64 : th_cmp_i32);
+    for (int64_t i = m; i < n; i++) {
+        if (dt == TSR_F64) { const double v = NAN; memcpy(b + i * 8, &v, 8); }
+        else { const float v = NAN; memcpy(b + i * 4, &v, 4); }
+    }
+}
+
+/* 1 when the three sorts all return the oracle's bytes for src */
+static int th_agree(int dt, int64_t n, const unsigned char *src)
+{
+    const size_t bytes = (size_t)(n * th_isz(dt)) + 1;
+    unsigned char *o = malloc(bytes), *a = malloc(bytes), *b = malloc(bytes), *c = malloc(bytes);
+    memcpy(o, src, bytes - 1); memcpy(a, src, bytes - 1); memcpy(b, src, bytes - 1); memcpy(c, src, bytes - 1);
+    th_oracle(dt, n, o);
+    const int rc = tsr_sort(dt, n, a) | tsr_sort_simd(dt, n, b) | tsr_sort_runs(dt, n, c);
+    const int ok = rc == 0 && !memcmp(o, a, bytes - 1) && !memcmp(o, b, bytes - 1) && !memcmp(o, c, bytes - 1);
+    free(o); free(a); free(b); free(c);
+    return ok;
+}
+
+static uint64_t th_rng(uint64_t *s) { *s ^= *s << 13; *s ^= *s >> 7; *s ^= *s << 17; return *s; }
+
+/* store an integer-valued pattern value in dtype dt (floats get the same value as a double / float) */
+static void th_put(int dt, unsigned char *b, int64_t i, int64_t v)
+{
+    if (dt == TSR_F64) { const double x = (double)v; memcpy(b + i * 8, &x, 8); }
+    else if (dt == TSR_F32) { const float x = (float)v; memcpy(b + i * 4, &x, 4); }
+    else if (dt == TSR_I64) memcpy(b + i * 8, &v, 8);
+    else { const int32_t x = (int32_t)v; memcpy(b + i * 4, &x, 4); }
+}
+/* the dtype's smallest / largest value (floats: -inf / +inf, or -max / +max when alt) */
+static void th_put_extreme(int dt, unsigned char *b, int64_t i, int top, int alt)
+{
+    if (dt == TSR_F64) { const double x = alt ? (top ? 1.7976931348623157e308 : -1.7976931348623157e308) : (top ? INFINITY : -INFINITY); memcpy(b + i * 8, &x, 8); }
+    else if (dt == TSR_F32) { const float x = alt ? (top ? 3.40282347e38f : -3.40282347e38f) : (top ? INFINITY : -INFINITY); memcpy(b + i * 4, &x, 4); }
+    else if (dt == TSR_I64) { const int64_t x = top ? INT64_MAX : INT64_MIN; memcpy(b + i * 8, &x, 8); }
+    else { const int32_t x = top ? INT32_MAX : INT32_MIN; memcpy(b + i * 4, &x, 4); }
+}
+
+enum { TH_RANDOM, TH_BINARY, TH_FEW, TH_ORGAN, TH_SAW7, TH_SAW64, TH_SAWN8, TH_ONE_MIN, TH_ONE_MAX, TH_MOSTLY_MIN,
+       TH_MOSTLY_MAX, TH_MINMAX, TH_SORTED_LAST_MIN, TH_REV_DUP, TH_SAMPLE_EQUAL, TH_FLOAT_EDGE, TH_ZEROS, TH_ZERO_SUB,
+       TH_NPATTERNS };
+
+static void th_fill(int dt, int64_t n, int pat, unsigned char *b, uint64_t *s)
+{
+    const int fl = dt == TSR_F64 || dt == TSR_F32;
+    const int64_t per = n / 8 > 0 ? n / 8 : 1;
+    const uint64_t pick = th_rng(s);
+    for (int64_t i = 0; i < n; i++) {
+        const uint64_t r = th_rng(s);
+        switch (pat) {
+        case TH_RANDOM: th_put(dt, b, i, (int64_t)(r >> 34) - (1LL << 29)); break;
+        case TH_BINARY: th_put(dt, b, i, (int64_t)(r & 1)); break;
+        case TH_FEW: th_put(dt, b, i, (int64_t)(r % 3) - 1); break;
+        case TH_ORGAN: th_put(dt, b, i, i < n / 2 ? i : n - i); break;
+        case TH_SAW7: th_put(dt, b, i, i % 7); break;
+        case TH_SAW64: th_put(dt, b, i, i % 64); break;
+        case TH_SAWN8: th_put(dt, b, i, i % per); break;              /* every median-of-9 sample is equal */
+        case TH_ONE_MIN: case TH_ONE_MAX: th_put(dt, b, i, 5); break;
+        case TH_MOSTLY_MIN: if (r % 10) th_put_extreme(dt, b, i, 0, pick & 1); else th_put(dt, b, i, (int64_t)(r >> 40)); break;
+        case TH_MOSTLY_MAX: if (r % 10) th_put_extreme(dt, b, i, 1, pick & 1); else th_put(dt, b, i, (int64_t)(r >> 40)); break;
+        case TH_MINMAX: th_put_extreme(dt, b, i, (int)(i & 1), (int)(pick & 1)); break;
+        case TH_SORTED_LAST_MIN: th_put(dt, b, i, i == n - 1 ? -1 : i); break;
+        case TH_REV_DUP: th_put(dt, b, i, (n - i) / 3); break;
+        case TH_SAMPLE_EQUAL: th_put(dt, b, i, (int64_t)(r >> 40)); break;
+        case TH_FLOAT_EDGE: case TH_ZEROS: case TH_ZERO_SUB: {
+            if (!fl) { th_put(dt, b, i, (int64_t)(r % 5) - 2); break; }
+            /* the values where the float path has special cases: QS_NEXT steps, the zero run, NaN, infinities */
+            static const uint64_t e64[] = {0x8000000000000001ULL, 0x8000000000000000ULL, 0, 1, 0x7fefffffffffffffULL,
+                0xffefffffffffffffULL, 0xfff0000000000000ULL, 0x7ff0000000000000ULL, 0x0010000000000000ULL,
+                0x7ff8000000000000ULL, 0xfff8000000000005ULL, 0x800fffffffffffffULL};
+            static const uint32_t e32[] = {0x80000001u, 0x80000000u, 0, 1, 0x7f7fffffu, 0xff7fffffu, 0xff800000u,
+                0x7f800000u, 0x00800000u, 0x7fc00000u, 0xffc00005u, 0x807fffffu};
+            int k;
+            if (pat == TH_FLOAT_EDGE) k = r % 10 < 8 ? (int)(pick % 12) : (int)(r % 12);      /* 80% one edge value */
+            else if (pat == TH_ZEROS) k = (int)(r & 1);                                        /* -0.0 / +0.0 only */
+            else k = (int)(r % 6 == 5 ? 9 : r % 4);                                            /* zeros, +-tiny, NaN */
+            if (dt == TSR_F64) memcpy(b + i * 8, &e64[k], 8); else memcpy(b + i * 4, &e32[k], 4);
+            break;
+        }
+        }
+    }
+    if (n > 0 && pat == TH_ONE_MIN) th_put_extreme(dt, b, (int64_t)(pick % (uint64_t)n), 0, 0);
+    if (n > 0 && pat == TH_ONE_MAX) th_put_extreme(dt, b, (int64_t)(pick % (uint64_t)n), 1, 0);
+    if (n > 0 && pat == TH_SAMPLE_EQUAL)                            /* the nine pivot samples hold one value */
+        for (int k = 0; k <= 8; k++) th_put(dt, b, k < 8 ? k * n / 8 : n - 1, 42);
+}
+
+static void test_sort_hardening(void)
+{
+    static const int dts[] = {TSR_F64, TSR_F32, TSR_I64, TSR_I32};
+    const int saved = tsr_get_threads();
+    const int64_t big = 300000;
+    unsigned char *src = malloc((size_t)big * 8);
+    uint64_t st = 0xD1B54A32D192ED03ULL;
+    const int64_t before = tsr_allocated();
+
+    /* 1. every size through every leaf network and partition boundary (16 / 32 / 64 / 128 keys, the 16 * L scalar
+          partition, the 4 * L hold-back): n = 0 .. 1100, random, 0/1 and three-valued data */
+    int bad = 0, cases = 0;
+    tsr_set_threads(1);
+    for (size_t d = 0; d < 4; d++)
+        for (int64_t n = 0; n <= 1100; n++)
+            for (int pat = TH_RANDOM; pat <= TH_FEW; pat++) {
+                th_fill(dts[d], n, pat, src, &st);
+                cases++; bad += !th_agree(dts[d], n, src);
+            }
+    CHECK(bad == 0, "sorts == oracle at every size 0..1100 (%d of %d cases differ)", bad, cases);
+
+    /* 2. the leaf networks by the 0-1 principle: a comparator network sorts every input if it sorts every 0/1
+          input; exhaustive for n <= 16 (the whole 16-key network and the start of the 32/64-key ones) */
+    bad = 0; cases = 0;
+    for (size_t d = 0; d < 4; d++) {
+        const int dt = dts[d];
+        const int64_t isz = th_isz(dt);
+        for (int n = 1; n <= 16; n++)
+            for (uint32_t m = 0; m < (1u << n); m++) {
+                int ones = 0;
+                for (int i = 0; i < n; i++) { th_put(dt, src, i, (m >> i) & 1); ones += (m >> i) & 1; }
+                if (tsr_sort_simd(dt, n, src)) { bad++; continue; }
+                unsigned char z[8], o[8];
+                th_put(dt, z, 0, 0); th_put(dt, o, 0, 1);
+                for (int i = 0; i < n; i++) if (memcmp(src + i * isz, i < n - ones ? z : o, (size_t)isz)) { bad++; break; }
+                cases++;
+            }
+    }
+    CHECK(bad == 0, "sortSimd sorts every 0/1 input of up to 16 keys, all dtypes (%d of %d differ)", bad, cases);
+
+    /* 3. structured and adversarial data: equal pivot samples, extremes (QS_MAX / QS_NEXT edges), minimum-pivot
+          splitting, organ pipes, sawtooths, float edge values, zero runs; serial and parallel sizes */
+    bad = 0; cases = 0;
+    for (size_t d = 0; d < 4; d++)
+        for (int pat = TH_ORGAN; pat < TH_NPATTERNS; pat++)
+            for (int sz = 0; sz < 3; sz++) {
+                const int64_t n = sz == 0 ? 1000 : sz == 1 ? 65537 : big;
+                tsr_set_threads(sz == 2 ? 4 : 1);
+                th_fill(dts[d], n, pat, src, &st);
+                cases++;
+                if (!th_agree(dts[d], n, src)) { bad++; fprintf(stderr, "  sort pattern %d dtype %d n %lld differs\n", pat, dts[d], (long long)n); }
+            }
+    CHECK(bad == 0, "sorts == oracle on structured, adversarial and float-edge data (%d of %d cases differ)", bad, cases);
+
+    /* 4. the heapsort fallback (normally reached only by adversarial inputs): recursion depth capped */
+    bad = 0; cases = 0;
+    for (int depth = 1; depth <= 8; depth += 3) {
+        tsr_sort_test_depth = depth;
+        for (size_t d = 0; d < 4; d++)
+            for (int sz = 0; sz < 3; sz++)
+                for (int pat = TH_RANDOM; pat <= TH_ORGAN; pat++) {
+                    const int64_t n = sz == 0 ? 200 : sz == 1 ? 5000 : big;
+                    tsr_set_threads(sz == 2 ? 4 : 1);
+                    th_fill(dts[d], n, pat, src, &st);
+                    cases++; bad += !th_agree(dts[d], n, src);
+                }
+    }
+    tsr_sort_test_depth = 0;
+    CHECK(bad == 0, "sorts == oracle with the heapsort fallback forced at depth 1, 4, 7 (%d of %d differ)", bad, cases);
+
+#if defined(_OPENMP) && defined(__x86_64__) && defined(__GNUC__)
+    /* 5. MXCSR is per thread: workers left in denormals-are-zero mode while the caller is not (the caller picks the
+          double path, so every worker must compare as the caller does) */
+    {
+        tsr_set_threads(4);
+        const unsigned int csr = __builtin_ia32_stmxcsr();
+#pragma omp parallel num_threads(4)
+        { if (omp_get_thread_num() != 0) __builtin_ia32_ldmxcsr(csr | 0x8040); }
+        bad = 0;
+        for (int rep = 0; rep < 3; rep++) {
+            th_fill(TSR_F64, big, TH_ZERO_SUB, src, &st);
+            for (int64_t i = 0; i < big; i += 3) { const uint64_t u = th_rng(&st) >> 13; memcpy(src + i * 8, &u, 8); }  /* subnormals */
+            bad += !th_agree(TSR_F64, big, src);
+        }
+#pragma omp parallel num_threads(4)
+        { __builtin_ia32_ldmxcsr(csr); }
+        CHECK(bad == 0, "parallel float64 sort ignores worker threads' DAZ/FTZ state (%d of 3 differ)", bad);
+    }
+
+    /* 6. the application's own threads: concurrent sorts of different arrays (OpenMP region: the sort's own region is
+          nested, so it runs serially; nothing is shared, so each result must still be exact) */
+    {
+        tsr_set_threads(4);
+        enum { K = 4 };
+        int fails = 0;
+#pragma omp parallel for num_threads(K) reduction(+ : fails) schedule(static)
+        for (int k = 0; k < K; k++) {
+            unsigned char *mine = malloc((size_t)big * 8);
+            uint64_t s2 = 0x1234567ULL + (uint64_t)k;
+            th_fill(dts[k % 4], big, TH_RANDOM, mine, &s2);
+            fails += !th_agree(dts[k % 4], big, mine);
+            free(mine);
+        }
+        CHECK(fails == 0, "concurrent sorts from an application's OpenMP threads are exact (%d of %d differ)", fails, (int)K);
+    }
+#endif
+    tsr_set_threads(saved);
+    free(src);
+    CHECK(tsr_allocated() == before, "the sorts leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
+#if !defined(_WIN32)
+/* 7. the application's own (non-OpenMP) threads, each calling the multithreaded sort at once: every caller starts its
+      own OpenMP team (oversubscribed, but exact) */
+struct th_job { int dt; uint64_t seed; int ok; };
+static void *th_worker(void *p)
+{
+    struct th_job *j = p;
+    unsigned char *mine = malloc((size_t)300000 * 8);
+    th_fill(j->dt, 300000, TH_RANDOM, mine, &j->seed);
+    j->ok = th_agree(j->dt, 300000, mine);
+    th_fill(j->dt, 300000, TH_ZERO_SUB, mine, &j->seed);
+    j->ok &= th_agree(j->dt, 300000, mine);
+    free(mine);
+    return NULL;
+}
+static void test_sort_app_threads(void)
+{
+    const int saved = tsr_get_threads();
+    tsr_set_threads(4);
+    enum { K = 4 };
+    pthread_t t[K];
+    struct th_job jobs[K];
+    for (int k = 0; k < K; k++) {
+        jobs[k] = (struct th_job){ (int[]){TSR_F64, TSR_F32, TSR_I64, TSR_I32}[k], 0xABCDEFULL + (uint64_t)k, 0 };
+        pthread_create(&t[k], NULL, th_worker, &jobs[k]);
+    }
+    int ok = 0;
+    for (int k = 0; k < K; k++) { pthread_join(t[k], NULL); ok += jobs[k].ok; }
+    tsr_set_threads(saved);
+    CHECK(ok == K, "concurrent multithreaded sorts from %d application pthreads are exact (%d ok)", (int)K, ok);
+}
+#endif
+
 static void test_abi_runtime(void)
 {    /* version and capability negotiation: one version source */
     CHECK(tsr_abi_version() == TSR_ABI_VERSION && TSR_ABI_VERSION == 2, "abi version %d", tsr_abi_version());
@@ -3040,6 +3311,10 @@ int main(void)
     test_abi_runtime();
     test_sort_variants();
     test_sort_daz();
+    test_sort_hardening();
+#if !defined(_WIN32)
+    test_sort_app_threads();
+#endif
     test_arg_gate();
     test_ownership();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
