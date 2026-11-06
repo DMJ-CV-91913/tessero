@@ -2456,12 +2456,26 @@ static void test_fft_trig(void)
     CHECK(tsr_allocated() == before, "the trig transforms leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* tsr_sort with the radix sort forced (the path of machines without AVX2; tsr_sort itself is the AVX2 sort where
+   available): the comparisons below keep checking all three algorithms */
+static int radix_sort(int dtype, int64_t n, void *data)
+{
+    tsr_sort_test_radix = 1;
+    const int rc = tsr_sort(dtype, n, data);
+    tsr_sort_test_radix = 0;
+    return rc;
+}
+
 /* tsr_sort, tsr_sort_simd and tsr_sort_runs return the same bytes: every dtype, NaN, -0.0/+0.0, duplicates, sorted,
    reversed and interleaved data, +-inf, NaN payloads and signs, subnormals, the integer extremes, sizes 0..300,
    100000 and 300000 (the parallel sort), element-aligned starts that are not 32-byte aligned (the AVX2 loads are
    unaligned), 1 and 4 threads */
 static void test_sort_variants(void)
 {
+    {   /* tsr_sort is tsr_sort_simd; the radix sort is reached through the test switch only */
+        double x[5] = {3, -1, 2, NAN, -0.0}, y[5] = {3, -1, 2, NAN, -0.0};
+        CHECK(tsr_sort(TSR_F64, 5, x) == 0 && tsr_sort_simd(TSR_F64, 5, y) == 0 && !memcmp(x, y, sizeof x), "tsr_sort == tsr_sort_simd");
+    }
     static const int dts[] = {TSR_F64, TSR_F32, TSR_I64, TSR_I32, TSR_U8};
     const int saved = tsr_get_threads();
     uint64_t st = 0x9E3779B97F4A7C15ULL;
@@ -2504,7 +2518,7 @@ static void test_sort_variants(void)
                         }
                     }
                     memcpy(a + 8, src + 8, (size_t)(n * isz)); memcpy(b + 8, src + 8, (size_t)(n * isz)); memcpy(c + 8, src + 8, (size_t)(n * isz));
-                    const int ra = tsr_sort(dt, n, a + 8), rb = tsr_sort_simd(dt, n, b + 8), rc = tsr_sort_runs(dt, n, c + 8);
+                    const int ra = radix_sort(dt, n, a + 8), rb = tsr_sort_simd(dt, n, b + 8), rc = tsr_sort_runs(dt, n, c + 8);
                     cases++;
                     if (ra || rb || rc || memcmp(a + 8, b + 8, (size_t)(n * isz)) || memcmp(a + 8, c + 8, (size_t)(n * isz))) bad++;
                 }
@@ -2541,7 +2555,7 @@ static void test_sort_daz(void)
         memcpy(a, src, sizeof a); memcpy(b, src, sizeof b); memcpy(af, sf, sizeof af); memcpy(bf, sf, sizeof bf);
         const unsigned csr = __builtin_ia32_stmxcsr();
         if (mode) __builtin_ia32_ldmxcsr(csr | 0x8040);
-        const int r = tsr_sort(TSR_F64, N, a) | tsr_sort_simd(TSR_F64, N, b) | tsr_sort(TSR_F32, N, af) | tsr_sort_simd(TSR_F32, N, bf);
+        const int r = radix_sort(TSR_F64, N, a) | tsr_sort_simd(TSR_F64, N, b) | radix_sort(TSR_F32, N, af) | tsr_sort_simd(TSR_F32, N, bf);
         __builtin_ia32_ldmxcsr(csr);
         if (r || memcmp(a, b, sizeof a) || memcmp(af, bf, sizeof af)) bad++;
     }
@@ -2596,7 +2610,7 @@ static int th_agree(int dt, int64_t n, const unsigned char *src)
     unsigned char *o = malloc(bytes), *a = malloc(bytes), *b = malloc(bytes), *c = malloc(bytes);
     memcpy(o, src, bytes - 1); memcpy(a, src, bytes - 1); memcpy(b, src, bytes - 1); memcpy(c, src, bytes - 1);
     th_oracle(dt, n, o);
-    const int rc = tsr_sort(dt, n, a) | tsr_sort_simd(dt, n, b) | tsr_sort_runs(dt, n, c);
+    const int rc = radix_sort(dt, n, a) | tsr_sort_simd(dt, n, b) | tsr_sort_runs(dt, n, c);
     const int ok = rc == 0 && !memcmp(o, a, bytes - 1) && !memcmp(o, b, bytes - 1) && !memcmp(o, c, bytes - 1);
     free(o); free(a); free(b); free(c);
     return ok;

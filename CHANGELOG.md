@@ -7,6 +7,13 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ## [Unreleased]
 
+### Changed
+
+- **`sort()` (C `tsr_sort`) is now the AVX2 quicksort of `sortSimd()` where the CPU has AVX2**, the radix sort
+  elsewhere. The result is unchanged (the sorts return the same bytes); the time is 2-25x lower below a few thousand
+  values and about 2x lower on 1M random values (one thread: 17 ms against NumPy's 14 ms, was 31 ms). `sortSimd()`
+  stays as an explicit name. The radix sort stays tested on AVX2 machines through a test-only switch.
+
 ### Added
 
 - **`Generator::multivariateNormal(..., method:)` takes `'cholesky'` and `'eigh'`** besides `'svd'`, on both

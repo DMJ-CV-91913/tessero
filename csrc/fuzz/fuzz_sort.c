@@ -56,7 +56,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     const unsigned int csr = __builtin_ia32_stmxcsr();
     if (flags & 2) __builtin_ia32_ldmxcsr(csr | 0x8040);
 #endif
-    const int ra = tsr_sort(dt, n, a), rb = tsr_sort_simd(dt, n, b), rc = tsr_sort_runs(dt, n, c);
+    tsr_sort_test_radix = 1;                                    /* a: the radix sort (tsr_sort is the AVX2 sort) */
+    const int ra = tsr_sort(dt, n, a);
+    tsr_sort_test_radix = 0;
+    const int rb = tsr_sort_simd(dt, n, b), rc = tsr_sort_runs(dt, n, c);
 #if defined(__x86_64__) && defined(__GNUC__)
     __builtin_ia32_ldmxcsr(csr);
 #endif

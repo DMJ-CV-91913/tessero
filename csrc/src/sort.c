@@ -27,6 +27,11 @@
 #endif
 
 int tsr_sort_test_depth = 0;                                  /* internal.h: tests only */
+#if defined(_MSC_VER)
+__declspec(thread) int tsr_sort_test_radix = 0;              /* internal.h: tests only */
+#else
+_Thread_local int tsr_sort_test_radix = 0;                    /* internal.h: tests only */
+#endif
 
 static inline uint64_t key_f64(double v, int zero_equal)
 {
@@ -638,15 +643,17 @@ static int sort_keys(int algo, uint64_t *keys, int64_t n)
 
 static int sort_impl(int dtype, int64_t n, void *data, int algo);
 
+/* the default: the AVX2 quicksort where the CPU has AVX2 (faster than the radix sort at every size, 2-25x below a few
+   thousand values), the radix sort elsewhere; both return the same bits */
 int tsr_sort(int dtype, int64_t n, void *data)
 {
-    return sort_impl(dtype, n, data, SORT_RADIX);
+    return tsr_sort_simd(dtype, n, data);
 }
 
 int tsr_sort_simd(int dtype, int64_t n, void *data)
 {
 #ifdef TSR_HAVE_AVX2_SORT
-    if (n >= 2 && (dtype == TSR_F64 || dtype == TSR_F32 || dtype == TSR_I64 || dtype == TSR_I32) && __builtin_cpu_supports("avx2"))
+    if (n >= 2 && !tsr_sort_test_radix && (dtype == TSR_F64 || dtype == TSR_F32 || dtype == TSR_I64 || dtype == TSR_I32) && __builtin_cpu_supports("avx2"))
         return simd_sort_inplace(dtype, n, data);
 #endif
     return sort_impl(dtype, n, data, SORT_RADIX);   /* no AVX2, or uint8/bool (counting sort): the same result */

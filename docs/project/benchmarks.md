@@ -57,7 +57,7 @@ i7-4790 (Haswell, AVX2), PHP 8.5.12, NumPy 2.4.4 / SciPy 1.17.1. A ratio below 1
 | sum 1M | 0.48 | 0.35 | 1.38 |
 | rfft / irfft 2^20 | 34.0 / 28.0 | 25.7 / 27.1 | 1.32 / 1.03 |
 | fft 1,000,003 (prime, Bluestein) | 468 | 261 | 1.80 |
-| sort 1M | 31.4 | 13.6 | 2.31 |
+| sort 1M (re-timed with `bench/sort_bench.*` after `sort()` became the AVX2 sort) | 17.1 | 13.7 | 1.25 |
 
 The fft, rfft and var rows were measured in a second run (`fft` and `rfft` with and without the copy removal, `var`
 with and without its row buffer); the other rows come from the full bench run. Geometric mean over the 21 shared
@@ -74,8 +74,7 @@ Reductions to a scalar on small arrays (FFI backend, per call): `sum` of 10 valu
 Bluestein lengths: a repeated 1,000,003-point `fft` takes about 220 ms (NumPy 260) under the CLI's 256 MiB FFT cache;
 under a web SAPI's 32 MiB default the plan (about 112 MB) is rebuilt per call, about 490 ms.
 
-Known gaps, largest first: `sort` (radix sort with a fixed cost of about 26 ms even on sorted input, against NumPy's
-AVX2 quicksort), `cholesky` of small matrices (100x100: 0.16 ms against 0.05, the triangle masking), `rfft` (1.3x),
+Known gaps, largest first: `cholesky` of small matrices (100x100: 0.16 ms against 0.05, the triangle masking), `rfft` (1.3x),
 and `sum` / `max` of 1M values (1.1-1.25x).
 
 Reproduce:
@@ -140,12 +139,13 @@ Three sorts with the same result (C: `tsr_sort`, `tsr_sort_simd`, `tsr_sort_runs
 `sortSimd()`, `sortRuns()`, on both backends). All three order the values by the same total order (NaN last, -0.0
 before +0.0) and by comparison only, so the output is byte-identical whatever the algorithm, the CPU's SIMD level,
 the thread count, the alignment of the input or the CPU's denormals-are-zero mode; the test suite checks this for
-every dtype, including infinities, NaN payloads, subnormals and the integer extremes. `sort()` stays the default
-and the choice is purely about speed:
+every dtype, including infinities, NaN payloads, subnormals and the integer extremes. `sort()` is the default and
+takes the AVX2 quicksort of `sortSimd()` where the CPU has AVX2 (the radix sort elsewhere); the choice is purely about
+speed:
 
 | function | algorithm | strengths | weaknesses |
 |---|---|---|---|
-| `sort()` | LSD radix sort on 64-bit keys in a scratch buffer | the same speed whatever the order of the input; no AVX2 needed | about half the speed of `sortSimd()` on random data, far slower on sorted or duplicate-heavy data |
+| `sort()` | the default: `sortSimd()` where the CPU has AVX2; otherwise an LSD radix sort on 64-bit keys in a scratch buffer | the fastest available on the machine, without choosing | -- |
 | `sortSimd()` | AVX2 quicksort in place at the data's own width (8 float32/int32 or 4 float64/int64 values per vector), in-register sorting networks for the small pieces, no scratch buffer | the fastest of the three on almost every input | needs AVX2 (without it, it runs the radix sort); time depends on the input |
 | `sortRuns()` | natural (run-adaptive) merge sort | mostly sorted data (values appended to a sorted array, a few edited values), also without AVX2 | 2-3x slower than the others on random data |
 
@@ -206,8 +206,8 @@ limited by memory bandwidth. Eight threads (hyper-threads) add nothing on this m
 How the three work, why their outputs are identical, and the risk register with its tests:
 [sorting design](sort-design.md).
 
-Rule of thumb: `sortSimd()` on an AVX2 machine, `sortRuns()` for mostly sorted data where AVX2 is missing, `sort()`
-when a steady, input-independent time matters more than the best case.
+Rule of thumb: `sort()`; `sortRuns()` for mostly sorted data where AVX2 is missing. The `sort` columns in the tables
+above are the radix sort, measured before `sort()` became the AVX2 sort; it is now the path of CPUs without AVX2.
 
 ## Full sweep
 

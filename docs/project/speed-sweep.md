@@ -80,7 +80,7 @@ there, and on values appended to a sorted array. All of Tessero's sorts return t
 Milliseconds, 1,000,000 values, best of 7 calls in each of 5 alternating rounds; each call returns a new sorted array
 on both sides (PHP app vs Python app). Fastest in bold.
 
-| data | np.sort | np.sort stable | sortSimd | sortSimd 4 threads | sortRuns | sort |
+| data | np.sort | np.sort stable | sortSimd | sortSimd 4 threads | sortRuns | radix |
 |---|---|---|---|---|---|---|
 | float64 random | 13.7 | 76.3 | 17.1 | **7.7** | 86.1 | 37.1 |
 | float64 10 distinct values | **3.8** | 32.2 | 5.7 | 4.0 | 49.0 | 23.8 |
@@ -92,8 +92,8 @@ on both sides (PHP app vs Python app). Fastest in bold.
 | int64 random | 18.5 | 69.7 | 18.4 | **9.6** | 84.4 | 30.2 |
 
 `sortRuns()` (a natural merge sort) is meant for mostly sorted data on machines without AVX2, where `sortSimd()` falls
-back to the radix sort; it does not beat NumPy's Timsort. `sort()` (the radix sort) takes the same time whatever the
-order of the input. Scripts: `bench/sort_bench.php` and `bench/sort_bench.py`; measured on commit 8ce79ab3 under the
+back to the radix sort; it does not beat NumPy's Timsort. `sort()` is now the AVX2 sort as well (its time is the
+`sortSimd` column); the `radix` column is the radix sort, the path of CPUs without AVX2. Scripts: `bench/sort_bench.php` and `bench/sort_bench.py`; measured on commit 8ce79ab3 under the
 host load described in Method, so single-thread results within about 20% vary between runs (the multi-thread
 advantage held in every run). How the sorts work and their tests: [sorting design](sort-design.md).
 
