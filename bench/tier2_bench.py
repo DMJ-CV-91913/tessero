@@ -199,7 +199,7 @@ cases = {
     'scipy.sparse.csgraph minimum_spanning_tree 500 nodes': lambda: cg.minimum_spanning_tree(graph),
     'scipy.sparse.csgraph connected_components 500 nodes': lambda: cg.connected_components(graph),
     'scipy.spatial KDTree build 100k (3-D)': lambda: KDTree(pts3),
-    'scipy.spatial KDTree query 100 points, k=5 (Tessero: exhaustive search)': lambda: tree.query(qpts, 5),
+    'scipy.spatial KDTree query 100 points, k=5': lambda: tree.query(qpts, 5),
     'scipy.spatial ConvexHull 10k (2-D)': lambda: ConvexHull(pts2),
     'scipy.spatial Delaunay 10k (2-D)': lambda: Delaunay(pts2),
     'scipy.cluster.vq kmeans2 10k x 3, k=8': lambda: vq.kmeans2(km, kinit, minit='matrix'),

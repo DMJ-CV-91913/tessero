@@ -662,6 +662,18 @@
   }
  },
  "numpy": "2.4.4",
+ "parity": {
+  "ext": {
+   "pass": 1846,
+   "php": 291,
+   "total": 1846
+  },
+  "ffi": {
+   "pass": 1846,
+   "php": 291,
+   "total": 1846
+  }
+ },
  "registry_functions": 1561,
  "registry_untested": [
   "interpolate.spgrid",

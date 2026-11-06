@@ -7,14 +7,15 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 83 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster) | 80 cases | **2.05** | 26 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 81 cases | **1.39** | 29 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
-on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines, and behind where an algorithm is
-not yet the best one available (the gaps below).
+on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
+on 24 cases, within 10% either way on 13, and clearly slower on 44, mostly where an algorithm is not yet the best one
+available (the gaps below).
 
 ## Fixed during the sweep
 
@@ -49,11 +50,12 @@ factor was zero, so a NaN in a later operand propagates as in NumPy.
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
-| `spatial.Delaunay`, 10k points | 35 s | 29 ms | Bowyer-Watson in PHP | a kernel implementation |
-| `cluster.hierarchy.linkage` ward, 2000 | 1.3 s | 57 ms | O(n^3) | nearest-neighbour chain, O(n^2) |
-| `spatial.ConvexHull`, 10k (2-D) | 28 ms | 1.3 ms | monotone chain in PHP | kernel implementation |
-| `optimize.curve_fit`, 1000 points | 9.9 ms | 0.6 ms | to be profiled | -- |
-| `linalg.solve_triangular` 1000 | 4.2 ms | 0.6 ms | to be profiled | LAPACK `dtrtrs` |
+| `spatial.Delaunay`, 10k points | 67 s | 60 ms | Bowyer-Watson in PHP | a kernel implementation |
+| `spatial.KDTree` query, 100 points in 100k | 37 ms | 0.3 ms | the kernel k-d tree is rebuilt on every `query()` call (about 30 ms for 100k points); SciPy builds it once | keep the built tree between calls (large batches are already on par: 10k queries 55 ms vs 49 ms) |
+| `cluster.hierarchy.linkage` ward, 2000 | 1.9 s | 65 ms | O(n^3) | nearest-neighbour chain, O(n^2) |
+| `spatial.ConvexHull`, 10k (2-D) | 36 ms | 1.6 ms | monotone chain in PHP | kernel implementation |
+| `optimize.curve_fit`, 1000 points | 10 ms | 0.6 ms | to be profiled | -- |
+| `linalg.solve_triangular` 1000 | 5.0 ms | 1.0 ms | to be profiled | LAPACK `dtrtrs` |
 | `sparse.linalg` spsolve / cg / eigsh on sparse input | -- | 21-453 ms | the solvers take dense matrices only | sparse (CSR) operands |
 | `special.ellip_harm_2`, Kelvin-function zeros (tier 3) | 100-600x | -- | slow per-call algorithms | -- |
 
@@ -71,7 +73,12 @@ fixtures mix derivative=0 and 1 rows, and SciPy takes one derivative flag per ca
 - Tier 1: the `scipy.special` element-wise blocks of the parity fixtures (`tests/fixtures/parity/special.json`),
   each argument column tiled to 100,000 values; median of repeated runs.
 - Tier 2: `bench/tier2_bench.php` and `bench/tier2_bench.py`, the same calls on the same inputs (seeded generators:
-  Tessero's PCG64 streams match NumPy's); median of repeated runs, fast calls in an inner loop.
+  Tessero's PCG64 streams match NumPy's); median of repeated runs, fast calls in an inner loop. Re-timed on commit
+  8ce79ab3, after the fixes above, the same day: the host then carried unrelated load (load average about 10 on 8
+  cores), so each side ran three times, alternating, and each case keeps its best time. Against the first run, the
+  cases no fix touched took a median 10% longer on the Tessero side and 17% longer on the SciPy side, a bias of about
+  6% in Tessero's favour; memory-bound cases such as `map_coordinates` are the most sensitive. Ratios within 10% are
+  read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
   repetitions, median), `tools/parity/time_calls.py` times the same cases in NumPy/SciPy, and
   `tools/parity/time_report.py` pairs them case for case. Stateful calls (seeded generators, frozen distributions)
@@ -83,86 +90,87 @@ fixtures mix derivative=0 and 1 rows, and SciPy takes one derivative flag per ca
 
 | case | Tessero ms | NumPy/SciPy ms | ratio |
 |---|---|---|---|
-| scipy.optimize least_squares Rosenbrock residuals | 0.145 | 5.73 | 0.03 |
-| scipy.interpolate make_interp_spline k=3, 1M points | 77.7 | 1.43e+03 | 0.05 |
-| scipy.integrate solve_ivp Lotka-Volterra RK45 | 0.735 | 5.94 | 0.12 |
-| scipy.optimize minimize Nelder-Mead rosen n=5 | 0.821 | 5.97 | 0.14 |
-| scipy.sparse.csgraph connected_components 500 nodes | 0.655 | 4.15 | 0.16 |
-| scipy.signal detrend 1M | 10.1 | 37.4 | 0.27 |
-| scipy.optimize minimize L-BFGS-B rosen n=50 | 25.5 | 84.8 | 0.30 |
-| scipy.signal welch 1M, nperseg 1024 | 33.6 | 94.9 | 0.35 |
-| scipy.optimize root (2 equations) | 0.0184 | 0.0332 | 0.55 |
-| scipy.ndimage distance_transform_edt 512x512 | 10.2 | 17 | 0.60 |
-| numpy polyfit deg 5, 100k | 8.51 | 13.2 | 0.65 |
-| numpy histogram 1M, 100 bins | 8.45 | 12 | 0.70 |
-| scipy.spatial KDTree build 100k (3-D) | 20 | 28.1 | 0.71 |
-| scipy.sparse.csgraph minimum_spanning_tree 500 nodes | 4.08 | 5.6 | 0.73 |
-| scipy.stats skew 1M | 8.99 | 12.1 | 0.74 |
-| scipy.stats kurtosis 1M | 8.43 | 11.2 | 0.75 |
-| numpy searchsorted 1M into 100k | 105 | 132 | 0.80 |
-| scipy.interpolate PchipInterpolator 10k knots, 1M points | 76.7 | 88.1 | 0.87 |
-| scipy.interpolate CubicSpline 10k knots, 1M points | 77.4 | 88.3 | 0.88 |
-| scipy.stats mannwhitneyu 100k vs 100k | 20.7 | 23.5 | 0.88 |
-| scipy.stats spearmanr 100k | 18.5 | 19.6 | 0.94 |
-| scipy.cluster.vq kmeans2 10k x 3, k=8 | 3.97 | 4.13 | 0.96 |
-| scipy.linalg svdvals 300x300 | 8.87 | 9.04 | 0.98 |
-| scipy.signal decimate 1M by 10 | 18.5 | 18.8 | 0.99 |
-| scipy.linalg schur 300x300 | 54.7 | 55.1 | 0.99 |
-| scipy.linalg qr 500x500 | 16 | 16 | 1.00 |
-| scipy.linalg lstsq 1000x100 | 5.55 | 5.52 | 1.01 |
-| scipy.interpolate RBFInterpolator 500 -> 10k (2-D) | 70.9 | 69.9 | 1.01 |
-| scipy.linalg eig 300x300 (general) | 60.3 | 59.5 | 1.01 |
-| numpy interp 1M into 1000 | 58.2 | 54.2 | 1.07 |
-| scipy.stats norm.ppf 1M | 44 | 40.5 | 1.09 |
-| numpy diff 1M | 1.24 | 1.13 | 1.10 |
-| scipy.stats rankdata 1M | 148 | 133 | 1.11 |
-| numpy cumsum 1M | 2.59 | 2.3 | 1.13 |
-| scipy.ndimage map_coordinates 1000x1000, 100k points | 53.9 | 43.8 | 1.23 |
-| numpy linalg slogdet 600x600 | 6.62 | 5.38 | 1.23 |
-| scipy.ndimage binary_erosion 1000x1000 | 11.6 | 9.41 | 1.23 |
-| scipy.linalg cholesky 1000x1000 | 16.9 | 13.4 | 1.25 |
-| scipy.ndimage rotate 512x512, 30 deg | 47.5 | 36.8 | 1.29 |
-| scipy.stats gaussian_kde 1000 points, 1000 evaluations | 13.8 | 10.7 | 1.30 |
-| scipy.stats kendalltau 10k | 2.21 | 1.69 | 1.30 |
-| scipy.stats ks_2samp 100k vs 100k | 86.4 | 66 | 1.31 |
-| scipy.stats binned_statistic 1M, 100 bins | 66.3 | 49.7 | 1.33 |
-| scipy.signal find_peaks 1M | 5.82 | 4.04 | 1.44 |
-| numpy argsort 1M | 83.5 | 54.1 | 1.54 |
-| scipy.signal filtfilt order 4, 1M | 16.5 | 10.4 | 1.58 |
-| scipy.signal resample 100k -> 50k | 2.48 | 1.43 | 1.73 |
-| scipy.ndimage zoom 500x500 x2 | 130 | 73.4 | 1.77 |
-| scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.00914 | 0.00511 | 1.79 |
-| scipy.ndimage median_filter 512x512, 3 | 60.7 | 31.8 | 1.91 |
-| scipy.stats linregress 1M | 21.3 | 11 | 1.93 |
-| numpy fft2 1024x1024 | 54.5 | 28 | 1.95 |
-| scipy.signal savgol_filter 1M (31, 3) | 27 | 13.2 | 2.04 |
-| scipy.sparse.csgraph shortest_path 500 nodes (Dijkstra) | 112 | 54.9 | 2.05 |
-| scipy.signal hilbert 1M | 102 | 47.5 | 2.14 |
-| numpy convolve 100k * 101 | 6.1 | 2.72 | 2.25 |
-| numpy clip 1M | 2.54 | 1.04 | 2.43 |
-| scipy.ndimage laplace 1000x1000 | 29.1 | 11.6 | 2.52 |
-| scipy.signal convolve2d 500x500 * 5x5 | 34.9 | 13.7 | 2.55 |
-| scipy.ndimage label 1000x1000 | 18.5 | 6.13 | 3.01 |
-| scipy.fft dct 1M | 49.9 | 16.5 | 3.02 |
-| scipy.ndimage sobel 1000x1000 | 26.9 | 8.03 | 3.35 |
-| numpy rfft2 1024x1024 | 29.5 | 8.64 | 3.42 |
-| scipy.signal medfilt 100k, k=5 | 8.24 | 2.12 | 3.89 |
-| scipy.linalg pinv 300x300 | 120 | 23.9 | 5.02 |
-| scipy.linalg solve_triangular 1000x1000 | 4.16 | 0.612 | 6.80 |
-| scipy.signal resample_poly 1M, 3/2 | 260 | 34.8 | 7.47 |
-| numpy cov 50 x 100k | 235 | 28.3 | 8.30 |
-| numpy unique 1M (1000 values) | 97.2 | 8.7 | 11.17 |
-| scipy.signal correlate 10k * 101 | 3.4 | 0.282 | 12.06 |
-| numpy percentile 1M | 119 | 9.1 | 13.03 |
-| numpy median 1M | 144 | 8.45 | 17.01 |
-| scipy.optimize curve_fit exp decay, 1000 points | 9.89 | 0.565 | 17.48 |
-| scipy.spatial ConvexHull 10k (2-D) | 27.6 | 1.28 | 21.65 |
-| scipy.cluster.hierarchy linkage ward 2000x3 | 1.31e+03 | 56.8 | 23.07 |
-| numpy einsum ij,jk->ik 300x300 | 267 | 6.66 | 40.11 |
-| scipy.ndimage maximum_filter 1000x1000, 5 | 822 | 19.1 | 43.13 |
-| numpy trapezoid 1M | 353 | 3.21 | 110.17 |
-| scipy.spatial Delaunay 10k (2-D) | 3.51e+04 | 29.3 | 1199.83 |
-| scipy.spatial KDTree query 100 points, k=5 (Tessero: exhaustive search) | 2.3e+04 | 0.201 | 114681.98 |
+| scipy.optimize least_squares Rosenbrock residuals | 0.155 | 5.96 | 0.03 |
+| scipy.interpolate make_interp_spline k=3, 1M points | 86.2 | 1.7e+03 | 0.05 |
+| scipy.integrate solve_ivp Lotka-Volterra RK45 | 0.805 | 7.51 | 0.11 |
+| scipy.optimize minimize Nelder-Mead rosen n=5 | 0.876 | 6.78 | 0.13 |
+| scipy.sparse.csgraph connected_components 500 nodes | 0.898 | 6.86 | 0.13 |
+| scipy.signal detrend 1M | 10.9 | 49.1 | 0.22 |
+| scipy.optimize minimize L-BFGS-B rosen n=50 | 27.1 | 118 | 0.23 |
+| scipy.signal welch 1M, nperseg 1024 | 38.2 | 117 | 0.33 |
+| numpy trapezoid 1M | 1.58 | 3.5 | 0.45 |
+| numpy polyfit deg 5, 100k | 8.74 | 19.3 | 0.45 |
+| scipy.optimize root (2 equations) | 0.0197 | 0.0401 | 0.49 |
+| scipy.sparse.csgraph minimum_spanning_tree 500 nodes | 5.09 | 9.95 | 0.51 |
+| numpy histogram 1M, 100 bins | 9.59 | 15.3 | 0.63 |
+| scipy.ndimage distance_transform_edt 512x512 | 11.6 | 17.6 | 0.66 |
+| scipy.stats mannwhitneyu 100k vs 100k | 23 | 33.9 | 0.68 |
+| scipy.spatial KDTree build 100k (3-D) | 27.5 | 39.8 | 0.69 |
+| scipy.stats skew 1M | 10.2 | 14.1 | 0.72 |
+| scipy.stats spearmanr 100k | 19.5 | 26.5 | 0.74 |
+| scipy.stats kurtosis 1M | 10.5 | 14.2 | 0.74 |
+| scipy.interpolate PchipInterpolator 10k knots, 1M points | 84.3 | 112 | 0.76 |
+| numpy searchsorted 1M into 100k | 119 | 148 | 0.81 |
+| scipy.interpolate CubicSpline 10k knots, 1M points | 84.7 | 102 | 0.83 |
+| scipy.linalg schur 300x300 | 54.9 | 64.5 | 0.85 |
+| numpy diff 1M | 1.33 | 1.51 | 0.88 |
+| scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.00968 | 0.0103 | 0.94 |
+| scipy.linalg svdvals 300x300 | 9.35 | 9.6 | 0.97 |
+| scipy.interpolate RBFInterpolator 500 -> 10k (2-D) | 77.4 | 79.1 | 0.98 |
+| numpy linalg slogdet 600x600 | 7.08 | 7.11 | 1.00 |
+| scipy.stats kendalltau 10k | 2.29 | 2.29 | 1.00 |
+| scipy.cluster.vq kmeans2 10k x 3, k=8 | 4.56 | 4.55 | 1.00 |
+| scipy.signal decimate 1M by 10 | 21.7 | 21.4 | 1.01 |
+| scipy.stats rankdata 1M | 175 | 170 | 1.03 |
+| numpy interp 1M into 1000 | 65.4 | 63.5 | 1.03 |
+| scipy.linalg qr 500x500 | 17.9 | 16.8 | 1.06 |
+| scipy.linalg eig 300x300 (general) | 67.5 | 63 | 1.07 |
+| scipy.stats norm.ppf 1M | 48.4 | 45 | 1.08 |
+| numpy cumsum 1M | 2.78 | 2.54 | 1.09 |
+| scipy.linalg lstsq 1000x100 | 6.3 | 5.67 | 1.11 |
+| scipy.stats gaussian_kde 1000 points, 1000 evaluations | 15.1 | 13.2 | 1.14 |
+| scipy.stats ks_2samp 100k vs 100k | 90.5 | 74.7 | 1.21 |
+| scipy.ndimage binary_erosion 1000x1000 | 13.1 | 10.8 | 1.21 |
+| scipy.signal filtfilt order 4, 1M | 17.7 | 14 | 1.26 |
+| scipy.linalg cholesky 1000x1000 | 19.1 | 15.1 | 1.26 |
+| numpy argsort 1M | 86.8 | 67.2 | 1.29 |
+| scipy.stats binned_statistic 1M, 100 bins | 71.7 | 55.2 | 1.30 |
+| scipy.ndimage maximum_filter 1000x1000, 5 | 29.5 | 22.4 | 1.31 |
+| numpy unique 1M (1000 values) | 16.1 | 12.1 | 1.33 |
+| numpy cov 50 x 100k | 49.9 | 35.8 | 1.39 |
+| scipy.signal resample 100k -> 50k | 2.93 | 2.07 | 1.41 |
+| numpy median 1M | 16 | 11.3 | 1.42 |
+| scipy.signal find_peaks 1M | 6.29 | 4.32 | 1.46 |
+| scipy.ndimage rotate 512x512, 30 deg | 58.3 | 36.6 | 1.59 |
+| numpy fft2 1024x1024 | 58.8 | 36.3 | 1.62 |
+| scipy.ndimage zoom 500x500 x2 | 143 | 87.9 | 1.62 |
+| scipy.sparse.csgraph shortest_path 500 nodes (Dijkstra) | 153 | 85.6 | 1.79 |
+| numpy einsum ij,jk->ik 300x300 | 18.1 | 9.7 | 1.87 |
+| scipy.ndimage map_coordinates 1000x1000, 100k points | 82.3 | 43.2 | 1.91 |
+| scipy.ndimage median_filter 512x512, 3 | 69.1 | 34.9 | 1.98 |
+| numpy clip 1M | 2.76 | 1.37 | 2.01 |
+| scipy.stats linregress 1M | 24 | 11.8 | 2.03 |
+| scipy.signal sosfilt order 8, 1M | 18.3 | 8.95 | 2.04 |
+| numpy percentile 1M | 21.7 | 10.6 | 2.05 |
+| numpy convolve 100k * 101 | 6.62 | 3.17 | 2.09 |
+| scipy.signal savgol_filter 1M (31, 3) | 31 | 14.3 | 2.17 |
+| scipy.signal hilbert 1M | 122 | 52.2 | 2.35 |
+| scipy.signal convolve2d 500x500 * 5x5 | 38.8 | 15.5 | 2.51 |
+| scipy.fft dct 1M | 55.7 | 21 | 2.65 |
+| scipy.ndimage laplace 1000x1000 | 35.1 | 11.8 | 2.97 |
+| scipy.ndimage label 1000x1000 | 19.9 | 6.7 | 2.98 |
+| scipy.ndimage sobel 1000x1000 | 29.7 | 9.05 | 3.29 |
+| numpy rfft2 1024x1024 | 38.5 | 10.6 | 3.65 |
+| scipy.signal medfilt 100k, k=5 | 10.3 | 2.27 | 4.55 |
+| scipy.linalg pinv 300x300 | 132 | 25.8 | 5.09 |
+| scipy.linalg solve_triangular 1000x1000 | 4.98 | 0.976 | 5.10 |
+| scipy.signal resample_poly 1M, 3/2 | 298 | 38.3 | 7.78 |
+| scipy.signal correlate 10k * 101 | 3.74 | 0.286 | 13.04 |
+| scipy.optimize curve_fit exp decay, 1000 points | 10.1 | 0.62 | 16.27 |
+| scipy.spatial ConvexHull 10k (2-D) | 35.5 | 1.61 | 22.03 |
+| scipy.cluster.hierarchy linkage ward 2000x3 | 1.86e+03 | 65 | 28.66 |
+| scipy.spatial KDTree query 100 points, k=5 | 36.8 | 0.303 | 121.54 |
+| scipy.spatial Delaunay 10k (2-D) | 6.72e+04 | 59.8 | 1122.89 |
 
 ## Tier 3, by module
 

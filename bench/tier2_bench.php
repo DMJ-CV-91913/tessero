@@ -202,7 +202,7 @@ $cases = [
     'scipy.sparse.csgraph minimum_spanning_tree 500 nodes' => fn () => CG::minimumSpanningTree($graph),
     'scipy.sparse.csgraph connected_components 500 nodes' => fn () => CG::connectedComponents($graph),
     'scipy.spatial KDTree build 100k (3-D)' => fn () => new KDTree($pts3),
-    'scipy.spatial KDTree query 100 points, k=5 (Tessero: exhaustive search)' => fn () => $tree->query($qpts, 5),
+    'scipy.spatial KDTree query 100 points, k=5' => fn () => $tree->query($qpts, 5),
     'scipy.spatial ConvexHull 10k (2-D)' => fn () => new ConvexHull($pts2),
     'scipy.spatial Delaunay 10k (2-D)' => fn () => new Delaunay($pts2),
     'scipy.cluster.vq kmeans2 10k x 3, k=8' => fn () => CL::kmeans2($km, $kinit),
