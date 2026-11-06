@@ -68,6 +68,35 @@ On the tier-1 inputs SciPy crashed (segmentation fault), aborted or ran for hour
 6 hours); `pbdv` and `pbvv` raised a memory-allocation error. `spherical_jn/yn/in/kn` are not comparable here: the
 fixtures mix derivative=0 and 1 rows, and SciPy takes one derivative flag per call.
 
+## Sorting against NumPy
+
+`NDArray::sortSimd()` (an AVX2 quicksort with in-register sorting networks) uses the threads set with
+`Tessero::setThreads()`; NumPy's `np.sort` uses one. With four threads it sorts a million random values about 2x
+faster than NumPy (float64 1.8x, float32 1.9x, int64 1.9x); on one thread it runs level with NumPy, whose default
+sort on this machine is Intel's x86-simd-sort vector quicksort (int64 equal, float types up to 1.2x behind). On sorted
+or reversed input it is about 5x faster than `np.sort`'s default; NumPy's `kind='stable'` (Timsort) is faster still
+there, and on values appended to a sorted array. All of Tessero's sorts return the same result as `np.sort`.
+
+Milliseconds, 1,000,000 values, best of 7 calls in each of 5 alternating rounds; each call returns a new sorted array
+on both sides (PHP app vs Python app). Fastest in bold.
+
+| data | np.sort | np.sort stable | sortSimd | sortSimd 4 threads | sortRuns | sort |
+|---|---|---|---|---|---|---|
+| float64 random | 13.7 | 76.3 | 17.1 | **7.7** | 86.1 | 37.1 |
+| float64 10 distinct values | **3.8** | 32.2 | 5.7 | 4.0 | 49.0 | 23.8 |
+| float64 sorted | 13.8 | **1.7** | 2.5 | 2.4 | 4.2 | 35.1 |
+| float64 reversed | 14.0 | **2.2** | 3.0 | 2.9 | 4.8 | 34.9 |
+| float64 sorted, 1% of values moved | 14.2 | 15.9 | 15.6 | **7.1** | 32.9 | 34.9 |
+| float64 sorted, 1% random values appended | 14.2 | **3.2** | 16.8 | 7.8 | 26.1 | 34.8 |
+| float32 random | 7.4 | 74.1 | 8.9 | **3.9** | 74.7 | 33.8 |
+| int64 random | 18.5 | 69.7 | 18.4 | **9.6** | 84.4 | 30.2 |
+
+`sortRuns()` (a natural merge sort) is meant for mostly sorted data on machines without AVX2, where `sortSimd()` falls
+back to the radix sort; it does not beat NumPy's Timsort. `sort()` (the radix sort) takes the same time whatever the
+order of the input. Scripts: `bench/sort_bench.php` and `bench/sort_bench.py`; measured on commit 8ce79ab3 under the
+host load described in Method, so single-thread results within about 20% vary between runs (the multi-thread
+advantage held in every run). How the sorts work and their tests: [sorting design](sort-design.md).
+
 ## Method
 
 - Tier 1: the `scipy.special` element-wise blocks of the parity fixtures (`tests/fixtures/parity/special.json`),
