@@ -159,14 +159,16 @@ static int r_laplacian(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     double *d = (double *)calloc((size_t)(n > 0 ? n : 1), sizeof(double));
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, (int64_t[]){n, n});
     if (!d || !out) { free(d); fn_free_doubles(A, tot); return TSR_ENOMEM; }
+    /* as scipy's dense laplacian: the diagonal is zeroed, w = column sums (rows in order), then m *= -1 and the
+       diagonal set to w; normed divides by sqrt(w) along columns, then rows, before the negation (so the zero
+       entries come out -0.0, as in SciPy) */
+    for (int64_t i = 0; i < n; i++) A[i * n + i] = 0.0;
     for (int64_t j = 0; j < n; j++) { double s = 0.0; for (int64_t i = 0; i < n; i++) s += A[i * n + j]; d[j] = s; }
     for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < n; j++) {
-        if (!normed) out[i * n + j] = (i == j ? d[i] : 0.0) - A[i * n + j];
+        if (!normed) out[i * n + j] = i == j ? d[i] : -A[i * n + j];
         else {
-            double wi = d[i] > 0.0 ? sqrt(d[i]) : 1.0;     /* isolated vertices normalize by 1 (SciPy) */
-            double wj = d[j] > 0.0 ? sqrt(d[j]) : 1.0;
-            double diag = (i == j && d[i] > 0.0) ? 1.0 : 0.0;
-            out[i * n + j] = diag - A[i * n + j] / (wi * wj);
+            const double wi = d[i] == 0.0 ? 1.0 : sqrt(d[i]), wj = d[j] == 0.0 ? 1.0 : sqrt(d[j]);   /* isolated: 1 */
+            out[i * n + j] = i == j ? (d[i] == 0.0 ? 0.0 : 1.0) : -(A[i * n + j] / wj / wi);
         }
     }
     free(d); fn_free_doubles(A, tot);

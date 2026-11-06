@@ -2143,7 +2143,7 @@ static int r_invpascal(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
             for (int64_t t = 0; t < n; t++) {
                 const int64_t i = kind == 1 ? k : t, j = kind == 1 ? t : k;   /* lower: C(i, j); upper: C(j, i) */
                 const double sign = ((i + j) & 1) ? -1.0 : 1.0;
-                out[i * n + j] = sign * (t <= k ? b[t] : 0.0);
+                out[i * n + j] = t <= k ? sign * b[t] : 0.0;           /* scipy's default exact=True result is integer: +0.0 off the triangle */
             }
         }
     } else {
@@ -2672,6 +2672,19 @@ int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs)
     lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)n);
     if (!ipiv) return -1;
     lapack_int info = LAPACKE_dgesv(LAPACK_ROW_MAJOR, (lapack_int)n, (lapack_int)nrhs, M, (lapack_int)n, ipiv, b, (lapack_int)nrhs);
+    free(ipiv);
+    return info == 0 ? 0 : -1;
+}
+
+/* Solve the banded n x n system A x = b in place (one right-hand side) via dgbsv: ab is LAPACK band storage,
+   column-major, ldab = 2 kl + ku + 1 (A(i, j) at ab[(kl + ku + i - j) + ldab j], the first kl rows fill-in), the
+   routine scipy.linalg.solve_banded calls. 0 on success. */
+int sl_band_solve(double *ab, double *b, int64_t n, int kl, int ku)
+{
+    if (n == 0) return 0;
+    lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)n);
+    if (!ipiv) return -1;
+    lapack_int info = LAPACKE_dgbsv(LAPACK_COL_MAJOR, (lapack_int)n, kl, ku, 1, ab, 2 * kl + ku + 1, ipiv, b, (lapack_int)n);
     free(ipiv);
     return info == 0 ? 0 : -1;
 }

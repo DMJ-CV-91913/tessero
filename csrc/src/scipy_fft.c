@@ -1,7 +1,9 @@
 /* scipy.fft real trigonometric transforms ("scipyfft." prefix -> Tessero\ScipyFft facade).
  *
- * dct / idct / dst / idst for a 1-D real array, types 2 and 3, norm='backward' (the SciPy default): the
- * plain O(N^2) direct summations, which reproduce scipy.fft exactly. Both backends read this table.
+ * dct / idct / dst / idst for a 1-D real array, types 2 and 3, norm='backward' (the SciPy default). Up to
+ * DCT_DIRECT_MAX points: the direct summations (exact to the last bits on the small fixtures); above it: one real
+ * FFT of length N (Makhoul 1980), O(N log N) where the direct sums are O(N^2) (1M points: milliseconds instead of
+ * hours). DST-II/III are DCT-II/III of a sign-flipped or reversed input. Both backends read this table.
  */
 #include "fn.h"
 
@@ -9,23 +11,82 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* unnormalized DCT of type 2 or 3 (scipy's norm='backward'). */
-static void fft_dctcore(const double *x, int64_t N, int type, double *y)
+#define DCT_DIRECT_MAX 128
+
+int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);
+int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);
+
+/* unnormalized DCT-II through a real FFT: v = x even-indexed then odd-indexed reversed, y[k] = 2 Re(e^{-i pi k/2N} V[k]) */
+static int dct2_fft(const double *x, int64_t N, double *y)
 {
+    const int64_t h = N / 2 + 1;
+    double *v = (double *)tsr_alloc(N * 8), *V = (double *)tsr_alloc(h * 16);
+    if (!v || !V) { if (v) tsr_free(v, N * 8); if (V) tsr_free(V, h * 16); return TSR_ENOMEM; }
+    for (int64_t n = 0; 2 * n < N; n++) v[n] = x[2 * n];
+    for (int64_t n = 0; 2 * n + 1 < N; n++) v[N - 1 - n] = x[2 * n + 1];
+    int rc = tsr_rfft(N, 1, v, V);
+    if (rc == TSR_OK)
+        for (int64_t k = 0; k < N; k++) {
+            const int64_t j = k < h ? k : N - k;                /* V[N - k] = conj(V[k]) for real v */
+            const double re = V[2 * j], im = k < h ? V[2 * j + 1] : -V[2 * j + 1], th = M_PI * (double)k / (double)(2 * N);
+            y[k] = 2.0 * (re * cos(th) + im * sin(th));
+        }
+    tsr_free(v, N * 8); tsr_free(V, h * 16);
+    return rc;
+}
+
+/* unnormalized DCT-III (y[k] = x[0] + 2 sum x[n] cos(pi n (2k+1) / 2N)) through an inverse real FFT:
+   V[k] = (x[k] - i x[N-k]) e^{i pi k/2N} is Hermitian, v = N irfft(V), y[2n] = v[n], y[2n+1] = v[N-1-n] */
+static int dct3_fft(const double *x, int64_t N, double *y)
+{
+    const int64_t h = N / 2 + 1;
+    double *v = (double *)tsr_alloc(N * 8), *V = (double *)tsr_alloc(h * 16);
+    if (!v || !V) { if (v) tsr_free(v, N * 8); if (V) tsr_free(V, h * 16); return TSR_ENOMEM; }
+    for (int64_t k = 0; k < h; k++) {
+        const double a = x[k], b = k == 0 ? 0.0 : x[N - k], th = M_PI * (double)k / (double)(2 * N), c = cos(th), s = sin(th);
+        V[2 * k] = a * c + b * s;
+        V[2 * k + 1] = a * s - b * c;
+    }
+    int rc = tsr_irfft(N, 1, V, v);
+    if (rc == TSR_OK) {
+        for (int64_t n = 0; 2 * n < N; n++) y[2 * n] = (double)N * v[n];
+        for (int64_t n = 0; 2 * n + 1 < N; n++) y[2 * n + 1] = (double)N * v[N - 1 - n];
+    }
+    tsr_free(v, N * 8); tsr_free(V, h * 16);
+    return rc;
+}
+
+/* unnormalized DCT of type 2 or 3 (scipy's norm='backward'). */
+static int fft_dctcore(const double *x, int64_t N, int type, double *y)
+{
+    if (N > DCT_DIRECT_MAX) return type == 2 ? dct2_fft(x, N, y) : dct3_fft(x, N, y);
     if (type == 2) {
         for (int64_t k = 0; k < N; k++) { double s = 0.0; for (int64_t n = 0; n < N; n++) s += x[n] * cos(M_PI * (double)(2 * n + 1) * (double)k / (double)(2 * N)); y[k] = 2.0 * s; }
     } else { /* type 3 */
         for (int64_t k = 0; k < N; k++) { double s = x[0]; for (int64_t n = 1; n < N; n++) s += 2.0 * x[n] * cos(M_PI * (double)n * (double)(2 * k + 1) / (double)(2 * N)); y[k] = s; }
     }
+    return TSR_OK;
 }
-/* unnormalized DST of type 2 or 3 (scipy's norm='backward'). */
-static void fft_dstcore(const double *x, int64_t N, int type, double *y)
+/* unnormalized DST of type 2 or 3 (scipy's norm='backward'). Above DCT_DIRECT_MAX: DST-II(x)[k] = DCT-II((-1)^n x[n])[N-1-k] and
+   DST-III(x)[k] = (-1)^k DCT-III(x reversed)[k]. */
+static int fft_dstcore(const double *x, int64_t N, int type, double *y)
 {
+    if (N > DCT_DIRECT_MAX) {
+        double *u = (double *)tsr_alloc(N * 8), *w = (double *)tsr_alloc(N * 8);
+        if (!u || !w) { if (u) tsr_free(u, N * 8); if (w) tsr_free(w, N * 8); return TSR_ENOMEM; }
+        for (int64_t n = 0; n < N; n++) u[n] = type == 2 ? ((n & 1) ? -x[n] : x[n]) : x[N - 1 - n];
+        const int rc = type == 2 ? dct2_fft(u, N, w) : dct3_fft(u, N, w);
+        if (rc == TSR_OK)
+            for (int64_t k = 0; k < N; k++) y[k] = type == 2 ? w[N - 1 - k] : ((k & 1) ? -w[k] : w[k]);
+        tsr_free(u, N * 8); tsr_free(w, N * 8);
+        return rc;
+    }
     if (type == 2) {
         for (int64_t k = 0; k < N; k++) { double s = 0.0; for (int64_t n = 0; n < N; n++) s += x[n] * sin(M_PI * (double)(2 * n + 1) * (double)(k + 1) / (double)(2 * N)); y[k] = 2.0 * s; }
     } else { /* type 3 */
         for (int64_t k = 0; k < N; k++) { double s = ((k & 1) ? -1.0 : 1.0) * x[N - 1]; for (int64_t n = 0; n < N - 1; n++) s += 2.0 * x[n] * sin(M_PI * (double)(n + 1) * (double)(2 * k + 1) / (double)(2 * N)); y[k] = s; }
     }
+    return TSR_OK;
 }
 
 static int fft_type(const tsr_arg *args, int nargs)
@@ -47,15 +108,13 @@ static int fft_run(const tsr_arg *args, int nargs, tsr_result *res, int which, i
     int64_t sh[1] = {N};
     double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
     if (!y) { fn_free_doubles(x, L); return TSR_ENOMEM; }
-    if (which == 0) fft_dctcore(x, N, eff, y); else fft_dstcore(x, N, eff, y);
+    const int rc = which == 0 ? fft_dctcore(x, N, eff, y) : fft_dstcore(x, N, eff, y);
     if (inverse) { double sc = 1.0 / (double)(2 * N); for (int64_t k = 0; k < N; k++) y[k] *= sc; }
     fn_free_doubles(x, L);
-    return TSR_OK;
+    return rc;
 }
 
 /* ---- FFTLog fast Hankel transform (scipy.fft.fht / ifht / fhtoffset) ---- */
-int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);
-int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);
 void tsr_special_poch(const void *, const double *, double *);
 void tsr_loggamma_cpx(const double *in, double *out);
 
@@ -185,15 +244,16 @@ static int r_idst(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 { (void)ctx; (void)nres; return fft_run(args, nargs, res, 1, 1); }
 
 /* one in-place 1-D transform of a length-L vector buf (which: 0 cos, 1 sin; forward/inverse as above). */
-static void fft_1d(double *buf, int64_t L, int which, int type, int inverse)
+static int fft_1d(double *buf, int64_t L, int which, int type, int inverse)
 {
     int eff = inverse ? (type == 2 ? 3 : 2) : type;
-    double *y = (double *)malloc((size_t)L * sizeof(double));
-    if (!y) return;
-    if (which == 0) fft_dctcore(buf, L, eff, y); else fft_dstcore(buf, L, eff, y);
+    double *y = (double *)tsr_alloc(L * 8);
+    if (!y) return TSR_ENOMEM;
+    const int rc = which == 0 ? fft_dctcore(buf, L, eff, y) : fft_dstcore(buf, L, eff, y);
     double sc = inverse ? 1.0 / (double)(2 * L) : 1.0;
-    for (int64_t i = 0; i < L; i++) buf[i] = y[i] * sc;
-    free(y);
+    if (rc == TSR_OK) for (int64_t i = 0; i < L; i++) buf[i] = y[i] * sc;
+    tsr_free(y, L * 8);
+    return rc;
 }
 
 /* separable n-D transform over a 2-D array: transform every row, then every column. */
@@ -209,14 +269,15 @@ static int fft_run_nd(const tsr_arg *args, int nargs, tsr_result *res, int which
     double *col = (double *)malloc((size_t)m * sizeof(double));
     if (!out || !col) { free(col); fn_free_doubles(x, L); return TSR_ENOMEM; }
     memcpy(out, x, (size_t)(m * n) * sizeof(double));
-    for (int64_t i = 0; i < m; i++) fft_1d(&out[i * n], n, which, type, inverse);     /* rows */
-    for (int64_t j = 0; j < n; j++) {                                                   /* columns */
+    int rc = TSR_OK;
+    for (int64_t i = 0; i < m && rc == TSR_OK; i++) rc = fft_1d(&out[i * n], n, which, type, inverse);     /* rows */
+    for (int64_t j = 0; j < n && rc == TSR_OK; j++) {                                                   /* columns */
         for (int64_t i = 0; i < m; i++) col[i] = out[i * n + j];
-        fft_1d(col, m, which, type, inverse);
+        rc = fft_1d(col, m, which, type, inverse);
         for (int64_t i = 0; i < m; i++) out[i * n + j] = col[i];
     }
     free(col); fn_free_doubles(x, L);
-    return TSR_OK;
+    return rc;
 }
 static int r_dctn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return fft_run_nd(args, nargs, res, 0, 0); }

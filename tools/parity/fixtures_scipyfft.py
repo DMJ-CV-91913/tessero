@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """scipy.fft fixtures: dct/idct/dst/idst for 1-D real input, types 2 and 3, norm='backward' (the default).
-Plain trigonometric summations (no BLAS), host-independent; the pinned environment is not required."""
+Plain trigonometric transforms (no BLAS), host-independent; the pinned environment is not required."""
 import json, os
 import numpy as np
 import scipy.fft as sf
@@ -8,6 +8,7 @@ import fixtures_np as F  # enc / enc_result
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'tests', 'fixtures', 'parity', 'scipyfft.json')
 rng = np.random.default_rng(20261010)
+rng_big = np.random.default_rng(20261106)
 
 FN = {'dct': sf.dct, 'idct': sf.idct, 'dst': sf.dst, 'idst': sf.idst}
 calls = []
@@ -15,6 +16,14 @@ for name, fn in FN.items():
     cases = []
     for n in (4, 5, 8, 9):
         x = rng.normal(size=n)
+        for t in (2, 3):
+            cases.append({'args': [F.enc(x), F.enc(t)], 'kwargs': {},
+                          'expect': F.enc_result(np.asarray(fn(x, type=t), float), []), 'compare': 'tol',
+                          'tol': {'atol': 1e-10, 'rtol': 1e-10}})
+    # above Tessero's DCT_DIRECT_MAX (128) the transforms run through a real FFT: cover that path too. Own generator,
+    # so the inputs of the cases above (and of everything below) stay as they were
+    for n in (129, 257, 1000):
+        x = rng_big.normal(size=n)
         for t in (2, 3):
             cases.append({'args': [F.enc(x), F.enc(t)], 'kwargs': {},
                           'expect': F.enc_result(np.asarray(fn(x, type=t), float), []), 'compare': 'tol',
@@ -27,6 +36,12 @@ for name, fn in FN2.items():
     cases = []
     for (m, n) in ((3, 4), (5, 5), (4, 6)):
         x = rng.normal(size=(m, n))
+        for t in (2, 3):
+            cases.append({'args': [F.enc(x), F.enc(t)], 'kwargs': {},
+                          'expect': F.enc_result(np.asarray(fn(x, type=t), float), []), 'compare': 'tol',
+                          'tol': {'atol': 1e-10, 'rtol': 1e-10}})
+    for (m, n) in ((3, 130), (130, 3)):                 # one axis above the FFT switch
+        x = rng_big.normal(size=(m, n))
         for t in (2, 3):
             cases.append({'args': [F.enc(x), F.enc(t)], 'kwargs': {},
                           'expect': F.enc_result(np.asarray(fn(x, type=t), float), []), 'compare': 'tol',

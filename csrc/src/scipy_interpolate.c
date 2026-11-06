@@ -26,6 +26,7 @@
     do { const int rc_ = fn_arg_i64(&(a), 1, (lo), (hi), (name), &var); if (rc_ != TSR_OK) return rc_; } while (0)
 
 extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
+extern int sl_band_solve(double *ab, double *b, int64_t n, int kl, int ku);    /* np_linalg.c (LAPACK dgbsv) */
 
 static double ip_sign(double v) { return v > 0.0 ? 1.0 : (v < 0.0 ? -1.0 : 0.0); }
 
@@ -98,7 +99,9 @@ static int ip_akima_deriv(const double *x, const double *y, int64_t n, double *t
     return TSR_OK;
 }
 
-/* SciPy CubicSpline (bc_type='not-a-knot'): node derivatives s[0..n-1] from a tridiagonal system (dense solve). */
+/* SciPy CubicSpline (bc_type='not-a-knot'): node derivatives s[0..n-1] from a tridiagonal system, solved as SciPy
+   solves it: solve_banded((1, 1), ...), i.e. LAPACK dgbsv on the band. O(n) time and memory (a dense solve of the same
+   system took about 17 s and 800 MB at 10,000 knots). */
 static int ip_cubicspline_deriv(const double *x, const double *y, int64_t n, double *s)
 {
     double *dx = (double *)malloc((size_t)(n - 1) * sizeof(double));
@@ -106,31 +109,35 @@ static int ip_cubicspline_deriv(const double *x, const double *y, int64_t n, dou
     if (!dx || !sl) { free(dx); free(sl); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n - 1; i++) { dx[i] = x[i + 1] - x[i]; sl[i] = (y[i + 1] - y[i]) / dx[i]; }
     if (n == 2) { s[0] = sl[0]; s[1] = sl[0]; free(dx); free(sl); return TSR_OK; }
-    double *M = (double *)calloc((size_t)(n * n), sizeof(double));
+    if (n > (int64_t)INT32_MAX / 4) { free(dx); free(sl); fn_set_error("CubicSpline: too many points"); return TSR_EARG; }
+    /* LAPACK band storage, column-major, kl = ku = 1 plus kl rows of fill-in: A(i, j) at AB[(2 + i - j) + 4 j] */
+    double *AB = (double *)calloc((size_t)(4 * n), sizeof(double));
     double *b = (double *)malloc((size_t)n * sizeof(double));
-    int rc = (!M || !b) ? TSR_ENOMEM : TSR_OK;
+    int rc = (!AB || !b) ? TSR_ENOMEM : TSR_OK;
+#define A_(i, j) AB[(2 + (i) - (j)) + 4 * (j)]
     if (rc == TSR_OK) {
         if (n == 3) {                                      /* not-a-knot n==3: parabola through the points */
-            M[0 * 3 + 0] = 1.0; M[0 * 3 + 1] = 1.0; b[0] = 2.0 * sl[0];
-            M[1 * 3 + 0] = dx[1]; M[1 * 3 + 1] = 2.0 * (dx[0] + dx[1]); M[1 * 3 + 2] = dx[0];
+            A_(0, 0) = 1.0; A_(0, 1) = 1.0; b[0] = 2.0 * sl[0];
+            A_(1, 0) = dx[1]; A_(1, 1) = 2.0 * (dx[0] + dx[1]); A_(1, 2) = dx[0];
             b[1] = 3.0 * (dx[0] * sl[1] + dx[1] * sl[0]);
-            M[2 * 3 + 1] = 1.0; M[2 * 3 + 2] = 1.0; b[2] = 2.0 * sl[1];
+            A_(2, 1) = 1.0; A_(2, 2) = 1.0; b[2] = 2.0 * sl[1];
         } else {
             const double d0 = x[2] - x[0];
-            M[0] = dx[1]; M[1] = d0; b[0] = ((dx[0] + 2.0 * d0) * dx[1] * sl[0] + dx[0] * dx[0] * sl[1]) / d0;
+            A_(0, 0) = dx[1]; A_(0, 1) = d0; b[0] = ((dx[0] + 2.0 * d0) * dx[1] * sl[0] + dx[0] * dx[0] * sl[1]) / d0;
             for (int64_t i = 1; i < n - 1; i++) {
-                M[i * n + (i - 1)] = dx[i]; M[i * n + i] = 2.0 * (dx[i - 1] + dx[i]); M[i * n + (i + 1)] = dx[i - 1];
+                A_(i, i - 1) = dx[i]; A_(i, i) = 2.0 * (dx[i - 1] + dx[i]); A_(i, i + 1) = dx[i - 1];
                 b[i] = 3.0 * (dx[i] * sl[i - 1] + dx[i - 1] * sl[i]);
             }
             const double de = x[n - 1] - x[n - 3];
-            M[(n - 1) * n + (n - 2)] = de; M[(n - 1) * n + (n - 1)] = dx[n - 3];
+            A_(n - 1, n - 2) = de; A_(n - 1, n - 1) = dx[n - 3];
             b[n - 1] = (dx[n - 2] * dx[n - 2] * sl[n - 3] + (2.0 * de + dx[n - 2]) * dx[n - 3] * sl[n - 2]) / de;
         }
-        rc = sl_dense_solve(M, b, n, 1);
-        if (rc == TSR_OK) for (int64_t i = 0; i < n; i++) s[i] = b[i];
-        else fn_set_error("CubicSpline: the spline system is singular");
+        const int info = sl_band_solve(AB, b, n, 1, 1);
+        if (info == 0) for (int64_t i = 0; i < n; i++) s[i] = b[i];
+        else { rc = -1; fn_set_error("CubicSpline: the spline system is singular"); }
     }
-    free(M); free(b); free(dx); free(sl);
+#undef A_
+    free(AB); free(b); free(dx); free(sl);
     return rc;
 }
 

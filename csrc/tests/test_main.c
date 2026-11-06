@@ -2202,8 +2202,10 @@ static void test_fuzz_batch_d(void)
     if (rc == 0) fa_free(r, 1);
     ip[1] = arg_str("upper");
     rc = fa_call("slinalg.invpascal", 2, ip, r, 1);
-    CHECK(rc == 0 && ((double *)r[0].arr.data)[3 * 8 + 5] == 0x1.4p+3 && signbit(((double *)r[0].arr.data)[5 * 8 + 2]),
-          "invpascal(8) upper keeps its values, -0.0 below the diagonal (rc %d)", rc);
+    /* scipy's default exact=True result is int64: its zeros are plain zeros (exact=False would give -0.0 where
+       (-1)^(i+j) < 0; Tessero computes the exact=True values, as the parity fixtures check) */
+    CHECK(rc == 0 && ((double *)r[0].arr.data)[3 * 8 + 5] == 0x1.4p+3 && ((double *)r[0].arr.data)[5 * 8 + 2] == 0.0
+          && !signbit(((double *)r[0].arr.data)[5 * 8 + 2]), "invpascal(8) upper keeps its values, +0.0 below the diagonal (rc %d)", rc);
     if (rc == 0) fa_free(r, 1);
     ip[0] = arg_int(1861); ip[1] = arg_str("symmetric");
     CHECK(fa_call("slinalg.invpascal", 2, ip, r, 1) == TSR_EARG, "invpascal(1861) symmetric refused (work bound)");
@@ -2212,6 +2214,103 @@ static void test_fuzz_batch_d(void)
     CHECK(rc == 0 && ((double *)r[0].arr.data)[1 * 3000 + 0] == -1.0, "invpascal(3000) lower is computed (O(n^2)) (rc %d)", rc);
     if (rc == 0) fa_free(r, 1);
     CHECK(tsr_allocated() == before, "batch D leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
+/* scipy.fft dct / idct / dst / idst above DCT_DIRECT_MAX run through a real FFT (Makhoul): they must agree with the
+   direct summations (computed here in long double) at sizes around the switch, odd, even and prime, and stay exact
+   enough for a round trip at 1M points (where the direct sums would take hours) */
+static long double trig_ref(int which, int type, const double *x, int64_t N, int64_t k)
+{
+    long double s = 0.0L;
+    const long double pi = 3.141592653589793238462643383279502884L;
+    if (which == 0 && type == 2) for (int64_t n = 0; n < N; n++) s += 2.0L * x[n] * cosl(pi * (2 * n + 1) * k / (2.0L * N));
+    if (which == 0 && type == 3) { s = x[0]; for (int64_t n = 1; n < N; n++) s += 2.0L * x[n] * cosl(pi * n * (2 * k + 1) / (2.0L * N)); }
+    if (which == 1 && type == 2) for (int64_t n = 0; n < N; n++) s += 2.0L * x[n] * sinl(pi * (2 * n + 1) * (k + 1) / (2.0L * N));
+    if (which == 1 && type == 3) { s = (k & 1) ? -x[N - 1] : x[N - 1]; for (int64_t n = 0; n < N - 1; n++) s += 2.0L * x[n] * sinl(pi * (n + 1) * (2 * k + 1) / (2.0L * N)); }
+    return s;
+}
+static void test_fft_trig(void)
+{
+    static const int64_t sizes[] = {127, 128, 129, 130, 131, 200, 255, 256, 257, 1000, 1023, 4096, 4099};
+    static const char *names[2][2] = {{"scipyfft.dct", "scipyfft.idct"}, {"scipyfft.dst", "scipyfft.idst"}};
+    const int64_t before = tsr_allocated();
+    uint64_t st = 777;
+    double *x = malloc(4099 * 8);
+    int bad = 0, cases = 0;
+    double worst = 0.0;
+    for (size_t si = 0; si < sizeof sizes / sizeof sizes[0]; si++) {
+        const int64_t N = sizes[si];
+        for (int64_t i = 0; i < N; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; x[i] = (double)(st >> 11) / 9007199254740992.0 - 0.5; }
+        int64_t sh[1] = {N};
+        for (int which = 0; which < 2; which++)
+            for (int inv = 0; inv < 2; inv++)
+                for (int type = 2; type <= 3; type++) {
+                    const int id = tsr_fn_find(names[which][inv]);
+                    tsr_arg a[2] = {arg_arr(x, 1, sh), arg_num((double)type)};
+                    tsr_result r[1];
+                    cases++;
+                    if (id < 0 || tsr_fn_routine(id, 2, a, 1, r) != 0) { bad++; continue; }
+                    const double *y = r[0].arr.data;
+                    const int eff = inv ? (type == 2 ? 3 : 2) : type;
+                    const long double sc = inv ? 1.0L / (2.0L * N) : 1.0L;
+                    long double mx = 0, err = 0;
+                    for (int64_t k = 0; k < N; k++) {
+                        const long double ref = trig_ref(which, eff, x, N, k) * sc;
+                        if (fabsl(ref) > mx) mx = fabsl(ref);
+                        if (fabsl(y[k] - ref) > err) err = fabsl(y[k] - ref);
+                    }
+                    const double rel = (double)(err / (mx > 0 ? mx : 1));
+                    if (rel > worst) worst = rel;
+                    if (rel > 1e-13) bad++;
+                    tsr_free(r[0].arr.data, r[0].bytes);
+                }
+    }
+    CHECK(bad == 0, "dct/idct/dst/idst types 2-3 == direct sums around the FFT switch (%d of %d differ, worst %.2g)", bad, cases, worst);
+
+    /* 1M points: idct(dct(x)) == x and idst(dst(x)) == x */
+    const int64_t M = 1 << 20;
+    double *big = malloc((size_t)M * 8);
+    for (int64_t i = 0; i < M; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; big[i] = (double)(st >> 11) / 9007199254740992.0 - 0.5; }
+    int64_t shm[1] = {M};
+    double rt = 0.0;
+    int ok = 1;
+    for (int which = 0; which < 2; which++) {
+        tsr_arg a[2] = {arg_arr(big, 1, shm), arg_num(2.0)};
+        tsr_result f[1], g[1];
+        if (tsr_fn_routine(tsr_fn_find(names[which][0]), 2, a, 1, f) != 0) { ok = 0; continue; }
+        tsr_arg b[2] = {arg_arr(f[0].arr.data, 1, shm), arg_num(2.0)};
+        if (tsr_fn_routine(tsr_fn_find(names[which][1]), 2, b, 1, g) != 0) { ok = 0; tsr_free(f[0].arr.data, f[0].bytes); continue; }
+        const double *z = g[0].arr.data;
+        for (int64_t i = 0; i < M; i++) if (fabs(z[i] - big[i]) > rt) rt = fabs(z[i] - big[i]);
+        tsr_free(f[0].arr.data, f[0].bytes); tsr_free(g[0].arr.data, g[0].bytes);
+    }
+    CHECK(ok && rt < 1e-12, "1M-point dct/idct and dst/idst round trips (max error %.2g)", rt);
+
+    /* dctn over a 200 x 150 array: rows then columns, each above the switch */
+    enum { R = 200, C = 150 };
+    double *m2 = malloc(R * C * 8), *tmp = malloc(R * C * 8);
+    for (int i = 0; i < R * C; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; m2[i] = (double)(st >> 11) / 9007199254740992.0 - 0.5; }
+    for (int i = 0; i < R; i++) for (int k = 0; k < C; k++) tmp[i * C + k] = (double)trig_ref(0, 2, m2 + i * C, C, k);
+    double colv[R], err2 = 0.0, mx2 = 0.0;
+    int64_t sh2[2] = {R, C};
+    tsr_arg a2[2] = {arg_arr(m2, 2, sh2), arg_num(2.0)};
+    tsr_result r2[1];
+    const int rc2 = tsr_fn_routine(tsr_fn_find("scipyfft.dctn"), 2, a2, 1, r2);
+    if (rc2 == 0) {
+        const double *y2 = r2[0].arr.data;
+        for (int k = 0; k < C; k++) {
+            for (int i = 0; i < R; i++) colv[i] = tmp[i * C + k];
+            for (int j = 0; j < R; j++) {
+                const double ref = (double)trig_ref(0, 2, colv, R, j);
+                if (fabs(ref) > mx2) mx2 = fabs(ref);
+                if (fabs(y2[j * C + k] - ref) > err2) err2 = fabs(y2[j * C + k] - ref);
+            }
+        }
+        tsr_free(r2[0].arr.data, r2[0].bytes);
+    }
+    CHECK(rc2 == 0 && err2 <= 1e-13 * mx2, "dctn 200 x 150 == separable direct sums (relative error %.2g)", mx2 > 0 ? err2 / mx2 : err2);
+    free(x); free(big); free(m2); free(tmp);
+    CHECK(tsr_allocated() == before, "the trig transforms leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
 /* tsr_sort, tsr_sort_simd and tsr_sort_runs return the same bytes: every dtype, NaN, -0.0/+0.0, duplicates, sorted,
@@ -3309,6 +3408,7 @@ int main(void)
     test_fuzz_batch_d();
     test_ci_regressions();
     test_abi_runtime();
+    test_fft_trig();
     test_sort_variants();
     test_sort_daz();
     test_sort_hardening();

@@ -308,8 +308,9 @@ static int r_polymulx(const void *x, const tsr_arg *a, int n, tsr_result *r, int
     if (a[0].kind != 3) { fn_set_error("npoly: coefficients must be an array"); return TSR_EARG; }
     int rc; int64_t nc = 0; double *c = npoly_series(&a[0], &nc, "npoly.polymulx", &rc);
     if (rc == TSR_OK) {
-        if (nc == 1 && c[0] == 0.0) { double *out = npoly_out1(r, 1); if (!out) rc = TSR_ENOMEM; else out[0] = 0.0; }
-        else { double *out = npoly_out1(r, nc + 1); if (!out) rc = TSR_ENOMEM; else { out[0] = 0.0; for (int64_t i = 0; i < nc; i++) out[i + 1] = c[i]; } }
+        /* numpy: a lone zero comes back as it is, else prd[0] = c[0]*0 (so -0.0 when c[0] < 0) */
+        if (nc == 1 && c[0] == 0.0) { double *out = npoly_out1(r, 1); if (!out) rc = TSR_ENOMEM; else out[0] = c[0]; }
+        else { double *out = npoly_out1(r, nc + 1); if (!out) rc = TSR_ENOMEM; else { out[0] = c[0] * 0.0; for (int64_t i = 0; i < nc; i++) out[i + 1] = c[i]; } }
     }
     fn_free_doubles(c, nc);
     return rc;
@@ -396,12 +397,13 @@ static int r_polyder(const void *x, const tsr_arg *a, int n, tsr_result *r, int 
     if (rc == TSR_OK && nc == 0) { double *o = npoly_out1(r, 0); if (!o) rc = TSR_ENOMEM; fn_free_doubles(c, nc); return rc; }   /* NumPy: [] */
     if (rc == TSR_OK) {
         int64_t len = nc;
+        const double c0z = c[0] * 0.0;                       /* numpy: cnt >= n gives c[:1]*0 */
         for (int64_t it = 0; it < m && len > 0; it++) {
-            if (len <= 1) { len = 1; c[0] = 0.0; break; }
+            if (len <= 1) { len = 1; c[0] = c0z; break; }
             for (int64_t j = 1; j < len; j++) c[j - 1] = c[j] * (double)j * scl;
             len -= 1;
         }
-        if (m >= nc) { len = 1; c[0] = 0.0; }
+        if (m >= nc) { len = 1; c[0] = c0z; }
         double *o = npoly_out1(r, len); if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < len; i++) o[i] = c[i];
     }
     fn_free_doubles(c, nc);
@@ -832,7 +834,8 @@ static int rb_der(const void *ctx, const tsr_arg *a, int n, tsr_result *r, int n
     if (rc == TSR_OK) { double *cur = malloc(nc * sizeof(double)), *nxt = malloc(nc * sizeof(double));
         if (!cur || !nxt) rc = TSR_ENOMEM;
         else { int64_t len = nc; for (int64_t i = 0; i < nc; i++) cur[i] = c[i];
-            /* a length-1 series differentiates to [0] and stays there: at most nc steps whatever m is */
+            /* numpy: an order of derivation of at least len(c) gives c[:1]*0 (-0.0 when c[0] < 0) */
+            if (m >= nc) { cur[0] = c[0] * 0.0; len = 1; m = 0; }
             for (int64_t it = 0; it < m && rc == TSR_OK; it++) {
                 if (len == 1) { cur[0] = 0.0; break; }
                 int64_t nl = B->der(cur, len, scl, nxt); if (nl < 0) { rc = TSR_ENOMEM; break; }

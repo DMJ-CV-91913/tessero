@@ -811,8 +811,10 @@ static int r_lsmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3) { fn_set_error("lsmr: A 2-D, b array"); return TSR_EARG; }
     int64_t mm = args[0].arr.shape[0], nn = args[0].arr.shape[1];
     if (args[1].arr.shape[0] != mm) { fn_set_error("lsmr: b has wrong length"); return TSR_EARG; }
+    /* maxiter is argument 6 ("A, b, damp, atol, btol, conlim, maxiter"): reading argument 5 took conlim=1e8 for the
+       iteration count, 100 million iterations per default call (15 s on a 10 x 6 system) */
     int64_t maxit = 4 * nn;
-    if (nargs > 5 && (args[5].kind == 1 || args[5].kind == 4)) { double mv = (args[5].flags & 1) ? (double)args[5].ival : args[5].num; if (mv > 0) maxit = (int64_t)mv; }
+    if (nargs > 6 && (args[6].kind == 1 || args[6].kind == 4)) { double mv = (args[6].flags & 1) ? (double)args[6].ival : args[6].num; if (mv > 0) maxit = mv < 1e15 ? (int64_t)mv : (int64_t)1e15; }
     int64_t LA, Lb; double *A = fn_arg_doubles(&args[0], &LA); if (!A) return TSR_ENOMEM;
     double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { fn_free_doubles(A, LA); return TSR_ENOMEM; }
     int64_t sh[1] = {nn};

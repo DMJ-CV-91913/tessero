@@ -4786,12 +4786,15 @@ static int r_modf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     double *pg = pf ? (double *)fn_result_array(&items[1], TSR_F64, src.a.ndim, src.a.shape) : NULL;
     if (!pf || !pg) { own_free(&src); return TSR_ENOMEM; }
     const double *s = (const double *)src.a.data;
-    for (int64_t i = 0; i < n; i++) { const double t = trunc(s[i]); pg[i] = t; pf[i] = s[i] - t; }
+    for (int64_t i = 0; i < n; i++) pf[i] = modf(s[i], &pg[i]);   /* C modf, as numpy: -0.0 and -3.0 give a -0.0 fraction */
     own_free(&src);
     return TSR_OK;
 }
 
-static const int BW_AND = 0, BW_OR = 1, BW_XOR = 2, BW_LSHIFT = 3, BW_RSHIFT = 4;
+/* the enum for case labels (a const int is not an integer constant expression: -O0 builds refused it); the
+   addressable constants are the routines' context pointers */
+enum { BWO_AND, BWO_OR, BWO_XOR, BWO_LSHIFT, BWO_RSHIFT };
+static const int BW_AND = BWO_AND, BW_OR = BWO_OR, BW_XOR = BWO_XOR, BW_LSHIFT = BWO_LSHIFT, BW_RSHIFT = BWO_RSHIFT;
 
 /* bitwise_and/or/xor(x1, x2): element-wise over integers; equal shapes or a scalar operand (numpy.bitwise_*) */
 static int r_bitwise(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -4820,12 +4823,12 @@ static int r_bitwise(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         const int64_t va = pa[na == 1 ? 0 : i], vb = pb[nb == 1 ? 0 : i];
         int64_t r;
         switch (op) {
-        case BW_OR:     r = va | vb; break;
-        case BW_XOR:    r = va ^ vb; break;
+        case BWO_OR:     r = va | vb; break;
+        case BWO_XOR:    r = va ^ vb; break;
         /* shifts: wrap via unsigned (defined) for left, arithmetic for right; out-of-range counts saturate like a
            two's-complement shift rather than invoking C undefined behaviour. */
-        case BW_LSHIFT: r = (vb < 0 || vb >= 64) ? 0 : (int64_t)((uint64_t)va << vb); break;
-        case BW_RSHIFT: r = (vb < 0) ? 0 : (vb >= 64) ? (va < 0 ? -1 : 0) : (va >> vb); break;
+        case BWO_LSHIFT: r = (vb < 0 || vb >= 64) ? 0 : (int64_t)((uint64_t)va << vb); break;
+        case BWO_RSHIFT: r = (vb < 0) ? 0 : (vb >= 64) ? (va < 0 ? -1 : 0) : (va >> vb); break;
         default:        r = va & vb; break;  /* BW_AND */
         }
         pz[i] = r;

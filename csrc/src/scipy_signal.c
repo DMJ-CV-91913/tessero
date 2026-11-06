@@ -545,9 +545,19 @@ static int r_iircomb(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 
 /* butter(N, Wn, btype='low', output='ba'): digital Butterworth filter (scipy.signal.butter); lowpass/highpass,
    output 'ba'. Analog prototype -> frequency transform -> bilinear -> transfer function, matching scipy. */
+/* The IIR designs return (b, a) only: an output= other than 'ba' is refused, not silently answered with (b, a). The
+   output argument sits at index idx of the routine's signature. */
+static int iir_output_ba(const tsr_arg *args, int nargs, int idx, const char *name)
+{
+    if (nargs <= idx || args[idx].kind != 2 || !args[idx].str || !strcmp(args[idx].str, "ba")) return TSR_OK;
+    fn_set_error("%s: output='%s' is not supported (only 'ba'; for second-order sections convert with tf2sos(b, a))", name, args[idx].str);
+    return TSR_EARG;
+}
+
 static int r_butter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
+    if (iir_output_ba(args, nargs, 4, "butter") != TSR_OK) return TSR_EARG;
     const int64_t N = (args[0].kind == 1) ? sig_i64(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("butter: order N must be between 1 and 64"); return TSR_EARG; }
     if (!(args[1].kind == 1)) { fn_set_error("butter: only a scalar Wn (lowpass/highpass) is supported"); return TSR_EARG; }
@@ -662,6 +672,7 @@ done:
 static int r_cheby1(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
+    if (iir_output_ba(args, nargs, 5, "cheby1") != TSR_OK) return TSR_EARG;
     const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("cheby1: order N must be between 1 and 64"); return TSR_EARG; }
     if (!(args[1].kind == 1) || !(args[2].kind == 1)) { fn_set_error("cheby1: rp and a scalar Wn are required"); return TSR_EARG; }
@@ -687,6 +698,7 @@ static int r_cheby1(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 static int r_cheby2(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
+    if (iir_output_ba(args, nargs, 5, "cheby2") != TSR_OK) return TSR_EARG;
     const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("cheby2: order N must be between 1 and 64"); return TSR_EARG; }
     if (!(args[1].kind == 1) || !(args[2].kind == 1)) { fn_set_error("cheby2: rs and a scalar Wn are required"); return TSR_EARG; }
@@ -6335,6 +6347,7 @@ static int ea_ellipap_core(int N, double rp, double rs, double complex *z, int *
 static int r_ellip(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
+    if (iir_output_ba(args, nargs, 6, "ellip") != TSR_OK) return TSR_EARG;
     const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 25) { fn_set_error("ellip: order N must be between 1 and 25"); return TSR_EARG; }
     if (!(args[1].kind == 1) || !(args[2].kind == 1) || !(args[3].kind == 1)) { fn_set_error("ellip: rp, rs and a scalar Wn (lowpass/highpass) are required"); return TSR_EARG; }
@@ -6379,6 +6392,7 @@ static int ea_besselap_poles(int N, double complex *p, double *k)
 static int r_bessel(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
+    if (iir_output_ba(args, nargs, 4, "bessel") != TSR_OK) return TSR_EARG;
     const int N = (args[0].kind == 1) ? sig_i32(&args[0]) : 0;
     if (N < 1 || N > 25) { fn_set_error("bessel: order N must be between 1 and 25"); return TSR_EARG; }
     if (!(args[1].kind == 1)) { fn_set_error("bessel: a scalar Wn (lowpass/highpass) is required"); return TSR_EARG; }
@@ -7579,6 +7593,7 @@ static double complex iir_prodneg(const double complex *v, int64_t n) { double c
 static int r_iirfilter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
+    if (iir_output_ba(args, nargs, 7, "iirfilter") != TSR_OK) return TSR_EARG;
     const int64_t N = (args[0].kind == 1) ? sig_i64(&args[0]) : 0;
     if (N < 1 || N > 64) { fn_set_error("iirfilter: order N must be between 1 and 64"); return TSR_EARG; }
     double rp = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.0;
