@@ -67,7 +67,7 @@ $w = SparseLinalg::eigsh($A, 6);         // the 6 eigenvalues of largest magnitu
 
 - **Iterative solvers** run the same iteration as on a dense matrix, with
   sparse products: the same result (but for the sign of an exact zero), at a
-  cost of the stored entries instead of n² per product.
+  cost of the stored entries instead of n^2 per product.
 - **`spsolve`** factors the matrix's band (LAPACK `dgbsv`, partial pivoting),
   the bandwidths measured from the stored entries: tridiagonal and grid
   matrices solve at any size. A matrix whose band is too wide is solved dense
