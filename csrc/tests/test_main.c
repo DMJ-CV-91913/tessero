@@ -2691,6 +2691,46 @@ static void test_geom2d(void)
     CHECK(tsr_allocated() == before, "the 2-D geometry routines leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* linalg.fd_normal == its definition, exactly: J[k][j] = (rh[j][k] - r[k]) / h[j], A = J^T J and g = J^T r summed in
+   the order of k, zero Jacobian entries (rows where rh equals r) skipped; a mismatched rh is refused */
+static void test_fd_normal(void)
+{
+    const int64_t before = tsr_allocated();
+    enum { M = 257, NP = 3 };
+    double r[M], rh[NP * M], h[NP] = {1.5e-8, -2.25e-8, 3e-8};
+    uint64_t st = 99;
+    for (int k = 0; k < M; k++) {
+        st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+        r[k] = (double)(st >> 11) / 9007199254740992.0 - 0.5;
+        for (int j = 0; j < NP; j++) rh[j * M + k] = k % 7 == j ? r[k] : r[k] + h[j] * cos(0.1 * k + j);
+    }
+    double J[M * NP], A[NP * NP] = {0}, g[NP] = {0};
+    for (int k = 0; k < M; k++) for (int j = 0; j < NP; j++) J[k * NP + j] = (rh[j * M + k] - r[k]) / h[j];
+    for (int k = 0; k < M; k++)
+        for (int i = 0; i < NP; i++) {
+            if (J[k * NP + i] == 0.0) continue;
+            g[i] += J[k * NP + i] * r[k];
+            for (int j = i; j < NP; j++) A[i * NP + j] += J[k * NP + i] * J[k * NP + j];
+        }
+    for (int i = 0; i < NP; i++) for (int j = 0; j < i; j++) A[i * NP + j] = A[j * NP + i];
+    int64_t sr[1] = {M}, srh[2] = {NP, M}, sh[1] = {NP};
+    tsr_arg a[3] = {arg_arr(r, 1, sr), arg_arr(rh, 2, srh), arg_arr(h, 1, sh)};
+    tsr_result res[3];
+    int ok = tsr_fn_routine(tsr_fn_find("linalg.fd_normal"), 3, a, 3, res) == 0;
+    if (ok) {
+        ok = res[0].arr.shape[0] == NP && res[0].arr.shape[1] == NP && res[1].arr.shape[0] == NP
+             && res[2].arr.shape[0] == M && res[2].arr.shape[1] == NP
+             && memcmp(res[0].arr.data, A, sizeof A) == 0 && memcmp(res[1].arr.data, g, sizeof g) == 0
+             && memcmp(res[2].arr.data, J, sizeof J) == 0;
+        tsr_fn_results_free(res, 3);
+    }
+    int64_t bad[2] = {NP, M - 1};
+    a[1] = arg_arr(rh, 2, bad);
+    ok = ok && tsr_fn_routine(tsr_fn_find("linalg.fd_normal"), 3, a, 3, res) != 0;
+    CHECK(ok, "fd_normal: the forward-difference Jacobian and J^T J, J^T r as defined, bit for bit; a wrong rh refused");
+    CHECK(tsr_allocated() == before, "fd_normal leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 /* distance.kdtree_query == an exhaustive search, exactly: the same distances (sqrt of the axis sum in order), the same
    indices and order (nearest first, ties by index), on random points, integer grids full of equal distances,
    duplicates, queries on data points, k = 1, 7 and k > n */
@@ -4070,6 +4110,7 @@ int main(void)
     test_eigsh_csr();
     test_linkage_fast();
     test_geom2d();
+    test_fd_normal();
     test_linalg_typed();
     test_op_names();
     test_sort_variants();

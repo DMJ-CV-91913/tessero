@@ -24,6 +24,17 @@ final class LeastSquares
      */
     public static function solve(callable $residuals, array $p0, ?callable $jac = null, float $ftol = 1e-8, float $xtol = 1e-8, float $gtol = 1e-8, ?int $maxfev = null): array
     {
+        return self::lm($residuals, $p0, $jac, $ftol, $xtol, $gtol, $maxfev)[0];
+    }
+
+    /**
+     * The Levenberg-Marquardt iterations of solve(), returning its result with J^T J at the solution (for
+     * curveFit's covariance).
+     *
+     * @return array{0: array<string, mixed>, 1: list<list<float>>}
+     */
+    private static function lm(callable $residuals, array $p0, ?callable $jac, float $ftol, float $xtol, float $gtol, ?int $maxfev): array
+    {
         $p = array_map('floatval', array_values($p0));
         $n = count($p);
         $maxfev ??= 100 * ($n + 1);
@@ -39,8 +50,7 @@ final class LeastSquares
             throw new TesseroException("least squares: {$m} residuals for {$n} parameters (need m >= n).");
         }
         $cost = 0.5 * Minimize::dot($r, $r);
-        $J = $jac !== null ? $jac($p) : Root::fdJacobian($R, $p, $r);
-        [$A, $g] = self::normal($J, $r);
+        [$A, $g, $J] = self::linearize($R, $jac, $p, $r);
         $mu = 1e-3 * max(array_map(static fn (int $i): float => $A[$i][$i], range(0, $n - 1)) ?: [1.0]);
         $nu = 2.0;
         $status = 0;
@@ -86,8 +96,7 @@ final class LeastSquares
                 $p = $pNew;
                 $r = $rNew;
                 $cost = $costNew;
-                $J = $jac !== null ? $jac($p) : Root::fdJacobian($R, $p, $r);
-                [$A, $g] = self::normal($J, $r);
+                [$A, $g, $J] = self::linearize($R, $jac, $p, $r);
                 $mu *= max(1 / 3, 1 - (2 * $rho - 1) ** 3);
                 $nu = 2.0;
                 if ($reduction <= $ftol) {
@@ -101,7 +110,11 @@ final class LeastSquares
             }
         }
 
-        return ['x' => $p, 'cost' => $cost, 'fun' => $r, 'jac' => $J, 'nfev' => $nfev, 'status' => $status, 'message' => $message, 'success' => $status > 0];
+        if (! is_array($J)) {
+            $J = $J->toArray();
+        }
+
+        return [['x' => $p, 'cost' => $cost, 'fun' => $r, 'jac' => $J, 'nfev' => $nfev, 'status' => $status, 'message' => $message, 'success' => $status > 0], $A];
     }
 
     /**
@@ -122,22 +135,54 @@ final class LeastSquares
             throw new TesseroException('curveFit: xdata and ydata differ in length.');
         }
         $w = $sigma === null ? null : array_map(static fn ($s): float => 1.0 / (float) $s, array_values($sigma));
+        // up to four parameters are passed without the argument spread, and the weights applied after the loop:
+        // the same values with fewer PHP operations per point
         $res = static function (array $p) use ($f, $xdata, $ydata, $w): array {
             $out = [];
-            foreach ($xdata as $i => $x) {
-                $d = (float) $f($x, ...$p) - $ydata[$i];
-                $out[] = $w === null ? $d : $d * $w[$i];
+            switch (count($p)) {
+                case 1:
+                    [$a] = $p;
+                    foreach ($xdata as $i => $x) {
+                        $out[] = (float) $f($x, $a) - $ydata[$i];
+                    }
+                    break;
+                case 2:
+                    [$a, $b] = $p;
+                    foreach ($xdata as $i => $x) {
+                        $out[] = (float) $f($x, $a, $b) - $ydata[$i];
+                    }
+                    break;
+                case 3:
+                    [$a, $b, $c] = $p;
+                    foreach ($xdata as $i => $x) {
+                        $out[] = (float) $f($x, $a, $b, $c) - $ydata[$i];
+                    }
+                    break;
+                case 4:
+                    [$a, $b, $c, $d] = $p;
+                    foreach ($xdata as $i => $x) {
+                        $out[] = (float) $f($x, $a, $b, $c, $d) - $ydata[$i];
+                    }
+                    break;
+                default:
+                    foreach ($xdata as $i => $x) {
+                        $out[] = (float) $f($x, ...$p) - $ydata[$i];
+                    }
+            }
+            if ($w !== null) {
+                foreach ($out as $i => $v) {
+                    $out[$i] = $v * $w[$i];
+                }
             }
 
             return $out;
         };
-        $fit = self::solve($res, $p0);
+        [$fit, $A] = self::lm($res, $p0, null, 1e-8, 1e-8, 1e-8, null);
         if (! $fit['success']) {
             throw new ConvergenceError('curveFit: optimal parameters not found (' . $fit['message'] . ').');
         }
         $n = count($p0);
         $m = count($ydata);
-        [$A] = self::normal($fit['jac'], $fit['fun']);
         try {
             $cov = Dense::inverse($A);
         } catch (\Throwable) {
@@ -408,6 +453,41 @@ final class LeastSquares
         }
 
         return $y;
+    }
+
+    /**
+     * The Jacobian at p, the user's or by forward differences (the steps of Root::fdJacobian), with the normal
+     * equations J^T J and J^T r. The differences and the sums run in the kernel (linalg.fd_normal, the same
+     * values as the loops here); the Jacobian comes back as an array object, converted once for the result.
+     *
+     * @param list<float> $p
+     * @param list<float> $r
+     * @return array{0: list<list<float>>, 1: list<float>, 2: list<list<float>>|object}
+     */
+    private static function linearize(callable $R, ?callable $jac, array $p, array $r): array
+    {
+        if ($jac !== null || $p === []) {
+            $J = $jac !== null ? $jac($p) : Root::fdJacobian($R, $p, $r);
+            [$A, $g] = self::normal($J, $r);
+
+            return [$A, $g, $J];
+        }
+        $rel = sqrt(PHP_FLOAT_EPSILON);
+        $rh = [];
+        $hs = [];
+        foreach ($p as $j => $pj) {
+            $h = $rel * max(1.0, abs($pj)) * ($pj >= 0 ? 1.0 : -1.0);
+            $ph = $p;
+            $ph[$j] = $pj + $h;
+            $hs[] = $ph[$j] - $pj;
+            $rh[] = $R($ph);
+        }
+        $out = extension_loaded('tessero') && class_exists(\Tessero\Ext\Linalg::class)
+            ? \Tessero\Ext\Linalg::fdNormal($r, $rh, $hs)
+            : \Tessero\Linalg::fdNormal($r, $rh, $hs);
+        [$A, $g, $J] = array_values($out);
+
+        return [$A->toArray(), $g->toList(), $J];
     }
 
     /** @return array{0: list<list<float>>, 1: list<float>} J^T J and J^T r */

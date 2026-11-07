@@ -1284,6 +1284,48 @@ static int r_la_vecdot(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return TSR_OK;
 }
 
+/* linalg.fd_normal(r, rh, h) -> A, g, J: the forward-difference Jacobian J[k][j] = (rh[j][k] - r[k]) / h[j] of the
+   residuals r (m) from the residuals rh (n, m) at the steps h (n), and the normal equations A = J^T J, g = J^T r,
+   each sum in the order of k with zero Jacobian entries skipped (as Optimize\LeastSquares's PHP loop did), for
+   its Levenberg-Marquardt iterations. */
+static int r_fd_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 3 || args[0].kind != 3 || args[0].arr.ndim != 1 || args[1].kind != 3 || args[1].arr.ndim != 2
+        || args[2].kind != 3 || args[2].arr.ndim != 1) {
+        fn_set_error("fd_normal: r (m), rh (n, m) and h (n) must be arrays"); return TSR_EARG;
+    }
+    const int64_t m = args[0].arr.shape[0], n = args[2].arr.shape[0];
+    if (args[1].arr.shape[0] != n || args[1].arr.shape[1] != m) {
+        fn_set_error("fd_normal: rh must be (%lld, %lld)", (long long)n, (long long)m); return TSR_EARG;
+    }
+    int64_t cr, crh, ch;
+    double *r = mat_f64(&args[0], "r", &cr); if (!r) return TSR_ENOMEM;
+    double *rh = mat_f64(&args[1], "rh", &crh); if (!rh) { fn_free_doubles(r, cr); return TSR_ENOMEM; }
+    double *h = mat_f64(&args[2], "h", &ch); if (!h) { fn_free_doubles(r, cr); fn_free_doubles(rh, crh); return TSR_ENOMEM; }
+    int64_t sa[2] = {n, n}, sg[1] = {n}, sj[2] = {m, n};
+    double *A = (double *)fn_result_array(&res[0], TSR_F64, 2, sa);
+    double *g = A ? (double *)fn_result_array(&res[1], TSR_F64, 1, sg) : NULL;
+    double *J = g ? (double *)fn_result_array(&res[2], TSR_F64, 2, sj) : NULL;
+    if (!J) { fn_free_doubles(r, cr); fn_free_doubles(rh, crh); fn_free_doubles(h, ch); return TSR_ENOMEM; }
+    for (int64_t k = 0; k < m; k++)
+        for (int64_t j = 0; j < n; j++) J[k * n + j] = (rh[j * m + k] - r[k]) / h[j];
+    memset(A, 0, sizeof(double) * (size_t)(n * n));
+    memset(g, 0, sizeof(double) * (size_t)n);
+    for (int64_t k = 0; k < m; k++) {
+        const double *row = J + k * n;
+        for (int64_t i = 0; i < n; i++) {
+            const double ji = row[i];
+            if (ji == 0.0) continue;
+            g[i] += ji * r[k];
+            for (int64_t j = i; j < n; j++) A[i * n + j] += ji * row[j];
+        }
+    }
+    for (int64_t i = 0; i < n; i++) for (int64_t j = 0; j < i; j++) A[i * n + j] = A[j * n + i];
+    fn_free_doubles(r, cr); fn_free_doubles(rh, crh); fn_free_doubles(h, ch);
+    return TSR_OK;
+}
+
 /* linalg.vector_norm(x, axis=None, keepdims=False, ord=2): the vector norm over the flattened array
    (numpy.linalg.vector_norm; axis=None). */
 static int r_vector_norm(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -1650,6 +1692,8 @@ static int r_tensorsolve__g(const void *, const tsr_arg *, int, tsr_result *, in
 static const fn_def DEFS[] = {
     ROUTINE("linalg.qr_complex", 2, "a", "Q, R", r_qr_complex__g, NULL,
             "Reduced complex QR via LAPACKE zgeqrf+zungqr; A = Q R with Q unitary (internal helper for scipy.stats.unitary_group)."),
+    ROUTINE("linalg.fd_normal", 3, "r, rh, h", "A, g, J", r_fd_normal, NULL,
+            "Forward-difference Jacobian J = (rh - r) / h and the normal equations J^T J, J^T r (internal helper for Optimize\\LeastSquares)."),
     ROUTINE("linalg.matmul", 1, "x1, x2", "out", r_la_matmul, NULL, "Matrix product of two arrays (numpy.linalg.matmul)."),
     ROUTINE("linalg.vector_norm", 1, "x, axis=None, keepdims=False, ord=2", "out", r_vector_norm, NULL, "Vector norm over the flattened array (numpy.linalg.vector_norm)."),
     ROUTINE("linalg.matrix_norm", 1, "x, keepdims=False, ord='fro'", "out", r_matrix_norm, NULL, "Matrix norm over the last two axes (numpy.linalg.matrix_norm)."),

@@ -27,6 +27,7 @@ final class Linalg
     'eigh' => 'eigh',
     'eigvals' => 'eigvals',
     'eigvalsh' => 'eigvalsh',
+    'fd_normal' => 'fdNormal',
     'inv' => 'inv',
     'lstsq' => 'lstsq',
     'matmul' => 'matmul',
@@ -160,6 +161,18 @@ final class Linalg
     public static function eigvalsh(mixed $a, mixed $UPLO = 'L'): mixed
     {
         return Registry::routine('linalg.eigvalsh', [$a, $UPLO]);
+    }
+
+    /**
+     * Forward-difference Jacobian J = (rh - r) / h and the normal equations J^T J, J^T r (internal helper for Optimize\LeastSquares).
+     *
+     * numpy.linalg.fd_normal
+     *
+     * @return mixed one array, or an array keyed by A, g, J when several results are requested
+     */
+    public static function fdNormal(mixed $r, mixed $rh, mixed $h): mixed
+    {
+        return Registry::routine('linalg.fd_normal', [$r, $rh, $h]);
     }
 
     /**

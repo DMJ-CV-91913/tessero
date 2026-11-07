@@ -340,4 +340,52 @@ final class NumericsTest extends TestCase
         $this->assertEqualsWithDelta(-1.0, $p[1], 1e-7);
         $this->assertLessThan(1e-10, abs($cov[0][0]));
     }
+
+    public function testLevenbergMarquardtNormalEquationsInTheKernelMatchThePhpLoop(): void
+    {
+        $xs = array_map(static fn (int $i): float => $i * 0.02, range(0, 199));
+        $ys = array_map(static fn (float $t): float => 2.5 * exp(-1.3 * $t) + 0.5 + 0.01 * sin(37.0 * $t), $xs);
+        $res = static function (array $p) use ($xs, $ys): array {
+            $out = [];
+            foreach ($xs as $i => $t) {
+                $out[] = $p[0] * exp(-$p[1] * $t) + $p[2] - $ys[$i];
+            }
+
+            return $out;
+        };
+        // without a Jacobian: forward differences and J^T J, J^T r in the kernel (linalg.fd_normal); with the same
+        // forward differences passed as the Jacobian: the PHP loops. The same iterations, bit for bit.
+        $kernel = LeastSquares::solve($res, [1.0, 1.0, 1.0]);
+        $php = LeastSquares::solve($res, [1.0, 1.0, 1.0], static fn (array $p): array => Root::fdJacobian($res, $p, $res($p)));
+        $this->assertTrue($kernel['success']);
+        $this->assertSame($php['x'], $kernel['x']);
+        $this->assertSame($php['fun'], $kernel['fun']);
+        $this->assertSame($php['jac'], $kernel['jac']);
+        $this->assertSame($php['cost'], $kernel['cost']);
+    }
+
+    public function testCurveFitPassesParametersAndWeightsAsTheSpreadCallDid(): void
+    {
+        $xs = array_map(static fn (int $i): float => $i * 0.05, range(0, 79));
+        $ys = array_map(static fn (float $x): float => 1.0 - 0.5 * $x + 0.25 * $x * $x - 0.02 * $x ** 3 + 0.001 * $x ** 4 + 0.01 * cos(9.0 * $x), $xs);
+        $sigma = array_map(static fn (float $x): float => 0.5 + 0.1 * $x, $xs);
+        $f4 = static fn (float $x, float $a, float $b, float $c, float $d): float => $a + $x * ($b + $x * ($c + $x * $d));
+        $f5 = static fn (float $x, float $a, float $b, float $c, float $d, float $e): float => $a + $x * ($b + $x * ($c + $x * ($d + $x * $e)));
+        foreach ([[$f4, [1.0, 0.0, 0.0, 0.0]], [$f5, [1.0, 0.0, 0.0, 0.0, 0.0]]] as [$f, $p0]) {
+            foreach ([null, $sigma] as $s) {
+                $w = $s === null ? null : array_map(static fn (float $v): float => 1.0 / $v, $s);
+                $plain = LeastSquares::solve(static function (array $p) use ($f, $xs, $ys, $w): array {
+                    $out = [];
+                    foreach ($xs as $i => $x) {
+                        $d = (float) $f($x, ...$p) - $ys[$i];
+                        $out[] = $w === null ? $d : $d * $w[$i];
+                    }
+
+                    return $out;
+                }, $p0);
+                [$popt] = LeastSquares::curveFit($f, $xs, $ys, $p0, $s);
+                $this->assertSame($plain['x'], $popt, count($p0) . ' parameters, ' . ($s === null ? 'unweighted' : 'weighted'));
+            }
+        }
+    }
 }

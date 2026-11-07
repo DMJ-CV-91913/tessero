@@ -674,7 +674,7 @@
    "total": 1846
   }
  },
- "registry_functions": 1564,
+ "registry_functions": 1565,
  "registry_untested": [
   "distance.convex_hull_2d",
   "distance.delaunay_2d",
@@ -682,6 +682,7 @@
   "interpolate.spgrid",
   "interpolate.spherfit",
   "interpolate.spherfit_lsq",
+  "linalg.fd_normal",
   "linalg.qr_complex",
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid"
