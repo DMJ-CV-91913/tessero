@@ -674,8 +674,10 @@
    "total": 1846
   }
  },
- "registry_functions": 1562,
+ "registry_functions": 1564,
  "registry_untested": [
+  "distance.convex_hull_2d",
+  "distance.delaunay_2d",
   "distance.kdtree_build",
   "interpolate.spgrid",
   "interpolate.spherfit",

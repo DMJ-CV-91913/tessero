@@ -43,6 +43,20 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`Spatial\Delaunay` (2-D) in the kernel**: the sweep-hull algorithm (`distance.delaunay_2d`, O(n log n), the hull exact
+  by construction) replaces a Bowyer-Watson that scanned every triangle in PHP: 10k points 57 s -> 29 ms (SciPy 46 ms).
+  The same simplex set (parity against SciPy; PHPUnit against the old algorithm); `griddata`, `LinearNDInterpolator`
+  and `CloughTocher2DInterpolator` build on it. The PHP Bowyer-Watson remains for input the sweep cannot triangulate.
+- **`Spatial\ConvexHull` (2-D)**: the monotone chain in the kernel (`distance.convex_hull_2d`), the same vertices:
+  10k points 43 -> 4.1 ms (SciPy 1.5).
+- **`hierarchy.linkage`**: each cluster caches its nearest later neighbour, so a merge rescans only the rows it affects
+  (about n^2 instead of n^3); the same Z byte for byte, ties included (C test against the old loop, all 7 methods).
+  Ward on 2000 points 1.6 s -> 70 ms (SciPy 92).
+- **`linalg.solve_triangular`**: the column-major `dtrtrs` on the row-major matrix (triangle and transpose flipped)
+  instead of LAPACKE's row-major copies, a contiguous matrix read in place: 1000 x 1000 4.2 -> 0.88 ms (SciPy 1.0).
+- **`median`, `percentile`, `quantile`**: a two-pointer (Hoare) introselect, and the second order statistic of an
+  interpolated quantile taken as the smallest of the rest: percentile 1M 18 -> 5.9 ms (NumPy 12), median 13 -> 12 ms
+  (NumPy 11). The same values (the k-th value of the total order has one bit pattern).
 - **`Spatial\KDTree` builds its tree once, in the constructor, and every query searches it** (new registry routine
   `distance.kdtree_build`; `distance.kdtree_query` takes its idx/nodes/box). 100 queries in 100k points: 0.57 ms,
   was 37 ms (SciPy 0.20 ms); the query reads the data and the tree in place. The constructor now pays the build

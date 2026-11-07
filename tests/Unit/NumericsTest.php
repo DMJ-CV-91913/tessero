@@ -193,6 +193,102 @@ final class NumericsTest extends TestCase
         }
     }
 
+    /** median and percentile by selection == the same statistics from a full sort, on arrays above the insertion-sort size */
+    public function testMedianAndPercentileBySelection(): void
+    {
+        $s = 99;
+        $next = static function () use (&$s): int {
+            $s = ($s * 1103515245 + 12345) % 2147483648;
+            return $s;
+        };
+        $lerp = static function (array $v, float $q): float {          /* numpy's linear method on sorted v */
+            $vi = $q * (count($v) - 1);
+            $i = (int) floor($vi);
+            $g = $vi - $i;
+            $a = $v[$i];
+            $b = $v[min($i + 1, count($v) - 1)];
+            $d = $b - $a;
+
+            return $g >= 0.5 ? $b - $d * (1 - $g) : $a + $d * $g;
+        };
+        foreach ([17, 18, 101, 1000, 20001] as $n) {
+            foreach (['random', 'dups', 'sorted', 'reversed', 'equal', 'zeros'] as $kind) {
+                $v = [];
+                for ($i = 0; $i < $n; $i++) {
+                    $v[] = match ($kind) {
+                        'random' => $next() / 2147483648.0 - 0.5,
+                        'dups' => (float) ($next() % 7),
+                        'sorted' => (float) $i,
+                        'reversed' => (float) ($n - $i),
+                        'equal' => 3.25,
+                        'zeros' => $next() % 2 === 0 ? 0.0 : -0.0,
+                    };
+                }
+                $sorted = $v;
+                sort($sorted);
+                $h = intdiv($n, 2);
+                $want = $n % 2 === 1 ? $sorted[$h] : ($sorted[$h - 1] + $sorted[$h]) / 2.0;
+                $this->assertSame($want, \Tessero\Np::median(NDArray::array($v)), "median n=$n $kind");
+                foreach ([37.5, 90.0] as $q) {
+                    $got = \Tessero\Np::percentile(NDArray::array($v), $q);
+                    $this->assertSame($lerp($sorted, $q / 100.0), is_float($got) ? $got : $got->toList()[0], "percentile $q n=$n $kind");
+                }
+            }
+        }
+    }
+
+    /** ConvexHull (2-D) and Delaunay (2-D) through the kernel == the PHP algorithms they replaced */
+    public function testHullAndDelaunay2dMatchThePhpAlgorithms(): void
+    {
+        $s = 7;
+        $next = static function () use (&$s): float {
+            $s = ($s * 1103515245 + 12345) % 2147483648;
+            return $s / 2147483648.0;
+        };
+        foreach ([3, 10, 200, 600] as $n) {
+            $pts = [];
+            for ($i = 0; $i < $n; $i++) {
+                $pts[] = [$next(), $next()];
+            }
+            if ($n > 10) {
+                $pts[$n - 1] = $pts[2];                                 /* a duplicate */
+            }
+            // the monotone chain as ConvexHull computed it in PHP
+            $idx = range(0, $n - 1);
+            usort($idx, static fn (int $a, int $b): int => $pts[$a][0] !== $pts[$b][0] ? $pts[$a][0] <=> $pts[$b][0] : $pts[$a][1] <=> $pts[$b][1]);
+            $cross = static fn (int $o, int $a, int $b): float => ($pts[$a][0] - $pts[$o][0]) * ($pts[$b][1] - $pts[$o][1]) - ($pts[$a][1] - $pts[$o][1]) * ($pts[$b][0] - $pts[$o][0]);
+            $lower = [];
+            foreach ($idx as $i) {
+                while (count($lower) >= 2 && $cross($lower[count($lower) - 2], $lower[count($lower) - 1], $i) <= 0.0) {
+                    array_pop($lower);
+                }
+                $lower[] = $i;
+            }
+            $upper = [];
+            foreach (array_reverse($idx) as $i) {
+                while (count($upper) >= 2 && $cross($upper[count($upper) - 2], $upper[count($upper) - 1], $i) <= 0.0) {
+                    array_pop($upper);
+                }
+                $upper[] = $i;
+            }
+            array_pop($lower);
+            array_pop($upper);
+            $this->assertSame(array_merge($lower, $upper), (new \Tessero\Spatial\ConvexHull($pts))->vertices, "hull n=$n");
+            // Delaunay: the same simplex set as the PHP Bowyer-Watson
+            $d = new \Tessero\Spatial\Delaunay($pts);
+            $bw = new \ReflectionMethod(\Tessero\Spatial\Delaunay::class, 'bowyerWatson');
+            $key = static function (array $tris): array {
+                $k = array_map(static function (array $t): string { sort($t); return implode(',', $t); }, $tris);
+                sort($k);
+
+                return $k;
+            };
+            $sweep = new \ReflectionMethod(\Tessero\Spatial\Delaunay::class, 'sweep2d');
+            $this->assertNotSame([], $sweep->invoke($d, $pts), "the kernel triangulates n=$n (no silent fallback)");
+            $this->assertSame($key($bw->invoke($d, $pts)), $key($d->simplices), "delaunay n=$n");
+        }
+    }
+
     public function testShuffleOnNonContiguousRows(): void
     {
         $a = NDArray::arange(12)->reshape(4, 3);

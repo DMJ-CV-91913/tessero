@@ -155,12 +155,22 @@
             "nin": 0,
             "nout": 1
         },
+        "distance.convex_hull_2d": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
         "distance.correlation": {
             "kind": "routine",
             "nin": 0,
             "nout": 1
         },
         "distance.cosine": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 1
+        },
+        "distance.delaunay_2d": {
             "kind": "routine",
             "nin": 0,
             "nout": 1

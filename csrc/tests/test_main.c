@@ -2510,6 +2510,187 @@ static void test_eigsh_csr(void)
     free(pois); free(rnd);
 }
 
+/* hierarchy.linkage == the full-scan agglomeration it replaced (kept here as the reference), byte for byte: every
+   method, random distances and small-integer distances full of ties, condensed and observation input */
+static double lt_lw(int method, double dik, double djk, double dij, double ni, double nj, double nk)
+{
+    switch (method) {
+    case 0: return dik < djk ? dik : djk;
+    case 1: return dik > djk ? dik : djk;
+    case 2: return (ni * dik + nj * djk) / (ni + nj);
+    case 3: return (dik + djk) / 2.0;
+    case 4: return ((ni + nk) * dik + (nj + nk) * djk - nk * dij) / (ni + nj + nk);
+    case 5: return (ni * dik + nj * djk) / (ni + nj) - ni * nj * dij / ((ni + nj) * (ni + nj));
+    default: return dik / 2.0 + djk / 2.0 - dij / 4.0;
+    }
+}
+static void lt_reference(double *W, int64_t n, int method, double *Z)
+{
+    const int sq = method >= 4;
+    int64_t *act = malloc((size_t)n * 8), *sz = malloc((size_t)n * 8), *cid = malloc((size_t)n * 8);
+    for (int64_t i = 0; i < n; i++) { act[i] = i; sz[i] = 1; cid[i] = i; }
+    int64_t na = n, nxt = n;
+    for (int64_t step = 0; step < n - 1; step++) {
+        double best = INFINITY; int64_t bi = 0, bj = 1;
+        for (int64_t a = 0; a < na; a++)
+            for (int64_t b = a + 1; b < na; b++) { double d = W[act[a] * n + act[b]]; if (d < best) { best = d; bi = a; bj = b; } }
+        int64_t A = act[bi], B = act[bj]; double dij = best;
+        int64_t c1 = cid[A] < cid[B] ? cid[A] : cid[B], c2 = cid[A] < cid[B] ? cid[B] : cid[A];
+        Z[step * 4 + 0] = (double)c1; Z[step * 4 + 1] = (double)c2;
+        Z[step * 4 + 2] = sq ? sqrt(dij) : dij; Z[step * 4 + 3] = (double)(sz[A] + sz[B]);
+        for (int64_t a = 0; a < na; a++) { int64_t k = act[a]; if (k == A || k == B) continue;
+            double nv = lt_lw(method, W[A * n + k], W[B * n + k], dij, (double)sz[A], (double)sz[B], (double)sz[k]);
+            W[A * n + k] = W[k * n + A] = nv; }
+        sz[A] += sz[B]; cid[A] = nxt++;
+        for (int64_t a = bj; a < na - 1; a++) act[a] = act[a + 1];
+        na--;
+    }
+    free(act); free(sz); free(cid);
+}
+static void test_linkage_fast(void)
+{
+    static const char *const methods[] = {"single", "complete", "average", "weighted", "ward", "centroid", "median"};
+    const int id = tsr_fn_find("hierarchy.linkage");
+    const int64_t before = tsr_allocated();
+    uint64_t st = 31337;
+    int bad = 0, cases = 0;
+    for (int kind = 0; kind < 3; kind++) {
+        const int64_t n = kind == 2 ? 300 : 120, L = n * (n - 1) / 2, dim = 3;
+        double *y = malloc((size_t)L * 8), *obs = malloc((size_t)(n * dim) * 8), *W = malloc((size_t)(n * n) * 8), *Zr = malloc((size_t)((n - 1) * 4) * 8);
+        for (int64_t i = 0; i < n * dim; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; obs[i] = kind == 1 ? (double)(st % 4) : (double)(st >> 11) / 9007199254740992.0; }
+        int64_t q = 0;
+        for (int64_t i = 0; i < n; i++)
+            for (int64_t j = i + 1; j < n; j++) {
+                st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+                y[q++] = kind == 1 ? (double)(1 + st % 5) : (double)(st >> 11) / 9007199254740992.0;   /* kind 1: many ties */
+            }
+        for (int mi = 0; mi < 7; mi++) {
+            const int sq = mi >= 4;
+            for (int input = 0; input < 2; input++) {    /* condensed y, then the observations (Euclidean) */
+                q = 0;
+                for (int64_t i = 0; i < n; i++) {
+                    W[i * n + i] = INFINITY;
+                    for (int64_t j = i + 1; j < n; j++) {
+                        double d;
+                        if (input == 0) d = y[q++];
+                        else { double s = 0.0; for (int64_t c = 0; c < dim; c++) { const double df = obs[i * dim + c] - obs[j * dim + c]; s += df * df; } d = sq ? s : sqrt(s); }
+                        if (input == 0 && sq) d *= d;
+                        W[i * n + j] = W[j * n + i] = d;
+                    }
+                }
+                lt_reference(W, n, mi, Zr);
+                int64_t sy[1] = {L}, so[2] = {n, dim};
+                tsr_arg m; memset(&m, 0, sizeof m); m.kind = 2; m.str = methods[mi];
+                tsr_arg a[2] = {input == 0 ? arg_arr(y, 1, sy) : arg_arr(obs, 2, so), m};
+                tsr_result r[1];
+                cases++;
+                if (tsr_fn_routine(id, 2, a, 1, r) != 0) { bad++; continue; }
+                bad += memcmp(r[0].arr.data, Zr, (size_t)((n - 1) * 4) * 8) != 0;
+                tsr_fn_results_free(r, 1);
+            }
+        }
+        free(y); free(obs); free(W); free(Zr);
+    }
+    CHECK(bad == 0, "hierarchy.linkage == the full-scan reference, byte for byte, 7 methods x ties x 2 inputs (%d of %d differ)", bad, cases);
+    CHECK(tsr_allocated() == before, "linkage leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
+/* distance.convex_hull_2d and distance.delaunay_2d, checked by their definitions: the hull walk (counter-clockwise
+   from the lowest x, then y, every point on or inside every edge, strict turns, so collinear points dropped), and
+   the Delaunay triangulation (no point inside any triangle's circumcircle, no degenerate triangle, 2n - 2 - h
+   triangles by Euler, no edge in more than two triangles); collinear input gives no triangles */
+static int64_t *g2t_call(const char *fn, double *P, int64_t n, int64_t *rows, int64_t *cols, tsr_result *r)
+{
+    int64_t sp[2] = {n, 2};
+    tsr_arg a[1] = {arg_arr(P, 2, sp)};
+    if (tsr_fn_routine(tsr_fn_find(fn), 1, a, 1, r) != 0) return NULL;
+    *rows = r[0].arr.shape[0];
+    *cols = r[0].arr.ndim == 2 ? r[0].arr.shape[1] : 1;
+    return r[0].arr.data;
+}
+static double g2t_orient(const double *P, int64_t a, int64_t b, int64_t c)   /* > 0: counter-clockwise */
+{
+    return (P[2 * b] - P[2 * a]) * (P[2 * c + 1] - P[2 * a + 1]) - (P[2 * b + 1] - P[2 * a + 1]) * (P[2 * c] - P[2 * a]);
+}
+static void test_geom2d(void)
+{
+    const int64_t before = tsr_allocated();
+    uint64_t st = 4711;
+    enum { N = 2000 };
+    double *P = malloc((size_t)N * 2 * 8);
+    for (int i = 0; i < N * 2; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; P[i] = (double)(st >> 11) / 9007199254740992.0; }
+    for (int i = 0; i < 10; i++) { P[2 * (N - 1 - i)] = P[2 * i]; P[2 * (N - 1 - i) + 1] = P[2 * i + 1]; }   /* duplicates */
+    /* the hull */
+    tsr_result r[1];
+    int64_t h, one;
+    int64_t *hv = g2t_call("distance.convex_hull_2d", P, N, &h, &one, r);
+    int ok = hv != NULL && h >= 3;
+    for (int64_t q = 0; ok && q < h; q++) {
+        const int64_t a = hv[q], b = hv[(q + 1) % h], c = hv[(q + 2) % h];
+        ok = g2t_orient(P, a, b, c) > 0.0;                /* strict turns */
+        for (int64_t p = 0; ok && p < N; p++) ok = g2t_orient(P, a, b, p) >= 0.0;   /* everything inside */
+    }
+    for (int64_t p = 0; ok && p < N; p++)                 /* the start: the lowest x, then y */
+        ok = P[2 * hv[0]] < P[2 * p] || (P[2 * hv[0]] == P[2 * p] && P[2 * hv[0] + 1] <= P[2 * p + 1]);
+    CHECK(ok, "convex_hull_2d: a counter-clockwise walk from the lowest point, strict turns, every point inside (%lld vertices)", (long long)h);
+    const int64_t hull_n = h;
+    if (hv) tsr_fn_results_free(r, 1);
+    /* the triangulation */
+    int64_t nt, three;
+    int64_t *T = g2t_call("distance.delaunay_2d", P, N, &nt, &three, r);
+    const int64_t distinct = N - 10;                      /* the duplicates are skipped */
+    ok = T != NULL && three == 3 && nt == 2 * distinct - 2 - hull_n;
+    int empty = 1, nondeg = 1;
+    for (int64_t t = 0; ok && t < nt; t++) {
+        int64_t a = T[3 * t], b = T[3 * t + 1], c = T[3 * t + 2];
+        double o = g2t_orient(P, a, b, c);
+        if (o == 0.0) { nondeg = 0; break; }
+        if (o < 0.0) { const int64_t x = b; b = c; c = x; }
+        const double ax = P[2 * a], ay = P[2 * a + 1], bx = P[2 * b], by = P[2 * b + 1], cx = P[2 * c], cy = P[2 * c + 1];
+        for (int64_t p = 0; p < N && empty; p++) {
+            if (p == a || p == b || p == c) continue;
+            const double dx = ax - P[2 * p], dy = ay - P[2 * p + 1], ex = bx - P[2 * p], ey = by - P[2 * p + 1], fx = cx - P[2 * p], fy = cy - P[2 * p + 1];
+            const double det = (dx * dx + dy * dy) * (ex * fy - ey * fx) - (ex * ex + ey * ey) * (dx * fy - dy * fx) + (fx * fx + fy * fy) * (dx * ey - dy * ex);
+            if (det > 1e-12) empty = 0;                   /* strictly inside the circumcircle */
+        }
+    }
+    int shared = 1;                                       /* every edge in at most two triangles */
+    if (ok) {
+        int64_t *ek = malloc((size_t)(nt * 3) * 8);
+        for (int64_t t = 0; t < nt; t++)
+            for (int e = 0; e < 3; e++) {
+                const int64_t u = T[3 * t + e], v = T[3 * t + (e + 1) % 3];
+                ek[3 * t + e] = (u < v ? u : v) * N + (u < v ? v : u);
+            }
+        for (int64_t i = 1; i < nt * 3; i++) {             /* insertion sort is fine for the test size */
+            const int64_t k = ek[i]; int64_t j = i - 1;
+            while (j >= 0 && ek[j] > k) { ek[j + 1] = ek[j]; j--; }
+            ek[j + 1] = k;
+        }
+        for (int64_t i = 2; i < nt * 3; i++) if (ek[i] == ek[i - 2]) { shared = 0; break; }
+        free(ek);
+    }
+    CHECK(ok && empty && nondeg && shared, "delaunay_2d: 2n-2-h triangles (%lld), empty circumcircles, none degenerate, edges in at most two", (long long)nt);
+    if (T) tsr_fn_results_free(r, 1);
+    /* collinear points and too few points: no triangles; the hull of collinear points has fewer than 3 vertices */
+    double L[20];
+    for (int i = 0; i < 10; i++) { L[2 * i] = (double)i; L[2 * i + 1] = 2.0 * (double)i + 1.0; }
+    int64_t *T2 = g2t_call("distance.delaunay_2d", L, 10, &nt, &three, r);
+    ok = T2 != NULL && nt == 0;
+    if (T2) tsr_fn_results_free(r, 1);
+    int64_t *H2 = g2t_call("distance.convex_hull_2d", L, 10, &h, &one, r);
+    ok = ok && H2 != NULL && h < 3;
+    if (H2) tsr_fn_results_free(r, 1);
+    int64_t *T3 = g2t_call("distance.delaunay_2d", L, 2, &nt, &three, r);
+    ok = ok && T3 != NULL && nt == 0;
+    if (T3) tsr_fn_results_free(r, 1);
+    double bad[4] = {0.0, NAN, 1.0, 1.0};
+    ok = ok && g2t_call("distance.delaunay_2d", bad, 2, &nt, &three, r) == NULL;
+    CHECK(ok, "delaunay_2d / convex_hull_2d on collinear, too few and non-finite points");
+    free(P);
+    CHECK(tsr_allocated() == before, "the 2-D geometry routines leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 /* distance.kdtree_query == an exhaustive search, exactly: the same distances (sqrt of the axis sum in order), the same
    indices and order (nearest first, ties by index), on random points, integer grids full of equal distances,
    duplicates, queries on data points, k = 1, 7 and k > n */
@@ -3887,6 +4068,8 @@ int main(void)
     test_splinalg_csr();
     test_spsolve_csr();
     test_eigsh_csr();
+    test_linkage_fast();
+    test_geom2d();
     test_linalg_typed();
     test_op_names();
     test_sort_variants();

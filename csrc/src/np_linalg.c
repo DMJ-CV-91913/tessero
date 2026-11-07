@@ -1790,19 +1790,29 @@ static int r_solve_triangular(const void *ctx, const tsr_arg *args, int nargs, t
     if (nargs > 2 && args[2].kind == 1) trans = args[2].ival ? args[2].ival : (int64_t)args[2].num;
     if (nargs > 3 && (args[3].kind == 4 || args[3].kind == 1)) lower = args[3].num != 0 || args[3].ival != 0;
     if (nargs > 4 && (args[4].kind == 4 || args[4].kind == 1)) unit = args[4].num != 0 || args[4].ival != 0;
-    const char tc = trans == 1 ? 'T' : (trans == 2 ? 'C' : 'N');
-    int64_t na, nb;
-    double *a = mat_f64(&args[0], "a", &na);
+    /* the row-major a read column-major is a^T: the column-major dtrtrs on it with the triangle and the transpose
+       flipped solves the same system, without LAPACKE's row-major copies of a in and out; a contiguous float64 a
+       is read in place (dtrtrs does not write it) */
+    const char tcm = (trans == 1 || trans == 2) ? 'N' : 'T', ucm = lower ? 'U' : 'L';
+    int64_t na = 0, nb;
+    const int own = !(A->dtype == TSR_F64 && tsr_array_is_contiguous(A));
+    const double *a = own ? mat_f64(&args[0], "a", &na) : (const double *)((const char *)A->data + A->offset);
     if (!a) return TSR_ENOMEM;
     double *b = mat_f64(&args[1], "b", &nb);
-    if (!b) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    if (!b) { if (own) fn_free_doubles((double *)a, na); return TSR_ENOMEM; }
     int64_t rsh1[1] = {n}, rsh2[2] = {n, nrhs};
     double *x = (double *)(vector ? fn_result_array(&res[0], TSR_F64, 1, rsh1) : fn_result_array(&res[0], TSR_F64, 2, rsh2));
-    if (!x) { fn_free_doubles(a, na); fn_free_doubles(b, nb); return TSR_ENOMEM; }
-    memcpy(x, b, sizeof(double) * (size_t)(n * nrhs));
-    lapack_int info = n > 0 ? LAPACKE_dtrtrs(LAPACK_ROW_MAJOR, lower ? 'L' : 'U', tc, unit ? 'U' : 'N',
-                                             (lapack_int)n, (lapack_int)nrhs, a, (lapack_int)n, x, (lapack_int)nrhs) : 0;
-    fn_free_doubles(a, na);
+    double *bc = nrhs > 1 ? (double *)malloc(sizeof(double) * (size_t)(n * nrhs)) : x;
+    if (!x || !bc) { if (nrhs > 1) free(bc); if (own) fn_free_doubles((double *)a, na); fn_free_doubles(b, nb); return TSR_ENOMEM; }
+    if (nrhs > 1) { for (int64_t i = 0; i < n; i++) for (int64_t c = 0; c < nrhs; c++) bc[c * n + i] = b[i * nrhs + c]; }
+    else memcpy(x, b, sizeof(double) * (size_t)n);
+    lapack_int info = n > 0 ? LAPACKE_dtrtrs(LAPACK_COL_MAJOR, ucm, tcm, unit ? 'U' : 'N', (lapack_int)n, (lapack_int)nrhs,
+                                             (double *)a, (lapack_int)n, bc, (lapack_int)n) : 0;
+    if (nrhs > 1) {
+        if (info == 0) for (int64_t i = 0; i < n; i++) for (int64_t c = 0; c < nrhs; c++) x[i * nrhs + c] = bc[c * n + i];
+        free(bc);
+    }
+    if (own) fn_free_doubles((double *)a, na);
     fn_free_doubles(b, nb);
     if (info > 0) { fn_set_error("Singular matrix"); return TSR_EARG; }
     if (info < 0) { fn_set_error("solve_triangular: illegal argument %d", (int)info); return TSR_EARG; }

@@ -870,6 +870,322 @@ static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     return rc;
 }
 
+/* ------------------------------------------------------------------ 2-D convex hull and Delaunay triangulation */
+
+/* the 2-D points argument: an (n, 2) array as doubles (rows of x, y) */
+static double *g2_points(const tsr_arg *a, const char *who, int64_t *n, int64_t *total, int *rc)
+{
+    *rc = TSR_EARG;
+    if (a->kind != 3 || a->arr.ndim != 2 || a->arr.shape[1] != 2) { fn_set_error("%s: points must be an (n, 2) array", who); return NULL; }
+    *n = a->arr.shape[0];
+    double *P = fn_arg_doubles(a, total);
+    if (!P) { *rc = TSR_ENOMEM; return NULL; }
+    for (int64_t i = 0; i < *n * 2; i++)
+        if (!isfinite(P[i])) { fn_free_doubles(P, *total); fn_set_error("%s: points must be finite", who); return NULL; }
+    *rc = TSR_OK;
+    return P;
+}
+
+typedef struct { double x, y; int64_t i; } g2_pt;
+static int g2_cmp_xy(const void *pa, const void *pb)            /* x, then y, then input order (a stable sort) */
+{
+    const g2_pt *a = pa, *b = pb;
+    if (a->x != b->x) return a->x < b->x ? -1 : 1;
+    if (a->y != b->y) return a->y < b->y ? -1 : 1;
+    return a->i < b->i ? -1 : a->i > b->i;
+}
+
+/* convex_hull_2d(points) -> vertices: Andrew's monotone chain, the hull vertices counter-clockwise starting from
+   the lowest x (lowest y among equals), collinear points dropped; fewer than 3 when the points are collinear.
+   What Spatial\ConvexHull computed in PHP: points sorted by x then y (equal points in input order, as PHP's stable
+   sort keeps them), a point popped while the turn (cross product) is <= 0. */
+static int r_convex_hull_2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 1) { fn_set_error("convex_hull_2d: points must be an (n, 2) array"); return TSR_EARG; }
+    int64_t n, tp;
+    int prc;
+    double *P = g2_points(&args[0], "convex_hull_2d", &n, &tp, &prc);
+    if (!P) return prc;
+    g2_pt *s = (g2_pt *)malloc((size_t)(n > 0 ? n : 1) * sizeof(g2_pt));
+    int64_t *h = (int64_t *)malloc((size_t)(2 * n + 2) * sizeof(int64_t));
+    int rc = TSR_OK;
+    if (!s || !h) rc = TSR_ENOMEM;
+    else {
+        for (int64_t i = 0; i < n; i++) s[i] = (g2_pt){ P[2 * i], P[2 * i + 1], i };
+        qsort(s, (size_t)n, sizeof(g2_pt), g2_cmp_xy);
+#define G2_CROSS(o, a, b) ((s[a].x - s[o].x) * (s[b].y - s[o].y) - (s[a].y - s[o].y) * (s[b].x - s[o].x))
+        int64_t k = 0;                                    /* h holds sorted positions: the lower chain, then the upper */
+        for (int64_t i = 0; i < n; i++) {
+            while (k >= 2 && G2_CROSS(h[k - 2], h[k - 1], i) <= 0.0) k--;
+            h[k++] = i;
+        }
+        const int64_t lower = k;                          /* the lower chain without its last point ... */
+        int64_t u = lower;
+        for (int64_t i = n - 1; i >= 0; i--) {            /* ... then the upper chain, built on its own */
+            while (u - lower >= 2 && G2_CROSS(h[u - 2], h[u - 1], i) <= 0.0) u--;
+            h[u++] = i;
+        }
+#undef G2_CROSS
+        const int64_t nl = lower > 0 ? lower - 1 : 0, nu = u - lower > 0 ? u - lower - 1 : 0, m = nl + nu;
+        int64_t sh[1] = {m};
+        int64_t *o = (int64_t *)fn_result_array(&res[0], TSR_I64, 1, sh);
+        if (!o) rc = TSR_ENOMEM;
+        else {
+            for (int64_t j = 0; j < nl; j++) o[j] = s[h[j]].i;
+            for (int64_t j = 0; j < nu; j++) o[nl + j] = s[h[lower + j]].i;
+        }
+    }
+    free(s); free(h);
+    fn_free_doubles(P, tp);
+    return rc;
+}
+
+/* Delaunay triangulation in 2-D: the sweep-hull algorithm of Delaunator (V. Agafonkin, ISC licence), ported in its
+   own conventions. Seed: the point nearest the bounding-box centre, its nearest neighbour, and the third point
+   giving the smallest circumcircle; the other points are added in order of distance from that circle's centre,
+   each joined to the visible edges of the current convex hull (found through a hash on the angle about the centre),
+   the Delaunay condition restored by edge flips. O(n log n); the hull is exact by construction (no super
+   triangle). For points in general position the triangulation is unique, so it is Qhull's. */
+#define DL_EPS 2.220446049250313e-16
+static double dl_orient(double ax, double ay, double bx, double by, double cx, double cy)
+{
+    return (ay - cy) * (bx - cx) - (ax - cx) * (by - cy);    /* > 0: clockwise (delaunator's orient2d sign) */
+}
+static int dl_incircle(double ax, double ay, double bx, double by, double cx, double cy, double px, double py)
+{
+    const double dx = ax - px, dy = ay - py, ex = bx - px, ey = by - py, fx = cx - px, fy = cy - py;
+    const double ap = dx * dx + dy * dy, bp = ex * ex + ey * ey, cp = fx * fx + fy * fy;
+    return dx * (ey * cp - bp * fy) - dy * (ex * cp - bp * fx) + ap * (ex * fy - ey * fx) < 0.0;
+}
+static double dl_circumradius(double ax, double ay, double bx, double by, double cx, double cy)
+{
+    const double dx = bx - ax, dy = by - ay, ex = cx - ax, ey = cy - ay;
+    const double bl = dx * dx + dy * dy, cl = ex * ex + ey * ey, d = 0.5 / (dx * ey - dy * ex);
+    const double x = (ey * bl - dy * cl) * d, y = (dx * cl - ex * bl) * d;
+    return x * x + y * y;
+}
+typedef struct {
+    const double *c;
+    int64_t *tri, *half, len, cap;
+    int over;
+    int64_t *hprev, *hnext, *htri, *hhash, hsize, hstart;
+    double cx, cy;
+} dl_state;
+static int64_t dl_hashkey(const dl_state *s, double x, double y)
+{
+    const double dx = x - s->cx, dy = y - s->cy, p = dx / (fabs(dx) + fabs(dy));
+    double a = (dy > 0.0 ? 3.0 - p : 1.0 + p) / 4.0;           /* the pseudo-angle in [0, 1] */
+    if (!(a >= 0.0 && a <= 1.0)) a = 0.0;                  /* a point at the centre itself */
+    int64_t k = (int64_t)floor(a * (double)s->hsize);
+    k %= s->hsize;
+    return k < 0 ? k + s->hsize : k;
+}
+static void dl_link(dl_state *s, int64_t a, int64_t b) { s->half[a] = b; if (b != -1) s->half[b] = a; }
+static int64_t dl_add(dl_state *s, int64_t i0, int64_t i1, int64_t i2, int64_t a, int64_t b, int64_t c)
+{
+    const int64_t t = s->len;
+    if (t + 3 > s->cap) { s->over = 1; return t - 3 >= 0 ? t - 3 : 0; }   /* never on a valid triangulation */
+    s->tri[t] = i0; s->tri[t + 1] = i1; s->tri[t + 2] = i2;
+    dl_link(s, t, a); dl_link(s, t + 1, b); dl_link(s, t + 2, c);
+    s->len += 3;
+    return t;
+}
+static int64_t dl_legalize(dl_state *s, int64_t a)
+{
+    int64_t stack[512];
+    int i = 0;
+    int64_t ar = 0;
+    const double *c = s->c;
+    for (;;) {
+        const int64_t b = s->half[a], a0 = a - a % 3;
+        ar = a0 + (a + 2) % 3;
+        if (b == -1) {                                    /* a convex hull edge */
+            if (i == 0) break;
+            a = stack[--i];
+            continue;
+        }
+        const int64_t b0 = b - b % 3, al = a0 + (a + 1) % 3, bl = b0 + (b + 2) % 3;
+        const int64_t p0 = s->tri[ar], pr = s->tri[a], pl = s->tri[al], p1 = s->tri[bl];
+        if (dl_incircle(c[2 * p0], c[2 * p0 + 1], c[2 * pr], c[2 * pr + 1], c[2 * pl], c[2 * pl + 1], c[2 * p1], c[2 * p1 + 1])) {
+            s->tri[a] = p1;
+            s->tri[b] = p0;
+            const int64_t hbl = s->half[bl];
+            if (hbl == -1) {                              /* the edge swapped on the other side of the hull */
+                int64_t e = s->hstart;
+                do {
+                    if (s->htri[e] == bl) { s->htri[e] = a; break; }
+                    e = s->hprev[e];
+                } while (e != s->hstart);
+            }
+            dl_link(s, a, hbl);
+            dl_link(s, b, s->half[ar]);
+            dl_link(s, ar, bl);
+            const int64_t br = b0 + (b + 1) % 3;
+            if (i < 512) stack[i++] = br;
+        } else {
+            if (i == 0) break;
+            a = stack[--i];
+        }
+    }
+    return ar;
+}
+typedef struct { double d; int64_t i; } dl_key;
+static int dl_cmp_dist(const void *pa, const void *pb)        /* distance, then index */
+{
+    const dl_key *a = pa, *b = pb;
+    if (a->d != b->d) return a->d < b->d ? -1 : 1;
+    return a->i < b->i ? -1 : a->i > b->i;
+}
+
+/* delaunay_2d(points) -> simplices: the Delaunay triangles as (ntri, 3) point indices (no rows when the points are
+   collinear or fewer than 3) */
+static int r_delaunay_2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs < 1) { fn_set_error("delaunay_2d: points must be an (n, 2) array"); return TSR_EARG; }
+    int64_t n, tp;
+    int prc;
+    double *P = g2_points(&args[0], "delaunay_2d", &n, &tp, &prc);
+    if (!P) return prc;
+    const int64_t maxt = n > 2 ? 2 * n - 5 : 0, hs = (int64_t)ceil(sqrt((double)(n > 0 ? n : 1)));
+    dl_state s = { P, NULL, NULL, 0, maxt * 3, 0, NULL, NULL, NULL, NULL, hs > 0 ? hs : 1, 0, 0.0, 0.0 };
+    int64_t *ids = NULL;
+    dl_key *keys = NULL;
+    int rc = TSR_OK;
+    if (n >= 3) {
+        s.tri = (int64_t *)malloc((size_t)(maxt * 3) * sizeof(int64_t));
+        s.half = (int64_t *)malloc((size_t)(maxt * 3) * sizeof(int64_t));
+        s.hprev = (int64_t *)malloc((size_t)n * sizeof(int64_t));
+        s.hnext = (int64_t *)malloc((size_t)n * sizeof(int64_t));
+        s.htri = (int64_t *)malloc((size_t)n * sizeof(int64_t));
+        s.hhash = (int64_t *)malloc((size_t)s.hsize * sizeof(int64_t));
+        ids = (int64_t *)malloc((size_t)n * sizeof(int64_t));
+        keys = (dl_key *)malloc((size_t)n * sizeof(dl_key));
+        if (!s.tri || !s.half || !s.hprev || !s.hnext || !s.htri || !s.hhash || !ids || !keys) rc = TSR_ENOMEM;
+    }
+    if (rc == TSR_OK && n >= 3) {
+        const double *c = P;
+        double minx = INFINITY, miny = INFINITY, maxx = -INFINITY, maxy = -INFINITY;
+        for (int64_t i = 0; i < n; i++) {
+            const double x = c[2 * i], y = c[2 * i + 1];
+            if (x < minx) minx = x;
+            if (y < miny) miny = y;
+            if (x > maxx) maxx = x;
+            if (y > maxy) maxy = y;
+            ids[i] = i;
+        }
+        const double bcx = (minx + maxx) / 2.0, bcy = (miny + maxy) / 2.0;
+        int64_t i0 = 0, i1 = 0, i2 = 0;
+        double md = INFINITY;
+        for (int64_t i = 0; i < n; i++) {                 /* a seed close to the centre */
+            const double dx = bcx - c[2 * i], dy = bcy - c[2 * i + 1], d = dx * dx + dy * dy;
+            if (d < md) { i0 = i; md = d; }
+        }
+        const double i0x = c[2 * i0], i0y = c[2 * i0 + 1];
+        md = INFINITY;
+        for (int64_t i = 0; i < n; i++) {                 /* the point closest to the seed */
+            if (i == i0) continue;
+            const double dx = i0x - c[2 * i], dy = i0y - c[2 * i + 1], d = dx * dx + dy * dy;
+            if (d < md && d > 0.0) { i1 = i; md = d; }
+        }
+        double i1x = c[2 * i1], i1y = c[2 * i1 + 1], minr = INFINITY;
+        for (int64_t i = 0; i < n; i++) {                 /* the third point with the smallest circumcircle */
+            if (i == i0 || i == i1) continue;
+            const double r = dl_circumradius(i0x, i0y, i1x, i1y, c[2 * i], c[2 * i + 1]);
+            if (r < minr) { i2 = i; minr = r; }
+        }
+        double i2x = c[2 * i2], i2y = c[2 * i2 + 1];
+        if (minr < INFINITY) {                            /* else collinear: no triangles */
+            if (dl_orient(i0x, i0y, i1x, i1y, i2x, i2y) < 0.0) {
+                const int64_t t = i1; i1 = i2; i2 = t;
+                const double tx = i1x, ty = i1y; i1x = i2x; i1y = i2y; i2x = tx; i2y = ty;
+            }
+            {                                             /* the seed triangle's circumcentre */
+                const double dx = i1x - i0x, dy = i1y - i0y, ex = i2x - i0x, ey = i2y - i0y;
+                const double bl = dx * dx + dy * dy, cl = ex * ex + ey * ey, d = 0.5 / (dx * ey - dy * ex);
+                s.cx = i0x + (ey * bl - dy * cl) * d;
+                s.cy = i0y + (dx * cl - ex * bl) * d;
+            }
+            for (int64_t i = 0; i < n; i++) { const double dx = c[2 * i] - s.cx, dy = c[2 * i + 1] - s.cy; keys[i] = (dl_key){ dx * dx + dy * dy, i }; }
+            qsort(keys, (size_t)n, sizeof(dl_key), dl_cmp_dist);
+            for (int64_t i = 0; i < n; i++) ids[i] = keys[i].i;
+            s.hstart = i0;
+            s.hnext[i0] = s.hprev[i2] = i1;
+            s.hnext[i1] = s.hprev[i0] = i2;
+            s.hnext[i2] = s.hprev[i1] = i0;
+            s.htri[i0] = 0; s.htri[i1] = 1; s.htri[i2] = 2;
+            for (int64_t q = 0; q < s.hsize; q++) s.hhash[q] = -1;
+            s.hhash[dl_hashkey(&s, i0x, i0y)] = i0;
+            s.hhash[dl_hashkey(&s, i1x, i1y)] = i1;
+            s.hhash[dl_hashkey(&s, i2x, i2y)] = i2;
+            dl_add(&s, i0, i1, i2, -1, -1, -1);
+            double xp = 0.0, yp = 0.0;
+            for (int64_t k = 0; k < n; k++) {
+                const int64_t i = ids[k];
+                const double x = c[2 * i], y = c[2 * i + 1];
+                if (k > 0 && fabs(x - xp) <= DL_EPS && fabs(y - yp) <= DL_EPS) continue;   /* a near-duplicate */
+                xp = x; yp = y;
+                if (i == i0 || i == i1 || i == i2) continue;
+                int64_t start = 0;                        /* a visible hull edge, through the angle hash */
+                const int64_t key = dl_hashkey(&s, x, y);
+                for (int64_t j = 0; j < s.hsize; j++) {
+                    start = s.hhash[(key + j) % s.hsize];
+                    if (start != -1 && start != s.hnext[start]) break;
+                }
+                if (start == -1) start = s.hstart;
+                start = s.hprev[start];
+                int64_t e = start, q;
+                for (;;) {
+                    q = s.hnext[e];
+                    if (!(dl_orient(x, y, c[2 * e], c[2 * e + 1], c[2 * q], c[2 * q + 1]) >= 0.0)) break;
+                    e = q;
+                    if (e == start) { e = -1; break; }
+                }
+                if (e == -1) continue;                    /* inside the hull by rounding: a near-duplicate */
+                int64_t t = dl_add(&s, e, i, s.hnext[e], -1, -1, s.htri[e]);
+                s.htri[i] = dl_legalize(&s, t + 2);
+                s.htri[e] = t;
+                int64_t nx = s.hnext[e];                  /* forward along the hull */
+                for (;;) {
+                    q = s.hnext[nx];
+                    if (!(dl_orient(x, y, c[2 * nx], c[2 * nx + 1], c[2 * q], c[2 * q + 1]) < 0.0)) break;
+                    t = dl_add(&s, nx, i, q, s.htri[i], -1, s.htri[nx]);
+                    s.htri[i] = dl_legalize(&s, t + 2);
+                    s.hnext[nx] = nx;                     /* removed from the hull */
+                    nx = q;
+                }
+                if (e == start) {                         /* backward from the other side */
+                    for (;;) {
+                        q = s.hprev[e];
+                        if (!(dl_orient(x, y, c[2 * q], c[2 * q + 1], c[2 * e], c[2 * e + 1]) < 0.0)) break;
+                        t = dl_add(&s, q, i, e, -1, s.htri[e], s.htri[q]);
+                        dl_legalize(&s, t + 2);
+                        s.htri[q] = t;
+                        s.hnext[e] = e;
+                        e = q;
+                    }
+                }
+                s.hstart = s.hprev[i] = e;
+                s.hnext[e] = s.hprev[nx] = i;
+                s.hnext[i] = nx;
+                s.hhash[dl_hashkey(&s, x, y)] = i;
+                s.hhash[dl_hashkey(&s, c[2 * e], c[2 * e + 1])] = e;
+            }
+        }
+    }
+    if (rc == TSR_OK && s.over) { fn_set_error("delaunay_2d: the triangulation failed (degenerate input)"); rc = TSR_EARG; }
+    if (rc == TSR_OK) {
+        const int64_t nt = s.len / 3, sh[2] = {nt, 3};
+        int64_t *o = (int64_t *)fn_result_array(&res[0], TSR_I64, 2, sh);
+        if (!o) rc = TSR_ENOMEM;
+        else if (nt > 0) memcpy(o, s.tri, (size_t)(nt * 3) * sizeof(int64_t));
+    }
+    free(s.tri); free(s.half); free(s.hprev); free(s.hnext); free(s.htri); free(s.hhash); free(ids); free(keys);
+    fn_free_doubles(P, tp);
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("distance.procrustes", 3, "data1, data2", "mtx1, mtx2, disparity", r_procrustes, NULL, "Procrustes analysis: standardize and align two point sets (scipy.spatial.procrustes)."),
     ROUTINE("distance.distance_matrix", 1, "x, y, p=2, threshold=1000000", "D", r_distance_matrix, NULL, "Matrix of all pairwise Minkowski distances between two point sets (scipy.spatial.distance_matrix)."),
@@ -879,6 +1195,8 @@ static const fn_def DEFS[] = {
     ROUTINE("distance.pdist", 1, "X, metric=None, p=None", "out", r_pdist, NULL, "Pairwise distances between the rows of X, condensed (scipy.spatial.distance.pdist); real float64."),
     ROUTINE("distance.kdtree_query", 2, "data, x, k=1, idx=None, nodes=None, box=None", "d, i", r_kdtree_query, NULL, "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query); with idx, nodes and box from distance.kdtree_build of the same data it searches that tree instead of building one."),
     ROUTINE("distance.kdtree_build", 3, "data", "idx, nodes, box", r_kdtree_build, NULL, "The k-d tree of data as arrays (point order, nodes, bounding boxes) for distance.kdtree_query, built once and searched by every query (scipy.spatial.cKDTree's constructor)."),
+    ROUTINE("distance.convex_hull_2d", 1, "points", "vertices", r_convex_hull_2d, NULL, "The 2-D convex hull vertices of points, counter-clockwise from the lowest x (Andrew's monotone chain), for Spatial\ConvexHull."),
+    ROUTINE("distance.delaunay_2d", 1, "points", "simplices", r_delaunay_2d, NULL, "The 2-D Delaunay triangles of points as index triples (sweep-hull, Delaunator), for Spatial\Delaunay."),
     ROUTINE("distance.cdist", 1, "XA, XB, metric=None, p=None", "out", r_cdist, NULL, "Distances between each pair of rows of XA and XB (scipy.spatial.distance.cdist); real float64."),
     ROUTINE("distance.squareform", 1, "X", "out", r_squareform, NULL, "Convert between a condensed distance vector and a square form (scipy.spatial.distance.squareform)."),
     ROUTINE("distance.euclidean", 1, "u, v, w=None", "out", r_dmetric, &MET_EUCLID, "Euclidean distance between two 1-D arrays (scipy.spatial.distance.euclidean)."),

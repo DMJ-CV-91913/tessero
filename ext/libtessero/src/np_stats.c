@@ -32,38 +32,67 @@ void np_sort_doubles(double *x, int64_t n)
 /* the total order of the NaN-free samples: -0.0 < +0.0, so "neither less" means the same bits */
 static inline int tlt(double a, double b) { return a < b || (a == b && signbit(a) && !signbit(b)); }
 
-/* introselect: the k-th smallest of a[0..n) (NaN-free) in the total order, partitioning a in place (left of k
-   nothing larger, right of k nothing smaller); three-way partitions keep runs of equal values linear, and after
-   2 log2(n) + 8 rounds the rest is sorted */
+/* introselect: the k-th smallest of a[0..n) (NaN-free) in the total order, reordering a so that nothing before k is
+   larger and nothing after k is smaller. Median-of-three pivots and a two-pointer (Hoare) partition: both scans stop
+   on values equal to the pivot, so runs of equal values split evenly instead of degrading; ranges of 16 or fewer
+   are insertion-sorted, and after 2 log2(n) + 8 rounds the rest is sorted. The k-th value of the total order has
+   one bit pattern, so any correct selection returns the same bits. */
+static void sel_isort(double *a, int64_t lo, int64_t hi)
+{
+    for (int64_t i = lo + 1; i <= hi; i++) {
+        const double v = a[i];
+        int64_t j = i - 1;
+        while (j >= lo && tlt(v, a[j])) { a[j + 1] = a[j]; j--; }
+        a[j + 1] = v;
+    }
+}
 static double np_select(double *a, int64_t n, int64_t k)
 {
     int64_t lo = 0, hi = n - 1;
     int budget = 8;
     for (int64_t t = n; t > 1; t >>= 1) budget += 2;
-    while (hi > lo) {
+    while (hi - lo > 16) {
         if (budget-- == 0) { np_sort_doubles(a + lo, hi - lo + 1); return a[k]; }
-        const double x = a[lo], y = a[lo + (hi - lo) / 2], z = a[hi];
-        const double p = tlt(x, y) ? (tlt(y, z) ? y : (tlt(x, z) ? z : x)) : (tlt(x, z) ? x : (tlt(y, z) ? z : y));
-        int64_t lt = lo, i = lo, gt = hi;
-        while (i <= gt) {
-            const double v = a[i];
-            if (tlt(v, p)) { a[i++] = a[lt]; a[lt++] = v; }
-            else if (tlt(p, v)) { a[i] = a[gt]; a[gt--] = v; }
-            else i++;
+        const int64_t mid = lo + (hi - lo) / 2;
+        double t;
+        if (tlt(a[mid], a[lo])) { t = a[mid]; a[mid] = a[lo]; a[lo] = t; }   /* a[lo] <= a[mid] <= a[hi] */
+        if (tlt(a[hi], a[lo])) { t = a[hi]; a[hi] = a[lo]; a[lo] = t; }
+        if (tlt(a[hi], a[mid])) { t = a[hi]; a[hi] = a[mid]; a[mid] = t; }
+        const double p = a[mid];
+        a[mid] = a[hi - 1]; a[hi - 1] = p;               /* the pivot waits at hi - 1; a[lo] and a[hi] are sentinels */
+        int64_t i = lo, j = hi - 1;
+        for (;;) {
+            while (tlt(a[++i], p)) {}
+            while (tlt(p, a[--j])) {}
+            if (i >= j) break;
+            t = a[i]; a[i] = a[j]; a[j] = t;
         }
-        if (k < lt) hi = lt - 1;
-        else if (k > gt) lo = gt + 1;
-        else return p;                                    /* a[lt..gt] all equal p, bit for bit */
+        a[hi - 1] = a[i]; a[i] = p;                      /* the pivot in its final place */
+        if (k == i) return p;
+        if (k < i) hi = i - 1; else lo = i + 1;
     }
+    sel_isort(a, lo, hi);
     return a[k];
 }
 
-/* the samples as the quantile code reads them: sorted, or selected index by index (one quantile, or the median) */
-typedef struct { double *v; int64_t n; int sorted; } qview;
+/* the samples as the quantile code reads them: sorted, or selected index by index (one quantile, or the median).
+   After selecting index i, nothing after it is smaller, so index i + 1 (the second index of an interpolated
+   quantile) is the smallest of the rest: one scan instead of a second selection. */
+typedef struct { double *v; int64_t n; int sorted; int64_t last; } qview;
 static double qtake(qview *w, int64_t i)
 {
     if (i < 0) i += w->n;
-    return w->sorted ? w->v[i] : np_select(w->v, w->n, i);
+    if (w->sorted || i == w->last) return w->v[i];
+    if (w->last >= 0 && i == w->last + 1) {
+        int64_t m = i;
+        for (int64_t j = i + 1; j < w->n; j++) if (tlt(w->v[j], w->v[m])) m = j;
+        const double t = w->v[i]; w->v[i] = w->v[m]; w->v[m] = t;
+        w->last = i;
+        return w->v[i];
+    }
+    const double r = np_select(w->v, w->n, i);
+    w->last = i;
+    return r;
 }
 
 static int has_nan(const double *x, int64_t n)
@@ -235,7 +264,7 @@ static int c_quantile(const void *ctx, const double *const *x, const int64_t *n,
         return TSR_EINDEX;
     }
     /* one quantile: selection (at most two order statistics); several: one sort, as before */
-    qview w = {v, m, nq > 1};
+    qview w = {v, m, nq > 1, -1};
     if (nq > 1) np_sort_doubles(v, m);
     for (int64_t k = 0; k < nq; k++) {
         const double q = c->scale == 1.0 ? x[1][k] : x[1][k] / 100.0;

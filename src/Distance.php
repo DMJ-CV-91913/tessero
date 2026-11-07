@@ -23,8 +23,10 @@ final class Distance
     'cdist' => 'cdist',
     'chebyshev' => 'chebyshev',
     'cityblock' => 'cityblock',
+    'convex_hull_2d' => 'convexHull2d',
     'correlation' => 'correlation',
     'cosine' => 'cosine',
+    'delaunay_2d' => 'delaunay2d',
     'dice' => 'dice',
     'distance_matrix' => 'distanceMatrix',
     'euclidean' => 'euclidean',
@@ -120,6 +122,16 @@ final class Distance
     }
 
     /**
+     * The 2-D convex hull vertices of points, counter-clockwise from the lowest x (Andrew's monotone chain), for SpatialConvexHull.
+     *
+     * scipy.spatial.distance.convex_hull_2d
+     */
+    public static function convexHull2d(mixed $points): mixed
+    {
+        return Registry::routine('distance.convex_hull_2d', [$points]);
+    }
+
+    /**
      * Correlation distance between two 1-D arrays (scipy.spatial.distance.correlation).
      *
      * scipy.spatial.distance.correlation
@@ -137,6 +149,16 @@ final class Distance
     public static function cosine(mixed $u, mixed $v, mixed $w = null): mixed
     {
         return Registry::routine('distance.cosine', [$u, $v, $w]);
+    }
+
+    /**
+     * The 2-D Delaunay triangles of points as index triples (sweep-hull, Delaunator), for SpatialDelaunay.
+     *
+     * scipy.spatial.distance.delaunay_2d
+     */
+    public static function delaunay2d(mixed $points): mixed
+    {
+        return Registry::routine('distance.delaunay_2d', [$points]);
     }
 
     /**

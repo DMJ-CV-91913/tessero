@@ -2814,6 +2814,12 @@
                 "doc": "Manhattan (city block) distance (scipy.spatial.distance.cityblock)."
             },
             {
+                "name": "convexHull2d",
+                "static": true,
+                "sig": "convexHull2d(mixed $points): mixed",
+                "doc": "The 2-D convex hull vertices of points, counter-clockwise from the lowest x (Andrew's monotone chain), for SpatialConvexHull."
+            },
+            {
                 "name": "correlation",
                 "static": true,
                 "sig": "correlation(mixed $u, mixed $v, mixed $w = null, mixed $centered = true): mixed",
@@ -2824,6 +2830,12 @@
                 "static": true,
                 "sig": "cosine(mixed $u, mixed $v, mixed $w = null): mixed",
                 "doc": "Cosine distance between two 1-D arrays (scipy.spatial.distance.cosine)."
+            },
+            {
+                "name": "delaunay2d",
+                "static": true,
+                "sig": "delaunay2d(mixed $points): mixed",
+                "doc": "The 2-D Delaunay triangles of points as index triples (sweep-hull, Delaunator), for SpatialDelaunay."
             },
             {
                 "name": "dice",
@@ -25203,6 +25215,18 @@
                 "name": "kdtreeBuild",
                 "static": true,
                 "sig": "kdtreeBuild($data)",
+                "doc": ""
+            },
+            {
+                "name": "convexHull2d",
+                "static": true,
+                "sig": "convexHull2d($points)",
+                "doc": ""
+            },
+            {
+                "name": "delaunay2d",
+                "static": true,
+                "sig": "delaunay2d($points)",
                 "doc": ""
             },
             {

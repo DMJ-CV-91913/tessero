@@ -6,7 +6,8 @@ namespace Tessero\Spatial;
 
 /**
  * scipy.spatial.Delaunay: a Delaunay triangulation of a point set. For 2-D the triangulation is
- * built with the incremental Bowyer-Watson algorithm; for d >= 3 it is built as the LOWER convex
+ * built in the kernel with the sweep-hull algorithm (distance.delaunay_2d; the incremental Bowyer-Watson in PHP
+ * remains for input the sweep cannot triangulate); for d >= 3 it is built as the LOWER convex
  * hull of the points lifted onto the paraboloid x -> (x, |x|^2) (the classical lifting map), using
  * the same beneath-beyond (quickhull) construction as Spatial\ConvexHull. Pure PHP (no kernel),
  * identical on both backends -- no Qhull FFI.
@@ -79,7 +80,7 @@ final class Delaunay
         $this->ndim = $d;
 
         if ($d === 2) {
-            $this->simplices = $this->bowyerWatson($pts);
+            $this->simplices = $this->sweep2d($pts) ?: $this->bowyerWatson($pts);
             $this->transform = $this->buildTransform();
 
             return;
@@ -474,6 +475,24 @@ final class Delaunay
      * @param  list<list<float>> $pts
      * @return list<array{0:int,1:int,2:int}>
      */
+    /**
+     * The 2-D triangulation from the kernel (distance.delaunay_2d: the sweep-hull algorithm, O(n log n), the hull
+     * exact by construction). An empty list when the points admit no triangle (collinear), which the PHP
+     * Bowyer-Watson below then handles as before.
+     *
+     * @param  list<list<float>> $pts
+     * @return list<list<int>>
+     */
+    private function sweep2d(array $pts): array
+    {
+        if (extension_loaded('tessero') && class_exists(\Tessero\Ext\Distance::class)) {
+            $r = \Tessero\Ext\Distance::delaunay2d(\Tessero\Ext\NDArray::array($pts, 'float64'));
+        } else {
+            $r = \Tessero\Distance::delaunay2d(\Tessero\NDArray::array($pts, 'float64'));
+        }
+        return (is_array($r) ? reset($r) : $r)->toArray();          /* (ntri, 3): rows of point indices */
+    }
+
     private function bowyerWatson(array $pts): array
     {
         $n = count($pts);

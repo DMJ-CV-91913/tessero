@@ -26,21 +26,38 @@ static double hier_lw(int method, double dik, double djk, double dij, double ni,
     }
 }
 
-/* run agglomeration over the n-by-n working matrix W (modified in place), writing Z (n-1 rows x 4). */
+/* run agglomeration over the n-by-n working matrix W (modified in place), writing Z (n-1 rows x 4).
+   Each step merges the closest pair of active clusters, the first in (position a, then position b) order among
+   equals, and updates the merged cluster's distances by Lance-Williams. Instead of rescanning all pairs (n^3 in
+   all), each active position a caches its nearest later neighbour nn[a] (the first minimum, as the scan meets it):
+   a step finds the pair from the cached minima (n), and a merge re-scans only the rows whose neighbour was one of
+   the two merged clusters, while earlier rows check the merged cluster's new distance with the same tie rule. The
+   distances are the ones the full scan computes, in the same order, so Z is the same; the work is about n^2. */
 static int hier_core(double *W, int64_t n, int method, double *Z)
 {
     const int sq = method >= 4;
     int64_t *act = (int64_t *)malloc((size_t)n * sizeof(int64_t));
     int64_t *sz = (int64_t *)malloc((size_t)n * sizeof(int64_t));
     int64_t *cid = (int64_t *)malloc((size_t)n * sizeof(int64_t));
-    if (!act || !sz || !cid) { free(act); free(sz); free(cid); return TSR_ENOMEM; }
-    for (int64_t i = 0; i < n; i++) { act[i] = i; sz[i] = 1; cid[i] = i; }
+    int64_t *pos = (int64_t *)malloc((size_t)n * sizeof(int64_t));   /* cluster slot -> its position in act */
+    int64_t *nn = (int64_t *)malloc((size_t)n * sizeof(int64_t));    /* position a -> slot of its nearest later neighbour */
+    double *nnd = (double *)malloc((size_t)n * sizeof(double));
+    if (!act || !sz || !cid || !pos || !nn || !nnd) { free(act); free(sz); free(cid); free(pos); free(nn); free(nnd); return TSR_ENOMEM; }
+    for (int64_t i = 0; i < n; i++) { act[i] = i; sz[i] = 1; cid[i] = i; pos[i] = i; }
     int64_t na = n, nxt = n;
+    /* position a's nearest later neighbour: the first strict minimum over b > a (the next position when every
+       distance is infinite, as the full scan then merges the first pair) */
+#define HIER_ROW(a) do { \
+        double bd_ = INFINITY; int64_t bb_ = (a) + 1 < na ? act[(a) + 1] : -1; const int64_t r_ = act[(a)]; \
+        for (int64_t b_ = (a) + 1; b_ < na; b_++) { const double d_ = W[r_ * n + act[b_]]; if (d_ < bd_) { bd_ = d_; bb_ = act[b_]; } } \
+        nnd[(a)] = bd_; nn[(a)] = bb_; \
+    } while (0)
+    for (int64_t a = 0; a < na; a++) HIER_ROW(a);
     for (int64_t step = 0; step < n - 1; step++) {
-        double best = INFINITY; int64_t bi = 0, bj = 1;
-        for (int64_t a = 0; a < na; a++)
-            for (int64_t b = a + 1; b < na; b++) { double d = W[act[a] * n + act[b]]; if (d < best) { best = d; bi = a; bj = b; } }
-        int64_t A = act[bi], B = act[bj]; double dij = best;
+        double best = INFINITY; int64_t bi = 0;
+        for (int64_t a = 0; a < na - 1; a++) if (nnd[a] < best) { best = nnd[a]; bi = a; }
+        const int64_t A = act[bi], B = nn[bi], bj = pos[B];
+        const double dij = W[A * n + B];
         int64_t c1 = cid[A] < cid[B] ? cid[A] : cid[B], c2 = cid[A] < cid[B] ? cid[B] : cid[A];
         Z[step * 4 + 0] = (double)c1; Z[step * 4 + 1] = (double)c2;
         Z[step * 4 + 2] = sq ? sqrt(dij) : dij; Z[step * 4 + 3] = (double)(sz[A] + sz[B]);
@@ -48,10 +65,19 @@ static int hier_core(double *W, int64_t n, int method, double *Z)
             double nv = hier_lw(method, W[A * n + k], W[B * n + k], dij, (double)sz[A], (double)sz[B], (double)sz[k]);
             W[A * n + k] = W[k * n + A] = nv; }
         sz[A] += sz[B]; cid[A] = nxt++;
-        for (int64_t a = bj; a < na - 1; a++) act[a] = act[a + 1];
+        for (int64_t a = bj; a < na - 1; a++) { act[a] = act[a + 1]; nn[a] = nn[a + 1]; nnd[a] = nnd[a + 1]; pos[act[a]] = a; }
         na--;
+        /* the cached neighbours after the merge (B's position is gone; A keeps position bi < bj) */
+        for (int64_t a = 0; a < na - 1; a++) {
+            if (a == bi || nn[a] == A || nn[a] == B) { HIER_ROW(a); continue; }
+            if (a < bi) {                                 /* A is a later neighbour of a: its new distance may win */
+                const double d = W[act[a] * n + A];
+                if (d < nnd[a] || (d == nnd[a] && bi < pos[nn[a]])) { nnd[a] = d; nn[a] = A; }
+            }
+        }
     }
-    free(act); free(sz); free(cid);
+#undef HIER_ROW
+    free(act); free(sz); free(cid); free(pos); free(nn); free(nnd);
     return TSR_OK;
 }
 

@@ -16,7 +16,7 @@ namespace Tessero\Spatial;
  * non-simplicial facet (e.g. a square face of a cube) differently from this builder, so simplices are
  * exposed for convenience but are compared only semantically (via the invariants) by the parity harness.
  *
- * Pure PHP (no kernel), identical on both backends. A point set whose columns are < 2 is rejected, as
+ * The 2-D vertex walk runs in the kernel (distance.convex_hull_2d), d >= 3 in PHP; identical on both backends. A point set whose columns are < 2 is rejected, as
  * is a degenerate (lower-than-full-dimensional) set, which Qhull reports as a QhullError.
  */
 final class ConvexHull
@@ -85,39 +85,15 @@ final class ConvexHull
         $this->hullNd($pts, $d);
     }
 
-    /** Andrew's monotone chain (2-D). */
+    /** Andrew's monotone chain (2-D), in the kernel (distance.convex_hull_2d). */
     private function hull2d(array $pts): void
     {
-        $n = count($pts);
-        $idx = range(0, $n - 1);
-        usort($idx, static function (int $a, int $b) use ($pts): int {
-            if ($pts[$a][0] !== $pts[$b][0]) {
-                return $pts[$a][0] <=> $pts[$b][0];
-            }
-
-            return $pts[$a][1] <=> $pts[$b][1];
-        });
-        $cross = static function (int $o, int $a, int $b) use ($pts): float {
-            return ($pts[$a][0] - $pts[$o][0]) * ($pts[$b][1] - $pts[$o][1])
-                 - ($pts[$a][1] - $pts[$o][1]) * ($pts[$b][0] - $pts[$o][0]);
-        };
-        $lower = [];
-        foreach ($idx as $i) {
-            while (count($lower) >= 2 && $cross($lower[count($lower) - 2], $lower[count($lower) - 1], $i) <= 0.0) {
-                array_pop($lower);
-            }
-            $lower[] = $i;
+        if (extension_loaded('tessero') && class_exists(\Tessero\Ext\Distance::class)) {
+            $r = \Tessero\Ext\Distance::convexHull2d(\Tessero\Ext\NDArray::array($pts, 'float64'));
+        } else {
+            $r = \Tessero\Distance::convexHull2d(\Tessero\NDArray::array($pts, 'float64'));
         }
-        $upper = [];
-        foreach (array_reverse($idx) as $i) {
-            while (count($upper) >= 2 && $cross($upper[count($upper) - 2], $upper[count($upper) - 1], $i) <= 0.0) {
-                array_pop($upper);
-            }
-            $upper[] = $i;
-        }
-        array_pop($lower);
-        array_pop($upper);
-        $hull = array_merge($lower, $upper);
+        $hull = (is_array($r) ? reset($r) : $r)->toList();
         if (count($hull) < 3) {
             throw new \InvalidArgumentException('input is degenerate (collinear points); QhullError');
         }
