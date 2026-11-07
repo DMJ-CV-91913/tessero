@@ -68,6 +68,40 @@ On the tier-1 inputs SciPy crashed (segmentation fault), aborted or ran for hour
 6 hours); `pbdv` and `pbvv` raised a memory-allocation error. `spherical_jn/yn/in/kn` are not comparable here: the
 fixtures mix derivative=0 and 1 rows, and SciPy takes one derivative flag per call.
 
+## Per call through the native extension
+
+Tier 3 again with the native extension (`ext/`) instead of FFI, on commit 2184ba75: every parity fixture call
+that passed its check, the same cases, timed through `Tessero\Ext\*`. The extension calls the same kernel without
+the FFI layer, which costs tens of microseconds per call; where the work itself dominates, the two backends take the
+same time (`stats.tukey_hsd`: 54 ms on both). Against NumPy/SciPy the extension is about 9x faster per call on
+average and faster on 893 of 1,022 functions, NumPy's own core functions included (0.47; through FFI they were about
+3x slower).
+
+Best of three runs on each side, alternating (the host carried unrelated load, at times above 40 on 8 cores; a
+single run of each gave 0.08, flattering the extension, which had run at the lower load):
+
+| module | functions | geomean ratio | faster |
+|---|---|---|---|
+| cluster | 4 | 0.04 | 4 |
+| csgraph | 14 | 0.01 | 14 |
+| distance | 26 | 0.14 | 26 |
+| fft | 18 | 0.33 | 17 |
+| hierarchy | 26 | 0.01 | 26 |
+| interpolate | 6 | 0.01 | 6 |
+| linalg | 30 | 0.31 | 26 |
+| ndimage | 66 | 0.13 | 66 |
+| np | 193 | 0.47 | 133 |
+| npoly | 155 | 0.11 | 148 |
+| scipyfft | 11 | 0.65 | 4 |
+| signal | 124 | 0.05 | 116 |
+| slinalg | 87 | 0.06 | 87 |
+| sparse | 23 | 0.03 | 23 |
+| special | 89 | 0.92 | 49 |
+| splinalg | 14 | 0.02 | 14 |
+| stats | 111 | 0.01 | 109 |
+| windows | 25 | 0.07 | 25 |
+| **all** | 1022 | **0.11** | 893 |
+
 ## Sorting against NumPy
 
 `NDArray::sortSimd()` (an AVX2 quicksort with in-register sorting networks) uses the threads set with
