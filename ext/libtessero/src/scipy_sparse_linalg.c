@@ -6,12 +6,18 @@
  */
 #include "fn.h"
 
+#include <limits.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <lapacke.h>
 
 extern int sl_dense_solve(double *M, double *b, int64_t n, int64_t nrhs);   /* np_linalg.c (row-major dgesv) */
+/* the linked BLAS (see matmul.c): the Lanczos basis products */
+extern void cblas_dgemv(int Order, int TransA, int M, int N, double alpha, const double *A, int lda, const double *X,
+                        int incX, double beta, double *Y, int incY);
+extern void cblas_dgemm(int Order, int TransA, int TransB, int M, int N, int K, double alpha, const double *A, int lda,
+                        const double *B, int ldb, double beta, double *C, int ldc);
 extern int sl_expm(const double *A, int64_t n, double *out);
 extern int sl_funm_byname(const char *fname, const double *A, int64_t n, double *out);                /* np_linalg.c (Pade scaling-squaring) */
 
@@ -1169,22 +1175,37 @@ static void lz_order(const double *theta, int64_t m, const char *which, int64_t 
     }
 }
 
-/* q -= its components along the nl columns of L (n x nl, column p at L + p n) and the j vectors of V, twice */
-static void lz_orth(double *q, const double *L, int64_t nl, const double *V, int64_t j, int64_t n)
+/* One classical Gram-Schmidt pass of q against the r orthonormal vectors X (r x n, vector p at X + p n): c = X q,
+   q -= X^T c, by two BLAS matrix-vector products (scalar loops when a size exceeds the 32-bit BLAS interface).
+   t (r entries) receives the coefficients; c, when not NULL, accumulates them. */
+static void lz_proj(const double *X, int64_t r, int64_t n, double *q, double *t, double *c)
+{
+    if (r <= 0) return;
+    if (n <= INT_MAX && r <= INT_MAX) {
+        cblas_dgemv(101, 111, (int)r, (int)n, 1.0, X, (int)n, q, 1, 0.0, t, 1);
+        cblas_dgemv(101, 112, (int)r, (int)n, -1.0, X, (int)n, t, 1, 1.0, q, 1);
+    } else {
+        for (int64_t p = 0; p < r; p++) {
+            const double *xp = X + p * n;
+            double s = 0.0;
+            for (int64_t i = 0; i < n; i++) s += xp[i] * q[i];
+            t[p] = s;
+        }
+        for (int64_t p = 0; p < r; p++) {
+            const double *xp = X + p * n;
+            for (int64_t i = 0; i < n; i++) q[i] -= t[p] * xp[i];
+        }
+    }
+    if (c) for (int64_t p = 0; p < r; p++) c[p] += t[p];
+}
+
+/* q -= its components along the nl vectors L (vector p at L + p n) and the j vectors of V, twice (t: scratch of
+   max(nl, j) entries) */
+static void lz_orth(double *q, const double *L, int64_t nl, const double *V, int64_t j, int64_t n, double *t)
 {
     for (int pass = 0; pass < 2; pass++) {
-        for (int64_t p = 0; p < nl; p++) {
-            const double *lp = L + p * n;
-            double c = 0.0;
-            for (int64_t i = 0; i < n; i++) c += lp[i] * q[i];
-            for (int64_t i = 0; i < n; i++) q[i] -= c * lp[i];
-        }
-        for (int64_t p = 0; p < j; p++) {
-            const double *vp = V + p * n;
-            double c = 0.0;
-            for (int64_t i = 0; i < n; i++) c += vp[i] * q[i];
-            for (int64_t i = 0; i < n; i++) q[i] -= c * vp[i];
-        }
+        lz_proj(L, nl, n, q, t, NULL);
+        lz_proj(V, j, n, q, t, NULL);
     }
 }
 
@@ -1200,12 +1221,14 @@ static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int6
     double *V = (double *)calloc((size_t)((m + 1) * n), sizeof(double));
     double *H = (double *)calloc((size_t)(m * m), sizeof(double)), *Y = (double *)malloc((size_t)(m * m) * sizeof(double));
     double *theta = (double *)malloc((size_t)m * sizeof(double)), *w = (double *)malloc((size_t)n * sizeof(double));
-    double *T = (double *)malloc((size_t)(n * m) * sizeof(double));
+    double *T = (double *)malloc((size_t)(n * m) * sizeof(double)), *Ys = (double *)malloc((size_t)(m * m) * sizeof(double));
+    const int64_t nt = nl > m + 1 ? nl : m + 1;
+    double *t = (double *)malloc((size_t)nt * sizeof(double)), *hc = (double *)malloc((size_t)m * sizeof(double));
     int64_t *ord = (int64_t *)malloc((size_t)m * sizeof(int64_t));
     int rc = TSR_OK;
-    if (!V || !H || !Y || !theta || !w || !T || !ord) { rc = TSR_ENOMEM; goto done; }
+    if (!V || !H || !Y || !theta || !w || !T || !Ys || !t || !hc || !ord) { rc = TSR_ENOMEM; goto done; }
     for (int64_t i = 0; i < n; i++) V[i] = v0 ? v0[i] : 1.0 + 0.5 * sin(1.7 * (double)i + 0.3 + 0.61 * (double)nl);
-    lz_orth(V, L, nl, NULL, 0, n);
+    lz_orth(V, L, nl, NULL, 0, n, t);
     {
         double nv = 0.0;
         for (int64_t i = 0; i < n; i++) nv += V[i] * V[i];
@@ -1218,23 +1241,12 @@ static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int6
     for (int64_t iter = 0; iter < maxit; iter++) {
         for (int64_t j = j0; j < m; j++) {               /* expand: v_{j+1} from A v_j, orthogonal to L and v_0..v_j */
             spl_mv(A, V + j * n, w, n);
-            for (int64_t i = 0; i <= j; i++) H[i * m + j] = 0.0;
-            for (int pass = 0; pass < 2; pass++) {
-                for (int64_t p = 0; p < nl; p++) {
-                    const double *lp = L + p * n;
-                    double c = 0.0;
-                    for (int64_t q = 0; q < n; q++) c += lp[q] * w[q];
-                    for (int64_t q = 0; q < n; q++) w[q] -= c * lp[q];
-                }
-                for (int64_t i = 0; i <= j; i++) {
-                    const double *vi = V + i * n;
-                    double c = 0.0;
-                    for (int64_t q = 0; q < n; q++) c += vi[q] * w[q];
-                    for (int64_t q = 0; q < n; q++) w[q] -= c * vi[q];
-                    H[i * m + j] += c;
-                }
+            for (int64_t i = 0; i <= j; i++) hc[i] = 0.0;
+            for (int pass = 0; pass < 2; pass++) {           /* classical Gram-Schmidt, twice (DGKS) */
+                lz_proj(L, nl, n, w, t, NULL);
+                lz_proj(V, j + 1, n, w, t, hc);
             }
-            for (int64_t i = 0; i <= j; i++) H[j * m + i] = H[i * m + j];
+            for (int64_t i = 0; i <= j; i++) H[i * m + j] = H[j * m + i] = hc[i];
             beta = 0.0;
             for (int64_t q = 0; q < n; q++) beta += w[q] * w[q];
             beta = sqrt(beta);
@@ -1244,7 +1256,7 @@ static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int6
             } else {                                      /* an invariant subspace: continue with a new direction */
                 beta = 0.0;
                 for (int64_t q = 0; q < n; q++) vn[q] = sin(0.37 * (double)(q + 1) * (double)(j + 2));
-                lz_orth(vn, L, nl, V, j + 1, n);
+                lz_orth(vn, L, nl, V, j + 1, n, t);
                 double nn = 0.0;
                 for (int64_t q = 0; q < n; q++) nn += vn[q] * vn[q];
                 nn = sqrt(nn);
@@ -1260,20 +1272,32 @@ static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int6
         lz_order(theta, m, which, ord);
         double anorm = 0.0;
         for (int64_t c = 0; c < m; c++) if (fabs(theta[c]) > anorm) anorm = fabs(theta[c]);
-        int conv = 1;
-        for (int64_t p = 0; p < k && conv; p++) {
+        int64_t nconv = 0;
+        for (int64_t p = 0; p < k; p++) {
             const int64_t c = ord[p];
             /* tol |theta|, but not below the attainable 16 eps |A| (the eigenvalue error is quadratic in the residual) */
-            conv = fabs(beta * Y[(m - 1) * m + c]) <= fmax(tol * fabs(theta[c]), 16.0 * 2.220446049250313e-16 * anorm);
+            nconv += fabs(beta * Y[(m - 1) * m + c]) <= fmax(tol * fabs(theta[c]), 16.0 * 2.220446049250313e-16 * anorm);
         }
-        const int64_t l = conv ? k : (k + (m - k) / 2 < m ? k + (m - k) / 2 : m - 1);
-        for (int64_t p = 0; p < l; p++) {                 /* T[:, p] = V_m y_ord[p]: the kept (or answer) Ritz vectors */
-            const int64_t c = ord[p];
-            double *t = T + p * n;
-            for (int64_t q = 0; q < n; q++) t[q] = 0.0;
-            for (int64_t i = 0; i < m; i++) {
-                const double y = Y[i * m + c], *vi = V + i * n;
-                for (int64_t q = 0; q < n; q++) t[q] += y * vi[q];
+        const int conv = nconv == k;
+        /* the restart keeps the k wanted Ritz vectors plus as many more as have converged, at most half the free
+           slots (ARPACK's dsaup2 rule; one wanted value: half the basis): few kept while nothing has converged, so
+           each restart adds more new directions */
+        int64_t l = k + (nconv < (m - k) / 2 ? nconv : (m - k) / 2);
+        if (l == 1) l = m >= 6 ? m / 2 : (m > 2 ? 2 : 1);
+        if (l >= m) l = m - 1;
+        if (conv) l = k;
+        /* T[p] = V_m^T y_ord[p]: the kept (or answer) Ritz vectors, one matrix product */
+        for (int64_t p = 0; p < l; p++) for (int64_t i = 0; i < m; i++) Ys[p * m + i] = Y[i * m + ord[p]];
+        if (n <= INT_MAX) {
+            cblas_dgemm(101, 111, 111, (int)l, (int)n, (int)m, 1.0, Ys, (int)m, V, (int)n, 0.0, T, (int)n);
+        } else {
+            for (int64_t p = 0; p < l; p++) {
+                double *tp = T + p * n;
+                for (int64_t q = 0; q < n; q++) tp[q] = 0.0;
+                for (int64_t i = 0; i < m; i++) {
+                    const double y = Ys[p * m + i], *vi = V + i * n;
+                    for (int64_t q = 0; q < n; q++) tp[q] += y * vi[q];
+                }
             }
         }
         if (conv) {
@@ -1294,7 +1318,7 @@ static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int6
     fn_set_error("eigsh: no convergence after %lld restarts (raise maxiter or tol)", (long long)maxit);
     rc = TSR_EARG;
 done:
-    free(V); free(H); free(Y); free(theta); free(w); free(T); free(ord);
+    free(V); free(H); free(Y); free(theta); free(w); free(T); free(Ys); free(t); free(hc); free(ord);
     return rc;
 }
 

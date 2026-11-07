@@ -7,7 +7,7 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **1.07** | 39 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **1.06** | 39 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
@@ -48,6 +48,7 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `numpy.percentile` 1M (one q) | 18 ms | 5.9 ms | 12 ms | a two-pointer (Hoare) introselect, and the second order statistic of an interpolated quantile as the smallest of the rest (one scan) |
 | `numpy.median` 1M | 13 ms | 12 ms | 11 ms | the same introselect |
 | `optimize.curve_fit`, 1000 points | 10.6 ms | 5.0 ms | 0.61 ms | the forward-difference Jacobian and the normal equations J^T J, J^T r of each Levenberg-Marquardt iteration in one kernel call (`linalg.fd_normal`, the same sums in the same order), J^T J kept for the covariance, and the model called with its parameters unpacked; the same parameters and covariance, bit for bit (before and after timed on the same host state) |
+| `sparse.linalg.eigsh` k=6, 100 x 100 grid Poisson (CSR) | 2.3 s | 0.74 s | 0.50 s | the Lanczos basis orthogonalized by BLAS matrix-vector products (classical Gram-Schmidt, twice) and the Ritz vectors formed by one matrix product, instead of scalar loops; a restart keeps the wanted Ritz vectors plus the converged ones, at most half the free slots (ARPACK's rule), instead of a fixed 13 of 20: 1,539 products with the matrix instead of 2,470 (ARPACK: 1,562). The same eigenvalues to about 1e-14 relative (checked against dense LAPACK on 140 cases) |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -58,9 +59,9 @@ factor was zero, so a NaN in a later operand propagates as in NumPy.
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
 | `optimize.curve_fit`, 1000 points | 5.0 ms | 0.61 ms | the model is a PHP function called once per point: 36 evaluations of 1000 points, about 3 ms, where SciPy calls it once per evaluation on the whole array; the iterations' arithmetic runs in the kernel | -- |
-| `sparse.linalg.eigsh` k=6, 100 x 100 grid Poisson (CSR) | 2.4 s | 0.50 s | thick-restart Lanczos with full reorthogonalization, plus deflation searches that find repeated eigenvalues (this spectrum has many) | implicit restarts, cheaper deflation |
 | `spatial.ConvexHull`, 10k (2-D) | 4.1 ms | 1.5 ms | the hull runs in the kernel; the rest is converting the PHP point arrays and the result | -- |
 | `spatial.KDTree`, 100k points: build / 100 queries | 85 / 0.60 ms | 43 / 0.38 ms | the constructor converts the PHP point arrays (SciPy receives an ndarray) and builds the tree; a query passes the data and the tree to the kernel in place (until 2026-11-06 every query rebuilt the tree: 37 ms) | -- |
+| `sparse.linalg.eigsh` k=6, 100 x 100 grid Poisson (CSR) | 0.74 s | 0.50 s | after the Lanczos run, a second one on the complement of the converged vectors checks that no repeated eigenvalue was missed (this spectrum has many); it takes about a third of the time | -- |
 | `special.ellip_harm_2`, Kelvin-function zeros (tier 3) | 100-600x | -- | slow per-call algorithms | -- |
 
 ## Where SciPy fails and Tessero completes
@@ -144,8 +145,8 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   fixes above (last on 2026-11-07): `sort()` as the AVX2 sort, the `KDTree` built once (in the constructor, as SciPy
   does; before, the build row timed no tree at all and every query rebuilt it), the sparse solvers on CSR input (the
   three sparse cases had failed: the solvers took dense matrices only), and `linkage`, `Delaunay`, `ConvexHull`,
-  `solve_triangular`, `median`, `percentile` and `curve_fit` as listed above (`curve_fit` re-timed on its own, at a
-  load average of 11 to 19). Each side ran three times, alternating,
+  `solve_triangular`, `median`, `percentile`, `curve_fit` and `eigsh` as listed above (`curve_fit` and `eigsh`
+  re-timed on their own, at a load average of 11 to 19). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -238,7 +239,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | numpy rfft2 1024x1024 | 31.5 | 9.34 | 3.37 |
 | scipy.ndimage label 1000x1000 | 23.6 | 6.94 | 3.41 |
 | scipy.signal medfilt 100k, k=5 | 11.2 | 2.43 | 4.59 |
-| scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 2.44e+03 | 502 | 4.87 |
+| scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
 | scipy.linalg pinv 300x300 | 136 | 25.9 | 5.25 |
 | scipy.signal resample_poly 1M, 3/2 | 355 | 40.1 | 8.85 |
 | scipy.signal correlate 10k * 101 | 3.77 | 0.327 | 11.52 |
