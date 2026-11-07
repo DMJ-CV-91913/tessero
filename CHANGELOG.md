@@ -16,6 +16,14 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Added
 
+- **`SparseLinalg` solvers take sparse matrices** (`spsolve`, `eigsh`, `cg`, `bicgstab`, `bicg`, `cgs`, `minres`, `gmres`,
+  `lgmres`, `gcrotmk`, `qmr`, `tfqmr`; both backends): pass the CSR array that `Sparse::diags` / `Sparse::csrArray` return
+  (or a `CsrMatrix` on FFI). The bindings hand it to the kernel as the group data, indices, indptr, shape, checked before
+  use. Iterative solvers use sparse products (the same results as on the dense matrix); `spsolve` a banded LU sized by
+  the matrix's bandwidth (dense fallback when the band is wide and the matrix fits, else an error); `eigsh` thick-restart
+  Lanczos with a deflation search so repeated eigenvalues are found (`SM` dense up to n = 4096; `sigma` unsupported).
+  Before, these solvers took dense matrices only: a 100k tridiagonal `spsolve` (80 GB dense) now takes 15 ms (SciPy
+  51 ms); a 100 x 100 grid Poisson system: `spsolve` 25 ms (SciPy 31), `cg` 21 ms (SciPy 21).
 - **`Generator::multivariateNormal(..., method:)` takes `'cholesky'` and `'eigh'`** besides `'svd'`, on both
   backends, each factorisation computed as NumPy computes it (C: `tsr_pcg64_multivariate_normal_method`). A cov that is
   not positive definite fails `'cholesky'` with an error, as NumPy raises.

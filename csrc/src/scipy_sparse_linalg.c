@@ -27,29 +27,6 @@ static void spl_mm(double *C, const double *A, const double *B, int64_t n)
 static void spl_bool(tsr_result *r, int b) { memset(r, 0, sizeof *r); r->kind = 4; r->num = b ? 1.0 : 0.0; }
 
 /* spsolve(A, b): solve A x = b for a square A (dense here). b is a vector (n,) or a matrix (n, k); x matches. */
-static int r_spsolve(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
-{
-    (void)ctx; (void)nres;
-    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3) { fn_set_error("spsolve: A must be 2-D and b an array"); return TSR_EARG; }
-    int64_t n = args[0].arr.shape[0];
-    if (args[0].arr.shape[1] != n) { fn_set_error("spsolve: A must be square"); return TSR_EARG; }
-    const tsr_array *B = &args[1].arr;
-    int vector = B->ndim == 1;
-    int64_t k = vector ? 1 : B->shape[1];
-    if (B->shape[0] != n) { fn_set_error("spsolve: b has the wrong number of rows"); return TSR_EARG; }
-    int64_t La, Lb; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
-    double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { fn_free_doubles(A, La); return TSR_ENOMEM; }
-    int64_t sh1[1] = {n}, sh2[2] = {n, k};
-    double *x = (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, vector ? sh1 : sh2);
-    int rc = TSR_OK;
-    if (!x) rc = TSR_ENOMEM;
-    else {
-        memcpy(x, b, (size_t)(n * k) * sizeof(double));                      /* sl_dense_solve overwrites rhs in place */
-        if (sl_dense_solve(A, x, n, k) != 0) { fn_set_error("spsolve: matrix is singular"); rc = TSR_EARG; }
-    }
-    fn_free_doubles(A, La); fn_free_doubles(b, Lb);
-    return rc;
-}
 
 /* spsolve_triangular(A, b, lower=True, overwrite_A=False, overwrite_b=False, unit_diagonal=False). */
 static int r_spsolve_triangular(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -293,56 +270,255 @@ static int r_expm_multiply(const void *ctx, const tsr_arg *args, int nargs, tsr_
  * solvers reach the direct-solve x to <1e-4 rel err at rtol=1e-8).
  * =========================================================================== */
 
-/* y = A x, A dense n x n row-major */
-static void spl_mv(const double *A, const double *x, double *y, int64_t n)
+/* The matrix of an iterative solver: dense (n x n row-major, as before), or CSR, which the bindings pass as a group
+   of four arrays -- data, indices, indptr, shape, what scipy.sparse's routines return. The CSR product sums each
+   row's stored entries in their order, the same products the dense loop sums for a row whose zeros are not stored,
+   so both give the same result (but for the sign of an exact zero); the dense one costs n^2, the CSR one nnz. */
+typedef struct {
+    int64_t n;
+    double *dense; int64_t ldense;                 /* dense: the fn_arg_doubles copy */
+    double *data; int64_t ldata;                   /* CSR */
+    int64_t *ind, *ptr; int64_t nnz;
+} spl_op;
+
+/* the integer-valued array argument a as int64 (exact below 2^53); NULL with *len = -1 when it holds a non-integer */
+static int64_t *spl_arg_i64(const tsr_arg *a, int64_t *len)
 {
+    int64_t t;
+    double *v = fn_arg_doubles(a, &t);
+    if (!v) { *len = 0; return NULL; }
+    int64_t *o = (int64_t *)tsr_alloc((t > 0 ? t : 1) * 8);
+    int ok = o != NULL;
+    for (int64_t q = 0; ok && q < t; q++) {
+        if (!(v[q] >= -9.0e15 && v[q] <= 9.0e15) || v[q] != floor(v[q])) ok = 0;
+        else o[q] = (int64_t)v[q];
+    }
+    fn_free_doubles(v, t);
+    if (!ok) { if (o) tsr_free(o, (t > 0 ? t : 1) * 8); *len = o ? -1 : 0; return NULL; }
+    *len = t;
+    return o;
+}
+
+static void spl_op_free(spl_op *A)
+{
+    if (A->dense) fn_free_doubles(A->dense, A->ldense);
+    if (A->data) fn_free_doubles(A->data, A->ldata);
+    if (A->ind) tsr_free(A->ind, (A->nnz > 0 ? A->nnz : 1) * 8);
+    if (A->ptr) tsr_free(A->ptr, (A->n + 1) * 8);
+    memset(A, 0, sizeof *A);
+}
+
+/* a, the matrix argument, into A: a 2-D array, or a CSR group whose structure is checked before any use (indptr of
+   n + 1 non-decreasing offsets from 0 to nnz, nnz data and indices, every index in [0, ncols)), so a malformed one is
+   refused and never read out of bounds. rows / cols: the shape. who names the caller in errors. */
+static int spl_op_load(spl_op *A, const tsr_arg *a, const char *who, int64_t *rows, int64_t *cols)
+{
+    memset(A, 0, sizeof *A);
+    if (a->kind == 3 && a->arr.ndim == 2) {
+        *rows = a->arr.shape[0]; *cols = a->arr.shape[1];
+        A->n = *rows;
+        A->dense = fn_arg_doubles(a, &A->ldense);
+        return A->dense ? TSR_OK : TSR_ENOMEM;
+    }
+    if (a->kind != 5 || a->count != 4 || !a->items) {
+        fn_set_error("%s: A must be a 2-D array or a CSR matrix (data, indices, indptr, shape)", who); return TSR_EARG;
+    }
+    const tsr_arg *it = a->items;
+    for (int k = 0; k < 4; k++)
+        if (it[k].kind != 3 || it[k].arr.ndim != 1) { fn_set_error("%s: a CSR matrix is four 1-D arrays (data, indices, indptr, shape)", who); return TSR_EARG; }
+    if (it[3].arr.shape[0] != 2) { fn_set_error("%s: the CSR shape must have two entries", who); return TSR_EARG; }
+    int64_t ls, ln;
+    int64_t *shape = spl_arg_i64(&it[3], &ls);
+    if (!shape) { if (ls < 0) fn_set_error("%s: the CSR shape must be integers", who); return ls < 0 ? TSR_EARG : TSR_ENOMEM; }
+    *rows = shape[0]; *cols = shape[1];
+    tsr_free(shape, 2 * 8);
+    if (*rows < 0 || *cols < 0 || *rows > ((int64_t)1 << 40) || *cols > ((int64_t)1 << 40)) { fn_set_error("%s: bad CSR shape", who); return TSR_EARG; }
+    A->n = *rows;
+    if (it[2].arr.shape[0] != *rows + 1) { fn_set_error("%s: the CSR indptr must have rows + 1 entries", who); return TSR_EARG; }
+    A->ptr = spl_arg_i64(&it[2], &ln);
+    if (!A->ptr) { int rc = ln < 0 ? TSR_EARG : TSR_ENOMEM; if (ln < 0) fn_set_error("%s: the CSR indptr must be integers", who); return rc; }
+    A->nnz = A->ptr[*rows];
+    int ok = A->ptr[0] == 0 && A->nnz >= 0 && it[0].arr.shape[0] == A->nnz && it[1].arr.shape[0] == A->nnz;
+    for (int64_t i = 0; ok && i < *rows; i++) if (A->ptr[i + 1] < A->ptr[i]) ok = 0;
+    if (!ok) { tsr_free(A->ptr, (*rows + 1) * 8); A->ptr = NULL; fn_set_error("%s: malformed CSR indptr (offsets from 0 to nnz, non-decreasing)", who); return TSR_EARG; }
+    int64_t li;
+    A->ind = spl_arg_i64(&it[1], &li);
+    if (!A->ind) { int rc = li < 0 ? TSR_EARG : TSR_ENOMEM; if (li < 0) fn_set_error("%s: the CSR indices must be integers", who); spl_op_free(A); return rc; }
+    for (int64_t k = 0; k < A->nnz; k++)
+        if (A->ind[k] < 0 || A->ind[k] >= *cols) { fn_set_error("%s: a CSR column index is out of range", who); spl_op_free(A); return TSR_EARG; }
+    A->data = fn_arg_doubles(&it[0], &A->ldata);
+    if (!A->data) { spl_op_free(A); return TSR_ENOMEM; }
+    return TSR_OK;
+}
+
+/* y = A x */
+static void spl_mv(const spl_op *A, const double *x, double *y, int64_t n)
+{
+    if (A->dense) {
+        for (int64_t i = 0; i < n; i++) {
+            double s = 0.0; const double *Ai = A->dense + i * n;
+            for (int64_t j = 0; j < n; j++) s += Ai[j] * x[j];
+            y[i] = s;
+        }
+        return;
+    }
     for (int64_t i = 0; i < n; i++) {
-        double s = 0.0; const double *Ai = A + i * n;
-        for (int64_t j = 0; j < n; j++) s += Ai[j] * x[j];
+        double s = 0.0;
+        for (int64_t k = A->ptr[i]; k < A->ptr[i + 1]; k++) s += A->data[k] * x[A->ind[k]];
         y[i] = s;
     }
 }
 /* y = A^T x */
-static void spl_mtv(const double *A, const double *x, double *y, int64_t n)
+static void spl_mtv(const spl_op *A, const double *x, double *y, int64_t n)
 {
     for (int64_t j = 0; j < n; j++) y[j] = 0.0;
+    if (A->dense) {
+        for (int64_t i = 0; i < n; i++) {
+            const double *Ai = A->dense + i * n; double xi = x[i];
+            for (int64_t j = 0; j < n; j++) y[j] += Ai[j] * xi;
+        }
+        return;
+    }
     for (int64_t i = 0; i < n; i++) {
-        const double *Ai = A + i * n; double xi = x[i];
-        for (int64_t j = 0; j < n; j++) y[j] += Ai[j] * xi;
+        const double xi = x[i];
+        for (int64_t k = A->ptr[i]; k < A->ptr[i + 1]; k++) y[A->ind[k]] += A->data[k] * xi;
     }
 }
+/* A[i][i] (0 when not stored) */
+static double spl_op_diag(const spl_op *A, int64_t i)
+{
+    if (A->dense) return A->dense[i * A->n + i];
+    double d = 0.0;
+    for (int64_t k = A->ptr[i]; k < A->ptr[i + 1]; k++) if (A->ind[k] == i) d += A->data[k];   /* duplicates add, as scipy sums them */
+    return d;
+}
+/* spsolve on a CSR matrix: an LU with partial pivoting restricted to the matrix's band (LAPACK dgbsv), the
+   bandwidths measured from the stored entries -- n (2 kl + ku + 1) storage and n kl (kl + ku) work instead of the dense
+   n^2 and n^3, so tridiagonal and grid matrices solve at any size. When the band is too wide to pay off, the matrix
+   is solved dense if that fits, else refused. b (n x k, row-major) is solved in place into x. */
+#define SPSOLVE_DENSE_MAX ((int64_t)1 << 28)               /* doubles: a 2 GiB dense matrix at most */
+static int spsolve_csr(const spl_op *A, int64_t n, double *x, int64_t k)
+{
+    int64_t kl = 0, ku = 0;
+    for (int64_t i = 0; i < n; i++)
+        for (int64_t q = A->ptr[i]; q < A->ptr[i + 1]; q++) {
+            const int64_t d = i - A->ind[q];
+            if (d > kl) kl = d;
+            if (-d > ku) ku = -d;
+        }
+    const int64_t ldab = 2 * kl + ku + 1;
+    int rc = TSR_OK;
+    if (ldab <= n && kl <= INT32_MAX / 4 && ku <= INT32_MAX / 4 && ldab * n <= SPSOLVE_DENSE_MAX * 2) {
+        double *ab = (double *)calloc((size_t)(ldab * n), sizeof(double));
+        double *bc = k > 1 ? (double *)malloc((size_t)(n * k) * sizeof(double)) : x;
+        lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)(n > 0 ? n : 1));
+        if (!ab || !bc || !ipiv) rc = TSR_ENOMEM;
+        else {
+            for (int64_t i = 0; i < n; i++)               /* band storage: A(i, j) at ab[kl + ku + i - j + j ldab] */
+                for (int64_t q = A->ptr[i]; q < A->ptr[i + 1]; q++) {
+                    const int64_t j = A->ind[q];
+                    ab[kl + ku + i - j + j * ldab] += A->data[q];   /* duplicates add, as scipy sums them */
+                }
+            if (k > 1) for (int64_t i = 0; i < n; i++) for (int64_t c = 0; c < k; c++) bc[c * n + i] = x[i * k + c];
+            const lapack_int info = LAPACKE_dgbsv(LAPACK_COL_MAJOR, (lapack_int)n, (lapack_int)kl, (lapack_int)ku, (lapack_int)k,
+                                                  ab, (lapack_int)ldab, ipiv, bc, (lapack_int)(n > 0 ? n : 1));
+            if (info != 0) { fn_set_error("spsolve: matrix is singular"); rc = TSR_EARG; }
+            else if (k > 1) for (int64_t i = 0; i < n; i++) for (int64_t c = 0; c < k; c++) x[i * k + c] = bc[c * n + i];
+        }
+        free(ab); free(ipiv);
+        if (k > 1) free(bc);
+        return rc;
+    }
+    if (n > 0 && n > SPSOLVE_DENSE_MAX / n) {
+        fn_set_error("spsolve: the matrix is too wide-banded (%lld below, %lld above the diagonal) for the banded solver and too large to solve dense", (long long)kl, (long long)ku);
+        return TSR_EARG;
+    }
+    double *D = (double *)calloc((size_t)(n * n > 0 ? n * n : 1), sizeof(double));
+    if (!D) return TSR_ENOMEM;
+    for (int64_t i = 0; i < n; i++)
+        for (int64_t q = A->ptr[i]; q < A->ptr[i + 1]; q++) D[i * n + A->ind[q]] += A->data[q];
+    if (sl_dense_solve(D, x, n, k) != 0) { fn_set_error("spsolve: matrix is singular"); rc = TSR_EARG; }
+    free(D);
+    return rc;
+}
+
+static int r_spsolve(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (nargs >= 2 && args[0].kind == 5) {                /* a CSR matrix: the banded (or dense) solve of spsolve_csr */
+        if (args[1].kind != 3) { fn_set_error("spsolve: b must be an array"); return TSR_EARG; }
+        spl_op A; int64_t n, cols;
+        int rc = spl_op_load(&A, &args[0], "spsolve", &n, &cols);
+        if (rc != TSR_OK) return rc;
+        const tsr_array *B = &args[1].arr;
+        const int vector = B->ndim == 1;
+        const int64_t k = vector ? 1 : B->shape[1];
+        if (cols != n) { spl_op_free(&A); fn_set_error("spsolve: A must be square"); return TSR_EARG; }
+        if (B->ndim > 2 || B->shape[0] != n) { spl_op_free(&A); fn_set_error("spsolve: b has the wrong number of rows"); return TSR_EARG; }
+        int64_t Lb; double *b = fn_arg_doubles(&args[1], &Lb);
+        if (!b) { spl_op_free(&A); return TSR_ENOMEM; }
+        int64_t sh1[1] = {n}, sh2[2] = {n, k};
+        double *x = (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, vector ? sh1 : sh2);
+        if (!x) rc = TSR_ENOMEM;
+        else { memcpy(x, b, (size_t)(n * k) * sizeof(double)); rc = spsolve_csr(&A, n, x, k); }
+        spl_op_free(&A); fn_free_doubles(b, Lb);
+        return rc;
+    }
+    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3) { fn_set_error("spsolve: A must be 2-D and b an array"); return TSR_EARG; }
+    int64_t n = args[0].arr.shape[0];
+    if (args[0].arr.shape[1] != n) { fn_set_error("spsolve: A must be square"); return TSR_EARG; }
+    const tsr_array *B = &args[1].arr;
+    int vector = B->ndim == 1;
+    int64_t k = vector ? 1 : B->shape[1];
+    if (B->shape[0] != n) { fn_set_error("spsolve: b has the wrong number of rows"); return TSR_EARG; }
+    int64_t La, Lb; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
+    double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { fn_free_doubles(A, La); return TSR_ENOMEM; }
+    int64_t sh1[1] = {n}, sh2[2] = {n, k};
+    double *x = (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, vector ? sh1 : sh2);
+    int rc = TSR_OK;
+    if (!x) rc = TSR_ENOMEM;
+    else {
+        memcpy(x, b, (size_t)(n * k) * sizeof(double));                      /* sl_dense_solve overwrites rhs in place */
+        if (sl_dense_solve(A, x, n, k) != 0) { fn_set_error("spsolve: matrix is singular"); rc = TSR_EARG; }
+    }
+    fn_free_doubles(A, La); fn_free_doubles(b, Lb);
+    return rc;
+}
+
 static double spl_dot(const double *a, const double *b, int64_t n)
 {
     double s = 0.0; for (int64_t i = 0; i < n; i++) s += a[i] * b[i]; return s;
 }
 static double spl_nrm(const double *a, int64_t n) { return sqrt(spl_dot(a, a, n)); }
 
-/* Shared prologue for square iterative solvers: validate args, pull dense A and b,
-   allocate x. Returns 0 on success with *pA,*pb,*px,*pn,*pmaxit,*prtol,*patol set,
-   or a TSR_* error code. On success the caller owns A (free via fn_free_doubles),
+/* Shared prologue for square iterative solvers: validate args, load A (dense or CSR) and b,
+   allocate x. Returns 0 on success with *A,*pb,*px,*pn,*pmaxit,*prtol,*patol set,
+   or a TSR_* error code. On success the caller owns A (free via spl_op_free),
    b (free), and x is a result array already placed in res[0]. */
 static int spl_iter_prologue(const char *name, const tsr_arg *args, int nargs, tsr_result *res,
-                             double **pA, int64_t *pLA, double **pb, int64_t *pLb,
+                             spl_op *A, int64_t *pLA, double **pb, int64_t *pLb,
                              double **px, int64_t *pn, double *prtol, double *patol, int64_t *pmaxit)
 {
-    if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3) {
+    if (nargs < 2 || args[1].kind != 3) {
         fn_set_error("iterative solver: A must be 2-D and b an array"); return TSR_EARG;
     }
-    int64_t n = args[0].arr.shape[0];
-    if (args[0].arr.shape[1] != n) { fn_set_error("iterative solver: A must be square"); return TSR_EARG; }
-    if (args[1].arr.shape[0] != n) { fn_set_error("iterative solver: b has the wrong length"); return TSR_EARG; }
+    int64_t n, cols;
+    const int lrc = spl_op_load(A, &args[0], "iterative solver", &n, &cols);
+    if (lrc != TSR_OK) return lrc;
+    if (cols != n) { spl_op_free(A); fn_set_error("iterative solver: A must be square"); return TSR_EARG; }
+    if (args[1].arr.shape[0] != n) { spl_op_free(A); fn_set_error("iterative solver: b has the wrong length"); return TSR_EARG; }
     double rtol = 1e-5, atol = 0.0; int64_t maxit = 10 * n;
     /* signature: (A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None). We ignore x0 (start from 0). */
     if (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) rtol = (args[3].flags & 1) ? (double)args[3].ival : args[3].num;
     if (nargs > 4 && (args[4].kind == 1 || args[4].kind == 4)) atol = (args[4].flags & 1) ? (double)args[4].ival : args[4].num;
     if (nargs > 5 && (args[5].kind == 1 || args[5].kind == 4)) { double mv = (args[5].flags & 1) ? (double)args[5].ival : args[5].num; if (mv > 0) maxit = (int64_t)mv; }
-    int64_t LA, Lb; double *A = fn_arg_doubles(&args[0], &LA); if (!A) return TSR_ENOMEM;
-    double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { fn_free_doubles(A, LA); return TSR_ENOMEM; }
+    int64_t Lb;
+    double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { spl_op_free(A); return TSR_ENOMEM; }
     int64_t sh[1] = {n};
     double *x = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
-    if (!x) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    if (!x) { spl_op_free(A); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n; i++) x[i] = 0.0;
-    *pA = A; *pLA = LA; *pb = b; *pLb = Lb; *px = x; *pn = n;
+    *pLA = 0; *pb = b; *pLb = Lb; *px = x; *pn = n;
     *prtol = rtol; *patol = atol; *pmaxit = maxit;
     (void)name;
     return TSR_OK;
@@ -352,13 +528,13 @@ static int spl_iter_prologue(const char *name, const tsr_arg *args, int nargs, t
 static int r_cg(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("cg", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("cg", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     double *mem = (double *)malloc((size_t)(5 * n) * sizeof(double));
-    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    if (!mem) { spl_op_free(A); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
     double *r = mem, *z = mem + n, *p = mem + 2 * n, *q = mem + 3 * n, *dinv = mem + 4 * n;
-    for (int64_t i = 0; i < n; i++) { double d = A[i * n + i]; dinv[i] = d != 0.0 ? 1.0 / d : 1.0; }
+    for (int64_t i = 0; i < n; i++) { double d = spl_op_diag(A, i); dinv[i] = d != 0.0 ? 1.0 / d : 1.0; }
     spl_mv(A, x, q, n);
     for (int64_t i = 0; i < n; i++) r[i] = b[i] - q[i];
     double target = fmax(rtol * spl_nrm(b, n), atol);
@@ -375,7 +551,7 @@ static int r_cg(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res
         for (int64_t i = 0; i < n; i++) p[i] = z[i] + beta * p[i];
         rn = spl_nrm(r, n); it++;
     }
-    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    free(mem); spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
     return TSR_OK;
 }
@@ -384,11 +560,11 @@ static int r_cg(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res
 static int r_bicgstab(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("bicgstab", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("bicgstab", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     double *mem = (double *)malloc((size_t)(6 * n) * sizeof(double));
-    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    if (!mem) { spl_op_free(A); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
     double *r = mem, *rh = mem + n, *p = mem + 2 * n, *v = mem + 3 * n, *s = mem + 4 * n, *t = mem + 5 * n;
     spl_mv(A, x, v, n);
     for (int64_t i = 0; i < n; i++) { r[i] = b[i] - v[i]; rh[i] = r[i]; p[i] = 0.0; v[i] = 0.0; }
@@ -411,7 +587,7 @@ static int r_bicgstab(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
         rn = spl_nrm(r, n); it++;
         if (omega == 0.0) break;
     }
-    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    free(mem); spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
     return TSR_OK;
 }
@@ -420,11 +596,11 @@ static int r_bicgstab(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
 static int r_bicg(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("bicg", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("bicg", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     double *mem = (double *)malloc((size_t)(6 * n) * sizeof(double));
-    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    if (!mem) { spl_op_free(A); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
     double *r = mem, *rs = mem + n, *p = mem + 2 * n, *ps = mem + 3 * n, *q = mem + 4 * n, *qs = mem + 5 * n;
     spl_mv(A, x, q, n);
     for (int64_t i = 0; i < n; i++) { r[i] = b[i] - q[i]; rs[i] = r[i]; p[i] = r[i]; ps[i] = r[i]; }
@@ -441,7 +617,7 @@ static int r_bicg(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
         for (int64_t i = 0; i < n; i++) { p[i] = r[i] + beta * p[i]; ps[i] = rs[i] + beta * ps[i]; }
         rn = spl_nrm(r, n); it++;
     }
-    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    free(mem); spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
     return TSR_OK;
 }
@@ -450,11 +626,11 @@ static int r_bicg(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 static int r_cgs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("cgs", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("cgs", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     double *mem = (double *)malloc((size_t)(7 * n) * sizeof(double));
-    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    if (!mem) { spl_op_free(A); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
     double *r = mem, *rh = mem + n, *u = mem + 2 * n, *p = mem + 3 * n, *q = mem + 4 * n, *vh = mem + 5 * n, *t = mem + 6 * n;
     spl_mv(A, x, vh, n);
     for (int64_t i = 0; i < n; i++) { r[i] = b[i] - vh[i]; rh[i] = r[i]; u[i] = 0.0; p[i] = 0.0; q[i] = 0.0; }
@@ -473,7 +649,7 @@ static int r_cgs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
         for (int64_t i = 0; i < n; i++) { x[i] += alpha * t[i]; r[i] -= alpha * vh[i]; }
         rn = spl_nrm(r, n); it++;
     }
-    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    free(mem); spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
     return TSR_OK;
 }
@@ -483,8 +659,8 @@ static int r_cgs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
 static int r_minres(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("minres", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("minres", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     /* Paige-Saunders MINRES (unpreconditioned). */
     double *v0 = (double *)calloc((size_t)n, sizeof(double));
@@ -492,7 +668,7 @@ static int r_minres(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     double *w0 = (double *)calloc((size_t)n, sizeof(double));
     double *w1 = (double *)calloc((size_t)n, sizeof(double));
     double *p  = (double *)malloc((size_t)n * sizeof(double));
-    if (!v0 || !v1 || !w0 || !w1 || !p) { free(v0);free(v1);free(w0);free(w1);free(p); fn_free_doubles(A,LA); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
+    if (!v0 || !v1 || !w0 || !w1 || !p) { free(v0);free(v1);free(w0);free(w1);free(p); spl_op_free(A); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n; i++) v1[i] = b[i];               /* x0 = 0 so r0 = b */
     double beta1 = spl_nrm(v1, n);
     double target = fmax(rtol * beta1, atol);
@@ -532,7 +708,7 @@ static int r_minres(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         }
     }
     free(v0);free(v1);free(w0);free(w1);free(p);
-    fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
     return TSR_OK;
 }
@@ -541,8 +717,8 @@ static int r_minres(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
 static int r_gmres(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("gmres", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("gmres", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     int64_t m = n < 30 ? n : 30;                               /* restart length */
     double target = fmax(rtol * spl_nrm(b, n), atol);
@@ -553,7 +729,7 @@ static int r_gmres(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     double *g  = (double *)calloc((size_t)(m + 1), sizeof(double));
     double *y  = (double *)calloc((size_t)m, sizeof(double));
     double *w  = (double *)malloc((size_t)n * sizeof(double));
-    if (!V || !H || !cs || !sn || !g || !y || !w) { free(V);free(H);free(cs);free(sn);free(g);free(y);free(w); fn_free_doubles(A,LA); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
+    if (!V || !H || !cs || !sn || !g || !y || !w) { free(V);free(H);free(cs);free(sn);free(g);free(y);free(w); spl_op_free(A); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
     int64_t total = 0; double rn = 0.0; int conv = 0;
     for (int64_t outer = 0; outer < maxit && !conv; outer++) {
         spl_mv(A, x, w, n);
@@ -595,7 +771,7 @@ static int r_gmres(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
         if (total >= maxit) break;
     }
     free(V);free(H);free(cs);free(sn);free(g);free(y);free(w);
-    fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], conv ? 0 : total);
     return TSR_OK;
 }
@@ -653,7 +829,7 @@ static int r_lsqr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     double *v = (double *)malloc((size_t)nn * sizeof(double));
     double *w = (double *)malloc((size_t)nn * sizeof(double));
     double *tmp = (double *)malloc((size_t)(mm > nn ? mm : nn) * sizeof(double));
-    if (!x || !u || !v || !w || !tmp) { free(u);free(v);free(w);free(tmp); fn_free_doubles(A,LA); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
+    if (!x || !u || !v || !w || !tmp) { free(u);free(v);free(w);free(tmp); fn_free_doubles(A, LA); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
     for (int64_t i = 0; i < nn; i++) { x[i] = 0.0; }
     for (int64_t i = 0; i < mm; i++) u[i] = b[i];
     double beta = spl_nrm(u, mm); if (beta > 0) for (int64_t i = 0; i < mm; i++) u[i] /= beta;
@@ -690,11 +866,11 @@ static int r_lsqr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 static int r_qmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("qmr", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("qmr", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     double *mem = (double *)malloc((size_t)(13 * n) * sizeof(double));
-    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    if (!mem) { spl_op_free(A); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
     double *r = mem, *vt = mem + n, *y = mem + 2*n, *wt = mem + 3*n, *z = mem + 4*n,
            *v = mem + 5*n, *w = mem + 6*n, *p = mem + 7*n, *q = mem + 8*n,
            *d = mem + 9*n, *s = mem + 10*n, *pt = mem + 11*n, *tmp = mem + 12*n;
@@ -741,7 +917,7 @@ static int r_qmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
         rn = spl_nrm(r, n);
         if (rn <= target) break;
     }
-    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    free(mem); spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
     return TSR_OK;
 }
@@ -750,11 +926,11 @@ static int r_qmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
 static int r_tfqmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    double *A, *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
-    int rc = spl_iter_prologue("tfqmr", args, nargs, res, &A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
+    spl_op A[1]; double *b, *x, rtol, atol; int64_t n, LA, Lb, maxit;
+    int rc = spl_iter_prologue("tfqmr", args, nargs, res, A, &LA, &b, &Lb, &x, &n, &rtol, &atol, &maxit);
     if (rc != TSR_OK) return rc;
     double *mem = (double *)malloc((size_t)(9 * n) * sizeof(double));
-    if (!mem) { fn_free_doubles(A, LA); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
+    if (!mem) { spl_op_free(A); fn_free_doubles(b, Lb); return TSR_ENOMEM; }
     double *r = mem, *w = mem + n, *rstar = mem + 2*n, *uu = mem + 3*n, *u2 = mem + 4*n,
            *v = mem + 5*n, *d = mem + 6*n, *au = mem + 7*n, *tmp = mem + 8*n;
     spl_mv(A, x, tmp, n);
@@ -798,7 +974,7 @@ static int r_tfqmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
             for (int64_t i = 0; i < n; i++) v[i] = auu[i] + beta*(au2[i] + beta*v[i]);
         }
     }
-    free(mem); fn_free_doubles(A, LA); fn_free_doubles(b, Lb);
+    free(mem); spl_op_free(A); fn_free_doubles(b, Lb);
     if (nres > 1) fn_result_int(&res[1], rn <= target ? 0 : it);
     return TSR_OK;
 }
@@ -824,7 +1000,7 @@ static int r_lsmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     double *h = (double *)malloc((size_t)nn * sizeof(double));
     double *hbar = (double *)calloc((size_t)nn, sizeof(double));
     double *tmp = (double *)malloc((size_t)((mm > nn ? mm : nn)) * sizeof(double));
-    if (!x || !u || !v || !h || !hbar || !tmp) { free(u);free(v);free(h);free(hbar);free(tmp); fn_free_doubles(A,LA); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
+    if (!x || !u || !v || !h || !hbar || !tmp) { free(u);free(v);free(h);free(hbar);free(tmp); fn_free_doubles(A, LA); fn_free_doubles(b,Lb); return TSR_ENOMEM; }
     for (int64_t j = 0; j < nn; j++) x[j] = 0.0;
     for (int64_t i = 0; i < mm; i++) u[i] = b[i];
     double beta = spl_nrm(u, mm); if (beta > 0) for (int64_t i = 0; i < mm; i++) u[i] /= beta;
@@ -929,6 +1105,20 @@ static int eig_arg_int(const tsr_arg *a, int64_t *out)
 
 /* partial-select helper for eigsh: pick k indices from ascending w[0..n-1] per which,
    write the k selected eigenvalues into sel[] (unsorted), return 0/-1. */
+/* the which argument (args[2]): LM when absent; a value listing the options (the registry default "LM|SM|LA|SA|BE",
+   which the facades pass when the caller gives none) means its first option, as in scipy */
+static const char *eig_which(const tsr_arg *args, int nargs, char *buf)
+{
+    if (nargs <= 2 || args[2].kind != 2 || !args[2].str) return "LM";
+    const char *bar = strchr(args[2].str, '|');
+    if (!bar) return args[2].str;
+    size_t len = (size_t)(bar - args[2].str);
+    if (len > 7) len = 7;
+    memcpy(buf, args[2].str, len);
+    buf[len] = '\0';
+    return buf;
+}
+
 static int eigsh_select(const double *w, int64_t n, int64_t k, const char *which, double *sel)
 {
     /* w is ascending. */
@@ -961,40 +1151,280 @@ static int eigsh_select(const double *w, int64_t n, int64_t k, const char *which
 }
 
 /* eigsh(A, k=6, which=LM, ...): k eigenvalues of a symmetric A, returned ascending. */
+/* The order in which the m Ritz values theta are wanted for `which` (LA, SA, LM or SM): most wanted first. */
+static void lz_order(const double *theta, int64_t m, const char *which, int64_t *ord)
+{
+    for (int64_t i = 0; i < m; i++) ord[i] = i;
+    for (int64_t i = 1; i < m; i++) {                     /* insertion sort */
+        const int64_t o = ord[i];
+        int64_t p = i - 1;
+        for (; p >= 0; p--) {
+            const double a = theta[ord[p]], b = theta[o];
+            const int before = !strcmp(which, "LA") ? b > a : !strcmp(which, "SA") ? b < a
+                             : !strcmp(which, "SM") ? fabs(b) < fabs(a) : fabs(b) > fabs(a);   /* LM */
+            if (!before) break;
+            ord[p + 1] = ord[p];
+        }
+        ord[p + 1] = o;
+    }
+}
+
+/* q -= its components along the nl columns of L (n x nl, column p at L + p n) and the j vectors of V, twice */
+static void lz_orth(double *q, const double *L, int64_t nl, const double *V, int64_t j, int64_t n)
+{
+    for (int pass = 0; pass < 2; pass++) {
+        for (int64_t p = 0; p < nl; p++) {
+            const double *lp = L + p * n;
+            double c = 0.0;
+            for (int64_t i = 0; i < n; i++) c += lp[i] * q[i];
+            for (int64_t i = 0; i < n; i++) q[i] -= c * lp[i];
+        }
+        for (int64_t p = 0; p < j; p++) {
+            const double *vp = V + p * n;
+            double c = 0.0;
+            for (int64_t i = 0; i < n; i++) c += vp[i] * q[i];
+            for (int64_t i = 0; i < n; i++) q[i] -= c * vp[i];
+        }
+    }
+}
+
+/* Thick-restart Lanczos (Wu and Simon) with full reorthogonalization, in the orthogonal complement of the locked
+   orthonormal columns L (nl of them; the operator is A on that complement). A basis of m vectors is built by sparse
+   products only; the m x m projected matrix H gives the Ritz values theta; a Ritz pair has converged when
+   |beta_m y_last| <= max(tol |theta|, 16 eps |A|) (tol 0: machine precision, as ARPACK); otherwise the l most wanted Ritz vectors and
+   the last Lanczos vector restart the basis. vals: the k wanted values, vecs (n x k, may be NULL): their vectors. */
+static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int64_t m, int64_t maxit, double tol,
+                  const double *v0, const double *L, int64_t nl, double *vals, double *vecs)
+{
+    if (!(tol > 0.0)) tol = 2.220446049250313e-16;
+    double *V = (double *)calloc((size_t)((m + 1) * n), sizeof(double));
+    double *H = (double *)calloc((size_t)(m * m), sizeof(double)), *Y = (double *)malloc((size_t)(m * m) * sizeof(double));
+    double *theta = (double *)malloc((size_t)m * sizeof(double)), *w = (double *)malloc((size_t)n * sizeof(double));
+    double *T = (double *)malloc((size_t)(n * m) * sizeof(double));
+    int64_t *ord = (int64_t *)malloc((size_t)m * sizeof(int64_t));
+    int rc = TSR_OK;
+    if (!V || !H || !Y || !theta || !w || !T || !ord) { rc = TSR_ENOMEM; goto done; }
+    for (int64_t i = 0; i < n; i++) V[i] = v0 ? v0[i] : 1.0 + 0.5 * sin(1.7 * (double)i + 0.3 + 0.61 * (double)nl);
+    lz_orth(V, L, nl, NULL, 0, n);
+    {
+        double nv = 0.0;
+        for (int64_t i = 0; i < n; i++) nv += V[i] * V[i];
+        nv = sqrt(nv);
+        if (!(nv > 0.0)) { fn_set_error("eigsh: v0 must not be zero"); rc = TSR_EARG; goto done; }
+        for (int64_t i = 0; i < n; i++) V[i] /= nv;
+    }
+    int64_t j0 = 0;
+    double beta = 0.0;
+    for (int64_t iter = 0; iter < maxit; iter++) {
+        for (int64_t j = j0; j < m; j++) {               /* expand: v_{j+1} from A v_j, orthogonal to L and v_0..v_j */
+            spl_mv(A, V + j * n, w, n);
+            for (int64_t i = 0; i <= j; i++) H[i * m + j] = 0.0;
+            for (int pass = 0; pass < 2; pass++) {
+                for (int64_t p = 0; p < nl; p++) {
+                    const double *lp = L + p * n;
+                    double c = 0.0;
+                    for (int64_t q = 0; q < n; q++) c += lp[q] * w[q];
+                    for (int64_t q = 0; q < n; q++) w[q] -= c * lp[q];
+                }
+                for (int64_t i = 0; i <= j; i++) {
+                    const double *vi = V + i * n;
+                    double c = 0.0;
+                    for (int64_t q = 0; q < n; q++) c += vi[q] * w[q];
+                    for (int64_t q = 0; q < n; q++) w[q] -= c * vi[q];
+                    H[i * m + j] += c;
+                }
+            }
+            for (int64_t i = 0; i <= j; i++) H[j * m + i] = H[i * m + j];
+            beta = 0.0;
+            for (int64_t q = 0; q < n; q++) beta += w[q] * w[q];
+            beta = sqrt(beta);
+            double *vn = V + (j + 1) * n;
+            if (beta > 1e-12 * (fabs(H[j * m + j]) + 1e-300)) {
+                for (int64_t q = 0; q < n; q++) vn[q] = w[q] / beta;
+            } else {                                      /* an invariant subspace: continue with a new direction */
+                beta = 0.0;
+                for (int64_t q = 0; q < n; q++) vn[q] = sin(0.37 * (double)(q + 1) * (double)(j + 2));
+                lz_orth(vn, L, nl, V, j + 1, n);
+                double nn = 0.0;
+                for (int64_t q = 0; q < n; q++) nn += vn[q] * vn[q];
+                nn = sqrt(nn);
+                if (!(nn > 0.0)) { fn_set_error("eigsh: the Lanczos basis cannot be extended"); rc = TSR_EARG; goto done; }
+                for (int64_t q = 0; q < n; q++) vn[q] /= nn;
+            }
+            if (j + 1 < m) { H[(j + 1) * m + j] = beta; H[j * m + j + 1] = beta; }
+        }
+        memcpy(Y, H, (size_t)(m * m) * sizeof(double));
+        if (LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'V', 'U', (lapack_int)m, Y, (lapack_int)m, theta) != 0) {
+            fn_set_error("eigsh: the projected eigenproblem failed"); rc = TSR_EARG; goto done;
+        }
+        lz_order(theta, m, which, ord);
+        double anorm = 0.0;
+        for (int64_t c = 0; c < m; c++) if (fabs(theta[c]) > anorm) anorm = fabs(theta[c]);
+        int conv = 1;
+        for (int64_t p = 0; p < k && conv; p++) {
+            const int64_t c = ord[p];
+            /* tol |theta|, but not below the attainable 16 eps |A| (the eigenvalue error is quadratic in the residual) */
+            conv = fabs(beta * Y[(m - 1) * m + c]) <= fmax(tol * fabs(theta[c]), 16.0 * 2.220446049250313e-16 * anorm);
+        }
+        const int64_t l = conv ? k : (k + (m - k) / 2 < m ? k + (m - k) / 2 : m - 1);
+        for (int64_t p = 0; p < l; p++) {                 /* T[:, p] = V_m y_ord[p]: the kept (or answer) Ritz vectors */
+            const int64_t c = ord[p];
+            double *t = T + p * n;
+            for (int64_t q = 0; q < n; q++) t[q] = 0.0;
+            for (int64_t i = 0; i < m; i++) {
+                const double y = Y[i * m + c], *vi = V + i * n;
+                for (int64_t q = 0; q < n; q++) t[q] += y * vi[q];
+            }
+        }
+        if (conv) {
+            for (int64_t p = 0; p < k; p++) vals[p] = theta[ord[p]];
+            if (vecs) memcpy(vecs, T, (size_t)(k * n) * sizeof(double));
+            goto done;
+        }
+        memmove(V + l * n, V + m * n, (size_t)n * sizeof(double));   /* the last Lanczos vector follows them */
+        memcpy(V, T, (size_t)(l * n) * sizeof(double));
+        memset(H, 0, (size_t)(m * m) * sizeof(double));
+        for (int64_t p = 0; p < l; p++) {
+            const int64_t c = ord[p];
+            H[p * m + p] = theta[c];
+            H[p * m + l] = H[l * m + p] = beta * Y[(m - 1) * m + c];
+        }
+        j0 = l;
+    }
+    fn_set_error("eigsh: no convergence after %lld restarts (raise maxiter or tol)", (long long)maxit);
+    rc = TSR_EARG;
+done:
+    free(V); free(H); free(Y); free(theta); free(w); free(T); free(ord);
+    return rc;
+}
+
+/* mu is more wanted than v for `which`, beyond rounding */
+static int lz_better(double mu, double v, const char *which)
+{
+    const double eps = 1e-10 * fmax(1.0, fmax(fabs(mu), fabs(v)));
+    if (!strcmp(which, "LA")) return mu > v + eps;
+    if (!strcmp(which, "SA")) return mu < v - eps;
+    if (!strcmp(which, "SM")) return fabs(mu) < fabs(v) - eps;
+    return fabs(mu) > fabs(v) + eps;                      /* LM */
+}
+
+/* The k eigenvalues `which` wants (LA, SA, LM, SM). A Krylov space from one start vector holds one direction of each
+   repeated eigenvalue, so Lanczos alone can miss a repeated one (2-D grids have many). After convergence, the most
+   wanted eigenvalue of A on the orthogonal complement of the k Ritz vectors is computed; while it beats the least
+   wanted one kept (a missed repeat always does), it replaces it, and the search repeats. */
+static int eigsh_one(const spl_op *A, int64_t n, int64_t k, const char *which, int64_t ncv, int64_t maxit, double tol,
+                     const double *v0, double *out)
+{
+    int64_t m = ncv > k ? ncv : (2 * k + 1 > 20 ? 2 * k + 1 : 20);
+    if (m > n) m = n;
+    if (m <= k) { fn_set_error("eigsh: ncv must exceed k (and n must exceed k)"); return TSR_EARG; }
+    if (maxit <= 0) maxit = 10 * n > 1000 ? 10 * n : 1000;
+    double *vecs = (double *)malloc((size_t)(n * k) * sizeof(double)), *u = (double *)malloc((size_t)n * sizeof(double));
+    if (!vecs || !u) { free(vecs); free(u); return TSR_ENOMEM; }
+    int rc = lz_run(A, n, k, which, m, maxit, tol, v0, NULL, 0, out, vecs);
+    for (int64_t round = 0; rc == TSR_OK && round <= k; round++) {
+        int64_t m1 = 20 < n - k ? 20 : n - k;
+        if (m1 < 2) break;                                /* the complement is too small to search */
+        double mu;
+        if (lz_run(A, n, 1, which, m1, maxit, tol, NULL, vecs, k, &mu, u) != TSR_OK) break;
+        int64_t worst = 0;
+        for (int64_t p = 1; p < k; p++) if (lz_better(out[worst], out[p], which)) worst = p;
+        if (!lz_better(mu, out[worst], which)) break;
+        out[worst] = mu;
+        memcpy(vecs + worst * n, u, (size_t)n * sizeof(double));
+    }
+    free(vecs); free(u);
+    return rc;
+}
+
+/* eigsh on a CSR matrix: BE is the top ceil(k/2) (LA) and the bottom floor(k/2) (SA) */
+static int eigsh_lanczos(const spl_op *A, int64_t n, int64_t k, const char *which, int64_t ncv, int64_t maxit,
+                         double tol, const double *v0, double *out)
+{
+    if (!strcmp(which, "BE")) {
+        const int64_t kh = (k + 1) / 2, kl = k / 2;
+        int rc = eigsh_one(A, n, kh, "LA", ncv, maxit, tol, v0, out);
+        if (rc == TSR_OK && kl > 0) rc = eigsh_one(A, n, kl, "SA", ncv, maxit, tol, v0, out + kh);
+        return rc;
+    }
+    return eigsh_one(A, n, k, which, ncv, maxit, tol, v0, out);
+}
+
+/* every eigenvalue of the dense symmetric n x n A (overwritten), then the k that `which` selects into sel */
+static int eigsh_dense(double *A, int64_t n, int64_t k, const char *which, double *sel)
+{
+    double *w = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
+    if (!w) return TSR_ENOMEM;
+    int rc = TSR_OK;
+    lapack_int info = LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'N', 'L', (lapack_int)n, A, (lapack_int)n, w);
+    if (info != 0) { fn_set_error("eigsh: the eigensolver failed to converge"); rc = TSR_EARG; }
+    else {
+        int s = eigsh_select(w, n, k, which, sel);
+        if (s == -1) rc = TSR_ENOMEM;
+        else if (s == -2) { fn_set_error("eigsh: unsupported which (use LM/SM/LA/SA/BE)"); rc = TSR_EARG; }
+    }
+    free(w);
+    return rc;
+}
+
 static int r_eigsh(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
-    if (nargs < 1 || args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("eigsh: A must be a 2-D array"); return TSR_EARG; }
-    int64_t n = args[0].arr.shape[0];
-    if (args[0].arr.shape[1] != n) { fn_set_error("eigsh: A must be square"); return TSR_EARG; }
-    if (!TSR_LA_FIT("eigsh", n)) return TSR_EARG;              /* n goes to LAPACKE as a 32-bit lapack_int */
+    const int csr = nargs >= 1 && args[0].kind == 5;
+    if (nargs < 1 || (!csr && (args[0].kind != 3 || args[0].arr.ndim != 2))) { fn_set_error("eigsh: A must be a 2-D array"); return TSR_EARG; }
+    spl_op S;
+    int64_t n, cols;
+    if (csr) {
+        const int lrc = spl_op_load(&S, &args[0], "eigsh", &n, &cols);
+        if (lrc != TSR_OK) return lrc;
+    } else { n = args[0].arr.shape[0]; cols = args[0].arr.shape[1]; }
+    if (cols != n) { if (csr) spl_op_free(&S); fn_set_error("eigsh: A must be square"); return TSR_EARG; }
     int64_t k = 6;
     if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
-    const char *which = "LM";
-    if (nargs > 2 && args[2].kind == 2 && args[2].str) which = args[2].str;
-    if (k < 1 || k >= n) { fn_set_error("eigsh: need 0 < k < n"); return TSR_EARG; }
-
-    int64_t La; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
-    double *w = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
+    char wbuf[8];
+    const char *which = eig_which(args, nargs, wbuf);
+    if (k < 1 || k >= n) { if (csr) spl_op_free(&S); fn_set_error("eigsh: need 0 < k < n"); return TSR_EARG; }
     double *sel = (double *)malloc((size_t)k * sizeof(double));
+    if (!sel) { if (csr) spl_op_free(&S); return TSR_ENOMEM; }
     int rc = TSR_OK;
-    if (!w || !sel) rc = TSR_ENOMEM;
-    else {
-        lapack_int info = LAPACKE_dsyevd(LAPACK_ROW_MAJOR, 'N', 'L', (lapack_int)n, A, (lapack_int)n, w);
-        if (info != 0) { fn_set_error("eigsh: the eigensolver failed to converge"); rc = TSR_EARG; }
+    if (!csr) {
+        if (!TSR_LA_FIT("eigsh", n)) { free(sel); return TSR_EARG; }   /* n goes to LAPACKE as a 32-bit lapack_int */
+        int64_t La; double *A = fn_arg_doubles(&args[0], &La);
+        if (!A) rc = TSR_ENOMEM;
+        else { rc = eigsh_dense(A, n, k, which, sel); fn_free_doubles(A, La); }
+    } else if (strcmp(which, "LM") && strcmp(which, "SM") && strcmp(which, "LA") && strcmp(which, "SA") && strcmp(which, "BE")) {
+        fn_set_error("eigsh: unsupported which (use LM/SM/LA/SA/BE)"); rc = TSR_EARG;
+    } else if (!strcmp(which, "SM") && n <= 4096) {
+        /* the smallest magnitudes: Lanczos reaches them slowly without a shift, so a matrix that fits is solved dense */
+        double *D = (double *)calloc((size_t)(n * n), sizeof(double));
+        if (!D) rc = TSR_ENOMEM;
         else {
-            int s = eigsh_select(w, n, k, which, sel);
-            if (s == -1) rc = TSR_ENOMEM;
-            else if (s == -2) { fn_set_error("eigsh: unsupported which (use LM/SM/LA/SA/BE)"); rc = TSR_EARG; }
-            else {
-                qsort(sel, (size_t)k, sizeof(double), eig_cmp_asc);
-                int64_t sh[1] = {k};
-                double *o = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
-                if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < k; i++) o[i] = sel[i];
-            }
+            for (int64_t i = 0; i < n; i++)
+                for (int64_t q = S.ptr[i]; q < S.ptr[i + 1]; q++) D[i * n + S.ind[q]] += S.data[q];
+            rc = eigsh_dense(D, n, k, which, sel);
+            free(D);
         }
+    } else {                                              /* eigsh(A, k, which, sigma, v0, ncv, maxiter, tol, ...) */
+        int64_t ncv = 0, maxit = 0, Lv = 0;
+        double tol = 0.0, *v0 = NULL;
+        if (nargs > 5 && args[5].kind == 1) eig_arg_int(&args[5], &ncv);
+        if (nargs > 6 && args[6].kind == 1) eig_arg_int(&args[6], &maxit);
+        if (nargs > 7 && args[7].kind == 1) tol = (args[7].flags & 1) ? (double)args[7].ival : args[7].num;
+        if (nargs > 4 && args[4].kind == 3) {
+            if (args[4].arr.ndim != 1 || args[4].arr.shape[0] != n) { fn_set_error("eigsh: v0 must have n entries"); rc = TSR_EARG; }
+            else if (!(v0 = fn_arg_doubles(&args[4], &Lv))) rc = TSR_ENOMEM;
+        }
+        if (rc == TSR_OK) rc = eigsh_lanczos(&S, n, k, which, ncv, maxit, tol, v0, sel);
+        if (v0) fn_free_doubles(v0, Lv);
     }
-    free(w); free(sel); fn_free_doubles(A, La);
+    if (rc == TSR_OK) {
+        qsort(sel, (size_t)k, sizeof(double), eig_cmp_asc);
+        int64_t sh[1] = {k};
+        double *o = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
+        if (!o) rc = TSR_ENOMEM; else for (int64_t i = 0; i < k; i++) o[i] = sel[i];
+    }
+    free(sel);
+    if (csr) spl_op_free(&S);
     return rc;
 }
 
@@ -1009,8 +1439,8 @@ static int r_eigs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (!TSR_LA_FIT("eigs", n)) return TSR_EARG;
     int64_t k = 6;
     if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
-    const char *which = "LM";
-    if (nargs > 2 && args[2].kind == 2 && args[2].str) which = args[2].str;
+    char wbuf[8];
+    const char *which = eig_which(args, nargs, wbuf);
     if (k < 1 || k >= n - 1) { fn_set_error("eigs: need 0 < k < n-1"); return TSR_EARG; }
 
     int64_t La; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
@@ -1069,8 +1499,8 @@ static int r_svds(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (!TSR_LA_FIT("svds", m, n)) return TSR_EARG;
     int64_t k = 6;
     if (nargs > 1 && args[1].kind == 1) eig_arg_int(&args[1], &k);
-    const char *which = "LM";
-    if (nargs > 2 && args[2].kind == 2 && args[2].str) which = args[2].str;
+    char wbuf[8];
+    const char *which = eig_which(args, nargs, wbuf);
     if (strcmp(which, "LM")) { fn_set_error("svds: only which=LM is supported (SM shift-invert is not reproducible)"); return TSR_EARG; }
     int64_t mn = m < n ? m : n;
     if (k < 1 || k >= mn) { fn_set_error("svds: need 0 < k < min(M,N)"); return TSR_EARG; }

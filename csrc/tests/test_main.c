@@ -2285,6 +2285,231 @@ static void test_linalg_typed(void)
     CHECK(tsr_allocated() == before, "the typed linalg calls leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* the iterative solvers on a CSR matrix (the group data, indices, indptr, shape) return what they return on the same
+   matrix dense: the CSR product sums the same products, without the dense one's exact zeros. Malformed CSR groups are
+   refused before any use. */
+static void test_splinalg_csr(void)
+{
+    enum { N = 60 };
+    static const char *const solvers[] = {"splinalg.cg", "splinalg.bicgstab", "splinalg.bicg", "splinalg.cgs",
+                                          "splinalg.minres", "splinalg.gmres", "splinalg.qmr", "splinalg.tfqmr"};
+    double dense[N * N], b[N], data[N * 7];
+    int64_t ind[N * 7], ptr[N + 1], shp[2] = {N, N}, nnz = 0;
+    uint64_t st = 777;
+    memset(dense, 0, sizeof dense);
+    for (int i = 0; i < N; i++) {                         /* symmetric, diagonally dominant: every solver converges */
+        for (int d = 1; d <= 3; d++) {
+            const int j = (i + d * 7) % N;
+            if (j == i) continue;
+            st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+            const double v = -0.5 * (double)(st >> 11) / 9007199254740992.0;
+            dense[i * N + j] = dense[j * N + i] = v;
+        }
+    }
+    for (int i = 0; i < N; i++) {
+        double s = 1.0;
+        for (int j = 0; j < N; j++) s += fabs(dense[i * N + j]);
+        dense[i * N + i] = s;
+        b[i] = sin(0.37 * i) + 0.1;
+    }
+    ptr[0] = 0;
+    for (int i = 0; i < N; i++) {                         /* CSR of the same matrix, columns ascending */
+        for (int j = 0; j < N; j++) if (dense[i * N + j] != 0.0) { data[nnz] = dense[i * N + j]; ind[nnz] = j; nnz++; }
+        ptr[i + 1] = nnz;
+    }
+    const int64_t before = tsr_allocated();
+    int64_t sd[2] = {N, N}, sb[1] = {N}, sn[1] = {nnz}, sp[1] = {N + 1}, s2[1] = {2};
+    int same = 0, ran = 0;
+    for (size_t s = 0; s < sizeof solvers / sizeof solvers[0]; s++) {
+        const int id = tsr_fn_find(solvers[s]);
+        if (id < 0) continue;
+        tsr_arg items[4] = {arg_arr(data, 1, sn), arg_arr_dt(ind, TSR_I64, 1, sn), arg_arr_dt(ptr, TSR_I64, 1, sp), arg_arr_dt(shp, TSR_I64, 1, s2)};
+        tsr_arg grp; memset(&grp, 0, sizeof grp); grp.kind = 5; grp.count = 4; grp.items = items;
+        tsr_arg ad[4] = {arg_arr(dense, 2, sd), arg_arr(b, 1, sb), {0}, arg_num(1e-10)};
+        tsr_arg ac[4] = {grp, arg_arr(b, 1, sb), {0}, arg_num(1e-10)};
+        tsr_result rd[2], rc2[2];
+        ran++;
+        if (tsr_fn_routine(id, 4, ad, 2, rd) != 0) continue;
+        if (tsr_fn_routine(id, 4, ac, 2, rc2) == 0) {
+            const double *xd = rd[0].arr.data, *xc = rc2[0].arr.data;
+            int eq = rd[0].arr.shape[0] == N && rc2[0].arr.shape[0] == N;
+            for (int i = 0; eq && i < N; i++) eq = xd[i] == xc[i];   /* equal values; only a zero's sign may differ */
+            double res = 0.0;                               /* and a solution: |A x - b| small */
+            for (int i = 0; eq && i < N; i++) { double r = -b[i]; for (int j = 0; j < N; j++) r += dense[i * N + j] * xc[j]; res = fmax(res, fabs(r)); }
+            same += eq && res < 1e-6;
+            tsr_fn_results_free(rc2, 2);
+        }
+        tsr_fn_results_free(rd, 2);
+    }
+    CHECK(ran == 8 && same == ran, "iterative solvers on CSR == on the same matrix dense (%d of %d)", same, ran);
+
+    /* malformed CSR groups: refused, nothing leaked */
+    const int id = tsr_fn_find("splinalg.cg");
+    int refused = 0, trials = 0;
+    for (int forge = 0; forge < 7; forge++) {
+        int64_t i2[N * 7], p2[N + 1], sh2[2] = {N, N};
+        double fi[N * 7];
+        memcpy(i2, ind, (size_t)nnz * 8); memcpy(p2, ptr, sizeof p2);
+        tsr_arg items[4] = {arg_arr(data, 1, sn), arg_arr_dt(i2, TSR_I64, 1, sn), arg_arr_dt(p2, TSR_I64, 1, sp), arg_arr_dt(sh2, TSR_I64, 1, s2)};
+        tsr_arg grp; memset(&grp, 0, sizeof grp); grp.kind = 5; grp.count = 4; grp.items = items;
+        if (forge == 0) i2[5] = N;                                     /* a column index out of range */
+        if (forge == 1) { p2[10] = p2[11] + 1; }                      /* indptr decreasing */
+        if (forge == 2) p2[N] = nnz + 1;                               /* indptr past the data */
+        if (forge == 3) sh2[1] = N + 1;                                /* not square */
+        if (forge == 4) grp.count = 3;                                 /* three parts */
+        if (forge == 5) { for (int64_t k = 0; k < nnz; k++) fi[k] = (double)ind[k] + 0.5; items[1] = arg_arr(fi, 1, sn); }   /* non-integer */
+        if (forge == 6) p2[0] = 1;                                     /* indptr not from 0 */
+        tsr_arg ac[2] = {grp, arg_arr(b, 1, sb)};
+        tsr_result r[2];
+        trials++;
+        refused += tsr_fn_routine(id, 2, ac, 2, r) == TSR_EARG;
+    }
+    CHECK(refused == trials, "the iterative solvers refuse malformed CSR matrices (%d of %d refused)", refused, trials);
+    CHECK(tsr_allocated() == before, "the CSR solvers leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
+/* spsolve on CSR: the banded LU (or the dense fallback for a wide band) solves A x = b to rounding, matches the dense
+   solve, handles several right-hand sides, and reports a singular matrix */
+static void spsolve_csr_case(int64_t n, int band, int nrhs, int singular, int *ok, int *refused)
+{
+    const int id = tsr_fn_find("splinalg.spsolve");
+    double *data = malloc((size_t)(n * 9) * 8), *dense = n <= 400 ? calloc((size_t)(n * n), 8) : NULL;
+    int64_t *ind = malloc((size_t)(n * 9) * 8), *ptr = malloc((size_t)(n + 1) * 8), nnz = 0, shp[2] = {n, n};
+    double *b = malloc((size_t)(n * nrhs) * 8);
+    uint64_t st = 99 + (uint64_t)n;
+    ptr[0] = 0;
+    for (int64_t i = 0; i < n; i++) {
+        const int64_t offs[5] = {-band, -1, 0, 1, band};
+        for (int o = 0; o < 5; o++) {
+            const int64_t j = band > 2 && (o == 0 || o == 4) ? (i + offs[o] * 7 + n) % n : i + offs[o];   /* band > 2: wide, scattered */
+            if (j < 0 || j >= n || (o == 0 && band <= 1) || (o == 4 && band <= 1)) continue;
+            st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+            double v = o == 2 ? 6.0 : -1.0 + 0.5 * (double)(st >> 11) / 9007199254740992.0;
+            if (singular && i == n - 1) v = 0.0;                      /* the last row all zero */
+            data[nnz] = v; ind[nnz] = j; nnz++;
+            if (dense) dense[i * n + j] += v;
+        }
+        ptr[i + 1] = nnz;
+    }
+    for (int64_t i = 0; i < n * nrhs; i++) b[i] = cos(0.1 * i);
+    int64_t sn[1] = {nnz}, sp[1] = {n + 1}, s2[1] = {2}, sb1[1] = {n}, sb2[2] = {n, nrhs};
+    tsr_arg items[4] = {arg_arr(data, 1, sn), arg_arr_dt(ind, TSR_I64, 1, sn), arg_arr_dt(ptr, TSR_I64, 1, sp), arg_arr_dt(shp, TSR_I64, 1, s2)};
+    tsr_arg grp; memset(&grp, 0, sizeof grp); grp.kind = 5; grp.count = 4; grp.items = items;
+    tsr_arg a[2] = {grp, nrhs == 1 ? arg_arr(b, 1, sb1) : arg_arr(b, 2, sb2)};
+    tsr_result r[1];
+    const int rc = tsr_fn_routine(id, 2, a, 1, r);
+    if (singular) { *refused += rc == TSR_EARG; if (rc == 0) tsr_fn_results_free(r, 1); }
+    else if (rc == 0) {
+        const double *x = r[0].arr.data;
+        double res = 0.0, scale = 0.0;                                /* max |A x - b| over the columns */
+        for (int c = 0; c < nrhs; c++)
+            for (int64_t i = 0; i < n; i++) {
+                double s = -b[i * nrhs + c];
+                for (int64_t q = ptr[i]; q < ptr[i + 1]; q++) s += data[q] * x[ind[q] * nrhs + c];
+                res = fmax(res, fabs(s)); scale = fmax(scale, fabs(b[i * nrhs + c]));
+            }
+        int good = res <= 1e-12 * scale;
+        if (good && dense) {                                          /* and the dense solve's answer */
+            int64_t sd[2] = {n, n};
+            tsr_arg ad[2] = {arg_arr(dense, 2, sd), a[1]};
+            tsr_result rd[1];
+            if (tsr_fn_routine(id, 2, ad, 1, rd) == 0) {
+                const double *xd = rd[0].arr.data;
+                for (int64_t i = 0; good && i < n * nrhs; i++) good = fabs(xd[i] - x[i]) <= 1e-12 * (1.0 + fabs(xd[i]));
+                tsr_fn_results_free(rd, 1);
+            } else good = 0;
+        }
+        *ok += good;
+        tsr_fn_results_free(r, 1);
+    }
+    free(data); free(dense); free(ind); free(ptr); free(b);
+}
+static void test_spsolve_csr(void)
+{
+    const int64_t before = tsr_allocated();
+    int ok = 0, refused = 0;
+    spsolve_csr_case(2000, 1, 1, 0, &ok, &refused);                  /* tridiagonal, banded LU */
+    spsolve_csr_case(300, 1, 3, 0, &ok, &refused);                   /* tridiagonal, 3 right-hand sides, vs dense */
+    spsolve_csr_case(300, 2, 1, 0, &ok, &refused);                   /* pentadiagonal, vs dense */
+    spsolve_csr_case(120, 9, 2, 0, &ok, &refused);                   /* scattered entries: the band is too wide, dense */
+    spsolve_csr_case(50, 1, 1, 1, &ok, &refused);                    /* singular */
+    CHECK(ok == 4 && refused == 1, "spsolve on CSR: banded and dense-fallback solves to rounding, == the dense solve, singular refused (%d of 4, %d of 1)", ok, refused);
+    CHECK(tsr_allocated() == before, "spsolve on CSR leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
+/* eigsh on CSR (thick-restart Lanczos; SM densified) == eigsh on the same matrix dense, for every `which`, on a 2-D
+   Poisson matrix (eigenvalues known, many close) and a random symmetric indefinite one; with and without v0 */
+static int eigsh_csr_agree(int64_t n, const double *dense, int64_t k, const char *which, int with_v0)
+{
+    const int id = tsr_fn_find("splinalg.eigsh");
+    double *data = malloc((size_t)(n * n) * 8), *v0 = malloc((size_t)n * 8);
+    int64_t *ind = malloc((size_t)(n * n) * 8), *ptr = malloc((size_t)(n + 1) * 8), nnz = 0, shp[2] = {n, n};
+    ptr[0] = 0;
+    for (int64_t i = 0; i < n; i++) {
+        for (int64_t j = 0; j < n; j++) if (dense[i * n + j] != 0.0) { data[nnz] = dense[i * n + j]; ind[nnz] = j; nnz++; }
+        ptr[i + 1] = nnz;
+        v0[i] = 1.0 + cos(0.9 * (double)i);
+    }
+    int64_t sd[2] = {n, n}, sn[1] = {nnz}, sp[1] = {n + 1}, s2[1] = {2}, sv[1] = {n};
+    tsr_arg items[4] = {arg_arr(data, 1, sn), arg_arr_dt(ind, TSR_I64, 1, sn), arg_arr_dt(ptr, TSR_I64, 1, sp), arg_arr_dt(shp, TSR_I64, 1, s2)};
+    tsr_arg grp; memset(&grp, 0, sizeof grp); grp.kind = 5; grp.count = 4; grp.items = items;
+    tsr_arg w; memset(&w, 0, sizeof w); w.kind = 2; w.str = which;
+    tsr_arg none; memset(&none, 0, sizeof none);
+    tsr_arg ad[3] = {arg_arr((double *)dense, 2, sd), arg_num((double)k), w};
+    tsr_arg ac[5] = {grp, arg_num((double)k), w, none, with_v0 ? arg_arr(v0, 1, sv) : none};
+    tsr_result rd[1], rc2[1];
+    int ok = 0;
+    if (tsr_fn_routine(id, 3, ad, 1, rd) == 0) {
+        if (tsr_fn_routine(id, 5, ac, 1, rc2) == 0) {
+            const double *ld = rd[0].arr.data, *lc = rc2[0].arr.data;
+            ok = rd[0].arr.shape[0] == k && rc2[0].arr.shape[0] == k;
+            for (int64_t i = 0; ok && i < k; i++) ok = fabs(ld[i] - lc[i]) <= 1e-9 * (1.0 + fabs(ld[i]));
+            tsr_fn_results_free(rc2, 1);
+        }
+        tsr_fn_results_free(rd, 1);
+    }
+    free(data); free(v0); free(ind); free(ptr);
+    return ok;
+}
+static void test_eigsh_csr(void)
+{
+    enum { G = 15, NP = G * G, NR = 200 };
+    double *pois = calloc((size_t)(NP * NP), 8), *rnd = calloc((size_t)(NR * NR), 8);
+    for (int r = 0; r < G; r++)                           /* 2-D Poisson, 5-point stencil */
+        for (int c = 0; c < G; c++) {
+            const int i = r * G + c;
+            pois[i * NP + i] = 4.0;
+            if (c > 0) pois[i * NP + i - 1] = -1.0;
+            if (c + 1 < G) pois[i * NP + i + 1] = -1.0;
+            if (r > 0) pois[i * NP + i - G] = -1.0;
+            if (r + 1 < G) pois[i * NP + i + G] = -1.0;
+        }
+    uint64_t st = 2026;
+    for (int i = 0; i < NR; i++) {                        /* random symmetric, indefinite, about 6 entries a row */
+        st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+        rnd[i * NR + i] = (double)(st >> 11) / 9007199254740992.0 * 8.0 - 4.0;
+        for (int d = 0; d < 3; d++) {
+            st ^= st << 13; st ^= st >> 7; st ^= st << 17;
+            const int j = (int)(st % NR);
+            if (j == i) continue;
+            const double v = (double)(st >> 11) / 9007199254740992.0 - 0.5;
+            rnd[i * NR + j] += v; rnd[j * NR + i] += v;
+        }
+    }
+    const int64_t before = tsr_allocated();
+    static const char *const whiches[] = {"LA", "SA", "LM", "BE", "SM"};
+    int ok = 0, cases = 0;
+    for (int wi = 0; wi < 5; wi++) {
+        cases += 3;
+        ok += eigsh_csr_agree(NP, pois, 5, whiches[wi], 0);
+        ok += eigsh_csr_agree(NR, rnd, 4, whiches[wi], 0);
+        ok += eigsh_csr_agree(NR, rnd, 6, whiches[wi], 1);
+    }
+    CHECK(ok == cases, "eigsh on CSR (Lanczos) == eigsh dense: LA/SA/LM/BE/SM, Poisson and indefinite, with and without v0 (%d of %d)", ok, cases);
+    CHECK(tsr_allocated() == before, "eigsh on CSR leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+    free(pois); free(rnd);
+}
+
 /* distance.kdtree_query == an exhaustive search, exactly: the same distances (sqrt of the axis sum in order), the same
    indices and order (nearest first, ties by index), on random points, integer grids full of equal distances,
    duplicates, queries on data points, k = 1, 7 and k > n */
@@ -3659,6 +3884,9 @@ int main(void)
     test_abi_runtime();
     test_fft_trig();
     test_kdtree();
+    test_splinalg_csr();
+    test_spsolve_csr();
+    test_eigsh_csr();
     test_linalg_typed();
     test_op_names();
     test_sort_variants();

@@ -136,6 +136,63 @@ final class NumericsTest extends TestCase
         }
     }
 
+    /** the iterative solvers take a CSR matrix (the result of Sparse::diags) and match the same solve on it dense */
+    public function testIterativeSolversTakeSparseMatrices(): void
+    {
+        $n = 40;
+        $dense = [];
+        for ($i = 0; $i < $n; $i++) {
+            $dense[$i] = array_fill(0, $n, 0.0);
+            $dense[$i][$i] = 4.0;
+            if ($i > 0) {
+                $dense[$i][$i - 1] = -1.0;
+            }
+            if ($i + 1 < $n) {
+                $dense[$i][$i + 1] = -1.0;
+            }
+        }
+        $b = array_map(static fn (int $i): float => sin(0.3 * $i) + 0.2, range(0, $n - 1));
+        $backends = [[\Tessero\Sparse::class, \Tessero\SparseLinalg::class, NDArray::class]];
+        if (extension_loaded('tessero') && class_exists(\Tessero\Ext\SparseLinalg::class)) {
+            $backends[] = [\Tessero\Ext\Sparse::class, \Tessero\Ext\SparseLinalg::class, \Tessero\Ext\NDArray::class];
+        }
+        foreach ($backends as [$sparse, $solvers, $array]) {
+            $csr = $sparse::diags([array_fill(0, $n - 1, -1.0), array_fill(0, $n, 4.0), array_fill(0, $n - 1, -1.0)], [-1, 0, 1], [$n, $n]);
+            foreach (['cg', 'gmres'] as $fn) {
+                $xs = $solvers::$fn($csr, $array::array($b), null, 1e-12);
+                $xd = $solvers::$fn($array::array($dense), $array::array($b), null, 1e-12);
+                $xs = is_array($xs) ? reset($xs) : $xs;
+                $xd = is_array($xd) ? reset($xd) : $xd;
+                $this->assertSame($xd->toList(), $xs->toList(), "$solvers::$fn on CSR vs dense");
+            }
+            // spsolve (banded LU on CSR) and eigsh (Lanczos on CSR): other algorithms, so equal to rounding
+            $xs = $solvers::spsolve($csr, $array::array($b));
+            $xd = $solvers::spsolve($array::array($dense), $array::array($b));
+            $xs = is_array($xs) ? reset($xs) : $xs;
+            $xd = is_array($xd) ? reset($xd) : $xd;
+            foreach ($xd->toList() as $i => $v) {
+                $this->assertEqualsWithDelta($v, $xs->toList()[$i], 1e-12 * (1.0 + abs($v)), "$solvers::spsolve on CSR vs dense");
+            }
+            foreach (['LA', 'SA', 'LM', 'BE'] as $which) {
+                $ws = $solvers::eigsh($csr, 4, $which);
+                $wd = $solvers::eigsh($array::array($dense), 4, $which);
+                $ws = is_array($ws) ? reset($ws) : $ws;
+                $wd = is_array($wd) ? reset($wd) : $wd;
+                foreach ($wd->toList() as $i => $v) {
+                    $this->assertEqualsWithDelta($v, $ws->toList()[$i], 1e-9 * (1.0 + abs($v)), "$solvers::eigsh $which on CSR vs dense");
+                }
+            }
+            // without which: the registry default (the option list) means LM, dense and sparse
+            foreach ([$csr, $array::array($dense)] as $m) {
+                $wdef = $solvers::eigsh($m, 4);
+                $wlm = $solvers::eigsh($m, 4, 'LM');
+                $wdef = is_array($wdef) ? reset($wdef) : $wdef;
+                $wlm = is_array($wlm) ? reset($wlm) : $wlm;
+                $this->assertSame($wlm->toList(), $wdef->toList(), "$solvers::eigsh without which == LM");
+            }
+        }
+    }
+
     public function testShuffleOnNonContiguousRows(): void
     {
         $a = NDArray::arange(12)->reshape(4, 3);

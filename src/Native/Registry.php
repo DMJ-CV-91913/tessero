@@ -605,6 +605,18 @@ final class Registry
             $keep[] = $buf;
             $slot->kind = 2;
             $slot->str = $ffi->cast('char*', $buf);
+        } elseif (($csr = self::csrParts($v)) !== null) {
+            // a CSR matrix (what scipy.sparse's routines return, or a CsrMatrix): the group data, indices, indptr,
+            // shape, which the routines that take sparse input read as such
+            $sub = $ffi->new('tsr_arg[4]', false);
+            $keep[] = $sub;                                   // unmanaged: freed with the strings after the call
+            FFI::memset($sub, 0, FFI::sizeof($sub));
+            foreach ($csr as $j => $part) {
+                self::routineArg($ffi, $sub[$j], $part, $keep, $label);
+            }
+            $slot->kind = 5;
+            $slot->count = 4;
+            $slot->items = $ffi->cast('tsr_arg*', FFI::addr($sub[0]));
         } else {
             $arr = $v instanceof NDArray ? $v : NDArray::array($v);
             $keep[] = $arr;
@@ -613,6 +625,26 @@ final class Registry
             $m = $arr->meta();
             FFI::memcpy(FFI::addr($slot->arr), FFI::addr($m), FFI::sizeof($m));
         }
+    }
+
+    /**
+     * The parts of a CSR matrix argument in kernel order [data, indices, indptr, shape], or null when $v is not one:
+     * an array with exactly the keys data, indices, indptr and shape (the result of sparse.diags, sparse.csr_array
+     * and the other sparse routines), or a Sparse\CsrMatrix.
+     *
+     * @return list<mixed>|null
+     */
+    private static function csrParts(mixed $v): ?array
+    {
+        if ($v instanceof \Tessero\Sparse\CsrMatrix) {
+            return [$v->data(), $v->indices(), $v->indptr(), $v->shape()];
+        }
+        if (is_array($v) && count($v) === 4 && array_key_exists('data', $v) && array_key_exists('indices', $v)
+            && array_key_exists('indptr', $v) && array_key_exists('shape', $v)) {
+            return [$v['data'], $v['indices'], $v['indptr'], $v['shape']];
+        }
+
+        return null;
     }
 
     /**

@@ -43,9 +43,45 @@ example above (100 000 unknowns) converges to rtol 1e-10 in about 20 ms
 Poisson matrix (2 on the diagonal) of the same size needs tens of thousands of
 CG iterations, whatever the implementation.
 
+## SciPy-style solvers on sparse input
+
+The `scipy.sparse.linalg` functions in `Tessero\SparseLinalg` (and
+`Tessero\Ext\SparseLinalg`) take a sparse matrix as well as a dense one:
+`spsolve`, `eigsh` and the iterative solvers `cg`, `bicgstab`, `bicg`, `cgs`,
+`minres`, `gmres`, `lgmres`, `gcrotmk`, `qmr` and `tfqmr`. A sparse matrix is
+the array that `Sparse::diags`, `Sparse::csrArray` and the other sparse
+routines return (keys `data`, `indices`, `indptr`, `shape`; both backends)
+or a `CsrMatrix` (FFI backend). Its structure is checked before use, so a
+malformed one is refused with an error.
+
+```php
+use Tessero\Sparse;
+use Tessero\SparseLinalg;
+
+$n = 100_000;
+$A = Sparse::diags([array_fill(0, $n - 1, -1.0), array_fill(0, $n, 4.0), array_fill(0, $n - 1, -1.0)], [-1, 0, 1], [$n, $n]);
+$x = SparseLinalg::spsolve($A, $b);      // banded LU: about 15 ms
+$x = SparseLinalg::cg($A, $b);
+$w = SparseLinalg::eigsh($A, 6);         // the 6 eigenvalues of largest magnitude
+```
+
+- **Iterative solvers** run the same iteration as on a dense matrix, with
+  sparse products: the same result (but for the sign of an exact zero), at a
+  cost of the stored entries instead of n² per product.
+- **`spsolve`** factors the matrix's band (LAPACK `dgbsv`, partial pivoting),
+  the bandwidths measured from the stored entries: tridiagonal and grid
+  matrices solve at any size. A matrix whose band is too wide is solved dense
+  when that fits in memory (2 GiB), and is refused otherwise.
+- **`eigsh`** runs a thick-restart Lanczos iteration with full
+  reorthogonalization, then searches the complement of the converged vectors so
+  that a repeated eigenvalue is not missed. `which` = `LM`, `LA`, `SA`, `BE`;
+  `SM` is solved dense up to n = 4096 (Lanczos reaches the smallest magnitudes
+  slowly without a shift). `v0`, `ncv`, `maxiter` and `tol` apply; `sigma`
+  (shift-invert) is not supported.
+
 ## Limits
 
-There is no direct sparse solver (`spsolve`), no CSC/COO classes and no
-sparse × sparse product yet ([roadmap](../project/roadmap.md)). For
-Markov decision processes the transition matrix is stored as CSR internally;
-see [MDP](mdp.md).
+There is no general sparse LU (`spsolve` is banded, see above), no CSC/COO
+classes and no sparse × sparse product yet ([roadmap](../project/roadmap.md)).
+For Markov decision processes the transition matrix is stored as CSR
+internally; see [MDP](mdp.md).

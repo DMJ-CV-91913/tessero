@@ -507,6 +507,32 @@ static int fill_seq(zval *z, tsr_arg *a, keep_list *kl, tsr_arg **block)
     return SUCCESS;
 }
 
+/* a CSR matrix argument: an array with exactly the keys data, indices, indptr and shape (what the sparse routines
+   return), passed as the kind-5 group [data, indices, indptr, shape] that the routines with sparse input read */
+static int is_csr(zval *z)
+{
+    if (Z_TYPE_P(z) != IS_ARRAY) return 0;
+    HashTable *h = Z_ARRVAL_P(z);
+    return zend_hash_num_elements(h) == 4 && zend_hash_str_exists(h, "data", 4) && zend_hash_str_exists(h, "indices", 7)
+        && zend_hash_str_exists(h, "indptr", 6) && zend_hash_str_exists(h, "shape", 5);
+}
+
+static int fill_csr(zval *z, tsr_arg *a, keep_list *kl, tsr_arg **block)
+{
+    static const char *const keys[4] = {"data", "indices", "indptr", "shape"};
+    HashTable *h = Z_ARRVAL_P(z);
+    tsr_arg *items = ecalloc(4, sizeof(tsr_arg));
+    *block = items;
+    for (int j = 0; j < 4; j++) {
+        zval *e = zend_hash_str_find(h, keys[j], strlen(keys[j]));
+        if (!e || fill_arg(e, &items[j], kl) == FAILURE) return FAILURE;
+    }
+    a->kind = 5;
+    a->items = items;
+    a->count = 4;
+    return SUCCESS;
+}
+
 /* release a kernel result that will not be adopted: the kernel's own teardown (strings, arrays, sequences with
    their items), so the layer that allocated the blocks also defines how they are freed (ADR 0015) */
 static void fn_results_free_ext(tsr_result *r) { tsr_fn_results_free(r, 1); }
@@ -620,6 +646,8 @@ static void call_routine(const fn_bind *b, zend_execute_data *execute_data, zval
             }
             if (((b->seq >> k) & 1) && Z_TYPE_P(z) == IS_ARRAY) {
                 if (fill_seq(z, &cargs[k], &kl, &blocks[nblocks++]) == FAILURE) goto done;
+            } else if (is_csr(z)) {
+                if (fill_csr(z, &cargs[k], &kl, &blocks[nblocks++]) == FAILURE) goto done;
             } else if (fill_arg(z, &cargs[k], &kl) == FAILURE) goto done;
         }
     }
