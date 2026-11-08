@@ -2032,6 +2032,19 @@ PHP_METHOD(NDArray, clip)
         Z_PARAM_NUMBER_OR_NULL(lo)
         Z_PARAM_NUMBER_OR_NULL(hi)
     ZEND_PARSE_PARAMETERS_END();
+    const tsr_array *x = &THIS_OBJ->a;
+    if (lo && hi && x->dtype != D_BOOL && x->dtype != D_C128 && with_scalar(x->dtype, lo) == x->dtype
+        && with_scalar(x->dtype, hi) == x->dtype) {
+        /* one pass instead of maximum then minimum, with the same comparisons (the same values) */
+        int64_t lv[2], hv[2];
+        zval_to_elem(lo, x->dtype, (char *)lv);
+        zval_to_elem(hi, x->dtype, (char *)hv);
+        if (tsr_ndarray_new(return_value, x->dtype, x->ndim, x->shape, 0) == FAILURE) RETURN_THROWS();
+        tsr_obj *o = Z_TSR_P(return_value);
+        int rc = tsr_array_size(x) ? tsr_clip(x->dtype, x->ndim, x->shape, elem0(x), x->strides, lv, hv, elem0(&o->a), o->a.strides) : 0;
+        if (rc != 0) { zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); tsr_throw_rc(rc, "clip"); RETURN_THROWS(); }
+        return;
+    }
     zval cur, next;
     ZVAL_COPY(&cur, ZEND_THIS);
     if (lo) { if (binary_core(OP_MAX, &cur, lo, &next) == FAILURE) { zval_ptr_dtor(&cur); RETURN_THROWS(); } zval_ptr_dtor(&cur); cur = next; }

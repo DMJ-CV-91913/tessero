@@ -616,6 +616,15 @@ static int windowed_rank(const tsr_arg *input, const int64_t *size, const int64_
     return rc;
 }
 
+/* the input as float64 for reading: contiguous float64 data read in place, else a converted copy in *own (free it
+   with fn_free_doubles). Not copying the input also keeps one large block less in use while the result is built. */
+static const double *nd_input(const tsr_arg *a, int64_t *n, double **own)
+{
+    const double *v = fn_arg_f64_view(a, n);
+    *own = NULL;
+    return v ? v : (*own = fn_arg_doubles(a, n));
+}
+
 typedef struct { int64_t size, origin; int mode, is_max; double cval; } mm1d_ctx;
 static void mm1d_line(const double *line, double *out, int64_t L, const void *vc);
 static int filter_lines(const double *in, double *out, const int64_t *shape, int32_t nd, int ax,
@@ -637,21 +646,26 @@ static int r_order_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     if (op == OP_MAX || op == OP_MIN) {
         /* a box minimum / maximum is separable, and SciPy computes it so: the 1-D filter along each axis whose size is
            above 1, in axis order (exact: no rounding in a min or max) */
-        int64_t ti; double *in = fn_arg_doubles(&args[0], &ti);
+        int64_t ti; double *own; const double *in = nd_input(&args[0], &ti, &own);
         double *out = in ? (double *)fn_result_array(&res[0], TSR_F64, nd, args[0].arr.shape) : NULL;
         const int64_t tot = tsr_shape_size(nd, args[0].arr.shape);
         double *tmp = out ? (double *)tsr_alloc(tot * 8 + 8) : NULL;
-        if (!in || !out || !tmp) { fn_free_doubles(in, ti); if (tmp) tsr_free(tmp, tot * 8 + 8); return TSR_ENOMEM; }
-        memcpy(out, in, (size_t)tot * sizeof(double));
+        if (!in || !out || !tmp) { fn_free_doubles(own, ti); if (tmp) tsr_free(tmp, tot * 8 + 8); return TSR_ENOMEM; }
+        /* the passes alternate between out and tmp, starting so that the last one lands in out */
+        int passes = 0;
+        for (int d = 0; d < nd; d++) passes += size[d] > 1;
+        const double *src = in;
+        double *dst = passes % 2 ? out : tmp;
         rc = TSR_OK;
         for (int d = 0; d < nd && rc == TSR_OK; d++) {
             if (size[d] <= 1) continue;
             const mm1d_ctx c = { size[d], origin[d], mode, op == OP_MAX, cval };
-            rc = filter_lines(out, tmp, args[0].arr.shape, nd, d, mm1d_line, &c);
-            if (rc == TSR_OK) memcpy(out, tmp, (size_t)tot * sizeof(double));
+            rc = filter_lines(src, dst, args[0].arr.shape, nd, d, mm1d_line, &c);
+            src = dst; dst = dst == out ? tmp : out;
         }
+        if (passes == 0) memcpy(out, in, (size_t)tot * sizeof(double));
         tsr_free(tmp, tot * 8 + 8);
-        fn_free_doubles(in, ti);
+        fn_free_doubles(own, ti);
         return rc;
     }
     const int64_t pick = op == OP_MEDIAN ? V / 2 : 0;
@@ -810,6 +824,19 @@ static inline double ext1d(const double *line, int64_t idx, int64_t L, int mode,
     return k < 0 ? cval : line[k];
 }
 
+/* ext[t] = the sample at position t + lo for t < n, as ext1d gives it: the stretch inside the line copied as is,
+   only the positions past either end mapped by the boundary mode. */
+static void ext_fill(double *ext, const double *line, int64_t L, int64_t n, int64_t lo, int mode, double cval)
+{
+    int64_t a = lo < 0 ? -lo : 0, b = L - lo;
+    if (a > n) a = n;
+    if (b > n) b = n;
+    if (b < a) b = a;
+    for (int64_t t = 0; t < a; t++) ext[t] = ext1d(line, t + lo, L, mode, cval);
+    if (b > a) memcpy(ext + a, line + a + lo, (size_t)(b - a) * sizeof(double));
+    for (int64_t t = b; t < n; t++) ext[t] = ext1d(line, t + lo, L, mode, cval);
+}
+
 typedef struct { const double *w; int64_t W, center, origin; int mode; double cval; } corr1d_ctx;
 
 /* scipy NI_Correlate1D: out[i] = sum_j w[j] * input_ext[i + j - center - origin], center = W//2. The line is extended
@@ -829,7 +856,7 @@ static void corr1d_line(const double *line, double *out, int64_t L, const void *
         }
         return;
     }
-    for (int64_t t = 0; t < L + W - 1; t++) ext[t] = ext1d(line, t + lo, L, c->mode, c->cval);
+    ext_fill(ext, line, L, L + W - 1, lo, c->mode, c->cval);
     for (int64_t i = 0; i < L; i++) out[i] = 0.0;
     for (int64_t j = 0; j < W; j++) {
         const double wj = c->w[j];
@@ -849,7 +876,7 @@ static void mm1d_line(const double *line, double *out, int64_t L, const void *vc
     double *ext = (double *)malloc((size_t)(L + c->size - 1) * sizeof(double));
     if (ext) {
         const int64_t lo = -center - c->origin, S = c->size;
-        for (int64_t t = 0; t < L + S - 1; t++) ext[t] = ext1d(line, t + lo, L, c->mode, c->cval);
+        ext_fill(ext, line, L, L + S - 1, lo, c->mode, c->cval);
         if (c->is_max) for (int64_t i = 0; i < L; i++) { double best = -INFINITY; const double *w = ext + i; for (int64_t j = 0; j < S; j++) if (w[j] > best) best = w[j]; out[i] = best; }
         else for (int64_t i = 0; i < L; i++) { double best = INFINITY; const double *w = ext + i; for (int64_t j = 0; j < S; j++) if (w[j] < best) best = w[j]; out[i] = best; }
         free(ext);
@@ -865,6 +892,48 @@ static void mm1d_line(const double *line, double *out, int64_t L, const void *vc
     }
 }
 
+/* corr1d_line and mm1d_line along an axis whose lines are `inner` apart (inner > 1), on whole rows of `inner`
+   adjacent values instead of one gathered line at a time. Output row k takes, tap by tap in j order, source row
+   bmap(k + j + lo) (or cval): each element gets the same terms or comparisons, in the same order, as its line would
+   in corr1d_line / mm1d_line, so the values are the same, and the inner loops run over contiguous memory. */
+static void corr1d_rows(const double *in, double *out, int64_t L, int64_t inner, const corr1d_ctx *c)
+{
+    const int64_t lo = -c->center - c->origin;
+    for (int64_t k = 0; k < L; k++) {
+        double *o = out + k * inner;
+        for (int64_t i = 0; i < inner; i++) o[i] = 0.0;
+        for (int64_t j = 0; j < c->W; j++) {
+            const double wj = c->w[j];
+            if (wj == 0.0) continue;
+            const int64_t r = bmap(k + j + lo, L, c->mode);
+            if (r < 0) { const double t = wj * c->cval; for (int64_t i = 0; i < inner; i++) o[i] += t; }
+            else { const double *s = in + r * inner; for (int64_t i = 0; i < inner; i++) o[i] += wj * s[i]; }
+        }
+    }
+}
+
+static void mm1d_rows(const double *in, double *out, int64_t L, int64_t inner, const mm1d_ctx *c)
+{
+    const int64_t lo = -(c->size / 2) - c->origin;
+    for (int64_t k = 0; k < L; k++) {
+        double *o = out + k * inner;
+        const double init = c->is_max ? -INFINITY : INFINITY;
+        for (int64_t i = 0; i < inner; i++) o[i] = init;
+        for (int64_t j = 0; j < c->size; j++) {
+            const int64_t r = bmap(k + j + lo, L, c->mode);
+            if (r < 0) {
+                const double v = c->cval;
+                if (c->is_max) for (int64_t i = 0; i < inner; i++) o[i] = v > o[i] ? v : o[i];
+                else for (int64_t i = 0; i < inner; i++) o[i] = v < o[i] ? v : o[i];
+            } else {
+                const double *s = in + r * inner;
+                if (c->is_max) for (int64_t i = 0; i < inner; i++) o[i] = s[i] > o[i] ? s[i] : o[i];
+                else for (int64_t i = 0; i < inner; i++) o[i] = s[i] < o[i] ? s[i] : o[i];
+            }
+        }
+    }
+}
+
 /* run a per-line filter along axis `ax` of a contiguous C-order n-D array. */
 static int filter_lines(const double *in, double *out, const int64_t *shape, int32_t nd, int ax,
                         void (*line)(const double *, double *, int64_t, const void *), const void *ctx)
@@ -874,6 +943,16 @@ static int filter_lines(const double *in, double *out, const int64_t *shape, int
     for (int d = ax + 1; d < nd; d++) inner *= shape[d];
     for (int d = 0; d < ax; d++) outer *= shape[d];
     if (L == 0 || inner == 0 || outer == 0) return TSR_OK;
+    if (in != out && (line == corr1d_line || line == mm1d_line)) {
+        for (int64_t o = 0; o < outer; o++) {
+            const double *src = in + o * L * inner;
+            double *dst = out + o * L * inner;
+            if (inner == 1) line(src, dst, L, ctx);   /* a contiguous line: filtered where it is, not copied out */
+            else if (line == corr1d_line) corr1d_rows(src, dst, L, inner, (const corr1d_ctx *)ctx);
+            else mm1d_rows(src, dst, L, inner, (const mm1d_ctx *)ctx);
+        }
+        return TSR_OK;
+    }
     /* up to 8 neighbouring lines are copied out together: along any axis but the last, a line's elements are inner
        apart, and the 8 lines' elements at one position are adjacent, so each read fills a cache line once; every line
        is then filtered on its own as before */
@@ -933,12 +1012,12 @@ static int r_correlate1d(const void *ctx, const tsr_arg *args, int nargs, tsr_re
         for (int64_t j = 0; j < W; j++) rev[j] = w[W - 1 - j];
         wk = rev; origin = -origin; if ((W & 1) == 0) origin -= 1;
     }
-    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti);
+    int64_t ti; double *own; const double *in = nd_input(&args[0], &ti, &own);
     double *out = in ? (double *)fn_result_array(&res[0], TSR_F64, nd, args[0].arr.shape) : NULL;
-    if (!in || !out) { fn_free_doubles(in, ti); fn_free_doubles(w, tw); free(rev); return TSR_ENOMEM; }
+    if (!in || !out) { fn_free_doubles(own, ti); fn_free_doubles(w, tw); free(rev); return TSR_ENOMEM; }
     corr1d_ctx c = { wk, W, W / 2, origin, mode, cval };
     rc = filter_lines(in, out, args[0].arr.shape, nd, ax, corr1d_line, &c);
-    fn_free_doubles(in, ti); fn_free_doubles(w, tw); free(rev);
+    fn_free_doubles(own, ti); fn_free_doubles(w, tw); free(rev);
     return rc;
 }
 
@@ -947,12 +1026,12 @@ static int run_corr1d(const tsr_arg *input, const double *w, int64_t W, int ax, 
 {
     const int32_t nd = input->arr.ndim;
     if (!nd_origin_ok(origin, W)) { fn_set_error("invalid origin"); return TSR_EARG; }
-    int64_t ti; double *in = fn_arg_doubles(input, &ti);
+    int64_t ti; double *own; const double *in = nd_input(input, &ti, &own);
     double *out = in ? (double *)fn_result_array(res, TSR_F64, nd, input->arr.shape) : NULL;
-    if (!in || !out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+    if (!in || !out) { fn_free_doubles(own, ti); return TSR_ENOMEM; }
     corr1d_ctx c = { w, W, W / 2, origin, mode, cval };
     int rc = filter_lines(in, out, input->arr.shape, nd, ax, corr1d_line, &c);
-    fn_free_doubles(in, ti);
+    fn_free_doubles(own, ti);
     return rc;
 }
 
@@ -1018,12 +1097,12 @@ static int r_minmax_filter1d(const void *ctx, const tsr_arg *args, int nargs, ts
     int rc = filter_tail(args, nargs, nd, 2, &ax, &mode, &cval, &origin);
     if (rc < 0) return rc;
     if (!nd_origin_ok(origin, size)) { fn_set_error("invalid origin"); return TSR_EARG; }
-    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti);
+    int64_t ti; double *own; const double *in = nd_input(&args[0], &ti, &own);
     double *out = in ? (double *)fn_result_array(&res[0], TSR_F64, nd, args[0].arr.shape) : NULL;
-    if (!in || !out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+    if (!in || !out) { fn_free_doubles(own, ti); return TSR_ENOMEM; }
     mm1d_ctx c = { size, origin, mode, ctx && *(const int *)ctx, cval };
     rc = filter_lines(in, out, args[0].arr.shape, nd, ax, mm1d_line, &c);
-    fn_free_doubles(in, ti);
+    fn_free_doubles(own, ti);
     return rc;
 }
 
@@ -1248,16 +1327,17 @@ static int r_sobel_prewitt(const void *ctx, const tsr_arg *args, int nargs, tsr_
     if (rc < 0) return rc;
     const double cval = (nargs > 3 && args[3].kind == 1) ? args[3].num : 0.0;
     int64_t total = 1; for (int d = 0; d < nd; d++) total *= args[0].arr.shape[d];
-    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
+    int64_t ti; double *own; const double *in = nd_input(&args[0], &ti, &own); if (!in) return TSR_ENOMEM;
     double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, args[0].arr.shape);
     double *tmp = out ? (double *)malloc((size_t)(total > 0 ? total : 1) * sizeof(double)) : NULL;
-    if (!out || !tmp) { fn_free_doubles(in, ti); free(tmp); return TSR_ENOMEM; }
+    if (!out || !tmp) { fn_free_doubles(own, ti); free(tmp); return TSR_ENOMEM; }
     static const double deriv[3] = {-1.0, 0.0, 1.0}, smooth_s[3] = {1.0, 2.0, 1.0}, smooth_p[3] = {1.0, 1.0, 1.0};
     const double *smooth = sobel ? smooth_s : smooth_p;
     const int64_t *shape = args[0].arr.shape;
     corr1d_ctx dc = { deriv, 3, 1, 0, mode, cval };
-    rc = filter_lines(in, out, shape, nd, (int)a, corr1d_line, &dc);
-    double *src = out, *dst = tmp;
+    /* nd passes alternating between out and tmp, starting so that the last one lands in out */
+    double *src = nd % 2 ? out : tmp, *dst = src == out ? tmp : out;
+    rc = filter_lines(in, src, shape, nd, (int)a, corr1d_line, &dc);
     for (int d = 0; d < nd && rc == 0; d++) {
         if (d == (int)a) continue;
         corr1d_ctx sc = { smooth, 3, 1, 0, mode, cval };
@@ -1265,7 +1345,7 @@ static int r_sobel_prewitt(const void *ctx, const tsr_arg *args, int nargs, tsr_
         double *t = src; src = dst; dst = t;
     }
     if (rc == 0 && src != out) memcpy(out, src, (size_t)total * sizeof(double));
-    free(tmp); fn_free_doubles(in, ti);
+    free(tmp); fn_free_doubles(own, ti);
     return rc;
 }
 
@@ -1279,10 +1359,10 @@ static int r_laplace(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     if (rc < 0) return rc;
     const double cval = (nargs > 2 && args[2].kind == 1) ? args[2].num : 0.0;
     int64_t total = 1; for (int d = 0; d < nd; d++) total *= args[0].arr.shape[d];
-    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
+    int64_t ti; double *own; const double *in = nd_input(&args[0], &ti, &own); if (!in) return TSR_ENOMEM;
     double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, args[0].arr.shape);
     double *tmp = out ? (double *)malloc((size_t)(total > 0 ? total : 1) * sizeof(double)) : NULL;
-    if (!out || !tmp) { fn_free_doubles(in, ti); free(tmp); return TSR_ENOMEM; }
+    if (!out || !tmp) { fn_free_doubles(own, ti); free(tmp); return TSR_ENOMEM; }
     for (int64_t i = 0; i < total; i++) out[i] = 0.0;
     static const double lap[3] = {1.0, -2.0, 1.0};
     const int64_t *shape = args[0].arr.shape;
@@ -1291,7 +1371,7 @@ static int r_laplace(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         rc = filter_lines(in, tmp, shape, nd, d, corr1d_line, &c);
         if (rc == 0) for (int64_t i = 0; i < total; i++) out[i] += tmp[i];
     }
-    free(tmp); fn_free_doubles(in, ti);
+    free(tmp); fn_free_doubles(own, ti);
     return rc;
 }
 

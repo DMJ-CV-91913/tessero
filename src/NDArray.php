@@ -1213,6 +1213,22 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
 
     public function clip(int|float|null $min = null, int|float|null $max = null): self
     {
+        $dt = $this->dtype;
+        if ($min !== null && $max !== null && $dt !== DType::Bool && $dt !== DType::Complex128
+            && $dt->withScalar($min) === $dt && $dt->withScalar($max) === $dt) {
+            // one pass instead of maximum then minimum, with the same comparisons (the same values)
+            $r = self::empty($this->shape, $dt);
+            if ($r->size > 0) {
+                $lo = new self(Buffer::fromBytes(self::scalarBytes($min, $dt)), $dt, []);
+                $hi = new self(Buffer::fromBytes(self::scalarBytes($max, $dt)), $dt, []);
+                Library::check(Library::ffi()->tsr_clip(
+                    $dt->value, count($this->shape), Library::i64($this->shape), $this->ptr(), Library::i64($this->strides),
+                    $lo->ptr(), $hi->ptr(), $r->ptr(), Library::i64($r->strides),
+                ), 'clip');
+            }
+
+            return $r;
+        }
         $r = $this;
         if ($min !== null) {
             $r = $r->maximum($min);

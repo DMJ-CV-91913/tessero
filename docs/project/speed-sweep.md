@@ -7,14 +7,14 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.73** | 61 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.69** | 64 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 46 cases, within 10% either way on 17, and clearly slower on 21, mostly where an algorithm is not yet the best one
+on 49 cases, within 10% either way on 17, and clearly slower on 18, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -89,6 +89,10 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `numpy.cumsum` 1M | 2.6 ms | 1.19 ms | 2.40 ms | along a single run (a 1-D array, or the last axis of a C-order block) the running value kept in a register instead of read back from the element just stored, which put a store-to-load forward on every step; the same additions in the same order, bit for bit (1,672 calls, every dtype and axis, NaN, inf, -0, integer wrap); also `cumprod` |
 | `numpy.cov` 50 x 100k | 47.9 ms | 40.5 ms | 29.8 ms | a contiguous float64 input read in place into the centred matrix instead of first copied whole; the same values, bit for bit (636 calls, also `corrcoef`). NumPy forms X X^T with `dsyrk`, half the products of the `dgemm` used here; switching would change the rounding of the results |
 | `stats.gaussian_kde` 1000 points, 1000 evaluations | 16.7 ms | 11.4 ms | 12.3 ms | for one-dimensional data the kernel sum runs on plain doubles instead of through the general d-dimensional loop and its small vectors; the same divisions, products, sums and `exp` calls in the same order, bit for bit (300 calls: one to three dimensions, 2 to 1000 points, ties, NaN, float32). The time left is the million `exp` calls |
+| `ndimage.sobel` 1000^2 | 33.9 ms | 3.18 ms | 8.83 ms | a contiguous float64 input read in place instead of copied first: with the copy and the result two 8 MB blocks were in use, and on this host allocating and filling two such blocks costs about 7 ms per call (the memory goes back to the system when they are freed and its pages fault in again), most of the 8 ms a 3-tap pass took. Along an axis other than the last, whole rows of the image are filtered at once instead of one gathered line at a time, and a line's in-range samples are copied, not mapped one by one; every output receives the same terms in the same order, bit for bit (39,900 calls on each backend: 1-D to 4-D, every mode, NaN, inf, -0, origins); also `correlate1d`, `convolve1d`, `uniform_filter1d`, `gaussian_filter1d` and `prewitt` |
+| `ndimage.laplace` 1000^2 | 36.6 ms | 6.63 ms | 12.7 ms | the same |
+| `ndimage.maximum_filter` 5x5, 1000^2 | 33.5 ms | 6.10 ms | 20.4 ms | the same, and the passes alternate between the result and one scratch array instead of copying back after each; the same comparisons in the same order; also `minimum_filter` and the 1-D filters |
+| `numpy.clip` 1M | 2.70 ms | 1.31 ms | 1.11 ms | both bounds applied in one pass (`tsr_clip`, a new C entry point) instead of a maximum and then a minimum pass, with the same comparisons in the same order, bit for bit (1,904 calls on each backend: every dtype, NaN and -0 bounds, crossed bounds, out-of-range integers, strided and reversed views). What remains is the write into the fresh result array, which costs NumPy the same |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -202,8 +206,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   a load average of 6 to 10), `ks_2samp` (twelve alternating rounds, at a load average of up to 38),
   `binned_statistic` (six alternating rounds, at a load average of 5 to 10), `find_peaks` (six alternating
   rounds, at a load average of 18), `zoom` (six alternating rounds, at a load average of 6 to 9), `cov` and
-  `cumsum` (six alternating rounds, at a load average of 9 to 10) and `gaussian_kde` (six alternating rounds, at a
-  load average of 8 to 9). Each side ran three times, alternating,
+  `cumsum` (six alternating rounds, at a load average of 9 to 10) `gaussian_kde` (six alternating rounds, at a
+  load average of 8 to 9) and `clip`, `sobel`, `laplace` and `maximum_filter` (six alternating rounds, at a load
+  average of 6 to 21, `clip` twelve more). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -226,14 +231,17 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.optimize minimize L-BFGS-B rosen n=50 | 30 | 143 | 0.21 |
 | scipy.signal detrend 1M | 9.86 | 46 | 0.21 |
 | scipy.ndimage zoom 500x500 x2 | 18.1 | 74.3 | 0.24 |
+| scipy.ndimage maximum_filter 1000x1000, 5 | 6.1 | 20.4 | 0.30 |
 | scipy.signal savgol_filter 1M (31, 3) | 6.19 | 20.1 | 0.31 |
 | scipy.sparse.linalg spsolve tridiagonal 100k | 18.2 | 50.2 | 0.36 |
+| scipy.ndimage sobel 1000x1000 | 3.18 | 8.83 | 0.36 |
 | numpy unique 1M (1000 values) | 3.86 | 9.66 | 0.40 |
 | numpy histogram 1M, 100 bins | 7.7 | 18.8 | 0.41 |
 | scipy.stats spearmanr 100k | 8.58 | 20.8 | 0.41 |
 | scipy.sparse.csgraph minimum_spanning_tree 500 nodes | 4.04 | 8.85 | 0.46 |
 | numpy percentile 1M | 5.86 | 12.4 | 0.47 |
 | numpy cumsum 1M | 1.19 | 2.4 | 0.50 |
+| scipy.ndimage laplace 1000x1000 | 6.63 | 12.7 | 0.52 |
 | numpy trapezoid 1M | 2.1 | 3.99 | 0.53 |
 | scipy.optimize root (2 equations) | 0.0392 | 0.0721 | 0.54 |
 | scipy.signal convolve2d 500x500 * 5x5 | 8.81 | 16.1 | 0.55 |
@@ -282,23 +290,20 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | numpy diff 1M | 1.52 | 1.38 | 1.10 |
 | scipy.linalg svdvals 300x300 | 12.5 | 11.2 | 1.12 |
 | scipy.linalg cholesky 1000x1000 | 16.1 | 14.5 | 1.12 |
+| numpy clip 1M | 1.31 | 1.11 | 1.19 |
 | scipy.linalg pinv 300x300 | 35.5 | 29.4 | 1.21 |
 | numpy linalg slogdet 600x600 | 7.27 | 5.73 | 1.27 |
 | scipy.signal filtfilt order 4, 1M | 19.8 | 15.2 | 1.30 |
-| scipy.ndimage maximum_filter 1000x1000, 5 | 32.9 | 24.6 | 1.33 |
 | numpy fft2 1024x1024 | 44 | 33.1 | 1.33 |
-| numpy clip 1M | 1.85 | 1.38 | 1.34 |
 | numpy cov 50 x 100k | 40.5 | 29.8 | 1.36 |
 | scipy.spatial ConvexHull 10k (2-D) | 2.01 | 1.46 | 1.38 |
 | scipy.signal hilbert 1M | 91.1 | 64.8 | 1.41 |
-| scipy.ndimage laplace 1000x1000 | 26.1 | 17.9 | 1.46 |
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
 | numpy einsum ij,jk->ik 300x300 | 17.4 | 11.3 | 1.53 |
 | numpy rfft2 1024x1024 | 21.5 | 13.7 | 1.57 |
 | scipy.spatial KDTree query 100 points, k=5 | 0.363 | 0.218 | 1.67 |
 | scipy.fft dct 1M | 38.4 | 23 | 1.67 |
 | scipy.spatial KDTree build 100k (3-D) | 58.1 | 32.6 | 1.78 |
-| scipy.ndimage sobel 1000x1000 | 23.6 | 12.8 | 1.85 |
 | scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.0187 | 0.0057 | 3.27 |
 | scipy.optimize curve_fit exp decay, 1000 points | 5.03 | 0.608 | 8.27 |
 

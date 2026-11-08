@@ -110,6 +110,10 @@ int tsr_binary_find(const char *name);
 const char *tsr_binary_name(int op);
 int tsr_where(int dtype, int32_t ndim, const int64_t *shape, const void *cond, const int64_t *sc,
               const void *a, const int64_t *sa, const void *b, const int64_t *sb, void *out, const int64_t *sout);
+/* minimum(maximum(a, *lo), *hi) in one pass, the values of those two tsr_binary calls; lo and hi each point to one
+   value of the dtype. TSR_ETYPE for bool and complex. */
+int tsr_clip(int dtype, int32_t ndim, const int64_t *shape, const void *a, const int64_t *sa, const void *lo,
+             const void *hi, void *out, const int64_t *sout);
 ```
 
 ## Reproducible f32 transcendentals (see csrc/src/repro_f32.c, csrc/repro/GOLDENS.md)

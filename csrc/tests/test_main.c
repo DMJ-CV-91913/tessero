@@ -117,6 +117,29 @@ static void test_binary(void)
     CHECK(C[N - 1] == 3.0 * (N - 1), "large add");
     free(A); free(B); free(C);
 
+    /* clip: one pass with the bits of maximum then minimum (NaN, -0 and +0, inf, a NaN bound, strided, int32) */
+    double cx[8] = {-1.0, 0.5, NAN, -0.0, 0.0, 3.0, 2.0, -INFINITY}, p2[8], p1[8];
+    double bounds[3][2] = {{0.0, 2.0}, {-0.0, NAN}, {NAN, 1.0}};
+    int64_t n8[1] = {8}, n4[1] = {4}, z0[1] = {0}, s16c[1] = {16};
+    for (int k = 0; k < 3; k++) {
+        tsr_binary(OP_MAX, TSR_F64, 1, n8, cx, c8, &bounds[k][0], z0, p2, c8);
+        tsr_binary(OP_MIN, TSR_F64, 1, n8, p2, c8, &bounds[k][1], z0, p2, c8);
+        memset(p1, 0x5a, sizeof p1);
+        CHECK(tsr_clip(TSR_F64, 1, n8, cx, c8, &bounds[k][0], &bounds[k][1], p1, c8) == 0 &&
+              memcmp(p1, p2, sizeof p1) == 0, "clip f64 %d", k);
+    }
+    tsr_binary(OP_MAX, TSR_F64, 1, n4, cx, s16c, &bounds[0][0], z0, p2, c8);
+    tsr_binary(OP_MIN, TSR_F64, 1, n4, p2, c8, &bounds[0][1], z0, p2, c8);
+    CHECK(tsr_clip(TSR_F64, 1, n4, cx, s16c, &bounds[0][0], &bounds[0][1], p1, c8) == 0 &&
+          memcmp(p1, p2, 4 * sizeof(double)) == 0, "clip strided");
+    int32_t ix[4] = {-5, 3, 10, 7}, ilo = 0, ihi = 7, io[4];
+    int64_t c4[1] = {4};
+    CHECK(tsr_clip(TSR_I32, 1, n4, ix, c4, &ilo, &ihi, io, c4) == 0 && io[0] == 0 && io[1] == 3 && io[2] == 7 && io[3] == 7,
+          "clip int32");
+    uint8_t bx[4] = {0, 1, 1, 0}, blo = 0, bhi = 1, bo[4];
+    int64_t sb1[1] = {1};
+    CHECK(tsr_clip(TSR_BOOL, 1, n4, bx, sb1, &blo, &bhi, bo, sb1) == TSR_ETYPE, "clip bool refused");
+
     /* too many dims */
     int64_t big[33]; for (int i = 0; i < 33; i++) big[i] = 1;
     CHECK(tsr_binary(OP_ADD, TSR_F64, 33, big, a, big, a, big, o, big) == TSR_EDIM, "dim cap");

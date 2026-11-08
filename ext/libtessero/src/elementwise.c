@@ -688,6 +688,64 @@ int tsr_where(int dtype, int32_t ndim, const int64_t *shape, const void *cond, c
     return TSR_OK;
 }
 
+/* clip: minimum(maximum(x, lo), hi) in one pass instead of two, with the comparisons of tsr_binary's maximum and
+   minimum (x first, the bound second), so the values are those of the two calls. */
+#define IMAX(x, y) ((x) > (y) ? (x) : (y))
+#define IMIN(x, y) ((x) < (y) ? (x) : (y))
+#define CLIP_RUN(T, MX, MN)                                                                           \
+    do {                                                                                               \
+        const T l_ = *(const T *)lo, h_ = *(const T *)hi;                                              \
+        if (sa == (int64_t)sizeof(T) && so == (int64_t)sizeof(T)) {                                    \
+            const T *A = (const T *)a; T *O = (T *)o;                                                  \
+            for (int64_t i = 0; i < n; i++) { const T x = A[i], m = MX(x, l_); O[i] = MN(m, h_); }      \
+        } else {                                                                                       \
+            for (int64_t i = 0; i < n; i++) {                                                          \
+                const T x = *(const T *)(a + i * sa), m = MX(x, l_);                                   \
+                *(T *)(o + i * so) = MN(m, h_);                                                        \
+            }                                                                                          \
+        }                                                                                              \
+    } while (0)
+
+TSR_CLONES static void clip_run(int dtype, int64_t n, const char *a, int64_t sa, const void *lo, const void *hi,
+                                char *o, int64_t so)
+{
+    switch (dtype) {
+    case TSR_F64: CLIP_RUN(double, FMAX, FMIN); break;
+    case TSR_F32: CLIP_RUN(float, FMAX, FMIN); break;
+    case TSR_I64: CLIP_RUN(int64_t, IMAX, IMIN); break;
+    case TSR_I32: CLIP_RUN(int32_t, IMAX, IMIN); break;
+    default: CLIP_RUN(uint8_t, IMAX, IMIN); break;
+    }
+}
+
+int tsr_clip(int dtype, int32_t ndim, const int64_t *shape, const void *a, const int64_t *sa, const void *lo,
+             const void *hi, void *out, const int64_t *sout)
+{
+    if (dtype < 0 || dtype >= TSR_NDTYPES || !lo || !hi) return TSR_EARG;
+    if (dtype == TSR_BOOL || dtype == TSR_C128) return TSR_ETYPE;
+    const int64_t *st[2] = {sa, sout};
+    tsr_iter it;
+    int rc = tsr_iter_init(&it, 2, ndim, shape, st);
+    if (rc != TSR_OK || it.size == 0) return rc;
+    const void *base[2] = {a, out};
+    int nd = it.nd;
+#ifdef _OPENMP
+    int threads = tsr_get_threads();
+    if (threads > 1 && it.nd == 1 && it.size >= TSR_PAR_MIN) {
+        /* equal chunks, as tsr_binary: element-wise, so the values are those of the serial loop */
+        const int64_t n_ = it.size, chunk = (n_ + threads - 1) / threads, s0 = it.st[0][0], s1 = it.st[1][0];
+#pragma omp parallel for num_threads(threads) schedule(static)
+        for (int t = 0; t < threads; t++) {
+            int64_t i0 = t * chunk, i1 = i0 + chunk < n_ ? i0 + chunk : n_;
+            if (i0 < i1) clip_run(dtype, i1 - i0, (const char *)a + i0 * s0, s0, lo, hi, (char *)out + i0 * s1, s1);
+        }
+        return TSR_OK;
+    }
+#endif
+    TSR_ITER_OUTER(it, base, { clip_run(dtype, n, p[0], it.st[0][nd - 1], lo, hi, p[1], it.st[1][nd - 1]); });
+    return TSR_OK;
+}
+
 /* ---- the op codes of tsr_unary / tsr_binary by name (NumPy's ufunc names), for callers that look functions up
    rather than compile in the codes. The codes are part of the ABI (mirrored in Tessero\Native\Abi). */
 static const char *const UNARY_NAMES[] = {
