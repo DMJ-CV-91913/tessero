@@ -38,6 +38,9 @@ final class Library
 
     private static string $mode = 'unloaded';
 
+    /** @var array<string, callable(): void> run once, right after the first load (whenLoaded) */
+    private static array $onLoad = [];
+
     /**
      * The bound library. Internal: it reaches raw native memory, so application code must not use it.
      * Under ffi.enable=preload it is a preloaded method, so any request code that calls it gets full FFI
@@ -47,7 +50,31 @@ final class Library
      */
     public static function ffi(): FFI
     {
-        return self::$ffi ?? self::load();
+        if (self::$ffi === null) {
+            self::load();
+            foreach (array_splice(self::$onLoad, 0) as $callback) {
+                $callback();
+            }
+        }
+
+        return self::$ffi;
+    }
+
+    /**
+     * Run $callback once the library is bound: now if it already is, otherwise right after the first load.
+     * Settings can then be applied without loading the library in a request that never uses it. A later
+     * registration under the same $key replaces a pending one, so per-request re-registration does not pile up.
+     *
+     * @internal
+     */
+    public static function whenLoaded(string $key, callable $callback): void
+    {
+        if (self::$ffi !== null) {
+            $callback();
+
+            return;
+        }
+        self::$onLoad[$key] = $callback;
     }
 
     public static function available(): bool

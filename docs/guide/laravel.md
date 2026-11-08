@@ -46,7 +46,9 @@ which is useful in production images.
 `threads`, `memory_budget`, `blas_threads` and `epsilon` are applied at boot
 **and re-applied at the start of every Octane request and task, and before
 every queued job**. Long-lived workers therefore never carry one request's
-settings into the next. See [Memory and threads](../operations/memory-and-threads.md)
+settings into the next. On the FFI backend they are applied when libtessero
+first loads in the process, so a request or job that never uses Tessero does
+not load it. See [Memory and threads](../operations/memory-and-threads.md)
 before raising `threads` under FPM.
 
 ## Eloquent casts

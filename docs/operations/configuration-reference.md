@@ -44,7 +44,7 @@ request start, so runtime changes last for one request.
 | Key | Default | Effect |
 |---|---|---|
 | `backend` | `auto` | ext when loaded, else FFI; `ext`/`ffi` require one |
-| `threads` | 1 | applied to both backends at boot and before every Octane request/task and queued job |
+| `threads` | 1 | applied to both backends at boot and before every Octane request/task and queued job (FFI: once libtessero is loaded) |
 | `memory_budget` | 268 435 456 | bytes per process, both backends (each has its own counter) |
 | `blas_threads` | 1 | OpenBLAS threads (FFI) |
 | `epsilon` | 1e-6 | MDP tolerance (extension default and `Tessero::solveMdp`) |

@@ -49,21 +49,48 @@ final class TesseroManager
         };
     }
 
-    /** Push threads / budget / tolerance into the backend (called at boot and per Octane request). */
+    /** Push threads / budget / tolerance into the backend now, loading libtessero if it is not loaded yet. */
     public function applyRuntimeSettings(): void
     {
-        $threads = max(1, (int) ($this->config['threads'] ?? 1));
-        $budget = max(0, (int) ($this->config['memory_budget'] ?? 0));
+        $this->applyExtSettings();
+        if (class_exists(FfiArray::class) && Library::available()) {
+            $this->applyFfiSettings();
+        }
+    }
+
+    /**
+     * The same settings without loading libtessero for them: applied now if the library is already loaded,
+     * otherwise right after it first loads. Called at boot, per Octane request and per queued job, so a
+     * request or job that never uses Tessero does not pay for loading it.
+     */
+    public function applyRuntimeSettingsLazily(): void
+    {
+        $this->applyExtSettings();
+        if (class_exists(FfiArray::class)) {
+            Library::whenLoaded(self::class, function (): void {
+                try {
+                    $this->applyFfiSettings();
+                } catch (\Throwable) {
+                    // never fail the computation that triggered the load; tessero:doctor reports the settings
+                }
+            });
+        }
+    }
+
+    private function applyExtSettings(): void
+    {
         if (extension_loaded('tessero')) {
-            Engine::setMaxThreads($threads);
-            Engine::setMemoryBudget($budget);
+            Engine::setMaxThreads(max(1, (int) ($this->config['threads'] ?? 1)));
+            Engine::setMemoryBudget(max(0, (int) ($this->config['memory_budget'] ?? 0)));
             Engine::setEpsilon((float) ($this->config['epsilon'] ?? 1e-6));
         }
-        if (class_exists(FfiArray::class) && Library::available()) {
-            FfiTessero::setThreads($threads);
-            FfiTessero::setMemoryBudget($budget);
-            FfiTessero::setBlasThreads(max(1, (int) ($this->config['blas_threads'] ?? 1)));
-        }
+    }
+
+    private function applyFfiSettings(): void
+    {
+        FfiTessero::setThreads(max(1, (int) ($this->config['threads'] ?? 1)));
+        FfiTessero::setMemoryBudget(max(0, (int) ($this->config['memory_budget'] ?? 0)));
+        FfiTessero::setBlasThreads(max(1, (int) ($this->config['blas_threads'] ?? 1)));
     }
 
     public function array(mixed $data, ?string $dtype = null): ExtArray|FfiArray
