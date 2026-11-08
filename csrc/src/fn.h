@@ -229,6 +229,8 @@ void fn_results_free(tsr_result *res, int n);
 tsr_result *fn_result_seq(tsr_result *r, int64_t n);
 /* a routine argument as a contiguous float64 copy (tsr_alloc); *n elements; NULL on failure or when not an array */
 double *fn_arg_doubles(const tsr_arg *a, int64_t *n);
+/* the argument's own elements when it is a contiguous float64 array (what fn_arg_doubles would copy), else NULL */
+const double *fn_arg_f64_view(const tsr_arg *a, int64_t *n);
 
 /* The registry's input gate (fn_gate.c, ADR 0016): structural checks run by every tsr_fn_* entry point before
    dispatch. Each returns TSR_OK, or TSR_EARG / TSR_EDIM / TSR_ETYPE with the message set (tsr_fn_error).

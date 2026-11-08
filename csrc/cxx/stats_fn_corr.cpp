@@ -57,6 +57,8 @@ inline bool lt_nan(double a, double b) { return a < b || (b != b && a == a); }
 void argsort_stable(const double *x, int64_t n, VI &idx)
 {
     idx.resize(n);
+    /* the radix argsort orders as lt_nan does (NaN last, -0 == 0) and is stable: the same permutation */
+    if (n >= 512 && tsr_argsort(TSR_F64, n, x, idx.data()) == TSR_OK) return;
     std::iota(idx.begin(), idx.end(), 0);
     std::stable_sort(idx.begin(), idx.end(), [x](int64_t i, int64_t j) { return lt_nan(x[i], x[j]); });
 }
@@ -607,10 +609,14 @@ int get_arr(const tsr_arg *a, Arr &out, const char *name)
     if (a->kind != 3) return fail("`%s` must be array-like", name);
     if (a->arr.dtype == TSR_C128) return fail("`%s` must be real", name);
     int64_t n = 0;
-    double *d = fn_arg_doubles(a, &n);
-    if (!d) return TSR_ENOMEM;
-    out.v.assign(d, d + n);
-    fn_free_doubles(d, n);
+    if (const double *v = fn_arg_f64_view(a, &n)) {        /* fn_arg_doubles' bytes, in one copy */
+        out.v.assign(v, v + n);
+    } else {
+        double *d = fn_arg_doubles(a, &n);
+        if (!d) return TSR_ENOMEM;
+        out.v.assign(d, d + n);
+        fn_free_doubles(d, n);
+    }
     out.shape.assign(a->arr.shape, a->arr.shape + a->arr.ndim);
     out.dtype = a->arr.dtype;
     return TSR_OK;
@@ -786,8 +792,12 @@ int drive(std::vector<Arr> &samples, bool axis_none, int64_t axis, int nanpol, b
                 if (k == ax) continue;
                 base += idx[c++] * st[i][k];
             }
-            sl[i].resize(L);
             const int64_t step = st[i][ax];
+            if (nloop == 1 && base == 0 && step == 1 && (int64_t)samples[i].v.size() == L) {
+                sl[i].swap(samples[i].v);      /* the whole sample as it is (every caller's last use of it): no copy */
+                continue;
+            }
+            sl[i].resize(L);
             for (int64_t t = 0; t < L; t++) sl[i][t] = samples[i].v[base + t * step];
         }
         bool nan_any = false;
@@ -840,15 +850,22 @@ int r_linregress(const void *, const tsr_arg *args, int nargs, tsr_result *res, 
         const V &x = sl[0], &y = sl[1];
         const int64_t n = (int64_t)x.size();
         if (n == 0) return fail("Inputs must not be empty.");
-        const double mx = *std::max_element(x.begin(), x.end()), mn = *std::min_element(x.begin(), x.end());
+        double mx = x[0], mn = x[0];                      /* NaN-free here (drive): max_element's and min_element's values */
+        for (int64_t i = 1; i < n; i++) { mx = x[i] > mx ? x[i] : mx; mn = x[i] < mn ? x[i] : mn; }
         if (mx == mn && n > 1) return fail("Cannot calculate a linear regression if all x values are identical");
         const double xmean = psum(x.data(), n) / (double)n, ymean = psum(y.data(), n) / (double)n;
-        V xc(n), yc(n);
-        for (int64_t i = 0; i < n; i++) { xc[i] = x[i] - xmean; yc[i] = y[i] - ymean; }
+        /* gemm_dot's three FMA chains over the centred values, run side by side */
+        double sxx = 0.0, sxy = 0.0, syy = 0.0;
+        for (int64_t i = 0; i < n; i++) {
+            const double xc = x[i] - xmean, yc = y[i] - ymean;
+            sxx = std::fma(xc, xc, sxx);
+            sxy = std::fma(xc, yc, sxy);
+            syy = std::fma(yc, yc, syy);
+        }
         const double f = 1.0 / (double)n;
-        const double ssxm = gemm_dot(n, xc.data(), xc.data()) * f;
-        const double ssxym = gemm_dot(n, xc.data(), yc.data()) * f;
-        const double ssym = gemm_dot(n, yc.data(), yc.data()) * f;
+        const double ssxm = sxx * f;
+        const double ssxym = sxy * f;
+        const double ssym = syy * f;
         double r;
         if (ssxm == 0.0 || ssym == 0.0) {
             r = ssxym == 0 ? NaN : 0.0;

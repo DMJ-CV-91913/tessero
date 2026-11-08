@@ -68,10 +68,14 @@ bool get_nda(const tsr_arg *a, int n, int k, NDA &out)
     }
     if (a[k].kind != 3 || a[k].arr.dtype == TSR_C128) return false;
     int64_t m = 0;
-    double *p = fn_arg_doubles(&a[k], &m);
-    if (!p) return false;
-    out.v.assign(p, p + m);
-    fn_free_doubles(p, m);
+    if (const double *v = fn_arg_f64_view(&a[k], &m)) {    /* fn_arg_doubles' bytes, in one copy */
+        out.v.assign(v, v + m);
+    } else {
+        double *p = fn_arg_doubles(&a[k], &m);
+        if (!p) return false;
+        out.v.assign(p, p + m);
+        fn_free_doubles(p, m);
+    }
     out.shape.assign(a[k].arr.shape, a[k].arr.shape + a[k].arr.ndim);
     out.isint = is_int_dtype(a[k].arr.dtype);
     return true;

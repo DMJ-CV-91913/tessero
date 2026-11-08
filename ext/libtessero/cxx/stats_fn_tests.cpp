@@ -207,10 +207,14 @@ Arr to_arr(const tsr_arg &a, const char *name)
     if (a.kind != 3) fail("%s must be an array or a number", name);
     if (a.arr.dtype == TSR_C128) fail("%s: complex input is not supported", name);
     int64_t n = 0;
-    double *p = fn_arg_doubles(&a, &n);
-    if (!p) throw std::bad_alloc();
-    r.v.assign(p, p + n);
-    fn_free_doubles(p, n);
+    if (const double *v = fn_arg_f64_view(&a, &n)) {       /* fn_arg_doubles' bytes, in one copy */
+        r.v.assign(v, v + n);
+    } else {
+        double *p = fn_arg_doubles(&a, &n);
+        if (!p) throw std::bad_alloc();
+        r.v.assign(p, p + n);
+        fn_free_doubles(p, n);
+    }
     for (int d = 0; d < a.arr.ndim; d++) { r.shape.push_back(a.arr.shape[d]); r.strides.push_back(a.arr.strides[d]); }
     const int dt = a.arr.dtype;
     r.isint = dt == TSR_I64 || dt == TSR_I32 || dt == TSR_U8 || dt == TSR_BOOL;

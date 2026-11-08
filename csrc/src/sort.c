@@ -1,6 +1,6 @@
 /*
  * Sorting: radix sorts on order-preserving integer keys (MSD + LSD hybrid for
- * values, stable LSD for argsort).
+ * values and, on (key, index) pairs, for the stable argsort).
  *
  * Floats are mapped to unsigned keys whose integer order equals the numeric
  * order (flip all bits of negatives, set the sign bit of positives); NaNs are
@@ -240,6 +240,94 @@ static int value_sort(uint64_t *keys, int64_t n)
     msd_sort(keys, (uint64_t *)(ws + words), n, 64, threads, ws, 0);
     tsr_free(ws, (words + n) * 8);
     return TSR_OK;
+}
+
+/*
+ * argsort's sorter above 4096 keys: msd_sort's scheme on (key, index) pairs. Every step is stable (the MSD scatter
+ * and the LSD passes keep the input order within a digit, the insertion sort moves a pair only past larger keys),
+ * and a stable sort has one result, so the permutation is the plain LSD radix's. The pairs travel together, so a
+ * pass writes 2048 streams instead of 4096, and the buckets are sorted in cache: about 2x faster on 1M doubles.
+ */
+typedef struct { uint64_t k; int64_t i; } kv_pair;
+
+static void kv_ins_sort(kv_pair *a, int64_t n)
+{
+    for (int64_t i = 1; i < n; i++) {
+        const kv_pair p = a[i];
+        int64_t j = i - 1;
+        while (j >= 0 && a[j].k > p.k) { a[j + 1] = a[j]; j--; }
+        a[j + 1] = p;
+    }
+}
+
+/* stable LSD over the bits [lobit, hibit), 8 at a time; the keys agree on every other bit */
+static void kv_lsd8(kv_pair *restrict a, kv_pair *restrict s, int64_t n, int lobit, int hibit, int64_t (*restrict h)[256])
+{
+    const int passes = (hibit - lobit + 7) / 8;
+    memset(h, 0, sizeof(int64_t) * 256 * (size_t)passes);
+    for (int64_t i = 0; i < n; i++) {
+        const uint64_t k = a[i].k >> lobit;
+        for (int p = 0; p < passes; p++) h[p][(k >> (8 * p)) & 255]++;
+    }
+    kv_pair *src = a, *dst = s;
+    for (int p = 0; p < passes; p++) {
+        int64_t *hp = h[p];
+        const int sh = lobit + 8 * p;
+        if (hp[(src[0].k >> sh) & 255] == n) continue;
+        int64_t sum = 0;
+        for (int d = 0; d < 256; d++) { const int64_t c = hp[d]; hp[d] = sum; sum += c; }
+        for (int64_t i = 0; i < n; i++) dst[hp[(src[i].k >> sh) & 255]++] = src[i];
+        kv_pair *t = src; src = dst; dst = t;
+    }
+    if (src != a) memcpy(a, src, (size_t)n * sizeof(kv_pair));
+}
+
+/* msd_sort for pairs, one thread (ws: one RADIX_STRIDE region). One pass finds the bits on which the keys differ:
+   equal keys are done (stable as they stand), the MSD digit starts at the highest differing bit and the LSD passes
+   at the lowest, so runs of equal or narrow keys cost one read instead of a count per constant digit. */
+static void kv_msd_sort(kv_pair *restrict a, kv_pair *restrict s, int64_t n, int64_t *restrict ws, int level)
+{
+    if (n <= 32) { kv_ins_sort(a, n); return; }
+    uint64_t all = ~(uint64_t)0, any = 0;
+    for (int64_t i = 0; i < n; i++) { all &= a[i].k; any |= a[i].k; }
+    const uint64_t diff = all ^ any;
+    if (!diff) return;
+    int hibit = 64, lobit = 0;
+    while (!((diff >> (hibit - 1)) & 1)) hibit--;
+    while (!((diff >> lobit) & 1)) lobit++;
+    if (n <= 4096 || hibit - lobit <= 16 || 1 + level >= RADIX_TABLES) { kv_lsd8(a, s, n, lobit, hibit, (int64_t (*)[256])ws); return; }
+    int64_t *restrict const end = ws + (size_t)(1 + level) * RADIX_TAB;
+    const int lo = hibit - MSD_BITS > lobit ? hibit - MSD_BITS : lobit;
+    const int nb = 1 << (hibit - lo);
+    const uint64_t mask = ((uint64_t)1 << (hibit - lo)) - 1;
+    memset(end, 0, sizeof(int64_t) * (size_t)nb);
+    for (int64_t i = 0; i < n; i++) end[(a[i].k >> lo) & mask]++;
+    int64_t sum = 0;
+    for (int d = 0; d < nb; d++) { const int64_t c = end[d]; end[d] = sum; sum += c; }
+    for (int64_t i = 0; i < n; i++) s[end[(a[i].k >> lo) & mask]++] = a[i];
+    memcpy(a, s, (size_t)n * sizeof(kv_pair));
+    for (int d = 0; d < nb; d++) {
+        const int64_t b = d ? end[d - 1] : 0, c = end[d] - b;
+        if (c > 1) kv_msd_sort(a + b, s + b, c, ws, level + 1);
+    }
+}
+
+/* stable sort of keys with their payload; keys come back in an unspecified state */
+static int argsort_keys(uint64_t *keys, int64_t *payload, int64_t n, int bytes)
+{
+    if (n > 4096) {
+        const int64_t words = RADIX_STRIDE, pw = (int64_t)(sizeof(kv_pair) / 8);
+        int64_t *ws = (int64_t *)tsr_alloc((words + 2 * pw * n) * 8);
+        if (ws) {
+            kv_pair *a = (kv_pair *)(ws + words), *s = a + n;
+            for (int64_t i = 0; i < n; i++) { a[i].k = keys[i]; a[i].i = payload[i]; }
+            kv_msd_sort(a, s, n, ws, 0);
+            for (int64_t i = 0; i < n; i++) payload[i] = a[i].i;
+            tsr_free(ws, (words + 2 * pw * n) * 8);
+            return TSR_OK;
+        }
+    }
+    return radix(keys, payload, n, bytes);                        /* small, or no room for the pairs */
 }
 
 /*
@@ -777,7 +865,7 @@ int tsr_argsort(int dtype, int64_t n, const void *data, int64_t *out)
         tsr_free(keys, n * 8);
         return TSR_ETYPE;
     }
-    int rc = radix(keys, out, m, bytes);
+    int rc = argsort_keys(keys, out, m, bytes);
     tsr_free(keys, n * 8);
     return rc;
 }

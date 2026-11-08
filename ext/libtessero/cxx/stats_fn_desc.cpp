@@ -729,10 +729,14 @@ bool get_arr(const tsr_arg *a, int nargs, int k, Arr &A)
     const tsr_array &x = a[k].arr;
     if (x.dtype == TSR_C128) return false;
     int64_t n = 0;
-    double *d = fn_arg_doubles(&a[k], &n);
-    if (!d) return false;
-    A.v.assign(d, d + n);
-    fn_free_doubles(d, n);
+    if (const double *v = fn_arg_f64_view(&a[k], &n)) {    /* fn_arg_doubles' bytes, in one copy */
+        A.v.assign(v, v + n);
+    } else {
+        double *d = fn_arg_doubles(&a[k], &n);
+        if (!d) return false;
+        A.v.assign(d, d + n);
+        fn_free_doubles(d, n);
+    }
     A.ndim = x.ndim;
     for (int i = 0; i < x.ndim; i++) { A.shape[i] = x.shape[i]; A.strides[i] = x.strides[i]; }
     A.dtype = x.dtype;
@@ -1393,8 +1397,11 @@ int r_rankdata(const void *, const tsr_arg *args, int nargs, tsr_result *res, in
     vector<int64_t> j((size_t)n);
     for (int64_t o = 0; o < L.nl; o++) {
         const double *x = L.lane(o);
-        std::iota(j.begin(), j.end(), 0);
-        std::stable_sort(j.begin(), j.end(), [&](int64_t a, int64_t b) { return lt_nan(x[a], x[b]); });
+        /* the radix argsort orders as lt_nan does (NaN last, -0 == 0) and is stable: the same permutation */
+        if (n < 512 || tsr_argsort(TSR_F64, n, x, j.data()) != TSR_OK) {
+            std::iota(j.begin(), j.end(), 0);
+            std::stable_sort(j.begin(), j.end(), [&](int64_t a, int64_t b) { return lt_nan(x[a], x[b]); });
+        }
         double *r = ranks.data() + o * n;
         int64_t k = 0, dense = 0;
         while (k < n) {

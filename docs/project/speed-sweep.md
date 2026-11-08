@@ -7,14 +7,14 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.81** | 50 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.78** | 54 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 39 cases, within 10% either way on 13, and clearly slower on 32, mostly where an algorithm is not yet the best one
+on 42 cases, within 10% either way on 14, and clearly slower on 28, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -76,6 +76,11 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `ndimage.median_filter` 512^2, 3 | 69 ms | 21.7 ms | 34.5 ms | a point whose window lies inside the array reads it through precomputed offsets, in the same order, instead of mapping every element through the boundary mode; windows of up to 64 values without NaN sorted by insertion instead of `qsort` with a comparison function (the same order, -0 and 0 included); also `rank_filter` and `percentile_filter`, bit for bit (1,440 cases, every mode, origins, 1-D to 3-D) |
 | `signal.convolve2d` 500x500 * 5x5 | 39 ms | 8.8 ms | 16 ms | the same direct sum |
 | `numpy.convolve` 100k * 101 | 6.4 ms | 2.6 ms | 2.7 ms | each output a BLAS `ddot`, as NumPy computes it (its `DOUBLE_dot` calls `cblas_ddot`): now bit-identical to NumPy on 613,596 of 613,596 test values, where the plain summation loop matched 22% exactly; also `numpy.correlate` |
+| `stats.rankdata` 1M | 171 ms | 94 ms | 148 ms | the stable order from the kernel radix argsort (`tsr_argsort`: NaN last in input order, -0 equal to 0, the order `std::stable_sort` gave) instead of a comparison sort; and that argsort, above 4,096 values, sorts (key, index) pairs: one most-significant-digit pass over the highest bits where the keys differ, then least-significant-digit passes inside each bucket, skipping digits every key shares. A stable order is unique, so the same ranks, bit for bit (1,866 rank, correlation and slope calls against the old code: every method and NaN policy, ties, -0, axes; and the argsort on arrays of 4,095 to 1M values in six dtypes, with NaN, inf, -0 and subnormals); also `spearmanr`, `kendalltau` and every stable `argsort` |
+| `numpy.argsort` 1M | 85 ms | 44 ms | 57 ms | the same argsort |
+| `stats.spearmanr` 100k | 18.5 ms | 8.6 ms | 20.8 ms | the same ranks, and a contiguous float64 argument read in place instead of copied |
+| `stats.kendalltau` 10k | 2.19 ms | 1.52 ms | 1.72 ms | the same argsort |
+| `stats.linregress` 1M | 19.2 ms | 10.8 ms | 11.6 ms | the centred sums of squares and products in one pass, the three multiply-add chains side by side (each in the order it had alone) instead of two centred copies and three dot products, the minimum and maximum in one loop, and a contiguous float64 argument read in place; the same result, bit for bit |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -83,8 +88,8 @@ factor was zero, so a NaN in a later operand propagates as in NumPy.
 
 ## Known gaps, largest first
 
-The gaps profiled so far; every case slower than SciPy is in the tier 2 table below (`quad`, `linregress`
-and `rankdata` are the largest not yet profiled).
+The gaps profiled so far; every case slower than SciPy is in the tier 2 table below (`quad` is the
+largest not yet profiled).
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
@@ -184,7 +189,8 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   alternating rounds, at a load average of 10 to 21; each side's best of the ten; `fft2` and `rfft2` once more
   after the leading-axis change, five rounds at a load average of 12 to 14), and `savgol_filter`, `sosfilt`, `clip` and
   `filtfilt` (five alternating rounds each, at a load average of 12 to 17), and `shortest_path` and `median_filter`
-  (four alternating rounds each, at a load average of 7 to 15). Each side ran three times, alternating,
+  (four alternating rounds each, at a load average of 7 to 15), and `rankdata`, `argsort`, `spearmanr`, `kendalltau`
+  and `linregress` (ten alternating rounds, at a load average of 7 to 17). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -209,6 +215,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.signal savgol_filter 1M (31, 3) | 6.19 | 20.1 | 0.31 |
 | scipy.sparse.linalg spsolve tridiagonal 100k | 18.2 | 50.2 | 0.36 |
 | numpy histogram 1M, 100 bins | 7.7 | 18.8 | 0.41 |
+| scipy.stats spearmanr 100k | 8.58 | 20.8 | 0.41 |
 | scipy.sparse.csgraph minimum_spanning_tree 500 nodes | 4.04 | 8.85 | 0.46 |
 | numpy percentile 1M | 5.86 | 12.4 | 0.47 |
 | numpy trapezoid 1M | 2.1 | 3.99 | 0.53 |
@@ -218,6 +225,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | numpy polyfit deg 5, 100k | 11 | 17.6 | 0.62 |
 | scipy.spatial Delaunay 10k (2-D) | 28.8 | 46.3 | 0.62 |
 | scipy.ndimage median_filter 512x512, 3 | 21.7 | 34.5 | 0.63 |
+| scipy.stats rankdata 1M | 94.2 | 148 | 0.64 |
 | numpy searchsorted 1M into 100k | 117 | 167 | 0.70 |
 | scipy.cluster.vq kmeans2 10k x 3, k=8 | 4.16 | 5.91 | 0.70 |
 | scipy.interpolate PchipInterpolator 10k knots, 1M points | 80.7 | 114 | 0.71 |
@@ -227,7 +235,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.cluster.hierarchy linkage ward 2000x3 | 69.7 | 91.9 | 0.76 |
 | scipy.linalg eig 300x300 (general) | 60.2 | 77.8 | 0.77 |
 | scipy.stats mannwhitneyu 100k vs 100k | 29.6 | 37.7 | 0.78 |
-| scipy.stats spearmanr 100k | 20.6 | 26 | 0.79 |
+| numpy argsort 1M | 44.4 | 57.2 | 0.78 |
 | scipy.signal decimate 1M by 10 | 19.5 | 24.3 | 0.80 |
 | scipy.stats norm.ppf 1M | 48.7 | 59.2 | 0.82 |
 | scipy.interpolate RBFInterpolator 500 -> 10k (2-D) | 79.6 | 95.1 | 0.84 |
@@ -237,8 +245,10 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.sparse.csgraph shortest_path 500 nodes (Dijkstra) | 64.1 | 73.5 | 0.87 |
 | scipy.interpolate CubicSpline 10k knots, 1M points | 89.8 | 102 | 0.88 |
 | scipy.ndimage label 1000x1000 | 5.99 | 6.8 | 0.88 |
+| scipy.stats kendalltau 10k | 1.52 | 1.72 | 0.88 |
 | scipy.signal medfilt 100k, k=5 | 2.78 | 3.05 | 0.91 |
 | scipy.ndimage binary_erosion 1000x1000 | 13.3 | 14.4 | 0.93 |
+| scipy.stats linregress 1M | 10.8 | 11.6 | 0.93 |
 | scipy.linalg schur 300x300 | 57.9 | 61.4 | 0.94 |
 | scipy.linalg qr 500x500 | 16 | 16.8 | 0.96 |
 | scipy.linalg lstsq 1000x100 | 5.38 | 5.56 | 0.97 |
@@ -254,11 +264,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.linalg cholesky 1000x1000 | 16.1 | 14.5 | 1.12 |
 | scipy.stats gaussian_kde 1000 points, 1000 evaluations | 21.1 | 17.7 | 1.19 |
 | numpy cumsum 1M | 3.15 | 2.64 | 1.19 |
-| numpy argsort 1M | 95.3 | 79.6 | 1.20 |
 | scipy.linalg pinv 300x300 | 35.5 | 29.4 | 1.21 |
 | numpy linalg slogdet 600x600 | 7.27 | 5.73 | 1.27 |
 | scipy.signal filtfilt order 4, 1M | 19.8 | 15.2 | 1.30 |
-| scipy.stats kendalltau 10k | 2.68 | 2.04 | 1.32 |
 | scipy.ndimage maximum_filter 1000x1000, 5 | 32.9 | 24.6 | 1.33 |
 | numpy fft2 1024x1024 | 44 | 33.1 | 1.33 |
 | numpy clip 1M | 1.85 | 1.38 | 1.34 |
@@ -274,10 +282,8 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
 | numpy einsum ij,jk->ik 300x300 | 17.4 | 11.3 | 1.53 |
 | numpy rfft2 1024x1024 | 21.5 | 13.7 | 1.57 |
-| scipy.stats rankdata 1M | 235 | 149 | 1.58 |
 | scipy.spatial KDTree query 100 points, k=5 | 0.363 | 0.218 | 1.67 |
 | scipy.fft dct 1M | 38.4 | 23 | 1.67 |
-| scipy.stats linregress 1M | 24.4 | 14.1 | 1.74 |
 | scipy.spatial KDTree build 100k (3-D) | 58.1 | 32.6 | 1.78 |
 | scipy.ndimage sobel 1000x1000 | 23.6 | 12.8 | 1.85 |
 | scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.0187 | 0.0057 | 3.27 |

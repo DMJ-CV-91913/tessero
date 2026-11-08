@@ -1196,6 +1196,15 @@ double *fn_arg_doubles(const tsr_arg *a, int64_t *n)
     return out;
 }
 
+const double *fn_arg_f64_view(const tsr_arg *a, int64_t *n)
+{
+    if (!a || a->kind != 3 || a->arr.dtype != TSR_F64 || !tsr_array_is_contiguous(&a->arr)) return NULL;
+    const int64_t size = tsr_shape_size(a->arr.ndim, a->arr.shape);
+    if (size <= 0) return NULL;
+    *n = size;
+    return (const double *)((const char *)a->arr.data + a->arr.offset);
+}
+
 void fn_free_doubles(double *p, int64_t n) { if (p) tsr_free(p, n > 8 ? n * 8 : 64); }
 
 int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result *res)
