@@ -16,23 +16,27 @@
 int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);
 int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);
 int fft_axis_run(int64_t outer, int64_t len, int64_t inner, int inverse, const double *in, int real_in, double *out);
+int fft_dct_tw_acquire(int64_t n, const double **cs, void **ref);   /* fft.c: cos/sin(pi k / 2n), k < n, cached */
+void fft_dct_tw_release(void *ref);
 
 /* unnormalized DCT-II through a real FFT: v = x even-indexed then odd-indexed reversed, y[k] = 2 Re(e^{-i pi k/2N} V[k]) */
 static int dct2_fft(const double *x, int64_t N, double *y)
 {
     const int64_t h = N / 2 + 1;
+    const double *cs; void *twr;
+    if (fft_dct_tw_acquire(N, &cs, &twr) != TSR_OK) return TSR_ENOMEM;
     double *v = (double *)tsr_alloc(N * 8), *V = (double *)tsr_alloc(h * 16);
-    if (!v || !V) { if (v) tsr_free(v, N * 8); if (V) tsr_free(V, h * 16); return TSR_ENOMEM; }
+    if (!v || !V) { if (v) tsr_free(v, N * 8); if (V) tsr_free(V, h * 16); fft_dct_tw_release(twr); return TSR_ENOMEM; }
     for (int64_t n = 0; 2 * n < N; n++) v[n] = x[2 * n];
     for (int64_t n = 0; 2 * n + 1 < N; n++) v[N - 1 - n] = x[2 * n + 1];
     int rc = tsr_rfft(N, 1, v, V);
     if (rc == TSR_OK)
         for (int64_t k = 0; k < N; k++) {
             const int64_t j = k < h ? k : N - k;                /* V[N - k] = conj(V[k]) for real v */
-            const double re = V[2 * j], im = k < h ? V[2 * j + 1] : -V[2 * j + 1], th = M_PI * (double)k / (double)(2 * N);
-            y[k] = 2.0 * (re * cos(th) + im * sin(th));
+            const double re = V[2 * j], im = k < h ? V[2 * j + 1] : -V[2 * j + 1];   /* cs: cos, sin of pi k / 2N */
+            y[k] = 2.0 * (re * cs[2 * k] + im * cs[2 * k + 1]);
         }
-    tsr_free(v, N * 8); tsr_free(V, h * 16);
+    tsr_free(v, N * 8); tsr_free(V, h * 16); fft_dct_tw_release(twr);
     return rc;
 }
 
@@ -41,10 +45,12 @@ static int dct2_fft(const double *x, int64_t N, double *y)
 static int dct3_fft(const double *x, int64_t N, double *y)
 {
     const int64_t h = N / 2 + 1;
+    const double *cs; void *twr;
+    if (fft_dct_tw_acquire(N, &cs, &twr) != TSR_OK) return TSR_ENOMEM;
     double *v = (double *)tsr_alloc(N * 8), *V = (double *)tsr_alloc(h * 16);
-    if (!v || !V) { if (v) tsr_free(v, N * 8); if (V) tsr_free(V, h * 16); return TSR_ENOMEM; }
+    if (!v || !V) { if (v) tsr_free(v, N * 8); if (V) tsr_free(V, h * 16); fft_dct_tw_release(twr); return TSR_ENOMEM; }
     for (int64_t k = 0; k < h; k++) {
-        const double a = x[k], b = k == 0 ? 0.0 : x[N - k], th = M_PI * (double)k / (double)(2 * N), c = cos(th), s = sin(th);
+        const double a = x[k], b = k == 0 ? 0.0 : x[N - k], c = cs[2 * k], s = cs[2 * k + 1];   /* cos, sin of pi k / 2N */
         V[2 * k] = a * c + b * s;
         V[2 * k + 1] = a * s - b * c;
     }
@@ -53,7 +59,7 @@ static int dct3_fft(const double *x, int64_t N, double *y)
         for (int64_t n = 0; 2 * n < N; n++) y[2 * n] = (double)N * v[n];
         for (int64_t n = 0; 2 * n + 1 < N; n++) y[2 * n + 1] = (double)N * v[N - 1 - n];
     }
-    tsr_free(v, N * 8); tsr_free(V, h * 16);
+    tsr_free(v, N * 8); tsr_free(V, h * 16); fft_dct_tw_release(twr);
     return rc;
 }
 
@@ -104,14 +110,16 @@ static int fft_run(const tsr_arg *args, int nargs, tsr_result *res, int which, i
     int type = fft_type(args, nargs);
     if (type != 2 && type != 3) { fn_set_error("scipy.fft: only type 2 and 3 are supported here"); return TSR_EARG; }
     int eff = inverse ? (type == 2 ? 3 : 2) : type;
-    int64_t N, L; double *x = fn_arg_doubles(&args[0], &L); if (!x) return TSR_ENOMEM;
+    /* x read in place when it is contiguous float64 (else a converted copy in xown) */
+    int64_t N, L; double *xown = NULL; const double *x = fn_arg_f64_view(&args[0], &L);
+    if (!x) { x = xown = fn_arg_doubles(&args[0], &L); if (!x) return TSR_ENOMEM; }
     N = args[0].arr.shape[0];
     int64_t sh[1] = {N};
     double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
-    if (!y) { fn_free_doubles(x, L); return TSR_ENOMEM; }
+    if (!y) { fn_free_doubles(xown, L); return TSR_ENOMEM; }
     const int rc = which == 0 ? fft_dctcore(x, N, eff, y) : fft_dstcore(x, N, eff, y);
     if (inverse) { double sc = 1.0 / (double)(2 * N); for (int64_t k = 0; k < N; k++) y[k] *= sc; }
-    fn_free_doubles(x, L);
+    fn_free_doubles(xown, L);
     return rc;
 }
 

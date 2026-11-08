@@ -68,7 +68,7 @@ job. It should return to the same baseline.
 
 ### The FFT plan cache
 
-FFT plans (twiddle tables, Bluestein chirps) are kept between calls, so a
+FFT plans (twiddle tables, Bluestein chirps, the DCT twiddles) are kept between calls, so a
 repeated transform of one length does not rebuild them: rebuilding is more
 than half the time of a 2^20-point FFT. The cache holds only the lengths a
 process has transformed, least recently used out first, up to a limit per

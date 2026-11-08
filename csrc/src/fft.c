@@ -388,9 +388,31 @@ static int tw_init(tw_t *w, int64_t n, int cached)
 
 static void tw_free(tw_t *w) { pl_free(w->cached, w->t, w->len * (int64_t)sizeof(cpx)); }
 
+/* The DCT-II/III twiddles of scipy_fft.c (one real FFT, Makhoul 1980): cos(pi k / 2n) and sin(pi k / 2n) for k < n,
+   interleaved, from the same expressions it evaluated per call, so the same values. */
+typedef struct { double *cs; int64_t n; int cached; } dct_tw_t;
+
+static int64_t dct_tw_bytes(int64_t n) { return 2 * n * (int64_t)sizeof(double); }
+
+static int dct_tw_init(dct_tw_t *w, int64_t n, int cached)
+{
+    w->n = n;
+    w->cached = cached;
+    w->cs = (double *)pl_alloc(cached, dct_tw_bytes(n));
+    if (!w->cs) return TSR_ENOMEM;
+    for (int64_t k = 0; k < n; k++) {
+        const double th = M_PI * (double)k / (double)(2 * n);
+        w->cs[2 * k] = cos(th);
+        w->cs[2 * k + 1] = sin(th);
+    }
+    return TSR_OK;
+}
+
+static void dct_tw_free(dct_tw_t *w) { pl_free(w->cached, w->cs, dct_tw_bytes(w->n)); }
+
 /* ---------------------------------------------------------------- plan cache
  * NumPy (pocketfft) keeps recent plans; rebuilding one costs n cos/sin pairs, more than the transform itself at
- * 2^20 points (about 54 of 93 ms). Plans, Bluestein chirps and real-FFT twiddles are cached by (kind, n, direction)
+ * 2^20 points (about 54 of 93 ms). Plans, Bluestein chirps, real-FFT and DCT twiddles are cached by (kind, n, direction)
  * up to the limit in all (tsr_set_fft_cache_limit, default TSR_FFT_CACHE_BYTES), least recently used out first. An entry is read-only and reference-counted: one
  * in use is never evicted, and a lookup that finds the cache full of busy entries builds a private copy. The cached
  * values are the ones a fresh build computes, so results are bit-identical with or without the cache. */
@@ -402,7 +424,7 @@ static void tw_free(tw_t *w) { pl_free(w->cached, w->t, w->len * (int64_t)sizeof
 #  define TSR_FFT_CACHE_BYTES ((int64_t)256 << 20)
 #endif
 
-enum { K_PLAN, K_BLUE, K_RTW };
+enum { K_PLAN, K_BLUE, K_RTW, K_DCT };
 
 typedef struct {
     void *obj;        /* plan_t, blue_t or tw_t; NULL for a free slot */
@@ -429,24 +451,26 @@ typedef struct { void *obj; int kind; fft_slot *slot; } fft_ref;   /* slot NULL:
 
 static int64_t obj_bytes(int kind, int64_t n)
 {
-    return kind == K_PLAN ? plan_bytes(n) : kind == K_BLUE ? blue_bytes(n) : tw_bytes(n);
+    return kind == K_PLAN ? plan_bytes(n) : kind == K_BLUE ? blue_bytes(n) : kind == K_RTW ? tw_bytes(n) : dct_tw_bytes(n);
 }
 
 static void obj_destroy(int kind, void *obj)
 {
     if (kind == K_PLAN) plan_free((plan_t *)obj);
     else if (kind == K_BLUE) blue_free((blue_t *)obj);
-    else tw_free((tw_t *)obj);
+    else if (kind == K_RTW) tw_free((tw_t *)obj);
+    else dct_tw_free((dct_tw_t *)obj);
     free(obj);
 }
 
 static void *obj_build(int kind, int64_t n, int inverse, int cached, int *rc)
 {
-    void *obj = malloc(kind == K_PLAN ? sizeof(plan_t) : kind == K_BLUE ? sizeof(blue_t) : sizeof(tw_t));
+    void *obj = malloc(kind == K_PLAN ? sizeof(plan_t) : kind == K_BLUE ? sizeof(blue_t) : kind == K_RTW ? sizeof(tw_t) : sizeof(dct_tw_t));
     if (!obj) { *rc = TSR_ENOMEM; return NULL; }
     *rc = kind == K_PLAN ? plan_init((plan_t *)obj, n, inverse, cached)
         : kind == K_BLUE ? blue_init((blue_t *)obj, n, inverse, cached)
-                         : tw_init((tw_t *)obj, n, cached);
+        : kind == K_RTW  ? tw_init((tw_t *)obj, n, cached)
+                         : dct_tw_init((dct_tw_t *)obj, n, cached);
     if (*rc != TSR_OK) { free(obj); return NULL; }
     return obj;
 }
@@ -532,6 +556,21 @@ static void fft_release(fft_ref *r)
     fft_trim_locked();   /* the cap may have been lowered while this entry was in use */
     FFT_UNLOCK();
 }
+
+/* the DCT twiddle table of length n (see dct_tw_t) from the cache, or a private copy when it cannot be cached; for
+   scipy_fft.c, not exported. Release *ref with fft_dct_tw_release. */
+int fft_dct_tw_acquire(int64_t n, const double **cs, void **ref)
+{
+    fft_ref *r = (fft_ref *)malloc(sizeof *r);
+    if (!r) return TSR_ENOMEM;
+    const int rc = fft_acquire(K_DCT, n, 0, r);
+    if (rc != TSR_OK) { free(r); return rc; }
+    *cs = ((const dct_tw_t *)r->obj)->cs;
+    *ref = r;
+    return TSR_OK;
+}
+
+void fft_dct_tw_release(void *ref) { fft_release((fft_ref *)ref); free(ref); }
 
 int64_t tsr_fft_cache_limit(void)
 {
