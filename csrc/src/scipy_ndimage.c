@@ -31,18 +31,105 @@ static int r_gbs(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
 }
 
 /* ---- label(input, structure=None): 2-D connected components ---- */
+
+/* the foreground (input != 0, row-major), as `in[p] != 0.0` on the input read as doubles (NaN is foreground): a
+   contiguous bool / uint8 input is read in place (*own = NULL), anything else through fn_arg_doubles into a mask the
+   caller frees (*own) */
+static const uint8_t *label_mask(const tsr_arg *a, int64_t size, uint8_t **own)
+{
+    const tsr_array *x = &a->arr;
+    *own = NULL;
+    if (tsr_array_is_contiguous(x) && (x->dtype == TSR_BOOL || x->dtype == TSR_U8)) return (const uint8_t *)x->data + x->offset;
+    uint8_t *fg = (uint8_t *)malloc((size_t)(size > 0 ? size : 1));
+    if (!fg) return NULL;
+    int64_t ti; double *in = fn_arg_doubles(a, &ti);
+    if (!in) { free(fg); return NULL; }
+    for (int64_t k = 0; k < size; k++) fg[k] = in[k] != 0.0;
+    fn_free_doubles(in, ti);
+    *own = fg;
+    return fg;
+}
+
+static int32_t lb_find(int32_t *par, int32_t a)
+{
+    while (par[a] != a) { par[a] = par[par[a]]; a = par[a]; }
+    return a;
+}
+
+/* two passes for a symmetric neighbourhood: each foreground pixel joins the labels of its neighbours earlier in
+   row-major order (union-find, a class's root its smallest label), then every pixel takes its class's number. The
+   first pixel of a component in row-major order has no earlier neighbour in it, so it opens the component's smallest
+   label: the roots in increasing order are the components in the order of their first pixels -- the order in which
+   the flood fill below numbers them, so the labels and their count are the flood fill's */
+static int label_two_pass(const uint8_t *fg, int64_t m, int64_t n, int nbr[8][2], int nn, int32_t *lab, int32_t *num)
+{
+    int back[8][2]; int nb = 0, right = 0;           /* the neighbours visited before a pixel */
+    for (int k = 0; k < nn; k++) if (nbr[k][0] < 0 || (nbr[k][0] == 0 && nbr[k][1] < 0)) {
+        back[nb][0] = nbr[k][0]; back[nb][1] = nbr[k][1]; right |= nbr[k][1] > 0; nb++;
+    }
+    int64_t off[8];
+    for (int k = 0; k < nb; k++) off[k] = back[k][0] * n + back[k][1];
+    int64_t cap = 1024; int32_t np = 0;
+    int32_t *par = (int32_t *)malloc(sizeof(int32_t) * (size_t)cap);
+    if (!par) return TSR_ENOMEM;
+    par[0] = 0;
+    for (int64_t i = 0; i < m; i++) {
+        const uint8_t *f = fg + i * n;
+        int32_t *l = lab + i * n;
+        /* columns [j0, j1) have every earlier neighbour inside the array */
+        const int64_t j0 = i > 0 ? 1 : n, j1 = i > 0 ? (right ? n - 1 : n) : n;
+        for (int64_t j = 0; j < n; j++) {
+            if (!f[j]) { l[j] = 0; continue; }
+            int32_t r = 0, last = 0;
+            const int inner = j >= j0 && j < j1;
+            for (int k = 0; k < nb; k++) {
+                int32_t q;
+                if (inner) q = l[j + off[k]];
+                else {
+                    const int64_t ni = i + back[k][0], nj = j + back[k][1];
+                    if (ni < 0 || nj < 0 || nj >= n) continue;
+                    q = lab[ni * n + nj];
+                }
+                if (!q || q == last) continue;
+                last = q;
+                const int32_t rq = lb_find(par, q);
+                if (!r) r = rq;
+                else if (rq != r) { if (rq < r) { par[r] = rq; r = rq; } else par[rq] = r; }
+            }
+            if (!r) {
+                if (np + 1 >= cap) {
+                    int32_t *t = (int32_t *)realloc(par, sizeof(int32_t) * (size_t)(cap * 2));
+                    if (!t) { free(par); return TSR_ENOMEM; }
+                    par = t; cap *= 2;
+                }
+                r = ++np; par[r] = r;
+            }
+            l[j] = r;
+        }
+    }
+    /* par[a] <= a: in increasing order, a root takes the next component number, and any other label the number its
+       parent (smaller, so already numbered) took */
+    int32_t c = 0;
+    for (int32_t a = 1; a <= np; a++) par[a] = par[a] == a ? ++c : par[par[a]];
+    for (int64_t p = 0; p < m * n; p++) lab[p] = par[lab[p]];
+    free(par);
+    *num = c;
+    return TSR_OK;
+}
+
 static int r_label(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("label: input must be a 2-D array"); return TSR_EARG; }
     const int64_t m = args[0].arr.shape[0], n = args[0].arr.shape[1];
-    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti);
+    uint8_t *own;
+    const uint8_t *in = label_mask(&args[0], m * n, &own);
     if (!in) return TSR_ENOMEM;
     /* neighbour offsets from the structure (default: 4-connectivity) */
     int nbr[8][2]; int nn = 0;
     if (nargs > 1 && args[1].kind == 3 && args[1].arr.ndim == 2 && args[1].arr.shape[0] == 3 && args[1].arr.shape[1] == 3) {
         int64_t ts; double *st = fn_arg_doubles(&args[1], &ts);
-        if (!st) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+        if (!st) { free(own); return TSR_ENOMEM; }
         for (int di = -1; di <= 1; di++) for (int dj = -1; dj <= 1; dj++)
             if (!(di == 0 && dj == 0) && st[(di + 1) * 3 + (dj + 1)] != 0.0) { nbr[nn][0] = di; nbr[nn][1] = dj; nn++; }
         fn_free_doubles(st, ts);
@@ -51,15 +138,29 @@ static int r_label(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
         for (int k = 0; k < 4; k++) { nbr[k][0] = def[k][0]; nbr[k][1] = def[k][1]; nn = 4; }
     }
     int32_t *lab = (int32_t *)fn_result_array(&res[0], TSR_I32, 2, args[0].arr.shape);
-    if (!lab) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+    if (!lab) { free(own); return TSR_ENOMEM; }
+    int sym = 1;                                          /* every offset's opposite present */
+    for (int k = 0; k < nn && sym; k++) {
+        int f = 0;
+        for (int k2 = 0; k2 < nn; k2++) f |= nbr[k2][0] == -nbr[k][0] && nbr[k2][1] == -nbr[k][1];
+        sym = f;
+    }
+    int32_t num = 0;
+    if (sym && m * n < 2147483647) {
+        const int rc = label_two_pass(in, m, n, nbr, nn, lab, &num);
+        free(own);
+        if (rc != TSR_OK) return rc;
+        fn_result_int(&res[1], num);
+        return TSR_OK;
+    }
+    /* a one-sided structure: the flood fill (each component is what its first pixel reaches) */
     memset(lab, 0, sizeof(int32_t) * (size_t)(m * n));
     int64_t *stack = (int64_t *)malloc(sizeof(int64_t) * (size_t)(m * n > 0 ? m * n : 1));
-    if (!stack) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-    int32_t num = 0;
+    if (!stack) { free(own); return TSR_ENOMEM; }
     for (int64_t i = 0; i < m; i++)
         for (int64_t j = 0; j < n; j++) {
             const int64_t p = i * n + j;
-            if (in[p] == 0.0 || lab[p] != 0) continue;
+            if (!in[p] || lab[p] != 0) continue;
             num++;
             int64_t sp = 0; stack[sp++] = p; lab[p] = num;
             while (sp > 0) {
@@ -68,12 +169,12 @@ static int r_label(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
                     const int64_t ni = qr + nbr[k][0], nj = qc + nbr[k][1];
                     if (ni < 0 || ni >= m || nj < 0 || nj >= n) continue;
                     const int64_t np = ni * n + nj;
-                    if (in[np] != 0.0 && lab[np] == 0) { lab[np] = num; stack[sp++] = np; }
+                    if (in[np] && lab[np] == 0) { lab[np] = num; stack[sp++] = np; }
                 }
             }
         }
     free(stack);
-    fn_free_doubles(in, ti);
+    free(own);
     fn_result_int(&res[1], num);
     return TSR_OK;
 }

@@ -2693,6 +2693,73 @@ static void test_geom2d(void)
 
 /* linalg.fd_normal == its definition, exactly: J[k][j] = (rh[j][k] - r[k]) / h[j], A = J^T J and g = J^T r summed in
    the order of k, zero Jacobian entries (rows where rh equals r) skipped; a mismatched rh is refused */
+/* ndimage.label == a flood fill from each component's first pixel in row-major order (the reference below): the
+   same labels and count, on random masks of several densities and shapes, every symmetric 3x3 structure family
+   (4-, 8-connected, one axis, the diagonals, none), float64 (NaN is foreground) and bool input, and a one-sided
+   structure */
+static int32_t lab_ref(const uint8_t *fg, int64_t m, int64_t n, const double *st, int32_t *lab)
+{
+    int nb[8][2], nn = 0;
+    for (int di = -1; di <= 1; di++) for (int dj = -1; dj <= 1; dj++)
+        if ((di || dj) && st[(di + 1) * 3 + dj + 1] != 0.0) { nb[nn][0] = di; nb[nn][1] = dj; nn++; }
+    int64_t *stk = malloc((size_t)(m * n + 1) * 8);
+    int32_t num = 0;
+    memset(lab, 0, (size_t)(m * n) * 4);
+    for (int64_t p = 0; p < m * n; p++) {
+        if (!fg[p] || lab[p]) continue;
+        int64_t sp = 0; stk[sp++] = p; lab[p] = ++num;
+        while (sp) {
+            const int64_t q = stk[--sp];
+            for (int k = 0; k < nn; k++) {
+                const int64_t i = q / n + nb[k][0], j = q % n + nb[k][1];
+                if (i < 0 || i >= m || j < 0 || j >= n || !fg[i * n + j] || lab[i * n + j]) continue;
+                lab[i * n + j] = num; stk[sp++] = i * n + j;
+            }
+        }
+    }
+    free(stk);
+    return num;
+}
+static void test_label_two_pass(void)
+{
+    const int id = tsr_fn_find("ndimage.label");
+    const int64_t before = tsr_allocated();
+    static const double sts[7][9] = {
+        {0, 1, 0, 1, 0, 1, 0, 1, 0}, {1, 1, 1, 1, 1, 1, 1, 1, 1}, {0, 0, 0, 1, 1, 1, 0, 0, 0}, {0, 1, 0, 0, 1, 0, 0, 1, 0},
+        {1, 0, 0, 0, 1, 0, 0, 0, 1}, {1, 0, 1, 0, 0, 0, 1, 0, 1}, {0, 0, 0, 0, 1, 0, 0, 0, 0}};
+    static const double one_sided[9] = {0, 1, 0, 0, 0, 1, 0, 0, 0};
+    static const int64_t shapes[5][2] = {{1, 1}, {1, 300}, {300, 1}, {37, 53}, {200, 211}};
+    uint64_t rs = 777;
+    int bad = 0, cases = 0;
+    for (int sh = 0; sh < 5; sh++)
+        for (int dens = 0; dens < 4; dens++) {
+            const int64_t m = shapes[sh][0], n = shapes[sh][1], N = m * n, sz[2] = {m, n}, s33[2] = {3, 3};
+            double *x = malloc((size_t)N * 8); uint8_t *fg = malloc((size_t)N), *xb = malloc((size_t)N);
+            int32_t *ref = malloc((size_t)N * 4);
+            for (int64_t p = 0; p < N; p++) {
+                rs ^= rs << 13; rs ^= rs >> 7; rs ^= rs << 17;
+                const uint64_t v = rs % 100;
+                fg[p] = (int)v < (int[]){10, 45, 60, 90}[dens];
+                x[p] = !fg[p] ? (v % 2 ? 0.0 : -0.0) : (v % 7 == 0 ? NAN : (double)v - 50.5);
+                xb[p] = fg[p];
+            }
+            for (int s = 0; s <= 8; s++) {
+                const double *st = s < 7 ? sts[s] : s == 7 ? sts[0] : one_sided;
+                tsr_arg a[2] = {arg_arr(x, 2, sz), arg_arr((double *)st, 2, s33)};
+                if (s == 7) a[0] = arg_arr_dt(xb, TSR_BOOL, 2, sz);
+                tsr_result r[2];
+                const int32_t nref = lab_ref(fg, m, n, st, ref);
+                cases++;
+                if (tsr_fn_routine(id, 2, a, 2, r) != 0) { bad++; continue; }
+                if (r[0].arr.dtype != TSR_I32 || (int32_t)r[1].ival != nref || memcmp(r[0].arr.data, ref, (size_t)N * 4) != 0) bad++;
+                tsr_fn_results_free(r, 2);
+            }
+            free(x); free(fg); free(xb); free(ref);
+        }
+    CHECK(id >= 0 && bad == 0, "ndimage.label: the flood fill's labels and count on %d cases (%d differ)", cases, bad);
+    CHECK(tsr_allocated() == before, "ndimage.label leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 static void test_fd_normal(void)
 {
     const int64_t before = tsr_allocated();
@@ -4127,6 +4194,7 @@ int main(void)
     test_linkage_fast();
     test_geom2d();
     test_fd_normal();
+    test_label_two_pass();
     test_linalg_typed();
     test_op_names();
     test_sort_variants();

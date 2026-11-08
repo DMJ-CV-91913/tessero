@@ -7,14 +7,14 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.92** | 44 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.91** | 45 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 35 cases, within 10% either way on 11, and clearly slower on 38, mostly where an algorithm is not yet the best one
+on 36 cases, within 10% either way on 11, and clearly slower on 37, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -59,6 +59,7 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `ndimage.sobel` 1000^2 | 46 ms | 24 ms | 13 ms | each line extended into one buffer, then the filter added tap by tap across the whole line (a vectorizable loop; every output receives the same terms in the same order), and up to eight lines copied out of the image and back together; the same output, bit for bit (1,005 cases); also `correlate1d`, `convolve1d`, `gaussian_filter`, `uniform_filter` and the other separable filters |
 | `ndimage.laplace` 1000^2 | 49 ms | 26 ms | 18 ms | the same |
 | `ndimage.maximum_filter` 5x5, 1000^2 | 47 ms | 33 ms | 25 ms | eight lines copied at a time, as above |
+| `ndimage.label` 1000^2 | 23 ms | 6.0 ms | 6.8 ms | two passes with union-find (each pixel joins the labels of its earlier neighbours, then takes its component's number) instead of a flood fill with a division per pixel visited, and a boolean input read in place instead of converted to float64; a component's first pixel in row-major order opens its smallest label, so the components keep the flood fill's numbers: the same labels and count, checked against the old code on 2,016 cases (every structure family; float64 with NaN, bool, uint8, int64, float32, a transposed view and a PHP list) and against a flood fill in the C tests; a one-sided structure keeps the flood fill |
 | `signal.convolve2d` 500x500 * 5x5 | 39 ms | 8.8 ms | 16 ms | the same direct sum |
 | `numpy.convolve` 100k * 101 | 6.4 ms | 2.6 ms | 2.7 ms | each output a BLAS `ddot`, as NumPy computes it (its `DOUBLE_dot` calls `cblas_ddot`): now bit-identical to NumPy on 613,596 of 613,596 test values, where the plain summation loop matched 22% exactly; also `numpy.correlate` |
 
@@ -68,8 +69,8 @@ factor was zero, so a NaN in a later operand propagates as in NumPy.
 
 ## Known gaps, largest first
 
-The gaps profiled so far; every case slower than SciPy is in the tier 2 table below (`label`, `rfft2` and `quad`
-are the largest not yet profiled).
+The gaps profiled so far; every case slower than SciPy is in the tier 2 table below (`rfft2`, `quad` and
+`savgol_filter` are the largest not yet profiled).
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
@@ -162,10 +163,10 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   three sparse cases had failed: the solvers took dense matrices only), and `linkage`, `Delaunay`, `ConvexHull`,
   `solve_triangular`, `median`, `percentile`, `curve_fit`, `eigsh`, `ConvexHull` and `KDTree` as listed above (the
   last four re-timed on their own, at a load average of 11 to 19; the spatial cases over twelve alternating rounds,
-  as their times moved by up to half between rounds), and `resample_poly`, `medfilt`, `pinv`, `sobel`, `laplace` and
+  as their times moved by up to half between rounds), `resample_poly`, `medfilt`, `pinv`, `sobel`, `laplace` and
   `maximum_filter` (five alternating rounds of the new code, the old code and SciPy, at a load average of 26 to 41,
   which slowed both sides: their before and after times come from the same rounds, so they sit above the sweep's
-  times for the same code). Each side ran three times, alternating,
+  times for the same code), and `label` (the same, at a load average of 16 to 18). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -214,6 +215,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.linalg solve_triangular 1000x1000 | 0.88 | 1.04 | 0.85 |
 | scipy.signal correlate 10k * 101 | 0.245 | 0.289 | 0.85 |
 | scipy.interpolate CubicSpline 10k knots, 1M points | 89.8 | 102 | 0.88 |
+| scipy.ndimage label 1000x1000 | 5.99 | 6.8 | 0.88 |
 | scipy.signal medfilt 100k, k=5 | 2.78 | 3.05 | 0.91 |
 | scipy.ndimage binary_erosion 1000x1000 | 13.3 | 14.4 | 0.93 |
 | scipy.linalg schur 300x300 | 57.9 | 61.4 | 0.94 |
@@ -261,7 +263,6 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.signal savgol_filter 1M (31, 3) | 43.9 | 15.1 | 2.91 |
 | scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.0187 | 0.0057 | 3.27 |
 | numpy rfft2 1024x1024 | 31.5 | 9.34 | 3.37 |
-| scipy.ndimage label 1000x1000 | 23.6 | 6.94 | 3.41 |
 | scipy.optimize curve_fit exp decay, 1000 points | 5.03 | 0.608 | 8.27 |
 
 ## Tier 3, by module
