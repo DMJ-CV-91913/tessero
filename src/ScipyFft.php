@@ -22,6 +22,7 @@ final class ScipyFft
     'dctn' => 'dctn',
     'dst' => 'dst',
     'dstn' => 'dstn',
+    'fft_axis' => 'fftAxis',
     'fht' => 'fht',
     'fhtoffset' => 'fhtoffset',
     'idct' => 'idct',
@@ -85,6 +86,16 @@ final class ScipyFft
     public static function dstn(mixed $x, mixed $type = 2, mixed $s = null, mixed $axes = null, mixed $norm = null): mixed
     {
         return Registry::routine('scipyfft.dstn', [$x, $type, $s, $axes, $norm]);
+    }
+
+    /**
+     * Unnormalized complex FFT along one axis of a C-contiguous array (the numpy.fft facade's transform along a leading axis).
+     *
+     * scipy.scipyfft.fft_axis
+     */
+    public static function fftAxis(mixed $x, mixed $axis, mixed $inverse = false): mixed
+    {
+        return Registry::routine('scipyfft.fft_axis', [$x, $axis, $inverse]);
     }
 
     /**

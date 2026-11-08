@@ -15,6 +15,7 @@
 
 int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);
 int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);
+int fft_axis_run(int64_t outer, int64_t len, int64_t inner, int inverse, const double *in, int real_in, double *out);
 
 /* unnormalized DCT-II through a real FFT: v = x even-indexed then odd-indexed reversed, y[k] = 2 Re(e^{-i pi k/2N} V[k]) */
 static int dct2_fft(const double *x, int64_t N, double *y)
@@ -288,10 +289,40 @@ static int r_dstn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
 static int r_idstn(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return fft_run_nd(args, nargs, res, 1, 1); }
 
+/* fft_axis(x, axis, inverse=False): the unnormalized complex FFT of every 1-D slice along `axis` of a C-contiguous
+   float64 (read as x + 0i) or complex128 array, into a new C-contiguous complex128 array of the same shape; the
+   inverse scales by 1/n (numpy's "backward"). The numpy.fft facade's transform along an axis other than the last:
+   the same values as a transposed copy through tsr_fft, without the copies. */
+static int r_fft_axis(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    const tsr_array *x = &args[0].arr;
+    if (args[0].kind != 3 || x->ndim < 1 || (x->dtype != TSR_F64 && x->dtype != TSR_C128) || !tsr_array_is_contiguous(x)) {
+        fn_set_error("fft_axis: x must be a C-contiguous float64 or complex128 array of at least one dimension");
+        return TSR_EARG;
+    }
+    int64_t ax = nargs > 1 && args[1].kind == 1 ? fn_num_i64(&args[1], INT64_MIN) : -1;
+    if (ax < 0 && ax != INT64_MIN) ax += x->ndim;
+    if (ax < 0 || ax >= x->ndim) { fn_set_error("fft_axis: axis out of range"); return TSR_EARG; }
+    const int inverse = nargs > 2 && (args[2].kind == 1 || args[2].kind == 4) && args[2].num != 0.0;
+    int64_t outer = 1, inner = 1;
+    for (int32_t d = 0; d < ax; d++) outer *= x->shape[d];
+    for (int32_t d = (int32_t)ax + 1; d < x->ndim; d++) inner *= x->shape[d];
+    const int64_t len = x->shape[ax];
+    double *out = (double *)fn_result_array(&res[0], TSR_C128, x->ndim, x->shape);
+    if (!out) return TSR_ENOMEM;
+    if (len == 0 || outer == 0 || inner == 0) return TSR_OK;
+    const int rc = fft_axis_run(outer, len, inner, inverse, (const double *)((const char *)x->data + x->offset),
+                                x->dtype == TSR_F64, out);
+    if (rc == TSR_EARG) fn_set_error("fft_axis: invalid shape");
+    return rc;
+}
+
 static const fn_def DEFS[] = {
     ROUTINE("scipyfft.dct", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_dct, NULL, "Discrete cosine transform, types 2/3, norm='backward' (scipy.fft.dct)."),
     ROUTINE("scipyfft.fht", 3, "a, dln, mu, offset=0, bias=0", "A", r_fht, NULL, "Fast Hankel transform via the FFTLog algorithm (scipy.fft.fht)."),
     ROUTINE("scipyfft.ifht", 3, "A, dln, mu, offset=0, bias=0", "a", r_ifht, NULL, "Inverse fast Hankel transform (scipy.fft.ifht)."),
+    ROUTINE("scipyfft.fft_axis", 1, "x, axis, inverse=False", "y", r_fft_axis, NULL, "Unnormalized complex FFT along one axis of a C-contiguous array (the numpy.fft facade's transform along a leading axis)."),
     ROUTINE("scipyfft.fhtoffset", 2, "dln, mu, initial=0, bias=0", "offset", r_fhtoffset, NULL, "Optimal low-ringing offset for fht (scipy.fft.fhtoffset)."),
     ROUTINE("scipyfft.idct", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_idct, NULL, "Inverse discrete cosine transform, types 2/3, norm='backward' (scipy.fft.idct)."),
     ROUTINE("scipyfft.dst", 1, "x, type=2, n=None, axis=-1, norm=None", "y", r_dst, NULL, "Discrete sine transform, types 2/3, norm='backward' (scipy.fft.dst)."),

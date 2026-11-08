@@ -7,7 +7,7 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.87** | 46 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.86** | 46 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
@@ -66,6 +66,8 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `signal.hilbert` 1M | 121 ms | 91 ms | 65 ms | the same |
 | `signal.resample` 100k -> 50k | 2.6 ms | 1.6 ms | 1.7 ms | the same |
 | `signal.welch` 1M, nperseg 1024 | 36 ms | 19 ms | 101 ms | the same |
+| `numpy.fft.fft2` 1024^2 | 71 ms | 44 ms | 33 ms | the rows above, and along a leading axis the kernel gathers the columns a chunk at a time into rows, transforms them and scatters them back (`scipyfft.fft_axis`) instead of a transposed copy, the rows and a copy back: the same transform for every column, bit for bit (573 more cases against the old code: every axis of 3-D arrays, padded and cut lengths, all three norms, strided input; and a C test against the transposed form); also `ifft2`, `fftn`, `ifftn`, `rfftn`, `irfftn` and `fft` / `ifft` along any axis but the last |
+| `numpy.fft.rfft2` 1024^2 | 43 ms | 21.5 ms | 13.7 ms | the same |
 | `signal.convolve2d` 500x500 * 5x5 | 39 ms | 8.8 ms | 16 ms | the same direct sum |
 | `numpy.convolve` 100k * 101 | 6.4 ms | 2.6 ms | 2.7 ms | each output a BLAS `ddot`, as NumPy computes it (its `DOUBLE_dot` calls `cblas_ddot`): now bit-identical to NumPy on 613,596 of 613,596 test values, where the plain summation loop matched 22% exactly; also `numpy.correlate` |
 
@@ -173,7 +175,8 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   `maximum_filter` (five alternating rounds of the new code, the old code and SciPy, at a load average of 26 to 41,
   which slowed both sides: their before and after times come from the same rounds, so they sit above the sweep's
   times for the same code), `label` (the same, at a load average of 16 to 18) and the FFT cases (two runs of five
-  alternating rounds, at a load average of 10 to 21; each side's best of the ten). Each side ran three times, alternating,
+  alternating rounds, at a load average of 10 to 21; each side's best of the ten; `fft2` and `rfft2` once more
+  after the leading-axis change, five rounds at a load average of 12 to 14). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -244,6 +247,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | numpy linalg slogdet 600x600 | 7.27 | 5.73 | 1.27 |
 | scipy.stats kendalltau 10k | 2.68 | 2.04 | 1.32 |
 | scipy.ndimage maximum_filter 1000x1000, 5 | 32.9 | 24.6 | 1.33 |
+| numpy fft2 1024x1024 | 44 | 33.1 | 1.33 |
 | scipy.spatial ConvexHull 10k (2-D) | 2.01 | 1.46 | 1.38 |
 | scipy.signal find_peaks 1M | 6.25 | 4.51 | 1.39 |
 | numpy cov 50 x 100k | 47.8 | 33.9 | 1.41 |
@@ -255,18 +259,17 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.ndimage zoom 500x500 x2 | 155 | 106 | 1.47 |
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
 | numpy einsum ij,jk->ik 300x300 | 17.4 | 11.3 | 1.53 |
+| numpy rfft2 1024x1024 | 21.5 | 13.7 | 1.57 |
 | scipy.stats rankdata 1M | 235 | 149 | 1.58 |
 | scipy.signal filtfilt order 4, 1M | 17.5 | 11.1 | 1.58 |
 | scipy.spatial KDTree query 100 points, k=5 | 0.363 | 0.218 | 1.67 |
 | scipy.fft dct 1M | 38.4 | 23 | 1.67 |
-| numpy fft2 1024x1024 | 52.9 | 31.1 | 1.70 |
 | scipy.stats linregress 1M | 24.4 | 14.1 | 1.74 |
 | scipy.spatial KDTree build 100k (3-D) | 58.1 | 32.6 | 1.78 |
 | scipy.ndimage median_filter 512x512, 3 | 66.1 | 35.7 | 1.85 |
 | scipy.ndimage sobel 1000x1000 | 23.6 | 12.8 | 1.85 |
 | scipy.signal sosfilt order 8, 1M | 17.6 | 8.82 | 1.99 |
 | numpy clip 1M | 2.87 | 1.36 | 2.11 |
-| numpy rfft2 1024x1024 | 26.1 | 12.1 | 2.16 |
 | scipy.sparse.csgraph shortest_path 500 nodes (Dijkstra) | 148 | 59.5 | 2.49 |
 | scipy.signal savgol_filter 1M (31, 3) | 43.9 | 15.1 | 2.91 |
 | scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.0187 | 0.0057 | 3.27 |

@@ -674,7 +674,7 @@
    "total": 1846
   }
  },
- "registry_functions": 1565,
+ "registry_functions": 1566,
  "registry_untested": [
   "distance.convex_hull_2d",
   "distance.delaunay_2d",
@@ -685,7 +685,8 @@
   "linalg.fd_normal",
   "linalg.qr_complex",
   "np.cumulativeSimpson",
-  "np.cumulativeTrapezoid"
+  "np.cumulativeTrapezoid",
+  "scipyfft.fft_axis"
  ],
  "scipy": "1.17.1",
  "usage": {

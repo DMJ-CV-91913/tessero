@@ -8,6 +8,7 @@ use Tessero\DType;
 use Tessero\Exceptions\ShapeError;
 use Tessero\NDArray;
 use Tessero\Native\Library;
+use Tessero\ScipyFft;
 
 /**
  * numpy.fft: any length (mixed radix 2/3/4/5 + Bluestein for large prime
@@ -362,6 +363,19 @@ final class Fft
         if ($len !== $x->shape()[$ax]) {
             $x = self::fitLength($x, $len, $ax);
         }
+        $scale = match ($norm) {
+            'backward' => 1.0,
+            'ortho' => $inverse ? sqrt($len) : 1.0 / sqrt($len),
+            'forward' => $inverse ? (float) $len : 1.0 / $len,
+            default => throw new ShapeError("Unknown norm '{$norm}' (backward, ortho, forward)."),
+        };
+        if ($ax !== count($x->shape()) - 1 && $x->size() > 0) {
+            // a leading axis: the kernel gathers its columns a chunk at a time, the same transforms as the
+            // transposed copy below without the two full-array copies
+            $work = ScipyFft::fftAxis($x->contiguous(), $ax, $inverse);
+
+            return $scale !== 1.0 ? $work->mul($scale) : $work;
+        }
         // rows along the last axis, C order (a view when already so), transformed out of place into a new array:
         // the input is never copied for the kernel
         $src = $x->moveAxis($ax, -1)->contiguous();
@@ -374,12 +388,6 @@ final class Fft
             Library::check($real ? $ffi->tsr_fft_real($len, $rows, $inverse ? 1 : 0, $in, $out)
                 : $ffi->tsr_fft($len, $rows, $inverse ? 1 : 0, $in, $out), 'fft');
         }
-        $scale = match ($norm) {
-            'backward' => 1.0,
-            'ortho' => $inverse ? sqrt($len) : 1.0 / sqrt($len),
-            'forward' => $inverse ? (float) $len : 1.0 / $len,
-            default => throw new ShapeError("Unknown norm '{$norm}' (backward, ortho, forward)."),
-        };
         if ($scale !== 1.0) {
             $work = $work->mul($scale);
         }

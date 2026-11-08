@@ -2760,6 +2760,51 @@ static void test_label_two_pass(void)
     CHECK(tsr_allocated() == before, "ndimage.label leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* scipyfft.fft_axis == a transposed copy through tsr_fft / tsr_fft_real and back, bit for bit: every (outer, len,
+   inner) split of several shapes (radix 2-5, a generic radix, Bluestein lengths, len 1), real and complex input,
+   forward and inverse */
+static void test_fft_axis(void)
+{
+    const int id = tsr_fn_find("scipyfft.fft_axis");
+    const int64_t before = tsr_allocated();
+    static const int64_t shapes[6][3] = {{3, 8, 5}, {2, 67, 3}, {1, 1, 4}, {5, 13, 1}, {4, 60, 33}, {1, 128, 2}};
+    uint64_t rs = 31;
+    int bad = 0, cases = 0;
+    for (int si = 0; si < 6; si++) {
+        const int64_t *sh = shapes[si], N = sh[0] * sh[1] * sh[2];
+        double *x = malloc((size_t)N * 16), *t = malloc((size_t)N * 16), *f = malloc((size_t)N * 16), *ref = malloc((size_t)N * 16);
+        for (int64_t i = 0; i < 2 * N; i++) { rs ^= rs << 13; rs ^= rs >> 7; rs ^= rs << 17; x[i] = (double)(rs >> 11) / 9007199254740992.0 - 0.5; }
+        if (N > 9) { x[3] = NAN; x[8] = -INFINITY; x[9] = -0.0; }
+        for (int ax = 0; ax < 3; ax++)
+            for (int cplx = 0; cplx < 2; cplx++)
+                for (int inv = 0; inv < 2; inv++) {
+                    if (!cplx && inv) continue;
+                    int64_t outer = 1, inner = 1;
+                    for (int d = 0; d < ax; d++) outer *= sh[d];
+                    for (int d = ax + 1; d < 3; d++) inner *= sh[d];
+                    const int64_t len = sh[ax], w = cplx ? 2 : 1;
+                    /* reference: (outer, inner, len) rows, transformed, put back */
+                    for (int64_t o = 0; o < outer; o++) for (int64_t i = 0; i < len; i++) for (int64_t c = 0; c < inner; c++)
+                        for (int64_t k = 0; k < w; k++) t[((o * inner + c) * len + i) * w + k] = x[((o * len + i) * inner + c) * w + k];
+                    const int rc = cplx ? tsr_fft(len, outer * inner, inv, t, f) : tsr_fft_real(len, outer * inner, 0, t, f);
+                    for (int64_t o = 0; o < outer; o++) for (int64_t i = 0; i < len; i++) for (int64_t c = 0; c < inner; c++)
+                        for (int k = 0; k < 2; k++) ref[((o * len + i) * inner + c) * 2 + k] = f[((o * inner + c) * len + i) * 2 + k];
+                    tsr_arg a[3]; memset(a, 0, sizeof a);
+                    a[0] = arg_arr_dt(x, cplx ? TSR_C128 : TSR_F64, 3, sh);
+                    a[1].kind = 1; a[1].num = ax; a[1].ival = ax; a[1].flags = 1;
+                    a[2].kind = 4; a[2].num = inv;
+                    tsr_result r[1];
+                    cases++;
+                    if (rc != 0 || tsr_fn_routine(id, 3, a, 1, r) != 0) { bad++; continue; }
+                    if (r[0].arr.dtype != TSR_C128 || memcmp(r[0].arr.data, ref, (size_t)N * 16) != 0) bad++;
+                    tsr_fn_results_free(r, 1);
+                }
+        free(x); free(t); free(f); free(ref);
+    }
+    CHECK(id >= 0 && bad == 0, "scipyfft.fft_axis: a transposed tsr_fft, bit for bit, on %d cases (%d differ)", cases, bad);
+    CHECK(tsr_allocated() == before, "scipyfft.fft_axis leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+}
+
 static void test_fd_normal(void)
 {
     const int64_t before = tsr_allocated();
@@ -4195,6 +4240,7 @@ int main(void)
     test_geom2d();
     test_fd_normal();
     test_label_two_pass();
+    test_fft_axis();
     test_linalg_typed();
     test_op_names();
     test_sort_variants();

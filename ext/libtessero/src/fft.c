@@ -614,6 +614,44 @@ int tsr_fft_real(int64_t n, int64_t rows, int inverse, const double *in, double 
     return fft_rows(n, rows, inverse, in, 1, out, n);
 }
 
+/* The transforms along the middle axis of a C-ordered (outer, len, inner) array into a C-ordered complex one (the
+   scipyfft.fft_axis routine; internal, not exported). inner == 1: the rows, as tsr_fft / tsr_fft_real. Otherwise the
+   len-long columns are gathered a chunk at a time into rows, transformed by fft_rows and scattered back: each column
+   receives the transform a transposed copy, tsr_fft and a transpose back give it, bit for bit, without those two
+   full-array copies. real_in: in holds doubles, read as (x, 0.0), as tsr_fft_real does. */
+int fft_axis_run(int64_t outer, int64_t len, int64_t inner, int inverse, const double *in, int real_in, double *out)
+{
+    if (outer < 0 || len < 1 || inner < 1 || !in || !out) return TSR_EARG;
+    if (inner == 1) return fft_rows(len, outer, inverse, in, real_in, out, len);
+    const int64_t cols = outer * inner;
+    if (cols == 0) return TSR_OK;
+    /* about 64k values per chunk (at least 16 columns): short axes still go through few fft_rows calls */
+    int64_t ch = 65536 / len;
+    if (ch < 16) ch = 16;
+    if (ch > cols) ch = cols;
+    const int64_t bytes = 2 * ch * len * (int64_t)sizeof(cpx) + ch * (int64_t)sizeof(int64_t);
+    cpx *buf = (cpx *)tsr_alloc(bytes);
+    if (!buf) return TSR_ENOMEM;
+    cpx *res = buf + ch * len;
+    int64_t *base = (int64_t *)(res + ch * len);
+    const cpx *ci = (const cpx *)in;
+    cpx *co = (cpx *)out;
+    int rc = TSR_OK;
+    for (int64_t q0 = 0; q0 < cols && rc == TSR_OK; q0 += ch) {
+        const int64_t nc = cols - q0 < ch ? cols - q0 : ch;
+        for (int64_t b = 0; b < nc; b++) { const int64_t q = q0 + b; base[b] = (q / inner) * len * inner + q % inner; }
+        for (int64_t i = 0; i < len; i++) {
+            if (real_in) for (int64_t b = 0; b < nc; b++) buf[b * len + i] = (cpx){in[base[b] + i * inner], 0.0};
+            else for (int64_t b = 0; b < nc; b++) buf[b * len + i] = ci[base[b] + i * inner];
+        }
+        rc = fft_rows(len, nc, inverse, (const double *)buf, 0, (double *)res, len);
+        if (rc == TSR_OK)
+            for (int64_t i = 0; i < len; i++) for (int64_t b = 0; b < nc; b++) co[base[b] + i * inner] = res[b * len + i];
+    }
+    tsr_free(buf, bytes);
+    return rc;
+}
+
 /*
  * Real-input FFT (numpy.fft.rfft / irfft) at half the cost of a complex FFT.
  *
