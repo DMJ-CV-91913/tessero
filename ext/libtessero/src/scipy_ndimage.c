@@ -2043,109 +2043,7 @@ static int r_map_coordinates(const void *ctx, const tsr_arg *args, int nargs, ts
 }
 
 /* shift(input, shift, order, mode, cval): output[o] = interp(input, o - shift). order 0/1. */
-static int r_shift(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
-{
-    (void)ctx; (void)nres;
-    if (args[0].kind != 3) { fn_set_error("shift: input must be an array"); return TSR_EARG; }
-    const int32_t nd = args[0].arr.ndim;
-    if (nd < 1 || nd > 8) { fn_set_error("shift: 1..8 dimensions"); return TSR_EDIM; }
-    double sh[8]; int rc = perax_d(&args[1], nd, sh); if (rc < 0) return rc;
-    const int64_t order = arg_int(nargs > 2 ? &args[2] : NULL, 3);
-    if (order < 0 || order > 5) { fn_set_error("shift: order must be 0..5"); return TSR_EARG; }
-    int mode; if ((rc = nd_mode(nargs > 3 ? &args[3] : NULL, &mode)) < 0) return rc;
-    const double cval = (nargs > 4 && args[4].kind == 1) ? ((args[4].flags & 1) ? (double)args[4].ival : args[4].num) : 0.0;
-    const int64_t *si = args[0].arr.shape;
-    int64_t istride[8], total = 1; for (int d = 0; d < nd; d++) total *= si[d] > 0 ? si[d] : 0;
-    istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
-    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
-    double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, si);
-    if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-    const int con = (mode == ND_CONSTANT);
-    const double *src = in; double *coeff = NULL;
-    if (order >= 2) {
-        coeff = (double *)malloc((size_t)(total > 0 ? total : 1) * sizeof(double));
-        if (!coeff) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-        memcpy(coeff, in, (size_t)total * sizeof(double));
-        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
-        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); return prc; }
-        src = coeff;
-    }
-    double coord[8];
-    for (int64_t o = 0; o < total; o++) {
-        int64_t t = o; for (int d = 0; d < nd; d++) { coord[d] = (double)(t / istride[d]) - sh[d]; t %= istride[d]; }
-        out[o] = geom_interp(src, si, nd, istride, coord, (int)order, mode, cval, con);
-    }
-    free(coeff); fn_free_doubles(in, ti);
-    return TSR_OK;
-}
-
-/* affine_transform(input, matrix, offset=0, output_shape=None, order, mode, cval): output[o] = interp(input,
-   matrix @ o + offset). matrix is (nd, nd) full or (nd,) diagonal. order 0/1. */
-static int r_affine_transform(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
-{
-    (void)ctx; (void)nres;
-    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("affine_transform: input and matrix arrays are required"); return TSR_EARG; }
-    const int32_t nd = args[0].arr.ndim;
-    if (nd < 1 || nd > 8) { fn_set_error("affine_transform: 1..8 dimensions"); return TSR_EDIM; }
-    const int mat2d = args[1].arr.ndim == 2;
-    double off[8];
-    if (nargs > 2 && args[2].kind == 3) { int rc = perax_d(&args[2], nd, off); if (rc < 0) return rc; }
-    else { const double v = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? (double)args[2].ival : args[2].num) : 0.0; for (int d = 0; d < nd; d++) off[d] = v; }
-    int64_t osh[8]; int32_t ond = nd;
-    if (nargs > 3 && args[3].kind == 3) {
-        int64_t to; double *os = fn_arg_doubles(&args[3], &to); if (!os) return TSR_ENOMEM;
-        if (to != nd) { fn_free_doubles(os, to); fn_set_error("affine_transform: output_shape must have one entry per axis"); return TSR_EARG; }
-        for (int d = 0; d < nd; d++) osh[d] = os[d] == floor(os[d]) ? fn_dbl_i64(os[d], -1) : -1;
-        fn_free_doubles(os, to);
-        for (int d = 0; d < nd; d++) if (osh[d] < 0) { fn_set_error("affine_transform: output_shape must be non-negative integers"); return TSR_EARG; }
-        if (tsr_shape_size(nd, osh) < 0) { fn_set_error("affine_transform: output_shape is too large"); return TSR_ENOMEM; }
-    }
-    else for (int d = 0; d < nd; d++) osh[d] = args[0].arr.shape[d];
-    {
-        int64_t mn = 1; for (int d = 0; d < args[1].arr.ndim; d++) mn *= args[1].arr.shape[d];
-        if (mn < (mat2d ? (int64_t)nd * nd : nd)) { fn_set_error("affine_transform: matrix must be (ndim, ndim) or (ndim,)"); return TSR_EARG; }
-    }
-    const int64_t order = arg_int(nargs > 4 ? &args[4] : NULL, 3);
-    if (order < 0 || order > 5) { fn_set_error("affine_transform: order must be 0..5"); return TSR_EARG; }
-    int mode; int rc = nd_mode(nargs > 5 ? &args[5] : NULL, &mode); if (rc < 0) return rc;
-    const double cval = (nargs > 6 && args[6].kind == 1) ? ((args[6].flags & 1) ? (double)args[6].ival : args[6].num) : 0.0;
-    const int64_t *si = args[0].arr.shape;
-    int64_t istride[8]; istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
-    int64_t ostride[8], otot = 1; for (int d = 0; d < nd; d++) otot *= osh[d] > 0 ? osh[d] : 0;
-    ostride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) ostride[d] = ostride[d + 1] * osh[d + 1];
-    int64_t ti, tm; double *in = fn_arg_doubles(&args[0], &ti);
-    double *mat = in ? fn_arg_doubles(&args[1], &tm) : NULL;
-    double *out = mat ? (double *)fn_result_array(&res[0], TSR_F64, ond, osh) : NULL;
-    if (!out) { fn_free_doubles(in, ti); if (mat) fn_free_doubles(mat, tm); return TSR_ENOMEM; }
-    const int con = (mode == ND_CONSTANT);
-    const double *insrc = in; double *coeff = NULL;
-    if (order >= 2) {
-        int64_t itot = 1; for (int d = 0; d < nd; d++) itot *= si[d] > 0 ? si[d] : 0;
-        coeff = (double *)malloc((size_t)(itot > 0 ? itot : 1) * sizeof(double));
-        if (!coeff) { fn_free_doubles(in, ti); fn_free_doubles(mat, tm); return TSR_ENOMEM; }
-        memcpy(coeff, in, (size_t)itot * sizeof(double));
-        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
-        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); fn_free_doubles(mat, tm); return prc; }
-        insrc = coeff;
-    }
-    double oc[8], coord[8];
-    for (int64_t o = 0; o < otot; o++) {
-        int64_t t = o; for (int d = 0; d < nd; d++) { oc[d] = (double)(t / ostride[d]); t %= ostride[d]; }
-        for (int i = 0; i < nd; i++) {
-            double c = off[i];
-            if (mat2d) for (int j = 0; j < nd; j++) c += mat[(int64_t)i * nd + j] * oc[j];
-            else c += mat[i] * oc[i];
-            coord[i] = c;
-        }
-        out[o] = geom_interp(insrc, si, nd, istride, coord, (int)order, mode, cval, con);
-    }
-    free(coeff); fn_free_doubles(in, ti); fn_free_doubles(mat, tm);
-    return TSR_OK;
-}
-
-/* zoom(input, zoom, order, mode, cval): resample to round(shape*zoom); coord = o * (in-1)/(out-1) (grid_mode
-   False). order 0/1. */
-/* zoom samples a grid: the coordinate along each axis depends on that axis's output index alone, so what
+/* zoom and shift sample a grid: the coordinate along each axis depends on that axis's output index alone, so what
    geom_interp derives from it (the cval cases, the folded coordinate, the weights and each tap's offset) is
    computed once per index and axis; each point then sums its taps as geom_interp does, the same products in the
    same order */
@@ -2234,6 +2132,112 @@ static void zoom_grid(const double *in, int32_t nd, const int64_t *osh, zoom_ax 
     }
 }
 
+static int r_shift(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3) { fn_set_error("shift: input must be an array"); return TSR_EARG; }
+    const int32_t nd = args[0].arr.ndim;
+    if (nd < 1 || nd > 8) { fn_set_error("shift: 1..8 dimensions"); return TSR_EDIM; }
+    double sh[8]; int rc = perax_d(&args[1], nd, sh); if (rc < 0) return rc;
+    const int64_t order = arg_int(nargs > 2 ? &args[2] : NULL, 3);
+    if (order < 0 || order > 5) { fn_set_error("shift: order must be 0..5"); return TSR_EARG; }
+    int mode; if ((rc = nd_mode(nargs > 3 ? &args[3] : NULL, &mode)) < 0) return rc;
+    const double cval = (nargs > 4 && args[4].kind == 1) ? ((args[4].flags & 1) ? (double)args[4].ival : args[4].num) : 0.0;
+    const int64_t *si = args[0].arr.shape;
+    int64_t istride[8], total = 1; for (int d = 0; d < nd; d++) total *= si[d] > 0 ? si[d] : 0;
+    istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
+    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
+    double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, si);
+    if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+    const int con = (mode == ND_CONSTANT);
+    const double *src = in; double *coeff = NULL;
+    if (order >= 2) {
+        coeff = (double *)malloc((size_t)(total > 0 ? total : 1) * sizeof(double));
+        if (!coeff) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+        memcpy(coeff, in, (size_t)total * sizeof(double));
+        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
+        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); return prc; }
+        src = coeff;
+    }
+    zoom_ax *ax[8] = {0};
+    int ok = 1;
+    for (int d = 0; d < nd && ok; d++) {
+        ax[d] = (zoom_ax *)malloc((size_t)(si[d] > 0 ? si[d] : 1) * sizeof(zoom_ax));
+        if (!ax[d]) ok = 0;
+        else for (int64_t o = 0; o < si[d]; o++) zoom_axis_entry(&ax[d][o], (double)o - sh[d], si[d], istride[d], (int)order, mode, con);
+    }
+    if (ok) zoom_grid(src, nd, si, ax, (int)order, cval, out);
+    for (int d = 0; d < nd; d++) free(ax[d]);
+    free(coeff); fn_free_doubles(in, ti);
+    return ok ? TSR_OK : TSR_ENOMEM;
+}
+
+/* affine_transform(input, matrix, offset=0, output_shape=None, order, mode, cval): output[o] = interp(input,
+   matrix @ o + offset). matrix is (nd, nd) full or (nd,) diagonal. order 0/1. */
+static int r_affine_transform(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
+{
+    (void)ctx; (void)nres;
+    if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("affine_transform: input and matrix arrays are required"); return TSR_EARG; }
+    const int32_t nd = args[0].arr.ndim;
+    if (nd < 1 || nd > 8) { fn_set_error("affine_transform: 1..8 dimensions"); return TSR_EDIM; }
+    const int mat2d = args[1].arr.ndim == 2;
+    double off[8];
+    if (nargs > 2 && args[2].kind == 3) { int rc = perax_d(&args[2], nd, off); if (rc < 0) return rc; }
+    else { const double v = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? (double)args[2].ival : args[2].num) : 0.0; for (int d = 0; d < nd; d++) off[d] = v; }
+    int64_t osh[8]; int32_t ond = nd;
+    if (nargs > 3 && args[3].kind == 3) {
+        int64_t to; double *os = fn_arg_doubles(&args[3], &to); if (!os) return TSR_ENOMEM;
+        if (to != nd) { fn_free_doubles(os, to); fn_set_error("affine_transform: output_shape must have one entry per axis"); return TSR_EARG; }
+        for (int d = 0; d < nd; d++) osh[d] = os[d] == floor(os[d]) ? fn_dbl_i64(os[d], -1) : -1;
+        fn_free_doubles(os, to);
+        for (int d = 0; d < nd; d++) if (osh[d] < 0) { fn_set_error("affine_transform: output_shape must be non-negative integers"); return TSR_EARG; }
+        if (tsr_shape_size(nd, osh) < 0) { fn_set_error("affine_transform: output_shape is too large"); return TSR_ENOMEM; }
+    }
+    else for (int d = 0; d < nd; d++) osh[d] = args[0].arr.shape[d];
+    {
+        int64_t mn = 1; for (int d = 0; d < args[1].arr.ndim; d++) mn *= args[1].arr.shape[d];
+        if (mn < (mat2d ? (int64_t)nd * nd : nd)) { fn_set_error("affine_transform: matrix must be (ndim, ndim) or (ndim,)"); return TSR_EARG; }
+    }
+    const int64_t order = arg_int(nargs > 4 ? &args[4] : NULL, 3);
+    if (order < 0 || order > 5) { fn_set_error("affine_transform: order must be 0..5"); return TSR_EARG; }
+    int mode; int rc = nd_mode(nargs > 5 ? &args[5] : NULL, &mode); if (rc < 0) return rc;
+    const double cval = (nargs > 6 && args[6].kind == 1) ? ((args[6].flags & 1) ? (double)args[6].ival : args[6].num) : 0.0;
+    const int64_t *si = args[0].arr.shape;
+    int64_t istride[8]; istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
+    int64_t ostride[8], otot = 1; for (int d = 0; d < nd; d++) otot *= osh[d] > 0 ? osh[d] : 0;
+    ostride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) ostride[d] = ostride[d + 1] * osh[d + 1];
+    int64_t ti, tm; double *in = fn_arg_doubles(&args[0], &ti);
+    double *mat = in ? fn_arg_doubles(&args[1], &tm) : NULL;
+    double *out = mat ? (double *)fn_result_array(&res[0], TSR_F64, ond, osh) : NULL;
+    if (!out) { fn_free_doubles(in, ti); if (mat) fn_free_doubles(mat, tm); return TSR_ENOMEM; }
+    const int con = (mode == ND_CONSTANT);
+    const double *insrc = in; double *coeff = NULL;
+    if (order >= 2) {
+        int64_t itot = 1; for (int d = 0; d < nd; d++) itot *= si[d] > 0 ? si[d] : 0;
+        coeff = (double *)malloc((size_t)(itot > 0 ? itot : 1) * sizeof(double));
+        if (!coeff) { fn_free_doubles(in, ti); fn_free_doubles(mat, tm); return TSR_ENOMEM; }
+        memcpy(coeff, in, (size_t)itot * sizeof(double));
+        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
+        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); fn_free_doubles(mat, tm); return prc; }
+        insrc = coeff;
+    }
+    double oc[8], coord[8];
+    for (int64_t o = 0; o < otot; o++) {
+        int64_t t = o; for (int d = 0; d < nd; d++) { oc[d] = (double)(t / ostride[d]); t %= ostride[d]; }
+        for (int i = 0; i < nd; i++) {
+            double c = off[i];
+            if (mat2d) for (int j = 0; j < nd; j++) c += mat[(int64_t)i * nd + j] * oc[j];
+            else c += mat[i] * oc[i];
+            coord[i] = c;
+        }
+        out[o] = geom_interp(insrc, si, nd, istride, coord, (int)order, mode, cval, con);
+    }
+    free(coeff); fn_free_doubles(in, ti); fn_free_doubles(mat, tm);
+    return TSR_OK;
+}
+
+/* zoom(input, zoom, order, mode, cval): resample to round(shape*zoom); coord = o * (in-1)/(out-1) (grid_mode
+   False). order 0/1. */
 static int r_zoom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
