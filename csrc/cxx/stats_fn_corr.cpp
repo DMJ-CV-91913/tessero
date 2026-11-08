@@ -728,6 +728,17 @@ int result_arr(tsr_result *r, const VI &shape, const double *data, int dtype = T
     return TSR_OK;
 }
 
+/* an int64 array result copied from int64 data */
+int result_arr_i64(tsr_result *r, const VI &shape, const int64_t *data)
+{
+    VI sh = shape;
+    void *p = fn_result_array(r, TSR_I64, (int32_t)sh.size(), sh.empty() ? nullptr : sh.data());
+    if (!p) return TSR_ENOMEM;
+    const int64_t n = prod(sh);
+    if (n > 0) std::memcpy(p, data, (size_t)n * sizeof(int64_t));
+    return TSR_OK;
+}
+
 /* a result of shape `shape`: a Python float when 0-d, an array otherwise */
 int result_out(tsr_result *r, const VI &shape, const double *data)
 {
@@ -1504,7 +1515,7 @@ struct BinnedOut {
     V stat;
     VI stat_shape;
     std::vector<V> edges;
-    V binnumber;
+    VI binnumber;
     VI bn_shape;
 };
 
@@ -1521,16 +1532,15 @@ int binned_dd(const std::vector<V> &sample, int64_t N, const Arr &values, int st
     /* values */
     VI in_shape;
     int64_t Vdim = 1, Vlen = 1;
-    V vals;
+    static const V no_values(1, NaN);
+    const V &vals = values.present ? values.v : no_values;   /* read in place */
     if (values.present) {
         in_shape = values.shape;
         if (values.ndim() > 2) return fail("too many values to unpack (expected 2)");
         if (values.ndim() == 2) { Vdim = values.shape[0]; Vlen = values.shape[1]; }
         else if (values.ndim() == 1) { Vdim = 1; Vlen = values.shape[0]; }
-        vals = values.v;
     } else {
         if (stat != ST_COUNT) return fail("The number of `values` elements must match the length of each `sample` dimension.");
-        vals.assign(1, NaN);
     }
     if (stat != ST_COUNT && Vlen != N) return fail("The number of `values` elements must match the length of each `sample` dimension.");
     if ((int64_t)bins.size() != D) return fail("The dimension of bins must be equal to the dimension of the sample x.");
@@ -1606,14 +1616,30 @@ int binned_dd(const std::vector<V> &sample, int64_t N, const Arr &values, int st
             if (!(e[k + 1] <= e[k])) dec = false;
         }
         if (!inc && !dec) return fail("bins must be monotonically increasing or decreasing");
-        for (int64_t k = 0; k < N; k++) {
-            const double x = sample[i][k];
-            if (inc) {
-                sampBin[i][k] = std::upper_bound(e.begin(), e.end(), x, lt_nan) - e.begin();
-            } else {
-                V r(e.rbegin(), e.rend());
-                sampBin[i][k] = ne - (std::upper_bound(r.begin(), r.end(), x, lt_nan) - r.begin());
+        if (inc && ne >= 2) {
+            /* increasing edges hold no NaN, so x < e[k] is false then true along them and std::upper_bound's answer is
+               the one index where it turns: guessed from x's place between the first and last edge, then moved a few
+               edges at most (even edges need none); an index not confirmed takes the binary search */
+            const double lo = e[0], span = e[ne - 1] - e[0];
+            const double scale = span > 0 && std::isfinite(span) ? (double)(ne - 1) / span : 0.0;
+            for (int64_t k = 0; k < N; k++) {
+                const double x = sample[i][k];
+                int64_t b = ne;                          /* NaN sorts after every edge */
+                if (x == x) {
+                    const double g = (x - lo) * scale;
+                    b = g >= 0 ? (g < (double)(ne - 1) ? (int64_t)g + 1 : ne) : 0;   /* NaN (inf * 0): 0 */
+                    for (int s = 0; s < 4 && b > 0 && x < e[b - 1]; s++) b--;
+                    for (int s = 0; s < 4 && b < ne && !(x < e[b]); s++) b++;
+                    if (!((b == 0 || !(x < e[b - 1])) && (b == ne || x < e[b])))
+                        b = std::upper_bound(e.begin(), e.end(), x, lt_nan) - e.begin();
+                }
+                sampBin[i][k] = b;
             }
+        } else if (inc) {
+            for (int64_t k = 0; k < N; k++) sampBin[i][k] = std::upper_bound(e.begin(), e.end(), sample[i][k], lt_nan) - e.begin();
+        } else {
+            const V r(e.rbegin(), e.rend());
+            for (int64_t k = 0; k < N; k++) sampBin[i][k] = ne - (std::upper_bound(r.begin(), r.end(), sample[i][k], lt_nan) - r.begin());
         }
         if (ne < 2) return fail("zero-size array to reduction operation minimum which has no identity");
         double dmin = 0;
@@ -1648,11 +1674,15 @@ int binned_dd(const std::vector<V> &sample, int64_t N, const Arr &values, int st
         if (cells * 8.0 > cap || cells > 4.5e15) return fail("Unable to allocate memory for a bin grid of %.3g cells", cells);
     }
     const int64_t total = prod(nbin);
-    VI bn(N);
-    for (int64_t k = 0; k < N; k++) {
-        int64_t b = 0;
-        for (int64_t i = 0; i < D; i++) b = b * nbin[i] + sampBin[i][k];
-        bn[k] = b;
+    VI bn;
+    if (D == 1) bn.swap(sampBin[0]);                    /* one dimension: the bin is the flat index */
+    else {
+        bn.resize(N);
+        for (int64_t k = 0; k < N; k++) {
+            int64_t b = 0;
+            for (int64_t i = 0; i < D; i++) b = b * nbin[i] + sampBin[i][k];
+            bn[k] = b;
+        }
     }
     /* statistics */
     V result((size_t)(Vdim * total), stat == ST_COUNT || stat == ST_SUM ? 0.0 : NaN);
@@ -1735,11 +1765,10 @@ int binned_dd(const std::vector<V> &sample, int64_t N, const Arr &values, int st
     if (expand && D > 1) {
         out.binnumber.resize(D * N);
         for (int64_t i = 0; i < D; i++)
-            for (int64_t k = 0; k < N; k++) out.binnumber[i * N + k] = (double)sampBin[i][k];
+            for (int64_t k = 0; k < N; k++) out.binnumber[i * N + k] = sampBin[i][k];
         out.bn_shape = {D, N};
     } else {
-        out.binnumber.resize(N);
-        for (int64_t k = 0; k < N; k++) out.binnumber[k] = (double)bn[k];
+        out.binnumber.swap(bn);                          /* not read again */
         out.bn_shape = {N};
     }
     return TSR_OK;
@@ -1794,7 +1823,7 @@ int emit_binned(const BinnedOut &o, tsr_result *res, int nedge_results)
     if (rc) return rc;
     for (int i = 0; i < nedge_results; i++)
         if ((rc = result_arr(&res[1 + i], {(int64_t)o.edges[i].size()}, o.edges[i].data()))) return rc;
-    return result_arr(&res[1 + nedge_results], o.bn_shape, o.binnumber.data(), TSR_I64);
+    return result_arr_i64(&res[1 + nedge_results], o.bn_shape, o.binnumber.data());
 }
 
 int r_binned_statistic(const void *, const tsr_arg *args, int nargs, tsr_result *res, int)
@@ -1820,7 +1849,10 @@ int r_binned_statistic(const void *, const tsr_arg *args, int nargs, tsr_result 
     if ((rc = get_arr(arg_at(args, nargs, 4), range, "range"))) return rc;
     if (range.present && range.ndim() == 1 && range.size() == 2) range.shape = {1, 2};
     BinnedOut o;
-    if ((rc = binned_dd({x.v}, x.size(), values, st, bins, pyint, range, false, o))) return rc;
+    const int64_t N = x.size();
+    std::vector<V> sample(1);
+    sample[0].swap(x.v);                                 /* x is not read again */
+    if ((rc = binned_dd(sample, N, values, st, bins, pyint, range, false, o))) return rc;
     return emit_binned(o, res, 1);
 }
 
@@ -1900,7 +1932,7 @@ int r_binned_statistic_dd(const void *, const tsr_arg *args, int nargs, tsr_resu
     V all;
     for (auto &e : o.edges) all.insert(all.end(), e.begin(), e.end());
     if ((rc = result_arr(&res[1], {D, k}, all.data()))) return rc;
-    return result_arr(&res[2], o.bn_shape, o.binnumber.data(), TSR_I64);
+    return result_arr_i64(&res[2], o.bn_shape, o.binnumber.data());
 }
 
 /* ================================================================ quantile */

@@ -7,14 +7,14 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.76** | 56 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.76** | 57 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 43 cases, within 10% either way on 15, and clearly slower on 26, mostly where an algorithm is not yet the best one
+on 44 cases, within 10% either way on 15, and clearly slower on 25, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -83,6 +83,7 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `stats.linregress` 1M | 19.2 ms | 10.8 ms | 11.6 ms | the centred sums of squares and products in one pass, the three multiply-add chains side by side (each in the order it had alone) instead of two centred copies and three dot products, the minimum and maximum in one loop, and a contiguous float64 argument read in place; the same result, bit for bit |
 | `stats.ks_2samp` 100k vs 100k | 91 ms | 67 ms | 72 ms | each sample sorted by the kernel sort where the sorted array is unique (no NaN, not both signs of zero; otherwise `std::sort` as before), and the two empirical CDFs at every point counted by a forward merge instead of two binary searches per point; the same statistic, location and p-value, bit for bit (3,104 calls against the old code, also `kstest`, `ks_1samp`, `shapiro`, `cramervonmises`, `anderson`, `anderson_ksamp` and `epps_singleton_2samp`, which share the sort). Most of what remains is the p-value: the same `smirnov` sum SciPy evaluates |
 | `numpy.unique` 1M (1000 values) | 15.2 ms | 3.9 ms | 9.7 ms | up to 4,096 distinct values without NaN: each value's first index and count gathered in a hash table, then only the distinct values sorted (values grouped by ==, the first zero of the input kept, as the stable sort keeps it); more distinct values or a NaN take the sort, now in place in the input copy instead of spread into (value, index) pairs; the same values, indices, inverse and counts, bit for bit (4,875 calls, the set routines included); `return_inverse` with counts on the same data 92 -> 12 ms |
+| `stats.binned_statistic` 1M, 100 bins | 93 ms | 38 ms | 57 ms | with increasing edges, each sample's bin guessed from its place between the first and last edge and moved to where `x < edge` turns (at most a few edges; the binary search when not confirmed): the edges are sorted, so that index is the binary search's; the values read in place, the bin numbers kept as int64 instead of a float64 copy, and in one dimension the bin index used as the flat index directly; the same statistic, edges and bin numbers, bit for bit (3,840 calls, every statistic, even and uneven edges, infinite edges, 2-D); also `binned_statistic_2d` and `_dd` |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -193,8 +194,8 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   `filtfilt` (five alternating rounds each, at a load average of 12 to 17), and `shortest_path` and `median_filter`
   (four alternating rounds each, at a load average of 7 to 15), and `rankdata`, `argsort`, `spearmanr`, `kendalltau`
   and `linregress` (ten alternating rounds, at a load average of 7 to 17), `unique` (six alternating rounds, at
-  a load average of 6 to 10) and `ks_2samp` (twelve alternating rounds, at a load average of up to 38). Each side
-  ran three times, alternating,
+  a load average of 6 to 10), `ks_2samp` (twelve alternating rounds, at a load average of up to 38) and
+  `binned_statistic` (six alternating rounds, at a load average of 5 to 10). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -231,6 +232,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.spatial Delaunay 10k (2-D) | 28.8 | 46.3 | 0.62 |
 | scipy.ndimage median_filter 512x512, 3 | 21.7 | 34.5 | 0.63 |
 | scipy.stats rankdata 1M | 94.2 | 148 | 0.64 |
+| scipy.stats binned_statistic 1M, 100 bins | 37.5 | 56.8 | 0.66 |
 | numpy searchsorted 1M into 100k | 117 | 167 | 0.70 |
 | scipy.cluster.vq kmeans2 10k x 3, k=8 | 4.16 | 5.91 | 0.70 |
 | scipy.interpolate PchipInterpolator 10k knots, 1M points | 80.7 | 114 | 0.71 |
@@ -280,7 +282,6 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.signal find_peaks 1M | 6.25 | 4.51 | 1.39 |
 | numpy cov 50 x 100k | 47.8 | 33.9 | 1.41 |
 | scipy.signal hilbert 1M | 91.1 | 64.8 | 1.41 |
-| scipy.stats binned_statistic 1M, 100 bins | 83.2 | 57 | 1.46 |
 | scipy.ndimage laplace 1000x1000 | 26.1 | 17.9 | 1.46 |
 | scipy.ndimage zoom 500x500 x2 | 155 | 106 | 1.47 |
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
