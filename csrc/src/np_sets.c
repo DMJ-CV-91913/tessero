@@ -16,6 +16,18 @@ void np_sort_doubles(double *x, int64_t n);
 void np_argsort_pairs(double *pairs, int64_t n);
 extern void cblas_dgemm(int Order, int TransA, int TransB, int M, int N, int K, double alpha, const double *A, int lda,
                         const double *B, int ldb, double beta, double *C, int ldc);   /* the linked BLAS (matmul.c) */
+extern double cblas_ddot(int N, const double *X, int incX, const double *Y, int incY);
+
+/* the dot product of x and y (n entries) as numpy.correlate takes it: the linked BLAS ddot (numpy's DOUBLE_dot calls
+   cblas_ddot for contiguous float64), a plain loop past the 32-bit BLAS interface */
+static double corr_dot(const double *x, const double *y, int64_t n)
+{
+    if (n <= 0) return 0.0;
+    if (n <= INT_MAX) return cblas_ddot((int)n, x, 1, y, 1);
+    double s = 0.0;
+    for (int64_t j = 0; j < n; j++) s += x[j] * y[j];
+    return s;
+}
 
 static inline int lt_nan(double a, double b) { return a < b || (b != b && a == a); }
 
@@ -1557,21 +1569,13 @@ static int r_correlate(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
         int64_t k = 0;
         /* left part: partial overlaps */
         for (int64_t i = left; i > 0; i--) {
-            const int64_t m = n2 - i;
-            double s = 0;
-            for (int64_t j = 0; j < m; j++) s += x[j] * y[i + j];
-            out[k++] = s;
+            out[k++] = corr_dot(x, y + i, n2 - i);
         }
         for (int64_t i = 0; i < n1 - n2 + 1; i++) {
-            double s = 0;
-            for (int64_t j = 0; j < n2; j++) s += x[i + j] * y[j];
-            out[k++] = s;
+            out[k++] = corr_dot(x + i, y, n2);
         }
         for (int64_t i = 1; i <= right; i++) {
-            const int64_t m = n2 - i;
-            double s = 0;
-            for (int64_t j = 0; j < m; j++) s += x[n1 - m + j] * y[j];
-            out[k++] = s;
+            out[k++] = corr_dot(x + n1 - (n2 - i), y, n2 - i);
         }
         if (inverse) for (int64_t i = 0; i < len / 2; i++) { double t = out[i]; out[i] = out[len - 1 - i]; out[len - 1 - i] = t; }
         rc = result_vec(&res[0], TSR_F64, out, len);

@@ -7,14 +7,14 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **1.05** | 39 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.99** | 42 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 32 cases, within 10% either way on 9, and clearly slower on 43, mostly where an algorithm is not yet the best one
+on 34 cases, within 10% either way on 10, and clearly slower on 40, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -52,12 +52,18 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `spatial.ConvexHull`, 10k (2-D) | 4.3 ms | 2.0 ms | 1.5 ms | the points sorted by one stable radix argsort by x, each run of equal x then by y, instead of `qsort` with a comparison function (the kernel call 2.1 -> 1.0 ms), and passed to the kernel as one flat list cast in one loop instead of a validated copy then a nested-array conversion; the same vertices, area and volume |
 | `spatial.KDTree`, 100k points: build | 91 ms | 58 ms | 33 ms | the points cast into one flat list in one loop instead of a copy of rows then a nested-array conversion, and not kept in PHP (the class keeps the count) |
 | `spatial.KDTree`, 100 queries (k=5) in 100k | 0.70 ms | 0.36 ms | 0.22 ms | a tree handed back by the caller is checked node by node as the search reaches it (and each index and point it reads) instead of in a pass over the whole tree and data on every call: the per-call cost no longer grows with the tree (4.1 ms at 1M points, now 0.05 ms); a damaged tree is still never read out of bounds |
+| `signal.correlate` 10k * 101 | 3.7 ms | 0.25 ms | 0.29 ms | the direct N-D sum walks each in2 row as one contiguous multiply-add (in2 reversed once, not indexed per term), four in1 values at a time so each cell is loaded and stored once, in AVX2 / AVX-512 clones with contraction into FMA off; every cell receives the same terms in the same order, bit for bit; also behind `convolve`, `fftconvolve`, `oaconvolve`, `correlate2d` |
+| `signal.convolve2d` 500x500 * 5x5 | 39 ms | 8.8 ms | 16 ms | the same direct sum |
+| `numpy.convolve` 100k * 101 | 6.4 ms | 2.6 ms | 2.7 ms | each output a BLAS `ddot`, as NumPy computes it (its `DOUBLE_dot` calls `cblas_ddot`): now bit-identical to NumPy on 613,596 of 613,596 test values, where the plain summation loop matched 22% exactly; also `numpy.correlate` |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
 factor was zero, so a NaN in a later operand propagates as in NumPy.
 
 ## Known gaps, largest first
+
+The gaps profiled so far; every case slower than SciPy is in the tier 2 table below (`resample_poly`, `pinv` and
+`medfilt` are the largest not yet profiled).
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
@@ -218,7 +224,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | numpy unique 1M (1000 values) | 16.9 | 11.7 | 1.45 |
 | scipy.stats binned_statistic 1M, 100 bins | 83.2 | 57 | 1.46 |
 | scipy.ndimage zoom 500x500 x2 | 155 | 106 | 1.47 |
-| scipy.signal convolve2d 500x500 * 5x5 | 38.2 | 25.3 | 1.51 |
+| scipy.signal convolve2d 500x500 * 5x5 | 8.81 | 16.1 | 0.55 |
 | scipy.ndimage maximum_filter 1000x1000, 5 | 33.3 | 21.8 | 1.52 |
 | numpy einsum ij,jk->ik 300x300 | 17.4 | 11.3 | 1.53 |
 | scipy.spatial KDTree query 100 points, k=5 | 0.363 | 0.218 | 1.67 |
@@ -235,7 +241,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.signal resample 100k -> 50k | 4.25 | 1.72 | 2.47 |
 | scipy.sparse.csgraph shortest_path 500 nodes (Dijkstra) | 148 | 59.5 | 2.49 |
 | scipy.fft dct 1M | 51.3 | 19.5 | 2.63 |
-| numpy convolve 100k * 101 | 8.41 | 3.11 | 2.70 |
+| numpy convolve 100k * 101 | 2.63 | 2.72 | 0.97 |
 | scipy.spatial ConvexHull 10k (2-D) | 2.01 | 1.46 | 1.38 |
 | scipy.ndimage sobel 1000x1000 | 28.6 | 9.89 | 2.89 |
 | scipy.signal savgol_filter 1M (31, 3) | 43.9 | 15.1 | 2.91 |
@@ -246,7 +252,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
 | scipy.linalg pinv 300x300 | 136 | 25.9 | 5.25 |
 | scipy.signal resample_poly 1M, 3/2 | 355 | 40.1 | 8.85 |
-| scipy.signal correlate 10k * 101 | 3.77 | 0.327 | 11.52 |
+| scipy.signal correlate 10k * 101 | 0.245 | 0.289 | 0.85 |
 | scipy.optimize curve_fit exp decay, 1000 points | 5.03 | 0.608 | 8.27 |
 
 ## Tier 3, by module

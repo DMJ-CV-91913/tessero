@@ -962,6 +962,44 @@ done:
     return rc;
 }
 
+/* Multiply-add of nb (1 or 4) consecutive in1 values aj into the full result: aj[i] * src[k] adds to dst[i + k]
+   (src: one in2 row of L values). Each cell receives its terms in ascending i, rounded after every multiply and every
+   add exactly as one aj at a time would round them: contraction into FMA is off, so the SIMD clones (AVX2, AVX-512)
+   and the baseline give the same bits. Four at a time load and store each cell once instead of four times. */
+#if defined(__x86_64__) && defined(__GLIBC__) && defined(__GNUC__) && !defined(__clang__) && (__GNUC__ >= 12) && !defined(TSR_NO_CLONES)
+#  define CONV_NOCONTRACT __attribute__((optimize("fp-contract=off")))
+#else
+#  define CONV_NOCONTRACT
+#endif
+TSR_CLONES CONV_NOCONTRACT
+static void conv_acc(double *restrict dst, const double *restrict src, int64_t L, const double *aj, int nb)
+{
+#if defined(__clang__)
+#pragma clang fp contract(off)
+#endif
+    if (nb == 1 || L < 4) {
+        for (int i = 0; i < nb; i++) {
+            const double a = aj[i];
+            double *restrict d = dst + i;
+            for (int64_t k = 0; k < L; k++) d[k] = d[k] + a * src[k];
+        }
+        return;
+    }
+    const double a0 = aj[0], a1 = aj[1], a2 = aj[2], a3 = aj[3];
+    for (int64_t x = 0; x < 3; x++)                       /* the head: the terms whose src index is >= 0 */
+        for (int i = 0; i <= x; i++) dst[x] = dst[x] + aj[i] * src[x - i];
+    for (int64_t x = 3; x < L; x++) {                     /* all four terms */
+        double t = dst[x];
+        t = t + a0 * src[x];
+        t = t + a1 * src[x - 1];
+        t = t + a2 * src[x - 2];
+        t = t + a3 * src[x - 3];
+        dst[x] = t;
+    }
+    for (int64_t x = L; x < L + 3; x++)                   /* the tail: the terms whose src index is < L */
+        for (int i = (int)(x - L + 1); i < 4; i++) dst[x] = dst[x] + aj[i] * src[x - i];
+}
+
 /* N-D convolution / correlation by direct computation, sliced per mode. scipy computes fftconvolve/oaconvolve
    via the FFT, but the result is the same operation; a direct sum matches it to within tolerance. correlate is
    convolve with the second input reversed in every axis (real inputs; the conjugate is a no-op). Real float64. */
@@ -973,7 +1011,7 @@ static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse
     const int32_t nd = A->arr.ndim;
     if (V->arr.ndim != nd) { fn_set_error("%s: inputs must have the same number of dimensions", who); return TSR_EARG; }
     if (nd < 1 || nd > TSR_MAXDIM) { fn_set_error("%s: unsupported dimensionality", who); return TSR_EARG; }
-    int64_t s1[TSR_MAXDIM], s2[TSR_MAXDIM], f[TSR_MAXDIM], fst[TSR_MAXDIM], vst[TSR_MAXDIM];
+    int64_t s1[TSR_MAXDIM], s2[TSR_MAXDIM], f[TSR_MAXDIM], fst[TSR_MAXDIM];
     int64_t fullsize = 1;
     for (int32_t d = 0; d < nd; d++) {
         s1[d] = A->arr.shape[d]; s2[d] = V->arr.shape[d];
@@ -981,7 +1019,6 @@ static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse
         fullsize *= f[d];
     }
     { int64_t acc = 1; for (int32_t d = nd - 1; d >= 0; d--) { fst[d] = acc; acc *= f[d]; } }
-    { int64_t acc = 1; for (int32_t d = nd - 1; d >= 0; d--) { vst[d] = acc; acc *= s2[d]; } }
     /* SciPy: an empty in2 is an error, an empty in1 too except in 'same' mode (an empty result): with an empty
        axis the full result has no cells for the 'same' window to read */
     int64_t na_ = 1, nv_ = 1; for (int32_t d = 0; d < nd; d++) { na_ *= s1[d]; nv_ *= s2[d]; }
@@ -993,23 +1030,37 @@ static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse
     double *full = (double *)calloc((size_t)(fullsize > 0 ? fullsize : 1), sizeof(double));
     if (!full) { fn_free_doubles(a, n1); fn_free_doubles(v, n2); return TSR_ENOMEM; }
 
+    /* in2 reversed in every axis is its flat C-order array reversed. Each in2 row (the last axis) adds to a contiguous
+       run of full, so the innermost loop is a plain multiply-add over that run; every cell still receives its terms in
+       the order of (in1 element, in2 element), as a loop over single cells would add them. */
+    double *vv = v;
+    if (reverse_v) {
+        vv = (double *)malloc((size_t)n2 * sizeof(double));
+        if (!vv) { free(full); fn_free_doubles(a, n1); fn_free_doubles(v, n2); return TSR_ENOMEM; }
+        for (int64_t i = 0; i < n2; i++) vv[i] = v[n2 - 1 - i];
+    }
+    /* Four consecutive in1 values of one row go together when none is zero (a zero adds nothing, as before, so a NaN
+       or Inf of in2 does not reach those cells). The cells one in2 row reaches from four neighbours lie within L + 3 of
+       each other, and the next in2 row starts f[nd-1] >= L + 3 cells later, so no cell hears from two rows of a block:
+       each still receives its terms in in1 order. */
+    const int64_t L = s2[nd - 1], rows = n2 / L, R = s1[nd - 1];
     int64_t J[TSR_MAXDIM]; for (int32_t d = 0; d < nd; d++) J[d] = 0;
-    for (int64_t ja = 0; ja < n1; ja++) {
-        const double av = a[ja];
-        if (av != 0.0 && fullsize > 0) {
+    for (int64_t ja = 0; ja < n1;) {
+        const int nb = (J[nd - 1] + 4 <= R && a[ja] != 0.0 && a[ja + 1] != 0.0 && a[ja + 2] != 0.0 && a[ja + 3] != 0.0) ? 4 : 1;
+        if (a[ja] != 0.0 && fullsize > 0) {
             int64_t K[TSR_MAXDIM]; for (int32_t d = 0; d < nd; d++) K[d] = 0;
-            for (int64_t kv = 0; kv < n2; kv++) {
-                int64_t off = 0, vi = 0;
-                for (int32_t d = 0; d < nd; d++) {
-                    off += (J[d] + K[d]) * fst[d];
-                    vi += (reverse_v ? (s2[d] - 1 - K[d]) : K[d]) * vst[d];
-                }
-                full[off] += av * v[vi];
-                for (int32_t d = nd - 1; d >= 0; d--) { if (++K[d] < s2[d]) break; K[d] = 0; }
+            for (int64_t kr = 0; kr < rows; kr++) {
+                int64_t off = J[nd - 1];
+                for (int32_t d = 0; d < nd - 1; d++) off += (J[d] + K[d]) * fst[d];
+                conv_acc(full + off, vv + kr * L, L, a + ja, nb);
+                for (int32_t d = nd - 2; d >= 0; d--) { if (++K[d] < s2[d]) break; K[d] = 0; }
             }
         }
+        ja += nb;
+        J[nd - 1] += nb - 1;                              /* a block stays within its row: at most its last value */
         for (int32_t d = nd - 1; d >= 0; d--) { if (++J[d] < s1[d]) break; J[d] = 0; }
     }
+    if (vv != v) free(vv);
 
     int64_t osh[TSR_MAXDIM], ost[TSR_MAXDIM];
     for (int32_t d = 0; d < nd; d++) {
