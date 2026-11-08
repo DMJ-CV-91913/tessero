@@ -676,16 +676,32 @@ static inline double ext1d(const double *line, int64_t idx, int64_t L, int mode,
 
 typedef struct { const double *w; int64_t W, center, origin; int mode; double cval; } corr1d_ctx;
 
-/* scipy NI_Correlate1D: out[i] = sum_j w[j] * input_ext[i + j - center - origin], center = W//2. */
+/* scipy NI_Correlate1D: out[i] = sum_j w[j] * input_ext[i + j - center - origin], center = W//2. The line is extended
+   once by the boundary mode (ext[t] is position t - center - origin), then each nonzero weight is added across the
+   whole line: every output still sums its terms in j order from 0.0, as one output at a time would. */
 static void corr1d_line(const double *line, double *out, int64_t L, const void *vc)
 {
     const corr1d_ctx *c = (const corr1d_ctx *)vc;
-    for (int64_t i = 0; i < L; i++) {
-        double acc = 0.0;
-        for (int64_t j = 0; j < c->W; j++)
-            if (c->w[j] != 0.0) acc += c->w[j] * ext1d(line, i + j - c->center - c->origin, L, c->mode, c->cval);
-        out[i] = acc;
+    const int64_t W = c->W, lo = -c->center - c->origin;
+    double *ext = (double *)malloc((size_t)(L + W - 1) * sizeof(double));
+    if (!ext) {                                           /* no buffer: one output at a time */
+        for (int64_t i = 0; i < L; i++) {
+            double acc = 0.0;
+            for (int64_t j = 0; j < W; j++)
+                if (c->w[j] != 0.0) acc += c->w[j] * ext1d(line, i + j + lo, L, c->mode, c->cval);
+            out[i] = acc;
+        }
+        return;
     }
+    for (int64_t t = 0; t < L + W - 1; t++) ext[t] = ext1d(line, t + lo, L, c->mode, c->cval);
+    for (int64_t i = 0; i < L; i++) out[i] = 0.0;
+    for (int64_t j = 0; j < W; j++) {
+        const double wj = c->w[j];
+        if (wj == 0.0) continue;
+        const double *e = ext + j;
+        for (int64_t i = 0; i < L; i++) out[i] += wj * e[i];
+    }
+    free(ext);
 }
 
 static void mm1d_line(const double *line, double *out, int64_t L, const void *vc)
@@ -722,15 +738,25 @@ static int filter_lines(const double *in, double *out, const int64_t *shape, int
     for (int d = ax + 1; d < nd; d++) inner *= shape[d];
     for (int d = 0; d < ax; d++) outer *= shape[d];
     if (L == 0 || inner == 0 || outer == 0) return TSR_OK;
-    double *buf = (double *)malloc((size_t)L * sizeof(double));
-    double *obuf = (double *)malloc((size_t)L * sizeof(double));
+    /* up to 8 neighbouring lines are copied out together: along any axis but the last, a line's elements are inner
+       apart, and the 8 lines' elements at one position are adjacent, so each read fills a cache line once; every line
+       is then filtered on its own as before */
+    const int64_t B = inner < 8 ? inner : 8;
+    double *buf = (double *)malloc((size_t)(B * L) * sizeof(double));
+    double *obuf = (double *)malloc((size_t)(B * L) * sizeof(double));
     if (!buf || !obuf) { free(buf); free(obuf); return TSR_ENOMEM; }
     for (int64_t o = 0; o < outer; o++)
-        for (int64_t c = 0; c < inner; c++) {
-            const int64_t base = o * L * inner + c;
-            for (int64_t k = 0; k < L; k++) buf[k] = in[base + k * inner];
-            line(buf, obuf, L, ctx);
-            for (int64_t k = 0; k < L; k++) out[base + k * inner] = obuf[k];
+        for (int64_t c = 0; c < inner; c += B) {
+            const int64_t nb = inner - c < B ? inner - c : B, base = o * L * inner + c;
+            for (int64_t k = 0; k < L; k++) {
+                const double *src = in + base + k * inner;
+                for (int64_t b = 0; b < nb; b++) buf[b * L + k] = src[b];
+            }
+            for (int64_t b = 0; b < nb; b++) line(buf + b * L, obuf + b * L, L, ctx);
+            for (int64_t k = 0; k < L; k++) {
+                double *dst = out + base + k * inner;
+                for (int64_t b = 0; b < nb; b++) dst[b] = obuf[b * L + k];
+            }
         }
     free(buf); free(obuf);
     return TSR_OK;

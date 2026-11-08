@@ -22,6 +22,9 @@
 #define TSR_MAXDIM 32
 #endif
 
+extern void cblas_dgemm(int Order, int TransA, int TransB, int M, int N, int K, double alpha, const double *A, int lda,
+                        const double *B, int ldb, double beta, double *C, int ldc);   /* the linked BLAS (matmul.c) */
+
 /*
  * LAPACK integer range guard. The kernel's dimensions are int64, LAPACKE's lapack_int is 32-bit on the usual
  * LP64 builds, and a bare (lapack_int) cast of a dimension above INT32_MAX wraps to a small or negative value:
@@ -467,15 +470,16 @@ static int r_pinv(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     double smax = 0.0;
     for (int64_t i = 0; i < k; i++) if (s[i] > smax) smax = s[i];
     const double cut = rcond * smax;
-    /* pinv[i,j] = sum_l vt[l,i] * (1/s[l] if s[l] > cut else 0) * u[j,l]  ->  (n x m) */
-    for (int64_t i = 0; i < n; i++)
-        for (int64_t j = 0; j < m; j++) {
-            double acc = 0.0;
-            for (int64_t l = 0; l < k; l++)
-                if (s[l] > cut) acc += vt[l * n + i] * (1.0 / s[l]) * u[j * k + l];
-            out[i * m + j] = acc;
-        }
-    free(u); free(s); free(vt);
+    /* pinv = vt^T (diag(1/s) u^T), the singular values at or below the cut dropped: numpy.linalg.pinv's
+       matmul(transpose(vt), multiply(s[..., newaxis], transpose(u))), the product by BLAS (n x m) */
+    double *w = (double *)malloc(sizeof(double) * (size_t)(k * m));
+    if (!w) { free(u); free(s); free(vt); fn_free_doubles(a, na); return TSR_ENOMEM; }
+    for (int64_t l = 0; l < k; l++) {
+        const double si = s[l] > cut ? 1.0 / s[l] : 0.0;
+        for (int64_t j = 0; j < m; j++) w[l * m + j] = si * u[j * k + l];
+    }
+    cblas_dgemm(101, 112, 111, (int)n, (int)m, (int)k, 1.0, vt, (int)n, w, (int)m, 0.0, out, (int)m);
+    free(w); free(u); free(s); free(vt);
     fn_free_doubles(a, na);
     return TSR_OK;
 }

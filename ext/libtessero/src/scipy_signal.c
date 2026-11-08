@@ -2124,6 +2124,22 @@ static int cmp_double_sig(const void *a, const void *b)
     return (x > y) - (x < y);
 }
 
+/* win[0..m) ascending for the order filters: a stable insertion sort when the window is small and holds no NaN (the
+   order qsort with cmp_double_sig gives, without a call per comparison), else qsort as before (a NaN compares equal
+   to everything, so its place is the sort's own) */
+static void sig_sort_window(double *win, int64_t m)
+{
+    int nan = 0;
+    if (m <= 64) for (int64_t i = 0; i < m; i++) nan |= win[i] != win[i];
+    if (m > 64 || nan) { qsort(win, (size_t)m, sizeof(double), cmp_double_sig); return; }
+    for (int64_t i = 1; i < m; i++) {
+        const double v = win[i];
+        int64_t j = i;
+        while (j > 0 && win[j - 1] > v) { win[j] = win[j - 1]; j--; }
+        win[j] = v;
+    }
+}
+
 static int sig_cplx_cmp(const void *a, const void *b)
 {
     const double *x = (const double *)a, *y = (const double *)b;
@@ -4639,6 +4655,20 @@ static int sig_box_filter_nd(const double *a, const int64_t *shape, int32_t nd, 
     if (!out) return TSR_ENOMEM;
     double *win = (double *)malloc(sizeof(double) * (size_t)(wmax > 0 ? wmax : 1));
     if (!win) return TSR_ENOMEM;
+    if (nd == 1) {                                        /* 1-D: the in-bounds window is one slice */
+        const int64_t n = shape[0], c0 = fshape[0] / 2;
+        for (int64_t i = 0; i < n; i++) {
+            const int64_t l = i - c0 < 0 ? 0 : i - c0, h = i - c0 + fshape[0] - 1 < n - 1 ? i - c0 + fshape[0] - 1 : n - 1;
+            const int64_t m = h - l + 1;
+            memcpy(win, a + l, (size_t)m * sizeof(double));
+            sig_sort_window(win, m);
+            const int64_t nz = ftot - m;
+            int64_t neg = 0; while (neg < m && win[neg] < 0.0) neg++;
+            out[i] = rank < neg ? win[rank] : (rank < neg + nz ? 0.0 : win[rank - nz]);
+        }
+        free(win);
+        return TSR_OK;
+    }
     int64_t ist[TSR_MAXDIM], c[TSR_MAXDIM], O[TSR_MAXDIM], lo[TSR_MAXDIM], hi[TSR_MAXDIM], K[TSR_MAXDIM];
     { int64_t acc = 1; for (int32_t d = nd - 1; d >= 0; d--) { ist[d] = acc; acc *= shape[d]; } }
     for (int32_t d = 0; d < nd; d++) { c[d] = fshape[d] / 2; O[d] = 0; }
@@ -4654,7 +4684,7 @@ static int sig_box_filter_nd(const double *a, const int64_t *shape, int32_t nd, 
             win[w] = a[off];
             for (int32_t d = nd - 1; d >= 0; d--) { if (++K[d] <= hi[d]) break; K[d] = lo[d]; }
         }
-        qsort(win, (size_t)m, sizeof(double), cmp_double_sig);
+        sig_sort_window(win, m);
         const int64_t nz = ftot - m;
         int64_t neg = 0; while (neg < m && win[neg] < 0.0) neg++;
         out[idx] = rank < neg ? win[rank] : (rank < neg + nz ? 0.0 : win[rank - nz]);
@@ -4698,7 +4728,7 @@ static int sig_order_filter_nd(const double *a, const int64_t *shape, int32_t nd
             }
             for (int32_t d = nd - 1; d >= 0; d--) { if (++K[d] < fshape[d]) break; K[d] = 0; }
         }
-        qsort(win, (size_t)fcount, sizeof(double), cmp_double_sig);
+        sig_sort_window(win, fcount);
         out[idx] = win[rank];
         for (int32_t d = nd - 1; d >= 0; d--) { if (++O[d] < shape[d]) break; O[d] = 0; }
     }
@@ -6724,12 +6754,14 @@ static int r_upfirdn(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){outlen > 0 ? outlen : 0});
         if (!out) rc = TSR_ENOMEM;
         else for (int64_t i = 0; i < outlen; i++) {
-            const int64_t m = i * down;
+            /* p = m - j must be a stuffed sample (p % up == 0) within [0, L): j = j0 + t up, where the sample index
+               q = p / up falls by one per step; the taps in range are one run of t (the same terms, in the same order,
+               without a division per tap) */
+            const int64_t m = i * down, j0 = m % up;
+            int64_t q = (m - j0) / up, j = j0;
+            if (q >= nx) { const int64_t skip = q - (nx - 1); j += skip * up; q = nx - 1; }
             double s = 0.0;
-            for (int64_t j = 0; j < nh; j++) {               /* p = m - j must be a stuffed sample (p % up == 0) */
-                const int64_t p = m - j;
-                if (p >= 0 && p < L && p % up == 0) s += h[j] * x[p / up];
-            }
+            for (; j < nh && q >= 0; j += up, q--) s += h[j] * x[q];
             out[i] = s;
         }
     }
@@ -7066,21 +7098,50 @@ static int r_resample_poly(const void *ctx, const tsr_arg *args, int nargs, tsr_
         int64_t npost = 0;
         const int64_t nrem = (half_len + npre) / down;
         while (rp_olen(N + npre + npost, n_in, up, down) < n_out + nrem) npost++;
-        const int64_t L = (n_in - 1) * up + 1;
         double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){n_out});
         if (!out) rc = TSR_ENOMEM;
-        else for (int64_t oi = 0; oi < n_out; oi++) {
+        else for (int64_t oi = 0; oi < n_out;) {
+            /* outputs up apart share their taps (the same phase jj) and read x down further on: away from the edges,
+               four of them run as independent sums over the same taps (each in its own order, as one at a time) */
+            if (oi + 4 * up <= n_out) {
+                int inner = 1;
+                for (int64_t r = 0; r < up && inner; r++) {
+                    const int64_t b = (oi + r + nrem) * down - npre;
+                    int64_t j0 = b % up; if (j0 < 0) j0 += up;
+                    const int64_t q0 = (b - j0) / up, T = (N - j0 + up - 1) / up;
+                    inner = j0 < N && q0 - (T - 1) >= 0 && q0 + 3 * down <= n_in - 1;
+                }
+                if (inner) {
+                    for (int64_t r = 0; r < up; r++) {
+                        const int64_t b = (oi + r + nrem) * down - npre;
+                        int64_t j0 = b % up; if (j0 < 0) j0 += up;
+                        const double *xp = x + (b - j0) / up;
+                        double a0 = 0.0, a1 = 0.0, a2 = 0.0, a3 = 0.0;
+                        for (int64_t j = j0, t = 0; j < N; j += up, t++) {
+                            const double hv = h[j];
+                            a0 += hv * xp[-t];
+                            a1 += hv * xp[down - t];
+                            a2 += hv * xp[2 * down - t];
+                            a3 += hv * xp[3 * down - t];
+                        }
+                        out[oi + r] = a0; out[oi + r + up] = a1; out[oi + r + 2 * up] = a2; out[oi + r + 3 * up] = a3;
+                    }
+                    oi += 4 * up;
+                    continue;
+                }
+            }
             const int64_t mm = (oi + nrem) * down;           /* full-convolution index */
             double acc = 0.0;
             /* h is nonzero only over the N taps at offset npre; only taps with p = mm - npre - jj a stuffed sample
                (p % up == 0) contribute, so start at the first such jj and step by up (same terms, same order) */
             const int64_t base = mm - npre;
             int64_t jj = base % up; if (jj < 0) jj += up;
-            for (; jj < N; jj += up) {
-                const int64_t p = base - jj;
-                if (p >= 0 && p < L) acc += h[jj] * x[p / up];
-            }
-            out[oi] = acc;
+            /* p = base - jj = q up falls by up per tap, so q by one; the taps with 0 <= p <= (n_in - 1) up (a stuffed
+               sample) are one run of jj */
+            int64_t q = (base - jj) / up;
+            if (q >= n_in) { const int64_t skip = q - (n_in - 1); jj += skip * up; q = n_in - 1; }
+            for (; jj < N && q >= 0; jj += up, q--) acc += h[jj] * x[q];
+            out[oi++] = acc;
         }
     }
     free(h); fn_free_doubles(x, lx);
