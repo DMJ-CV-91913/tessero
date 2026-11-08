@@ -70,6 +70,28 @@ final class AbiFeatureTest extends TestCase
         $this->assertSame(268435456, Library::defaultFftCache('cli', '268435456'));
     }
 
+    public function testAllocCacheDefaults(): void
+    {
+        $this->assertNull(Library::defaultAllocCache('cli', false));                 // the library default, 64 MiB
+        $this->assertNull(Library::defaultAllocCache('embed', ''));
+        $this->assertSame(16 << 20, Library::defaultAllocCache('fpm-fcgi', false));
+        $this->assertSame(16 << 20, Library::defaultAllocCache('apache2handler', 'lots'));   // malformed: safe default
+        $this->assertSame(0, Library::defaultAllocCache('fpm-fcgi', '0'));
+        $this->assertSame(134217728, Library::defaultAllocCache('cli', '134217728'));
+    }
+
+    public function testAllocCacheLimitRoundTrip(): void
+    {
+        $saved = Tessero::allocCacheLimit();
+        Tessero::setAllocCacheLimit(0);
+        $this->assertSame(0, Tessero::allocCacheLimit());
+        $this->assertSame(0, Tessero::allocCacheBytes());
+        Tessero::setAllocCacheLimit(-1);
+        $this->assertSame(0, Tessero::allocCacheLimit());
+        Tessero::setAllocCacheLimit($saved);
+        $this->assertSame($saved, Tessero::allocCacheLimit());
+    }
+
     public function testFftCacheLimitRoundTrip(): void
     {
         $saved = Tessero::fftCacheLimit();

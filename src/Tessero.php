@@ -65,6 +65,28 @@ final class Tessero
     }
 
     /**
+     * Cap the large blocks this process keeps for reuse, in bytes (default 64 MiB, 16 MiB in a web SAPI, 0 = no
+     * reuse). A freed array of 1 MiB or more is kept and handed out again for the next array of about its size, so a
+     * repeated call does not page-fault its memory in again. Kept blocks are outside the memory budget and each
+     * php-fpm worker keeps its own. Lowering the limit releases kept blocks at once.
+     */
+    public static function setAllocCacheLimit(int $bytes): void
+    {
+        Library::ffi()->tsr_set_alloc_cache_limit(max(0, $bytes));
+    }
+
+    public static function allocCacheLimit(): int
+    {
+        return Library::ffi()->tsr_alloc_cache_limit();
+    }
+
+    /** Bytes of freed large blocks kept for reuse now. */
+    public static function allocCacheBytes(): int
+    {
+        return Library::ffi()->tsr_alloc_cache_bytes();
+    }
+
+    /**
      * Cap the BLAS thread pools: the BLAS this package loads over FFI (Linalg) and the one libtessero links
      * (matmul). Web SAPIs default to 1 (TESSERO_BLAS_THREADS overrides), since php-fpm runs a worker per core.
      */

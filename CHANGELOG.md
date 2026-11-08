@@ -9,6 +9,13 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Changed
 
+- **Large-block reuse**: blocks of 1 MiB or more freed with `tsr_free` are kept per process and handed out again by
+  `tsr_alloc` for the next array of about their size, instead of going back to the operating system and page-faulting
+  in again on the next call (a 1024 x 1024 `fft2` in a fresh process 64.5 -> 29.7 ms, NumPy 32.2; `rfft2` 40.0 -> 15.7 ms). The blocks stay
+  libtessero's and are released only by it. Limit per process: 64 MiB in the CLI, 16 MiB in a web SAPI; set with
+  `tsr_set_alloc_cache_limit` / `tsr_alloc_cache_limit` / `tsr_alloc_cache_bytes`, `Tessero::setAllocCacheLimit()` /
+  `allocCacheLimit()` / `allocCacheBytes()` and the same on `Tessero\Ext\Engine`, or `TESSERO_ALLOC_CACHE_BYTES`
+  (`0` turns it off). Kept blocks are outside the memory budget. Results are unchanged. Off in the ownership-check and AddressSanitizer builds.
 - **`sort()` (C `tsr_sort`) is now the AVX2 quicksort of `sortSimd()` where the CPU has AVX2**, the radix sort
   elsewhere. The result is unchanged (the sorts return the same bytes); the time is 2-25x lower below a few thousand
   values and about 2x lower on 1M random values (one thread: 17 ms against NumPy's 14 ms, was 31 ms). `sortSimd()`

@@ -96,6 +96,34 @@ Size it as: free RAM you are willing to give FFT plans, divided by the number
 of worker processes that run FFTs. Results are the same with or without the
 cache.
 
+### Large-block reuse
+
+The system allocator gives large blocks back to the operating system when they
+are freed, so the next array of the same size faults all of its pages in
+again: for a 1024 x 1024 `fft2` that was about 40% of the time. libtessero
+therefore keeps freed blocks of 1 MiB or more and hands them out again for the
+next array of about the same size, up to a limit per process:
+
+| process | default limit |
+|---|---|
+| CLI (scripts, queue workers, `artisan`) | 64 MiB |
+| web SAPI (php-fpm, Apache) | 16 MiB |
+
+Kept blocks stay libtessero's own: they are released only by libtessero (when
+the limit is lowered, or to make room, oldest first), never by the caller. They
+are outside the memory budget (`tsr_allocated()` and the budget count blocks in
+use, not kept ones), and every php-fpm worker keeps its own, so the worst case
+is the limit times the number of workers.
+
+- `TESSERO_ALLOC_CACHE_BYTES=n` (bytes; `0` turns reuse off) sets the limit
+  for every SAPI, on both backends.
+- `Tessero::setAllocCacheLimit($bytes)` / `Tessero\Ext\Engine::setAllocCacheLimit($bytes)`
+  change it at run time; lowering it releases kept blocks at once.
+  `allocCacheBytes()` reports what is kept.
+
+Results are the same with or without reuse: a kept block is uninitialised
+memory, as a new one is, and is always written before it is read.
+
 ## Threads
 
 ```ini

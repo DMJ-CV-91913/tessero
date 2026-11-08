@@ -50,6 +50,14 @@ int64_t tsr_allocated(void);
 int64_t tsr_peak(void);
 void tsr_set_budget(int64_t bytes);       /* 0 = unlimited */
 int64_t tsr_budget(void);
+/* Large-block reuse: blocks of 1 MiB or more freed with tsr_free are kept, up to this many bytes per process (default
+   64 MiB), and handed out again by tsr_alloc, so arrays of a repeated size do not page-fault their memory in on every
+   call. The blocks stay libtessero's: only it releases them. 0 turns reuse off; lowering the limit releases kept blocks
+   at once. Kept blocks are outside tsr_set_budget's budget and bounded by this limit: under php-fpm every worker keeps
+   its own, so lower it there. Off in the ownership-check and ASan builds. tsr_alloc_cache_bytes: kept now. */
+void tsr_set_alloc_cache_limit(int64_t bytes);
+int64_t tsr_alloc_cache_limit(void);
+int64_t tsr_alloc_cache_bytes(void);
 ```
 
 ## Threads (OpenMP builds; 1 = serial, the default)

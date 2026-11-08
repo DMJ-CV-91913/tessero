@@ -14,7 +14,7 @@ Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tes
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 49 cases, within 10% either way on 19, and clearly slower on 16, mostly where an algorithm is not yet the best one
+on 48 cases, within 10% either way on 21, and clearly slower on 15, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -96,6 +96,7 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `signal.filtfilt` order 4, 1M | 26.4 ms | 15.8 ms | 15.6 ms | a contiguous float64 signal read in place instead of copied first (one 8 MB block less in use, and the page faults it brought); the same values, bit for bit (497 calls with `hilbert` on each backend: lengths from 1 to 65,536, NaN, inf, -0, integer and strided input) |
 | `signal.hilbert` 1M | 141 ms | 88.6 ms | 76.1 ms | the input read in place and transformed as real values (`tsr_fft_real` reads x as (x, 0.0), the values the zero-filled complex copy held) instead of first spread into a 16 MB complex buffer; the same output, bit for bit. The time left is the FFT itself |
 | `fft.dct` 1M | 58.8 ms | 26.5 ms | 28.2 ms | the cos and sin of pi k / 2N (two million libm calls per transform) kept in the FFT plan cache per length instead of computed on every call, from the same expressions, so the same values; the input read in place instead of copied first; the same output, bit for bit, with the cache and without it (816 calls on each backend: `dct`, `idct`, `dst`, `idst`, types 2 and 3, the direct sums up to 128 points and the FFT path above, NaN, inf, -0, integer and reversed input) |
+| `numpy.fft.fft2` 1024^2 | 64.5 ms | 29.7 ms | 32.2 ms | large-block reuse: freed blocks of 1 MiB or more are kept by libtessero (64 MiB per process in the CLI, 16 MiB in a web SAPI) and handed out again, instead of going back to the operating system and page-faulting in again on the next call; the rows step and the axis-0 step each made a fresh 16 MB array. Also `rfft2` 40.0 -> 15.7 ms (NumPy 12.2), and smaller gains wherever large temporaries repeat (`linkage`, `Delaunay`, `dct`). The same values: every equivalence check of this page (13 suites, about 74,000 calls) gives the old code's results with reuse on |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -212,7 +213,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   `cumsum` (six alternating rounds, at a load average of 9 to 10) `gaussian_kde` (six alternating rounds, at a
   load average of 8 to 9) and `clip`, `sobel`, `laplace` and `maximum_filter` (six alternating rounds, at a load
   average of 6 to 21, `clip` twelve more) `filtfilt` and `hilbert` (six alternating rounds, at a load average of
-  10 to 14) and `dct` (six alternating rounds, at a load average of 10 to 17). Each side ran three times, alternating,
+  10 to 14) `dct` (six alternating rounds, at a load average of 10 to 17) and, after
+  the large-block reuse, `fft2`, `rfft2`, `dct`, `linkage`, `kmeans2`, `sosfilt`, `connected_components`,
+  `ConvexHull` and `Delaunay` (six alternating rounds, at a load average of 7 to 9). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -228,7 +231,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 |---|---|---|---|
 | scipy.optimize least_squares Rosenbrock residuals | 0.307 | 8.16 | 0.04 |
 | scipy.interpolate make_interp_spline k=3, 1M points | 88 | 2.06e+03 | 0.04 |
-| scipy.sparse.csgraph connected_components 500 nodes | 0.256 | 5.36 | 0.05 |
+| scipy.sparse.csgraph connected_components 500 nodes | 0.309 | 4.57 | 0.07 |
 | scipy.optimize minimize Nelder-Mead rosen n=5 | 0.983 | 12.3 | 0.08 |
 | scipy.integrate solve_ivp Lotka-Volterra RK45 | 1.57 | 8.35 | 0.19 |
 | scipy.signal welch 1M, nperseg 1024 | 18.8 | 101 | 0.19 |
@@ -251,17 +254,16 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.signal convolve2d 500x500 * 5x5 | 8.81 | 16.1 | 0.55 |
 | scipy.ndimage distance_transform_edt 512x512 | 11.7 | 20 | 0.59 |
 | numpy polyfit deg 5, 100k | 11 | 17.6 | 0.62 |
-| scipy.spatial Delaunay 10k (2-D) | 28.8 | 46.3 | 0.62 |
 | scipy.ndimage median_filter 512x512, 3 | 21.7 | 34.5 | 0.63 |
 | scipy.stats rankdata 1M | 94.2 | 148 | 0.64 |
 | scipy.stats binned_statistic 1M, 100 bins | 37.5 | 56.8 | 0.66 |
 | numpy searchsorted 1M into 100k | 117 | 167 | 0.70 |
-| scipy.cluster.vq kmeans2 10k x 3, k=8 | 4.16 | 5.91 | 0.70 |
+| scipy.spatial Delaunay 10k (2-D) | 27 | 38.6 | 0.70 |
 | scipy.interpolate PchipInterpolator 10k knots, 1M points | 80.7 | 114 | 0.71 |
 | scipy.stats skew 1M | 10.5 | 14.8 | 0.71 |
 | scipy.stats kurtosis 1M | 10.1 | 13.8 | 0.74 |
 | scipy.signal resample_poly 1M, 3/2 | 37.1 | 49.2 | 0.75 |
-| scipy.cluster.hierarchy linkage ward 2000x3 | 69.7 | 91.9 | 0.76 |
+| scipy.cluster.hierarchy linkage ward 2000x3 | 61.5 | 80.9 | 0.76 |
 | scipy.linalg eig 300x300 (general) | 60.2 | 77.8 | 0.77 |
 | scipy.stats mannwhitneyu 100k vs 100k | 29.6 | 37.7 | 0.78 |
 | numpy argsort 1M | 44.4 | 57.2 | 0.78 |
@@ -276,36 +278,37 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.ndimage label 1000x1000 | 5.99 | 6.8 | 0.88 |
 | scipy.stats kendalltau 10k | 1.52 | 1.72 | 0.88 |
 | scipy.signal medfilt 100k, k=5 | 2.78 | 3.05 | 0.91 |
+| numpy fft2 1024x1024 | 29.7 | 32.2 | 0.92 |
 | scipy.ndimage binary_erosion 1000x1000 | 13.3 | 14.4 | 0.93 |
 | scipy.stats linregress 1M | 10.8 | 11.6 | 0.93 |
 | scipy.stats gaussian_kde 1000 points, 1000 evaluations | 11.4 | 12.3 | 0.93 |
 | scipy.linalg schur 300x300 | 57.9 | 61.4 | 0.94 |
 | scipy.stats ks_2samp 100k vs 100k | 67.3 | 71.9 | 0.94 |
-| scipy.fft dct 1M | 26.5 | 28.2 | 0.94 |
+| scipy.fft dct 1M | 23.5 | 24.9 | 0.94 |
 | scipy.signal find_peaks 1M | 4.19 | 4.4 | 0.95 |
 | scipy.linalg qr 500x500 | 16 | 16.8 | 0.96 |
 | scipy.linalg lstsq 1000x100 | 5.38 | 5.56 | 0.97 |
 | numpy convolve 100k * 101 | 2.63 | 2.72 | 0.97 |
 | scipy.signal resample 100k -> 50k | 1.62 | 1.67 | 0.97 |
-| scipy.signal sosfilt order 8, 1M | 8.56 | 8.8 | 0.97 |
 | scipy.sparse.linalg cg 2-D Poisson 100x100 | 28.7 | 29.3 | 0.98 |
 | scipy.ndimage map_coordinates 1000x1000, 100k points | 69.2 | 70.6 | 0.98 |
 | numpy interp 1M into 1000 | 63.3 | 64.4 | 0.98 |
+| scipy.cluster.vq kmeans2 10k x 3, k=8 | 4.35 | 4.45 | 0.98 |
+| scipy.signal sosfilt order 8, 1M | 8.88 | 8.82 | 1.01 |
 | scipy.signal filtfilt order 4, 1M | 15.8 | 15.6 | 1.02 |
 | numpy median 1M | 11.9 | 11.4 | 1.04 |
 | numpy diff 1M | 1.52 | 1.38 | 1.10 |
 | scipy.linalg svdvals 300x300 | 12.5 | 11.2 | 1.12 |
 | scipy.linalg cholesky 1000x1000 | 16.1 | 14.5 | 1.12 |
 | scipy.signal hilbert 1M | 88.6 | 76.1 | 1.16 |
+| scipy.spatial ConvexHull 10k (2-D) | 1.69 | 1.44 | 1.17 |
 | numpy clip 1M | 1.31 | 1.11 | 1.19 |
 | scipy.linalg pinv 300x300 | 35.5 | 29.4 | 1.21 |
 | numpy linalg slogdet 600x600 | 7.27 | 5.73 | 1.27 |
-| numpy fft2 1024x1024 | 44 | 33.1 | 1.33 |
+| numpy rfft2 1024x1024 | 15.7 | 12.2 | 1.29 |
 | numpy cov 50 x 100k | 40.5 | 29.8 | 1.36 |
-| scipy.spatial ConvexHull 10k (2-D) | 2.01 | 1.46 | 1.38 |
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
 | numpy einsum ij,jk->ik 300x300 | 17.4 | 11.3 | 1.53 |
-| numpy rfft2 1024x1024 | 21.5 | 13.7 | 1.57 |
 | scipy.spatial KDTree query 100 points, k=5 | 0.363 | 0.218 | 1.67 |
 | scipy.spatial KDTree build 100k (3-D) | 58.1 | 32.6 | 1.78 |
 | scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.0187 | 0.0057 | 3.27 |

@@ -21,6 +21,20 @@ static abiVersion(): int
 
 The C ABI generation of the loaded libtessero.
 
+### allocCacheBytes
+
+```php
+static allocCacheBytes(): int
+```
+
+Bytes of freed large blocks kept for reuse now.
+
+### allocCacheLimit
+
+```php
+static allocCacheLimit(): int
+```
+
 ### feature
 
 ```php
@@ -84,6 +98,17 @@ Numerical self-check of the loaded libtessero (docs/reference/numerical-guarante
 of this thread and the OpenMP workers, then the known-answer tests. fpenv is 0 when the FP environment is
 canonical (round to nearest, no flush-to-zero, traps masked), else a bitmask named in fpenv_reason;
 selfcheck is 0 when every probe matches, a negative code otherwise (tessero.h).
+
+### setAllocCacheLimit
+
+```php
+static setAllocCacheLimit(int $bytes): void
+```
+
+Cap the large blocks this process keeps for reuse, in bytes (default 64 MiB, 16 MiB in a web SAPI, 0 = no
+reuse). A freed array of 1 MiB or more is kept and handed out again for the next array of about its size, so a
+repeated call does not page-fault its memory in again. Kept blocks are outside the memory budget and each
+php-fpm worker keeps its own. Lowering the limit releases kept blocks at once.
 
 ### setBlasThreads
 

@@ -58,6 +58,44 @@ static void test_alloc(void)
     double *z = (double *)tsr_calloc(80);
     CHECK(z && z[9] == 0.0, "calloc zero");
     tsr_free(z, 80);
+
+    /* large-block reuse: a freed block of 1 MiB or more is kept and handed out again (not in ownership/ASan builds) */
+    {
+        const int64_t saved = tsr_alloc_cache_limit(), big = (int64_t)3 << 20;
+        tsr_set_alloc_cache_limit((int64_t)16 << 20);
+        CHECK(tsr_alloc_cache_limit() == (int64_t)16 << 20, "alloc cache limit set");
+        const int64_t base = tsr_alloc_cache_bytes(), was = tsr_allocated();
+        char *b1 = (char *)tsr_alloc(big);
+        CHECK(b1 && ((uintptr_t)b1 % 64) == 0 && tsr_allocated() == was + big, "big alloc accounting");
+        tsr_free(b1, big);
+        CHECK(tsr_allocated() == was, "kept block not counted as allocated");
+        if (!TSR_REUSE) {
+            CHECK(tsr_alloc_cache_bytes() == 0, "no reuse in the ownership-check and ASan builds");
+        } else {
+            CHECK(tsr_alloc_cache_bytes() == base + big, "freed block kept (%lld)", (long long)tsr_alloc_cache_bytes());
+            char *b2 = (char *)tsr_alloc(big - 4096);              /* within a quarter of its size: the same block */
+            CHECK(b2 == b1 && tsr_alloc_cache_bytes() == base, "kept block reused");
+            if (b2) memset(b2, 0x5a, (size_t)(big - 4096));             /* old data for the calloc check below */
+            tsr_free(b2, big - 4096);
+            char *b3 = (char *)tsr_alloc(big / 2);                 /* far smaller: a new block, the kept one stays */
+            CHECK(b3 && b3 != b1, "no reuse for a much smaller request");
+            tsr_free(b3, big / 2);
+            double *zc = (double *)tsr_calloc(big - 4096);         /* the dirty block again, zeroed by tsr_calloc */
+            CHECK(zc == (double *)b1 && zc[0] == 0.0 && zc[(big - 4096) / 8 - 1] == 0.0, "calloc zeroes a reused block");
+            tsr_free(zc, big - 4096);
+            tsr_set_alloc_cache_limit(big);                        /* lowering the limit releases the oldest */
+            CHECK(tsr_alloc_cache_bytes() <= big, "lower limit trims (%lld)", (long long)tsr_alloc_cache_bytes());
+        }
+        tsr_set_alloc_cache_limit(0);
+        CHECK(tsr_alloc_cache_bytes() == 0, "limit 0 releases every kept block");
+        char *b4 = (char *)tsr_alloc(big);
+        tsr_free(b4, big);
+        CHECK(tsr_alloc_cache_bytes() == 0, "nothing kept at limit 0");
+        tsr_set_alloc_cache_limit(-5);
+        CHECK(tsr_alloc_cache_limit() == 0, "negative limit clamps to 0");
+        tsr_set_alloc_cache_limit(saved);
+        CHECK(tsr_alloc_cache_limit() == saved, "alloc cache limit restored");
+    }
     CHECK(tsr_simd_level() >= 0, "simd level");
     CHECK(strlen(tsr_version()) > 0, "version");
 }

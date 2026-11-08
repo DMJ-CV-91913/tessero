@@ -57,6 +57,16 @@ static check(int $rc, string $what): int
 
 Map a negative libtessero return code to an exception.
 
+### defaultAllocCache
+
+```php
+static defaultAllocCache(string $sapi, string|false $env): ?int
+```
+
+The large-block reuse limit to apply at load, or null to keep the library default (64 MiB):
+TESSERO_ALLOC_CACHE_BYTES (bytes, 0 = no reuse) wins, and otherwise web SAPIs get 16 MiB, since a server runs
+many workers and each keeps its own freed blocks outside the memory budget.
+
 ### defaultBlasThreads
 
 ```php

@@ -433,6 +433,128 @@ int tsr_ownership_check(void) { return 1; }
 int tsr_ownership_check(void) { return 0; }
 #endif
 
+/* ---------------------------------------------------------------- large-block reuse
+ * A freed block of at least TSR_REUSE_MIN bytes is parked here (up to the limit in all, tsr_set_alloc_cache_limit)
+ * and handed out again by tsr_alloc for a request of about its size. The system allocator gives blocks this large
+ * back to the operating system when they are freed (glibc trims or unmaps them), so the next array of that size
+ * page-faults all of its memory in again: for a 1024 x 1024 2-D FFT that was about 40% of the time. The blocks stay
+ * this layer's: tsr_free parks them, tsr_alloc hands them out, and only this file releases them, with the call that
+ * releases any other tsr_alloc block. A reused block is uninitialised memory, as a fresh one is (tsr_calloc still
+ * zeroes it). Off in the ownership-check and AddressSanitizer builds (TSR_REUSE), where every free must be real.
+ */
+#define TSR_REUSE_MIN ((int64_t)1 << 20)
+#define TSR_REUSE_SLOTS 16
+#ifndef TSR_ALLOC_CACHE_BYTES
+#  define TSR_ALLOC_CACHE_BYTES ((int64_t)64 << 20)
+#endif
+
+typedef struct { void *p; int64_t cap; uint64_t when; } reuse_slot;
+static reuse_slot g_reuse[TSR_REUSE_SLOTS];
+static int64_t g_reuse_bytes;
+static int64_t g_reuse_cap = TSR_ALLOC_CACHE_BYTES;
+static uint64_t g_reuse_clock;
+#ifdef _WIN32
+static SRWLOCK g_reuse_lock = SRWLOCK_INIT;
+#  define REUSE_LOCK() AcquireSRWLockExclusive(&g_reuse_lock)
+#  define REUSE_UNLOCK() ReleaseSRWLockExclusive(&g_reuse_lock)
+#else
+static pthread_mutex_t g_reuse_lock = PTHREAD_MUTEX_INITIALIZER;
+#  define REUSE_LOCK() pthread_mutex_lock(&g_reuse_lock)
+#  define REUSE_UNLOCK() pthread_mutex_unlock(&g_reuse_lock)
+#endif
+
+static void sys_free(void *p)
+{
+#ifdef _WIN32
+    _aligned_free(p);
+#else
+    free(p);
+#endif
+}
+
+static int64_t reuse_size(int64_t bytes) { return (bytes + 63) & ~(int64_t)63; }   /* what aligned() allocates */
+
+/* release the oldest parked blocks until `need` more bytes fit the limit and a slot is free (need 0: until the parked
+   bytes fit); called with the lock held */
+static void reuse_trim_locked(int64_t need)
+{
+    for (;;) {
+        int empty = 0, oldest = -1;
+        for (int i = 0; i < TSR_REUSE_SLOTS; i++) {
+            if (!g_reuse[i].p) empty = 1;
+            else if (oldest < 0 || g_reuse[i].when < g_reuse[oldest].when) oldest = i;
+        }
+        if (g_reuse_bytes + need <= g_reuse_cap && (empty || need == 0)) return;
+        if (oldest < 0) return;
+        sys_free(g_reuse[oldest].p);
+        g_reuse_bytes -= g_reuse[oldest].cap;
+        g_reuse[oldest].p = NULL;
+    }
+}
+
+#if TSR_REUSE
+/* a parked block for a request of `size` bytes (the smallest that holds it, at most a quarter larger), or NULL */
+static void *reuse_take(int64_t size)
+{
+    void *p = NULL;
+    REUSE_LOCK();
+    int best = -1;
+    for (int i = 0; i < TSR_REUSE_SLOTS; i++) {
+        const reuse_slot *s = &g_reuse[i];
+        if (s->p && s->cap >= size && s->cap - size <= size / 4 && (best < 0 || s->cap < g_reuse[best].cap)) best = i;
+    }
+    if (best >= 0) {
+        p = g_reuse[best].p;
+        g_reuse_bytes -= g_reuse[best].cap;
+        g_reuse[best].p = NULL;
+    }
+    REUSE_UNLOCK();
+    return p;
+}
+
+/* park a freed block of `size` bytes; 0 when it does not fit the limit (the caller releases it) */
+static int reuse_put(void *p, int64_t size)
+{
+    int kept = 0;
+    REUSE_LOCK();
+    if (size <= g_reuse_cap) {
+        reuse_trim_locked(size);
+        for (int i = 0; i < TSR_REUSE_SLOTS && !kept; i++)
+            if (!g_reuse[i].p) {
+                g_reuse[i] = (reuse_slot){p, size, ++g_reuse_clock};
+                g_reuse_bytes += size;
+                kept = 1;
+            }
+    }
+    REUSE_UNLOCK();
+    return kept;
+}
+#endif
+
+void tsr_set_alloc_cache_limit(int64_t bytes)
+{
+    REUSE_LOCK();
+    g_reuse_cap = bytes < 0 ? 0 : bytes;
+    reuse_trim_locked(0);
+    REUSE_UNLOCK();
+}
+
+int64_t tsr_alloc_cache_limit(void)
+{
+    REUSE_LOCK();
+    const int64_t cap = g_reuse_cap;
+    REUSE_UNLOCK();
+    return cap;
+}
+
+int64_t tsr_alloc_cache_bytes(void)
+{
+    REUSE_LOCK();
+    const int64_t b = g_reuse_bytes;
+    REUSE_UNLOCK();
+    return b;
+}
+
 void *tsr_alloc(int64_t bytes)
 {
     if (bytes < 0) return NULL;
@@ -456,6 +578,9 @@ void *tsr_alloc(int64_t bytes)
         memcpy(base, &h, sizeof h);
         own_record(p, bytes);
     }
+#elif TSR_REUSE
+    void *p = bytes >= TSR_REUSE_MIN ? reuse_take(reuse_size(bytes)) : NULL;   /* a parked block, else a new one */
+    if (p == NULL) p = aligned(bytes);
 #else
     void *p = aligned(bytes);
 #endif
@@ -487,11 +612,10 @@ void tsr_free(void *p, int64_t bytes)
     p = base;
 #endif
     atomic_fetch_sub(&g_allocated, bytes);
-#ifdef _WIN32
-    _aligned_free(p);
-#else
-    free(p);
+#if TSR_REUSE
+    if (bytes >= TSR_REUSE_MIN && reuse_put(p, reuse_size(bytes))) return;   /* parked for reuse */
 #endif
+    sys_free(p);
 }
 
 int64_t tsr_allocated(void) { return atomic_load(&g_allocated); }

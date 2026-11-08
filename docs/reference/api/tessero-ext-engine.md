@@ -10,6 +10,18 @@
 static abiVersion()
 ```
 
+### allocCacheBytes
+
+```php
+static allocCacheBytes()
+```
+
+### allocCacheLimit
+
+```php
+static allocCacheLimit()
+```
+
 ### feature
 
 ```php
@@ -140,6 +152,12 @@ static random(int $seed, $shape, float $a = …, float $b = …)
 
 ```php
 static selfcheck(): array
+```
+
+### setAllocCacheLimit
+
+```php
+static setAllocCacheLimit(int $value)
 ```
 
 ### setBlasThreads

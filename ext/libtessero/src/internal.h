@@ -129,6 +129,19 @@ static inline int64_t tsr_shape_size(int32_t ndim, const int64_t *shape)
     return n;
 }
 
+/* Large-block reuse (alloc.c) is compiled out where every free must be a real one: the ownership-check build and
+   AddressSanitizer builds, where a kept block would hide a use after free. */
+#if defined(TSR_OWNERSHIP_CHECK) || defined(__SANITIZE_ADDRESS__)
+#  define TSR_REUSE 0
+#elif defined(__has_feature)
+#  if __has_feature(address_sanitizer)
+#    define TSR_REUSE 0
+#  endif
+#endif
+#ifndef TSR_REUSE
+#  define TSR_REUSE 1
+#endif
+
 /* the machine's physical memory in bytes, 0 when unknown (alloc.c) */
 int64_t tsr_physical_bytes(void);
 /* 1 when `bytes` more can be allocated in total: within the budget left, or the machine's RAM without a budget */

@@ -297,6 +297,11 @@ final class Library
         if ($fftCache !== null) {
             $ffi->tsr_set_fft_cache_limit($fftCache);
         }
+        // ... and its own kept large blocks (large-block reuse): web SAPIs a small limit, the CLI the library's 64 MiB
+        $allocCache = self::defaultAllocCache(PHP_SAPI, getenv('TESSERO_ALLOC_CACHE_BYTES', true));
+        if ($allocCache !== null) {
+            $ffi->tsr_set_alloc_cache_limit($allocCache);
+        }
     }
 
     /**
@@ -311,6 +316,20 @@ final class Library
         }
 
         return in_array($sapi, ['cli', 'phpdbg', 'embed'], true) ? null : 32 << 20;
+    }
+
+    /**
+     * The large-block reuse limit to apply at load, or null to keep the library default (64 MiB):
+     * TESSERO_ALLOC_CACHE_BYTES (bytes, 0 = no reuse) wins, and otherwise web SAPIs get 16 MiB, since a server runs
+     * many workers and each keeps its own freed blocks outside the memory budget.
+     */
+    public static function defaultAllocCache(string $sapi, string|false $env): ?int
+    {
+        if ($env !== false && $env !== '' && preg_match('/^\d+$/', $env) === 1) {
+            return (int) $env;
+        }
+
+        return in_array($sapi, ['cli', 'phpdbg', 'embed'], true) ? null : 16 << 20;
     }
 
     /**
