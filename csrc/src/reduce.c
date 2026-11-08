@@ -296,6 +296,13 @@ int tsr_moments(int dtype, int32_t ndim, const int64_t *shape, const void *in, c
     for (int64_t o = 0; o < outer; o++) {                                               \
         const TI *src = (const TI *)in + o * len * inner;                               \
         TO *dst = (TO *)out + o * len * inner;                                          \
+        if (inner == 1 && len > 0) {   /* one run: the running value in a register, not reloaded */ \
+            TO acc = (TO)src[0];                                                        \
+            dst[0] = acc;                                                               \
+            if (op == 0) for (int64_t i = 1; i < len; i++) { acc = ADD(TO, acc, (TO)src[i]); dst[i] = acc; } \
+            else for (int64_t i = 1; i < len; i++) { acc = MUL(TO, acc, (TO)src[i]); dst[i] = acc; } \
+            continue;                                                                   \
+        }                                                                               \
         for (int64_t j = 0; j < inner; j++) dst[j] = (TO)src[j];                        \
         for (int64_t i = 1; i < len; i++) {                                             \
             const TI *s = src + i * inner;                                              \

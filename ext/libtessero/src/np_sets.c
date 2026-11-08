@@ -1358,11 +1358,13 @@ static int cov_matrix(const tsr_arg *args, int nargs, int rowvar, double **Xout,
     const tsr_arg *y = nargs > 1 && args[1].kind == 3 ? &args[1] : NULL;
     if (m->arr.ndim > 2) { fn_set_error("m has more than 2 dimensions"); return TSR_EARG; }
     if (y && y->arr.ndim > 2) { fn_set_error("y has more than 2 dimensions"); return TSR_EARG; }
-    int64_t nm, ny = 0;
-    double *dm = fn_arg_doubles(m, &nm);
-    if (!dm) return TSR_ENOMEM;
-    double *dy = y ? fn_arg_doubles(y, &ny) : NULL;
-    if (y && !dy) { fn_free_doubles(dm, nm); return TSR_ENOMEM; }
+    int64_t nm = 0, ny = 0;
+    /* m and y are only read, into X: contiguous float64 in place, anything else through a converted copy */
+    double *om = NULL, *oy = NULL;
+    const double *dm = fn_arg_f64_view(m, &nm);
+    if (!dm) { dm = om = fn_arg_doubles(m, &nm); if (!dm) return TSR_ENOMEM; }
+    const double *dy = y ? fn_arg_f64_view(y, &ny) : NULL;
+    if (y && !dy) { dy = oy = fn_arg_doubles(y, &ny); if (!dy) { fn_free_doubles(om, nm); return TSR_ENOMEM; } }
     /* shapes after array(m, ndmin=2) and the optional transpose */
     int64_t r1, c1, r2 = 0, c2 = 0;
     int t1 = 0, t2 = 0;
@@ -1372,17 +1374,17 @@ static int cov_matrix(const tsr_arg *args, int nargs, int rowvar, double **Xout,
         if (y->arr.ndim <= 1) { r2 = 1; c2 = ny; }
         else { r2 = y->arr.shape[0]; c2 = y->arr.shape[1]; }
         if (!rowvar && r2 != 1) { t2 = 1; int64_t t = r2; r2 = c2; c2 = t; }
-        if (c2 != c1) { fn_free_doubles(dm, nm); fn_free_doubles(dy, ny); fn_set_error("all the input array dimensions except for the concatenation axis must match exactly"); return TSR_ESHAPE; }
+        if (c2 != c1) { fn_free_doubles(om, nm); fn_free_doubles(oy, ny); fn_set_error("all the input array dimensions except for the concatenation axis must match exactly"); return TSR_ESHAPE; }
     }
     const int64_t V = r1 + r2, O = c1;
     double *X = (double *)tsr_alloc(V * O * 8 + 64);
-    if (!X) { fn_free_doubles(dm, nm); fn_free_doubles(dy, ny); return TSR_ENOMEM; }
+    if (!X) { fn_free_doubles(om, nm); fn_free_doubles(oy, ny); return TSR_ENOMEM; }
     for (int64_t i = 0; i < r1; i++)
         for (int64_t j = 0; j < c1; j++) X[i * O + j] = t1 ? dm[j * r1 + i] : dm[i * c1 + j];
     for (int64_t i = 0; i < r2; i++)
         for (int64_t j = 0; j < c2; j++) X[(r1 + i) * O + j] = t2 ? dy[j * r2 + i] : dy[i * c2 + j];
-    fn_free_doubles(dm, nm);
-    fn_free_doubles(dy, ny);
+    fn_free_doubles(om, nm);
+    fn_free_doubles(oy, ny);
     *Xout = X;
     *vars = V;
     *obs = O;
