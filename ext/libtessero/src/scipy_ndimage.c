@@ -2145,6 +2145,95 @@ static int r_affine_transform(const void *ctx, const tsr_arg *args, int nargs, t
 
 /* zoom(input, zoom, order, mode, cval): resample to round(shape*zoom); coord = o * (in-1)/(out-1) (grid_mode
    False). order 0/1. */
+/* zoom samples a grid: the coordinate along each axis depends on that axis's output index alone, so what
+   geom_interp derives from it (the cval cases, the folded coordinate, the weights and each tap's offset) is
+   computed once per index and axis; each point then sums its taps as geom_interp does, the same products in the
+   same order */
+typedef struct { int ok; double w[6]; int64_t off[6]; } zoom_ax;   /* off: tap offset, -1 outside (constant mode) */
+
+static void zoom_axis_entry(zoom_ax *z, double c, int64_t n, int64_t stride, int order, int mode, int con)
+{
+    z->ok = 0;
+    if (!isfinite(c) || n <= 0) return;
+    double cc;
+    if (con) { if (c < 0.0 || c > (double)(n - 1)) return; cc = c; }
+    else cc = map_coord(c, n, mode);
+    if (order == 0) {
+        int64_t idx = (int64_t)floor(cc + 0.5);
+        if (con) { if (idx < 0 || idx >= n) return; }
+        else { idx = bmap(idx, n, mode); if (idx < 0) idx = 0; }
+        z->off[0] = idx * stride;
+        z->ok = 1;
+        return;
+    }
+    const int64_t start = (int64_t)floor((order & 1) ? cc : cc + 0.5) - order / 2;
+    spline_weights(cc, order, z->w);
+    for (int k = 0; k <= order; k++) {
+        int64_t t = start + k;
+        if (con) z->off[k] = (t < 0 || t >= n) ? -1 : t * stride;
+        else { t = bmap(t, n, mode); if (t < 0) t = 0; z->off[k] = t * stride; }
+    }
+    z->ok = 1;
+}
+
+static void zoom_grid(const double *in, int32_t nd, const int64_t *osh, zoom_ax *const *ax, int order, double cval, double *out)
+{
+    const int nt = order + 1;
+    int64_t otot = 1;
+    for (int d = 0; d < nd; d++) otot *= osh[d];
+    if (otot <= 0) return;
+    if (nd == 2 && order > 0) {
+        int64_t o = 0;
+        for (int64_t o0 = 0; o0 < osh[0]; o0++) {
+            const zoom_ax *A = &ax[0][o0];
+            for (int64_t o1 = 0; o1 < osh[1]; o1++, o++) {
+                const zoom_ax *B = &ax[1][o1];
+                if (!A->ok || !B->ok) { out[o] = cval; continue; }
+                double acc = 0.0;
+                for (int i0 = 0; i0 < nt; i0++)
+                    for (int i1 = 0; i1 < nt; i1++) {
+                        double w = 1.0;
+                        w *= A->w[i0];
+                        w *= B->w[i1];
+                        const int oob = A->off[i0] < 0 || B->off[i1] < 0;
+                        acc += w * (oob ? cval : in[A->off[i0] + B->off[i1]]);
+                    }
+                out[o] = acc;
+            }
+        }
+        return;
+    }
+    int64_t oi[8] = {0};
+    for (int64_t o = 0; o < otot; o++) {
+        const zoom_ax *z[8];
+        int ok = 1;
+        for (int d = 0; d < nd; d++) { z[d] = &ax[d][oi[d]]; ok &= z[d]->ok; }
+        if (!ok) out[o] = cval;
+        else if (order == 0) {
+            int64_t flat = 0;
+            for (int d = 0; d < nd; d++) flat += z[d]->off[0];
+            out[o] = in[flat];
+        } else {
+            int idxc[8] = {0};
+            double acc = 0.0;
+            for (;;) {
+                double w = 1.0; int64_t flat = 0; int oob = 0;
+                for (int d = 0; d < nd; d++) {
+                    w *= z[d]->w[idxc[d]];
+                    const int64_t t = z[d]->off[idxc[d]];
+                    if (t < 0) oob = 1;
+                    if (!oob) flat += t;
+                }
+                acc += w * (oob ? cval : in[flat]);
+                int d = nd - 1; while (d >= 0) { if (++idxc[d] < nt) break; idxc[d] = 0; d--; }
+                if (d < 0) break;
+            }
+            out[o] = acc;
+        }
+        for (int d = nd - 1; d >= 0; d--) { if (++oi[d] < osh[d]) break; oi[d] = 0; }
+    }
+}
+
 static int r_zoom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -2165,8 +2254,8 @@ static int r_zoom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
         if (osh[d] > INT64_MAX / otot) { fn_set_error("zoom: the output shape is too large"); return TSR_ENOMEM; }
         otot *= osh[d]; scale[d] = osh[d] > 1 ? (double)(si[d] - 1) / (double)(osh[d] - 1) : 0.0;
     }
-    int64_t istride[8], ostride[8]; istride[nd - 1] = 1; ostride[nd - 1] = 1;
-    for (int d = nd - 2; d >= 0; d--) { istride[d] = istride[d + 1] * si[d + 1]; ostride[d] = ostride[d + 1] * osh[d + 1]; }
+    int64_t istride[8]; istride[nd - 1] = 1;
+    for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
     double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, osh);
     if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
@@ -2181,13 +2270,17 @@ static int r_zoom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
         if (prc != 0) { free(coeff); fn_free_doubles(in, ti); return prc; }
         src = coeff;
     }
-    double coord[8];
-    for (int64_t o = 0; o < otot; o++) {
-        int64_t t = o; for (int d = 0; d < nd; d++) { coord[d] = (double)(t / ostride[d]) * scale[d]; t %= ostride[d]; }
-        out[o] = geom_interp(src, si, nd, istride, coord, (int)order, mode, cval, con);
+    zoom_ax *ax[8] = {0};
+    int ok = 1;
+    for (int d = 0; d < nd && ok; d++) {
+        ax[d] = (zoom_ax *)malloc((size_t)(osh[d] > 0 ? osh[d] : 1) * sizeof(zoom_ax));
+        if (!ax[d]) ok = 0;
+        else for (int64_t o = 0; o < osh[d]; o++) zoom_axis_entry(&ax[d][o], (double)o * scale[d], si[d], istride[d], (int)order, mode, con);
     }
+    if (ok) zoom_grid(src, nd, osh, ax, (int)order, cval, out);
+    for (int d = 0; d < nd; d++) free(ax[d]);
     free(coeff); fn_free_doubles(in, ti);
-    return TSR_OK;
+    return ok ? TSR_OK : TSR_ENOMEM;
 }
 
 /* rotate(input, angle, axes=(1,0), reshape=True, order, mode, cval): rotate in the plane of two axes by `angle`
