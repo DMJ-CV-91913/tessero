@@ -2070,7 +2070,21 @@ static int r_gaussian_kde(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     int64_t osh[1] = {m};
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, osh);
     int rc = out ? TSR_OK : TSR_ENOMEM;
-    if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) {
+    if (rc == TSR_OK && d == 1) {
+        /* one dimension: the loop below with its vectors in registers, the same operations in the same order */
+        const double l00 = L[0];
+        for (int64_t j = 0; j < m; j++) {
+            const double p = pts[j];
+            double acc = 0.0;
+            for (int64_t i = 0; i < n; i++) {
+                const double z0 = (p - data[i]) / l00;
+                double maha = 0.0;
+                maha += z0 * z0;
+                acc += std::exp(-0.5 * maha);
+            }
+            out[j] = acc / norm;
+        }
+    } else if (rc == TSR_OK) for (int64_t j = 0; j < m; j++) {
         double acc = 0.0;
         for (int64_t i = 0; i < n; i++) {
             for (int64_t a = 0; a < d; a++) diff[a] = pts[a * m + j] - data[a * n + i];
