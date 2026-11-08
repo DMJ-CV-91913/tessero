@@ -7290,9 +7290,13 @@ static int r_find_peaks(const void *ctx, const tsr_arg *args, int nargs, tsr_res
         if (!(a_wlen->num < 9.2e18)) { fn_set_error("find_peaks: cannot convert float infinity to integer"); return TSR_EARG; }   /* SciPy: math.ceil(wlen) */
         wlen = (int64_t)ceil(a_wlen->num);
     }
-    int64_t N; double *x = fn_arg_doubles(&args[0], &N); if (!x) return TSR_ENOMEM;
+    int64_t N = 0;
+    double *xown = NULL;                                 /* x is only read: a contiguous float64 input in place */
+    const double *x = fn_arg_f64_view(&args[0], &N);
+    if (!x) { x = xown = fn_arg_doubles(&args[0], &N); if (!x) return TSR_ENOMEM; }
     int rc = TSR_OK;
     int64_t cap = N > 0 ? N : 1;
+    const int want_plateau = fp_given(a_plat);           /* the plateau edges are read by its filter only */
     int64_t *pk = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
     int64_t *le = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
     int64_t *re = (int64_t *)malloc((size_t)cap * sizeof(int64_t));
@@ -7308,12 +7312,18 @@ static int r_find_peaks(const void *ctx, const tsr_arg *args, int nargs, tsr_res
             if (x[i - 1] < x[i]) {
                 int64_t ia = i + 1;
                 while (ia < imax && x[ia] == x[i]) ia++;
-                if (x[ia] < x[i]) { int64_t l = i, r = ia - 1; pk[np] = (l + r) / 2; le[np] = l; re[np] = r; np++; i = ia; }
+                if (x[ia] < x[i]) {
+                    const int64_t l = i, r = ia - 1;
+                    pk[np] = (l + r) / 2;
+                    if (want_plateau) { le[np] = l; re[np] = r; }
+                    np++;
+                    i = ia;
+                }
             }
             i++;
         }
     }
-    if (fp_given(a_plat)) {
+    if (want_plateau) {
         fp_cond c = fp_read_cond(a_plat);
         for (int64_t k = 0; k < np; k++) { double ps = (double)(re[k] - le[k] + 1); keep[k] = (!c.has_min || c.mn <= ps) && (!c.has_max || ps <= c.mx); }
         fp_compact(pk, &np, keep);
@@ -7387,7 +7397,7 @@ static int r_find_peaks(const void *ctx, const tsr_arg *args, int nargs, tsr_res
         if (!out) rc = TSR_ENOMEM; else for (int64_t k = 0; k < np; k++) out[k] = pk[k];
     }
 done:
-    free(pk); free(le); free(re); free(keep); free(prom); free(lb); free(rb); fn_free_doubles(x, N);
+    free(pk); free(le); free(re); free(keep); free(prom); free(lb); free(rb); if (xown) fn_free_doubles(xown, N);
     return rc;
 }
 
