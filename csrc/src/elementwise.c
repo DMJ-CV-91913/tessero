@@ -595,6 +595,14 @@ TSR_CLONES static void transpose_tiled(int64_t isz, int64_t rows, int64_t cols, 
                     uint32_t *o = (uint32_t *)(out + r * out_row_stride);
                     for (int64_t c = c0; c < c1; c++) o[c] = *(const uint32_t *)(in + r * 4 + c * in_col_stride);
                 }
+            } else if (isz == 16) {                       /* complex128: two words, not a memcpy call per element */
+                for (int64_t r = r0; r < r1; r++) {
+                    uint64_t *o = (uint64_t *)(out + r * out_row_stride);
+                    for (int64_t c = c0; c < c1; c++) {
+                        const uint64_t *s = (const uint64_t *)(in + r * 16 + c * in_col_stride);
+                        o[2 * c] = s[0]; o[2 * c + 1] = s[1];
+                    }
+                }
             } else {
                 for (int64_t r = r0; r < r1; r++)
                     for (int64_t c = c0; c < c1; c++)

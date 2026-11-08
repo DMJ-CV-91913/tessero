@@ -79,115 +79,138 @@ static void twiddles(cpx *tw, int64_t n, double sign)
     }
 }
 
+/* the level-fi butterflies of nblk consecutive blocks of p*m values (each block's sub-transforms already done) */
 static void butterfly(const plan_t *pl, const cpx *lt, cpx *out, int64_t fstride, int64_t m, int64_t p, int inverse,
-                      cpx *scratch)
+                      cpx *scratch, int64_t nblk)
 {
     const cpx *tw = pl->tw;
     if (p == 2) {
-        for (int64_t k = 0; k < m; k++) {
-            cpx t = cmul(out[k + m], lt[k]);
-            out[k + m] = csub(out[k], t);
-            out[k] = cadd(out[k], t);
+        for (int64_t b = 0; b < nblk; b++) {
+            cpx *o = out + b * 2 * m;
+            for (int64_t k = 0; k < m; k++) {
+                cpx t = cmul(o[k + m], lt[k]);
+                o[k + m] = csub(o[k], t);
+                o[k] = cadd(o[k], t);
+            }
         }
     } else if (p == 4) {
-        for (int64_t k = 0; k < m; k++) {
-            cpx a0 = out[k];
-            cpx a1 = cmul(out[k + m], lt[3 * k]);
-            cpx a2 = cmul(out[k + 2 * m], lt[3 * k + 1]);
-            cpx a3 = cmul(out[k + 3 * m], lt[3 * k + 2]);
-            cpx s02 = cadd(a0, a2), d02 = csub(a0, a2);
-            cpx s13 = cadd(a1, a3), d13 = csub(a1, a3);
-            /* multiply d13 by -i (forward) or +i (inverse) */
-            cpx r = inverse ? (cpx){-d13.im, d13.re} : (cpx){d13.im, -d13.re};
-            out[k] = cadd(s02, s13);
-            out[k + 2 * m] = csub(s02, s13);
-            out[k + m] = cadd(d02, r);
-            out[k + 3 * m] = csub(d02, r);
+        for (int64_t b = 0; b < nblk; b++) {
+            cpx *o = out + b * 4 * m;
+            for (int64_t k = 0; k < m; k++) {
+                cpx a0 = o[k];
+                cpx a1 = cmul(o[k + m], lt[3 * k]);
+                cpx a2 = cmul(o[k + 2 * m], lt[3 * k + 1]);
+                cpx a3 = cmul(o[k + 3 * m], lt[3 * k + 2]);
+                cpx s02 = cadd(a0, a2), d02 = csub(a0, a2);
+                cpx s13 = cadd(a1, a3), d13 = csub(a1, a3);
+                /* multiply d13 by -i (forward) or +i (inverse) */
+                cpx r = inverse ? (cpx){-d13.im, d13.re} : (cpx){d13.im, -d13.re};
+                o[k] = cadd(s02, s13);
+                o[k + 2 * m] = csub(s02, s13);
+                o[k + m] = cadd(d02, r);
+                o[k + 3 * m] = csub(d02, r);
+            }
         }
     } else if (p == 3) {
         const double s3 = (inverse ? 1.0 : -1.0) * 0.86602540378443864676;
-        for (int64_t k = 0; k < m; k++) {
-            cpx a0 = out[k];
-            cpx a1 = cmul(out[k + m], lt[2 * k]);
-            cpx a2 = cmul(out[k + 2 * m], lt[2 * k + 1]);
-            cpx s = cadd(a1, a2), d = csub(a1, a2);
-            cpx c = {a0.re - 0.5 * s.re, a0.im - 0.5 * s.im};
-            cpx rot = {-s3 * d.im, s3 * d.re};
-            out[k] = cadd(a0, s);
-            out[k + m] = cadd(c, rot);
-            out[k + 2 * m] = csub(c, rot);
+        for (int64_t b = 0; b < nblk; b++) {
+            cpx *o = out + b * 3 * m;
+            for (int64_t k = 0; k < m; k++) {
+                cpx a0 = o[k];
+                cpx a1 = cmul(o[k + m], lt[2 * k]);
+                cpx a2 = cmul(o[k + 2 * m], lt[2 * k + 1]);
+                cpx s = cadd(a1, a2), d = csub(a1, a2);
+                cpx c = {a0.re - 0.5 * s.re, a0.im - 0.5 * s.im};
+                cpx rot = {-s3 * d.im, s3 * d.re};
+                o[k] = cadd(a0, s);
+                o[k + m] = cadd(c, rot);
+                o[k + 2 * m] = csub(c, rot);
+            }
         }
     } else if (p == 5) {
         const double c1 = 0.30901699437494742410, c2 = -0.80901699437494742410;
         const double sg = inverse ? 1.0 : -1.0;
         const double s1 = sg * 0.95105651629515357212, s2 = sg * 0.58778525229247312917;
-        for (int64_t k = 0; k < m; k++) {
-            cpx a0 = out[k];
-            cpx a1 = cmul(out[k + m], lt[4 * k]);
-            cpx a2 = cmul(out[k + 2 * m], lt[4 * k + 1]);
-            cpx a3 = cmul(out[k + 3 * m], lt[4 * k + 2]);
-            cpx a4 = cmul(out[k + 4 * m], lt[4 * k + 3]);
-            cpx t1 = cadd(a1, a4), t2 = cadd(a2, a3), t3 = csub(a1, a4), t4 = csub(a2, a3);
-            cpx b1 = {a0.re + c1 * t1.re + c2 * t2.re, a0.im + c1 * t1.im + c2 * t2.im};
-            cpx b2 = {a0.re + c2 * t1.re + c1 * t2.re, a0.im + c2 * t1.im + c1 * t2.im};
-            /* i * (s1 t3 + s2 t4) and i * (s2 t3 - s1 t4) */
-            cpx r1 = {-(s1 * t3.im + s2 * t4.im), s1 * t3.re + s2 * t4.re};
-            cpx r2 = {-(s2 * t3.im - s1 * t4.im), s2 * t3.re - s1 * t4.re};
-            out[k] = cadd(a0, cadd(t1, t2));
-            out[k + m] = cadd(b1, r1);
-            out[k + 4 * m] = csub(b1, r1);
-            out[k + 2 * m] = cadd(b2, r2);
-            out[k + 3 * m] = csub(b2, r2);
+        for (int64_t b = 0; b < nblk; b++) {
+            cpx *o = out + b * 5 * m;
+            for (int64_t k = 0; k < m; k++) {
+                cpx a0 = o[k];
+                cpx a1 = cmul(o[k + m], lt[4 * k]);
+                cpx a2 = cmul(o[k + 2 * m], lt[4 * k + 1]);
+                cpx a3 = cmul(o[k + 3 * m], lt[4 * k + 2]);
+                cpx a4 = cmul(o[k + 4 * m], lt[4 * k + 3]);
+                cpx t1 = cadd(a1, a4), t2 = cadd(a2, a3), t3 = csub(a1, a4), t4 = csub(a2, a3);
+                cpx b1 = {a0.re + c1 * t1.re + c2 * t2.re, a0.im + c1 * t1.im + c2 * t2.im};
+                cpx b2 = {a0.re + c2 * t1.re + c1 * t2.re, a0.im + c2 * t1.im + c1 * t2.im};
+                /* i * (s1 t3 + s2 t4) and i * (s2 t3 - s1 t4) */
+                cpx r1 = {-(s1 * t3.im + s2 * t4.im), s1 * t3.re + s2 * t4.re};
+                cpx r2 = {-(s2 * t3.im - s1 * t4.im), s2 * t3.re - s1 * t4.re};
+                o[k] = cadd(a0, cadd(t1, t2));
+                o[k + m] = cadd(b1, r1);
+                o[k + 4 * m] = csub(b1, r1);
+                o[k + 2 * m] = cadd(b2, r2);
+                o[k + 3 * m] = csub(b2, r2);
+            }
         }
     } else {
         cpx *t = scratch;
         const int64_t n = pl->n;
-        for (int64_t k = 0; k < m; k++) {
-            for (int64_t q = 0; q < p; q++) t[q] = cmul(out[k + q * m], tw[(q * k * fstride) % n]);
-            for (int64_t s = 0; s < p; s++) {
-                cpx acc = t[0];
-                int64_t step = s * m * fstride, idx = 0;
-                for (int64_t q = 1; q < p; q++) {
-                    idx += step;
-                    if (idx >= n) idx -= n * (idx / n);
-                    acc = cadd(acc, cmul(t[q], tw[idx]));
+        for (int64_t b = 0; b < nblk; b++) {
+            cpx *o = out + b * p * m;
+            for (int64_t k = 0; k < m; k++) {
+                for (int64_t q = 0; q < p; q++) t[q] = cmul(o[k + q * m], tw[(q * k * fstride) % n]);
+                for (int64_t s = 0; s < p; s++) {
+                    cpx acc = t[0];
+                    int64_t step = s * m * fstride, idx = 0;
+                    for (int64_t q = 1; q < p; q++) {
+                        idx += step;
+                        if (idx >= n) idx -= n * (idx / n);
+                        acc = cadd(acc, cmul(t[q], tw[idx]));
+                    }
+                    o[k + s * m] = acc;
                 }
-                out[k + s * m] = acc;
             }
         }
     }
 }
 
-static void rec(const plan_t *pl, cpx *out, const cpx *in, int64_t fstride, int64_t istride, int fi, int inverse,
-                cpx *scratch)
+/* Decimation in time, unrolled: level fi (radix p = factors[fi]) splits each block of p * m values (m = the product of
+   the later factors) into p sub-transforms of m, the q-th fed by every p-th input of its parent, then combines them
+   with the level's butterflies. The leaves are therefore out[sum q_fi m_fi] = in[sum q_fi s_fi] (s_fi = the product of
+   the earlier factors, the input stride at level fi): one gather, then the levels from the deepest up, each over all
+   its blocks. Every block receives the butterflies the recursive form applied, on the same values: the same
+   transform, bit for bit. real_in: the leaves read x as (x, 0.0), what converting the input to complex first holds. */
+static void run_levels(const plan_t *pl, cpx *out, const cpx *in, const double *rin)
 {
-    int64_t p = pl->factors[fi];
-    int64_t m = 1;
-    for (int j = fi + 1; j < pl->nf; j++) m *= pl->factors[j];
-    if (m == 1) {
-        for (int64_t q = 0; q < p; q++) out[q] = in[q * istride];
-    } else {
-        for (int64_t q = 0; q < p; q++)
-            rec(pl, out + q * m, in + q * istride, fstride * p, istride * p, fi + 1, inverse, scratch);
+    const int nf = pl->nf;
+    const int64_t n = pl->n;
+    int64_t s[64], q[64];
+    s[0] = 1;
+    for (int fi = 1; fi < nf; fi++) s[fi] = s[fi - 1] * pl->factors[fi - 1];
+    for (int fi = 0; fi < nf; fi++) q[fi] = 0;
+    const int last = nf - 1;
+    const int64_t pl0 = pl->factors[last], sl = s[last];
+    int64_t i = 0;
+    for (int64_t o = 0; o < n; o += pl0) {
+        /* the fastest digit q_last runs over one leaf block: inputs i, i + sl, ... */
+        if (rin) for (int64_t d = 0; d < pl0; d++) out[o + d] = (cpx){rin[i + d * sl], 0.0};
+        else for (int64_t d = 0; d < pl0; d++) out[o + d] = in[i + d * sl];
+        for (int fi = last - 1; fi >= 0; fi--) {
+            if (++q[fi] < pl->factors[fi]) { i += s[fi]; break; }
+            i -= (pl->factors[fi] - 1) * s[fi];
+            q[fi] = 0;
+        }
     }
-    butterfly(pl, pl->ltw[fi], out, fstride, m, p, inverse, scratch);
 }
 
-/* rec for real input: the leaf reads x[q * istride] as (x, 0.0), exactly what converting the input to complex first
-   would hold, so the transform is the same bit for bit without that conversion pass */
-static void rec_real(const plan_t *pl, cpx *out, const double *in, int64_t fstride, int64_t istride, int fi, int inverse,
-                     cpx *scratch)
+static void run_butterflies(const plan_t *pl, cpx *out, int inverse, cpx *scratch)
 {
-    int64_t p = pl->factors[fi];
     int64_t m = 1;
-    for (int j = fi + 1; j < pl->nf; j++) m *= pl->factors[j];
-    if (m == 1) {
-        for (int64_t q = 0; q < p; q++) out[q] = (cpx){in[q * istride], 0.0};
-    } else {
-        for (int64_t q = 0; q < p; q++)
-            rec_real(pl, out + q * m, in + q * istride, fstride * p, istride * p, fi + 1, inverse, scratch);
+    for (int fi = pl->nf - 1; fi >= 0; fi--) {
+        const int64_t p = pl->factors[fi], nblk = pl->n / (p * m);   /* = the product of the earlier factors */
+        butterfly(pl, pl->ltw[fi], out, nblk, m, p, inverse, scratch, nblk);
+        m *= p;
     }
-    butterfly(pl, pl->ltw[fi], out, fstride, m, p, inverse, scratch);
 }
 
 static void plan_free(plan_t *pl)
@@ -243,13 +266,15 @@ static int64_t plan_bytes(int64_t n)
 static void run_plan(const plan_t *pl, const cpx *in, cpx *out, int inverse, cpx *scratch)
 {
     if (pl->n == 1) { out[0] = in[0]; return; }
-    rec(pl, out, in, 1, 1, 0, inverse, scratch);
+    run_levels(pl, out, in, NULL);
+    run_butterflies(pl, out, inverse, scratch);
 }
 
 static void run_plan_real(const plan_t *pl, const double *in, cpx *out, int inverse, cpx *scratch)
 {
     if (pl->n == 1) { out[0] = (cpx){in[0], 0.0}; return; }
-    rec_real(pl, out, in, 1, 1, 0, inverse, scratch);
+    run_levels(pl, out, NULL, in);
+    run_butterflies(pl, out, inverse, scratch);
 }
 
 /* Bluestein: X_k = w_k * sum_j (x_j w_j) conj(w_{k-j}), w_k = exp(-/+ i pi k^2 / n). Read-only once built; the two
@@ -535,7 +560,7 @@ int64_t tsr_fft_cache_bytes(void)
 /* rows x n complex (or real, real_in) -> rows x n complex. The input is staged row by row through a buffer only when
    it overlaps the output (an in-place transform) or a real row feeds Bluestein; otherwise the plan reads it directly,
    which saves a pass over the data (and, for real input, the conversion to complex the caller would do). */
-static int fft_rows(int64_t n, int64_t rows, int inverse, const double *in, int real_in, double *out)
+static int fft_rows(int64_t n, int64_t rows, int inverse, const double *in, int real_in, double *out, int64_t ostride)
 {
     if (n < 1 || rows < 0 || !in || !out) return TSR_EARG;
     if (rows == 0) return TSR_OK;
@@ -544,7 +569,8 @@ static int fft_rows(int64_t n, int64_t rows, int inverse, const double *in, int 
     const int use_blue = maxp > TSR_FFT_MAX_RADIX;
     const double scale = inverse ? 1.0 / (double)n : 1.0;
     const uintptr_t ib = (uintptr_t)in, ie = ib + (uintptr_t)(rows * n * (real_in ? 1 : 2)) * sizeof(double);
-    const uintptr_t ob = (uintptr_t)out, oe = ob + (uintptr_t)(rows * n * 2) * sizeof(double);
+    /* output rows ostride complex values apart (n: packed) */
+    const uintptr_t ob = (uintptr_t)out, oe = ob + (uintptr_t)(((rows - 1) * ostride + n) * 2) * sizeof(double);
     const int stage = (ib < oe && ob < ie) || (use_blue && real_in);
 
     fft_ref ref;
@@ -559,7 +585,7 @@ static int fft_rows(int64_t n, int64_t rows, int inverse, const double *in, int 
     if (work > 0 && !tmp) { fft_release(&ref); return TSR_ENOMEM; }
     cpx *scratch = tmp + nstage, *wa = scratch + nscr, *wb = wa + M;
     for (int64_t r = 0; r < rows; r++) {
-        cpx *o = (cpx *)(out + 2 * n * r);
+        cpx *o = (cpx *)(out + 2 * ostride * r);
         const cpx *src = real_in ? NULL : (const cpx *)(in + 2 * n * r);
         if (stage) {
             if (real_in) { const double *x = in + n * r; for (int64_t i = 0; i < n; i++) tmp[i] = (cpx){x[i], 0.0}; }
@@ -573,19 +599,19 @@ static int fft_rows(int64_t n, int64_t rows, int inverse, const double *in, int 
     if (tmp) tsr_free(tmp, work);
     fft_release(&ref);
     if (rc == TSR_OK && inverse) {
-        for (int64_t i = 0; i < 2 * n * rows; i++) out[i] *= scale;
+        for (int64_t r = 0; r < rows; r++) for (int64_t i = 0; i < 2 * n; i++) out[2 * ostride * r + i] *= scale;
     }
     return rc;
 }
 
 int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out)
 {
-    return fft_rows(n, rows, inverse, in, 0, out);
+    return fft_rows(n, rows, inverse, in, 0, out, n);
 }
 
 int tsr_fft_real(int64_t n, int64_t rows, int inverse, const double *in, double *out)
 {
-    return fft_rows(n, rows, inverse, in, 1, out);
+    return fft_rows(n, rows, inverse, in, 1, out, n);
 }
 
 /*
@@ -629,30 +655,44 @@ int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out)
         return rc;
     }
     const int64_t m = n / 2;
-    cpx *Z = (cpx *)tsr_alloc(m * rows * (int64_t)sizeof(cpx));
-    if (!Z) return TSR_ENOMEM;
     fft_ref wref;
-    if (fft_acquire(K_RTW, n, 0, &wref) != TSR_OK) { tsr_free(Z, m * rows * (int64_t)sizeof(cpx)); return TSR_ENOMEM; }
+    if (fft_acquire(K_RTW, n, 0, &wref) != TSR_OK) return TSR_ENOMEM;
     const tw_t W = *(const tw_t *)wref.obj;
-    /* the input read as m complex values (x0 + i x1, x2 + i x3, ...), transformed straight into Z */
-    int rc = tsr_fft(m, rows, 0, in, (double *)Z);
+    const uintptr_t ib = (uintptr_t)in, ie = ib + (uintptr_t)(n * rows) * sizeof(double);
+    const uintptr_t ob = (uintptr_t)out, oe = ob + (uintptr_t)(2 * h * rows) * sizeof(double);
+    int rc;
+    if (ib < oe && ob < ie) {
+        /* overlapping input and output: through a separate spectrum buffer */
+        cpx *Z = (cpx *)tsr_alloc(m * rows * (int64_t)sizeof(cpx));
+        if (!Z) { fft_release(&wref); return TSR_ENOMEM; }
+        rc = tsr_fft(m, rows, 0, in, (double *)Z);
+        if (rc == TSR_OK)
+            for (int64_t r = 0; r < rows; r++) memcpy(out + 2 * h * r, Z + m * r, (size_t)m * sizeof(cpx));
+        tsr_free(Z, m * rows * (int64_t)sizeof(cpx));
+    } else {
+        /* the input read as m complex values (x0 + i x1, x2 + i x3, ...), each row transformed straight into the first
+           m bins of its output row */
+        rc = fft_rows(m, rows, 0, in, 0, out, h);
+    }
     if (rc == TSR_OK) {
+        /* X[k] from Z[k] and Z[m-k] (indices mod m), in place: the bins k and m-k read the same pair, so they are
+           formed together; Z[0] feeds X[0] and X[m] */
+#define RFFT_BIN(A, B, K, DST) do {                                                                                const double er = 0.5 * ((A).re + (B).re), ei = 0.5 * ((A).im - (B).im);  /* E = (a + conj b)/2 */              const double orr = 0.5 * ((A).im + (B).im), oi = -0.5 * ((A).re - (B).re); /* O = (a - conj b)/(2i) */            const cpx wk = tw_get(&W, (K), -1.0);                                                                  const double c = wk.re, s = wk.im;                                                                     (DST).re = er + (c * orr - s * oi);                                                                    (DST).im = ei + (c * oi + s * orr);                                                                } while (0)
         for (int64_t r = 0; r < rows; r++) {
-            const cpx *z = Z + m * r;
             cpx *X = (cpx *)(out + 2 * h * r);
-            for (int64_t k = 0; k <= m; k++) {
-                const cpx a = z[k % m], b = z[(m - k) % m];                 /* Z[k], Z[m-k] */
-                const double er = 0.5 * (a.re + b.re), ei = 0.5 * (a.im - b.im);  /* E = (a + conj b)/2 */
-                const double orr = 0.5 * (a.im + b.im), oi = -0.5 * (a.re - b.re); /* O = (a - conj b)/(2i) */
-                const cpx wk = tw_get(&W, k, -1.0);
-                const double c = wk.re, s = wk.im;
-                X[k].re = er + (c * orr - s * oi);
-                X[k].im = ei + (c * oi + s * orr);
+            const cpx z0 = X[0];
+            for (int64_t k = 1; 2 * k < m; k++) {
+                const cpx a = X[k], b = X[m - k];
+                RFFT_BIN(a, b, k, X[k]);
+                RFFT_BIN(b, a, m - k, X[m - k]);
             }
+            if (m % 2 == 0 && m > 0) { const cpx a = X[m / 2]; RFFT_BIN(a, a, m / 2, X[m / 2]); }
+            RFFT_BIN(z0, z0, m, X[m]);
+            RFFT_BIN(z0, z0, 0, X[0]);
         }
+#undef RFFT_BIN
     }
     fft_release(&wref);
-    tsr_free(Z, m * rows * (int64_t)sizeof(cpx));
     return rc;
 }
 
@@ -677,10 +717,15 @@ int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out)
         return rc;
     }
     const int64_t m = n / 2;
-    cpx *Z = (cpx *)tsr_alloc(m * rows * (int64_t)sizeof(cpx));
+    /* the spectrum z of the m packed complex values is built in out itself (m complex per row = the n real outputs)
+       and transformed in place, unless the input overlaps out: then in a separate buffer, as before */
+    const uintptr_t ib = (uintptr_t)in, ie = ib + (uintptr_t)(2 * h * rows) * sizeof(double);
+    const uintptr_t ob = (uintptr_t)out, oe = ob + (uintptr_t)(n * rows) * sizeof(double);
+    const int sep = ib < oe && ob < ie;
+    cpx *Z = sep ? (cpx *)tsr_alloc(m * rows * (int64_t)sizeof(cpx)) : (cpx *)out;
     if (!Z) return TSR_ENOMEM;
     fft_ref wref;
-    if (fft_acquire(K_RTW, n, 0, &wref) != TSR_OK) { tsr_free(Z, m * rows * (int64_t)sizeof(cpx)); return TSR_ENOMEM; }
+    if (fft_acquire(K_RTW, n, 0, &wref) != TSR_OK) { if (sep) tsr_free(Z, m * rows * (int64_t)sizeof(cpx)); return TSR_ENOMEM; }
     const tw_t W = *(const tw_t *)wref.obj;
     for (int64_t r = 0; r < rows; r++) {
         const cpx *X = (const cpx *)(in + 2 * h * r);
@@ -700,6 +745,6 @@ int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out)
     /* m complex results are the n real outputs (interleaved re, im = x[2j], x[2j+1]): transform straight into out */
     int rc = tsr_fft(m, rows, 1, (double *)Z, out);
     fft_release(&wref);
-    tsr_free(Z, m * rows * (int64_t)sizeof(cpx));
+    if (sep) tsr_free(Z, m * rows * (int64_t)sizeof(cpx));
     return rc;
 }
