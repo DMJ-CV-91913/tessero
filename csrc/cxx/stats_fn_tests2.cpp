@@ -157,8 +157,19 @@ int64_t py_floordiv(int64_t a, int64_t b)
 
 double clip01(double p) { return p != p ? p : (p < 0 ? 0.0 : (p > 1 ? 1.0 : p)); }
 
+/* without NaN and without both signs of zero, equal values are equal bit for bit, so the sorted array is unique and
+   the kernel sort gives exactly what std::sort gave; otherwise std::sort, whose order of -0 and 0 (and of NaN
+   payloads) callers may see */
 void sort_nan_last(vector<double> &v)
 {
+    if (v.size() >= 512) {
+        bool nan = false, pz = false, nz = false;
+        for (const double x : v) {
+            nan |= x != x;
+            if (x == 0) (std::signbit(x) ? nz : pz) = true;
+        }
+        if (!nan && !(pz && nz) && tsr_sort(TSR_F64, (int64_t)v.size(), v.data()) == TSR_OK) return;
+    }
     std::sort(v.begin(), v.end(), [](double a, double b) { return a < b || (b != b && a == a); });
 }
 
@@ -2211,10 +2222,23 @@ int ks2_core(vector<double> d1, vector<double> d2, string alternative, const str
     vector<double> all = d1;
     all.insert(all.end(), d2.begin(), d2.end());
     vector<double> cdd(all.size());
-    for (size_t i = 0; i < all.size(); i++) {
-        const double c1 = (double)ss_right(d1, all[i]) / (double)n1;
-        const double c2 = (double)ss_right(d2, all[i]) / (double)n2;
-        cdd[i] = c1 - c2;
+    if (d1[n1 - 1] == d1[n1 - 1] && d2[n2 - 1] == d2[n2 - 1]) {
+        /* no NaN (it sorts last): each half of `all` is sorted, so std::upper_bound's counts are where a forward
+           merge stands */
+        int64_t p1 = 0, p2 = 0;
+        for (int64_t i = 0; i < (int64_t)all.size(); i++) {
+            if (i == n1) p1 = p2 = 0;
+            const double q = all[i];
+            while (p1 < n1 && !(q < d1[p1])) p1++;
+            while (p2 < n2 && !(q < d2[p2])) p2++;
+            cdd[i] = (double)p1 / (double)n1 - (double)p2 / (double)n2;
+        }
+    } else {
+        for (size_t i = 0; i < all.size(); i++) {
+            const double c1 = (double)ss_right(d1, all[i]) / (double)n1;
+            const double c2 = (double)ss_right(d2, all[i]) / (double)n2;
+            cdd[i] = c1 - c2;
+        }
     }
     const int64_t amin = np_argmin(cdd), amax = np_argmax(cdd);
     const double locmin = all[amin], locmax = all[amax];

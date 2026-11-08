@@ -236,55 +236,128 @@ static void uniq_free(uniq *u)
     memset(u, 0, sizeof *u);
 }
 
-static int unique1d(const double *x, int64_t n, int want_index, int want_inverse, int want_counts, int equal_nan, uniq *u)
+/* few distinct values (at most HASH_UNIQ) without NaN: each value's first index and count collected in a hash table,
+   then only the distinct values sorted. Values are grouped by ==, so -0 and 0 share one entry, which keeps the first
+   zero of the input (the one the stable sort puts first); no two distinct values compare equal, so their order is
+   the sorted path's. Returns 0, leaving u's arrays to the sorted path, on a NaN or too many distinct values. */
+#define HASH_UNIQ 4096
+#define HASH_SLOTS (4 * HASH_UNIQ)
+
+typedef struct { double v; int32_t slot; } uniq_entry;
+
+static int cmp_uniq_entry(const void *a, const void *b)
+{
+    const double x = ((const uniq_entry *)a)->v, y = ((const uniq_entry *)b)->v;
+    return (x > y) - (x < y);
+}
+
+static int unique_hashed(const double *x, int64_t n, int want_index, int want_inverse, int want_counts, uniq *u)
+{
+    uint64_t *key = (uint64_t *)tsr_alloc(HASH_SLOTS * 8);
+    int32_t *at = (int32_t *)tsr_alloc(HASH_SLOTS * 4);
+    uniq_entry *e = (uniq_entry *)tsr_alloc(HASH_UNIQ * sizeof(uniq_entry));
+    int64_t *first = (int64_t *)tsr_alloc(HASH_UNIQ * 8), *cnt = (int64_t *)tsr_alloc(HASH_UNIQ * 8);
+    int32_t *rank = (int32_t *)tsr_alloc(HASH_UNIQ * 4);
+    int ok = key && at && e && first && cnt && rank;
+    int32_t m = 0;
+    if (ok) {
+        for (int64_t s = 0; s < HASH_SLOTS; s++) at[s] = -1;
+        for (int64_t i = 0; i < n && ok; i++) {
+            const double v = x[i];
+            if (v != v) { ok = 0; break; }
+            const double kv = v == 0.0 ? 0.0 : v;       /* -0 and 0: one key */
+            uint64_t b;
+            memcpy(&b, &kv, 8);
+            uint64_t s = (b * 0x9E3779B97F4A7C15ull) >> 50;   /* 14 bits: HASH_SLOTS */
+            while (at[s] >= 0 && key[s] != b) s = (s + 1) & (HASH_SLOTS - 1);
+            int32_t j = at[s];
+            if (j < 0) {
+                if (m == HASH_UNIQ) { ok = 0; break; }
+                j = at[s] = m++;
+                key[s] = b;
+                e[j].v = v;
+                e[j].slot = j;
+                first[j] = i;
+                cnt[j] = 0;
+            }
+            cnt[j]++;
+            if (want_inverse) u->inverse[i] = j;
+        }
+    }
+    if (ok) {
+        qsort(e, (size_t)m, sizeof *e, cmp_uniq_entry);
+        for (int32_t r = 0; r < m; r++) {
+            const int32_t j = e[r].slot;
+            rank[j] = r;
+            u->vals[r] = e[r].v;
+            if (want_index) u->index[r] = first[j];
+            if (want_counts) u->counts[r] = cnt[j];
+        }
+        if (want_inverse) for (int64_t i = 0; i < n; i++) u->inverse[i] = rank[u->inverse[i]];
+        u->nu = m;
+    }
+    if (key) tsr_free(key, HASH_SLOTS * 8);
+    if (at) tsr_free(at, HASH_SLOTS * 4);
+    if (e) tsr_free(e, HASH_UNIQ * sizeof(uniq_entry));
+    if (first) tsr_free(first, HASH_UNIQ * 8);
+    if (cnt) tsr_free(cnt, HASH_UNIQ * 8);
+    if (rank) tsr_free(rank, HASH_UNIQ * 4);
+    return ok;
+}
+
+/* x is the caller's scratch copy of the input: reordered when neither indices nor the inverse are wanted */
+static int unique1d(double *x, int64_t n, int want_index, int want_inverse, int want_counts, int equal_nan, uniq *u)
 {
     memset(u, 0, sizeof *u);
     u->n = n;
     const int64_t cap = n > 0 ? n : 1;
-    double *pairs = (double *)tsr_alloc(cap * 16);
-    unsigned char *mask = (unsigned char *)tsr_alloc(cap);
+    const int paired = want_index || want_inverse;
+    double *pairs = paired ? (double *)tsr_alloc(cap * 16) : NULL;
     u->vals = (double *)tsr_alloc(cap * 8);
     if (want_index) u->index = (int64_t *)tsr_alloc(cap * 8);
     if (want_inverse) u->inverse = (int64_t *)tsr_alloc(cap * 8);
     if (want_counts) u->counts = (int64_t *)tsr_alloc(cap * 8);
-    if (!pairs || !mask || !u->vals || (want_index && !u->index) || (want_inverse && !u->inverse) || (want_counts && !u->counts)) {
+    if ((paired && !pairs) || !u->vals || (want_index && !u->index) || (want_inverse && !u->inverse) || (want_counts && !u->counts)) {
         if (pairs) tsr_free(pairs, cap * 16);
-        if (mask) tsr_free(mask, cap);
         uniq_free(u);
         return TSR_ENOMEM;
     }
-    if (!want_index && !want_inverse) {
-        /* values (and counts) only: the values sorted alone, no (value, index) pairs. The stable sort would put the
-           first zero of the input first in the zero run, so that zero's sign is restored where both signs occur */
-        double *s = pairs;
-        memcpy(s, x, (size_t)n * sizeof(double));
-        np_sort_doubles(s, n);
+    if (n >= 256 && unique_hashed(x, n, want_index, want_inverse, want_counts, u)) {
+        if (pairs) tsr_free(pairs, cap * 16);
+        return TSR_OK;
+    }
+    const double *v;                                     /* the sorted values, every st-th double */
+    int64_t st;
+    if (!paired) {
+        /* values (and counts) only: the values sorted alone, in place, no (value, index) pairs. The stable sort would
+           put the first zero of the input first in the zero run, so that zero's sign is restored where both signs
+           occur */
+        int64_t fz = 0;
+        while (fz < n && x[fz] != 0.0) fz++;
+        const double zero = fz < n ? x[fz] : 0.0;
+        np_sort_doubles(x, n);
         int64_t z = 0;
-        while (z < n && s[z] < 0.0) z++;
-        if (z < n && s[z] == 0.0)
-            for (int64_t i = 0; i < n; i++) if (x[i] == 0.0) { s[z] = x[i]; break; }
-        for (int64_t i = n - 1; i >= 0; i--) { pairs[2 * i] = s[i]; pairs[2 * i + 1] = 0.0; }   /* spread in place, back to front */
+        while (z < n && x[z] < 0.0) z++;
+        if (z < n && x[z] == 0.0) x[z] = zero;
+        v = x;
+        st = 1;
     } else {
         for (int64_t i = 0; i < n; i++) { pairs[2 * i] = x[i]; pairs[2 * i + 1] = (double)i; }
         np_argsort_pairs(pairs, n);                      /* stable: first occurrence first (numpy mergesort) */
+        v = pairs;
+        st = 2;
     }
-    /* mask of first elements of each run; NaNs collapse to one when equal_nan */
-    if (n > 0) mask[0] = 1;
-    const double last = n > 0 ? pairs[2 * (n - 1)] : 0;
-    if (equal_nan && n > 0 && last != last) {
-        int64_t firstnan = 0;
-        while (firstnan < n && pairs[2 * firstnan] == pairs[2 * firstnan]) firstnan++;
-        for (int64_t i = 1; i < firstnan; i++) mask[i] = pairs[2 * i] != pairs[2 * (i - 1)];
-        mask[firstnan] = 1;
-        for (int64_t i = firstnan + 1; i < n; i++) mask[i] = 0;
-    } else {
-        for (int64_t i = 1; i < n; i++) mask[i] = pairs[2 * i] != pairs[2 * (i - 1)];
+    /* each run of equal values starts a unique value; NaNs from the first one on collapse to one when equal_nan */
+    int64_t firstnan = n;
+    if (equal_nan && n > 0 && v[st * (n - 1)] != v[st * (n - 1)]) {
+        firstnan = 0;
+        while (v[st * firstnan] == v[st * firstnan]) firstnan++;
     }
     int64_t k = -1;
     for (int64_t i = 0; i < n; i++) {
-        if (mask[i]) {
+        if (i == 0 || (i < firstnan ? v[st * i] != v[st * (i - 1)] : i == firstnan)) {
             k++;
-            u->vals[k] = pairs[2 * i];
+            u->vals[k] = v[st * i];
             if (want_index) u->index[k] = (int64_t)pairs[2 * i + 1];
             if (want_counts) u->counts[k] = 0;
         }
@@ -292,8 +365,7 @@ static int unique1d(const double *x, int64_t n, int want_index, int want_inverse
         if (want_counts) u->counts[k]++;
     }
     u->nu = k + 1;
-    tsr_free(pairs, cap * 16);
-    tsr_free(mask, cap);
+    if (pairs) tsr_free(pairs, cap * 16);
     return TSR_OK;
 }
 
