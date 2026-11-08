@@ -1218,7 +1218,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             $r = $r->maximum($min);
         }
         if ($max !== null) {
-            $r = $r->minimum($max);
+            // into the fresh array of the first pass when the dtype stays (the same values, one array less)
+            $r = $r !== $this && $r->dtype !== DType::Bool && $r->dtype->withScalar($max) === $r->dtype
+                ? $r->minimum($max, $r) : $r->minimum($max);
         }
 
         return $r === $this ? $this->copy() : $r;

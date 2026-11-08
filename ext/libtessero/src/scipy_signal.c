@@ -751,32 +751,77 @@ static int r_sosfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
     if (!y) { fn_free_doubles(sos, tsos); fn_free_doubles(x, tx); return TSR_ENOMEM; }
     for (int64_t i = 0; i < n; i++) y[i] = x[i];
-    for (int64_t s = 0; s < nsec; s++) {
-        const double a0 = sos[s * 6 + 3];
-        const double b0 = sos[s * 6 + 0] / a0, b1 = sos[s * 6 + 1] / a0, b2 = sos[s * 6 + 2] / a0;
-        const double a1 = sos[s * 6 + 4] / a0, a2 = sos[s * 6 + 5] / a0;
-        double w1 = 0.0, w2 = 0.0;                            /* transposed direct form II state */
-        for (int64_t i = 0; i < n; i++) {
-            const double xi = y[i];
-            const double yi = b0 * xi + w1;
-            w1 = b1 * xi - a1 * yi + w2;
-            w2 = b2 * xi - a2 * yi;
-            y[i] = yi;
+    /* up to four sections per pass, each sample through all of them: section s sees the same inputs in the same order
+       as in a pass of its own (the same values), but the sections of neighbouring samples overlap in the pipeline
+       instead of each pass waiting on one recurrence */
+    for (int64_t s0 = 0; s0 < nsec; s0 += 4) {
+        const int ns = nsec - s0 < 4 ? (int)(nsec - s0) : 4;
+        double b0[4], b1[4], b2[4], a1[4], a2[4], w1[4] = {0.0, 0.0, 0.0, 0.0}, w2[4] = {0.0, 0.0, 0.0, 0.0};
+        for (int k = 0; k < ns; k++) {
+            const double *c = sos + (s0 + k) * 6, a0 = c[3];
+            b0[k] = c[0] / a0; b1[k] = c[1] / a0; b2[k] = c[2] / a0; a1[k] = c[4] / a0; a2[k] = c[5] / a0;
         }
+#define SOS_SECTION(K) do {                                   /* transposed direct form II */  \
+            const double yi = b0[K] * v + w1[K];                                               \
+            w1[K] = b1[K] * v - a1[K] * yi + w2[K];                                            \
+            w2[K] = b2[K] * v - a2[K] * yi;                                                    \
+            v = yi;                                                                            \
+        } while (0)
+        if (ns == 4)
+            for (int64_t i = 0; i < n; i++) { double v = y[i]; SOS_SECTION(0); SOS_SECTION(1); SOS_SECTION(2); SOS_SECTION(3); y[i] = v; }
+        else
+            for (int64_t i = 0; i < n; i++) { double v = y[i]; for (int k = 0; k < ns; k++) SOS_SECTION(k); y[i] = v; }
+#undef SOS_SECTION
     }
     fn_free_doubles(sos, tsos); fn_free_doubles(x, tx);
     return TSR_OK;
 }
 
-/* Transposed-direct-form-II IIR filter: y[i] from b[0..K-1], a[0..K-1] (a[0]==1), state z[0..K-2] updated. */
-static void df2t_filter(const double *b, const double *a, int K, const double *x, int64_t n, double *z, double *out)
+/* df2t_filter_dir for a fixed K (inlined with a constant): the coefficients and the state in locals (registers) instead of
+   memory that every output store might alias, the same expressions in the same order. Sample i is x[i * st] and goes
+   to out[i * st] (st = -1: the filter runs backwards through the buffers, as on a reversed copy) */
+static inline __attribute__((always_inline)) void df2t_k(const double *b, const double *a, const int K, const double *x,
+                                                         int64_t n, double *z, double *out, const int64_t st)
 {
+    double bb[9], aa[9], zz[9];
+    for (int j = 0; j < K; j++) { bb[j] = b[j]; aa[j] = a[j]; }
+    for (int j = 0; j < K - 1; j++) zz[j] = z[j];
     for (int64_t i = 0; i < n; i++) {
-        const double xi = x[i];
+        const double xi = x[i * st];
+        const double yi = bb[0] * xi + (K > 1 ? zz[0] : 0.0);
+        for (int j = 0; j < K - 2; j++) zz[j] = bb[j + 1] * xi + zz[j + 1] - aa[j + 1] * yi;
+        if (K > 1) zz[K - 2] = bb[K - 1] * xi - aa[K - 1] * yi;
+        out[i * st] = yi;
+    }
+    for (int j = 0; j < K - 1; j++) z[j] = zz[j];
+}
+
+/* Transposed-direct-form-II IIR filter: y[i] from b[0..K-1], a[0..K-1] (a[0]==1), state z[0..K-2] updated.
+   backward: the samples from x[n - 1] down to x[0], into out[n - 1] down to out[0]. */
+static void df2t_filter_dir(const double *b, const double *a, int K, const double *x, int64_t n, double *z, double *out,
+                            int backward)
+{
+    const int64_t st = backward ? -1 : 1;
+    const double *xs = backward ? x + n - 1 : x;
+    double *os = backward ? out + n - 1 : out;
+    switch (K) {
+    case 1: df2t_k(b, a, 1, xs, n, z, os, st); return;
+    case 2: df2t_k(b, a, 2, xs, n, z, os, st); return;
+    case 3: df2t_k(b, a, 3, xs, n, z, os, st); return;
+    case 4: df2t_k(b, a, 4, xs, n, z, os, st); return;
+    case 5: df2t_k(b, a, 5, xs, n, z, os, st); return;
+    case 6: df2t_k(b, a, 6, xs, n, z, os, st); return;
+    case 7: df2t_k(b, a, 7, xs, n, z, os, st); return;
+    case 8: df2t_k(b, a, 8, xs, n, z, os, st); return;
+    case 9: df2t_k(b, a, 9, xs, n, z, os, st); return;
+    default: break;
+    }
+    for (int64_t i = 0; i < n; i++) {
+        const double xi = xs[i * st];
         const double yi = b[0] * xi + (K > 1 ? z[0] : 0.0);
         for (int j = 0; j < K - 2; j++) z[j] = b[j + 1] * xi + z[j + 1] - a[j + 1] * yi;
         if (K > 1) z[K - 2] = b[K - 1] * xi - a[K - 1] * yi;
-        out[i] = yi;
+        os[i * st] = yi;
     }
 }
 
@@ -854,14 +899,14 @@ static int r_filtfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     for (int64_t i = 0; i < n; i++) ext[edge + i] = x[i];
     for (int64_t k = 0; k < edge; k++) ext[edge + n + k] = 2.0 * x[n - 1] - x[n - 2 - k];  /* odd right */
     for (int j = 0; j < K - 1; j++) z[j] = zi[j] * ext[0];                           /* forward */
-    df2t_filter(b, a, K, ext, next, z, yf);
-    for (int64_t i = 0; i < next / 2; i++) { double t = yf[i]; yf[i] = yf[next - 1 - i]; yf[next - 1 - i] = t; }  /* reverse in place */
-    for (int j = 0; j < K - 1; j++) z[j] = zi[j] * yf[0];                            /* backward (on reversed) */
-    df2t_filter(b, a, K, yf, next, z, ext);                                          /* reuse ext as output buffer */
+    df2t_filter_dir(b, a, K, ext, next, z, yf, 0);
+    /* backward: the filter runs from yf[next - 1] down (as on a reversed copy), its outputs stored in place order */
+    for (int j = 0; j < K - 1; j++) z[j] = zi[j] * yf[next - 1];
+    df2t_filter_dir(b, a, K, yf, next, z, ext, 1);                                   /* reuse ext as output buffer */
     int64_t sh[1] = {n};
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
     if (!out) { rc = TSR_ENOMEM; goto done; }
-    for (int64_t i = 0; i < n; i++) out[i] = ext[next - 1 - (edge + i)];             /* reverse back + trim padding */
+    memcpy(out, ext + edge, (size_t)n * sizeof(double));                            /* trim the padding */
 done:
     fn_free_doubles(bi, tb); fn_free_doubles(ai, ta); fn_free_doubles(x, tx);
     free(b); free(a); free(zi); free(ext); free(yf); free(z);
@@ -1248,6 +1293,27 @@ static double poly_deriv_val(const double *a, int64_t po, int64_t deriv, double 
     return acc / dp;
 }
 
+/* the savgol outputs y[i0..i1) whose window lies inside x: y[i] = 0.0 + coef[0] x[i+half] + coef[1] x[i+half-1] + ...,
+   added in that order as the per-output loop adds them, but tap by tap across a block of outputs (vectorizable;
+   contraction into FMA off, so the SIMD clones round as the baseline does) */
+TSR_CLONES CONV_NOCONTRACT
+static void sg_interior(double *restrict y, const double *restrict x, int64_t i0, int64_t i1, int64_t half,
+                        const double *restrict coef, int64_t wl)
+{
+#if defined(__clang__)
+#pragma clang fp contract(off)
+#endif
+    for (int64_t b0 = i0; b0 < i1; b0 += 512) {
+        const int64_t b1 = b0 + 512 < i1 ? b0 + 512 : i1;
+        for (int64_t i = b0; i < b1; i++) y[i] = 0.0;
+        for (int64_t k = 0; k < wl; k++) {
+            const double c = coef[k];
+            const double *restrict xs = x + half - k;
+            for (int64_t i = b0; i < b1; i++) y[i] = y[i] + c * xs[i];
+        }
+    }
+}
+
 /* savgol_filter(x, window_length, polyorder, deriv=0, delta=1.0, axis=-1, mode='interp', cval=0.0): 1-D real.
    Interior by convolving with savgol_coeffs; edges by a local polynomial fit when mode='interp'. */
 static int r_savgol_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
@@ -1279,7 +1345,11 @@ static int r_savgol_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_
     double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
     if (!y) { fn_free_doubles(x, tx); free(coef); return TSR_ENOMEM; }
     const int64_t half = wl / 2;
+    /* outputs i with every tap inside x: i + half - (wl - 1) >= 0 and i + half <= n - 1 */
+    const int64_t lo = wl - 1 - half, hi = n - half;
+    if (lo < hi) sg_interior(y, x, lo, hi, half, coef, wl);
     for (int64_t i = 0; i < n; i++) {
+        if (i == lo && lo < hi) { i = hi - 1; continue; }
         double acc = 0.0;
         for (int64_t k = 0; k < wl; k++) {
             int64_t src = i + half - k;
