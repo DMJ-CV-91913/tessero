@@ -51,6 +51,12 @@ final class ConvexHull
      */
     public function __construct(array $points)
     {
+        $first = $points === [] ? null : $points[array_key_first($points)];
+        if (is_array($first) && count($first) === 2 && count($points) >= 3) {
+            $this->hull2d($points);
+
+            return;
+        }
         $pts = [];
         $d = null;
         foreach (array_values($points) as $p) {
@@ -76,22 +82,34 @@ final class ConvexHull
             throw new \InvalidArgumentException('ConvexHull requires at least d+1 points');
         }
 
-        if ($d === 2) {
-            $this->hull2d($pts);
-
-            return;
-        }
-
         $this->hullNd($pts, $d);
     }
 
-    /** Andrew's monotone chain (2-D), in the kernel (distance.convex_hull_2d). */
-    private function hull2d(array $pts): void
+    /**
+     * Andrew's monotone chain (2-D), in the kernel (distance.convex_hull_2d). The points go to the kernel as one
+     * flat list of floats: the casts and the row-length check of the general path, in one loop.
+     *
+     * @param array<array<float|int>> $points
+     */
+    private function hull2d(array $points): void
     {
+        $this->ndim = 2;
+        $flat = [];
+        foreach ($points as $p) {
+            if (count($p) !== 2) {                       // a row that is no array: a TypeError, as before
+                throw new \InvalidArgumentException('ConvexHull: all points must have the same number of columns');
+            }
+            if (! array_is_list($p)) {
+                $p = array_values($p);
+            }
+            $flat[] = (float) $p[0];
+            $flat[] = (float) $p[1];
+        }
+        $n = count($points);
         if (extension_loaded('tessero') && class_exists(\Tessero\Ext\Distance::class)) {
-            $r = \Tessero\Ext\Distance::convexHull2d(\Tessero\Ext\NDArray::array($pts, 'float64'));
+            $r = \Tessero\Ext\Distance::convexHull2d(\Tessero\Ext\NDArray::array($flat, 'float64')->reshape([$n, 2]));
         } else {
-            $r = \Tessero\Distance::convexHull2d(\Tessero\NDArray::array($pts, 'float64'));
+            $r = \Tessero\Distance::convexHull2d(\Tessero\NDArray::fromFlat($flat, [$n, 2], 'float64'));
         }
         $hull = (is_array($r) ? reset($r) : $r)->toList();
         if (count($hull) < 3) {
@@ -102,8 +120,9 @@ final class ConvexHull
         $area2 = 0.0;
         $perim = 0.0;
         for ($i = 0; $i < $k; $i++) {
-            [$x1, $y1] = $pts[$hull[$i]];
-            [$x2, $y2] = $pts[$hull[($i + 1) % $k]];
+            $a = 2 * $hull[$i];
+            $b = 2 * $hull[($i + 1) % $k];
+            [$x1, $y1, $x2, $y2] = [$flat[$a], $flat[$a + 1], $flat[$b], $flat[$b + 1]];
             $area2 += $x1 * $y2 - $x2 * $y1;
             $dx = $x2 - $x1;
             $dy = $y2 - $y1;

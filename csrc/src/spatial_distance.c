@@ -524,7 +524,9 @@ static int r_procrustes(const void *ctx, const tsr_arg *args, int nargs, tsr_res
    in about O(log n) per query instead of O(n log n). */
 #define KD_LEAF 16
 typedef struct { int64_t lo, hi, left, right; } kd_node;
-typedef struct { const double *p; int64_t m; int64_t *idx; kd_node *nodes; double *box; int64_t nn; } kd_tree;
+/* check: a tree handed back by the caller, its nodes and indices checked as the search reaches them (kd_search);
+   n: the number of points; bad: set when a check failed */
+typedef struct { const double *p; int64_t m; int64_t *idx; kd_node *nodes; double *box; int64_t nn; int check; int64_t n; int bad; } kd_tree;
 
 /* move the median (by coordinate dim) of idx[lo..hi) to position mid, smaller ones before it */
 static void kd_select(kd_tree *t, int64_t lo, int64_t hi, int64_t mid, int dim)
@@ -612,9 +614,28 @@ static double kd_box_lb(const kd_tree *t, int64_t id, const double *q)
     return lb;
 }
 
-static void kd_search(const kd_tree *t, int64_t id, const double *q, kd_heap *h)
+/* A tree handed back by the caller (the idx, nodes, box outputs of an earlier call on the same data) is never read out
+   of bounds: each node the search reaches is checked before its fields are used (its range within the points; an inner
+   node of at least two points split exactly as kd_build splits, its children after it), each index before its point
+   is read, and that point must be finite. The checks are the same per node as a pass over the whole tree, so a child
+   holds at most half of its parent's points (rounded up) and the depth stays below log2(n) + 2, but cost only the
+   nodes visited. Box values are not checked: a wrong box only prunes wrongly. */
+static int kd_node_ok(const kd_tree *t, int64_t id)
+{
+    const kd_node *nd = &t->nodes[id];
+    if (nd->lo < 0 || nd->hi > t->n || nd->lo > nd->hi) return 0;
+    if (nd->left == -1 && nd->right == -1) return 1;                   /* a leaf */
+    if (nd->hi - nd->lo < 2 || nd->left <= id || nd->right <= id || nd->left >= t->nn || nd->right >= t->nn) return 0;
+    const int64_t mid = nd->lo + (nd->hi - nd->lo) / 2;
+    const kd_node *l = &t->nodes[nd->left], *r = &t->nodes[nd->right];
+    return l->lo == nd->lo && l->hi == mid && r->lo == mid && r->hi == nd->hi;
+}
+
+static void kd_search(kd_tree *t, int64_t id, const double *q, kd_heap *h)
 {
     const int64_t m = t->m;
+    if (t->bad) return;
+    if (t->check && !kd_node_ok(t, id)) { t->bad = 1; return; }
     const kd_node *nd = &t->nodes[id];
     if (h->n == h->k) {
         const double w = h->d[0];
@@ -623,7 +644,10 @@ static void kd_search(const kd_tree *t, int64_t id, const double *q, kd_heap *h)
     if (nd->left < 0) {
         for (int64_t r = nd->lo; r < nd->hi; r++) {
             const int64_t pi = t->idx[r];
+            if (t->check && (pi < 0 || pi >= t->n)) { t->bad = 1; return; }
             const double *pt = t->p + pi * m;
+            if (t->check)
+                for (int64_t j = 0; j < m; j++) if (!isfinite(pt[j])) { t->bad = 2; return; }
             double s = 0.0;
             for (int64_t j = 0; j < m; j++) { const double d = pt[j] - q[j]; s += d * d; }
             kd_push(h, sqrt(s), pi);
@@ -632,26 +656,6 @@ static void kd_search(const kd_tree *t, int64_t id, const double *q, kd_heap *h)
     }
     if (kd_box_lb(t, nd->left, q) <= kd_box_lb(t, nd->right, q)) { kd_search(t, nd->left, q, h); kd_search(t, nd->right, q, h); }
     else { kd_search(t, nd->right, q, h); kd_search(t, nd->left, q, h); }
-}
-
-/* A tree handed back by the caller (the idx, nodes, box outputs of an earlier call on the same data) is checked before
-   use, so a malformed one is refused and never read out of bounds: indices in range, node 0 the whole range, and
-   every inner node (at least two points) split exactly as kd_build splits, children after their parent. Each child
-   then holds at most half of its parent's points (rounded up), so the search depth stays below log2(n) + 2. Box
-   values are not checked: a wrong box only prunes wrongly. */
-static int kd_check_tree(const int64_t *idx, int64_t nidx, const int64_t *nd, int64_t nn, int64_t n)
-{
-    if (nidx != n || nn < 1 || nd[0] != 0 || nd[1] != n) return 0;
-    for (int64_t r = 0; r < n; r++) if (idx[r] < 0 || idx[r] >= n) return 0;
-    for (int64_t id = 0; id < nn; id++) {
-        const int64_t lo = nd[4 * id], hi = nd[4 * id + 1], l = nd[4 * id + 2], r = nd[4 * id + 3];
-        if (lo < 0 || hi > n || lo > hi) return 0;
-        if (l == -1 && r == -1) continue;                                 /* a leaf */
-        if (hi - lo < 2 || l <= id || r <= id || l >= nn || r >= nn) return 0;
-        const int64_t mid = lo + (hi - lo) / 2;
-        if (nd[4 * l] != lo || nd[4 * l + 1] != mid || nd[4 * r] != mid || nd[4 * r + 1] != hi) return 0;
-    }
-    return 1;
 }
 
 /* the integer-valued array argument a as int64 (exact below 2^53); NULL with *len = -1 when it holds a non-integer */
@@ -701,7 +705,10 @@ static void kd_release_f64(const double *p, int64_t len, int owned) { if (owned 
 static void kd_release_i64(const int64_t *p, int64_t len, int owned) { if (owned && p) tsr_free((void *)p, (len > 0 ? len : 1) * 8); }
 
 /* data checked: 2-D, at least one point with at least one coordinate, all finite (who names the caller) */
-static const double *kd_data(const tsr_arg *a, const char *who, int64_t *n, int64_t *m, int64_t *total, int *owned, int *rc)
+/* the data argument (n x m, read in place when it can be); finite: check every value (a search of a caller's tree checks
+   the points it reaches instead) */
+static const double *kd_data(const tsr_arg *a, const char *who, int64_t *n, int64_t *m, int64_t *total, int *owned, int finite,
+                             int *rc)
 {
     *rc = TSR_EARG;
     if (a->kind != 3 || a->arr.ndim != 2) { fn_set_error("%s: data must be a 2-D array", who); return NULL; }
@@ -710,7 +717,7 @@ static const double *kd_data(const tsr_arg *a, const char *who, int64_t *n, int6
     if (*m == 0) { fn_set_error("%s: the points have no coordinates", who); return NULL; }
     const double *P = kd_f64(a, total, owned);
     if (!P) { *rc = TSR_ENOMEM; return NULL; }
-    for (int64_t q = 0; q < *n * *m; q++)
+    for (int64_t q = 0; finite && q < *n * *m; q++)
         if (!isfinite(P[q])) { kd_release_f64(P, *total, *owned); fn_set_error("%s: data must be finite", who); return NULL; }
     *rc = TSR_OK;
     return P;
@@ -750,7 +757,7 @@ static int r_kdtree_build(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     if (nargs < 1) { fn_set_error("kdtree_build: data must be a 2-D array"); return TSR_EARG; }
     int64_t n, m, td, cap;
     int rc, own;
-    const double *P = kd_data(&args[0], "kdtree_build", &n, &m, &td, &own, &rc);
+    const double *P = kd_data(&args[0], "kdtree_build", &n, &m, &td, &own, 1, &rc);
     if (!P) return rc;
     kd_tree t;
     rc = kd_new_tree(&t, P, n, m, &cap);
@@ -804,7 +811,7 @@ static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     }
     int64_t n, m, td, tx, cap = 0;
     int rc, ownp, ownx;
-    const double *P = kd_data(&args[0], "kdtree_query", &n, &m, &td, &ownp, &rc);
+    const double *P = kd_data(&args[0], "kdtree_query", &n, &m, &td, &ownp, given == 0, &rc);
     if (!P) return rc;
     const double *X = kd_f64(&args[1], &tx, &ownx);
     if (!X) { kd_release_f64(P, td, ownp); return TSR_ENOMEM; }
@@ -824,13 +831,15 @@ static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_r
         if (!gidx || !gnodes || !gbox) rc = (nidx < 0 || nnodes < 0) ? TSR_EARG : TSR_ENOMEM;
         else if (args[3].arr.ndim != 1 || args[4].arr.ndim != 2 || args[4].arr.shape[1] != 4 || args[5].arr.ndim != 2
                  || args[5].arr.shape[1] != 2 * m || args[5].arr.shape[0] != args[4].arr.shape[0]
-                 || !kd_check_tree(gidx, nidx, gnodes, args[4].arr.shape[0], n)) rc = TSR_EARG;
+                 || nidx != n || args[4].arr.shape[0] < 1 || gnodes[0] != 0 || gnodes[1] != n) rc = TSR_EARG;
         if (rc == TSR_EARG) fn_set_error("kdtree_query: idx, nodes and box are not a tree of this data (pass kdtree_build's outputs)");
         if (rc == TSR_OK) {                               /* only read below: the casts drop const for the struct */
             t.nn = args[4].arr.shape[0];
             t.idx = (int64_t *)gidx;
             t.nodes = (kd_node *)gnodes;
             t.box = (double *)gbox;
+            t.check = 1;                                  /* the nodes and indices checked as the search reaches them */
+            t.n = n;
         }
     } else {
         rc = kd_new_tree(&t, P, n, m, &cap);
@@ -847,6 +856,7 @@ static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_r
             for (int64_t q = 0; q < nq; q++) {
                 kd_heap h = { hd, hi, kk, 0 };
                 kd_search(&t, 0, X + q * m, &h);
+                if (t.bad) break;                         /* the heap may be short: nothing is popped */
                 for (int64_t s = kk - 1; s >= 0; s--) {     /* pop the worst into the last free slot: ascending order */
                     od[q * kk + s] = h.d[0]; oi[q * kk + s] = h.i[0];
                     const double ld = h.d[h.n - 1];
@@ -855,6 +865,11 @@ static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_r
                     if (h.n > 0) kd_sift_down(&h, ld, li);
                 }
             }
+        if (rc == TSR_OK && t.bad) {
+            fn_set_error(t.bad == 2 ? "kdtree_query: data must be finite"
+                                    : "kdtree_query: idx, nodes and box are not a tree of this data (pass kdtree_build's outputs)");
+            rc = TSR_EARG;
+        }
     }
     if (given) {
         kd_release_i64(gidx, nidx, owni);
@@ -887,13 +902,6 @@ static double *g2_points(const tsr_arg *a, const char *who, int64_t *n, int64_t 
 }
 
 typedef struct { double x, y; int64_t i; } g2_pt;
-static int g2_cmp_xy(const void *pa, const void *pb)            /* x, then y, then input order (a stable sort) */
-{
-    const g2_pt *a = pa, *b = pb;
-    if (a->x != b->x) return a->x < b->x ? -1 : 1;
-    if (a->y != b->y) return a->y < b->y ? -1 : 1;
-    return a->i < b->i ? -1 : a->i > b->i;
-}
 
 /* convex_hull_2d(points) -> vertices: Andrew's monotone chain, the hull vertices counter-clockwise starting from
    the lowest x (lowest y among equals), collinear points dropped; fewer than 3 when the points are collinear.
@@ -909,11 +917,36 @@ static int r_convex_hull_2d(const void *ctx, const tsr_arg *args, int nargs, tsr
     if (!P) return prc;
     g2_pt *s = (g2_pt *)malloc((size_t)(n > 0 ? n : 1) * sizeof(g2_pt));
     int64_t *h = (int64_t *)malloc((size_t)(2 * n + 2) * sizeof(int64_t));
+    int64_t *o1 = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t)), *o2 = (int64_t *)malloc((size_t)(n > 0 ? n : 1) * sizeof(int64_t));
+    double *c = (double *)malloc((size_t)(n > 0 ? n : 1) * sizeof(double));
     int rc = TSR_OK;
-    if (!s || !h) rc = TSR_ENOMEM;
+    if (!s || !h || !o1 || !o2 || !c) rc = TSR_ENOMEM;
     else {
-        for (int64_t i = 0; i < n; i++) s[i] = (g2_pt){ P[2 * i], P[2 * i + 1], i };
-        qsort(s, (size_t)n, sizeof(g2_pt), g2_cmp_xy);
+        /* sorted by x, then y, then input order: a stable radix argsort by x (equal keys keep their order,
+           -0.0 == +0.0), then each run of equal x by y, stably (insertion, or the argsort for a long run) */
+        for (int64_t i = 0; i < n; i++) c[i] = P[2 * i];
+        rc = tsr_argsort(TSR_F64, n, c, o1);
+        for (int64_t a = 0; rc == TSR_OK && a < n;) {
+            int64_t b = a + 1;
+            while (b < n && P[2 * o1[b]] == P[2 * o1[a]]) b++;
+            if (b - a > 32) {
+                for (int64_t j = a; j < b; j++) c[j - a] = P[2 * o1[j] + 1];
+                rc = tsr_argsort(TSR_F64, b - a, c, o2);
+                for (int64_t j = a; rc == TSR_OK && j < b; j++) c[j - a] = (double)o1[j];
+                for (int64_t j = a; rc == TSR_OK && j < b; j++) o1[j] = (int64_t)c[o2[j - a]];
+            } else {
+                for (int64_t j = a + 1; j < b; j++) {
+                    const int64_t v = o1[j];
+                    int64_t q = j;
+                    while (q > a && P[2 * o1[q - 1] + 1] > P[2 * v + 1]) { o1[q] = o1[q - 1]; q--; }
+                    o1[q] = v;
+                }
+            }
+            a = b;
+        }
+    }
+    if (rc == TSR_OK) {
+        for (int64_t j = 0; j < n; j++) { const int64_t i = o1[j]; s[j] = (g2_pt){ P[2 * i], P[2 * i + 1], i }; }
 #define G2_CROSS(o, a, b) ((s[a].x - s[o].x) * (s[b].y - s[o].y) - (s[a].y - s[o].y) * (s[b].x - s[o].x))
         int64_t k = 0;                                    /* h holds sorted positions: the lower chain, then the upper */
         for (int64_t i = 0; i < n; i++) {
@@ -936,7 +969,7 @@ static int r_convex_hull_2d(const void *ctx, const tsr_arg *args, int nargs, tsr
             for (int64_t j = 0; j < nu; j++) o[nl + j] = s[h[lower + j]].i;
         }
     }
-    free(s); free(h);
+    free(s); free(h); free(o1); free(o2); free(c);
     fn_free_doubles(P, tp);
     return rc;
 }
@@ -1195,8 +1228,8 @@ static const fn_def DEFS[] = {
     ROUTINE("distance.pdist", 1, "X, metric=None, p=None", "out", r_pdist, NULL, "Pairwise distances between the rows of X, condensed (scipy.spatial.distance.pdist); real float64."),
     ROUTINE("distance.kdtree_query", 2, "data, x, k=1, idx=None, nodes=None, box=None", "d, i", r_kdtree_query, NULL, "The k nearest rows of data for each row of x by a k-d tree, Euclidean, nearest first, ties by index (scipy.spatial.cKDTree.query); with idx, nodes and box from distance.kdtree_build of the same data it searches that tree instead of building one."),
     ROUTINE("distance.kdtree_build", 3, "data", "idx, nodes, box", r_kdtree_build, NULL, "The k-d tree of data as arrays (point order, nodes, bounding boxes) for distance.kdtree_query, built once and searched by every query (scipy.spatial.cKDTree's constructor)."),
-    ROUTINE("distance.convex_hull_2d", 1, "points", "vertices", r_convex_hull_2d, NULL, "The 2-D convex hull vertices of points, counter-clockwise from the lowest x (Andrew's monotone chain), for Spatial\ConvexHull."),
-    ROUTINE("distance.delaunay_2d", 1, "points", "simplices", r_delaunay_2d, NULL, "The 2-D Delaunay triangles of points as index triples (sweep-hull, Delaunator), for Spatial\Delaunay."),
+    ROUTINE("distance.convex_hull_2d", 1, "points", "vertices", r_convex_hull_2d, NULL, "The 2-D convex hull vertices of points, counter-clockwise from the lowest x (Andrew's monotone chain), for Spatial\\ConvexHull."),
+    ROUTINE("distance.delaunay_2d", 1, "points", "simplices", r_delaunay_2d, NULL, "The 2-D Delaunay triangles of points as index triples (sweep-hull, Delaunator), for Spatial\\Delaunay."),
     ROUTINE("distance.cdist", 1, "XA, XB, metric=None, p=None", "out", r_cdist, NULL, "Distances between each pair of rows of XA and XB (scipy.spatial.distance.cdist); real float64."),
     ROUTINE("distance.squareform", 1, "X", "out", r_squareform, NULL, "Convert between a condensed distance vector and a square form (scipy.spatial.distance.squareform)."),
     ROUTINE("distance.euclidean", 1, "u, v, w=None", "out", r_dmetric, &MET_EUCLID, "Euclidean distance between two 1-D arrays (scipy.spatial.distance.euclidean)."),

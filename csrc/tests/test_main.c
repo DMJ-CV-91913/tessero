@@ -2801,7 +2801,9 @@ static void test_kdtree(void)
     CHECK(bad == 0, "kdtree_query == exhaustive search: distances, indices and order (%d of %d cases differ)", bad, cases);
     CHECK(reuse_bad == 0, "kdtree_query on the tree of kdtree_build: the same distances and indices (%d of %d differ)", reuse_bad, cases);
 
-    /* kdtree_build's tree, then forged trees: each refused, nothing leaked */
+    /* kdtree_build's tree, then forged trees. The search checks each node and index it reaches: with k = N it reaches
+       all of them and every forgery is refused; with k = 1 a forgery off its path may go unnoticed, but nothing is read
+       out of bounds (the sanitizer build runs this) and the call either succeeds or is refused. Nothing leaked. */
     enum { N = 100, M = 2 };
     double P[N * M], Q0[M] = {0.5, 0.5};
     for (int i = 0; i < N * M; i++) { st ^= st << 13; st ^= st >> 7; st ^= st << 17; P[i] = (double)(st >> 11) / 9007199254740992.0; }
@@ -2815,26 +2817,40 @@ static void test_kdtree(void)
         const int64_t nn = t[1].arr.shape[0];
         int64_t *idx = malloc(N * 8), *nodes = malloc((size_t)nn * 32);
         double *box = malloc((size_t)nn * 2 * M * 8), fidx[N];
-        int refused = 0, trials = 0;
-        for (int forge = 0; forge < 7; forge++) {
+        int refused = 0, trials = 0, near_ok = 0;
+        for (int forge = 0; forge < 14; forge++) {
+            const int all = forge < 7;
             memcpy(idx, t[0].arr.data, N * 8); memcpy(nodes, t[1].arr.data, (size_t)nn * 32); memcpy(box, t[2].arr.data, (size_t)nn * 2 * M * 8);
             int64_t sidx[1] = {N}, snodes[2] = {nn, 4}, sbox[2] = {nn, 2 * M}, sboxbad[2] = {nn, 2 * M - 1};
             int nargs = 6;
-            tsr_arg af[6] = {arg_arr(P, 2, sp), arg_arr(Q0, 2, s1), arg_num(1.0), arg_arr_dt(idx, TSR_I64, 1, sidx),
+            tsr_arg af[6] = {arg_arr(P, 2, sp), arg_arr(Q0, 2, s1), arg_num(all ? (double)N : 1.0), arg_arr_dt(idx, TSR_I64, 1, sidx),
                              arg_arr_dt(nodes, TSR_I64, 2, snodes), arg_arr(box, 2, sbox)};
-            if (forge == 0) idx[7] = N;                                        /* index out of range */
-            if (forge == 1) nodes[4 * 1 + 1] += 1;                             /* the root's left child split off the median */
-            if (forge == 2) nodes[2] = 0;                                      /* the root its own child: a cycle */
-            if (forge == 3) { int64_t l = nodes[2]; while (nodes[4 * l + 2] >= 0) l = nodes[4 * l + 2];    /* a leaf turned inner */
-                              nodes[4 * l + 1] = nodes[4 * l] + 1; nodes[4 * l + 2] = nodes[4 * l + 3] = nn - 1; }
-            if (forge == 4) af[5] = arg_arr(box, 2, sboxbad);                  /* the box of the wrong width */
-            if (forge == 5) nargs = 5;                                         /* idx and nodes without box */
-            if (forge == 6) { for (int i = 0; i < N; i++) fidx[i] = (double)idx[i] + 0.25; af[3] = arg_arr(fidx, 1, sidx); }   /* non-integer */
+            const int f = forge % 7;
+            if (f == 0) idx[7] = N;                                            /* index out of range */
+            if (f == 1) nodes[4 * 1 + 1] += 1;                                 /* the root's left child split off the median */
+            if (f == 2) nodes[2] = 0;                                          /* the root its own child: a cycle */
+            if (f == 3) { int64_t l = nodes[2]; while (nodes[4 * l + 2] >= 0) l = nodes[4 * l + 2];        /* a leaf turned inner */
+                          nodes[4 * l + 1] = nodes[4 * l] + 1; nodes[4 * l + 2] = nodes[4 * l + 3] = nn - 1; }
+            if (f == 4) af[5] = arg_arr(box, 2, sboxbad);                      /* the box of the wrong width */
+            if (f == 5) nargs = 5;                                             /* idx and nodes without box */
+            if (f == 6) { for (int i = 0; i < N; i++) fidx[i] = (double)idx[i] + 0.25; af[3] = arg_arr(fidx, 1, sidx); }   /* non-integer */
             tsr_result rf[2];
-            trials++;
-            refused += tsr_fn_routine(id, nargs, af, 2, rf) == TSR_EARG;
+            const int rc = tsr_fn_routine(id, nargs, af, 2, rf);
+            if (all) { trials++; refused += rc == TSR_EARG; }
+            else near_ok += rc == TSR_EARG || (rc == 0 && rf[1].arr.shape[0] == 1);
+            if (rc == 0) tsr_fn_results_free(rf, 2);
         }
-        CHECK(refused == trials, "kdtree_query refuses forged trees (%d of %d refused)", refused, trials);
+        CHECK(refused == trials, "kdtree_query refuses forged trees when the search reaches every node (%d of %d refused)", refused, trials);
+        CHECK(near_ok == 7, "kdtree_query with k = 1 on forged trees: refused or a result, never out of bounds (%d of 7)", near_ok);
+        /* a tree of finite data searched over data that is not finite: refused when the search reaches the point */
+        double Pn[N * M];
+        memcpy(Pn, P, sizeof Pn);
+        Pn[2 * 11 + 1] = NAN;
+        int64_t sidx[1] = {N}, snodes[2] = {nn, 4}, sbox[2] = {nn, 2 * M};
+        tsr_arg ag[6] = {arg_arr(Pn, 2, sp), arg_arr(Q0, 2, s1), arg_num((double)N), arg_arr_dt(t[0].arr.data, TSR_I64, 1, sidx),
+                         arg_arr_dt(t[1].arr.data, TSR_I64, 2, snodes), arg_arr(t[2].arr.data, 2, sbox)};
+        tsr_result rg[2];
+        CHECK(tsr_fn_routine(id, 6, ag, 2, rg) == TSR_EARG, "kdtree_query on a tree whose data is not finite: refused");
         free(idx); free(nodes); free(box);
         tsr_fn_results_free(t, 3);
     }

@@ -219,12 +219,14 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         }
         $flat = array_values($data);
         for ($d = 1; $d < count($shape); $d++) {
+            $lists = true;                                // rows that are lists merge as they are (array_merge renumbers)
             foreach ($flat as $row) {
                 if (! is_array($row) || count($row) !== $shape[$d]) {
                     throw new ShapeError('Ragged nested array: every row must have the same length (expected ' . $shape[$d] . ').');
                 }
+                $lists = $lists && array_is_list($row);
             }
-            $flat = $flat === [] ? [] : array_merge(...array_map(array_values(...), $flat));
+            $flat = $flat === [] ? [] : array_merge(...($lists ? $flat : array_map(array_values(...), $flat)));
         }
 
         $dt = $dtype === null ? self::inferDType($flat) : DType::from_($dtype);

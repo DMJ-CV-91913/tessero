@@ -122,7 +122,7 @@ final class Distance
     }
 
     /**
-     * The 2-D convex hull vertices of points, counter-clockwise from the lowest x (Andrew's monotone chain), for SpatialConvexHull.
+     * The 2-D convex hull vertices of points, counter-clockwise from the lowest x (Andrew's monotone chain), for Spatial\ConvexHull.
      *
      * scipy.spatial.distance.convex_hull_2d
      */
@@ -152,7 +152,7 @@ final class Distance
     }
 
     /**
-     * The 2-D Delaunay triangles of points as index triples (sweep-hull, Delaunator), for SpatialDelaunay.
+     * The 2-D Delaunay triangles of points as index triples (sweep-hull, Delaunator), for Spatial\Delaunay.
      *
      * scipy.spatial.distance.delaunay_2d
      */
