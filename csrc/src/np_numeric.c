@@ -3767,12 +3767,34 @@ static int r_einsum(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         const int64_t inner = last >= 0 && lsize[last] ? lsize[last] : 1, outer = total / inner;
         const int64_t so = last >= 0 ? ost[last] : 0;
         int64_t cur[EINSUM_MAXLBL]; for (int L = 0; L < nlab; L++) cur[L] = 0;
+        /* a product of matrices (ij,jk->ik and the like): the output row does not move with the label before the
+           inner one, so a whole run of that label adds rows of b to one output row. They are added four at a time
+           per element, each element still receiving its products one by one in label order: the same sums, with a
+           quarter of the loads and stores of the output row. */
+        const int jl = last - 1;
+        const int fuse = nop == 2 && jl >= 0 && lst[0][last] == 0 && lst[1][last] == 1 && so == 1 && ost[jl] == 0;
         for (int64_t it = 0; it < outer; it++) {
             int64_t off[EINSUM_MAXOP], oo = 0;
             for (int o = 0; o < nop; o++) { off[o] = 0; for (int L = 0; L < last; L++) off[o] += cur[L] * lst[o][L]; }
             for (int L = 0; L < last; L++) oo += cur[L] * ost[L];
             double *op = out + oo;
-            if (nop == 2) {
+            if (fuse && cur[jl] == 0) {
+                const int64_t nj = lsize[jl] ? lsize[jl] : 1, ja = lst[0][jl], jb = lst[1][jl];
+                const double *a = data[0] + off[0], *b = data[1] + off[1];
+                int64_t j = 0;
+                for (; j + 4 <= nj; j += 4) {
+                    const double a0 = a[j * ja], a1 = a[(j + 1) * ja], a2 = a[(j + 2) * ja], a3 = a[(j + 3) * ja];
+                    const double *b0 = b + j * jb, *b1 = b0 + jb, *b2 = b1 + jb, *b3 = b2 + jb;
+                    for (int64_t t = 0; t < inner; t++) {
+                        double v = op[t];
+                        v += a0 * b0[t]; v += a1 * b1[t]; v += a2 * b2[t]; v += a3 * b3[t];
+                        op[t] = v;
+                    }
+                }
+                for (; j < nj; j++) { const double av = a[j * ja]; const double *bj = b + j * jb; for (int64_t t = 0; t < inner; t++) op[t] += av * bj[t]; }
+                it += nj - 1;                      /* the run counted; the odometer below carries past it */
+                cur[jl] = nj - 1;
+            } else if (nop == 2) {
                 const double *a = data[0] + off[0], *b = data[1] + off[1];
                 const int64_t sa = last >= 0 ? lst[0][last] : 0, sb = last >= 0 ? lst[1][last] : 0;
                 if (so == 0) { double acc = *op; for (int64_t t = 0; t < inner; t++) acc += a[t * sa] * b[t * sb]; *op = acc; }

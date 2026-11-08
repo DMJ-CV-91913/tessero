@@ -7,14 +7,14 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 31 |
-| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.68** | 65 |
+| 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.68** | 66 |
 | 3 | per-call latency of every parity fixture call (small inputs) | 1,015 functions, 15,117 cases | **0.62** | 615 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 48 cases, within 10% either way on 21, and clearly slower on 15, mostly where an algorithm is not yet the best one
+on 49 cases, within 10% either way on 21, and clearly slower on 14, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -97,6 +97,7 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `signal.hilbert` 1M | 141 ms | 88.6 ms | 76.1 ms | the input read in place and transformed as real values (`tsr_fft_real` reads x as (x, 0.0), the values the zero-filled complex copy held) instead of first spread into a 16 MB complex buffer; the same output, bit for bit. The time left is the FFT itself |
 | `fft.dct` 1M | 58.8 ms | 26.5 ms | 28.2 ms | the cos and sin of pi k / 2N (two million libm calls per transform) kept in the FFT plan cache per length instead of computed on every call, from the same expressions, so the same values; the input read in place instead of copied first; the same output, bit for bit, with the cache and without it (816 calls on each backend: `dct`, `idct`, `dst`, `idst`, types 2 and 3, the direct sums up to 128 points and the FFT path above, NaN, inf, -0, integer and reversed input) |
 | `numpy.fft.fft2` 1024^2 | 64.5 ms | 29.7 ms | 32.2 ms | large-block reuse: freed blocks of 1 MiB or more are kept by libtessero (64 MiB per process in the CLI, 16 MiB in a web SAPI) and handed out again, instead of going back to the operating system and page-faulting in again on the next call; the rows step and the axis-0 step each made a fresh 16 MB array. Also `rfft2` 40.0 -> 15.7 ms (NumPy 12.2), and smaller gains wherever large temporaries repeat (`linkage`, `Delaunay`, `dct`). The same values: every equivalence check of this page (13 suites, about 74,000 calls) gives the old code's results with reuse on |
+| `numpy.einsum` ij,jk->ik 300^2 | 16.7 ms | 6.17 ms | 7.93 ms | in a product of matrices a whole run of the summed label adds rows of b to one output row; they are now added four at a time per element instead of one row per pass, each element still receiving its products one by one in label order: the same sums, bit for bit, with a quarter of the loads and stores (336 calls on each backend: products with inner lengths 1 to 41, batched, ellipsis and broadcast forms, transposed and reduced outputs, three operands, NaN, inf, -0, integers) |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -215,7 +216,8 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   average of 6 to 21, `clip` twelve more) `filtfilt` and `hilbert` (six alternating rounds, at a load average of
   10 to 14) `dct` (six alternating rounds, at a load average of 10 to 17) and, after
   the large-block reuse, `fft2`, `rfft2`, `dct`, `linkage`, `kmeans2`, `sosfilt`, `connected_components`,
-  `ConvexHull` and `Delaunay` (six alternating rounds, at a load average of 7 to 9). Each side ran three times, alternating,
+  `ConvexHull` and `Delaunay` (six alternating rounds, at a load average of 7 to 9) and `einsum` (six alternating
+  rounds, at a load average of 9 to 10). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -267,6 +269,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.linalg eig 300x300 (general) | 60.2 | 77.8 | 0.77 |
 | scipy.stats mannwhitneyu 100k vs 100k | 29.6 | 37.7 | 0.78 |
 | numpy argsort 1M | 44.4 | 57.2 | 0.78 |
+| numpy einsum ij,jk->ik 300x300 | 6.17 | 7.93 | 0.78 |
 | scipy.signal decimate 1M by 10 | 19.5 | 24.3 | 0.80 |
 | scipy.stats norm.ppf 1M | 48.7 | 59.2 | 0.82 |
 | scipy.interpolate RBFInterpolator 500 -> 10k (2-D) | 79.6 | 95.1 | 0.84 |
@@ -308,7 +311,6 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | numpy rfft2 1024x1024 | 15.7 | 12.2 | 1.29 |
 | numpy cov 50 x 100k | 40.5 | 29.8 | 1.36 |
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
-| numpy einsum ij,jk->ik 300x300 | 17.4 | 11.3 | 1.53 |
 | scipy.spatial KDTree query 100 points, k=5 | 0.363 | 0.218 | 1.67 |
 | scipy.spatial KDTree build 100k (3-D) | 58.1 | 32.6 | 1.78 |
 | scipy.integrate quad sin(x) exp(-x) on [0, 10] | 0.0187 | 0.0057 | 3.27 |
