@@ -535,6 +535,21 @@ static int rank_tail(const tsr_arg *args, int nargs, int32_t nd, const int64_t *
     return TSR_OK;
 }
 
+/* win[0..m) ascending, as qsort with cmp_double orders it: a stable insertion sort when the window is small and holds
+   no NaN (the order the stable qsort gives, -0 and 0 included, without a call per comparison), else qsort */
+static void nd_sort_window(double *win, int64_t m)
+{
+    int nan = 0;
+    if (m <= 64) for (int64_t i = 0; i < m; i++) nan |= win[i] != win[i];
+    if (m > 64 || nan) { qsort(win, (size_t)m, sizeof(double), cmp_double); return; }
+    for (int64_t i = 1; i < m; i++) {
+        const double v = win[i];
+        int64_t j = i;
+        while (j > 0 && win[j - 1] > v) { win[j] = win[j - 1]; j--; }
+        win[j] = v;
+    }
+}
+
 /* out[p] = (sorted box window around p)[pick], over raw contiguous buffers (chainable). */
 static int windowed_rank_buf(const double *in, double *out, const int64_t *shape, int32_t nd,
                              const int64_t *size, const int64_t *origin, int mode, double cval, int64_t pick)
@@ -548,10 +563,30 @@ static int windowed_rank_buf(const double *in, double *out, const int64_t *shape
     if (pick >= V) pick = V - 1;
     double *win = (double *)malloc((size_t)V * sizeof(double));
     int64_t *coord = (int64_t *)malloc((size_t)nd * sizeof(int64_t)), *off = (int64_t *)malloc((size_t)nd * sizeof(int64_t));
-    if (!win || !coord || !off) { free(win); free(coord); free(off); return TSR_ENOMEM; }
+    int64_t *offv = (int64_t *)malloc((size_t)V * sizeof(int64_t));
+    if (!win || !coord || !off || !offv) { free(win); free(coord); free(off); free(offv); return TSR_ENOMEM; }
+    /* the window's flat offsets from p in the order the loop below visits them (last axis fastest), for the points
+       whose whole window lies inside the array: read in place, no boundary mapping */
+    for (int d = 0; d < nd; d++) { off[d] = 0; coord[d] = 0; }
+    for (int64_t v = 0; v < V; v++) {
+        int64_t o = 0;
+        for (int d = 0; d < nd; d++) o += (off[d] - center[d] - origin[d]) * stride[d];
+        offv[v] = o;
+        for (int d = nd - 1; d >= 0; d--) { if (++off[d] < size[d]) break; off[d] = 0; }
+    }
     for (int64_t oi = 0; oi < total; oi++) {
-        int64_t t = oi;
-        for (int d = 0; d < nd; d++) { coord[d] = t / stride[d]; t %= stride[d]; }
+        if (oi > 0) for (int d = nd - 1; d >= 0; d--) { if (++coord[d] < shape[d]) break; coord[d] = 0; }
+        int inner = 1;
+        for (int d = 0; d < nd && inner; d++) {
+            const int64_t lo = coord[d] - center[d] - origin[d];
+            inner = lo >= 0 && lo + size[d] - 1 < shape[d];
+        }
+        if (inner) {
+            for (int64_t v = 0; v < V; v++) win[v] = in[oi + offv[v]];
+            nd_sort_window(win, V);
+            out[oi] = win[pick];
+            continue;
+        }
         for (int d = 0; d < nd; d++) off[d] = 0;
         for (int64_t v = 0; v < V; v++) {
             int64_t flat = 0, oob = 0;
@@ -563,10 +598,10 @@ static int windowed_rank_buf(const double *in, double *out, const int64_t *shape
             win[v] = oob ? cval : in[flat];
             for (int d = nd - 1; d >= 0; d--) { if (++off[d] < size[d]) break; off[d] = 0; }
         }
-        qsort(win, (size_t)V, sizeof(double), cmp_double);
+        nd_sort_window(win, V);
         out[oi] = win[pick];
     }
-    free(win); free(coord); free(off);
+    free(win); free(coord); free(off); free(offv);
     return TSR_OK;
 }
 

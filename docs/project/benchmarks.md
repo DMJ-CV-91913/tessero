@@ -217,7 +217,7 @@ the gaps that remain and how to reproduce: [speed sweep](speed-sweep.md).
 | tier | timed on both sides | geomean Tessero / reference | Tessero faster |
 |---|---|---|---|
 | `scipy.special` element-wise, 100,000 values | 212 functions | 1.05 | 31 |
-| heavier calls at realistic sizes (re-timed after the fixes) | 84 cases | 0.83 | 48 |
+| heavier calls at realistic sizes (re-timed after the fixes) | 84 cases | 0.81 | 50 |
 | per-call latency, every parity fixture call | 1,015 functions | 0.62 | 615 |
 
 ## Correctness, not just speed

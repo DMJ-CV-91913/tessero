@@ -96,6 +96,17 @@ static int csg_flag(const tsr_arg *args, int nargs, int idx, int dflt)
     return dflt;
 }
 
+/* one Floyd-Warshall row update for i != k (the rows are distinct): wi[j] = wik + wk[j] where that is smaller and wk[j]
+   is finite -- the scalar loop's test and update, as a select the SIMD clones vectorize (a NaN sum, or a NaN in wi,
+   compares false and keeps wi[j], as there) */
+TSR_CLONES static void fw_row(double *restrict wi, const double *restrict wk, double wik, int64_t n)
+{
+    for (int64_t j = 0; j < n; j++) {
+        const double wkj = wk[j], t = wik + wkj, cur = wi[j];
+        wi[j] = (t < cur && fabs(wkj) != INFINITY) ? t : cur;
+    }
+}
+
 /* all-pairs shortest paths via Floyd-Warshall; emits an n-by-n float64 distance matrix. */
 static int csg_shortest(const tsr_arg *args, int nargs, int directed_idx, int unweighted_idx, tsr_result *res)
 {
@@ -114,6 +125,7 @@ static int csg_shortest(const tsr_arg *args, int nargs, int directed_idx, int un
         for (int64_t i = 0; i < n; i++) {
             const double wik = W[i * n + k];
             if (isinf(wik)) continue;
+            if (i != k) { fw_row(W + i * n, W + k * n, wik, n); continue; }
             for (int64_t j = 0; j < n; j++) {
                 const double wkj = W[k * n + j];
                 if (isinf(wkj)) continue;
