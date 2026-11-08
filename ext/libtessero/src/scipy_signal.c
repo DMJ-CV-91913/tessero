@@ -881,7 +881,8 @@ static int r_filtfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int64_t tb, ta, tx;
     double *bi = fn_arg_doubles(&args[0], &tb); if (!bi) return TSR_ENOMEM;
     double *ai = fn_arg_doubles(&args[1], &ta); if (!ai) { fn_free_doubles(bi, tb); return TSR_ENOMEM; }
-    double *x = fn_arg_doubles(&args[2], &tx); if (!x) { fn_free_doubles(bi, tb); fn_free_doubles(ai, ta); return TSR_ENOMEM; }
+    double *xown = NULL; const double *x = fn_arg_f64_view(&args[2], &tx);   /* in place when contiguous float64 */
+    if (!x) { x = xown = fn_arg_doubles(&args[2], &tx); if (!x) { fn_free_doubles(bi, tb); fn_free_doubles(ai, ta); return TSR_ENOMEM; } }
     const double a0 = ai[0];
     double *b = (double *)calloc((size_t)K, sizeof(double));
     double *a = (double *)calloc((size_t)K, sizeof(double));
@@ -908,7 +909,7 @@ static int r_filtfilt(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     if (!out) { rc = TSR_ENOMEM; goto done; }
     memcpy(out, ext + edge, (size_t)n * sizeof(double));                            /* trim the padding */
 done:
-    fn_free_doubles(bi, tb); fn_free_doubles(ai, ta); fn_free_doubles(x, tx);
+    fn_free_doubles(bi, tb); fn_free_doubles(ai, ta); fn_free_doubles(xown, tx);
     free(b); free(a); free(zi); free(ext); free(yf); free(z);
     return rc;
 }
@@ -3976,19 +3977,22 @@ static int r_hilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 1) { fn_set_error("hilbert: x must be a 1-D real array"); return TSR_EARG; }
-    int64_t n0; double *x = fn_arg_doubles(&args[0], &n0); if (!x) return TSR_ENOMEM;
+    /* x read in place when it is contiguous float64 (else a converted copy in xown) */
+    int64_t n0; double *xown = NULL; const double *x = fn_arg_f64_view(&args[0], &n0);
+    if (!x) { x = xown = fn_arg_doubles(&args[0], &n0); if (!x) return TSR_ENOMEM; }
     const int64_t N = (nargs > 1 && args[1].kind == 1) ? sig_i64(&args[1]) : n0;
     int rc = TSR_OK;
-    if (N <= 0) { fn_free_doubles(x, n0); fn_set_error("hilbert: N must be positive"); return TSR_EARG; }
-    if (!sig_alloc_ok(N, 4 * sizeof(double), "hilbert")) { fn_free_doubles(x, n0); return TSR_ENOMEM; }
-    double *in = (double *)calloc((size_t)(2 * N), sizeof(double));
+    if (N <= 0) { fn_free_doubles(xown, n0); fn_set_error("hilbert: N must be positive"); return TSR_EARG; }
+    if (!sig_alloc_ok(N, 4 * sizeof(double), "hilbert")) { fn_free_doubles(xown, n0); return TSR_ENOMEM; }
+    /* the forward transform reads the real input as (x, 0.0) (tsr_fft_real): the values the complex copy held,
+       without building it; only a length other than N needs a zero-padded or truncated real copy */
+    double *in = n0 == N ? NULL : (double *)calloc((size_t)N, sizeof(double));
     double *Xf = (double *)malloc(sizeof(double) * (size_t)(2 * N));
     double *out = (double *)fn_result_array(&res[0], TSR_C128, 1, (int64_t[]){N});
-    if (!in || !Xf || !out) rc = TSR_ENOMEM;
+    if ((n0 != N && !in) || !Xf || !out) rc = TSR_ENOMEM;
     else {
-        const int64_t m = n0 < N ? n0 : N;
-        for (int64_t i = 0; i < m; i++) in[2 * i] = x[i];    /* real input, zero-padded/truncated to N */
-        tsr_fft(N, 1, 0, in, Xf);                            /* forward FFT */
+        if (in) { const int64_t m = n0 < N ? n0 : N; for (int64_t i = 0; i < m; i++) in[i] = x[i]; }
+        tsr_fft_real(N, 1, 0, in ? in : x, Xf);              /* forward FFT */
         const int64_t half = N / 2;
         if (N % 2 == 0) {
             for (int64_t k = 1; k < half; k++) { Xf[2 * k] *= 2.0; Xf[2 * k + 1] *= 2.0; }
@@ -3999,7 +4003,7 @@ static int r_hilbert(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         }
         tsr_fft(N, 1, 1, Xf, out);                           /* inverse FFT (scales by 1/N) */
     }
-    free(in); free(Xf); fn_free_doubles(x, n0);
+    free(in); free(Xf); fn_free_doubles(xown, n0);
     return rc;
 }
 

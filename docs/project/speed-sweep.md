@@ -14,7 +14,7 @@ Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tes
 FFI call beat SciPy's Python-level wrappers (stats 0.06, csgraph 0.04, signal 0.28); NumPy's own core functions are
 the exception (np 3.20), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
-on 49 cases, within 10% either way on 17, and clearly slower on 18, mostly where an algorithm is not yet the best one
+on 49 cases, within 10% either way on 18, and clearly slower on 17, mostly where an algorithm is not yet the best one
 available (the gaps below).
 
 ## Fixed during the sweep
@@ -93,6 +93,8 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `ndimage.laplace` 1000^2 | 36.6 ms | 6.63 ms | 12.7 ms | the same |
 | `ndimage.maximum_filter` 5x5, 1000^2 | 33.5 ms | 6.10 ms | 20.4 ms | the same, and the passes alternate between the result and one scratch array instead of copying back after each; the same comparisons in the same order; also `minimum_filter` and the 1-D filters |
 | `numpy.clip` 1M | 2.70 ms | 1.31 ms | 1.11 ms | both bounds applied in one pass (`tsr_clip`, a new C entry point) instead of a maximum and then a minimum pass, with the same comparisons in the same order, bit for bit (1,904 calls on each backend: every dtype, NaN and -0 bounds, crossed bounds, out-of-range integers, strided and reversed views). What remains is the write into the fresh result array, which costs NumPy the same |
+| `signal.filtfilt` order 4, 1M | 26.4 ms | 15.8 ms | 15.6 ms | a contiguous float64 signal read in place instead of copied first (one 8 MB block less in use, and the page faults it brought); the same values, bit for bit (497 calls with `hilbert` on each backend: lengths from 1 to 65,536, NaN, inf, -0, integer and strided input) |
+| `signal.hilbert` 1M | 141 ms | 88.6 ms | 76.1 ms | the input read in place and transformed as real values (`tsr_fft_real` reads x as (x, 0.0), the values the zero-filled complex copy held) instead of first spread into a 16 MB complex buffer; the same output, bit for bit. The time left is the FFT itself |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -208,7 +210,8 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   rounds, at a load average of 18), `zoom` (six alternating rounds, at a load average of 6 to 9), `cov` and
   `cumsum` (six alternating rounds, at a load average of 9 to 10) `gaussian_kde` (six alternating rounds, at a
   load average of 8 to 9) and `clip`, `sobel`, `laplace` and `maximum_filter` (six alternating rounds, at a load
-  average of 6 to 21, `clip` twelve more). Each side ran three times, alternating,
+  average of 6 to 21, `clip` twelve more) and `filtfilt` and `hilbert` (six alternating rounds, at a load average of
+  10 to 14). Each side ran three times, alternating,
   and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
   last run). Ratios within 10% are read as on par.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
@@ -286,18 +289,18 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.sparse.linalg cg 2-D Poisson 100x100 | 28.7 | 29.3 | 0.98 |
 | scipy.ndimage map_coordinates 1000x1000, 100k points | 69.2 | 70.6 | 0.98 |
 | numpy interp 1M into 1000 | 63.3 | 64.4 | 0.98 |
+| scipy.signal filtfilt order 4, 1M | 15.8 | 15.6 | 1.02 |
 | numpy median 1M | 11.9 | 11.4 | 1.04 |
 | numpy diff 1M | 1.52 | 1.38 | 1.10 |
 | scipy.linalg svdvals 300x300 | 12.5 | 11.2 | 1.12 |
 | scipy.linalg cholesky 1000x1000 | 16.1 | 14.5 | 1.12 |
+| scipy.signal hilbert 1M | 88.6 | 76.1 | 1.16 |
 | numpy clip 1M | 1.31 | 1.11 | 1.19 |
 | scipy.linalg pinv 300x300 | 35.5 | 29.4 | 1.21 |
 | numpy linalg slogdet 600x600 | 7.27 | 5.73 | 1.27 |
-| scipy.signal filtfilt order 4, 1M | 19.8 | 15.2 | 1.30 |
 | numpy fft2 1024x1024 | 44 | 33.1 | 1.33 |
 | numpy cov 50 x 100k | 40.5 | 29.8 | 1.36 |
 | scipy.spatial ConvexHull 10k (2-D) | 2.01 | 1.46 | 1.38 |
-| scipy.signal hilbert 1M | 91.1 | 64.8 | 1.41 |
 | scipy.sparse.linalg eigsh k=6, 2-D Poisson 100x100 | 743 | 498 | 1.49 |
 | numpy einsum ij,jk->ik 300x300 | 17.4 | 11.3 | 1.53 |
 | numpy rfft2 1024x1024 | 21.5 | 13.7 | 1.57 |
