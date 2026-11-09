@@ -6,6 +6,7 @@
 
 For every spec module with element-wise entries (`impl:`), it writes
     csrc/cxx/gen_<module>.cpp       one extern "C" element function per entry (and per integer loop)
+    csrc/cxx/gen_<module>_n.cpp     the float64 run loop of each entry, calling its element function
     csrc/src/gen_<module>_table.c   the fn_def table the registry serves to both bindings
 A module marked `internal: true` (spec/special_internal.yaml: SciPy's private ufuncs) gets the element
 functions only. From all special modules it also writes
@@ -24,9 +25,13 @@ def cstr(s):
     return json.dumps(s, ensure_ascii=True)
 
 
-def render(module, src, entries):
+def render(module, src, entries, internal=False):
     cpp = [HEADER.format(src=src), '#include "special_common.hpp"', '']
     c = [HEADER.format(src=src), '#include "fn.h"', '']
+    # the float64 run loops (fn_elem_n), in a translation unit of their own: each calls the element function, which
+    # the compiler cannot inline across units, so every element runs the very code of the per-element path (an
+    # inlined copy may lower an expression differently: the same values, but not always the same NaN sign bit)
+    ncpp = [HEADER.format(src=src), '#include <cstdint>', '', 'extern "C" {']
     decls, rows = [], []
     for e in entries:
         if 'impl' not in e:
@@ -42,6 +47,17 @@ def render(module, src, entries):
                 int_impl = f'if ({e["guard"]}) {{ {nan} }} else {{ {int_impl} }}'
         cpp.append(f'extern "C" void {sym}(const void *, const double *i, double *o) {{ TSR_GUARD({nout}, {impl}) }}')
         decls.append(f'void {sym}(const void *, const double *, double *);')
+        loop = 'NULL'
+        if not internal:
+            # i and o live across the run, as the engine's in/out arrays do on the per-element path
+            nin = len(e['args'])
+            loads = ' '.join(f'i[{k}] = in_[{k}][j_ * is_[{k}]];' for k in range(nin))
+            stores = ' '.join(f'out_[{k}][j_] = o[{k}];' for k in range(nout))
+            ncpp.append(f'void {sym}(const void *, const double *, double *);')
+            ncpp.append(f'void {sym}__n(const void *c_, int64_t n_, const double *const *in_, const int64_t *is_, double *const *out_) '
+                        f'{{ double i[{max(nin, 1)}], o[{nout}]; for (int64_t j_ = 0; j_ < n_; j_++) {{ {loads} {sym}(c_, i, o); {stores} }} }}')
+            decls.append(f'void {sym}__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);')
+            loop = f'{sym}__n'
         elem_int, mask = 'NULL', 0
         if e.get('int_impl'):
             cpp.append(f'extern "C" void {sym}__int(const void *, const double *i, double *o) {{ TSR_GUARD({nout}, {int_impl}) }}')
@@ -55,14 +71,15 @@ def render(module, src, entries):
             # a complex128 loop: in/out are interleaved (re, im); TSR_GUARD fills 2*nout doubles with NaN on error
             cpp.append(f'extern "C" void {sym}__cplx(const void *, const double *i, double *o) {{ TSR_GUARD({2 * nout}, {e["cplx_impl"]}) }}')
             decls.append(f'void {sym}__cplx(const void *, const double *, double *);')
-            rows.append(f'    UFUNC_C({cstr(module + "." + e["name"])}, {len(e["args"])}, {nout}, {cstr(args)}, {cstr(outs)}, '
-                        f'{sym}, {elem_int}, {mask}, {sym}__cplx, {cstr(e.get("doc", ""))}),')
+            rows.append(f'    UFUNC_CN({cstr(module + "." + e["name"])}, {len(e["args"])}, {nout}, {cstr(args)}, {cstr(outs)}, '
+                        f'{sym}, {elem_int}, {mask}, {sym}__cplx, {loop}, {cstr(e.get("doc", ""))}),')
         else:
-            rows.append(f'    UFUNCI({cstr(module + "." + e["name"])}, {len(e["args"])}, {nout}, {cstr(args)}, {cstr(outs)}, '
-                        f'{sym}, {elem_int}, {mask}, {cstr(e.get("doc", ""))}),')
+            rows.append(f'    UFUNCI_N({cstr(module + "." + e["name"])}, {len(e["args"])}, {nout}, {cstr(args)}, {cstr(outs)}, '
+                        f'{sym}, {elem_int}, {mask}, {loop}, {cstr(e.get("doc", ""))}),')
     c += decls + ['', f'const fn_def TSR_GEN_{module.upper()}[] = {{'] + rows + ['};',
           f'const fn_table TSR_GEN_{module.upper()}_TABLE = {{TSR_GEN_{module.upper()}, (int)(sizeof TSR_GEN_{module.upper()} / sizeof TSR_GEN_{module.upper()}[0])}};', '']
-    return '\n'.join(cpp) + '\n', '\n'.join(c)
+    ncpp += ['}', '']
+    return '\n'.join(cpp) + '\n', '\n'.join(c), '\n'.join(ncpp)
 
 
 def sc_header(specs):
@@ -100,7 +117,7 @@ def main():
         if not entries:
             continue
         module = doc['module']
-        cpp, c = render(module, fname, entries)
+        cpp, c, ncpp = render(module, fname, entries, bool(doc.get('internal')))
         if module.startswith('special'):
             sc_specs.append((module, entries))
         if doc.get('internal'):
@@ -112,7 +129,7 @@ def main():
                 # the xsf/scipy code is not multi-TU safe, so the internal ufuncs and the complex-valued routines
                 # (special_complex.inc: wofz, hankel1/2, lambertw) share gen_special.cpp's translation unit
                 cpp += '\n#include "gen_special_internal.inc"\n#include "special_complex.inc"\n'
-            files = [(f'csrc/cxx/gen_{module}.cpp', cpp), (f'csrc/src/gen_{module}_table.c', c)]
+            files = [(f'csrc/cxx/gen_{module}.cpp', cpp), (f'csrc/cxx/gen_{module}_n.cpp', ncpp), (f'csrc/src/gen_{module}_table.c', c)]
         for path, text in files:
             full = os.path.join(ROOT, path)
             old = open(full).read() if os.path.exists(full) else None

@@ -39,6 +39,9 @@ typedef const char *(*fn_rcheck)(const double *p);
 
 /* per-element function: in[nin] -> out[nout] */
 typedef void (*fn_elem)(const void *ctx, const double *in, double *out);
+/* the same over n elements in one loop: input k at in[k][j * is[k]] (is: element strides, 0 for a broadcast
+   scalar), output k at out[k][j] (contiguous). Generated with the per-element code of fn_elem inlined. */
+typedef void (*fn_elem_n)(const void *ctx, int64_t n, const double *const *in, const int64_t *is, double *const *out);
 
 /* core of a gufunc: x[i] points to n[i] gathered values of input i (private copies: may be modified);
    out[j] has nout[j] slots. Return TSR_OK or an error (message via fn_set_error). */
@@ -120,6 +123,8 @@ typedef struct {
     /* FN_UFUNC complex loop: in/out are interleaved complex128 (2 doubles per operand). The engine runs this on
        complex128 operands when a backend forwards them; NULL means the ufunc has no complex loop (DTypeError). */
     fn_elem elem_cplx;
+    /* FN_UFUNC float64 loop over a whole run (fn_elem_n), the per-element code of elem; NULL: elem per element */
+    fn_elem_n elem_n;
 } fn_def;
 typedef struct fn_keep { int param; unsigned mask; } fn_keep;
 
@@ -196,6 +201,11 @@ int dist_rvs_array(const fn_dist *d, void *bitgen, int64_t n, const double *cons
 /* a ufunc with a complex128 loop FNC (in/out interleaved complex): scipy.special jv/yv/iv/kv accept complex z */
 #define UFUNC_C(NAME, NIN, NOUT, ARGS, OUTS, FN, FNI, MASK, FNC, DOC) \
     {NAME, FN_UFUNC, NIN, NOUT, ARGS, OUTS, "", DOC, FN, FNI, MASK, NULL, NULL, {0}, 0, 0, NULL, NULL, 0, 0, NULL, 0, FN_NO_RANDOM, FNC}
+/* UFUNCI / UFUNC_C with a float64 run loop FNN (fn_elem_n; tools/parity/gen_registry.py) */
+#define UFUNCI_N(NAME, NIN, NOUT, ARGS, OUTS, FN, FNI, MASK, FNN, DOC) \
+    {NAME, FN_UFUNC, NIN, NOUT, ARGS, OUTS, "", DOC, FN, FNI, MASK, NULL, NULL, {0}, 0, 0, NULL, NULL, 0, 0, NULL, 0, FN_NO_RANDOM, NULL, FNN}
+#define UFUNC_CN(NAME, NIN, NOUT, ARGS, OUTS, FN, FNI, MASK, FNC, FNN, DOC) \
+    {NAME, FN_UFUNC, NIN, NOUT, ARGS, OUTS, "", DOC, FN, FNI, MASK, NULL, NULL, {0}, 0, 0, NULL, NULL, 0, 0, NULL, 0, FN_NO_RANDOM, FNC, FNN}
 /* generalised ufunc: C0..C3 output core rules, OUTINT / OUTBOOL output dtype bits, AXIS default ("None", "0", "-1"),
    NANP nan_policy support, NCORE inputs that take the axis (the others are whole-array cores) */
 #define GUFUNC(NAME, NIN, NOUT, ARGS, OUTS, PARAMS, CORE, SCRATCH, C0, C1, C2, C3, OUTINT, OUTBOOL, AXIS, NANP, NCORE, CTX, DOC) \

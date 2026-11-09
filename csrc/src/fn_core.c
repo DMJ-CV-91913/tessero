@@ -420,6 +420,7 @@ static int fn_iter_init(fn_iter *it, int nop, int32_t ndim, const int64_t *shape
 typedef struct {
     const fn_def *def;          /* FN_UFUNC */
     fn_elem fn;                 /* def->elem or def->elem_int */
+    fn_elem_n fn_n;             /* def->elem_n when fn is def->elem on float64 operands, else NULL */
     const fn_dist *dist;        /* FN_DIST */
     int method;
     int nin, nout;
@@ -434,6 +435,13 @@ static inline void run_elems(const elem_job *job, char **p, const int64_t *steps
 {
     double in[FN_MAXOP], out[4];
     const int nin = job->nin, nout = job->nout;
+    if (job->fn_n) {                                     /* the run loop: contiguous outputs, inputs in whole elements */
+        int ok = 1;
+        int64_t is[FN_MAXOP];
+        for (int k = 0; k < nin; k++) { is[k] = steps[k] / 8; ok &= steps[k] % 8 == 0; }
+        for (int k = 0; k < nout; k++) ok &= steps[nin + k] == 8;
+        if (ok) { job->fn_n(job->def->ctx, n, (const double *const *)p, is, (double *const *)(p + nin)); return; }
+    }
     if (job->cplx) {                                     /* complex128 operands: 2 interleaved doubles each */
         for (int64_t i = 0; i < n; i++) {
             for (int k = 0; k < nin; k++) { const double *z = (const double *)(p[k] + i * steps[k]); in[2 * k] = z[0]; in[2 * k + 1] = z[1]; }
@@ -536,6 +544,7 @@ int tsr_fn_ufunc(int id, int method, int dtype, int32_t ndim, const int64_t *sha
         if (job.cplx && !d->elem_cplx) return TSR_ETYPE;   /* this ufunc has no complex128 loop */
         job.def = d;
         job.fn = job.cplx ? d->elem_cplx : ((method == 1 && d->elem_int) ? d->elem_int : d->elem);
+        job.fn_n = !job.cplx && !job.f32 && job.fn == d->elem ? d->elem_n : NULL;
         job.nin = d->nin;
         job.nout = d->nout;
     } else {

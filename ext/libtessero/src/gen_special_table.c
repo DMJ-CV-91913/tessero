@@ -3,517 +3,758 @@
 #include "fn.h"
 
 void tsr_special_agm(const void *, const double *, double *);
+void tsr_special_agm__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_airy(const void *, const double *, double *);
+void tsr_special_airy__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_airye(const void *, const double *, double *);
+void tsr_special_airye__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_bdtr(const void *, const double *, double *);
+void tsr_special_bdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_bdtr__int(const void *, const double *, double *);
 void tsr_special_bdtrc(const void *, const double *, double *);
+void tsr_special_bdtrc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_bdtrc__int(const void *, const double *, double *);
 void tsr_special_bdtri(const void *, const double *, double *);
+void tsr_special_bdtri__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_bdtri__int(const void *, const double *, double *);
 void tsr_special_bdtrik(const void *, const double *, double *);
+void tsr_special_bdtrik__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_bdtrin(const void *, const double *, double *);
+void tsr_special_bdtrin__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_bei(const void *, const double *, double *);
+void tsr_special_bei__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_beip(const void *, const double *, double *);
+void tsr_special_beip__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ber(const void *, const double *, double *);
+void tsr_special_ber__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_berp(const void *, const double *, double *);
+void tsr_special_berp__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_besselpoly(const void *, const double *, double *);
+void tsr_special_besselpoly__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_beta(const void *, const double *, double *);
+void tsr_special_beta__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_betainc(const void *, const double *, double *);
+void tsr_special_betainc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_betaincc(const void *, const double *, double *);
+void tsr_special_betaincc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_betainccinv(const void *, const double *, double *);
+void tsr_special_betainccinv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_betaincinv(const void *, const double *, double *);
+void tsr_special_betaincinv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_betaln(const void *, const double *, double *);
+void tsr_special_betaln__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_binom(const void *, const double *, double *);
+void tsr_special_binom__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_comb(const void *, const double *, double *);
+void tsr_special_comb__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_factorial(const void *, const double *, double *);
+void tsr_special_factorial__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_polygamma(const void *, const double *, double *);
+void tsr_special_polygamma__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_boxcox(const void *, const double *, double *);
+void tsr_special_boxcox__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_boxcox1p(const void *, const double *, double *);
+void tsr_special_boxcox1p__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_btdtria(const void *, const double *, double *);
+void tsr_special_btdtria__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_btdtrib(const void *, const double *, double *);
+void tsr_special_btdtrib__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_cbrt(const void *, const double *, double *);
+void tsr_special_cbrt__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chdtr(const void *, const double *, double *);
+void tsr_special_chdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chdtrc(const void *, const double *, double *);
+void tsr_special_chdtrc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chdtri(const void *, const double *, double *);
+void tsr_special_chdtri__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chdtriv(const void *, const double *, double *);
+void tsr_special_chdtriv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chndtr(const void *, const double *, double *);
+void tsr_special_chndtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chndtridf(const void *, const double *, double *);
+void tsr_special_chndtridf__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chndtrinc(const void *, const double *, double *);
+void tsr_special_chndtrinc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_chndtrix(const void *, const double *, double *);
+void tsr_special_chndtrix__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_cosdg(const void *, const double *, double *);
+void tsr_special_cosdg__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_cosm1(const void *, const double *, double *);
+void tsr_special_cosm1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_cotdg(const void *, const double *, double *);
+void tsr_special_cotdg__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_dawsn(const void *, const double *, double *);
+void tsr_special_dawsn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_digamma(const void *, const double *, double *);
+void tsr_special_digamma__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ellipe(const void *, const double *, double *);
+void tsr_special_ellipe__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ellipeinc(const void *, const double *, double *);
+void tsr_special_ellipeinc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ellipj(const void *, const double *, double *);
+void tsr_special_ellipj__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ellipk(const void *, const double *, double *);
+void tsr_special_ellipk__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ellipkinc(const void *, const double *, double *);
+void tsr_special_ellipkinc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ellipkm1(const void *, const double *, double *);
+void tsr_special_ellipkm1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_elliprc(const void *, const double *, double *);
+void tsr_special_elliprc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_elliprd(const void *, const double *, double *);
+void tsr_special_elliprd__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_elliprf(const void *, const double *, double *);
+void tsr_special_elliprf__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_elliprg(const void *, const double *, double *);
+void tsr_special_elliprg__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_elliprj(const void *, const double *, double *);
+void tsr_special_elliprj__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_entr(const void *, const double *, double *);
+void tsr_special_entr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_erf(const void *, const double *, double *);
+void tsr_special_erf__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_erfc(const void *, const double *, double *);
+void tsr_special_erfc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_erfcinv(const void *, const double *, double *);
+void tsr_special_erfcinv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_erfcx(const void *, const double *, double *);
+void tsr_special_erfcx__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_erfi(const void *, const double *, double *);
+void tsr_special_erfi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_erfinv(const void *, const double *, double *);
+void tsr_special_erfinv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_chebyc(const void *, const double *, double *);
+void tsr_special_eval_chebyc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_chebyc__int(const void *, const double *, double *);
 void tsr_special_eval_chebys(const void *, const double *, double *);
+void tsr_special_eval_chebys__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_chebys__int(const void *, const double *, double *);
 void tsr_special_eval_chebyt(const void *, const double *, double *);
+void tsr_special_eval_chebyt__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_chebyt__int(const void *, const double *, double *);
 void tsr_special_eval_chebyu(const void *, const double *, double *);
+void tsr_special_eval_chebyu__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_chebyu__int(const void *, const double *, double *);
 void tsr_special_eval_gegenbauer(const void *, const double *, double *);
+void tsr_special_eval_gegenbauer__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_gegenbauer__int(const void *, const double *, double *);
 void tsr_special_eval_genlaguerre(const void *, const double *, double *);
+void tsr_special_eval_genlaguerre__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_genlaguerre__int(const void *, const double *, double *);
 void tsr_special_eval_hermite(const void *, const double *, double *);
+void tsr_special_eval_hermite__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_hermitenorm(const void *, const double *, double *);
+void tsr_special_eval_hermitenorm__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_jacobi(const void *, const double *, double *);
+void tsr_special_eval_jacobi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_jacobi__int(const void *, const double *, double *);
 void tsr_special_eval_laguerre(const void *, const double *, double *);
+void tsr_special_eval_laguerre__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_laguerre__int(const void *, const double *, double *);
 void tsr_special_eval_legendre(const void *, const double *, double *);
+void tsr_special_eval_legendre__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_legendre__int(const void *, const double *, double *);
 void tsr_special_eval_sh_chebyt(const void *, const double *, double *);
+void tsr_special_eval_sh_chebyt__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_sh_chebyt__int(const void *, const double *, double *);
 void tsr_special_eval_sh_chebyu(const void *, const double *, double *);
+void tsr_special_eval_sh_chebyu__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_sh_chebyu__int(const void *, const double *, double *);
 void tsr_special_eval_sh_jacobi(const void *, const double *, double *);
+void tsr_special_eval_sh_jacobi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_sh_jacobi__int(const void *, const double *, double *);
 void tsr_special_eval_sh_legendre(const void *, const double *, double *);
+void tsr_special_eval_sh_legendre__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_eval_sh_legendre__int(const void *, const double *, double *);
 void tsr_special_exp1(const void *, const double *, double *);
+void tsr_special_exp1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_exp10(const void *, const double *, double *);
+void tsr_special_exp10__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_exp2(const void *, const double *, double *);
+void tsr_special_exp2__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_expi(const void *, const double *, double *);
+void tsr_special_expi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_expit(const void *, const double *, double *);
+void tsr_special_expit__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_expm1(const void *, const double *, double *);
+void tsr_special_expm1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_expn(const void *, const double *, double *);
+void tsr_special_expn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_expn__int(const void *, const double *, double *);
 void tsr_special_exprel(const void *, const double *, double *);
+void tsr_special_exprel__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_fdtr(const void *, const double *, double *);
+void tsr_special_fdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_fdtrc(const void *, const double *, double *);
+void tsr_special_fdtrc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_fdtri(const void *, const double *, double *);
+void tsr_special_fdtri__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_fdtridfd(const void *, const double *, double *);
+void tsr_special_fdtridfd__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_fresnel(const void *, const double *, double *);
+void tsr_special_fresnel__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gamma(const void *, const double *, double *);
+void tsr_special_gamma__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gammainc(const void *, const double *, double *);
+void tsr_special_gammainc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gammaincc(const void *, const double *, double *);
+void tsr_special_gammaincc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gammainccinv(const void *, const double *, double *);
+void tsr_special_gammainccinv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gammaincinv(const void *, const double *, double *);
+void tsr_special_gammaincinv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gammaln(const void *, const double *, double *);
+void tsr_special_gammaln__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gammasgn(const void *, const double *, double *);
+void tsr_special_gammasgn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gdtr(const void *, const double *, double *);
+void tsr_special_gdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gdtrc(const void *, const double *, double *);
+void tsr_special_gdtrc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gdtria(const void *, const double *, double *);
+void tsr_special_gdtria__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gdtrib(const void *, const double *, double *);
+void tsr_special_gdtrib__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_gdtrix(const void *, const double *, double *);
+void tsr_special_gdtrix__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_huber(const void *, const double *, double *);
+void tsr_special_huber__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_hyp0f1(const void *, const double *, double *);
+void tsr_special_hyp0f1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_hyp1f1(const void *, const double *, double *);
+void tsr_special_hyp1f1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_hyp2f1(const void *, const double *, double *);
+void tsr_special_hyp2f1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_hyperu(const void *, const double *, double *);
+void tsr_special_hyperu__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_i0(const void *, const double *, double *);
+void tsr_special_i0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_i0e(const void *, const double *, double *);
+void tsr_special_i0e__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_i1(const void *, const double *, double *);
+void tsr_special_i1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_i1e(const void *, const double *, double *);
+void tsr_special_i1e__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_inv_boxcox(const void *, const double *, double *);
+void tsr_special_inv_boxcox__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_inv_boxcox1p(const void *, const double *, double *);
+void tsr_special_inv_boxcox1p__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_it2i0k0(const void *, const double *, double *);
+void tsr_special_it2i0k0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_it2j0y0(const void *, const double *, double *);
+void tsr_special_it2j0y0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_it2struve0(const void *, const double *, double *);
+void tsr_special_it2struve0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_itairy(const void *, const double *, double *);
+void tsr_special_itairy__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_iti0k0(const void *, const double *, double *);
+void tsr_special_iti0k0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_itj0y0(const void *, const double *, double *);
+void tsr_special_itj0y0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_itmodstruve0(const void *, const double *, double *);
+void tsr_special_itmodstruve0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_itstruve0(const void *, const double *, double *);
+void tsr_special_itstruve0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_iv(const void *, const double *, double *);
+void tsr_special_iv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_iv__cplx(const void *, const double *, double *);
 void tsr_special_ive(const void *, const double *, double *);
+void tsr_special_ive__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_j0(const void *, const double *, double *);
+void tsr_special_j0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_j1(const void *, const double *, double *);
+void tsr_special_j1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_jn(const void *, const double *, double *);
+void tsr_special_jn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_jv(const void *, const double *, double *);
+void tsr_special_jv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_jv__cplx(const void *, const double *, double *);
 void tsr_special_jve(const void *, const double *, double *);
+void tsr_special_jve__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_k0(const void *, const double *, double *);
+void tsr_special_k0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_k0e(const void *, const double *, double *);
+void tsr_special_k0e__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_k1(const void *, const double *, double *);
+void tsr_special_k1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_k1e(const void *, const double *, double *);
+void tsr_special_k1e__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kei(const void *, const double *, double *);
+void tsr_special_kei__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_keip(const void *, const double *, double *);
+void tsr_special_keip__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ker(const void *, const double *, double *);
+void tsr_special_ker__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kerp(const void *, const double *, double *);
+void tsr_special_kerp__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kl_div(const void *, const double *, double *);
+void tsr_special_kl_div__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kn(const void *, const double *, double *);
+void tsr_special_kn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kn__int(const void *, const double *, double *);
 void tsr_special_kolmogi(const void *, const double *, double *);
+void tsr_special_kolmogi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kolmogorov(const void *, const double *, double *);
+void tsr_special_kolmogorov__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kv(const void *, const double *, double *);
+void tsr_special_kv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kv__cplx(const void *, const double *, double *);
 void tsr_special_kve(const void *, const double *, double *);
+void tsr_special_kve__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_log1p(const void *, const double *, double *);
+void tsr_special_log1p__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_log_expit(const void *, const double *, double *);
+void tsr_special_log_expit__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_log_ndtr(const void *, const double *, double *);
+void tsr_special_log_ndtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_log_wright_bessel(const void *, const double *, double *);
+void tsr_special_log_wright_bessel__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_loggamma(const void *, const double *, double *);
+void tsr_special_loggamma__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_logit(const void *, const double *, double *);
+void tsr_special_logit__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_lpmv(const void *, const double *, double *);
+void tsr_special_lpmv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_a(const void *, const double *, double *);
+void tsr_special_mathieu_a__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_b(const void *, const double *, double *);
+void tsr_special_mathieu_b__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_cem(const void *, const double *, double *);
+void tsr_special_mathieu_cem__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_modcem1(const void *, const double *, double *);
+void tsr_special_mathieu_modcem1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_modcem2(const void *, const double *, double *);
+void tsr_special_mathieu_modcem2__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_modsem1(const void *, const double *, double *);
+void tsr_special_mathieu_modsem1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_modsem2(const void *, const double *, double *);
+void tsr_special_mathieu_modsem2__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_mathieu_sem(const void *, const double *, double *);
+void tsr_special_mathieu_sem__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_modstruve(const void *, const double *, double *);
+void tsr_special_modstruve__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nbdtr(const void *, const double *, double *);
+void tsr_special_nbdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nbdtr__int(const void *, const double *, double *);
 void tsr_special_nbdtrc(const void *, const double *, double *);
+void tsr_special_nbdtrc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nbdtrc__int(const void *, const double *, double *);
 void tsr_special_nbdtri(const void *, const double *, double *);
+void tsr_special_nbdtri__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nbdtri__int(const void *, const double *, double *);
 void tsr_special_nbdtrik(const void *, const double *, double *);
+void tsr_special_nbdtrik__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nbdtrin(const void *, const double *, double *);
+void tsr_special_nbdtrin__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ncfdtr(const void *, const double *, double *);
+void tsr_special_ncfdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ncfdtri(const void *, const double *, double *);
+void tsr_special_ncfdtri__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ncfdtridfd(const void *, const double *, double *);
+void tsr_special_ncfdtridfd__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ncfdtridfn(const void *, const double *, double *);
+void tsr_special_ncfdtridfn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ncfdtrinc(const void *, const double *, double *);
+void tsr_special_ncfdtrinc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nctdtr(const void *, const double *, double *);
+void tsr_special_nctdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nctdtridf(const void *, const double *, double *);
+void tsr_special_nctdtridf__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nctdtrinc(const void *, const double *, double *);
+void tsr_special_nctdtrinc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nctdtrit(const void *, const double *, double *);
+void tsr_special_nctdtrit__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ndtr(const void *, const double *, double *);
+void tsr_special_ndtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ndtri(const void *, const double *, double *);
+void tsr_special_ndtri__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ndtri_exp(const void *, const double *, double *);
+void tsr_special_ndtri_exp__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nrdtrimn(const void *, const double *, double *);
+void tsr_special_nrdtrimn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_nrdtrisd(const void *, const double *, double *);
+void tsr_special_nrdtrisd__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_obl_ang1(const void *, const double *, double *);
+void tsr_special_obl_ang1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_obl_ang1_cv(const void *, const double *, double *);
+void tsr_special_obl_ang1_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_obl_cv(const void *, const double *, double *);
+void tsr_special_obl_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_obl_rad1(const void *, const double *, double *);
+void tsr_special_obl_rad1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_obl_rad1_cv(const void *, const double *, double *);
+void tsr_special_obl_rad1_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_obl_rad2(const void *, const double *, double *);
+void tsr_special_obl_rad2__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_obl_rad2_cv(const void *, const double *, double *);
+void tsr_special_obl_rad2_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_owens_t(const void *, const double *, double *);
+void tsr_special_owens_t__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pbdv(const void *, const double *, double *);
+void tsr_special_pbdv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pbvv(const void *, const double *, double *);
+void tsr_special_pbvv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pbwa(const void *, const double *, double *);
+void tsr_special_pbwa__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pdtr(const void *, const double *, double *);
+void tsr_special_pdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pdtrc(const void *, const double *, double *);
+void tsr_special_pdtrc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pdtri(const void *, const double *, double *);
+void tsr_special_pdtri__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pdtri__int(const void *, const double *, double *);
 void tsr_special_pdtrik(const void *, const double *, double *);
+void tsr_special_pdtrik__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_poch(const void *, const double *, double *);
+void tsr_special_poch__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_perm(const void *, const double *, double *);
+void tsr_special_perm__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_assoc_laguerre(const void *, const double *, double *);
+void tsr_special_assoc_laguerre__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_diric(const void *, const double *, double *);
+void tsr_special_diric__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_powm1(const void *, const double *, double *);
+void tsr_special_powm1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pro_ang1(const void *, const double *, double *);
+void tsr_special_pro_ang1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pro_ang1_cv(const void *, const double *, double *);
+void tsr_special_pro_ang1_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pro_cv(const void *, const double *, double *);
+void tsr_special_pro_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pro_rad1(const void *, const double *, double *);
+void tsr_special_pro_rad1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pro_rad1_cv(const void *, const double *, double *);
+void tsr_special_pro_rad1_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pro_rad2(const void *, const double *, double *);
+void tsr_special_pro_rad2__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pro_rad2_cv(const void *, const double *, double *);
+void tsr_special_pro_rad2_cv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_pseudo_huber(const void *, const double *, double *);
+void tsr_special_pseudo_huber__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_psi(const void *, const double *, double *);
+void tsr_special_psi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_radian(const void *, const double *, double *);
+void tsr_special_radian__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_rel_entr(const void *, const double *, double *);
+void tsr_special_rel_entr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_rgamma(const void *, const double *, double *);
+void tsr_special_rgamma__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_round(const void *, const double *, double *);
+void tsr_special_round__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_shichi(const void *, const double *, double *);
+void tsr_special_shichi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_sici(const void *, const double *, double *);
+void tsr_special_sici__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_sindg(const void *, const double *, double *);
+void tsr_special_sindg__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_smirnov(const void *, const double *, double *);
+void tsr_special_smirnov__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_smirnov__int(const void *, const double *, double *);
 void tsr_special_smirnovi(const void *, const double *, double *);
+void tsr_special_smirnovi__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_smirnovi__int(const void *, const double *, double *);
 void tsr_special_spence(const void *, const double *, double *);
+void tsr_special_spence__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_stdtr(const void *, const double *, double *);
+void tsr_special_stdtr__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_stdtridf(const void *, const double *, double *);
+void tsr_special_stdtridf__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_stdtrit(const void *, const double *, double *);
+void tsr_special_stdtrit__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_struve(const void *, const double *, double *);
+void tsr_special_struve__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_tandg(const void *, const double *, double *);
+void tsr_special_tandg__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_tklmbda(const void *, const double *, double *);
+void tsr_special_tklmbda__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_voigt_profile(const void *, const double *, double *);
+void tsr_special_voigt_profile__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_wright_bessel(const void *, const double *, double *);
+void tsr_special_wright_bessel__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_wrightomega(const void *, const double *, double *);
+void tsr_special_wrightomega__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_xlog1py(const void *, const double *, double *);
+void tsr_special_xlog1py__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_xlogy(const void *, const double *, double *);
+void tsr_special_xlogy__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_y0(const void *, const double *, double *);
+void tsr_special_y0__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_y1(const void *, const double *, double *);
+void tsr_special_y1__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_yn(const void *, const double *, double *);
+void tsr_special_yn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_yn__int(const void *, const double *, double *);
 void tsr_special_yv(const void *, const double *, double *);
+void tsr_special_yv__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_yv__cplx(const void *, const double *, double *);
 void tsr_special_yve(const void *, const double *, double *);
+void tsr_special_yve__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_zeta(const void *, const double *, double *);
+void tsr_special_zeta__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_jvp(const void *, const double *, double *);
+void tsr_special_jvp__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_yvp(const void *, const double *, double *);
+void tsr_special_yvp__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_ivp(const void *, const double *, double *);
+void tsr_special_ivp__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_kvp(const void *, const double *, double *);
+void tsr_special_kvp__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_zetac(const void *, const double *, double *);
+void tsr_special_zetac__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_softplus(const void *, const double *, double *);
+void tsr_special_softplus__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_sinc(const void *, const double *, double *);
+void tsr_special_sinc__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_spherical_jn(const void *, const double *, double *);
+void tsr_special_spherical_jn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_spherical_yn(const void *, const double *, double *);
+void tsr_special_spherical_yn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_spherical_in(const void *, const double *, double *);
+void tsr_special_spherical_in__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 void tsr_special_spherical_kn(const void *, const double *, double *);
+void tsr_special_spherical_kn__n(const void *, int64_t, const double *const *, const int64_t *, double *const *);
 
 const fn_def TSR_GEN_SPECIAL[] = {
-    UFUNCI("special.agm", 2, 1, "a, b", "y", tsr_special_agm, NULL, 0, "Compute the arithmetic-geometric mean of `a` and `b`."),
-    UFUNCI("special.airy", 1, 4, "z", "Ai, Aip, Bi, Bip", tsr_special_airy, NULL, 0, "Airy functions and their derivatives."),
-    UFUNCI("special.airye", 1, 4, "z", "eAi, eAip, eBi, eBip", tsr_special_airye, NULL, 0, "Exponentially scaled Airy functions and their derivatives."),
-    UFUNCI("special.bdtr", 3, 1, "k, n, p", "y", tsr_special_bdtr, tsr_special_bdtr__int, 2, "Binomial distribution cumulative distribution function."),
-    UFUNCI("special.bdtrc", 3, 1, "k, n, p", "y", tsr_special_bdtrc, tsr_special_bdtrc__int, 2, "Binomial distribution survival function."),
-    UFUNCI("special.bdtri", 3, 1, "k, n, y", "p", tsr_special_bdtri, tsr_special_bdtri__int, 2, "Inverse function to `bdtr` with respect to `p`."),
-    UFUNCI("special.bdtrik", 3, 1, "y, n, p", "k", tsr_special_bdtrik, NULL, 0, "Inverse function to `bdtr` with respect to `k`."),
-    UFUNCI("special.bdtrin", 3, 1, "k, y, p", "n", tsr_special_bdtrin, NULL, 0, "Inverse function to `bdtr` with respect to `n`."),
-    UFUNCI("special.bei", 1, 1, "x", "y", tsr_special_bei, NULL, 0, "Kelvin function bei."),
-    UFUNCI("special.beip", 1, 1, "x", "y", tsr_special_beip, NULL, 0, "Derivative of the Kelvin function bei."),
-    UFUNCI("special.ber", 1, 1, "x", "y", tsr_special_ber, NULL, 0, "Kelvin function ber."),
-    UFUNCI("special.berp", 1, 1, "x", "y", tsr_special_berp, NULL, 0, "Derivative of the Kelvin function ber."),
-    UFUNCI("special.besselpoly", 3, 1, "a, lmb, nu", "y", tsr_special_besselpoly, NULL, 0, "Weighted integral of the Bessel function of the first kind."),
-    UFUNCI("special.beta", 2, 1, "a, b", "y", tsr_special_beta, NULL, 0, "Beta function."),
-    UFUNCI("special.betainc", 3, 1, "a, b, x", "y", tsr_special_betainc, NULL, 0, "Regularized incomplete beta function."),
-    UFUNCI("special.betaincc", 3, 1, "a, b, x", "y", tsr_special_betaincc, NULL, 0, "Complement of the regularized incomplete beta function."),
-    UFUNCI("special.betainccinv", 3, 1, "a, b, y", "y", tsr_special_betainccinv, NULL, 0, "Inverse of the complemented regularized incomplete beta function."),
-    UFUNCI("special.betaincinv", 3, 1, "a, b, y", "y", tsr_special_betaincinv, NULL, 0, "Inverse of the regularized incomplete beta function."),
-    UFUNCI("special.betaln", 2, 1, "a, b", "y", tsr_special_betaln, NULL, 0, "Natural logarithm of absolute value of beta function."),
-    UFUNCI("special.binom", 2, 1, "x, y", "y", tsr_special_binom, NULL, 0, "Binomial coefficient considered as a function of two real variables."),
-    UFUNCI("special.comb", 2, 1, "N, k", "y", tsr_special_comb, NULL, 0, "The number of combinations of N things taken k at a time (scipy.special.comb, exact=False, repetition=False)."),
-    UFUNCI("special.factorial", 1, 1, "n", "y", tsr_special_factorial, NULL, 0, "The factorial n! as gamma(n+1), 0 for n<0 (scipy.special.factorial, exact=False)."),
-    UFUNCI("special.polygamma", 2, 1, "n, x", "y", tsr_special_polygamma, NULL, 0, "Polygamma function of order n: the (n+1)-th derivative of the logarithm of the gamma function (scipy.special.polygamma)."),
-    UFUNCI("special.boxcox", 2, 1, "x, lmbda", "y", tsr_special_boxcox, NULL, 0, "Compute the Box-Cox transformation."),
-    UFUNCI("special.boxcox1p", 2, 1, "x, lmbda", "y", tsr_special_boxcox1p, NULL, 0, "Compute the Box-Cox transformation of 1 + `x`."),
-    UFUNCI("special.btdtria", 3, 1, "p, b, x", "a", tsr_special_btdtria, NULL, 0, "Inverse of `betainc` with respect to `a`."),
-    UFUNCI("special.btdtrib", 3, 1, "x0, x1, x2", "b", tsr_special_btdtrib, NULL, 0, "btdtria(a, p, x, out=None)."),
-    UFUNCI("special.cbrt", 1, 1, "x", "y", tsr_special_cbrt, NULL, 0, "Element-wise cube root of `x`."),
-    UFUNCI("special.chdtr", 2, 1, "v, x", "y", tsr_special_chdtr, NULL, 0, "Chi square cumulative distribution function."),
-    UFUNCI("special.chdtrc", 2, 1, "v, x", "y", tsr_special_chdtrc, NULL, 0, "Chi square survival function."),
-    UFUNCI("special.chdtri", 2, 1, "v, p", "x", tsr_special_chdtri, NULL, 0, "Inverse to `chdtrc` with respect to `x`."),
-    UFUNCI("special.chdtriv", 2, 1, "p, x", "y", tsr_special_chdtriv, NULL, 0, "Inverse to `chdtr` with respect to `v`."),
-    UFUNCI("special.chndtr", 3, 1, "x, df, nc", "x", tsr_special_chndtr, NULL, 0, "Non-central chi square cumulative distribution function."),
-    UFUNCI("special.chndtridf", 3, 1, "x, p, nc", "df", tsr_special_chndtridf, NULL, 0, "Inverse to `chndtr` vs `df`."),
-    UFUNCI("special.chndtrinc", 3, 1, "x, df, p", "nc", tsr_special_chndtrinc, NULL, 0, "Inverse to `chndtr` vs `nc`."),
-    UFUNCI("special.chndtrix", 3, 1, "p, df, nc", "x", tsr_special_chndtrix, NULL, 0, "Inverse to `chndtr` vs `x`."),
-    UFUNCI("special.cosdg", 1, 1, "x", "y", tsr_special_cosdg, NULL, 0, "Cosine of the angle `x` given in degrees."),
-    UFUNCI("special.cosm1", 1, 1, "x", "y", tsr_special_cosm1, NULL, 0, "cos(x) - 1 for use when `x` is near zero."),
-    UFUNCI("special.cotdg", 1, 1, "x", "y", tsr_special_cotdg, NULL, 0, "Cotangent of the angle `x` given in degrees."),
-    UFUNCI("special.dawsn", 1, 1, "x", "y", tsr_special_dawsn, NULL, 0, "Dawson's integral."),
-    UFUNCI("special.digamma", 1, 1, "z", "digamma", tsr_special_digamma, NULL, 0, "The digamma function (alias of psi)."),
-    UFUNCI("special.ellipe", 1, 1, "m", "E", tsr_special_ellipe, NULL, 0, "Complete elliptic integral of the second kind."),
-    UFUNCI("special.ellipeinc", 2, 1, "phi, m", "E", tsr_special_ellipeinc, NULL, 0, "Incomplete elliptic integral of the second kind."),
-    UFUNCI("special.ellipj", 2, 4, "u, m", "sn, cn, dn, ph", tsr_special_ellipj, NULL, 0, "Jacobi elliptic functions."),
-    UFUNCI("special.ellipk", 1, 1, "m", "K", tsr_special_ellipk, NULL, 0, "Complete elliptic integral of the first kind."),
-    UFUNCI("special.ellipkinc", 2, 1, "phi, m", "K", tsr_special_ellipkinc, NULL, 0, "Incomplete elliptic integral of the first kind."),
-    UFUNCI("special.ellipkm1", 1, 1, "p", "K", tsr_special_ellipkm1, NULL, 0, "Complete elliptic integral of the first kind around `m` = 1."),
-    UFUNCI("special.elliprc", 2, 1, "x, y", "R", tsr_special_elliprc, NULL, 0, "Degenerate symmetric elliptic integral."),
-    UFUNCI("special.elliprd", 3, 1, "x, y, z", "R", tsr_special_elliprd, NULL, 0, "Symmetric elliptic integral of the second kind."),
-    UFUNCI("special.elliprf", 3, 1, "x, y, z", "R", tsr_special_elliprf, NULL, 0, "Completely-symmetric elliptic integral of the first kind."),
-    UFUNCI("special.elliprg", 3, 1, "x, y, z", "R", tsr_special_elliprg, NULL, 0, "Completely-symmetric elliptic integral of the second kind."),
-    UFUNCI("special.elliprj", 4, 1, "x, y, z, p", "R", tsr_special_elliprj, NULL, 0, "Symmetric elliptic integral of the third kind."),
-    UFUNCI("special.entr", 1, 1, "x", "res", tsr_special_entr, NULL, 0, "Elementwise function for computing entropy."),
-    UFUNCI("special.erf", 1, 1, "z", "res", tsr_special_erf, NULL, 0, "Returns the error function of complex argument."),
-    UFUNCI("special.erfc", 1, 1, "x", "y", tsr_special_erfc, NULL, 0, "Complementary error function, ``1 - erf(x)``."),
-    UFUNCI("special.erfcinv", 1, 1, "y", "erfcinv", tsr_special_erfcinv, NULL, 0, "Inverse of the complementary error function."),
-    UFUNCI("special.erfcx", 1, 1, "x", "y", tsr_special_erfcx, NULL, 0, "Scaled complementary error function, ``exp(x**2) * erfc(x)``."),
-    UFUNCI("special.erfi", 1, 1, "z", "y", tsr_special_erfi, NULL, 0, "Imaginary error function, ``-i erf(i z)``."),
-    UFUNCI("special.erfinv", 1, 1, "y", "erfinv", tsr_special_erfinv, NULL, 0, "Inverse of the error function."),
-    UFUNCI("special.eval_chebyc", 2, 1, "n, x", "C", tsr_special_eval_chebyc, tsr_special_eval_chebyc__int, 1, "Evaluate Chebyshev polynomial of the first kind on [-2, 2] at a point."),
-    UFUNCI("special.eval_chebys", 2, 1, "n, x", "S", tsr_special_eval_chebys, tsr_special_eval_chebys__int, 1, "Evaluate Chebyshev polynomial of the second kind on [-2, 2] at a point."),
-    UFUNCI("special.eval_chebyt", 2, 1, "n, x", "T", tsr_special_eval_chebyt, tsr_special_eval_chebyt__int, 1, "Evaluate Chebyshev polynomial of the first kind at a point."),
-    UFUNCI("special.eval_chebyu", 2, 1, "n, x", "U", tsr_special_eval_chebyu, tsr_special_eval_chebyu__int, 1, "Evaluate Chebyshev polynomial of the second kind at a point."),
-    UFUNCI("special.eval_gegenbauer", 3, 1, "n, alpha, x", "C", tsr_special_eval_gegenbauer, tsr_special_eval_gegenbauer__int, 1, "Evaluate Gegenbauer polynomial at a point."),
-    UFUNCI("special.eval_genlaguerre", 3, 1, "n, alpha, x", "L", tsr_special_eval_genlaguerre, tsr_special_eval_genlaguerre__int, 1, "Evaluate generalized Laguerre polynomial at a point."),
-    UFUNCI("special.eval_hermite", 2, 1, "n, x", "H", tsr_special_eval_hermite, NULL, 0, "Evaluate physicist's Hermite polynomial at a point."),
-    UFUNCI("special.eval_hermitenorm", 2, 1, "n, x", "He", tsr_special_eval_hermitenorm, NULL, 0, "Evaluate probabilist's (normalized) Hermite polynomial at a point."),
-    UFUNCI("special.eval_jacobi", 4, 1, "n, alpha, beta, x", "P", tsr_special_eval_jacobi, tsr_special_eval_jacobi__int, 1, "Evaluate Jacobi polynomial at a point."),
-    UFUNCI("special.eval_laguerre", 2, 1, "n, x", "L", tsr_special_eval_laguerre, tsr_special_eval_laguerre__int, 1, "Evaluate Laguerre polynomial at a point."),
-    UFUNCI("special.eval_legendre", 2, 1, "n, x", "P", tsr_special_eval_legendre, tsr_special_eval_legendre__int, 1, "Evaluate Legendre polynomial at a point."),
-    UFUNCI("special.eval_sh_chebyt", 2, 1, "n, x", "T", tsr_special_eval_sh_chebyt, tsr_special_eval_sh_chebyt__int, 1, "Evaluate shifted Chebyshev polynomial of the first kind at a point."),
-    UFUNCI("special.eval_sh_chebyu", 2, 1, "n, x", "U", tsr_special_eval_sh_chebyu, tsr_special_eval_sh_chebyu__int, 1, "Evaluate shifted Chebyshev polynomial of the second kind at a point."),
-    UFUNCI("special.eval_sh_jacobi", 4, 1, "n, p, q, x", "G", tsr_special_eval_sh_jacobi, tsr_special_eval_sh_jacobi__int, 1, "Evaluate shifted Jacobi polynomial at a point."),
-    UFUNCI("special.eval_sh_legendre", 2, 1, "n, x", "P", tsr_special_eval_sh_legendre, tsr_special_eval_sh_legendre__int, 1, "Evaluate shifted Legendre polynomial at a point."),
-    UFUNCI("special.exp1", 1, 1, "z", "y", tsr_special_exp1, NULL, 0, "Exponential integral E1."),
-    UFUNCI("special.exp10", 1, 1, "x", "y", tsr_special_exp10, NULL, 0, "Compute ``10**x`` element-wise."),
-    UFUNCI("special.exp2", 1, 1, "x", "y", tsr_special_exp2, NULL, 0, "Compute ``2**x`` element-wise."),
-    UFUNCI("special.expi", 1, 1, "x", "y", tsr_special_expi, NULL, 0, "Exponential integral Ei."),
-    UFUNCI("special.expit", 1, 1, "x", "y", tsr_special_expit, NULL, 0, "Expit (a.k.a. logistic sigmoid) ufunc for ndarrays."),
-    UFUNCI("special.expm1", 1, 1, "x", "y", tsr_special_expm1, NULL, 0, "Compute ``exp(x) - 1``."),
-    UFUNCI("special.expn", 2, 1, "n, x", "y", tsr_special_expn, tsr_special_expn__int, 1, "Generalized exponential integral En."),
-    UFUNCI("special.exprel", 1, 1, "x", "y", tsr_special_exprel, NULL, 0, "Relative error exponential, ``(exp(x) - 1)/x``."),
-    UFUNCI("special.fdtr", 3, 1, "dfn, dfd, x", "y", tsr_special_fdtr, NULL, 0, "F cumulative distribution function."),
-    UFUNCI("special.fdtrc", 3, 1, "dfn, dfd, x", "y", tsr_special_fdtrc, NULL, 0, "F survival function."),
-    UFUNCI("special.fdtri", 3, 1, "dfn, dfd, p", "x", tsr_special_fdtri, NULL, 0, "The `p`-th quantile of the F-distribution."),
-    UFUNCI("special.fdtridfd", 3, 1, "dfn, p, x", "dfd", tsr_special_fdtridfd, NULL, 0, "Inverse to `fdtr` vs dfd."),
-    UFUNCI("special.fresnel", 1, 2, "z", "S, C", tsr_special_fresnel, NULL, 0, "Fresnel integrals."),
-    UFUNCI("special.gamma", 1, 1, "z", "y", tsr_special_gamma, NULL, 0, "gamma function."),
-    UFUNCI("special.gammainc", 2, 1, "a, x", "y", tsr_special_gammainc, NULL, 0, "Regularized lower incomplete gamma function."),
-    UFUNCI("special.gammaincc", 2, 1, "a, x", "y", tsr_special_gammaincc, NULL, 0, "Regularized upper incomplete gamma function."),
-    UFUNCI("special.gammainccinv", 2, 1, "a, y", "y", tsr_special_gammainccinv, NULL, 0, "Inverse of the regularized upper incomplete gamma function."),
-    UFUNCI("special.gammaincinv", 2, 1, "a, y", "y", tsr_special_gammaincinv, NULL, 0, "Inverse to the regularized lower incomplete gamma function."),
-    UFUNCI("special.gammaln", 1, 1, "x", "y", tsr_special_gammaln, NULL, 0, "Logarithm of the absolute value of the gamma function."),
-    UFUNCI("special.gammasgn", 1, 1, "x", "y", tsr_special_gammasgn, NULL, 0, "Sign of the gamma function."),
-    UFUNCI("special.gdtr", 3, 1, "a, b, x", "F", tsr_special_gdtr, NULL, 0, "Gamma distribution cumulative distribution function."),
-    UFUNCI("special.gdtrc", 3, 1, "a, b, x", "F", tsr_special_gdtrc, NULL, 0, "Gamma distribution survival function."),
-    UFUNCI("special.gdtria", 3, 1, "p, b, x", "a", tsr_special_gdtria, NULL, 0, "Inverse of `gdtr` vs a."),
-    UFUNCI("special.gdtrib", 3, 1, "a, p, x", "b", tsr_special_gdtrib, NULL, 0, "Inverse of `gdtr` vs b."),
-    UFUNCI("special.gdtrix", 3, 1, "a, b, p", "x", tsr_special_gdtrix, NULL, 0, "Inverse of `gdtr` vs x."),
-    UFUNCI("special.huber", 2, 1, "delta, r", "y", tsr_special_huber, NULL, 0, "Huber loss function."),
-    UFUNCI("special.hyp0f1", 2, 1, "v, z", "y", tsr_special_hyp0f1, NULL, 0, "Confluent hypergeometric limit function 0F1."),
-    UFUNCI("special.hyp1f1", 3, 1, "a, b, x", "y", tsr_special_hyp1f1, NULL, 0, "Confluent hypergeometric function 1F1."),
-    UFUNCI("special.hyp2f1", 4, 1, "a, b, c, z", "hyp2f1", tsr_special_hyp2f1, NULL, 0, "Gauss hypergeometric function 2F1(a, b; c; z)."),
-    UFUNCI("special.hyperu", 3, 1, "a, b, x", "y", tsr_special_hyperu, NULL, 0, "Confluent hypergeometric function U."),
-    UFUNCI("special.i0", 1, 1, "x", "I", tsr_special_i0, NULL, 0, "Modified Bessel function of order 0."),
-    UFUNCI("special.i0e", 1, 1, "x", "I", tsr_special_i0e, NULL, 0, "Exponentially scaled modified Bessel function of order 0."),
-    UFUNCI("special.i1", 1, 1, "x", "I", tsr_special_i1, NULL, 0, "Modified Bessel function of order 1."),
-    UFUNCI("special.i1e", 1, 1, "x", "I", tsr_special_i1e, NULL, 0, "Exponentially scaled modified Bessel function of order 1."),
-    UFUNCI("special.inv_boxcox", 2, 1, "y, lmbda", "x", tsr_special_inv_boxcox, NULL, 0, "Compute the inverse of the Box-Cox transformation."),
-    UFUNCI("special.inv_boxcox1p", 2, 1, "y, lmbda", "x", tsr_special_inv_boxcox1p, NULL, 0, "Compute the inverse of the Box-Cox transformation."),
-    UFUNCI("special.it2i0k0", 1, 2, "x", "ii0, ik0", tsr_special_it2i0k0, NULL, 0, "Integrals related to modified Bessel functions of order 0."),
-    UFUNCI("special.it2j0y0", 1, 2, "x", "ij0, iy0", tsr_special_it2j0y0, NULL, 0, "Integrals related to Bessel functions of the first kind of order 0."),
-    UFUNCI("special.it2struve0", 1, 1, "x", "I", tsr_special_it2struve0, NULL, 0, "Integral related to the Struve function of order 0."),
-    UFUNCI("special.itairy", 1, 4, "x", "Apt, Bpt, Ant, Bnt", tsr_special_itairy, NULL, 0, "Integrals of Airy functions."),
-    UFUNCI("special.iti0k0", 1, 2, "x", "ii0, ik0", tsr_special_iti0k0, NULL, 0, "Integrals of modified Bessel functions of order 0."),
-    UFUNCI("special.itj0y0", 1, 2, "x", "ij0, iy0", tsr_special_itj0y0, NULL, 0, "Integrals of Bessel functions of the first kind of order 0."),
-    UFUNCI("special.itmodstruve0", 1, 1, "x", "I", tsr_special_itmodstruve0, NULL, 0, "Integral of the modified Struve function of order 0."),
-    UFUNCI("special.itstruve0", 1, 1, "x", "I", tsr_special_itstruve0, NULL, 0, "Integral of the Struve function of order 0."),
-    UFUNC_C("special.iv", 2, 1, "v, z", "y", tsr_special_iv, NULL, 0, tsr_special_iv__cplx, "Modified Bessel function of the first kind of real order."),
-    UFUNCI("special.ive", 2, 1, "v, z", "y", tsr_special_ive, NULL, 0, "Exponentially scaled modified Bessel function of the first kind."),
-    UFUNCI("special.j0", 1, 1, "x", "J", tsr_special_j0, NULL, 0, "Bessel function of the first kind of order 0."),
-    UFUNCI("special.j1", 1, 1, "x", "J", tsr_special_j1, NULL, 0, "Bessel function of the first kind of order 1."),
-    UFUNCI("special.jn", 2, 1, "n, z", "J", tsr_special_jn, NULL, 0, "Bessel function of the first kind of real order and complex argument (alias of jv)."),
-    UFUNC_C("special.jv", 2, 1, "v, z", "J", tsr_special_jv, NULL, 0, tsr_special_jv__cplx, "Bessel function of the first kind of real order and complex argument."),
-    UFUNCI("special.jve", 2, 1, "v, z", "J", tsr_special_jve, NULL, 0, "Exponentially scaled Bessel function of the first kind of order `v`."),
-    UFUNCI("special.k0", 1, 1, "x", "K", tsr_special_k0, NULL, 0, "Modified Bessel function of the second kind of order 0, :math:`K_0`."),
-    UFUNCI("special.k0e", 1, 1, "x", "K", tsr_special_k0e, NULL, 0, "Exponentially scaled modified Bessel function K of order 0."),
-    UFUNCI("special.k1", 1, 1, "x", "K", tsr_special_k1, NULL, 0, "Modified Bessel function of the second kind of order 1, :math:`K_1(x)`."),
-    UFUNCI("special.k1e", 1, 1, "x", "K", tsr_special_k1e, NULL, 0, "Exponentially scaled modified Bessel function K of order 1."),
-    UFUNCI("special.kei", 1, 1, "x", "y", tsr_special_kei, NULL, 0, "Kelvin function kei."),
-    UFUNCI("special.keip", 1, 1, "x", "y", tsr_special_keip, NULL, 0, "Derivative of the Kelvin function kei."),
-    UFUNCI("special.ker", 1, 1, "x", "y", tsr_special_ker, NULL, 0, "Kelvin function ker."),
-    UFUNCI("special.kerp", 1, 1, "x", "y", tsr_special_kerp, NULL, 0, "Derivative of the Kelvin function ker."),
-    UFUNCI("special.kl_div", 2, 1, "x, y", "y", tsr_special_kl_div, NULL, 0, "Elementwise function for computing Kullback-Leibler divergence."),
-    UFUNCI("special.kn", 2, 1, "n, x", "y", tsr_special_kn, tsr_special_kn__int, 1, "Modified Bessel function of the second kind of integer order `n`."),
-    UFUNCI("special.kolmogi", 1, 1, "p", "y", tsr_special_kolmogi, NULL, 0, "Inverse Survival Function of Kolmogorov distribution."),
-    UFUNCI("special.kolmogorov", 1, 1, "y", "y", tsr_special_kolmogorov, NULL, 0, "Complementary cumulative distribution (Survival Function) function of Kolmogorov distribution."),
-    UFUNC_C("special.kv", 2, 1, "v, z", "y", tsr_special_kv, NULL, 0, tsr_special_kv__cplx, "Modified Bessel function of the second kind of real order `v`."),
-    UFUNCI("special.kve", 2, 1, "v, z", "y", tsr_special_kve, NULL, 0, "Exponentially scaled modified Bessel function of the second kind."),
-    UFUNCI("special.log1p", 1, 1, "x", "y", tsr_special_log1p, NULL, 0, "Calculates log(1 + x) for use when `x` is near zero."),
-    UFUNCI("special.log_expit", 1, 1, "x", "out", tsr_special_log_expit, NULL, 0, "Logarithm of the logistic sigmoid function."),
-    UFUNCI("special.log_ndtr", 1, 1, "x", "y", tsr_special_log_ndtr, NULL, 0, "Logarithm of Gaussian cumulative distribution function."),
-    UFUNCI("special.log_wright_bessel", 3, 1, "a, b, x", "y", tsr_special_log_wright_bessel, NULL, 0, "Natural logarithm of Wright's generalized Bessel function, see `wright_bessel`. This function comes in handy in particular for large values of x."),
-    UFUNCI("special.loggamma", 1, 1, "z", "loggamma", tsr_special_loggamma, NULL, 0, "Principal branch of the logarithm of the gamma function."),
-    UFUNCI("special.logit", 1, 1, "x", "y", tsr_special_logit, NULL, 0, "Logit ufunc for ndarrays."),
-    UFUNCI("special.lpmv", 3, 1, "m, v, x", "pmv", tsr_special_lpmv, NULL, 0, "Associated Legendre function of integer order and real degree."),
-    UFUNCI("special.mathieu_a", 2, 1, "m, q", "y", tsr_special_mathieu_a, NULL, 0, "Characteristic value of even Mathieu functions."),
-    UFUNCI("special.mathieu_b", 2, 1, "m, q", "y", tsr_special_mathieu_b, NULL, 0, "Characteristic value of odd Mathieu functions."),
-    UFUNCI("special.mathieu_cem", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_cem, NULL, 0, "Even Mathieu function and its derivative."),
-    UFUNCI("special.mathieu_modcem1", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modcem1, NULL, 0, "Even modified Mathieu function of the first kind and its derivative."),
-    UFUNCI("special.mathieu_modcem2", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modcem2, NULL, 0, "Even modified Mathieu function of the second kind and its derivative."),
-    UFUNCI("special.mathieu_modsem1", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modsem1, NULL, 0, "Odd modified Mathieu function of the first kind and its derivative."),
-    UFUNCI("special.mathieu_modsem2", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modsem2, NULL, 0, "Odd modified Mathieu function of the second kind and its derivative."),
-    UFUNCI("special.mathieu_sem", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_sem, NULL, 0, "Odd Mathieu function and its derivative."),
-    UFUNCI("special.modstruve", 2, 1, "v, x", "L", tsr_special_modstruve, NULL, 0, "Modified Struve function."),
-    UFUNCI("special.nbdtr", 3, 1, "k, n, p", "F", tsr_special_nbdtr, tsr_special_nbdtr__int, 3, "Negative binomial cumulative distribution function."),
-    UFUNCI("special.nbdtrc", 3, 1, "k, n, p", "F", tsr_special_nbdtrc, tsr_special_nbdtrc__int, 3, "Negative binomial survival function."),
-    UFUNCI("special.nbdtri", 3, 1, "k, n, y", "p", tsr_special_nbdtri, tsr_special_nbdtri__int, 3, "Returns the inverse with respect to the parameter `p` of ``y = nbdtr(k, n, p)``, the negative binomial cumulative distribution function."),
-    UFUNCI("special.nbdtrik", 3, 1, "y, n, p", "k", tsr_special_nbdtrik, NULL, 0, "Negative binomial percentile function."),
-    UFUNCI("special.nbdtrin", 3, 1, "k, y, p", "n", tsr_special_nbdtrin, NULL, 0, "Inverse of `nbdtr` vs `n`."),
-    UFUNCI("special.ncfdtr", 4, 1, "dfn, dfd, nc, f", "cdf", tsr_special_ncfdtr, NULL, 0, "Cumulative distribution function of the non-central F distribution."),
-    UFUNCI("special.ncfdtri", 4, 1, "dfn, dfd, nc, p", "f", tsr_special_ncfdtri, NULL, 0, "Inverse with respect to `f` of the CDF of the non-central F distribution."),
-    UFUNCI("special.ncfdtridfd", 4, 1, "dfn, p, nc, f", "dfd", tsr_special_ncfdtridfd, NULL, 0, "Calculate degrees of freedom (denominator) for the noncentral F-distribution."),
-    UFUNCI("special.ncfdtridfn", 4, 1, "p, dfd, nc, f", "dfn", tsr_special_ncfdtridfn, NULL, 0, "Calculate degrees of freedom (numerator) for the noncentral F-distribution."),
-    UFUNCI("special.ncfdtrinc", 4, 1, "dfn, dfd, p, f", "nc", tsr_special_ncfdtrinc, NULL, 0, "Calculate non-centrality parameter for non-central F distribution."),
-    UFUNCI("special.nctdtr", 3, 1, "df, nc, t", "cdf", tsr_special_nctdtr, NULL, 0, "Cumulative distribution function of the non-central `t` distribution."),
-    UFUNCI("special.nctdtridf", 3, 1, "p, nc, t", "df", tsr_special_nctdtridf, NULL, 0, "Calculate degrees of freedom for non-central t distribution."),
-    UFUNCI("special.nctdtrinc", 3, 1, "df, p, t", "nc", tsr_special_nctdtrinc, NULL, 0, "Calculate non-centrality parameter for non-central t distribution."),
-    UFUNCI("special.nctdtrit", 3, 1, "df, nc, p", "t", tsr_special_nctdtrit, NULL, 0, "Inverse cumulative distribution function of the non-central t distribution."),
-    UFUNCI("special.ndtr", 1, 1, "x", "y", tsr_special_ndtr, NULL, 0, "Cumulative distribution of the standard normal distribution."),
-    UFUNCI("special.ndtri", 1, 1, "y", "x", tsr_special_ndtri, NULL, 0, "Inverse of `ndtr` vs x."),
-    UFUNCI("special.ndtri_exp", 1, 1, "y", "y", tsr_special_ndtri_exp, NULL, 0, "Inverse of `log_ndtr` vs x. Allows for greater precision than `ndtri` composed with `numpy.exp` for very small values of y and for y close to 0."),
-    UFUNCI("special.nrdtrimn", 3, 1, "p, std, x", "mn", tsr_special_nrdtrimn, NULL, 0, "Calculate mean of normal distribution given other params."),
-    UFUNCI("special.nrdtrisd", 3, 1, "mn, p, x", "std", tsr_special_nrdtrisd, NULL, 0, "Calculate standard deviation of normal distribution given other params."),
-    UFUNCI("special.obl_ang1", 4, 2, "m, n, c, x", "s, sp", tsr_special_obl_ang1, NULL, 0, "Oblate spheroidal angular function of the first kind and its derivative."),
-    UFUNCI("special.obl_ang1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_obl_ang1_cv, NULL, 0, "Oblate spheroidal angular function obl_ang1 for precomputed characteristic value."),
-    UFUNCI("special.obl_cv", 3, 1, "m, n, c", "cv", tsr_special_obl_cv, NULL, 0, "Characteristic value of oblate spheroidal function."),
-    UFUNCI("special.obl_rad1", 4, 2, "m, n, c, x", "s, sp", tsr_special_obl_rad1, NULL, 0, "Oblate spheroidal radial function of the first kind and its derivative."),
-    UFUNCI("special.obl_rad1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_obl_rad1_cv, NULL, 0, "Oblate spheroidal radial function obl_rad1 for precomputed characteristic value."),
-    UFUNCI("special.obl_rad2", 4, 2, "m, n, c, x", "s, sp", tsr_special_obl_rad2, NULL, 0, "Oblate spheroidal radial function of the second kind and its derivative."),
-    UFUNCI("special.obl_rad2_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_obl_rad2_cv, NULL, 0, "Oblate spheroidal radial function obl_rad2 for precomputed characteristic value."),
-    UFUNCI("special.owens_t", 2, 1, "h, a", "t", tsr_special_owens_t, NULL, 0, "Owen's T Function."),
-    UFUNCI("special.pbdv", 2, 2, "v, x", "d, dp", tsr_special_pbdv, NULL, 0, "Parabolic cylinder function D."),
-    UFUNCI("special.pbvv", 2, 2, "v, x", "v, vp", tsr_special_pbvv, NULL, 0, "Parabolic cylinder function V."),
-    UFUNCI("special.pbwa", 2, 2, "a, x", "w, wp", tsr_special_pbwa, NULL, 0, "Parabolic cylinder function W."),
-    UFUNCI("special.pdtr", 2, 1, "k, m", "y", tsr_special_pdtr, NULL, 0, "Poisson cumulative distribution function."),
-    UFUNCI("special.pdtrc", 2, 1, "k, m", "y", tsr_special_pdtrc, NULL, 0, "Poisson survival function."),
-    UFUNCI("special.pdtri", 2, 1, "k, y", "y", tsr_special_pdtri, tsr_special_pdtri__int, 1, "Inverse to `pdtr` vs m."),
-    UFUNCI("special.pdtrik", 2, 1, "p, m", "y", tsr_special_pdtrik, NULL, 0, "Inverse to `pdtr` vs `k`."),
-    UFUNCI("special.poch", 2, 1, "z, m", "y", tsr_special_poch, NULL, 0, "Pochhammer symbol."),
-    UFUNCI("special.perm", 2, 1, "N, k", "y", tsr_special_perm, NULL, 0, "Number of permutations of N things taken k at a time (non-exact, via the Pochhammer symbol)."),
-    UFUNCI("special.assoc_laguerre", 3, 1, "x, n, k", "L", tsr_special_assoc_laguerre, NULL, 0, "Associated Laguerre polynomial L_n^k(x) (= eval_genlaguerre(n, k, x))."),
-    UFUNCI("special.diric", 2, 1, "x, n", "y", tsr_special_diric, NULL, 0, "Periodic sinc (Dirichlet) function."),
-    UFUNCI("special.powm1", 2, 1, "x, y", "y", tsr_special_powm1, NULL, 0, "Computes ``x**y - 1``."),
-    UFUNCI("special.pro_ang1", 4, 2, "m, n, c, x", "s, sp", tsr_special_pro_ang1, NULL, 0, "Prolate spheroidal angular function of the first kind and its derivative."),
-    UFUNCI("special.pro_ang1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_pro_ang1_cv, NULL, 0, "Prolate spheroidal angular function pro_ang1 for precomputed characteristic value."),
-    UFUNCI("special.pro_cv", 3, 1, "m, n, c", "cv", tsr_special_pro_cv, NULL, 0, "Characteristic value of prolate spheroidal function."),
-    UFUNCI("special.pro_rad1", 4, 2, "m, n, c, x", "s, sp", tsr_special_pro_rad1, NULL, 0, "Prolate spheroidal radial function of the first kind and its derivative."),
-    UFUNCI("special.pro_rad1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_pro_rad1_cv, NULL, 0, "Prolate spheroidal radial function pro_rad1 for precomputed characteristic value."),
-    UFUNCI("special.pro_rad2", 4, 2, "m, n, c, x", "s, sp", tsr_special_pro_rad2, NULL, 0, "Prolate spheroidal radial function of the second kind and its derivative."),
-    UFUNCI("special.pro_rad2_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_pro_rad2_cv, NULL, 0, "Prolate spheroidal radial function pro_rad2 for precomputed characteristic value."),
-    UFUNCI("special.pseudo_huber", 2, 1, "delta, r", "res", tsr_special_pseudo_huber, NULL, 0, "Pseudo-Huber loss function."),
-    UFUNCI("special.psi", 1, 1, "z", "digamma", tsr_special_psi, NULL, 0, "The digamma function."),
-    UFUNCI("special.radian", 3, 1, "d, m, s", "y", tsr_special_radian, NULL, 0, "Convert from degrees to radians."),
-    UFUNCI("special.rel_entr", 2, 1, "x, y", "y", tsr_special_rel_entr, NULL, 0, "Elementwise function for computing relative entropy."),
-    UFUNCI("special.rgamma", 1, 1, "z", "y", tsr_special_rgamma, NULL, 0, "Reciprocal of the gamma function."),
-    UFUNCI("special.round", 1, 1, "x", "y", tsr_special_round, NULL, 0, "Round to the nearest integer."),
-    UFUNCI("special.shichi", 1, 2, "x", "si, ci", tsr_special_shichi, NULL, 0, "Hyperbolic sine and cosine integrals."),
-    UFUNCI("special.sici", 1, 2, "x", "si, ci", tsr_special_sici, NULL, 0, "Sine and cosine integrals."),
-    UFUNCI("special.sindg", 1, 1, "x", "y", tsr_special_sindg, NULL, 0, "Sine of the angle `x` given in degrees."),
-    UFUNCI("special.smirnov", 2, 1, "n, d", "y", tsr_special_smirnov, tsr_special_smirnov__int, 1, "Kolmogorov-Smirnov complementary cumulative distribution function."),
-    UFUNCI("special.smirnovi", 2, 1, "n, p", "y", tsr_special_smirnovi, tsr_special_smirnovi__int, 1, "Inverse to `smirnov`."),
-    UFUNCI("special.spence", 1, 1, "z", "s", tsr_special_spence, NULL, 0, "Spence's function, also known as the dilogarithm."),
-    UFUNCI("special.stdtr", 2, 1, "df, t", "y", tsr_special_stdtr, NULL, 0, "Student t distribution cumulative distribution function."),
-    UFUNCI("special.stdtridf", 2, 1, "p, t", "df", tsr_special_stdtridf, NULL, 0, "Inverse of `stdtr` vs df."),
-    UFUNCI("special.stdtrit", 2, 1, "df, p", "t", tsr_special_stdtrit, NULL, 0, "The `p`-th quantile of the student t distribution."),
-    UFUNCI("special.struve", 2, 1, "v, x", "H", tsr_special_struve, NULL, 0, "Struve function."),
-    UFUNCI("special.tandg", 1, 1, "x", "y", tsr_special_tandg, NULL, 0, "Tangent of angle `x` given in degrees."),
-    UFUNCI("special.tklmbda", 2, 1, "x, lmbda", "cdf", tsr_special_tklmbda, NULL, 0, "Cumulative distribution function of the Tukey lambda distribution."),
-    UFUNCI("special.voigt_profile", 3, 1, "x, sigma, gamma", "y", tsr_special_voigt_profile, NULL, 0, "Voigt profile."),
-    UFUNCI("special.wright_bessel", 3, 1, "a, b, x", "y", tsr_special_wright_bessel, NULL, 0, "Wright's generalized Bessel function."),
-    UFUNCI("special.wrightomega", 1, 1, "z", "omega", tsr_special_wrightomega, NULL, 0, "Wright Omega function."),
-    UFUNCI("special.xlog1py", 2, 1, "x, y", "z", tsr_special_xlog1py, NULL, 0, "Compute ``x*log1p(y)`` so that the result is 0 if ``x = 0``."),
-    UFUNCI("special.xlogy", 2, 1, "x, y", "z", tsr_special_xlogy, NULL, 0, "Compute ``x*log(y)`` so that the result is 0 if ``x = 0``."),
-    UFUNCI("special.y0", 1, 1, "x", "Y", tsr_special_y0, NULL, 0, "Bessel function of the second kind of order 0."),
-    UFUNCI("special.y1", 1, 1, "x", "Y", tsr_special_y1, NULL, 0, "Bessel function of the second kind of order 1."),
-    UFUNCI("special.yn", 2, 1, "n, x", "Y", tsr_special_yn, tsr_special_yn__int, 1, "Bessel function of the second kind of integer order and real argument."),
-    UFUNC_C("special.yv", 2, 1, "v, z", "Y", tsr_special_yv, NULL, 0, tsr_special_yv__cplx, "Bessel function of the second kind of real order and complex argument."),
-    UFUNCI("special.yve", 2, 1, "v, z", "Y", tsr_special_yve, NULL, 0, "Exponentially scaled Bessel function of the second kind of real order."),
-    UFUNCI("special.zeta", 2, 1, "x, q", "y", tsr_special_zeta, NULL, 0, "Hurwitz zeta function (scipy.special.zeta)."),
-    UFUNCI("special.jvp", 2, 1, "v, z", "out", tsr_special_jvp, NULL, 0, "First derivative of the Bessel function of the first kind (scipy.special.jvp, n=1)."),
-    UFUNCI("special.yvp", 2, 1, "v, z", "out", tsr_special_yvp, NULL, 0, "First derivative of the Bessel function of the second kind (scipy.special.yvp, n=1)."),
-    UFUNCI("special.ivp", 2, 1, "v, z", "out", tsr_special_ivp, NULL, 0, "First derivative of the modified Bessel function of the first kind (scipy.special.ivp, n=1)."),
-    UFUNCI("special.kvp", 2, 1, "v, z", "out", tsr_special_kvp, NULL, 0, "First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1)."),
-    UFUNCI("special.zetac", 1, 1, "x", "y", tsr_special_zetac, NULL, 0, "Riemann zeta function minus 1."),
-    UFUNCI("special.softplus", 1, 1, "x", "y", tsr_special_softplus, NULL, 0, "Softplus, log(1 + exp(x)), evaluated stably (scipy.special.softplus)."),
-    UFUNCI("special.sinc", 1, 1, "x", "y", tsr_special_sinc, NULL, 0, "Normalized sinc, sin(pi x)/(pi x) with sinc(0)=1 (scipy.special.sinc)."),
-    UFUNCI("special.spherical_jn", 3, 1, "n, z, derivative", "jn", tsr_special_spherical_jn, NULL, 0, "Spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_jn)."),
-    UFUNCI("special.spherical_yn", 3, 1, "n, z, derivative", "yn", tsr_special_spherical_yn, NULL, 0, "Spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_yn)."),
-    UFUNCI("special.spherical_in", 3, 1, "n, z, derivative", "in", tsr_special_spherical_in, NULL, 0, "Modified spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_in)."),
-    UFUNCI("special.spherical_kn", 3, 1, "n, z, derivative", "kn", tsr_special_spherical_kn, NULL, 0, "Modified spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_kn)."),
+    UFUNCI_N("special.agm", 2, 1, "a, b", "y", tsr_special_agm, NULL, 0, tsr_special_agm__n, "Compute the arithmetic-geometric mean of `a` and `b`."),
+    UFUNCI_N("special.airy", 1, 4, "z", "Ai, Aip, Bi, Bip", tsr_special_airy, NULL, 0, tsr_special_airy__n, "Airy functions and their derivatives."),
+    UFUNCI_N("special.airye", 1, 4, "z", "eAi, eAip, eBi, eBip", tsr_special_airye, NULL, 0, tsr_special_airye__n, "Exponentially scaled Airy functions and their derivatives."),
+    UFUNCI_N("special.bdtr", 3, 1, "k, n, p", "y", tsr_special_bdtr, tsr_special_bdtr__int, 2, tsr_special_bdtr__n, "Binomial distribution cumulative distribution function."),
+    UFUNCI_N("special.bdtrc", 3, 1, "k, n, p", "y", tsr_special_bdtrc, tsr_special_bdtrc__int, 2, tsr_special_bdtrc__n, "Binomial distribution survival function."),
+    UFUNCI_N("special.bdtri", 3, 1, "k, n, y", "p", tsr_special_bdtri, tsr_special_bdtri__int, 2, tsr_special_bdtri__n, "Inverse function to `bdtr` with respect to `p`."),
+    UFUNCI_N("special.bdtrik", 3, 1, "y, n, p", "k", tsr_special_bdtrik, NULL, 0, tsr_special_bdtrik__n, "Inverse function to `bdtr` with respect to `k`."),
+    UFUNCI_N("special.bdtrin", 3, 1, "k, y, p", "n", tsr_special_bdtrin, NULL, 0, tsr_special_bdtrin__n, "Inverse function to `bdtr` with respect to `n`."),
+    UFUNCI_N("special.bei", 1, 1, "x", "y", tsr_special_bei, NULL, 0, tsr_special_bei__n, "Kelvin function bei."),
+    UFUNCI_N("special.beip", 1, 1, "x", "y", tsr_special_beip, NULL, 0, tsr_special_beip__n, "Derivative of the Kelvin function bei."),
+    UFUNCI_N("special.ber", 1, 1, "x", "y", tsr_special_ber, NULL, 0, tsr_special_ber__n, "Kelvin function ber."),
+    UFUNCI_N("special.berp", 1, 1, "x", "y", tsr_special_berp, NULL, 0, tsr_special_berp__n, "Derivative of the Kelvin function ber."),
+    UFUNCI_N("special.besselpoly", 3, 1, "a, lmb, nu", "y", tsr_special_besselpoly, NULL, 0, tsr_special_besselpoly__n, "Weighted integral of the Bessel function of the first kind."),
+    UFUNCI_N("special.beta", 2, 1, "a, b", "y", tsr_special_beta, NULL, 0, tsr_special_beta__n, "Beta function."),
+    UFUNCI_N("special.betainc", 3, 1, "a, b, x", "y", tsr_special_betainc, NULL, 0, tsr_special_betainc__n, "Regularized incomplete beta function."),
+    UFUNCI_N("special.betaincc", 3, 1, "a, b, x", "y", tsr_special_betaincc, NULL, 0, tsr_special_betaincc__n, "Complement of the regularized incomplete beta function."),
+    UFUNCI_N("special.betainccinv", 3, 1, "a, b, y", "y", tsr_special_betainccinv, NULL, 0, tsr_special_betainccinv__n, "Inverse of the complemented regularized incomplete beta function."),
+    UFUNCI_N("special.betaincinv", 3, 1, "a, b, y", "y", tsr_special_betaincinv, NULL, 0, tsr_special_betaincinv__n, "Inverse of the regularized incomplete beta function."),
+    UFUNCI_N("special.betaln", 2, 1, "a, b", "y", tsr_special_betaln, NULL, 0, tsr_special_betaln__n, "Natural logarithm of absolute value of beta function."),
+    UFUNCI_N("special.binom", 2, 1, "x, y", "y", tsr_special_binom, NULL, 0, tsr_special_binom__n, "Binomial coefficient considered as a function of two real variables."),
+    UFUNCI_N("special.comb", 2, 1, "N, k", "y", tsr_special_comb, NULL, 0, tsr_special_comb__n, "The number of combinations of N things taken k at a time (scipy.special.comb, exact=False, repetition=False)."),
+    UFUNCI_N("special.factorial", 1, 1, "n", "y", tsr_special_factorial, NULL, 0, tsr_special_factorial__n, "The factorial n! as gamma(n+1), 0 for n<0 (scipy.special.factorial, exact=False)."),
+    UFUNCI_N("special.polygamma", 2, 1, "n, x", "y", tsr_special_polygamma, NULL, 0, tsr_special_polygamma__n, "Polygamma function of order n: the (n+1)-th derivative of the logarithm of the gamma function (scipy.special.polygamma)."),
+    UFUNCI_N("special.boxcox", 2, 1, "x, lmbda", "y", tsr_special_boxcox, NULL, 0, tsr_special_boxcox__n, "Compute the Box-Cox transformation."),
+    UFUNCI_N("special.boxcox1p", 2, 1, "x, lmbda", "y", tsr_special_boxcox1p, NULL, 0, tsr_special_boxcox1p__n, "Compute the Box-Cox transformation of 1 + `x`."),
+    UFUNCI_N("special.btdtria", 3, 1, "p, b, x", "a", tsr_special_btdtria, NULL, 0, tsr_special_btdtria__n, "Inverse of `betainc` with respect to `a`."),
+    UFUNCI_N("special.btdtrib", 3, 1, "x0, x1, x2", "b", tsr_special_btdtrib, NULL, 0, tsr_special_btdtrib__n, "btdtria(a, p, x, out=None)."),
+    UFUNCI_N("special.cbrt", 1, 1, "x", "y", tsr_special_cbrt, NULL, 0, tsr_special_cbrt__n, "Element-wise cube root of `x`."),
+    UFUNCI_N("special.chdtr", 2, 1, "v, x", "y", tsr_special_chdtr, NULL, 0, tsr_special_chdtr__n, "Chi square cumulative distribution function."),
+    UFUNCI_N("special.chdtrc", 2, 1, "v, x", "y", tsr_special_chdtrc, NULL, 0, tsr_special_chdtrc__n, "Chi square survival function."),
+    UFUNCI_N("special.chdtri", 2, 1, "v, p", "x", tsr_special_chdtri, NULL, 0, tsr_special_chdtri__n, "Inverse to `chdtrc` with respect to `x`."),
+    UFUNCI_N("special.chdtriv", 2, 1, "p, x", "y", tsr_special_chdtriv, NULL, 0, tsr_special_chdtriv__n, "Inverse to `chdtr` with respect to `v`."),
+    UFUNCI_N("special.chndtr", 3, 1, "x, df, nc", "x", tsr_special_chndtr, NULL, 0, tsr_special_chndtr__n, "Non-central chi square cumulative distribution function."),
+    UFUNCI_N("special.chndtridf", 3, 1, "x, p, nc", "df", tsr_special_chndtridf, NULL, 0, tsr_special_chndtridf__n, "Inverse to `chndtr` vs `df`."),
+    UFUNCI_N("special.chndtrinc", 3, 1, "x, df, p", "nc", tsr_special_chndtrinc, NULL, 0, tsr_special_chndtrinc__n, "Inverse to `chndtr` vs `nc`."),
+    UFUNCI_N("special.chndtrix", 3, 1, "p, df, nc", "x", tsr_special_chndtrix, NULL, 0, tsr_special_chndtrix__n, "Inverse to `chndtr` vs `x`."),
+    UFUNCI_N("special.cosdg", 1, 1, "x", "y", tsr_special_cosdg, NULL, 0, tsr_special_cosdg__n, "Cosine of the angle `x` given in degrees."),
+    UFUNCI_N("special.cosm1", 1, 1, "x", "y", tsr_special_cosm1, NULL, 0, tsr_special_cosm1__n, "cos(x) - 1 for use when `x` is near zero."),
+    UFUNCI_N("special.cotdg", 1, 1, "x", "y", tsr_special_cotdg, NULL, 0, tsr_special_cotdg__n, "Cotangent of the angle `x` given in degrees."),
+    UFUNCI_N("special.dawsn", 1, 1, "x", "y", tsr_special_dawsn, NULL, 0, tsr_special_dawsn__n, "Dawson's integral."),
+    UFUNCI_N("special.digamma", 1, 1, "z", "digamma", tsr_special_digamma, NULL, 0, tsr_special_digamma__n, "The digamma function (alias of psi)."),
+    UFUNCI_N("special.ellipe", 1, 1, "m", "E", tsr_special_ellipe, NULL, 0, tsr_special_ellipe__n, "Complete elliptic integral of the second kind."),
+    UFUNCI_N("special.ellipeinc", 2, 1, "phi, m", "E", tsr_special_ellipeinc, NULL, 0, tsr_special_ellipeinc__n, "Incomplete elliptic integral of the second kind."),
+    UFUNCI_N("special.ellipj", 2, 4, "u, m", "sn, cn, dn, ph", tsr_special_ellipj, NULL, 0, tsr_special_ellipj__n, "Jacobi elliptic functions."),
+    UFUNCI_N("special.ellipk", 1, 1, "m", "K", tsr_special_ellipk, NULL, 0, tsr_special_ellipk__n, "Complete elliptic integral of the first kind."),
+    UFUNCI_N("special.ellipkinc", 2, 1, "phi, m", "K", tsr_special_ellipkinc, NULL, 0, tsr_special_ellipkinc__n, "Incomplete elliptic integral of the first kind."),
+    UFUNCI_N("special.ellipkm1", 1, 1, "p", "K", tsr_special_ellipkm1, NULL, 0, tsr_special_ellipkm1__n, "Complete elliptic integral of the first kind around `m` = 1."),
+    UFUNCI_N("special.elliprc", 2, 1, "x, y", "R", tsr_special_elliprc, NULL, 0, tsr_special_elliprc__n, "Degenerate symmetric elliptic integral."),
+    UFUNCI_N("special.elliprd", 3, 1, "x, y, z", "R", tsr_special_elliprd, NULL, 0, tsr_special_elliprd__n, "Symmetric elliptic integral of the second kind."),
+    UFUNCI_N("special.elliprf", 3, 1, "x, y, z", "R", tsr_special_elliprf, NULL, 0, tsr_special_elliprf__n, "Completely-symmetric elliptic integral of the first kind."),
+    UFUNCI_N("special.elliprg", 3, 1, "x, y, z", "R", tsr_special_elliprg, NULL, 0, tsr_special_elliprg__n, "Completely-symmetric elliptic integral of the second kind."),
+    UFUNCI_N("special.elliprj", 4, 1, "x, y, z, p", "R", tsr_special_elliprj, NULL, 0, tsr_special_elliprj__n, "Symmetric elliptic integral of the third kind."),
+    UFUNCI_N("special.entr", 1, 1, "x", "res", tsr_special_entr, NULL, 0, tsr_special_entr__n, "Elementwise function for computing entropy."),
+    UFUNCI_N("special.erf", 1, 1, "z", "res", tsr_special_erf, NULL, 0, tsr_special_erf__n, "Returns the error function of complex argument."),
+    UFUNCI_N("special.erfc", 1, 1, "x", "y", tsr_special_erfc, NULL, 0, tsr_special_erfc__n, "Complementary error function, ``1 - erf(x)``."),
+    UFUNCI_N("special.erfcinv", 1, 1, "y", "erfcinv", tsr_special_erfcinv, NULL, 0, tsr_special_erfcinv__n, "Inverse of the complementary error function."),
+    UFUNCI_N("special.erfcx", 1, 1, "x", "y", tsr_special_erfcx, NULL, 0, tsr_special_erfcx__n, "Scaled complementary error function, ``exp(x**2) * erfc(x)``."),
+    UFUNCI_N("special.erfi", 1, 1, "z", "y", tsr_special_erfi, NULL, 0, tsr_special_erfi__n, "Imaginary error function, ``-i erf(i z)``."),
+    UFUNCI_N("special.erfinv", 1, 1, "y", "erfinv", tsr_special_erfinv, NULL, 0, tsr_special_erfinv__n, "Inverse of the error function."),
+    UFUNCI_N("special.eval_chebyc", 2, 1, "n, x", "C", tsr_special_eval_chebyc, tsr_special_eval_chebyc__int, 1, tsr_special_eval_chebyc__n, "Evaluate Chebyshev polynomial of the first kind on [-2, 2] at a point."),
+    UFUNCI_N("special.eval_chebys", 2, 1, "n, x", "S", tsr_special_eval_chebys, tsr_special_eval_chebys__int, 1, tsr_special_eval_chebys__n, "Evaluate Chebyshev polynomial of the second kind on [-2, 2] at a point."),
+    UFUNCI_N("special.eval_chebyt", 2, 1, "n, x", "T", tsr_special_eval_chebyt, tsr_special_eval_chebyt__int, 1, tsr_special_eval_chebyt__n, "Evaluate Chebyshev polynomial of the first kind at a point."),
+    UFUNCI_N("special.eval_chebyu", 2, 1, "n, x", "U", tsr_special_eval_chebyu, tsr_special_eval_chebyu__int, 1, tsr_special_eval_chebyu__n, "Evaluate Chebyshev polynomial of the second kind at a point."),
+    UFUNCI_N("special.eval_gegenbauer", 3, 1, "n, alpha, x", "C", tsr_special_eval_gegenbauer, tsr_special_eval_gegenbauer__int, 1, tsr_special_eval_gegenbauer__n, "Evaluate Gegenbauer polynomial at a point."),
+    UFUNCI_N("special.eval_genlaguerre", 3, 1, "n, alpha, x", "L", tsr_special_eval_genlaguerre, tsr_special_eval_genlaguerre__int, 1, tsr_special_eval_genlaguerre__n, "Evaluate generalized Laguerre polynomial at a point."),
+    UFUNCI_N("special.eval_hermite", 2, 1, "n, x", "H", tsr_special_eval_hermite, NULL, 0, tsr_special_eval_hermite__n, "Evaluate physicist's Hermite polynomial at a point."),
+    UFUNCI_N("special.eval_hermitenorm", 2, 1, "n, x", "He", tsr_special_eval_hermitenorm, NULL, 0, tsr_special_eval_hermitenorm__n, "Evaluate probabilist's (normalized) Hermite polynomial at a point."),
+    UFUNCI_N("special.eval_jacobi", 4, 1, "n, alpha, beta, x", "P", tsr_special_eval_jacobi, tsr_special_eval_jacobi__int, 1, tsr_special_eval_jacobi__n, "Evaluate Jacobi polynomial at a point."),
+    UFUNCI_N("special.eval_laguerre", 2, 1, "n, x", "L", tsr_special_eval_laguerre, tsr_special_eval_laguerre__int, 1, tsr_special_eval_laguerre__n, "Evaluate Laguerre polynomial at a point."),
+    UFUNCI_N("special.eval_legendre", 2, 1, "n, x", "P", tsr_special_eval_legendre, tsr_special_eval_legendre__int, 1, tsr_special_eval_legendre__n, "Evaluate Legendre polynomial at a point."),
+    UFUNCI_N("special.eval_sh_chebyt", 2, 1, "n, x", "T", tsr_special_eval_sh_chebyt, tsr_special_eval_sh_chebyt__int, 1, tsr_special_eval_sh_chebyt__n, "Evaluate shifted Chebyshev polynomial of the first kind at a point."),
+    UFUNCI_N("special.eval_sh_chebyu", 2, 1, "n, x", "U", tsr_special_eval_sh_chebyu, tsr_special_eval_sh_chebyu__int, 1, tsr_special_eval_sh_chebyu__n, "Evaluate shifted Chebyshev polynomial of the second kind at a point."),
+    UFUNCI_N("special.eval_sh_jacobi", 4, 1, "n, p, q, x", "G", tsr_special_eval_sh_jacobi, tsr_special_eval_sh_jacobi__int, 1, tsr_special_eval_sh_jacobi__n, "Evaluate shifted Jacobi polynomial at a point."),
+    UFUNCI_N("special.eval_sh_legendre", 2, 1, "n, x", "P", tsr_special_eval_sh_legendre, tsr_special_eval_sh_legendre__int, 1, tsr_special_eval_sh_legendre__n, "Evaluate shifted Legendre polynomial at a point."),
+    UFUNCI_N("special.exp1", 1, 1, "z", "y", tsr_special_exp1, NULL, 0, tsr_special_exp1__n, "Exponential integral E1."),
+    UFUNCI_N("special.exp10", 1, 1, "x", "y", tsr_special_exp10, NULL, 0, tsr_special_exp10__n, "Compute ``10**x`` element-wise."),
+    UFUNCI_N("special.exp2", 1, 1, "x", "y", tsr_special_exp2, NULL, 0, tsr_special_exp2__n, "Compute ``2**x`` element-wise."),
+    UFUNCI_N("special.expi", 1, 1, "x", "y", tsr_special_expi, NULL, 0, tsr_special_expi__n, "Exponential integral Ei."),
+    UFUNCI_N("special.expit", 1, 1, "x", "y", tsr_special_expit, NULL, 0, tsr_special_expit__n, "Expit (a.k.a. logistic sigmoid) ufunc for ndarrays."),
+    UFUNCI_N("special.expm1", 1, 1, "x", "y", tsr_special_expm1, NULL, 0, tsr_special_expm1__n, "Compute ``exp(x) - 1``."),
+    UFUNCI_N("special.expn", 2, 1, "n, x", "y", tsr_special_expn, tsr_special_expn__int, 1, tsr_special_expn__n, "Generalized exponential integral En."),
+    UFUNCI_N("special.exprel", 1, 1, "x", "y", tsr_special_exprel, NULL, 0, tsr_special_exprel__n, "Relative error exponential, ``(exp(x) - 1)/x``."),
+    UFUNCI_N("special.fdtr", 3, 1, "dfn, dfd, x", "y", tsr_special_fdtr, NULL, 0, tsr_special_fdtr__n, "F cumulative distribution function."),
+    UFUNCI_N("special.fdtrc", 3, 1, "dfn, dfd, x", "y", tsr_special_fdtrc, NULL, 0, tsr_special_fdtrc__n, "F survival function."),
+    UFUNCI_N("special.fdtri", 3, 1, "dfn, dfd, p", "x", tsr_special_fdtri, NULL, 0, tsr_special_fdtri__n, "The `p`-th quantile of the F-distribution."),
+    UFUNCI_N("special.fdtridfd", 3, 1, "dfn, p, x", "dfd", tsr_special_fdtridfd, NULL, 0, tsr_special_fdtridfd__n, "Inverse to `fdtr` vs dfd."),
+    UFUNCI_N("special.fresnel", 1, 2, "z", "S, C", tsr_special_fresnel, NULL, 0, tsr_special_fresnel__n, "Fresnel integrals."),
+    UFUNCI_N("special.gamma", 1, 1, "z", "y", tsr_special_gamma, NULL, 0, tsr_special_gamma__n, "gamma function."),
+    UFUNCI_N("special.gammainc", 2, 1, "a, x", "y", tsr_special_gammainc, NULL, 0, tsr_special_gammainc__n, "Regularized lower incomplete gamma function."),
+    UFUNCI_N("special.gammaincc", 2, 1, "a, x", "y", tsr_special_gammaincc, NULL, 0, tsr_special_gammaincc__n, "Regularized upper incomplete gamma function."),
+    UFUNCI_N("special.gammainccinv", 2, 1, "a, y", "y", tsr_special_gammainccinv, NULL, 0, tsr_special_gammainccinv__n, "Inverse of the regularized upper incomplete gamma function."),
+    UFUNCI_N("special.gammaincinv", 2, 1, "a, y", "y", tsr_special_gammaincinv, NULL, 0, tsr_special_gammaincinv__n, "Inverse to the regularized lower incomplete gamma function."),
+    UFUNCI_N("special.gammaln", 1, 1, "x", "y", tsr_special_gammaln, NULL, 0, tsr_special_gammaln__n, "Logarithm of the absolute value of the gamma function."),
+    UFUNCI_N("special.gammasgn", 1, 1, "x", "y", tsr_special_gammasgn, NULL, 0, tsr_special_gammasgn__n, "Sign of the gamma function."),
+    UFUNCI_N("special.gdtr", 3, 1, "a, b, x", "F", tsr_special_gdtr, NULL, 0, tsr_special_gdtr__n, "Gamma distribution cumulative distribution function."),
+    UFUNCI_N("special.gdtrc", 3, 1, "a, b, x", "F", tsr_special_gdtrc, NULL, 0, tsr_special_gdtrc__n, "Gamma distribution survival function."),
+    UFUNCI_N("special.gdtria", 3, 1, "p, b, x", "a", tsr_special_gdtria, NULL, 0, tsr_special_gdtria__n, "Inverse of `gdtr` vs a."),
+    UFUNCI_N("special.gdtrib", 3, 1, "a, p, x", "b", tsr_special_gdtrib, NULL, 0, tsr_special_gdtrib__n, "Inverse of `gdtr` vs b."),
+    UFUNCI_N("special.gdtrix", 3, 1, "a, b, p", "x", tsr_special_gdtrix, NULL, 0, tsr_special_gdtrix__n, "Inverse of `gdtr` vs x."),
+    UFUNCI_N("special.huber", 2, 1, "delta, r", "y", tsr_special_huber, NULL, 0, tsr_special_huber__n, "Huber loss function."),
+    UFUNCI_N("special.hyp0f1", 2, 1, "v, z", "y", tsr_special_hyp0f1, NULL, 0, tsr_special_hyp0f1__n, "Confluent hypergeometric limit function 0F1."),
+    UFUNCI_N("special.hyp1f1", 3, 1, "a, b, x", "y", tsr_special_hyp1f1, NULL, 0, tsr_special_hyp1f1__n, "Confluent hypergeometric function 1F1."),
+    UFUNCI_N("special.hyp2f1", 4, 1, "a, b, c, z", "hyp2f1", tsr_special_hyp2f1, NULL, 0, tsr_special_hyp2f1__n, "Gauss hypergeometric function 2F1(a, b; c; z)."),
+    UFUNCI_N("special.hyperu", 3, 1, "a, b, x", "y", tsr_special_hyperu, NULL, 0, tsr_special_hyperu__n, "Confluent hypergeometric function U."),
+    UFUNCI_N("special.i0", 1, 1, "x", "I", tsr_special_i0, NULL, 0, tsr_special_i0__n, "Modified Bessel function of order 0."),
+    UFUNCI_N("special.i0e", 1, 1, "x", "I", tsr_special_i0e, NULL, 0, tsr_special_i0e__n, "Exponentially scaled modified Bessel function of order 0."),
+    UFUNCI_N("special.i1", 1, 1, "x", "I", tsr_special_i1, NULL, 0, tsr_special_i1__n, "Modified Bessel function of order 1."),
+    UFUNCI_N("special.i1e", 1, 1, "x", "I", tsr_special_i1e, NULL, 0, tsr_special_i1e__n, "Exponentially scaled modified Bessel function of order 1."),
+    UFUNCI_N("special.inv_boxcox", 2, 1, "y, lmbda", "x", tsr_special_inv_boxcox, NULL, 0, tsr_special_inv_boxcox__n, "Compute the inverse of the Box-Cox transformation."),
+    UFUNCI_N("special.inv_boxcox1p", 2, 1, "y, lmbda", "x", tsr_special_inv_boxcox1p, NULL, 0, tsr_special_inv_boxcox1p__n, "Compute the inverse of the Box-Cox transformation."),
+    UFUNCI_N("special.it2i0k0", 1, 2, "x", "ii0, ik0", tsr_special_it2i0k0, NULL, 0, tsr_special_it2i0k0__n, "Integrals related to modified Bessel functions of order 0."),
+    UFUNCI_N("special.it2j0y0", 1, 2, "x", "ij0, iy0", tsr_special_it2j0y0, NULL, 0, tsr_special_it2j0y0__n, "Integrals related to Bessel functions of the first kind of order 0."),
+    UFUNCI_N("special.it2struve0", 1, 1, "x", "I", tsr_special_it2struve0, NULL, 0, tsr_special_it2struve0__n, "Integral related to the Struve function of order 0."),
+    UFUNCI_N("special.itairy", 1, 4, "x", "Apt, Bpt, Ant, Bnt", tsr_special_itairy, NULL, 0, tsr_special_itairy__n, "Integrals of Airy functions."),
+    UFUNCI_N("special.iti0k0", 1, 2, "x", "ii0, ik0", tsr_special_iti0k0, NULL, 0, tsr_special_iti0k0__n, "Integrals of modified Bessel functions of order 0."),
+    UFUNCI_N("special.itj0y0", 1, 2, "x", "ij0, iy0", tsr_special_itj0y0, NULL, 0, tsr_special_itj0y0__n, "Integrals of Bessel functions of the first kind of order 0."),
+    UFUNCI_N("special.itmodstruve0", 1, 1, "x", "I", tsr_special_itmodstruve0, NULL, 0, tsr_special_itmodstruve0__n, "Integral of the modified Struve function of order 0."),
+    UFUNCI_N("special.itstruve0", 1, 1, "x", "I", tsr_special_itstruve0, NULL, 0, tsr_special_itstruve0__n, "Integral of the Struve function of order 0."),
+    UFUNC_CN("special.iv", 2, 1, "v, z", "y", tsr_special_iv, NULL, 0, tsr_special_iv__cplx, tsr_special_iv__n, "Modified Bessel function of the first kind of real order."),
+    UFUNCI_N("special.ive", 2, 1, "v, z", "y", tsr_special_ive, NULL, 0, tsr_special_ive__n, "Exponentially scaled modified Bessel function of the first kind."),
+    UFUNCI_N("special.j0", 1, 1, "x", "J", tsr_special_j0, NULL, 0, tsr_special_j0__n, "Bessel function of the first kind of order 0."),
+    UFUNCI_N("special.j1", 1, 1, "x", "J", tsr_special_j1, NULL, 0, tsr_special_j1__n, "Bessel function of the first kind of order 1."),
+    UFUNCI_N("special.jn", 2, 1, "n, z", "J", tsr_special_jn, NULL, 0, tsr_special_jn__n, "Bessel function of the first kind of real order and complex argument (alias of jv)."),
+    UFUNC_CN("special.jv", 2, 1, "v, z", "J", tsr_special_jv, NULL, 0, tsr_special_jv__cplx, tsr_special_jv__n, "Bessel function of the first kind of real order and complex argument."),
+    UFUNCI_N("special.jve", 2, 1, "v, z", "J", tsr_special_jve, NULL, 0, tsr_special_jve__n, "Exponentially scaled Bessel function of the first kind of order `v`."),
+    UFUNCI_N("special.k0", 1, 1, "x", "K", tsr_special_k0, NULL, 0, tsr_special_k0__n, "Modified Bessel function of the second kind of order 0, :math:`K_0`."),
+    UFUNCI_N("special.k0e", 1, 1, "x", "K", tsr_special_k0e, NULL, 0, tsr_special_k0e__n, "Exponentially scaled modified Bessel function K of order 0."),
+    UFUNCI_N("special.k1", 1, 1, "x", "K", tsr_special_k1, NULL, 0, tsr_special_k1__n, "Modified Bessel function of the second kind of order 1, :math:`K_1(x)`."),
+    UFUNCI_N("special.k1e", 1, 1, "x", "K", tsr_special_k1e, NULL, 0, tsr_special_k1e__n, "Exponentially scaled modified Bessel function K of order 1."),
+    UFUNCI_N("special.kei", 1, 1, "x", "y", tsr_special_kei, NULL, 0, tsr_special_kei__n, "Kelvin function kei."),
+    UFUNCI_N("special.keip", 1, 1, "x", "y", tsr_special_keip, NULL, 0, tsr_special_keip__n, "Derivative of the Kelvin function kei."),
+    UFUNCI_N("special.ker", 1, 1, "x", "y", tsr_special_ker, NULL, 0, tsr_special_ker__n, "Kelvin function ker."),
+    UFUNCI_N("special.kerp", 1, 1, "x", "y", tsr_special_kerp, NULL, 0, tsr_special_kerp__n, "Derivative of the Kelvin function ker."),
+    UFUNCI_N("special.kl_div", 2, 1, "x, y", "y", tsr_special_kl_div, NULL, 0, tsr_special_kl_div__n, "Elementwise function for computing Kullback-Leibler divergence."),
+    UFUNCI_N("special.kn", 2, 1, "n, x", "y", tsr_special_kn, tsr_special_kn__int, 1, tsr_special_kn__n, "Modified Bessel function of the second kind of integer order `n`."),
+    UFUNCI_N("special.kolmogi", 1, 1, "p", "y", tsr_special_kolmogi, NULL, 0, tsr_special_kolmogi__n, "Inverse Survival Function of Kolmogorov distribution."),
+    UFUNCI_N("special.kolmogorov", 1, 1, "y", "y", tsr_special_kolmogorov, NULL, 0, tsr_special_kolmogorov__n, "Complementary cumulative distribution (Survival Function) function of Kolmogorov distribution."),
+    UFUNC_CN("special.kv", 2, 1, "v, z", "y", tsr_special_kv, NULL, 0, tsr_special_kv__cplx, tsr_special_kv__n, "Modified Bessel function of the second kind of real order `v`."),
+    UFUNCI_N("special.kve", 2, 1, "v, z", "y", tsr_special_kve, NULL, 0, tsr_special_kve__n, "Exponentially scaled modified Bessel function of the second kind."),
+    UFUNCI_N("special.log1p", 1, 1, "x", "y", tsr_special_log1p, NULL, 0, tsr_special_log1p__n, "Calculates log(1 + x) for use when `x` is near zero."),
+    UFUNCI_N("special.log_expit", 1, 1, "x", "out", tsr_special_log_expit, NULL, 0, tsr_special_log_expit__n, "Logarithm of the logistic sigmoid function."),
+    UFUNCI_N("special.log_ndtr", 1, 1, "x", "y", tsr_special_log_ndtr, NULL, 0, tsr_special_log_ndtr__n, "Logarithm of Gaussian cumulative distribution function."),
+    UFUNCI_N("special.log_wright_bessel", 3, 1, "a, b, x", "y", tsr_special_log_wright_bessel, NULL, 0, tsr_special_log_wright_bessel__n, "Natural logarithm of Wright's generalized Bessel function, see `wright_bessel`. This function comes in handy in particular for large values of x."),
+    UFUNCI_N("special.loggamma", 1, 1, "z", "loggamma", tsr_special_loggamma, NULL, 0, tsr_special_loggamma__n, "Principal branch of the logarithm of the gamma function."),
+    UFUNCI_N("special.logit", 1, 1, "x", "y", tsr_special_logit, NULL, 0, tsr_special_logit__n, "Logit ufunc for ndarrays."),
+    UFUNCI_N("special.lpmv", 3, 1, "m, v, x", "pmv", tsr_special_lpmv, NULL, 0, tsr_special_lpmv__n, "Associated Legendre function of integer order and real degree."),
+    UFUNCI_N("special.mathieu_a", 2, 1, "m, q", "y", tsr_special_mathieu_a, NULL, 0, tsr_special_mathieu_a__n, "Characteristic value of even Mathieu functions."),
+    UFUNCI_N("special.mathieu_b", 2, 1, "m, q", "y", tsr_special_mathieu_b, NULL, 0, tsr_special_mathieu_b__n, "Characteristic value of odd Mathieu functions."),
+    UFUNCI_N("special.mathieu_cem", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_cem, NULL, 0, tsr_special_mathieu_cem__n, "Even Mathieu function and its derivative."),
+    UFUNCI_N("special.mathieu_modcem1", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modcem1, NULL, 0, tsr_special_mathieu_modcem1__n, "Even modified Mathieu function of the first kind and its derivative."),
+    UFUNCI_N("special.mathieu_modcem2", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modcem2, NULL, 0, tsr_special_mathieu_modcem2__n, "Even modified Mathieu function of the second kind and its derivative."),
+    UFUNCI_N("special.mathieu_modsem1", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modsem1, NULL, 0, tsr_special_mathieu_modsem1__n, "Odd modified Mathieu function of the first kind and its derivative."),
+    UFUNCI_N("special.mathieu_modsem2", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_modsem2, NULL, 0, tsr_special_mathieu_modsem2__n, "Odd modified Mathieu function of the second kind and its derivative."),
+    UFUNCI_N("special.mathieu_sem", 3, 2, "m, q, x", "y, yp", tsr_special_mathieu_sem, NULL, 0, tsr_special_mathieu_sem__n, "Odd Mathieu function and its derivative."),
+    UFUNCI_N("special.modstruve", 2, 1, "v, x", "L", tsr_special_modstruve, NULL, 0, tsr_special_modstruve__n, "Modified Struve function."),
+    UFUNCI_N("special.nbdtr", 3, 1, "k, n, p", "F", tsr_special_nbdtr, tsr_special_nbdtr__int, 3, tsr_special_nbdtr__n, "Negative binomial cumulative distribution function."),
+    UFUNCI_N("special.nbdtrc", 3, 1, "k, n, p", "F", tsr_special_nbdtrc, tsr_special_nbdtrc__int, 3, tsr_special_nbdtrc__n, "Negative binomial survival function."),
+    UFUNCI_N("special.nbdtri", 3, 1, "k, n, y", "p", tsr_special_nbdtri, tsr_special_nbdtri__int, 3, tsr_special_nbdtri__n, "Returns the inverse with respect to the parameter `p` of ``y = nbdtr(k, n, p)``, the negative binomial cumulative distribution function."),
+    UFUNCI_N("special.nbdtrik", 3, 1, "y, n, p", "k", tsr_special_nbdtrik, NULL, 0, tsr_special_nbdtrik__n, "Negative binomial percentile function."),
+    UFUNCI_N("special.nbdtrin", 3, 1, "k, y, p", "n", tsr_special_nbdtrin, NULL, 0, tsr_special_nbdtrin__n, "Inverse of `nbdtr` vs `n`."),
+    UFUNCI_N("special.ncfdtr", 4, 1, "dfn, dfd, nc, f", "cdf", tsr_special_ncfdtr, NULL, 0, tsr_special_ncfdtr__n, "Cumulative distribution function of the non-central F distribution."),
+    UFUNCI_N("special.ncfdtri", 4, 1, "dfn, dfd, nc, p", "f", tsr_special_ncfdtri, NULL, 0, tsr_special_ncfdtri__n, "Inverse with respect to `f` of the CDF of the non-central F distribution."),
+    UFUNCI_N("special.ncfdtridfd", 4, 1, "dfn, p, nc, f", "dfd", tsr_special_ncfdtridfd, NULL, 0, tsr_special_ncfdtridfd__n, "Calculate degrees of freedom (denominator) for the noncentral F-distribution."),
+    UFUNCI_N("special.ncfdtridfn", 4, 1, "p, dfd, nc, f", "dfn", tsr_special_ncfdtridfn, NULL, 0, tsr_special_ncfdtridfn__n, "Calculate degrees of freedom (numerator) for the noncentral F-distribution."),
+    UFUNCI_N("special.ncfdtrinc", 4, 1, "dfn, dfd, p, f", "nc", tsr_special_ncfdtrinc, NULL, 0, tsr_special_ncfdtrinc__n, "Calculate non-centrality parameter for non-central F distribution."),
+    UFUNCI_N("special.nctdtr", 3, 1, "df, nc, t", "cdf", tsr_special_nctdtr, NULL, 0, tsr_special_nctdtr__n, "Cumulative distribution function of the non-central `t` distribution."),
+    UFUNCI_N("special.nctdtridf", 3, 1, "p, nc, t", "df", tsr_special_nctdtridf, NULL, 0, tsr_special_nctdtridf__n, "Calculate degrees of freedom for non-central t distribution."),
+    UFUNCI_N("special.nctdtrinc", 3, 1, "df, p, t", "nc", tsr_special_nctdtrinc, NULL, 0, tsr_special_nctdtrinc__n, "Calculate non-centrality parameter for non-central t distribution."),
+    UFUNCI_N("special.nctdtrit", 3, 1, "df, nc, p", "t", tsr_special_nctdtrit, NULL, 0, tsr_special_nctdtrit__n, "Inverse cumulative distribution function of the non-central t distribution."),
+    UFUNCI_N("special.ndtr", 1, 1, "x", "y", tsr_special_ndtr, NULL, 0, tsr_special_ndtr__n, "Cumulative distribution of the standard normal distribution."),
+    UFUNCI_N("special.ndtri", 1, 1, "y", "x", tsr_special_ndtri, NULL, 0, tsr_special_ndtri__n, "Inverse of `ndtr` vs x."),
+    UFUNCI_N("special.ndtri_exp", 1, 1, "y", "y", tsr_special_ndtri_exp, NULL, 0, tsr_special_ndtri_exp__n, "Inverse of `log_ndtr` vs x. Allows for greater precision than `ndtri` composed with `numpy.exp` for very small values of y and for y close to 0."),
+    UFUNCI_N("special.nrdtrimn", 3, 1, "p, std, x", "mn", tsr_special_nrdtrimn, NULL, 0, tsr_special_nrdtrimn__n, "Calculate mean of normal distribution given other params."),
+    UFUNCI_N("special.nrdtrisd", 3, 1, "mn, p, x", "std", tsr_special_nrdtrisd, NULL, 0, tsr_special_nrdtrisd__n, "Calculate standard deviation of normal distribution given other params."),
+    UFUNCI_N("special.obl_ang1", 4, 2, "m, n, c, x", "s, sp", tsr_special_obl_ang1, NULL, 0, tsr_special_obl_ang1__n, "Oblate spheroidal angular function of the first kind and its derivative."),
+    UFUNCI_N("special.obl_ang1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_obl_ang1_cv, NULL, 0, tsr_special_obl_ang1_cv__n, "Oblate spheroidal angular function obl_ang1 for precomputed characteristic value."),
+    UFUNCI_N("special.obl_cv", 3, 1, "m, n, c", "cv", tsr_special_obl_cv, NULL, 0, tsr_special_obl_cv__n, "Characteristic value of oblate spheroidal function."),
+    UFUNCI_N("special.obl_rad1", 4, 2, "m, n, c, x", "s, sp", tsr_special_obl_rad1, NULL, 0, tsr_special_obl_rad1__n, "Oblate spheroidal radial function of the first kind and its derivative."),
+    UFUNCI_N("special.obl_rad1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_obl_rad1_cv, NULL, 0, tsr_special_obl_rad1_cv__n, "Oblate spheroidal radial function obl_rad1 for precomputed characteristic value."),
+    UFUNCI_N("special.obl_rad2", 4, 2, "m, n, c, x", "s, sp", tsr_special_obl_rad2, NULL, 0, tsr_special_obl_rad2__n, "Oblate spheroidal radial function of the second kind and its derivative."),
+    UFUNCI_N("special.obl_rad2_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_obl_rad2_cv, NULL, 0, tsr_special_obl_rad2_cv__n, "Oblate spheroidal radial function obl_rad2 for precomputed characteristic value."),
+    UFUNCI_N("special.owens_t", 2, 1, "h, a", "t", tsr_special_owens_t, NULL, 0, tsr_special_owens_t__n, "Owen's T Function."),
+    UFUNCI_N("special.pbdv", 2, 2, "v, x", "d, dp", tsr_special_pbdv, NULL, 0, tsr_special_pbdv__n, "Parabolic cylinder function D."),
+    UFUNCI_N("special.pbvv", 2, 2, "v, x", "v, vp", tsr_special_pbvv, NULL, 0, tsr_special_pbvv__n, "Parabolic cylinder function V."),
+    UFUNCI_N("special.pbwa", 2, 2, "a, x", "w, wp", tsr_special_pbwa, NULL, 0, tsr_special_pbwa__n, "Parabolic cylinder function W."),
+    UFUNCI_N("special.pdtr", 2, 1, "k, m", "y", tsr_special_pdtr, NULL, 0, tsr_special_pdtr__n, "Poisson cumulative distribution function."),
+    UFUNCI_N("special.pdtrc", 2, 1, "k, m", "y", tsr_special_pdtrc, NULL, 0, tsr_special_pdtrc__n, "Poisson survival function."),
+    UFUNCI_N("special.pdtri", 2, 1, "k, y", "y", tsr_special_pdtri, tsr_special_pdtri__int, 1, tsr_special_pdtri__n, "Inverse to `pdtr` vs m."),
+    UFUNCI_N("special.pdtrik", 2, 1, "p, m", "y", tsr_special_pdtrik, NULL, 0, tsr_special_pdtrik__n, "Inverse to `pdtr` vs `k`."),
+    UFUNCI_N("special.poch", 2, 1, "z, m", "y", tsr_special_poch, NULL, 0, tsr_special_poch__n, "Pochhammer symbol."),
+    UFUNCI_N("special.perm", 2, 1, "N, k", "y", tsr_special_perm, NULL, 0, tsr_special_perm__n, "Number of permutations of N things taken k at a time (non-exact, via the Pochhammer symbol)."),
+    UFUNCI_N("special.assoc_laguerre", 3, 1, "x, n, k", "L", tsr_special_assoc_laguerre, NULL, 0, tsr_special_assoc_laguerre__n, "Associated Laguerre polynomial L_n^k(x) (= eval_genlaguerre(n, k, x))."),
+    UFUNCI_N("special.diric", 2, 1, "x, n", "y", tsr_special_diric, NULL, 0, tsr_special_diric__n, "Periodic sinc (Dirichlet) function."),
+    UFUNCI_N("special.powm1", 2, 1, "x, y", "y", tsr_special_powm1, NULL, 0, tsr_special_powm1__n, "Computes ``x**y - 1``."),
+    UFUNCI_N("special.pro_ang1", 4, 2, "m, n, c, x", "s, sp", tsr_special_pro_ang1, NULL, 0, tsr_special_pro_ang1__n, "Prolate spheroidal angular function of the first kind and its derivative."),
+    UFUNCI_N("special.pro_ang1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_pro_ang1_cv, NULL, 0, tsr_special_pro_ang1_cv__n, "Prolate spheroidal angular function pro_ang1 for precomputed characteristic value."),
+    UFUNCI_N("special.pro_cv", 3, 1, "m, n, c", "cv", tsr_special_pro_cv, NULL, 0, tsr_special_pro_cv__n, "Characteristic value of prolate spheroidal function."),
+    UFUNCI_N("special.pro_rad1", 4, 2, "m, n, c, x", "s, sp", tsr_special_pro_rad1, NULL, 0, tsr_special_pro_rad1__n, "Prolate spheroidal radial function of the first kind and its derivative."),
+    UFUNCI_N("special.pro_rad1_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_pro_rad1_cv, NULL, 0, tsr_special_pro_rad1_cv__n, "Prolate spheroidal radial function pro_rad1 for precomputed characteristic value."),
+    UFUNCI_N("special.pro_rad2", 4, 2, "m, n, c, x", "s, sp", tsr_special_pro_rad2, NULL, 0, tsr_special_pro_rad2__n, "Prolate spheroidal radial function of the second kind and its derivative."),
+    UFUNCI_N("special.pro_rad2_cv", 5, 2, "m, n, c, cv, x", "s, sp", tsr_special_pro_rad2_cv, NULL, 0, tsr_special_pro_rad2_cv__n, "Prolate spheroidal radial function pro_rad2 for precomputed characteristic value."),
+    UFUNCI_N("special.pseudo_huber", 2, 1, "delta, r", "res", tsr_special_pseudo_huber, NULL, 0, tsr_special_pseudo_huber__n, "Pseudo-Huber loss function."),
+    UFUNCI_N("special.psi", 1, 1, "z", "digamma", tsr_special_psi, NULL, 0, tsr_special_psi__n, "The digamma function."),
+    UFUNCI_N("special.radian", 3, 1, "d, m, s", "y", tsr_special_radian, NULL, 0, tsr_special_radian__n, "Convert from degrees to radians."),
+    UFUNCI_N("special.rel_entr", 2, 1, "x, y", "y", tsr_special_rel_entr, NULL, 0, tsr_special_rel_entr__n, "Elementwise function for computing relative entropy."),
+    UFUNCI_N("special.rgamma", 1, 1, "z", "y", tsr_special_rgamma, NULL, 0, tsr_special_rgamma__n, "Reciprocal of the gamma function."),
+    UFUNCI_N("special.round", 1, 1, "x", "y", tsr_special_round, NULL, 0, tsr_special_round__n, "Round to the nearest integer."),
+    UFUNCI_N("special.shichi", 1, 2, "x", "si, ci", tsr_special_shichi, NULL, 0, tsr_special_shichi__n, "Hyperbolic sine and cosine integrals."),
+    UFUNCI_N("special.sici", 1, 2, "x", "si, ci", tsr_special_sici, NULL, 0, tsr_special_sici__n, "Sine and cosine integrals."),
+    UFUNCI_N("special.sindg", 1, 1, "x", "y", tsr_special_sindg, NULL, 0, tsr_special_sindg__n, "Sine of the angle `x` given in degrees."),
+    UFUNCI_N("special.smirnov", 2, 1, "n, d", "y", tsr_special_smirnov, tsr_special_smirnov__int, 1, tsr_special_smirnov__n, "Kolmogorov-Smirnov complementary cumulative distribution function."),
+    UFUNCI_N("special.smirnovi", 2, 1, "n, p", "y", tsr_special_smirnovi, tsr_special_smirnovi__int, 1, tsr_special_smirnovi__n, "Inverse to `smirnov`."),
+    UFUNCI_N("special.spence", 1, 1, "z", "s", tsr_special_spence, NULL, 0, tsr_special_spence__n, "Spence's function, also known as the dilogarithm."),
+    UFUNCI_N("special.stdtr", 2, 1, "df, t", "y", tsr_special_stdtr, NULL, 0, tsr_special_stdtr__n, "Student t distribution cumulative distribution function."),
+    UFUNCI_N("special.stdtridf", 2, 1, "p, t", "df", tsr_special_stdtridf, NULL, 0, tsr_special_stdtridf__n, "Inverse of `stdtr` vs df."),
+    UFUNCI_N("special.stdtrit", 2, 1, "df, p", "t", tsr_special_stdtrit, NULL, 0, tsr_special_stdtrit__n, "The `p`-th quantile of the student t distribution."),
+    UFUNCI_N("special.struve", 2, 1, "v, x", "H", tsr_special_struve, NULL, 0, tsr_special_struve__n, "Struve function."),
+    UFUNCI_N("special.tandg", 1, 1, "x", "y", tsr_special_tandg, NULL, 0, tsr_special_tandg__n, "Tangent of angle `x` given in degrees."),
+    UFUNCI_N("special.tklmbda", 2, 1, "x, lmbda", "cdf", tsr_special_tklmbda, NULL, 0, tsr_special_tklmbda__n, "Cumulative distribution function of the Tukey lambda distribution."),
+    UFUNCI_N("special.voigt_profile", 3, 1, "x, sigma, gamma", "y", tsr_special_voigt_profile, NULL, 0, tsr_special_voigt_profile__n, "Voigt profile."),
+    UFUNCI_N("special.wright_bessel", 3, 1, "a, b, x", "y", tsr_special_wright_bessel, NULL, 0, tsr_special_wright_bessel__n, "Wright's generalized Bessel function."),
+    UFUNCI_N("special.wrightomega", 1, 1, "z", "omega", tsr_special_wrightomega, NULL, 0, tsr_special_wrightomega__n, "Wright Omega function."),
+    UFUNCI_N("special.xlog1py", 2, 1, "x, y", "z", tsr_special_xlog1py, NULL, 0, tsr_special_xlog1py__n, "Compute ``x*log1p(y)`` so that the result is 0 if ``x = 0``."),
+    UFUNCI_N("special.xlogy", 2, 1, "x, y", "z", tsr_special_xlogy, NULL, 0, tsr_special_xlogy__n, "Compute ``x*log(y)`` so that the result is 0 if ``x = 0``."),
+    UFUNCI_N("special.y0", 1, 1, "x", "Y", tsr_special_y0, NULL, 0, tsr_special_y0__n, "Bessel function of the second kind of order 0."),
+    UFUNCI_N("special.y1", 1, 1, "x", "Y", tsr_special_y1, NULL, 0, tsr_special_y1__n, "Bessel function of the second kind of order 1."),
+    UFUNCI_N("special.yn", 2, 1, "n, x", "Y", tsr_special_yn, tsr_special_yn__int, 1, tsr_special_yn__n, "Bessel function of the second kind of integer order and real argument."),
+    UFUNC_CN("special.yv", 2, 1, "v, z", "Y", tsr_special_yv, NULL, 0, tsr_special_yv__cplx, tsr_special_yv__n, "Bessel function of the second kind of real order and complex argument."),
+    UFUNCI_N("special.yve", 2, 1, "v, z", "Y", tsr_special_yve, NULL, 0, tsr_special_yve__n, "Exponentially scaled Bessel function of the second kind of real order."),
+    UFUNCI_N("special.zeta", 2, 1, "x, q", "y", tsr_special_zeta, NULL, 0, tsr_special_zeta__n, "Hurwitz zeta function (scipy.special.zeta)."),
+    UFUNCI_N("special.jvp", 2, 1, "v, z", "out", tsr_special_jvp, NULL, 0, tsr_special_jvp__n, "First derivative of the Bessel function of the first kind (scipy.special.jvp, n=1)."),
+    UFUNCI_N("special.yvp", 2, 1, "v, z", "out", tsr_special_yvp, NULL, 0, tsr_special_yvp__n, "First derivative of the Bessel function of the second kind (scipy.special.yvp, n=1)."),
+    UFUNCI_N("special.ivp", 2, 1, "v, z", "out", tsr_special_ivp, NULL, 0, tsr_special_ivp__n, "First derivative of the modified Bessel function of the first kind (scipy.special.ivp, n=1)."),
+    UFUNCI_N("special.kvp", 2, 1, "v, z", "out", tsr_special_kvp, NULL, 0, tsr_special_kvp__n, "First derivative of the modified Bessel function of the second kind (scipy.special.kvp, n=1)."),
+    UFUNCI_N("special.zetac", 1, 1, "x", "y", tsr_special_zetac, NULL, 0, tsr_special_zetac__n, "Riemann zeta function minus 1."),
+    UFUNCI_N("special.softplus", 1, 1, "x", "y", tsr_special_softplus, NULL, 0, tsr_special_softplus__n, "Softplus, log(1 + exp(x)), evaluated stably (scipy.special.softplus)."),
+    UFUNCI_N("special.sinc", 1, 1, "x", "y", tsr_special_sinc, NULL, 0, tsr_special_sinc__n, "Normalized sinc, sin(pi x)/(pi x) with sinc(0)=1 (scipy.special.sinc)."),
+    UFUNCI_N("special.spherical_jn", 3, 1, "n, z, derivative", "jn", tsr_special_spherical_jn, NULL, 0, tsr_special_spherical_jn__n, "Spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_jn)."),
+    UFUNCI_N("special.spherical_yn", 3, 1, "n, z, derivative", "yn", tsr_special_spherical_yn, NULL, 0, tsr_special_spherical_yn__n, "Spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_yn)."),
+    UFUNCI_N("special.spherical_in", 3, 1, "n, z, derivative", "in", tsr_special_spherical_in, NULL, 0, tsr_special_spherical_in__n, "Modified spherical Bessel function of the first kind, or its derivative (scipy.special.spherical_in)."),
+    UFUNCI_N("special.spherical_kn", 3, 1, "n, z, derivative", "kn", tsr_special_spherical_kn, NULL, 0, tsr_special_spherical_kn__n, "Modified spherical Bessel function of the second kind, or its derivative (scipy.special.spherical_kn)."),
 };
 const fn_table TSR_GEN_SPECIAL_TABLE = {TSR_GEN_SPECIAL, (int)(sizeof TSR_GEN_SPECIAL / sizeof TSR_GEN_SPECIAL[0])};
