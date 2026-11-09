@@ -4000,6 +4000,15 @@ static void test_arg_gate(void)
     CHECK(rc == 0 && rr[0].kind == 3 && rr[0].arr.shape[0] == 3, "a reversed view with its offset at the end passes (%d)", rc);
     if (rc == 0) fn_results_free(rr, 4);
 
+    /* hyp1f1 at x = +inf returns (NaN) instead of looping ~10^16 times in Boost's final rescaling (SciPy hangs) */
+    {
+        const int h1 = tsr_fn_find("special.hyp1f1");
+        double hv[8] = {0.5, 1.5, INFINITY, 0.0, 3.7, -1.5, INFINITY, 0.0};
+        void *hp[4] = {&hv[0], &hv[1], &hv[2], &hv[3]}, *hq[4] = {&hv[4], &hv[5], &hv[6], &hv[7]};
+        CHECK(h1 >= 0 && tsr_fn_ufunc(h1, 0, TSR_F64, 0, NULL, 4, hp, NULL) == 0 && isnan(hv[3]), "hyp1f1(0.5, 1.5, inf) returns");
+        CHECK(h1 >= 0 && tsr_fn_ufunc(h1, 0, TSR_F64, 0, NULL, 4, hq, NULL) == 0 && isinf(hv[7]) && hv[7] > 0, "hyp1f1(3.7, -1.5, inf) returns (inf)");
+    }
+
     /* ufunc: the strided operand set */
     const int erf = tsr_fn_find("special.erf");
     double x[4] = {0.0, 0.5, 1.0, 2.0}, y[4];

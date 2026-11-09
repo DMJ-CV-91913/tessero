@@ -98,6 +98,12 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`Special::hyp1f1(a, b, INF)` no longer hangs.** For x = +inf Boost's evaluation can return a scaling exponent
+  near 2^63, and the loop that removed it 707 at a time ran about 10^16 times (SciPy hangs on the same inputs, e.g.
+  `hyp1f1(0.5, 1.5, inf)`). The loop's step count is now computed and the factor applied only while it still
+  changes the result: the same result as the original loop, bit for bit (NaN for most such inputs), at once. Every
+  other input gives the same bytes as before (`THIRD_PARTY_NOTICES.md`, local modifications).
+
 - **`sort()` (the radix sort) crashed on small thread stacks**: it kept up to 49 KB of count tables per recursion level
   on the stack, which overflowed musl's 128 KB default for threads and OpenMP workers (Alpine; the CI musl job failed
   from the sort commits on) and glibc threads whose stack is shared with large static TLS. The tables now live in the

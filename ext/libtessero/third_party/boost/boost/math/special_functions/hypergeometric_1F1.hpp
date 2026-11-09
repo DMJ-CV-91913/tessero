@@ -642,15 +642,24 @@ namespace boost { namespace math { namespace detail {
       static const thread_local long long max_scaling = lltrunc(boost::math::tools::log_max_value<T>()) - 2;
       static const thread_local T max_scale_factor = exp(T(max_scaling));
 
-      while (log_scaling > max_scaling)
+      // Tessero: for z = +inf the inner call can return log_scaling near 2^63 (with a NaN result), and the two loops
+      // below then ran about 10^16 times, i.e. never ended (SciPy hangs in hyp1f1(0.5, 1.5, inf)). They now take
+      // their exact number of steps arithmetically and stop applying the factor once the result is inf, NaN or 0,
+      // which no further step changes (inf * f, NaN * f and +-0 * f keep their bits for a finite f > 0): the
+      // result and log_scaling are those of the original loops, bit for bit, in a few steps.
+      if (log_scaling > max_scaling)
       {
-         result *= max_scale_factor;
-         log_scaling -= max_scaling;
+         const long long steps = (log_scaling - 1) / max_scaling;
+         for (long long k = 0; k < steps && (boost::math::isfinite)(result) && result != 0; ++k)
+            result *= max_scale_factor;
+         log_scaling -= steps * max_scaling;
       }
-      while (log_scaling < -max_scaling)
+      if (log_scaling < -max_scaling)
       {
-         result /= max_scale_factor;
-         log_scaling += max_scaling;
+         const long long steps = (-(log_scaling + 1)) / max_scaling;
+         for (long long k = 0; k < steps && (boost::math::isfinite)(result) && result != 0; ++k)
+            result /= max_scale_factor;
+         log_scaling += steps * max_scaling;
       }
       if (log_scaling)
          result *= exp(T(log_scaling));

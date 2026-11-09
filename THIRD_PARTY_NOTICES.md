@@ -82,6 +82,10 @@ are unchanged; the parity fixtures verify that.
   arguments forever (SciPy overflows the stack and crashes); Tessero returns NaN on exactly that path.
 - `boost/math/special_functions/hypergeometric_1F1.hpp`: for |b| ≥ 2^52 (and b = −∞) every `float_next(b)` step is
   still a negative integer, so the recursion never ends (SciPy crashes); Tessero returns NaN on exactly that path.
+- `boost/math/special_functions/hypergeometric_1F1.hpp`, the final rescaling by e^log_scaling: for x = +inf the inner
+  evaluation can return log_scaling near 2^63, and the loops that remove it 707 at a time ran about 10^16 times
+  (SciPy hangs, e.g. `hyp1f1(0.5, 1.5, inf)`). Tessero computes their step count and stops multiplying once the
+  result is inf, NaN or 0, which no further step changes: bit for bit the original loops' result, in a few steps.
 - `scipy/boost_special_functions.h`, `user_overflow_error`: SciPy sets Python's `OverflowError` and returns 0;
   Tessero records the same message as the call's error, and the registry raises it after the element loop.
 - `scipy/cython_ports.hpp`, the `_unsafe` wrappers (`yn`, `kn`, `expn`, `bdtrc`, `bdtri`, `nbdtr*`, `pdtri`,

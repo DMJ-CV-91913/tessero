@@ -294,8 +294,9 @@ abi-check: $(OUT)/$(LIBNAME).$(EXT)
 	@$(BUILD)/abi_interpose $(abspath $(BUILD))/libtessero-other-copy.$(EXT) $(abspath $<)
 endif
 
-# header dependencies of the C++ and vendored objects (-MMD)
--include $(wildcard $(BUILD)/cxx/*.d $(BUILD)/c/*.d)
+# header dependencies of the C++ and vendored objects (-MMD), also of the sanitizer objects (a vendored header edit
+# left a stale cxx_san object behind, and make sanitize ran the old code)
+-include $(wildcard $(BUILD)/cxx/*.d $(BUILD)/c/*.d $(BUILD)/cxx_san/*.d)
 
 portable:
 	$(MAKE) CFLAGS="$(CFLAGS) -DTSR_NO_CLONES"
@@ -317,11 +318,11 @@ OBJ_CXX_SAN = $(patsubst %,$(BUILD)/cxx_san/%.o,$(notdir $(SRC_CXX)))
 
 $(BUILD)/cxx_san/%.cpp.o: cxx/%.cpp cxx/*.hpp src/fn.h
 	@mkdir -p $(BUILD)/cxx_san
-	$(CXX) -O1 -g -std=c++17 -DBOOST_MATH_STANDALONE $(OPENMP) $(SAN) $(TP_INC) -c -o $@ $<
+	$(CXX) -O1 -g -std=c++17 -DBOOST_MATH_STANDALONE $(OPENMP) $(SAN) $(TP_INC) -MMD -MP -c -o $@ $<
 
 $(BUILD)/cxx_san/wright.cc.o: third_party/scipy/wright.cc
 	@mkdir -p $(BUILD)/cxx_san
-	$(CXX) -O1 -g -std=c++17 $(OPENMP) $(SAN) $(TP_INC) -c -o $@ $<
+	$(CXX) -O1 -g -std=c++17 $(OPENMP) $(SAN) $(TP_INC) -MMD -MP -c -o $@ $<
 
 $(BUILD)/test_san: $(SRC) tests/test_main.c $(OBJ_CXX_SAN)
 	@mkdir -p $(BUILD)/c_san
