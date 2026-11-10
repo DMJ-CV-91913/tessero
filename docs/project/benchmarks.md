@@ -212,14 +212,14 @@ above are the radix sort, measured before `sort()` became the AVX2 sort; it is n
 ## Full sweep
 
 Every function family timed against NumPy/SciPy on the same inputs, single-threaded (2026-11-06; the element-wise
-and per-call tiers re-timed on 2026-11-09); all the tables,
+tier re-timed on 2026-11-09, the per-call tier on 2026-11-10); all the tables,
 the gaps that remain and how to reproduce: [speed sweep](speed-sweep.md).
 
 | tier | timed on both sides | geomean Tessero / reference | Tessero faster |
 |---|---|---|---|
 | `scipy.special` element-wise, 100,000 values | 212 functions | 1.05 | 60 |
 | heavier calls at realistic sizes (re-timed after the fixes) | 84 cases | 0.67 | 68 |
-| per-call latency, every parity fixture call | 1,022 functions | 0.37 | 726 |
+| per-call latency, every parity fixture call | 1,022 functions | 0.42 | 700 |
 
 ## Correctness, not just speed
 

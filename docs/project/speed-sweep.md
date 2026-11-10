@@ -1,6 +1,6 @@
-# Speed sweep, 2026-11-09
+# Speed sweep, 2026-11-10
 
-First run on 2026-11-06; tiers 1 and 3 re-timed on 2026-11-09, tier 2 last on 2026-11-07 (see Method).
+First run on 2026-11-06; tier 3 re-timed on 2026-11-10, tier 1 on 2026-11-09, tier 2 last on 2026-11-07 (see Method).
 
 Every function family timed against NumPy 2.4.4 / SciPy 1.17.1, on the same inputs, single-threaded on both sides
 (`OPENBLAS_NUM_THREADS=1`), on the benchmark machine of [benchmarks](benchmarks.md) (Intel Core i7-4790, Haswell,
@@ -10,11 +10,11 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 60 |
 | 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.67** | 68 |
-| 3 | per-call latency of every parity fixture call (small inputs) | 1,022 functions, 15,184 cases | **0.37** | 726 |
+| 3 | per-call latency of every parity fixture call (small inputs) | 1,022 functions, 15,184 cases | **0.42** | 700 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
-FFI call beat SciPy's Python-level wrappers (stats 0.05, csgraph 0.03, signal 0.20); NumPy's own core functions are
-the exception (np 2.06), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
+FFI call beat SciPy's Python-level wrappers (stats 0.05, csgraph 0.04, signal 0.18); NumPy's own core functions are
+the exception (np 2.05), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
 on 49 cases, within 10% either way on 26, and clearly slower on 9, mostly where an algorithm is not yet the best one
 available (the gaps below).
@@ -239,6 +239,12 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 - Tiers 1 and 3 re-timed on 2026-11-09, after the lower per-call cost of the FFI path (commit c6e18549): two
   alternating rounds of each side (`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`, at a load average of 9 to 18), each
   case keeping its best time on each side.
+- Tier 3 re-timed on 2026-11-10, after the small-array changes (commits c5ae8bd3 and 655992c6): four alternating
+  rounds of each side (at a load average of 8 to 15), each case keeping its best time on each side. The geomean rose
+  from 0.37 to 0.42 although Tessero's own times fell (to 0.90 of the 2026-11-09 times on `np`, 0.79 on `special`,
+  0.68 on `signal`): the NumPy/SciPy side ran faster on this host than in the two 2026-11-09 rounds (to 0.54 of
+  those times on `npoly`, 0.57 on `scipyfft`, 0.62 on `slinalg`), which had flattered the earlier figure. Four rounds
+  per side give the steadier reference.
 - Results unchanged: since 2026-11-09 every speed change is also checked byte for byte with
   `tools/parity/run-tests.php --hash`, which records a hash of the raw bytes of every fixture call's result (arrays by
   dtype, shape and bytes, so NaN sign and payload bits count; floats by their bits; exceptions by class and message),
@@ -338,25 +344,25 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 
 | module | functions | geomean ratio | faster |
 |---|---|---|---|
-| cluster | 4 | 0.13 | 4 |
-| csgraph | 14 | 0.03 | 14 |
-| distance | 26 | 0.47 | 22 |
-| fft | 18 | 2.20 | 2 |
-| hierarchy | 26 | 0.04 | 26 |
-| interpolate | 6 | 0.03 | 6 |
-| linalg | 30 | 1.05 | 13 |
-| ndimage | 66 | 0.50 | 50 |
-| np | 193 | 2.06 | 53 |
-| npoly | 155 | 0.24 | 142 |
-| scipyfft | 11 | 0.66 | 7 |
-| signal | 124 | 0.20 | 101 |
-| slinalg | 87 | 0.18 | 87 |
-| sparse | 23 | 0.23 | 21 |
-| special | 89 | 2.02 | 37 |
-| splinalg | 14 | 0.03 | 14 |
-| stats | 111 | 0.05 | 106 |
-| windows | 25 | 0.43 | 21 |
-| **all** | 1022 | **0.37** | 726 |
+| cluster | 4 | 0.16 | 4 |
+| csgraph | 14 | 0.04 | 14 |
+| distance | 26 | 0.51 | 21 |
+| fft | 18 | 2.05 | 0 |
+| hierarchy | 26 | 0.05 | 26 |
+| interpolate | 6 | 0.04 | 6 |
+| linalg | 30 | 1.02 | 13 |
+| ndimage | 66 | 0.48 | 51 |
+| np | 193 | 2.05 | 54 |
+| npoly | 155 | 0.43 | 123 |
+| scipyfft | 11 | 0.98 | 3 |
+| signal | 124 | 0.18 | 106 |
+| slinalg | 87 | 0.27 | 86 |
+| sparse | 23 | 0.25 | 21 |
+| special | 89 | 2.02 | 30 |
+| splinalg | 14 | 0.05 | 14 |
+| stats | 111 | 0.05 | 107 |
+| windows | 25 | 0.42 | 21 |
+| **all** | 1022 | **0.42** | 700 |
 
 ## Tier 1, all functions
 
