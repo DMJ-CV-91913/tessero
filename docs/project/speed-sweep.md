@@ -1,6 +1,6 @@
 # Speed sweep, 2026-11-10
 
-First run on 2026-11-06; tier 3 re-timed on 2026-11-10, tier 1 on 2026-11-09, tier 2 last on 2026-11-07 (see Method).
+First run on 2026-11-06; tiers 1 and 3 re-timed on 2026-11-10, tier 2 last on 2026-11-07 (see Method).
 
 Every function family timed against NumPy 2.4.4 / SciPy 1.17.1, on the same inputs, single-threaded on both sides
 (`OPENBLAS_NUM_THREADS=1`), on the benchmark machine of [benchmarks](benchmarks.md) (Intel Core i7-4790, Haswell,
@@ -8,13 +8,13 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 
 | tier | what is timed | timed on both sides | geomean ratio | Tessero faster |
 |---|---|---|---|---|
-| 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **1.05** | 60 |
+| 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **0.95** | 106 |
 | 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.67** | 68 |
-| 3 | per-call latency of every parity fixture call (small inputs) | 1,022 functions, 15,184 cases | **0.42** | 700 |
+| 3 | per-call latency of every parity fixture call (small inputs) | 1,022 functions, 15,184 cases | **0.34** | 743 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
-FFI call beat SciPy's Python-level wrappers (stats 0.05, csgraph 0.04, signal 0.18); NumPy's own core functions are
-the exception (np 2.05), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
+FFI call beat SciPy's Python-level wrappers (stats 0.04, csgraph 0.03, signal 0.15); NumPy's own core functions are
+the exception (np 1.67), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
 on 49 cases, within 10% either way on 26, and clearly slower on 9, mostly where an algorithm is not yet the best one
 available (the gaps below).
@@ -106,6 +106,8 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | fixed cost per call, FFI backend | scalar `special.ndtr` 2.7 us; `numpy.diff` on 8 values 10.9 us | 1.3 us; 7.2 us | 0.22 us; 3.3 us | the registry binding prepares each routine once (label, result type, sequence and in-place arguments), fills the kernel's array descriptors in place instead of building and copying one per argument, keeps short string arguments and the C types it needs, and reuses the operand buffers of scalar element-wise calls; also `unique`, `interp`, `trapezoid` on 8 values 1.4-1.6x faster. Tier 3 above was re-timed after it (2026-11-09). Results unchanged, byte for byte |
 | `scipy.special` and distribution methods on small arrays | `ndtr` on 8 values 9.8 us; `jv(1.0, x)` 21 us; `jv` 2x1 by 4 24 us; `norm().cdf` on 8 values 24 us | 5.0; 9.2; 12.6; 6.0 us | 0.52; 2.6; 4.3; 41 us | PHP scalar arguments passed as one value with zero strides instead of a new 0-d array each, broadcast strides computed instead of views built, the pointer, shape and stride arrays reused, the output array built directly, and each function's metadata looked up once; in the kernel, a loop over several rows on one thread no longer enters an OpenMP parallel region (also the NumPy ufunc engine on broadcast or strided operands). Best of three alternating rounds at a load average of about 11; results unchanged, byte for byte (47,869 fixture results and 84 calls with scalar, float32, complex, NaN-payload and broadcast operands) |
 | array arithmetic and axis functions on small arrays (8 values) | `x * 2.0` 11.8 us; `x + x` 8.9 us; `copy` 5.0 us; `numpy.partition` 18.7 us; `numpy.searchsorted` 17.3 us | 4.8; 5.2; 3.1; 11.1; 11.8 us | 0.68; 0.46; 0.23; 1.35; 1.30 us | binary and unary operations, copies, casts and the loop ufuncs fill one reused set of shape and stride arrays instead of four new ones, pass the buffers' cached pointers, compute broadcast strides once without building views, and pass a PHP scalar's bytes directly instead of a new 0-d array; the generalised ufuncs parse their C types once, write the array descriptors in place, and pass a scalar input after the first through a slot of its own. Best of three alternating rounds at a load average of about 11; results unchanged, byte for byte (47,869 fixture results and 1,727 calls: seven dtypes, a strided view, a transpose and a 0-d array against ten kinds of PHP scalar, NaN payloads, broadcasts and `out=`) |
+| routine calls, small sorts and `numpy.fft` on small inputs (8 values) | `argsort` 18.8 us; `lexsort` (2 x 5) 17.6 us; `sort` 9.8 us; `fft` 10.5 us; `unique` with all outputs 21.0 us; `NDArray::array` of 4 floats 4.0 us | 3.7; 4.6; 4.1; 4.7; 12.6; 2.9 us | 1.36; 1.10; 0.92; 5.26; 21.8; 0.45 us | the FFI binding parses each C type once (a type given by name was parsed on every cast), arrays write their own kernel descriptor, and routine results are wrapped without repeating the constructor's checks and keep the block's pointer for freeing; in the kernel, a stable argsort of 32 keys or fewer runs an insertion sort instead of the radix passes, whose 96 KB of count tables were zeroed and scanned on every call (the stable order is unique, so the permutation is the same); `argsort`, `sort` and `numpy.fft` along the last axis skip the axis round trip. Best of three alternating rounds; results unchanged, byte for byte (47,869 fixture results and 2,271 calls: sorts of 1 to 40 values with ties, NaN payloads and -0.0 in six dtypes, FFTs along every axis with every norm) |
+| PHP lists as arguments, and generalised ufuncs with a scalar result (8 values) | `median` of a list 14.1 us; `percentile` of a list 16.9 us; `nansum` of 4 integers 15.7 us; `searchsorted` of one value 10.5 us; `broadcast_shapes` of three lists 20.2 us; `special.ndtr` of a list 7.8 us | 7.8; 9.8; 8.6; 7.2; 14.0; 6.6 us | 19.9; 55.7; 4.1; 1.25; 2.2; 1.0 us | a list of up to 4,096 values goes to the kernel as a block holding the values, shape and dtype `NDArray::array()` gives it, instead of becoming an array whose buffer is allocated and freed around the call; a generalised ufunc's 0-d result is read back from a slot as the number `item()` returns, instead of through an array. Best of three alternating rounds; results unchanged, byte for byte (47,869 fixture results and 353 calls with list operands, ragged, non-numeric, empty and too deep lists and their exceptions included). Tier 3 above was re-timed after both rows (2026-11-10) |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -135,37 +137,38 @@ fixtures mix derivative=0 and 1 rows, and SciPy takes one derivative flag per ca
 
 ## Per call through the native extension
 
-Tier 3 again with the native extension (`ext/`) instead of FFI, re-timed on 2026-11-10 at commit 655992c6: every parity fixture call
+Tier 3 again with the native extension (`ext/`) instead of FFI, re-timed on 2026-11-10 at commit ad837126: every parity fixture call
 that passed its check, the same cases, timed through `Tessero\Ext\*`. The extension calls the same kernel without
 the FFI layer, which costs several microseconds per call; where the work itself dominates, the two backends take the
 same time (`stats.tukey_hsd`: 54 ms on both). Against NumPy/SciPy the extension is about 8x faster per call on
-average and faster on 882 of 1,022 functions, NumPy's own core functions included (0.51; through FFI they are about
-2x slower).
+average and faster on 890 of 1,022 functions, NumPy's own core functions included (0.49; through FFI they are about
+1.7x slower).
 
-Best of four runs on each side, alternating, at a load average of 6 to 12 (on 2026-11-06, at commit 2184ba75 and
-at times above 40, three runs had given 0.11 and 893):
+Best of four runs on each side, alternating, at a load average of 8 to 17 (earlier on 2026-11-10, at commit
+655992c6, the same method gave 0.12 and 882; on 2026-11-06, at commit 2184ba75 and at times above 40, three runs had
+given 0.11 and 893):
 
 | module | functions | geomean ratio | faster |
 |---|---|---|---|
 | cluster | 4 | 0.05 | 4 |
 | csgraph | 14 | 0.01 | 14 |
 | distance | 26 | 0.21 | 26 |
-| fft | 18 | 0.31 | 17 |
+| fft | 18 | 0.38 | 17 |
 | hierarchy | 26 | 0.01 | 26 |
 | interpolate | 6 | 0.01 | 6 |
-| linalg | 30 | 0.37 | 26 |
+| linalg | 30 | 0.35 | 27 |
 | ndimage | 66 | 0.14 | 66 |
-| np | 193 | 0.51 | 120 |
+| np | 193 | 0.49 | 128 |
 | npoly | 155 | 0.12 | 148 |
-| scipyfft | 11 | 0.56 | 6 |
-| signal | 124 | 0.05 | 119 |
-| slinalg | 87 | 0.08 | 87 |
+| scipyfft | 11 | 0.62 | 3 |
+| signal | 124 | 0.06 | 119 |
+| slinalg | 87 | 0.09 | 87 |
 | sparse | 23 | 0.04 | 23 |
-| special | 89 | 0.92 | 46 |
+| special | 89 | 0.90 | 48 |
 | splinalg | 14 | 0.02 | 14 |
 | stats | 111 | 0.01 | 109 |
 | windows | 25 | 0.12 | 25 |
-| **all** | 1022 | **0.12** | 882 |
+| **all** | 1022 | **0.12** | 890 |
 
 ## Sorting against NumPy
 
@@ -245,6 +248,15 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   0.68 on `signal`): the NumPy/SciPy side ran faster on this host than in the two 2026-11-09 rounds (to 0.54 of
   those times on `npoly`, 0.57 on `scipyfft`, 0.62 on `slinalg`), which had flattered the earlier figure. Four rounds
   per side give the steadier reference.
+- Tier 3 re-timed again on 2026-11-10, at commit ad837126 (after the changes of commits 5960de74 and ad837126 above):
+  four rounds of FFI, the extension and NumPy/SciPy in turn (at a load average of 8 to 17), each case keeping its
+  best time on each side. Tessero's FFI times fell to 0.79 of those of the earlier 2026-11-10 run (`fft` 0.66, `np`
+  0.78, `special` 0.87) and the NumPy/SciPy side's to 0.98; through the extension, to 0.96 (the NumPy/SciPy side to
+  0.95 of that run's).
+- Tier 1 re-timed on 2026-11-10 (the code of commit c880558f): four alternating rounds of each side (at a load
+  average of 8 to 26), each function keeping its best time on each side. Tessero's times fell to 0.89 of the
+  2026-11-09 times and SciPy's to 0.98; the one kernel change to these loops in between is that an element-wise loop
+  on one thread no longer runs inside an OpenMP parallel region (commit c5ae8bd3).
 - Results unchanged: since 2026-11-09 every speed change is also checked byte for byte with
   `tools/parity/run-tests.php --hash`, which records a hash of the raw bytes of every fixture call's result (arrays by
   dtype, shape and bytes, so NaN sign and payload bits count; floats by their bits; exceptions by class and message),
@@ -344,239 +356,239 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 
 | module | functions | geomean ratio | faster |
 |---|---|---|---|
-| cluster | 4 | 0.16 | 4 |
-| csgraph | 14 | 0.04 | 14 |
-| distance | 26 | 0.51 | 21 |
-| fft | 18 | 2.05 | 0 |
-| hierarchy | 26 | 0.05 | 26 |
-| interpolate | 6 | 0.04 | 6 |
-| linalg | 30 | 1.02 | 13 |
-| ndimage | 66 | 0.48 | 51 |
-| np | 193 | 2.05 | 54 |
-| npoly | 155 | 0.43 | 123 |
-| scipyfft | 11 | 0.98 | 3 |
-| signal | 124 | 0.18 | 106 |
-| slinalg | 87 | 0.27 | 86 |
-| sparse | 23 | 0.25 | 21 |
-| special | 89 | 2.02 | 30 |
-| splinalg | 14 | 0.05 | 14 |
-| stats | 111 | 0.05 | 107 |
-| windows | 25 | 0.42 | 21 |
-| **all** | 1022 | **0.42** | 700 |
+| cluster | 4 | 0.13 | 4 |
+| csgraph | 14 | 0.03 | 14 |
+| distance | 26 | 0.41 | 23 |
+| fft | 18 | 1.36 | 2 |
+| hierarchy | 26 | 0.04 | 26 |
+| interpolate | 6 | 0.03 | 6 |
+| linalg | 30 | 0.82 | 21 |
+| ndimage | 66 | 0.40 | 51 |
+| np | 193 | 1.67 | 62 |
+| npoly | 155 | 0.35 | 138 |
+| scipyfft | 11 | 0.93 | 3 |
+| signal | 124 | 0.15 | 109 |
+| slinalg | 87 | 0.22 | 86 |
+| sparse | 23 | 0.18 | 21 |
+| special | 89 | 1.66 | 33 |
+| splinalg | 14 | 0.04 | 14 |
+| stats | 111 | 0.04 | 107 |
+| windows | 25 | 0.35 | 23 |
+| **all** | 1022 | **0.34** | 743 |
 
 ## Tier 1, all functions
 
 | scipy.special function | Tessero ms | SciPy ms | ratio |
 |---|---|---|---|
-| bdtr | 3.22 | 64.4 | 0.05 |
-| bdtrc | 3.55 | 61 | 0.06 |
-| smirnov | 0.848 | 4.14 | 0.20 |
-| comb | 1.2 | 5.3 | 0.23 |
-| bdtri | 45.3 | 120 | 0.38 |
-| nbdtr | 8.98 | 17.8 | 0.50 |
-| nbdtrc | 8.06 | 15.7 | 0.51 |
-| diric | 3.76 | 6.2 | 0.61 |
-| ellipk | 0.596 | 0.981 | 0.61 |
-| ndtri_exp | 1.57 | 2.33 | 0.67 |
-| ellipe | 0.664 | 0.96 | 0.69 |
-| boxcox | 2.41 | 3.28 | 0.74 |
-| expn | 16.8 | 21.2 | 0.79 |
-| yn | 10.1 | 12.7 | 0.79 |
-| betainc | 3.27 | 3.98 | 0.82 |
-| perm | 0.932 | 1.12 | 0.84 |
-| chdtriv | 185 | 216 | 0.86 |
-| ncfdtridfn | 470 | 544 | 0.87 |
-| nrdtrimn | 119 | 135 | 0.88 |
-| nctdtridf | 427 | 484 | 0.88 |
-| airy | 193 | 217 | 0.89 |
-| it2j0y0 | 36.3 | 40.7 | 0.89 |
-| chndtr | 20.1 | 22.5 | 0.89 |
-| ncfdtri | 2.69e+03 | 3e+03 | 0.90 |
-| pdtri | 55.1 | 60.5 | 0.91 |
-| chdtri | 79.1 | 86.8 | 0.91 |
-| ndtr | 2.34 | 2.56 | 0.92 |
-| k0e | 3.95 | 4.28 | 0.92 |
-| hyperu | 2.54e+04 | 2.76e+04 | 0.92 |
-| kvp | 57.6 | 62.3 | 0.92 |
-| k1 | 3.62 | 3.92 | 0.92 |
-| betaincinv | 83.3 | 89.5 | 0.93 |
-| airye | 284 | 303 | 0.94 |
-| k0 | 4.74 | 5.06 | 0.94 |
-| gdtrix | 58.4 | 62.3 | 0.94 |
-| bdtrin | 224 | 239 | 0.94 |
-| gdtrib | 269 | 285 | 0.94 |
-| factorial | 1.94 | 2.04 | 0.95 |
-| it2i0k0 | 31.1 | 32.4 | 0.96 |
-| eval_legendre | 49.2 | 51.3 | 0.96 |
-| kn | 30 | 31.1 | 0.96 |
-| chdtr | 5.28 | 5.47 | 0.97 |
-| ivp | 78.9 | 81.7 | 0.97 |
-| betaincc | 11.2 | 11.5 | 0.97 |
-| eval_sh_jacobi | 95.8 | 98.8 | 0.97 |
-| eval_sh_chebyu | 115 | 119 | 0.97 |
-| gammainc | 6.08 | 6.26 | 0.97 |
-| chdtrc | 22.4 | 23 | 0.97 |
-| eval_laguerre | 50.2 | 51.3 | 0.98 |
-| i0e | 5.86 | 5.97 | 0.98 |
-| btdtrib | 30.6 | 31.2 | 0.98 |
-| smirnovi | 1.04e+03 | 1.06e+03 | 0.99 |
-| nbdtrin | 268 | 272 | 0.99 |
-| i1e | 5.55 | 5.62 | 0.99 |
-| hyp0f1 | 39.5 | 40 | 0.99 |
-| eval_sh_chebyt | 41.5 | 41.9 | 0.99 |
-| exp1 | 27.5 | 27.7 | 0.99 |
-| it2struve0 | 40.5 | 40.8 | 0.99 |
-| stdtrit | 83.3 | 83.7 | 0.99 |
-| powm1 | 5.21 | 5.23 | 1.00 |
-| itairy | 23.1 | 23 | 1.00 |
-| ber | 88.1 | 87.8 | 1.00 |
-| eval_jacobi | 205 | 204 | 1.01 |
-| nbdtri | 189 | 188 | 1.01 |
-| modstruve | 351 | 348 | 1.01 |
-| bei | 85.5 | 84.7 | 1.01 |
-| eval_sh_legendre | 35.5 | 35.1 | 1.01 |
-| i1 | 6.95 | 6.86 | 1.01 |
-| stdtridf | 100 | 98.8 | 1.02 |
-| nctdtrit | 3.67e+04 | 3.61e+04 | 1.02 |
-| log_wright_bessel | 89.5 | 88.1 | 1.02 |
-| yvp | 217 | 213 | 1.02 |
-| besselpoly | 127 | 125 | 1.02 |
-| eval_genlaguerre | 225 | 220 | 1.02 |
-| mathieu_b | 65.5 | 64.2 | 1.02 |
-| i0 | 6.92 | 6.77 | 1.02 |
-| chndtridf | 925 | 905 | 1.02 |
-| ncfdtr | 50.5 | 49.4 | 1.02 |
-| stdtr | 31.3 | 30.6 | 1.02 |
-| logit | 1.18 | 1.15 | 1.03 |
-| pdtrc | 9.58 | 9.3 | 1.03 |
-| mathieu_a | 81.1 | 78.6 | 1.03 |
-| nbdtrik | 179 | 173 | 1.03 |
-| expi | 37 | 35.8 | 1.03 |
-| bdtrik | 102 | 98.3 | 1.04 |
-| fdtridfd | 168 | 162 | 1.04 |
-| sinc | 1.7 | 1.64 | 1.04 |
-| beip | 86.3 | 83.1 | 1.04 |
-| pdtr | 9.3 | 8.96 | 1.04 |
-| fdtrc | 29.1 | 27.9 | 1.04 |
-| agm | 3.02 | 2.91 | 1.04 |
-| betainccinv | 84.8 | 81.4 | 1.04 |
-| iti0k0 | 32.4 | 31.1 | 1.04 |
-| gammaincc | 14.4 | 13.9 | 1.04 |
-| lpmv | 278 | 266 | 1.04 |
-| ncfdtrinc | 655 | 624 | 1.05 |
-| chndtrix | 627 | 595 | 1.05 |
-| fdtri | 137 | 130 | 1.05 |
-| struve | 387 | 366 | 1.06 |
-| jve | 62.6 | 59.2 | 1.06 |
-| berp | 88.1 | 83.1 | 1.06 |
-| cbrt | 2.21 | 2.08 | 1.06 |
-| spence | 2.42 | 2.28 | 1.06 |
-| gammainccinv | 72.1 | 67.8 | 1.06 |
-| btdtria | 237 | 222 | 1.07 |
-| pdtrik | 410 | 383 | 1.07 |
-| gdtr | 4.61 | 4.29 | 1.07 |
-| eval_chebyc | 43.4 | 40.4 | 1.08 |
-| inv_boxcox1p | 2.35 | 2.18 | 1.08 |
-| k1e | 4.15 | 3.85 | 1.08 |
-| eval_chebyt | 42.2 | 39.1 | 1.08 |
-| owens_t | 12.3 | 11.4 | 1.08 |
-| iv | 52.7 | 48.7 | 1.08 |
-| pbwa | 101 | 92.7 | 1.08 |
-| wright_bessel | 99.8 | 91.9 | 1.09 |
-| fdtr | 28.7 | 26.4 | 1.09 |
-| assoc_laguerre | 14.2 | 13 | 1.09 |
-| jv | 69.2 | 63.6 | 1.09 |
-| hyp1f1 | 1.6e+03 | 1.47e+03 | 1.09 |
-| gamma | 4.79 | 4.37 | 1.09 |
-| nctdtr | 347 | 316 | 1.10 |
-| nrdtrisd | 147 | 134 | 1.10 |
-| eval_chebyu | 48.9 | 44.3 | 1.11 |
-| kolmogi | 24.3 | 21.8 | 1.11 |
-| jn | 65.8 | 59.2 | 1.11 |
-| exp2 | 2.48 | 2.23 | 1.11 |
-| kei | 46.5 | 41.7 | 1.11 |
-| itstruve0 | 26.9 | 24.1 | 1.11 |
-| gammaincinv | 59.5 | 53 | 1.12 |
-| gdtria | 53.7 | 47.7 | 1.13 |
-| boxcox1p | 3 | 2.66 | 1.13 |
-| inv_boxcox | 2.15 | 1.91 | 1.13 |
-| exp10 | 3.08 | 2.73 | 1.13 |
-| binom | 7.8 | 6.89 | 1.13 |
-| kve | 24 | 21.2 | 1.14 |
-| keip | 44.8 | 39.3 | 1.14 |
-| chndtrinc | 1.9e+03 | 1.67e+03 | 1.14 |
-| yv | 119 | 105 | 1.14 |
-| ndtri | 2.54 | 2.22 | 1.14 |
-| exprel | 1.88 | 1.64 | 1.14 |
-| gdtrc | 13.2 | 11.5 | 1.14 |
-| j0 | 3.53 | 3.06 | 1.15 |
-| sindg | 2.31 | 2 | 1.16 |
-| elliprj | 23.3 | 20.1 | 1.16 |
-| zeta | 39.7 | 34.1 | 1.16 |
-| beta | 10.2 | 8.71 | 1.17 |
-| poch | 3.7 | 3.15 | 1.18 |
-| eval_chebys | 69.4 | 59 | 1.18 |
-| kerp | 40.5 | 34.4 | 1.18 |
-| kv | 26.1 | 22.1 | 1.18 |
-| ncfdtridfd | 426 | 360 | 1.18 |
-| expit | 1.06 | 0.888 | 1.20 |
-| erfi | 2.52 | 2.11 | 1.20 |
-| elliprc | 9.92 | 8.25 | 1.20 |
-| gammaln | 4.94 | 4.09 | 1.21 |
-| polygamma | 39.9 | 32.9 | 1.21 |
-| psi | 16.9 | 13.9 | 1.21 |
-| yve | 102 | 83.7 | 1.21 |
-| jvp | 106 | 87 | 1.22 |
-| shichi | 19.5 | 16 | 1.22 |
-| betaln | 10.8 | 8.89 | 1.22 |
-| zetac | 18 | 14.5 | 1.24 |
-| gammasgn | 0.401 | 0.322 | 1.24 |
-| itmodstruve0 | 21.8 | 17.5 | 1.24 |
-| elliprd | 15.6 | 12.5 | 1.25 |
-| hyp2f1 | 1.1e+03 | 877 | 1.26 |
-| ellipkinc | 2.41 | 1.92 | 1.26 |
-| itj0y0 | 47.3 | 37.6 | 1.26 |
-| rgamma | 7.58 | 5.93 | 1.28 |
-| tandg | 2.58 | 2.01 | 1.28 |
-| ker | 63.8 | 49.8 | 1.28 |
-| tklmbda | 134 | 104 | 1.28 |
-| expm1 | 0.989 | 0.768 | 1.29 |
-| log_ndtr | 3.56 | 2.74 | 1.30 |
-| erf | 2.09 | 1.6 | 1.30 |
-| erfinv | 18.5 | 14.1 | 1.31 |
-| fresnel | 8.59 | 6.39 | 1.35 |
-| digamma | 8.47 | 6.24 | 1.36 |
-| voigt_profile | 16.1 | 11.9 | 1.36 |
-| cotdg | 4.32 | 3.18 | 1.36 |
-| eval_gegenbauer | 323 | 234 | 1.38 |
-| sici | 5.57 | 4.02 | 1.38 |
-| j1 | 4.43 | 3.19 | 1.39 |
-| ellipeinc | 3.57 | 2.54 | 1.40 |
-| cosm1 | 2.18 | 1.55 | 1.41 |
-| entr | 0.721 | 0.511 | 1.41 |
-| log1p | 1.32 | 0.926 | 1.42 |
-| pseudo_huber | 4.75 | 3.32 | 1.43 |
-| elliprf | 13.1 | 9.11 | 1.43 |
-| elliprg | 49.6 | 34.5 | 1.44 |
-| round | 0.519 | 0.358 | 1.45 |
-| radian | 0.457 | 0.314 | 1.46 |
-| wrightomega | 11.6 | 7.93 | 1.46 |
-| ive | 44.5 | 30.2 | 1.47 |
-| erfc | 2.39 | 1.59 | 1.50 |
-| loggamma | 1.51 | 0.995 | 1.52 |
-| cosdg | 3.24 | 2.13 | 1.52 |
-| kl_div | 1.01 | 0.657 | 1.54 |
-| y1 | 3.44 | 2.22 | 1.55 |
-| huber | 0.386 | 0.244 | 1.58 |
-| erfcx | 1.46 | 0.914 | 1.59 |
-| kolmogorov | 6.28 | 3.84 | 1.64 |
-| log_expit | 2.58 | 1.57 | 1.64 |
-| dawsn | 1.71 | 1.04 | 1.64 |
-| ellipj | 3.73 | 2.23 | 1.67 |
-| ellipkm1 | 2.96 | 1.77 | 1.67 |
-| y0 | 4.35 | 2.59 | 1.68 |
-| erfcinv | 3.34 | 1.97 | 1.69 |
-| softplus | 3.01 | 1.67 | 1.80 |
-| rel_entr | 1.48 | 0.755 | 1.96 |
-| xlogy | 1.71 | 0.84 | 2.03 |
-| xlog1py | 2.09 | 0.916 | 2.28 |
+| bdtr | 3.09 | 52.8 | 0.06 |
+| bdtrc | 3.41 | 52 | 0.07 |
+| smirnov | 0.768 | 4.21 | 0.18 |
+| comb | 0.967 | 4.99 | 0.19 |
+| diric | 2.75 | 7.74 | 0.36 |
+| nbdtrc | 6.57 | 16.6 | 0.40 |
+| ellipk | 0.405 | 0.923 | 0.44 |
+| bdtri | 43.7 | 98.5 | 0.44 |
+| nbdtr | 8.2 | 17.6 | 0.47 |
+| ellipe | 0.401 | 0.815 | 0.49 |
+| yn | 7.59 | 12.2 | 0.62 |
+| factorial | 1.39 | 2.2 | 0.63 |
+| ndtri_exp | 1.41 | 2.04 | 0.69 |
+| owens_t | 11.8 | 16.6 | 0.71 |
+| boxcox | 2.22 | 3.12 | 0.71 |
+| perm | 0.831 | 1.15 | 0.72 |
+| expn | 16.6 | 21.6 | 0.77 |
+| wright_bessel | 70.6 | 89.5 | 0.79 |
+| ncfdtr | 42.9 | 53.3 | 0.81 |
+| boxcox1p | 2.76 | 3.43 | 0.81 |
+| zetac | 13.4 | 16.5 | 0.81 |
+| yve | 83.1 | 102 | 0.81 |
+| nbdtri | 172 | 210 | 0.82 |
+| yv | 93.1 | 114 | 0.82 |
+| jn | 58.2 | 70.9 | 0.82 |
+| pdtri | 53.6 | 64.7 | 0.83 |
+| k1 | 3.4 | 4.04 | 0.84 |
+| kn | 30 | 35.5 | 0.85 |
+| k0e | 3.71 | 4.31 | 0.86 |
+| log_wright_bessel | 79.1 | 90.1 | 0.88 |
+| polygamma | 29 | 33.1 | 0.88 |
+| betainc | 3.05 | 3.45 | 0.88 |
+| k1e | 3.57 | 4.05 | 0.88 |
+| y0 | 2.6 | 2.92 | 0.89 |
+| it2j0y0 | 36.7 | 41.1 | 0.90 |
+| erfinv | 13.1 | 14.6 | 0.90 |
+| jv | 62.6 | 69.5 | 0.90 |
+| k0 | 4.56 | 5.06 | 0.90 |
+| hyp0f1 | 39.5 | 43.5 | 0.91 |
+| assoc_laguerre | 13.3 | 14.6 | 0.91 |
+| ker | 50.6 | 54.9 | 0.92 |
+| jvp | 86.5 | 93.9 | 0.92 |
+| y1 | 2.13 | 2.31 | 0.92 |
+| modstruve | 332 | 359 | 0.92 |
+| ncfdtridfd | 375 | 406 | 0.92 |
+| nrdtrisd | 114 | 123 | 0.93 |
+| mathieu_b | 64.3 | 69.4 | 0.93 |
+| gdtrix | 56.2 | 60.4 | 0.93 |
+| chndtridf | 732 | 787 | 0.93 |
+| eval_chebyu | 41.8 | 44.8 | 0.93 |
+| pbwa | 97.8 | 105 | 0.93 |
+| mathieu_a | 77.7 | 83.3 | 0.93 |
+| nbdtrin | 258 | 277 | 0.93 |
+| chndtrinc | 1.55e+03 | 1.65e+03 | 0.94 |
+| gdtrib | 257 | 272 | 0.94 |
+| eval_chebyt | 37.4 | 39.7 | 0.94 |
+| elliprj | 17.8 | 18.9 | 0.94 |
+| it2i0k0 | 30.4 | 32.2 | 0.94 |
+| j1 | 3.44 | 3.64 | 0.95 |
+| nctdtridf | 403 | 426 | 0.95 |
+| betainccinv | 80.5 | 84.8 | 0.95 |
+| gdtr | 4.24 | 4.47 | 0.95 |
+| log1p | 0.912 | 0.955 | 0.95 |
+| chndtrix | 529 | 551 | 0.96 |
+| bdtrik | 101 | 105 | 0.96 |
+| ivp | 81.7 | 84.5 | 0.97 |
+| keip | 40.2 | 41.6 | 0.97 |
+| ber | 77.1 | 79.7 | 0.97 |
+| beip | 81.1 | 83.8 | 0.97 |
+| yvp | 211 | 218 | 0.97 |
+| nrdtrimn | 109 | 112 | 0.97 |
+| ncfdtrinc | 653 | 673 | 0.97 |
+| eval_chebys | 55.4 | 57.1 | 0.97 |
+| lpmv | 264 | 272 | 0.97 |
+| ncfdtridfn | 503 | 518 | 0.97 |
+| gdtrc | 11.6 | 12 | 0.97 |
+| eval_chebyc | 37.5 | 38.5 | 0.97 |
+| iv | 47.1 | 48.4 | 0.97 |
+| sinc | 1.61 | 1.66 | 0.98 |
+| bdtrin | 230 | 236 | 0.98 |
+| nctdtr | 322 | 330 | 0.98 |
+| berp | 79.7 | 81.6 | 0.98 |
+| gammainc | 6.16 | 6.3 | 0.98 |
+| betaincc | 10.7 | 10.9 | 0.98 |
+| kei | 42.5 | 43.3 | 0.98 |
+| elliprd | 12.1 | 12.3 | 0.98 |
+| btdtria | 210 | 214 | 0.98 |
+| jve | 60.8 | 61.9 | 0.98 |
+| eval_sh_jacobi | 93.8 | 95.1 | 0.99 |
+| exp1 | 27.6 | 27.9 | 0.99 |
+| smirnovi | 1.01e+03 | 1.02e+03 | 0.99 |
+| kerp | 34.7 | 35.2 | 0.99 |
+| ellipeinc | 2.33 | 2.36 | 0.99 |
+| i1e | 5.63 | 5.69 | 0.99 |
+| elliprc | 8 | 8.09 | 0.99 |
+| bei | 83 | 83.8 | 0.99 |
+| j0 | 3.1 | 3.12 | 0.99 |
+| ive | 30 | 30.3 | 0.99 |
+| i1 | 7.04 | 7.1 | 0.99 |
+| betaincinv | 80.3 | 80.8 | 0.99 |
+| powm1 | 6.47 | 6.51 | 0.99 |
+| pdtr | 9.29 | 9.33 | 1.00 |
+| chdtrc | 22.5 | 22.5 | 1.00 |
+| stdtridf | 96.7 | 96.9 | 1.00 |
+| besselpoly | 123 | 123 | 1.00 |
+| eval_legendre | 47.5 | 47.5 | 1.00 |
+| eval_jacobi | 166 | 166 | 1.00 |
+| ncfdtri | 2.7e+03 | 2.69e+03 | 1.00 |
+| iti0k0 | 31.1 | 31 | 1.00 |
+| gdtria | 50.4 | 50.3 | 1.00 |
+| logit | 1.2 | 1.2 | 1.00 |
+| expi | 36.4 | 36.3 | 1.00 |
+| nbdtrik | 185 | 184 | 1.00 |
+| nctdtrit | 3.6e+04 | 3.59e+04 | 1.00 |
+| eval_sh_chebyu | 114 | 113 | 1.00 |
+| spence | 2.26 | 2.25 | 1.00 |
+| chdtr | 5.29 | 5.25 | 1.01 |
+| pdtrc | 9.5 | 9.41 | 1.01 |
+| ellipkinc | 1.82 | 1.8 | 1.01 |
+| elliprf | 8.68 | 8.58 | 1.01 |
+| i0e | 5.81 | 5.74 | 1.01 |
+| btdtrib | 29.9 | 29.5 | 1.01 |
+| erfi | 2 | 1.97 | 1.01 |
+| eval_laguerre | 44.9 | 44.3 | 1.01 |
+| zeta | 34.9 | 34.5 | 1.01 |
+| kve | 23.2 | 22.9 | 1.01 |
+| eval_sh_chebyt | 40 | 39.4 | 1.01 |
+| eval_genlaguerre | 211 | 208 | 1.02 |
+| eval_sh_legendre | 35.3 | 34.7 | 1.02 |
+| gammaincinv | 55.2 | 54.2 | 1.02 |
+| it2struve0 | 42.4 | 41.6 | 1.02 |
+| voigt_profile | 11.3 | 11.1 | 1.02 |
+| fdtri | 131 | 128 | 1.02 |
+| fdtr | 26 | 25.3 | 1.03 |
+| itairy | 23.4 | 22.7 | 1.03 |
+| wrightomega | 8.44 | 8.18 | 1.03 |
+| cosm1 | 1.33 | 1.29 | 1.03 |
+| fdtrc | 26.5 | 25.7 | 1.03 |
+| struve | 385 | 373 | 1.03 |
+| chdtri | 77 | 74.4 | 1.03 |
+| hyp1f1 | 1.53e+03 | 1.48e+03 | 1.04 |
+| itstruve0 | 24.4 | 23.5 | 1.04 |
+| kv | 24.4 | 23.5 | 1.04 |
+| cotdg | 2.72 | 2.61 | 1.04 |
+| stdtrit | 85.1 | 81.8 | 1.04 |
+| gammaincc | 15.2 | 14.6 | 1.04 |
+| digamma | 5.99 | 5.74 | 1.04 |
+| hyperu | 2.63e+04 | 2.52e+04 | 1.05 |
+| chndtr | 20.2 | 19.3 | 1.05 |
+| shichi | 16.1 | 15.3 | 1.05 |
+| airy | 187 | 178 | 1.05 |
+| gammainccinv | 73.1 | 69.7 | 1.05 |
+| betaln | 9.23 | 8.78 | 1.05 |
+| exp10 | 2.92 | 2.77 | 1.05 |
+| pdtrik | 400 | 380 | 1.05 |
+| tklmbda | 109 | 103 | 1.06 |
+| i0 | 7.08 | 6.67 | 1.06 |
+| pseudo_huber | 3.24 | 3.05 | 1.06 |
+| erf | 1.72 | 1.62 | 1.07 |
+| elliprg | 35 | 32.8 | 1.07 |
+| fdtridfd | 177 | 165 | 1.07 |
+| erfc | 1.61 | 1.5 | 1.07 |
+| log_expit | 1.77 | 1.65 | 1.07 |
+| tandg | 2.12 | 1.97 | 1.07 |
+| chdtriv | 177 | 164 | 1.08 |
+| beta | 9.2 | 8.52 | 1.08 |
+| hyp2f1 | 867 | 798 | 1.09 |
+| psi | 11.8 | 10.9 | 1.09 |
+| cbrt | 2.19 | 2.01 | 1.09 |
+| kvp | 66.4 | 60.8 | 1.09 |
+| airye | 286 | 261 | 1.10 |
+| exp2 | 2.47 | 2.24 | 1.10 |
+| erfcx | 1.03 | 0.934 | 1.11 |
+| xlogy | 0.95 | 0.857 | 1.11 |
+| binom | 7.31 | 6.58 | 1.11 |
+| kolmogi | 25.6 | 22.9 | 1.12 |
+| rgamma | 5.8 | 5.2 | 1.12 |
+| ellipj | 2.16 | 1.93 | 1.12 |
+| gammaln | 4.68 | 4.16 | 1.12 |
+| stdtr | 34 | 30.2 | 1.13 |
+| exprel | 1.78 | 1.56 | 1.14 |
+| gammasgn | 0.374 | 0.327 | 1.15 |
+| sindg | 2.24 | 1.94 | 1.15 |
+| gamma | 4.93 | 4.25 | 1.16 |
+| dawsn | 0.941 | 0.808 | 1.16 |
+| kolmogorov | 4.82 | 4.12 | 1.17 |
+| itj0y0 | 44.4 | 37.9 | 1.17 |
+| cosdg | 2.18 | 1.85 | 1.18 |
+| inv_boxcox | 2.15 | 1.82 | 1.18 |
+| eval_gegenbauer | 261 | 219 | 1.19 |
+| expm1 | 0.955 | 0.8 | 1.19 |
+| log_ndtr | 3.45 | 2.87 | 1.20 |
+| ellipkm1 | 1.99 | 1.64 | 1.21 |
+| itmodstruve0 | 21.2 | 17.4 | 1.22 |
+| entr | 0.608 | 0.495 | 1.23 |
+| inv_boxcox1p | 2.47 | 1.97 | 1.25 |
+| ndtri | 2.42 | 1.91 | 1.27 |
+| erfcinv | 2.36 | 1.85 | 1.27 |
+| huber | 0.337 | 0.264 | 1.28 |
+| expit | 1.1 | 0.855 | 1.29 |
+| ndtr | 2.35 | 1.78 | 1.32 |
+| agm | 2.69 | 2.03 | 1.32 |
+| poch | 4.13 | 3.1 | 1.33 |
+| loggamma | 1.35 | 1 | 1.34 |
+| softplus | 2.23 | 1.63 | 1.37 |
+| kl_div | 0.969 | 0.701 | 1.38 |
+| rel_entr | 1.01 | 0.71 | 1.42 |
+| sici | 4.82 | 3.36 | 1.43 |
+| round | 0.471 | 0.32 | 1.47 |
+| fresnel | 10 | 6.25 | 1.60 |
+| radian | 0.48 | 0.268 | 1.79 |
+| xlog1py | 2.13 | 0.907 | 2.35 |
