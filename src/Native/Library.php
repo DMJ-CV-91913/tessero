@@ -454,6 +454,32 @@ final class Library
         return $arr;
     }
 
+    /** @var list<list<CData>> spare sets of four int64_t[32] */
+    private static array $dimSets = [];
+
+    /**
+     * Four int64_t[32] for the shape and strides of one kernel call, to fill and pass in place of i64() arrays. Give
+     * them back with dimsDone() after the call (a call that throws first just leaves the pool a set short). A set is
+     * out of the pool while in use, so a nested call (a destructor run by the cycle collector) gets its own.
+     *
+     * @return list<CData>
+     */
+    public static function dims(): array
+    {
+        if (self::$dimSets !== []) {
+            return array_pop(self::$dimSets);
+        }
+        $ffi = self::ffi();
+
+        return [$ffi->new('int64_t[32]'), $ffi->new('int64_t[32]'), $ffi->new('int64_t[32]'), $ffi->new('int64_t[32]')];
+    }
+
+    /** @param list<CData> $set a set from dims() */
+    public static function dimsDone(array $set): void
+    {
+        self::$dimSets[] = $set;
+    }
+
     /** Map a negative libtessero return code to an exception. */
     public static function check(int $rc, string $what): int
     {

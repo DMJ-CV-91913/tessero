@@ -9,6 +9,7 @@ use Tessero\Exceptions\DTypeError;
 use Tessero\Exceptions\ShapeError;
 use Tessero\Exceptions\TesseroException;
 use Tessero\Native\Abi;
+use Tessero\Native\Buffer;
 use Tessero\Native\Library;
 
 /**
@@ -163,11 +164,14 @@ final class Math
         }
 
         $ffi = Library::ffi();
-        $id = $ffi->tsr_ufunc_find($name);
-        if ($id < 0) {
-            throw new \ValueError("Math::apply(): '{$name}' is not a ufunc (see Math::ufuncs())");
+        if (! isset(self::$loops[$name])) {
+            $id = $ffi->tsr_ufunc_find($name);
+            if ($id < 0) {
+                throw new \ValueError("Math::apply(): '{$name}' is not a ufunc (see Math::ufuncs())");
+            }
+            self::$loops[$name] = [$id, $ffi->tsr_ufunc_nin($id)];
         }
-        $nin = $ffi->tsr_ufunc_nin($id);
+        [$id, $nin] = self::$loops[$name];
         if ($nin === 1 && $out === null && $y instanceof NDArray) {
             $out = $y;
         }
@@ -665,44 +669,70 @@ final class Math
         if ($dt === DType::Complex128) {
             throw new DTypeError("Math::{$name}() does not support complex128");
         }
-        $r = $ffi->new('int[3]');
-        $how = $ffi->tsr_ufunc_resolve($id, $dt->value, FFI::addr($r[0]), FFI::addr($r[1]), FFI::addr($r[2]));
-        if ($how < 0) {
-            throw new DTypeError("Math::{$name}() has no loop for {$dt->name()}");
+        if (! isset(self::$resolved[$id][$dt->value])) {
+            $r = $ffi->new('int[3]');
+            $how = $ffi->tsr_ufunc_resolve($id, $dt->value, FFI::addr($r[0]), FFI::addr($r[1]), FFI::addr($r[2]));
+            if ($how < 0) {
+                throw new DTypeError("Math::{$name}() has no loop for {$dt->name()}");
+            }
+            self::$resolved[$id][$dt->value] = [$how, $r[0], $r[1], $r[2]];
         }
+        [$how, $r0, $r1, $r2] = self::$resolved[$id][$dt->value];
         if ($how === 2) {                                   // fmax on integers is maximum
-            return self::apply($r[2] === Abi::MAX ? 'maximum' : 'minimum', $x, $y, $out);
+            return self::apply($r2 === Abi::MAX ? 'maximum' : 'minimum', $x, $y, $out);
         }
         if ($how === 1) {                                   // trunc on integers is the identity
             $copy = $a->astype($dt, copy: true);
 
             return $out !== null ? self::castInto($copy, $out, $name) : $copy;
         }
-        $loopDt = DType::from($r[0]);
-        $outDt = DType::from($r[1]);
+        $loopDt = DType::from($r0);
+        $outDt = DType::from($r1);
         $a = $a->dtype() === $loopDt ? $a : $a->astype($loopDt);
         $shape = $a->shape();
         if ($b !== null) {
             $b = $b->dtype() === $loopDt ? $b : $b->astype($loopDt);
-            try {
-                $shape = NDArray::broadcastShapes($a->shape(), $b->shape());
-            } catch (ShapeError) {
-                throw new ShapeError("Math::{$name}(): shapes " . self::shapeStr($a->shape()) . ' and ' . self::shapeStr($b->shape()) . ' cannot be broadcast together');
+            if ($b->shape() !== $shape) {
+                try {
+                    $shape = NDArray::broadcastShapes($a->shape(), $b->shape());
+                } catch (ShapeError) {
+                    throw new ShapeError("Math::{$name}(): shapes " . self::shapeStr($a->shape()) . ' and ' . self::shapeStr($b->shape()) . ' cannot be broadcast together');
+                }
             }
-            $b = $b->shape() === $shape ? $b : $b->broadcastTo($shape);
         }
-        $a = $a->shape() === $shape ? $a : $a->broadcastTo($shape);
+        $aStrides = self::stridesFor($a, $shape);
+        $bStrides = $b === null ? [] : self::stridesFor($b, $shape);
 
         $direct = $out !== null && $out->dtype() === $outDt && $out->shape() === $shape
-            && ! self::clobbers($out, $a) && ($b === null || ! self::clobbers($out, $b));
-        $target = $direct ? $out : NDArray::empty($shape, $outDt);
+            && ! self::clobbers($out, $a, $aStrides) && ($b === null || ! self::clobbers($out, $b, $bStrides));
+        $n = array_product($shape);
+        $target = $direct ? $out : (is_int($n) && $n <= PHP_INT_MAX >> 5
+            ? new NDArray(Buffer::allocate($n * $outDt->itemsize()), $outDt, $shape) : NDArray::empty($shape, $outDt));
         if ($target->size() > 0) {
-            Library::check($ffi->tsr_ufunc(
-                $id, $loopDt->value, count($shape), Library::i64($shape),
-                $a->ptr(), Library::i64($a->strides()),
-                $b?->ptr(), $b === null ? null : Library::i64($b->strides()),
-                $target->ptr(), Library::i64($target->strides()),
-            ), "Math::{$name}()");
+            $nd = count($shape);
+            $dims = Library::dims();
+            [$cShape, $cA, $cB, $cOut] = $dims;
+            $tStrides = $target->strides();
+            for ($d = 0; $d < $nd; $d++) {
+                $cShape[$d] = $shape[$d];
+                $cA[$d] = $aStrides[$d];
+                $cOut[$d] = $tStrides[$d];
+                if ($b !== null) {
+                    $cB[$d] = $bStrides[$d];
+                }
+            }
+            if ($nd === 0) {                                // as i64([]) passed them: one zero each
+                $cShape[0] = 0;
+                $cA[0] = 0;
+                $cB[0] = 0;
+                $cOut[0] = 0;
+            }
+            $rc = $ffi->tsr_ufunc($id, $loopDt->value, $nd, $cShape, self::dataPtr($a), $cA,
+                $b === null ? null : self::dataPtr($b), $b === null ? null : $cB, self::dataPtr($target), $cOut);
+            Library::dimsDone($dims);
+            if ($rc < 0) {
+                Library::check($rc, "Math::{$name}()");
+            }
         }
         if ($out !== null && ! $direct) {
             return self::castInto($target, $out, $name);
@@ -741,7 +771,43 @@ final class Math
     }
 
     /** Would writing $out overwrite elements of $in before they are read? (Same buffer, different layout.) */
-    private static function clobbers(NDArray $out, NDArray $in): bool
+    /**
+     * $x's byte strides over the broadcast shape $shape (one it broadcasts to): 0 along the added leading axes and
+     * the stretched length-1 axes, as broadcastTo() would give, without building the view.
+     *
+     * @param list<int> $shape
+     * @return list<int>
+     */
+    private static function stridesFor(NDArray $x, array $shape): array
+    {
+        $xShape = $x->shape();
+        $xStrides = $x->strides();
+        if ($xShape === $shape) {
+            return $xStrides;
+        }
+        $pad = count($shape) - count($xShape);
+        $out = $pad > 0 ? array_fill(0, $pad, 0) : [];
+        foreach ($xShape as $i => $len) {
+            $out[] = $len === $shape[$pad + $i] ? $xStrides[$i] : 0;
+        }
+
+        return $out;
+    }
+
+    /** void* to $x's first element: the buffer's cached one when $x starts at its block. */
+    private static function dataPtr(NDArray $x): \FFI\CData
+    {
+        return $x->offset() === 0 ? $x->buffer()->voidPtr() : $x->ptr();
+    }
+
+    /** @var array<string, array{0: int, 1: int}> loop ufunc id and nin by name */
+    private static array $loops = [];
+
+    /** @var array<int, array<int, array{0: int, 1: int, 2: int, 3: int}>> tsr_ufunc_resolve's answer by id and dtype */
+    private static array $resolved = [];
+
+    /** @param list<int> $inStrides $in's strides broadcast to $out's shape */
+    private static function clobbers(NDArray $out, NDArray $in, array $inStrides): bool
     {
         if ($in->buffer() !== $out->buffer()) {
             return false;
@@ -751,7 +817,7 @@ final class Math
         }
         $os = $out->strides();
         $shape = $out->shape();
-        foreach ($in->strides() as $d => $s) {
+        foreach ($inStrides as $d => $s) {
             if ($s !== $os[$d] && $shape[$d] > 1) {
                 return true;
             }

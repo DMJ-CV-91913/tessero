@@ -353,18 +353,32 @@ final class Registry
      */
     public static function gufunc(string $name, array $inputs, int|array|null $axis, bool $keepdims, array $params): NDArray|float|int|bool|array
     {
-        $info = self::info($name);
-        if ($info['kind'] !== 'gufunc') {
-            throw new \ValueError("{$name} is not a generalised ufunc");
+        if (! isset(self::$gufuncs[$name])) {
+            $info = self::info($name);
+            if ($info['kind'] !== 'gufunc') {
+                throw new \ValueError("{$name} is not a generalised ufunc");
+            }
+            self::$gufuncs[$name] = [$info, self::label($name)];
         }
-        $label = self::label($name);
+        [$info, $label] = self::$gufuncs[$name];
         $ffi = Library::ffi();
         $nin = $info['nin'];
         if (count($inputs) !== $nin) {
             throw new \ArgumentCountError("{$label}() takes {$nin} array argument(s)");
         }
+        // a PHP scalar after the first input (kth, a value to search for) is passed as a 0-d array over a slot of
+        // its own, without building one; the slots are out of the pool while in use (a nested call makes its own)
+        $slots = null;
         $arrs = [];
-        foreach ($inputs as $a) {
+        foreach (array_values($inputs) as $k => $a) {
+            if ($k > 0 && $k < 8 && (is_int($a) || is_float($a) || is_bool($a))) {
+                $slots ??= array_pop(self::$scalarSlots) ?? self::scalarSlots($ffi);
+                // NDArray::array($a)'s dtype and bytes: bool, int64 or float64
+                [$dt, $bytes] = is_bool($a) ? [DType::Bool, $a ? "\x01" : "\x00"] : (is_int($a) ? [DType::Int64, pack('q', $a)] : [DType::Float64, pack('d', $a)]);
+                FFI::memcpy($slots[0][$k], $bytes, strlen($bytes));
+                $arrs[$k] = [$slots[1][$k], $dt];
+                continue;
+            }
             if ($a === null) {                                   // an omitted optional input (weights): 1.0
                 $a = NDArray::full([], 1.0, DType::Float64);
             }
@@ -372,7 +386,7 @@ final class Registry
             if ($arr->dtype() === DType::Complex128) {
                 throw new DTypeError("{$label}() does not support complex128 input");
             }
-            $arrs[] = $arr;
+            $arrs[$k] = $arr;
         }
         if (($info['axis_single'] ?? 0) && is_array($axis)) {
             throw new \TypeError("{$label}(): axis must be an integer or null, not a list of axes");
@@ -381,9 +395,16 @@ final class Registry
             throw new \ArgumentCountError("{$label}() does not take keepdims");
         }
         $axisInputs = $info['axis_inputs'];
-        $masks = $ffi->new("uint64_t[{$nin}]");
-        $metas = $ffi->new("tsr_array[{$nin}]");
+        $masks = self::cnew($ffi, "uint64_t[{$nin}]");
+        $metas = self::cnew($ffi, "tsr_array[{$nin}]");
         foreach ($arrs as $k => $arr) {
+            if (is_array($arr)) {                                // a scalar slot: a 0-d array, its one axis set empty
+                $masks[$k] = 0;
+                $m = $metas[$k];
+                $m->data = $arr[0];
+                $m->dtype = $arr[1]->value;
+                continue;
+            }
             $nd = $arr->ndim();
             $mask = 0;
             $whole = $k > 0 && ($nd === 0 || ($nd === 1 && $arrs[0]->ndim() > 1));
@@ -402,24 +423,23 @@ final class Registry
                 $mask = $nd >= 63 ? -1 : (1 << $nd) - 1;
             }
             $masks[$k] = $mask;
-            $m = $arr->meta();
-            FFI::memcpy(FFI::addr($metas[$k]), FFI::addr($m), FFI::sizeof($m));
+            self::fillMeta($metas[$k], $arr);
         }
         $pvals = self::params($info, $params, $label);
         $np = max(1, count($pvals));
-        $pc = $ffi->new("double[{$np}]");
+        $pc = self::cnew($ffi, "double[{$np}]");
         foreach ($pvals as $k => $v) {
             $pc[$k] = $v;
         }
         $nout = $info['nout'];
-        $ond = $ffi->new("int32_t[{$nout}]");
-        $osh = $ffi->new('int64_t[' . (32 * $nout) . ']');
+        $ond = self::cnew($ffi, "int32_t[{$nout}]");
+        $osh = self::cnew($ffi, 'int64_t[' . (32 * $nout) . ']');
         self::check($ffi->tsr_fn_gufunc_shape($info['id'], $nin, $metas, $masks, $keepdims ? 1 : 0, $pc, $ond, $osh), $label);
         $outs = [];
-        $ometa = $ffi->new("tsr_array[{$nout}]");
+        $ometa = self::cnew($ffi, "tsr_array[{$nout}]");
         for ($o = 0; $o < $nout; $o++) {
             $shape = [];
-            for ($d = 0; $d < $ond[$o]; $d++) {
+            for ($d = 0, $ndo = $ond[$o]; $d < $ndo; $d++) {
                 $shape[] = $osh[$o * 32 + $d];
             }
             $dt = ($info['out_int'] >> $o) & 1 ? DType::Int64 : (($info['out_bool'] >> $o) & 1 ? DType::Bool : DType::Float64);
@@ -432,11 +452,16 @@ final class Registry
                 && $arrs[0]->size() > 0) {                       // an empty sample: nanquantile's NaN is float64
                 $dt = $arrs[0]->dtype();                         // numpy.quantile's discrete methods return a sample
             }
-            $outs[$o] = NDArray::empty($shape, $dt);
-            $m = $outs[$o]->meta();
-            FFI::memcpy(FFI::addr($ometa[$o]), FFI::addr($m), FFI::sizeof($m));
+            // the constructor checks the kernel's shape (NDArray::empty would check it twice more)
+            $n = array_product($shape);
+            $outs[$o] = is_int($n) && $n >= 0 && $n <= PHP_INT_MAX >> 5
+                ? new NDArray(Buffer::allocate($n * $dt->itemsize()), $dt, $shape) : NDArray::empty($shape, $dt);
+            self::fillMeta($ometa[$o], $outs[$o]);
         }
         self::check($ffi->tsr_fn_gufunc($info['id'], $nin, $metas, $masks, $keepdims ? 1 : 0, $pc, $nout, $ometa), $label);
+        if ($slots !== null) {
+            self::$scalarSlots[] = $slots;
+        }
         unset($arrs);
         $res = [];
         foreach ($outs as $o => $arr) {
@@ -444,6 +469,51 @@ final class Registry
         }
 
         return $nout === 1 ? $res[$info['outs'][0]] : $res;
+    }
+
+    /** @var array<string, array{0: array<string, mixed>, 1: string}> a gufunc's registry entry and label */
+    private static array $gufuncs = [];
+
+    /** @var list<array{0: list<CData>, 1: list<CData>}> spare sets of eight 16-byte scalar slots and void* to them */
+    private static array $scalarSlots = [];
+
+    /** @return array{0: list<CData>, 1: list<CData>} */
+    private static function scalarSlots(FFI $ffi): array
+    {
+        $bufs = [];
+        $ptrs = [];
+        for ($k = 0; $k < 8; $k++) {
+            $bufs[] = $b = $ffi->new('double[2]');                  // 16 bytes, aligned for any dtype
+            $ptrs[] = $ffi->cast('void*', FFI::addr($b));
+        }
+
+        return [$bufs, $ptrs];
+    }
+
+    /** @var array<string, \FFI\CType> C types by declaration, parsed once */
+    private static array $ctypes = [];
+
+    /** A new zeroed C value of the declared type (the declaration parsed once per request). */
+    private static function cnew(FFI $ffi, string $decl): CData
+    {
+        return $ffi->new(self::$ctypes[$decl] ??= $ffi->type($decl));
+    }
+
+    /** What NDArray::meta() holds, written into a zeroed tsr_array (no struct built and copied). */
+    private static function fillMeta(CData $m, NDArray $arr): void
+    {
+        $m->data = $arr->buffer()->voidPtr();
+        $m->offset = $arr->offset();
+        $m->dtype = $arr->dtype()->value;
+        $shape = $arr->shape();
+        $m->ndim = count($shape);
+        $strides = $arr->strides();
+        $mShape = $m->shape;
+        $mStrides = $m->strides;
+        foreach ($shape as $d => $len) {
+            $mShape[$d] = $len;
+            $mStrides[$d] = $strides[$d];
+        }
     }
 
     // ------------------------------------------------------------------ numpy.random.Generator methods
@@ -778,9 +848,11 @@ final class Registry
             $shape = $arr->shape();
             $m->ndim = count($shape);
             $strides = $arr->strides();
+            $mShape = $m->shape;
+            $mStrides = $m->strides;
             foreach ($shape as $d => $len) {
-                $m->shape[$d] = $len;
-                $m->strides[$d] = $strides[$d];
+                $mShape[$d] = $len;
+                $mStrides[$d] = $strides[$d];
             }
         }
     }

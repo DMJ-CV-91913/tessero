@@ -445,6 +445,25 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         return $this->buffer->ptr($this->offset);
     }
 
+    /**
+     * A new C-contiguous array whose shape comes from existing arrays (a broadcast of their shapes): straight to the
+     * constructor when the element count fits, else through empty(), which reports a count that is too large.
+     *
+     * @param list<int> $shape
+     */
+    private static function fresh(array $shape, DType $dtype): self
+    {
+        $n = array_product($shape);
+
+        return is_int($n) && $n <= PHP_INT_MAX >> 5 ? new self(Buffer::allocate($n * $dtype->itemsize()), $dtype, $shape) : self::empty($shape, $dtype);
+    }
+
+    /** ptr() without the cast when the view starts at its block (the buffer's cached void*). */
+    private function dataPtr(): CData
+    {
+        return $this->offset === 0 ? $this->buffer->voidPtr() : $this->buffer->ptr($this->offset);
+    }
+
     public function isContiguous(): bool
     {
         return $this->strides === self::cStrides($this->shape, $this->dtype->itemsize()) || $this->size <= 1
@@ -584,9 +603,11 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $m->offset = $this->offset;
         $m->ndim = count($this->shape);
         $m->dtype = $this->dtype->value;
+        $mShape = $m->shape;                     // views into $m
+        $mStrides = $m->strides;
         foreach ($this->shape as $d => $len) {
-            $m->shape[$d] = $len;
-            $m->strides[$d] = $this->strides[$d];
+            $mShape[$d] = $len;
+            $mStrides[$d] = $this->strides[$d];
         }
 
         return $m;
@@ -663,7 +684,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
 
     public function copy(): self
     {
-        $out = self::empty($this->shape, $this->dtype);
+        $out = new self(Buffer::allocate($this->size * $this->dtype->itemsize()), $this->dtype, $this->shape);
         $this->copyInto($out);
 
         return $out;
@@ -681,7 +702,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if ($dtype === $this->dtype && ! $copy) {
             return $this;
         }
-        $out = self::empty($this->shape, $dtype);
+        $out = new self(Buffer::allocate($this->size * $dtype->itemsize()), $dtype, $this->shape);
         $this->copyInto($out);
 
         return $out;
@@ -740,10 +761,24 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if ($this->size === 0) {
             return;
         }
-        Library::check(Library::ffi()->tsr_copy(
-            $this->dtype->value, $out->dtype->value, count($this->shape), Library::i64($this->shape),
-            $this->ptr(), Library::i64($this->strides), $out->ptr(), Library::i64($out->strides),
-        ), 'copy');
+        $nd = count($this->shape);
+        $dims = Library::dims();
+        [$cShape, $cIn, $cOut] = $dims;
+        for ($d = 0; $d < $nd; $d++) {
+            $cShape[$d] = $this->shape[$d];
+            $cIn[$d] = $this->strides[$d];
+            $cOut[$d] = $out->strides[$d];
+        }
+        if ($nd === 0) {                         // as i64([]) passed them: one zero each
+            $cShape[0] = 0;
+            $cIn[0] = 0;
+            $cOut[0] = 0;
+        }
+        $rc = Library::ffi()->tsr_copy($this->dtype->value, $out->dtype->value, $nd, $cShape, $this->dataPtr(), $cIn, $out->dataPtr(), $cOut);
+        Library::dimsDone($dims);
+        if ($rc < 0) {
+            Library::check($rc, 'copy');
+        }
     }
 
     /** @param int|list<int> ...$shape one dimension may be -1 */
@@ -1247,12 +1282,14 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
 
     private function binary(int $op, mixed $other, ?self $out = null): self
     {
+        $scalar = null;                          // a PHP scalar operand: its bytes, read with zero strides
+        $b = null;
         if ($other instanceof self) {
             $b = $other;
             $dt = DType::promote($this->dtype, $b->dtype);
         } elseif (is_int($other) || is_float($other) || is_bool($other)) {
             $dt = $this->dtype->withScalar($other);
-            $b = new self(Buffer::fromBytes(self::scalarBytes($other, $dt)), $dt, []);
+            $scalar = self::scalarBytes($other, $dt);
         } else {
             $b = self::array($other);
             $dt = DType::promote($this->dtype, $b->dtype);
@@ -1281,22 +1318,44 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         }
 
         $a = self::castForOp($this, $opDt);
-        $b = self::castForOp($b, $opDt);
-        $shape = self::broadcastShapes($a->shape, $b->shape);
+        if ($scalar !== null && $opDt !== $dt) {
+            $b = self::castForOp(new self(Buffer::fromBytes($scalar), $dt, []), $opDt);
+            $scalar = null;
+        } elseif ($scalar === null) {
+            $b = self::castForOp($b, $opDt);
+        }
+        $shape = $scalar !== null ? $a->shape : self::broadcastShapes($a->shape, $b->shape);
+        $aStrides = $a->shape === $shape ? $a->strides : self::broadcastStrides($a, $shape);
+        $bStrides = $scalar !== null ? [] : ($b->shape === $shape ? $b->strides : self::broadcastStrides($b, $shape));
         $computeDt = in_array($op, Abi::COMPARISONS, true) ? DType::Bool : ($opDt === DType::UInt8 && $resultDt === DType::Bool ? DType::Bool : $opDt);
         if ($out !== null) {
             $out->requireWritable('out');
         }
         $direct = $out !== null && $out->shape === $shape && $out->dtype === $computeDt
-            && ! self::clobbers($out, $a, self::broadcastStrides($a, $shape)) && ! self::clobbers($out, $b, self::broadcastStrides($b, $shape));
-        $target = $direct ? $out : self::empty($shape, $computeDt);
+            && ! self::clobbers($out, $a, $aStrides) && ($scalar !== null || ! self::clobbers($out, $b, $bStrides));
+        $target = $direct ? $out : self::fresh($shape, $computeDt);
         if ($target->size > 0) {
-            Library::check(Library::ffi()->tsr_binary(
-                $op, $opDt->value, count($shape), Library::i64($shape),
-                $a->ptr(), Library::i64(self::broadcastStrides($a, $shape)),
-                $b->ptr(), Library::i64(self::broadcastStrides($b, $shape)),
-                $target->ptr(), Library::i64($target->strides),
-            ), self::opName($op));
+            $nd = count($shape);
+            $dims = Library::dims();
+            [$cShape, $cA, $cB, $cOut] = $dims;
+            for ($d = 0; $d < $nd; $d++) {
+                $cShape[$d] = $shape[$d];
+                $cA[$d] = $aStrides[$d];
+                $cB[$d] = $scalar !== null ? 0 : $bStrides[$d];
+                $cOut[$d] = $target->strides[$d];
+            }
+            if ($nd === 0) {                     // as i64([]) passed them: one zero each
+                $cShape[0] = 0;
+                $cA[0] = 0;
+                $cB[0] = 0;
+                $cOut[0] = 0;
+            }
+            $rc = Library::ffi()->tsr_binary($op, $opDt->value, $nd, $cShape, $a->dataPtr(), $cA, $scalar ?? $b->dataPtr(), $cB,
+                $target->dataPtr(), $cOut);
+            Library::dimsDone($dims);
+            if ($rc < 0) {
+                Library::check($rc, self::opName($op));
+            }
         }
         if ($computeDt !== $resultDt) {
             $target = $target->astype($resultDt);
@@ -1334,12 +1393,26 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             $out->requireWritable('out');
         }
         $direct = $out !== null && $out->shape === $this->shape && $out->dtype === $outDt && ! self::clobbers($out, $in, $in->strides);
-        $target = $direct ? $out : self::empty($this->shape, $outDt);
+        $target = $direct ? $out : self::fresh($this->shape, $outDt);
         if ($target->size > 0) {
-            Library::check(Library::ffi()->tsr_unary(
-                $op, $dt->value, count($this->shape), Library::i64($this->shape),
-                $in->ptr(), Library::i64($in->strides), $target->ptr(), Library::i64($target->strides),
-            ), self::opName($op, true));
+            $nd = count($this->shape);
+            $dims = Library::dims();
+            [$cShape, $cIn, $cOut] = $dims;
+            for ($d = 0; $d < $nd; $d++) {
+                $cShape[$d] = $this->shape[$d];
+                $cIn[$d] = $in->strides[$d];
+                $cOut[$d] = $target->strides[$d];
+            }
+            if ($nd === 0) {                     // as i64([]) passed them: one zero each
+                $cShape[0] = 0;
+                $cIn[0] = 0;
+                $cOut[0] = 0;
+            }
+            $rc = Library::ffi()->tsr_unary($op, $dt->value, $nd, $cShape, $in->dataPtr(), $cIn, $target->dataPtr(), $cOut);
+            Library::dimsDone($dims);
+            if ($rc < 0) {
+                Library::check($rc, self::opName($op, true));
+            }
         }
         if ($out !== null && ! $direct) {
             return $out->assign($target);

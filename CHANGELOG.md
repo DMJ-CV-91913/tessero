@@ -24,6 +24,15 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   loop ufuncs on broadcast or strided operands). `Special::ndtr` on 8 values 9.8 -> 5.0 us, `jv(1.0, $x)` 21 -> 9.2 us,
   a 2x1 by 4 broadcast `jv` 24 -> 12.6 us, `Stats::norm()->cdf` on 8 values 24 -> 6.0 us (SciPy 41 us). Results are
   unchanged, byte for byte (NaN sign and payload bits included).
+- **Array arithmetic, copies and axis functions on small arrays**: `NDArray` binary and unary operations, `copy()`,
+  `astype()` and the loop ufuncs of `Math` fill a reused set of shape and stride arrays instead of four new ones per
+  call, pass the buffers' cached `void*`, compute broadcast strides once (without building views), build the result
+  through the constructor, and pass a PHP scalar operand's bytes directly instead of a new 0-d array (when no cast
+  is needed). The generalised ufuncs (`partition`, `searchsorted`, `percentile`, `median`, ...) parse their C types
+  once, write the kernel's array descriptors in place, and pass a scalar input after the first (`kth`, a value to
+  search for) through a slot of its own. On 8 values: `$x->mul(2.0)` 11.8 -> 4.8 us, `$x->add($x)` 8.9 -> 5.2 us,
+  `copy()` 5.0 -> 3.1 us, `Np::partition` 18.7 -> 11.1 us, `Np::searchsorted` 17.3 -> 11.8 us. Results are
+  unchanged, byte for byte.
 - **`np.diff`, `outer`, `inner`, `kron`, `ediff1d`, `trapezoid`, `cumulativeTrapezoid`, `geomspace`, `pad` (odd
   reflection) and the `poly*` routines**: their shared element-wise step read every operand through a one-element
   conversion call, also when no conversion was needed; operands already in the loop dtype are now read in place, and a
