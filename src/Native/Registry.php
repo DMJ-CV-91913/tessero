@@ -91,11 +91,13 @@ final class Registry
         $info = self::info($name);
         $ffi = Library::ffi();
         if ($info['kind'] === 'dist') {
-            $nin = $ffi->new('int');
-            $nout = $ffi->new('int');
-            Library::check($ffi->tsr_fn_arity($info['id'], $method, FFI::addr($nin), FFI::addr($nout)), $name);
-            $nin = $nin->cdata;
-            $nout = $nout->cdata;
+            if (! isset(self::$arity[$name][$method])) {
+                $ci = $ffi->new('int');
+                $co = $ffi->new('int');
+                Library::check($ffi->tsr_fn_arity($info['id'], $method, FFI::addr($ci), FFI::addr($co)), $name);
+                self::$arity[$name][$method] = [$ci->cdata, $co->cdata];
+            }
+            [$nin, $nout] = self::$arity[$name][$method];
             $outs = $nout === 1 ? ['y'] : ($method === 8 ? ['mean', 'var', 'skew', 'kurtosis'] : ['a', 'b']);
             $kernelMethod = $method;
         } else {
@@ -137,13 +139,11 @@ final class Registry
         }
         if ($allScalar) {
             $nop = $nin + $nout;
-            $vals = $ffi->new("double[{$nop}]");
-            $ptrs = $ffi->new("void*[{$nop}]");
+            // one double per operand and pointers to them, made once per operand count (the kernel calls no PHP
+            // code, so no other call can use them before the outputs are read below)
+            [$vals, $ptrs] = self::$scalarOps[$nop] ??= self::scalarOps($ffi, $nop);
             foreach ($args as $k => $a) {
                 $vals[$k] = (float) $a;
-            }
-            for ($k = 0; $k < $nop; $k++) {
-                $ptrs[$k] = $ffi->cast('void*', FFI::addr($vals[$k]));
             }
             self::check($ffi->tsr_fn_ufunc($info['id'], $kernelMethod, 0, 0, null, $nop, $ptrs, null), $label);
             if ($nout === 1) {
@@ -234,6 +234,24 @@ final class Registry
         }
 
         return $nout === 1 ? $res[$outs[0]] : $res;
+    }
+
+    /** @var array<string, array<int, array{0: int, 1: int}>> a distribution method's [nin, nout] */
+    private static array $arity = [];
+
+    /** @var array<int, array{0: CData, 1: CData}> double[n] and void*[n] pointing into it, by n */
+    private static array $scalarOps = [];
+
+    /** @return array{0: CData, 1: CData} */
+    private static function scalarOps(FFI $ffi, int $nop): array
+    {
+        $vals = $ffi->new("double[{$nop}]");
+        $ptrs = $ffi->new("void*[{$nop}]");
+        for ($k = 0; $k < $nop; $k++) {
+            $ptrs[$k] = $ffi->cast('void*', FFI::addr($vals[$k]));
+        }
+
+        return [$vals, $ptrs];
     }
 
     // ------------------------------------------------------------------ generalised ufuncs
@@ -436,20 +454,19 @@ final class Registry
      */
     public static function routine(string $name, array $args): mixed
     {
-        $info = self::info($name);
-        if ($info['kind'] !== 'routine') {
-            throw new \ValueError("{$name} is not a routine");
-        }
-        $label = self::label($name);
+        $p = self::$routines[$name] ?? self::prepareRoutine($name);
+        $info = $p['info'];
+        $label = $p['label'];
         $ffi = Library::ffi();
+        $args = array_values($args);
         $n = count($args);
-        $cargs = $ffi->new('tsr_arg[' . max(1, $n) . ']');
+        $cargs = $ffi->new(self::$argTypes[$n] ??= FFI::arrayType($ffi->type('tsr_arg'), [max(1, $n)]));
         $keep = [];
         $hold = [];
-        $seq = array_flip($info['seq'] ?? []);
-        foreach ($info['inplace'] ?? [] as $k) {
+        $seq = $p['seq'];
+        foreach ($p['inplace'] as $k) {
             // numpy.put, place, copyto ...: the array is modified in place, so it must be a writable NDArray
-            $v = array_values($args)[$k] ?? null;
+            $v = $args[$k] ?? null;
             if (! $v instanceof NDArray) {
                 throw new \TypeError("{$label}(): argument \${$info['args'][$k]} must be an NDArray (it is modified in place), " . get_debug_type($v) . ' given');
             }
@@ -457,10 +474,10 @@ final class Registry
                 throw new \ValueError("{$label}(): assignment destination is read-only");
             }
         }
-        $nres = max(1, $info['nout']);
-        $res = $ffi->new("tsr_result[{$nres}]");
+        $nres = $p['nres'];
+        $res = $ffi->new($p['resType']);
         try {
-            foreach (array_values($args) as $k => $v) {
+            foreach ($args as $k => $v) {
                 if (isset($seq[$k]) && is_array($v)) {
                     // a sequence argument (numpy's `arrays`, `*args`): one tsr_arg per item
                     $items = array_values($v);
@@ -508,6 +525,35 @@ final class Registry
         }
 
         return count($out) === 1 ? reset($out) : $out;
+    }
+
+    /** @var array<string, array{info: array<string, mixed>, label: string, seq: array<int, int>, inplace: list<int>, nres: int, resType: \FFI\CType}> */
+    private static array $routines = [];
+
+    /** @var array<int, \FFI\CType> tsr_arg[n] by n */
+    private static array $argTypes = [];
+
+    /**
+     * What routine() needs of a registry entry beyond its arguments, worked out on the first call.
+     *
+     * @return array{info: array<string, mixed>, label: string, seq: array<int, int>, inplace: list<int>, nres: int, resType: \FFI\CType}
+     */
+    private static function prepareRoutine(string $name): array
+    {
+        $info = self::info($name);
+        if ($info['kind'] !== 'routine') {
+            throw new \ValueError("{$name} is not a routine");
+        }
+        $nres = max(1, $info['nout']);
+
+        return self::$routines[$name] = [
+            'info' => $info,
+            'label' => self::label($name),
+            'seq' => array_flip($info['seq'] ?? []),
+            'inplace' => $info['inplace'] ?? [],
+            'nres' => $nres,
+            'resType' => FFI::arrayType(Library::ffi()->type('tsr_result'), [$nres]),
+        ];
     }
 
     /**
@@ -588,23 +634,37 @@ final class Registry
     /** Fill one tsr_arg from a PHP value. @param list<mixed> $keep */
     private static function routineArg(FFI $ffi, CData $slot, mixed $v, array &$keep, string $label): void
     {
+        // every slot arrives zeroed (FFI::new, or memset for the CSR parts), so zero fields are not written
         if ($v === null) {
-            $slot->kind = 0;
+            return;                                           // kind 0
         } elseif (is_bool($v)) {
             $slot->kind = 4;
             $slot->num = $v ? 1.0 : 0.0;
-        } elseif (is_int($v) || is_float($v)) {
+        } elseif (is_int($v)) {
             $slot->kind = 1;
             $slot->num = (float) $v;
-            $slot->flags = is_int($v) ? 1 : 0;
-            $slot->ival = is_int($v) ? $v : 0;
+            $slot->flags = 1;
+            $slot->ival = $v;
+        } elseif (is_float($v)) {
+            $slot->kind = 1;
+            $slot->num = $v;
         } elseif (is_string($v)) {
+            $slot->kind = 2;
+            if (isset(self::$strings[$v])) {
+                $slot->str = self::$strings[$v];             // mode names and the like: made once, read-only to the kernel
+                return;
+            }
             $buf = $ffi->new('char[' . (strlen($v) + 1) . ']', false);
             FFI::memcpy($buf, $v, strlen($v));
             $buf[strlen($v)] = "\0";
-            $keep[] = $buf;
-            $slot->kind = 2;
             $slot->str = $ffi->cast('char*', $buf);
+            if (strlen($v) <= 32 && count(self::$strings) < 256) {
+                $own = $ffi->new('char[' . (strlen($v) + 1) . ']');   // managed: freed with the cache
+                FFI::memcpy($own, $buf, strlen($v) + 1);
+                self::$strings[$v] = $ffi->cast('char*', $own);
+                self::$stringBufs[] = $own;
+            }
+            $keep[] = $buf;
         } elseif (($csr = self::csrParts($v)) !== null) {
             // a CSR matrix (what scipy.sparse's routines return, or a CsrMatrix): the group data, indices, indptr,
             // shape, which the routines that take sparse input read as such
@@ -622,10 +682,26 @@ final class Registry
             $keep[] = $arr;
             $slot->kind = 3;
             $slot->flags = $v instanceof NDArray ? 0 : 2;     // bit 1: built from a PHP list (a Python sequence)
-            $m = $arr->meta();
-            FFI::memcpy(FFI::addr($slot->arr), FFI::addr($m), FFI::sizeof($m));
+            // what NDArray::meta() holds, written straight into the zeroed slot
+            $m = $slot->arr;
+            $m->data = $arr->buffer()->voidPtr();
+            $m->offset = $arr->offset();
+            $m->dtype = $arr->dtype()->value;
+            $shape = $arr->shape();
+            $m->ndim = count($shape);
+            $strides = $arr->strides();
+            foreach ($shape as $d => $len) {
+                $m->shape[$d] = $len;
+                $m->strides[$d] = $strides[$d];
+            }
         }
     }
+
+    /** @var array<string, CData> short string arguments as char*, made once per request */
+    private static array $strings = [];
+
+    /** @var list<CData> the managed buffers behind $strings */
+    private static array $stringBufs = [];
 
     /**
      * The parts of a CSR matrix argument in kernel order [data, indices, indptr, shape], or null when $v is not one:
@@ -710,8 +786,9 @@ final class Registry
         $shape = [];
         $ok = $dtype !== null && $ndim >= 0 && $ndim <= 32 && $bytes >= 0;
         $size = 1;
+        $dims = $a->shape;
         for ($d = 0; $ok && $d < $ndim; $d++) {
-            $len = $a->shape[$d];
+            $len = $dims[$d];
             if ($len < 0 || ($len > 0 && $size > intdiv(PHP_INT_MAX, $len))) {
                 $ok = false;
                 break;
@@ -803,14 +880,20 @@ final class Registry
 
     public static function label(string $name): string
     {
+        if (isset(self::$labels[$name])) {
+            return self::$labels[$name];
+        }
         // the façade's class and method, as the extension labels it (Np::putAlongAxis, Generator::standardNormal)
         $parts = explode('.', $name, 2);
         if (count($parts) < 2) {
             return $name;
         }
 
-        return ($parts[0] === 'random' ? 'Generator' : ucfirst($parts[0])) . '::' . self::camelName($parts[1]);
+        return self::$labels[$name] = ($parts[0] === 'random' ? 'Generator' : ucfirst($parts[0])) . '::' . self::camelName($parts[1]);
     }
+
+    /** @var array<string, string> label() by registry name */
+    private static array $labels = [];
 
     private static function check(int $rc, string $what): void
     {

@@ -9,6 +9,19 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Changed
 
+- **Lower fixed cost per call on the FFI backend**: the registry binding prepares each routine once (its label, result
+  type, sequence and in-place arguments), fills the kernel's array descriptors in place instead of building and copying
+  a `tsr_array` per argument, keeps short string arguments and the C types it needs, and reuses the operand buffers of
+  scalar element-wise calls. `NDArray::meta()` and the C-order strides of new arrays are cheaper too. A scalar
+  `Special::ndtr(0.3)` 2.7 -> 1.3 us; small routines (`Np::diff`, `unique`, `interp`, `trapezoid` on 8 values) 1.4-1.6x
+  faster. Results are unchanged, byte for byte.
+- **`np.diff`, `outer`, `inner`, `kron`, `ediff1d`, `trapezoid`, `cumulativeTrapezoid`, `geomspace`, `pad` (odd
+  reflection) and the `poly*` routines**: their shared element-wise step read every operand through a one-element
+  conversion call, also when no conversion was needed; operands already in the loop dtype are now read in place, and a
+  float64 difference runs row by row. `np.diff` on 1M values 127 -> 1.4 ms (NumPy 1.2), `np.outer` 1000 x 1000
+  128 -> 10 ms (NumPy 1.3).
+  Results are unchanged, byte for byte (NaN sign and payload bits included).
+
 - **Large-block reuse**: blocks of 1 MiB or more freed with `tsr_free` are kept per process and handed out again by
   `tsr_alloc` for the next array of about their size, instead of going back to the operating system and page-faulting
   in again on the next call (a 1024 x 1024 `fft2` in a fresh process 64.5 -> 29.7 ms, NumPy 32.2; `rfft2` 40.0 -> 15.7 ms). The blocks stay
@@ -23,6 +36,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Added
 
+- **`tools/parity/run-tests.php --hash=OUT.txt`**: one line per fixture call with a hash of the result's raw bytes
+  (arrays by dtype, shape and bytes, floats by their bits, exceptions by class and message), so two builds can be
+  compared byte for byte (`diff` the files). **`bench/tier1_bench.php` / `bench/tier1_bench.py`**: the element-wise
+  tier of the speed sweep (every `scipy.special` function on the fixture rows tiled to 100,000 values), paired by
+  `bench/sweep_report.py`.
 - **`SparseLinalg` solvers take sparse matrices** (`spsolve`, `eigsh`, `cg`, `bicgstab`, `bicg`, `cgs`, `minres`, `gmres`,
   `lgmres`, `gcrotmk`, `qmr`, `tfqmr`; both backends): pass the CSR array that `Sparse::diags` / `Sparse::csrArray` return
   (or a `CsrMatrix` on FFI). The bindings hand it to the kernel as the group data, indices, indptr, shape, checked before

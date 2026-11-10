@@ -47,6 +47,8 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `linalg.solve_triangular` 1000 | 4.2 ms | 0.88 ms | 1.0 ms | the column-major `dtrtrs` on the row-major matrix (triangle and transpose flipped) instead of LAPACKE's row-major copies, the matrix read in place |
 | `numpy.percentile` 1M (one q) | 18 ms | 5.9 ms | 12 ms | a two-pointer (Hoare) introselect, and the second order statistic of an interpolated quantile as the smallest of the rest (one scan) |
 | `numpy.median` 1M | 13 ms | 12 ms | 11 ms | the same introselect |
+| `numpy.diff` 1M | 127 ms | 1.4 ms | 1.2 ms | operands already in the loop dtype read in place instead of through a one-element conversion call each, and a float64 difference row by row (the same subtraction, whose operands keep their order); also behind `ediff1d` and the `poly*` routines; bytes unchanged, NaN bits included |
+| `numpy.outer` 1000 x 1000 | 128 ms | 10 ms | 1.3 ms | the same in-place operand read (also `inner`, `kron`, `trapezoid`, `cumulative_trapezoid`, `geomspace`, `pad`) |
 | `optimize.curve_fit`, 1000 points | 10.6 ms | 5.0 ms | 0.61 ms | the forward-difference Jacobian and the normal equations J^T J, J^T r of each Levenberg-Marquardt iteration in one kernel call (`linalg.fd_normal`, the same sums in the same order), J^T J kept for the covariance, and the model called with its parameters unpacked; the same parameters and covariance, bit for bit (before and after timed on the same host state) |
 | `sparse.linalg.eigsh` k=6, 100 x 100 grid Poisson (CSR) | 2.3 s | 0.74 s | 0.50 s | the Lanczos basis orthogonalized by BLAS matrix-vector products (classical Gram-Schmidt, twice) and the Ritz vectors formed by one matrix product, instead of scalar loops; a restart keeps the wanted Ritz vectors plus the converged ones, at most half the free slots (ARPACK's rule), instead of a fixed 13 of 20: 1,539 products with the matrix instead of 2,470 (ARPACK: 1,562). The same eigenvalues to about 1e-14 relative (checked against dense LAPACK on 140 cases) |
 | `spatial.ConvexHull`, 10k (2-D) | 4.3 ms | 2.0 ms | 1.5 ms | the points sorted by one stable radix argsort by x, each run of equal x then by y, instead of `qsort` with a comparison function (the kernel call 2.1 -> 1.0 ms), and passed to the kernel as one flat list cast in one loop instead of a validated copy then a nested-array conversion; the same vertices, area and volume |
@@ -192,7 +194,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 ## Method
 
 - Tier 1: the `scipy.special` element-wise blocks of the parity fixtures (`tests/fixtures/parity/special.json`),
-  each argument column tiled to 100,000 values; median of repeated runs.
+  each argument column tiled to 100,000 values; median of repeated runs (`bench/tier1_bench.php` and
+  `bench/tier1_bench.py`, the first float64 block of each function; SciPy runs each function in a child process, so
+  one that crashes or hangs on the fixture rows is reported as failed).
 - Tier 2: `bench/tier2_bench.php` and `bench/tier2_bench.py`, the same calls on the same inputs (seeded generators:
   Tessero's PCG64 streams match NumPy's); median of repeated runs, fast calls in an inner loop. Re-timed after the
   fixes above (last on 2026-11-07): `sort()` as the AVX2 sort, the `KDTree` built once (in the constructor, as SciPy

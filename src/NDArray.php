@@ -49,6 +49,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
 
     private int $size;
 
+    /** the tsr_array type, looked up once */
+    private static ?\FFI\CType $metaType = null;
+
     /**
      * @param list<int> $shape
      * @param list<int>|null $strides byte strides; null = C-contiguous
@@ -576,8 +579,8 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     public function meta(): CData
     {
         $ffi = Library::ffi();
-        $m = $ffi->new('tsr_array');
-        $m->data = $ffi->cast('void*', $this->buffer->ptr());
+        $m = $ffi->new(self::$metaType ??= $ffi->type('tsr_array'));
+        $m->data = $this->buffer->voidPtr();
         $m->offset = $this->offset;
         $m->ndim = count($this->shape);
         $m->dtype = $this->dtype->value;
@@ -2037,15 +2040,18 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     /** @param list<int> $shape @return list<int> */
     public static function cStrides(array $shape, int $itemsize): array
     {
-        $strides = [];
+        $nd = count($shape);
+        if ($nd <= 1) {
+            return $nd === 0 ? [] : [$itemsize];
+        }
+        $strides = array_fill(0, $nd, 0);
         $acc = $itemsize;
-        for ($d = count($shape) - 1; $d >= 0; $d--) {
+        for ($d = $nd - 1; $d >= 0; $d--) {
             $strides[$d] = $acc;
             $acc *= max(1, $shape[$d]);
         }
-        ksort($strides);
 
-        return array_values($strides);
+        return $strides;
     }
 
     /** @param list<int> $shape @return list<int> */

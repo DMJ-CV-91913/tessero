@@ -360,18 +360,43 @@ static int bop(int op, const tsr_array *x, char wx, const tsr_array *y, char wy,
     /* the operands are converted to the loop dtype first (numpy casts, then runs the typed loop) */
     const int ldt = op == OP_NE ? dt : zt;
     char *pz = (char *)z->a.data;
+    /* an operand already in the loop dtype is read in place (converting it would be a byte copy) */
+    const int ia = a.dtype == ldt, ib = b.dtype == ldt;
+    if (op == OP_SUB && zt == TSR_F64 && ia && ib && nd >= 1) {
+        /* float64 a - b row by row: elem_op's own expression. Subtraction is not commutative, so its operands keep
+           their order in any loop (a NaN pair keeps the first one's bits) */
+        const int64_t inner = sh[nd - 1], sa = a.strides[nd - 1], sb = b.strides[nd - 1];
+        const int64_t outer = inner > 0 ? n / inner : 0;
+        double *o = (double *)pz;
+        int64_t ox[TSR_MAXDIM] = {0};
+        for (int64_t q = 0; q < outer; q++) {
+            int64_t oa = 0, ob = 0;
+            for (int d = 0; d < nd - 1; d++) { oa += ox[d] * a.strides[d]; ob += ox[d] * b.strides[d]; }
+            const char *xa = elem0(&a) + oa, *xb = elem0(&b) + ob;
+            for (int64_t i = 0; i < inner; i++) {
+                double u, w;
+                memcpy(&u, xa + i * sa, 8);
+                memcpy(&w, xb + i * sb, 8);
+                o[i] = u - w;
+            }
+            o += inner;
+            for (int d = nd - 2; d >= 0; d--) { if (++ox[d] < sh[d]) break; ox[d] = 0; }
+        }
+        return TSR_OK;
+    }
     int64_t ix[TSR_MAXDIM] = {0};
     for (int64_t q = 0; q < n; q++) {
         int64_t oa = 0, ob = 0;
         for (int d = 0; d < nd; d++) { oa += ix[d] * a.strides[d]; ob += ix[d] * b.strides[d]; }
         unsigned char ca[16], cb[16];
+        const char *xa = elem0(&a) + oa, *xb = elem0(&b) + ob;
         const int64_t one = 1, zz = 0;
-        tsr_copy(a.dtype, ldt, 1, &one, elem0(&a) + oa, &zz, ca, &zz);
-        tsr_copy(b.dtype, ldt, 1, &one, elem0(&b) + ob, &zz, cb, &zz);
+        if (!ia) { tsr_copy(a.dtype, ldt, 1, &one, xa, &zz, ca, &zz); xa = (const char *)ca; }
+        if (!ib) { tsr_copy(b.dtype, ldt, 1, &one, xb, &zz, cb, &zz); xb = (const char *)cb; }
         if (op == OP_NE) {
-            *(uint8_t *)(pz + q * zs) = (uint8_t)(is_floatdt(ldt) ? rd_f64((char *)ca, ldt) != rd_f64((char *)cb, ldt)
-                                                                   : rd_i64((char *)ca, ldt) != rd_i64((char *)cb, ldt));
-        } else elem_op(op, zt, (char *)ca, ldt, (char *)cb, ldt, pz + q * zs);
+            *(uint8_t *)(pz + q * zs) = (uint8_t)(is_floatdt(ldt) ? rd_f64(xa, ldt) != rd_f64(xb, ldt)
+                                                                   : rd_i64(xa, ldt) != rd_i64(xb, ldt));
+        } else elem_op(op, zt, xa, ldt, xb, ldt, pz + q * zs);
         for (int d = nd - 1; d >= 0; d--) { if (++ix[d] < sh[d]) break; ix[d] = 0; }
     }
     return TSR_OK;

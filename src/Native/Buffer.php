@@ -132,6 +132,21 @@ final class Buffer
         return $buffer;
     }
 
+    /** @var CData|null element 0 as a void*, made once (array descriptors for the kernel take it) */
+    private ?CData $voidPtr = null;
+
+    /** void* to byte 0. Keep this Buffer referenced while the pointer is in use. */
+    public function voidPtr(): CData
+    {
+        if ($this->released) {
+            throw new TesseroException('Buffer used after release.');
+        }
+
+        $address = $this->address;                          // FFI::cast takes its argument by reference
+
+        return $this->voidPtr ??= Library::ffi()->cast('void*', $address);
+    }
+
     /** char* to byte $offset. Keep this Buffer referenced while the pointer is in use. */
     public function ptr(int $offset = 0): CData
     {
