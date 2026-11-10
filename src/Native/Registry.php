@@ -159,14 +159,23 @@ final class Registry
         $dt = $anyComplex ? DType::Complex128 : (($anyArray && $f32) ? DType::Float32 : DType::Float64);
         // array operands by argument position; PHP scalars stay scalars (one value read with zero strides)
         $shape = null;
+        $lists = [];                                             // short PHP lists: [block, shape], no NDArray built
+        $opShapes = [];
         foreach ($args as $k => $a) {
             if (is_int($a) || is_float($a) || is_bool($a)) {
                 continue;
             }
-            $arr = $a instanceof NDArray ? $a : NDArray::array($a, $dt === DType::Complex128 ? DType::Complex128 : DType::Float64);
-            $arr = $arr->dtype() === $dt ? $arr : $arr->astype($dt);
-            $ops[$k] = $arr;
-            $s = $arr->shape();
+            // a list operand makes the loop float64 or complex128, the dtype NDArray::array() is given for it here
+            if (is_array($a) && ($p = self::packList($ffi, $a, $dt === DType::Complex128 ? DType::Complex128 : DType::Float64, true)) !== null) {
+                $lists[$k] = [$p[0], $p[1]];
+                $s = $p[1];
+            } else {
+                $arr = $a instanceof NDArray ? $a : NDArray::array($a, $dt === DType::Complex128 ? DType::Complex128 : DType::Float64);
+                $arr = $arr->dtype() === $dt ? $arr : $arr->astype($dt);
+                $ops[$k] = $arr;
+                $s = $arr->shape();
+            }
+            $opShapes[$k] = $s;
             if ($shape === null) {
                 $shape = $s;
             } elseif ($s !== $shape) {
@@ -177,11 +186,11 @@ final class Registry
             $shape = [];
         } elseif ($shape === false) {
             try {
-                $shape = NDArray::broadcastShapes(...array_map(static fn (NDArray $o): array => $o->shape(), array_values($ops)));
+                $shape = NDArray::broadcastShapes(...array_values($opShapes));
             } catch (ShapeError) {
                 $shapes = [];
                 foreach ($args as $k => $a) {
-                    $shapes[] = isset($ops[$k]) ? $ops[$k]->shape() : [];
+                    $shapes[] = $opShapes[$k] ?? [];
                 }
                 throw new ShapeError("{$label}(): operands with shapes " . implode(', ', array_map(self::shapeStr(...), $shapes)) . ' cannot be broadcast together');
             }
@@ -219,7 +228,11 @@ final class Registry
             }
             $j = 0;
             foreach ($args as $k => $a) {
-                if (! isset($ops[$k])) {
+                if (isset($lists[$k])) {
+                    [$buf, $bShape] = $lists[$k];
+                    $ptrs[$k] = FFI::addr($buf[0]);
+                    $bStrides = NDArray::cStrides($bShape, $dt->itemsize());
+                } elseif (! isset($ops[$k])) {
                     if ($dt === DType::Float32) {
                         $flt[$k] = (float) $a;
                         $ptrs[$k] = $fltPtr[$k];
@@ -232,11 +245,12 @@ final class Registry
                         $cStrides[$j++] = 0;
                     }
                     continue;
+                } else {
+                    $b = $ops[$k];
+                    $ptrs[$k] = $b->offset() === 0 ? $b->buffer()->voidPtr() : $ffi->cast(Library::type('void*'), $b->ptr());
+                    $bShape = $b->shape();
+                    $bStrides = $b->strides();
                 }
-                $b = $ops[$k];
-                $ptrs[$k] = $b->offset() === 0 ? $b->buffer()->voidPtr() : $ffi->cast(Library::type('void*'), $b->ptr());
-                $bShape = $b->shape();
-                $bStrides = $b->strides();
                 if ($bShape === $shape) {
                     foreach ($bStrides as $s) {
                         $cStrides[$j++] = $s;
@@ -371,6 +385,7 @@ final class Registry
         // its own, without building one; the slots are out of the pool while in use (a nested call makes its own)
         $slots = null;
         $arrs = [];
+        $lists = [];
         foreach (array_values($inputs) as $k => $a) {
             if ($k > 0 && $k < 8 && (is_int($a) || is_float($a) || is_bool($a))) {
                 $slots ??= array_pop(self::$scalarSlots) ?? self::scalarSlots($ffi);
@@ -382,6 +397,11 @@ final class Registry
             }
             if ($a === null) {                                   // an omitted optional input (weights): 1.0
                 $a = NDArray::full([], 1.0, DType::Float64);
+            }
+            if (is_array($a) && ($p = self::packList($ffi, $a, null, true)) !== null) {
+                $lists[$k] = $p;                                 // a short list: [block, shape, dtype], no NDArray built
+                $arrs[$k] = null;                                // (bool, int64 or float64: never complex)
+                continue;
             }
             $arr = $a instanceof NDArray ? $a : NDArray::array($a);
             if ($arr->dtype() === DType::Complex128) {
@@ -396,6 +416,9 @@ final class Registry
             throw new \ArgumentCountError("{$label}() does not take keepdims");
         }
         $axisInputs = $info['axis_inputs'];
+        // the first input's dtype, dimensions and size (an array or a short list; never a scalar slot)
+        [$dt0, $nd0, $size0] = isset($lists[0]) ? [$lists[0][2], count($lists[0][1]), array_product($lists[0][1])]
+            : [$arrs[0]->dtype(), $arrs[0]->ndim(), $arrs[0]->size()];
         $masks = self::cnew($ffi, "uint64_t[{$nin}]");
         $metas = self::cnew($ffi, "tsr_array[{$nin}]");
         foreach ($arrs as $k => $arr) {
@@ -406,9 +429,9 @@ final class Registry
                 $m->dtype = $arr[1]->value;
                 continue;
             }
-            $nd = $arr->ndim();
+            $nd = $arr === null ? count($lists[$k][1]) : $arr->ndim();
             $mask = 0;
-            $whole = $k > 0 && ($nd === 0 || ($nd === 1 && $arrs[0]->ndim() > 1));
+            $whole = $k > 0 && ($nd === 0 || ($nd === 1 && $nd0 > 1));
             if ($k < $axisInputs && $axis !== null && ! $whole) {
                 foreach ((array) $axis as $ax) {
                     $a = $ax < 0 ? $ax + $nd : $ax;
@@ -424,7 +447,22 @@ final class Registry
                 $mask = $nd >= 63 ? -1 : (1 << $nd) - 1;
             }
             $masks[$k] = $mask;
-            $arr->writeMeta($metas[$k]);
+            if ($arr !== null) {
+                $arr->writeMeta($metas[$k]);
+                continue;
+            }
+            [$buf, $lShape, $lDt] = $lists[$k];                  // what writeMeta() writes for the array it would be
+            $m = $metas[$k];
+            $m->data = FFI::addr($buf[0]);
+            $m->ndim = $nd;
+            $m->dtype = $lDt->value;
+            $lStrides = NDArray::cStrides($lShape, $lDt->itemsize());
+            $mShape = $m->shape;
+            $mStrides = $m->strides;
+            foreach ($lShape as $d => $len) {
+                $mShape[$d] = $len;
+                $mStrides[$d] = $lStrides[$d];
+            }
         }
         $pvals = self::params($info, $params, $label);
         $np = max(1, count($pvals));
@@ -438,25 +476,39 @@ final class Registry
         self::check($ffi->tsr_fn_gufunc_shape($info['id'], $nin, $metas, $masks, $keepdims ? 1 : 0, $pc, $ond, $osh), $label);
         $outs = [];
         $ometa = self::cnew($ffi, "tsr_array[{$nout}]");
+        $oslots = null;
         for ($o = 0; $o < $nout; $o++) {
             $shape = [];
+            $valid = true;                                       // every length non-negative
             for ($d = 0, $ndo = $ond[$o]; $d < $ndo; $d++) {
-                $shape[] = $osh[$o * 32 + $d];
+                $shape[] = $len = $osh[$o * 32 + $d];
+                $valid = $valid && $len >= 0;
             }
             $dt = ($info['out_int'] >> $o) & 1 ? DType::Int64 : (($info['out_bool'] >> $o) & 1 ? DType::Bool : DType::Float64);
-            if ((($info['out_int_like'] ?? 0) >> $o) & 1 && in_array($arrs[0]->dtype(), [DType::Int64, DType::Int32, DType::UInt8], true)) {
+            if ((($info['out_int_like'] ?? 0) >> $o) & 1 && in_array($dt0, [DType::Int64, DType::Int32, DType::UInt8], true)) {
                 $dt = DType::Int64;                              // NumPy keeps integer results integer (nansum, nanmin, ptp ...)
             }
             $kp = $info['keep_param'] ?? -1;
             if ($o === 0 && $kp >= 0 && (($info['keep_mask'] >> (int) ($pvals[$kp] ?? 0)) & 1)
-                && in_array($arrs[0]->dtype(), [DType::Int64, DType::Int32, DType::UInt8, DType::Bool], true)
-                && $arrs[0]->size() > 0) {                       // an empty sample: nanquantile's NaN is float64
-                $dt = $arrs[0]->dtype();                         // numpy.quantile's discrete methods return a sample
+                && in_array($dt0, [DType::Int64, DType::Int32, DType::UInt8, DType::Bool], true)
+                && $size0 > 0) {                                 // an empty sample: nanquantile's NaN is float64
+                $dt = $dt0;                                      // numpy.quantile's discrete methods return a sample
             }
-            // the constructor checks the kernel's shape (NDArray::empty would check it twice more)
+            if ($shape === [] && $o < 8) {
+                // a 0-d result comes back as the number item() would read from it: a slot of its own, no array
+                $oslots ??= array_pop(self::$scalarSlots) ?? self::scalarSlots($ffi);
+                $m = $ometa[$o];
+                $m->data = $oslots[1][$o];
+                $m->dtype = $dt->value;
+                $outs[$o] = $dt;
+                continue;
+            }
+            // a valid shape whose count fits wraps a new block (the constructor would repeat these checks); any other
+            // goes to the constructor, or to NDArray::empty, which report it
             $n = array_product($shape);
-            $outs[$o] = is_int($n) && $n >= 0 && $n <= PHP_INT_MAX >> 5
-                ? new NDArray(Buffer::allocate($n * $dt->itemsize()), $dt, $shape) : NDArray::empty($shape, $dt);
+            $outs[$o] = $valid && $ndo <= 32 && is_int($n) && $n <= PHP_INT_MAX >> 5
+                ? (self::$wrapper ??= NDArray::wrapper())(Buffer::allocate($n * $dt->itemsize()), $dt, $shape, $n)
+                : (is_int($n) && $n >= 0 && $n <= PHP_INT_MAX >> 5 ? new NDArray(Buffer::allocate($n * $dt->itemsize()), $dt, $shape) : NDArray::empty($shape, $dt));
             $outs[$o]->writeMeta($ometa[$o]);
         }
         self::check($ffi->tsr_fn_gufunc($info['id'], $nin, $metas, $masks, $keepdims ? 1 : 0, $pc, $nout, $ometa), $label);
@@ -466,7 +518,19 @@ final class Registry
         unset($arrs);
         $res = [];
         foreach ($outs as $o => $arr) {
+            if ($arr instanceof DType) {                         // item() of the 0-d array the slot stands for
+                $vals = array_values(unpack($arr->packFormat() . '*', FFI::string($oslots[0][$o], $arr->itemsize())));
+                $res[$info['outs'][$o]] = match ($arr) {
+                    DType::Complex128 => $vals,
+                    DType::Bool => $vals[0] !== 0,
+                    default => $vals[0],
+                };
+                continue;
+            }
             $res[$info['outs'][$o]] = $arr->ndim() === 0 ? $arr->item() : $arr;
+        }
+        if ($oslots !== null) {
+            self::$scalarSlots[] = $oslots;
         }
 
         return $nout === 1 ? $res[$info['outs'][0]] : $res;
@@ -846,6 +910,23 @@ final class Registry
             $slot->kind = 5;
             $slot->count = 4;
             $slot->items = $ffi->cast(Library::type('tsr_arg*'), FFI::addr($sub[0]));
+        } elseif (is_array($v) && ($packed = self::packList($ffi, $v)) !== null) {
+            // a short list: the values, shape and dtype NDArray::array() would give it, in a block of its own
+            [$buf, $shape, $dt] = $packed;
+            $keep[] = $buf;                                   // unmanaged: freed with the strings after the call
+            $slot->kind = 3;
+            $slot->flags = 2;                                 // bit 1: built from a PHP list (a Python sequence)
+            $m = $slot->arr;
+            $m->data = FFI::addr($buf[0]);                  // (a cast of the array to void* would read its first element)
+            $m->ndim = count($shape);
+            $m->dtype = $dt->value;
+            $strides = NDArray::cStrides($shape, $dt->itemsize());
+            $mShape = $m->shape;
+            $mStrides = $m->strides;
+            foreach ($shape as $d => $len) {
+                $mShape[$d] = $len;
+                $mStrides[$d] = $strides[$d];
+            }
         } else {
             $arr = $v instanceof NDArray ? $v : NDArray::array($v);
             $keep[] = $arr;
@@ -855,6 +936,32 @@ final class Registry
             }
             $arr->writeMeta($slot->arr);                        // what NDArray::meta() holds, into the zeroed slot
         }
+    }
+
+    /**
+     * A list argument of at most 4,096 values as a block holding the bytes NDArray::array($v, $dtype) would hold, with
+     * its shape and dtype; null for a longer or deeper one (the caller then builds the array, and reports what it
+     * reports). The block is at least 64 bytes, as Buffer::allocate() makes one, and 8-byte aligned; unmanaged (freed
+     * by the caller) unless $owned.
+     *
+     * @param array<mixed> $v
+     * @return array{0: CData, 1: list<int>, 2: DType}|null
+     */
+    private static function packList(FFI $ffi, array $v, ?DType $dtype = null, bool $owned = false): ?array
+    {
+        [$flat, $shape, $dt] = NDArray::listParts($v, $dtype);   // throws what NDArray::array() throws first
+        $n = count($flat);
+        if ($n > 4096 || count($shape) > 32 || array_product($shape) !== $n) {
+            return null;
+        }
+        $bytes = NDArray::flatBytes($flat, $dt);
+        $len = strlen($bytes);
+        $buf = $ffi->new(FFI::arrayType(Library::type('double'), [max(8, ($len + 7) >> 3)]), $owned);
+        if ($len > 0) {
+            FFI::memcpy($buf, $bytes, $len);
+        }
+
+        return [$buf, $shape, $dt];
     }
 
     /** @var array<string, CData> short string arguments as char*, made once per request */

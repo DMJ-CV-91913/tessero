@@ -47,6 +47,18 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   8.2 us, `Np::unique` with all outputs 21.0 -> 12.6 us, `NDArray::array` of 4 floats 4.0 -> 2.9 us, `Np::ndim`
   2.2 -> 1.6 us, `Np::flipud` 5.3 -> 4.4 us. Results are unchanged, byte for byte (NaN sign and payload bits
   included).
+- **PHP lists as arguments, and generalised ufuncs with a scalar result**: a list of up to 4,096 values passed to a
+  registry routine, an element-wise function or a generalised ufunc is packed into a block of its own, with the
+  values, shape and dtype `NDArray::array()` gives it (`NDArray::listParts()` and `flatBytes()`, the code `array()`
+  itself now runs), instead of becoming an array with a buffer of its own that is freed after the call. A
+  generalised ufunc's 0-d result (`median`, `percentile` with one q, `nansum`, `searchsorted` of one value, ...) is
+  written to a slot of its own and read back as the number `item()` returns, instead of through an array, and its
+  other outputs are wrapped without the constructor repeating the checks made on the kernel's shape. On 8 values:
+  `Np::median` of a list 14.1 -> 7.8 us (of an array 8.2 -> 5.8 us), `Np::percentile` of a list 16.9 -> 9.8 us,
+  `Np::nansum` of 4 integers 15.7 -> 8.6 us, `Np::searchsorted` of one value 10.5 -> 7.2 us,
+  `Np::broadcastShapes` of three lists 20.2 -> 14.0 us, `Special::ndtr` of a list 7.8 -> 6.6 us. Results are
+  unchanged, byte for byte (NaN sign and payload bits included), and so are the exceptions for ragged, non-numeric,
+  empty and too deep lists.
 - **`np.diff`, `outer`, `inner`, `kron`, `ediff1d`, `trapezoid`, `cumulativeTrapezoid`, `geomspace`, `pad` (odd
   reflection) and the `poly*` routines**: their shared element-wise step read every operand through a one-element
   conversion call, also when no conversion was needed; operands already in the loop dtype are now read in place, and a

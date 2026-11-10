@@ -250,6 +250,21 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             return self::trusted(Buffer::fromBytes(self::scalarBytes($data, $dt)), $dt, [], 1);
         }
 
+        [$flat, $shape, $dt] = self::listParts($data, $dtype);
+
+        return self::fromFlat($flat, $shape, $dt);
+    }
+
+    /**
+     * array()'s reading of a (nested) PHP list: its values in C order, its shape and its dtype (inferred, or $dtype).
+     * The registry binding packs a short list argument from these (flatBytes()) without building the array.
+     *
+     * @internal
+     * @param array<mixed> $data
+     * @return array{0: list<mixed>, 1: list<int>, 2: DType}
+     */
+    public static function listParts(array $data, DType|string|null $dtype = null): array
+    {
         if (self::holdsArrays($data)) {                   // a list of arrays, as numpy.array([a, b]) accepts
             $data = self::unwrapArrays($data);
         }
@@ -274,9 +289,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             $flat = $flat === [] ? [] : array_merge(...($lists ? $flat : array_map(array_values(...), $flat)));
         }
 
-        $dt = $dtype === null ? self::inferDType($flat) : DType::from_($dtype);
-
-        return self::fromFlat($flat, $shape, $dt);
+        return [$flat, $shape, $dtype === null ? self::inferDType($flat) : DType::from_($dtype)];
     }
 
     /**
@@ -291,27 +304,41 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if (count($flat) !== $n) {
             throw new ShapeError('Got ' . count($flat) . " values for shape (" . implode(', ', $shape) . ').');
         }
-        $fmt = $dtype->packFormat() . '*';
         $isz = $dtype->itemsize();
         $out = self::trusted(Buffer::allocate($n * $isz), $dtype, $shape, $n);   // checkedSize() checked the shape
         for ($start = 0; $start < $n; $start += self::CHUNK) {
             $chunk = $n <= self::CHUNK ? $flat : array_slice($flat, $start, self::CHUNK);   // one chunk: the values as given
-            if ($dtype === DType::Complex128) {
-                $pairs = [];
-                foreach ($chunk as $v) {
-                    $pairs[] = (float) $v;
-                    $pairs[] = 0.0;
-                }
-                $chunk = $pairs;
-            } elseif ($dtype === DType::Bool) {
-                $chunk = array_map(static fn ($v): int => $v ? 1 : 0, $chunk);
-            } elseif ($dtype->isInteger()) {
-                $chunk = array_map(intval(...), $chunk);
-            }
-            $out->buffer->write($start * $isz, pack($fmt, ...$chunk));
+            $out->buffer->write($start * $isz, self::flatBytes($chunk, $dtype));
         }
 
         return $out;
+    }
+
+    /** Elements fromFlat() writes per pack() call (flatBytes() takes at most this many values). @internal */
+    public const FLAT_CHUNK = self::CHUNK;
+
+    /**
+     * The bytes of C-order values (at most FLAT_CHUNK) as $dtype elements: what fromFlat() writes.
+     *
+     * @internal
+     * @param list<mixed> $chunk
+     */
+    public static function flatBytes(array $chunk, DType $dtype): string
+    {
+        if ($dtype === DType::Complex128) {
+            $pairs = [];
+            foreach ($chunk as $v) {
+                $pairs[] = (float) $v;
+                $pairs[] = 0.0;
+            }
+            $chunk = $pairs;
+        } elseif ($dtype === DType::Bool) {
+            $chunk = array_map(static fn ($v): int => $v ? 1 : 0, $chunk);
+        } elseif ($dtype->isInteger()) {
+            $chunk = array_map(intval(...), $chunk);
+        }
+
+        return pack($dtype->packFormat() . '*', ...$chunk);
     }
 
     /** Complex array from real and imaginary parts (arrays or nested lists of equal shape). */

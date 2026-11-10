@@ -204,7 +204,8 @@ final class Buffer
             throw new TesseroException("Read of {$length} bytes at {$offset} overruns a {$this->bytes}-byte buffer.");
         }
 
-        return FFI::string($this->ptr($offset), $length);
+        // byte 0 of a live block through its kept void*, as write() does
+        return FFI::string($offset === 0 && $this->voidPtr !== null && ! $this->released ? $this->voidPtr : $this->ptr($offset), $length);
     }
 
     public function __destruct()
