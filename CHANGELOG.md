@@ -33,6 +33,20 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   search for) through a slot of its own. On 8 values: `$x->mul(2.0)` 11.8 -> 4.8 us, `$x->add($x)` 8.9 -> 5.2 us,
   `copy()` 5.0 -> 3.1 us, `Np::partition` 18.7 -> 11.1 us, `Np::searchsorted` 17.3 -> 11.8 us. Results are
   unchanged, byte for byte.
+- **Routine calls, list arguments, small sorts and `numpy.fft` on small inputs**: the FFI binding parses each C type
+  it casts to once (a cast by name parsed it on every call, in `Library::address()` and `Buffer::ptr()` among others),
+  an `NDArray` argument writes its own descriptor into the kernel's slot (`NDArray::writeMeta()`), number results are
+  read without a call, a routine's array result keeps the block's `void*` for freeing and is wrapped without the
+  constructor repeating the checks the binding has just made, and variadic routines prepare their signature once.
+  `NDArray::array()`, `fromFlat()`, `empty()`, `zeros()`, `copy()` and `astype()` check a shape once. In the kernel, a
+  stable argsort of 32 keys or fewer (`argsort`, `lexsort`, `unique` with indices, and others) runs an insertion sort
+  instead of the radix passes, whose 96 KB of count tables were zeroed and scanned on every call; the stable order is
+  unique, so the permutation is the same. `argsort()` along the last axis of a C-contiguous array reads it in place,
+  and `sort()` and `numpy.fft` along the last axis skip the axis round trip. On 8 values: `argsort()` 18.8 -> 3.7 us,
+  `Np::lexsort` (2 x 5) 17.6 -> 4.6 us, `sort()` 9.8 -> 4.1 us, `Fft::fft` 10.5 -> 4.7 us, `Fft::irfft` 15.4 ->
+  8.2 us, `Np::unique` with all outputs 21.0 -> 12.6 us, `NDArray::array` of 4 floats 4.0 -> 2.9 us, `Np::ndim`
+  2.2 -> 1.6 us, `Np::flipud` 5.3 -> 4.4 us. Results are unchanged, byte for byte (NaN sign and payload bits
+  included).
 - **`np.diff`, `outer`, `inner`, `kron`, `ediff1d`, `trapezoid`, `cumulativeTrapezoid`, `geomspace`, `pad` (odd
   reflection) and the `poly*` routines**: their shared element-wise step read every operand through a one-element
   conversion call, also when no conversion was needed; operands already in the loop dtype are now read in place, and a

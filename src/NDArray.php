@@ -103,6 +103,44 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         }
     }
 
+    /** @var \ReflectionClass<self>|null for trusted() */
+    private static ?\ReflectionClass $reflector = null;
+
+    /**
+     * A C-contiguous array over the whole of $buffer whose shape the caller has already checked (non-negative
+     * integer lengths, product $size, within the buffer): what the constructor builds, without repeating its checks.
+     *
+     * @param list<int> $shape
+     */
+    private static function trusted(Buffer $buffer, DType $dtype, array $shape, int $size): self
+    {
+        $a = (self::$reflector ??= new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        $a->buffer = $buffer;
+        $a->dtype = $dtype;
+        $a->offset = 0;
+        $a->shape = $shape;
+        $a->size = $size;
+        $a->strides = self::cStrides($shape, $dtype->itemsize());
+
+        return $a;
+    }
+
+    /**
+     * trusted() as a closure, handed out to Tessero\Native\Registry only (it wraps the arrays the kernel returns
+     * after checking their shape against the block, see Buffer::adopter()). Registry caches the closure.
+     *
+     * @internal
+     */
+    public static function wrapper(): \Closure
+    {
+        $caller = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)[1]['class'] ?? null;
+        if ($caller !== Native\Registry::class) {
+            throw new \LogicException('Tessero\NDArray::wrapper() is internal to Tessero.');
+        }
+
+        return self::trusted(...);
+    }
+
     // ------------------------------------------------------------------ creation
 
     /** @param list<int>|int $shape */
@@ -111,7 +149,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $shape = self::shapeArg($shape);
         $dtype = DType::from_($dtype);
 
-        return new self(Buffer::allocate(self::checkedSize($shape) * $dtype->itemsize()), $dtype, $shape);
+        $n = self::checkedSize($shape);                           // shapeArg() checked the lengths
+
+        return self::trusted(Buffer::allocate($n * $dtype->itemsize()), $dtype, $shape, $n);
     }
 
     /** @param list<int>|int $shape */
@@ -120,7 +160,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $shape = self::shapeArg($shape);
         $dtype = DType::from_($dtype);
 
-        return new self(Buffer::allocate(self::checkedSize($shape) * $dtype->itemsize(), true), $dtype, $shape);
+        $n = self::checkedSize($shape);
+
+        return self::trusted(Buffer::allocate($n * $dtype->itemsize(), true), $dtype, $shape, $n);
     }
 
     /** @param list<int>|int $shape */
@@ -205,7 +247,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if (! is_array($data)) {
             $dt = $dtype === null ? DType::ofValue($data) : DType::from_($dtype);
 
-            return new self(Buffer::fromBytes(self::scalarBytes($data, $dt)), $dt, []);
+            return self::trusted(Buffer::fromBytes(self::scalarBytes($data, $dt)), $dt, [], 1);
         }
 
         if (self::holdsArrays($data)) {                   // a list of arrays, as numpy.array([a, b]) accepts
@@ -244,15 +286,16 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     public static function fromFlat(array $flat, array $shape, DType|string $dtype = DType::Float64): self
     {
         $dtype = DType::from_($dtype);
-        $n = self::checkedSize(array_values($shape));
+        $shape = array_values($shape);
+        $n = self::checkedSize($shape);
         if (count($flat) !== $n) {
             throw new ShapeError('Got ' . count($flat) . " values for shape (" . implode(', ', $shape) . ').');
         }
-        $out = self::empty($shape, $dtype);
         $fmt = $dtype->packFormat() . '*';
         $isz = $dtype->itemsize();
+        $out = self::trusted(Buffer::allocate($n * $isz), $dtype, $shape, $n);   // checkedSize() checked the shape
         for ($start = 0; $start < $n; $start += self::CHUNK) {
-            $chunk = array_slice($flat, $start, self::CHUNK);
+            $chunk = $n <= self::CHUNK ? $flat : array_slice($flat, $start, self::CHUNK);   // one chunk: the values as given
             if ($dtype === DType::Complex128) {
                 $pairs = [];
                 foreach ($chunk as $v) {
@@ -455,7 +498,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     {
         $n = array_product($shape);
 
-        return is_int($n) && $n <= PHP_INT_MAX >> 5 ? new self(Buffer::allocate($n * $dtype->itemsize()), $dtype, $shape) : self::empty($shape, $dtype);
+        return is_int($n) && $n <= PHP_INT_MAX >> 5 ? self::trusted(Buffer::allocate($n * $dtype->itemsize()), $dtype, $shape, $n) : self::empty($shape, $dtype);
     }
 
     /** ptr() without the cast when the view starts at its block (the buffer's cached void*). */
@@ -599,8 +642,23 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     {
         $ffi = Library::ffi();
         $m = $ffi->new(self::$metaType ??= $ffi->type('tsr_array'));
+        $this->writeMeta($m);
+
+        return $m;
+    }
+
+    /**
+     * Write this array's descriptor into a zeroed tsr_array (a new one, or the arr field of a zeroed tsr_arg), so
+     * the registry fills its argument slots in place.
+     *
+     * @internal
+     */
+    public function writeMeta(CData $m): void
+    {
         $m->data = $this->buffer->voidPtr();
-        $m->offset = $this->offset;
+        if ($this->offset !== 0) {
+            $m->offset = $this->offset;          // zero is already there
+        }
         $m->ndim = count($this->shape);
         $m->dtype = $this->dtype->value;
         $mShape = $m->shape;                     // views into $m
@@ -609,8 +667,6 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             $mShape[$d] = $len;
             $mStrides[$d] = $this->strides[$d];
         }
-
-        return $m;
     }
 
     /**
@@ -621,7 +677,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     {
         $ffi = Library::ffi();
         $src = $this->meta();
-        $out = $ffi->new('tsr_array');
+        $out = $ffi->new(Library::type('tsr_array'));
         $rc = $ffi->tsr_array_slice(FFI::addr($src), $spec, FFI::addr($out));
         if ($rc === -1) {
             throw new IndexError("Invalid index '{$spec}'.");
@@ -684,7 +740,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
 
     public function copy(): self
     {
-        $out = new self(Buffer::allocate($this->size * $this->dtype->itemsize()), $this->dtype, $this->shape);
+        $out = self::trusted(Buffer::allocate($this->size * $this->dtype->itemsize()), $this->dtype, $this->shape, $this->size);
         $this->copyInto($out);
 
         return $out;
@@ -702,7 +758,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if ($dtype === $this->dtype && ! $copy) {
             return $this;
         }
-        $out = new self(Buffer::allocate($this->size * $dtype->itemsize()), $dtype, $this->shape);
+        $out = self::trusted(Buffer::allocate($this->size * $dtype->itemsize()), $dtype, $this->shape, $this->size);
         $this->copyInto($out);
 
         return $out;
@@ -996,7 +1052,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $out = self::empty($shape, $this->dtype);
         if ($out->size > 0) {
             Library::check(Library::ffi()->tsr_take(
-                $this->dtype->itemsize(), $outer, $src->shape[$axis], $inner, $src->ptr(), Library::ffi()->cast('int64_t*', $idx->ptr()), $idx->size, $out->ptr(),
+                $this->dtype->itemsize(), $outer, $src->shape[$axis], $inner, $src->ptr(), Library::ffi()->cast(Library::type('int64_t*'), $idx->ptr()), $idx->size, $out->ptr(),
             ), 'take');
         }
 
@@ -1017,7 +1073,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $vals = self::asArray($values)->astype($this->dtype)->broadcastTo($vshape)->copy();
         if ($idx->size > 0) {
             Library::check(Library::ffi()->tsr_put(
-                $this->dtype->itemsize(), $outer, $work->shape[$axis], $inner, $work->ptr(), Library::ffi()->cast('int64_t*', $idx->ptr()), $idx->size, $vals->ptr(),
+                $this->dtype->itemsize(), $outer, $work->shape[$axis], $inner, $work->ptr(), Library::ffi()->cast(Library::type('int64_t*'), $idx->ptr()), $idx->size, $vals->ptr(),
             ), 'put');
         }
         if ($target !== $this) {
@@ -1033,7 +1089,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $m = self::boolMask($mask, $this->shape);
         $src = $this->contiguous();
         $ffi = Library::ffi();
-        $mp = $ffi->cast('uint8_t*', $m->ptr());
+        $mp = $ffi->cast(Library::type('uint8_t*'), $m->ptr());
         $n = $ffi->tsr_count_true($m->size, $mp);
         if ($n < 0) {
             Library::check($n, 'filter');
@@ -1056,7 +1112,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         $target = $this->isContiguous() ? $this : $this->copy();
         $vals = self::asArray($values)->astype($this->dtype)->contiguous();
         Library::check(Library::ffi()->tsr_mask_assign(
-            $this->dtype->itemsize(), $target->size, $target->ptr(), Library::ffi()->cast('uint8_t*', $m->ptr()), $vals->ptr(), $vals->size,
+            $this->dtype->itemsize(), $target->size, $target->ptr(), Library::ffi()->cast(Library::type('uint8_t*'), $m->ptr()), $vals->ptr(), $vals->size,
         ), 'setWhere');
         if ($target !== $this) {
             $this->assign($target);
@@ -1614,9 +1670,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             $values = $ffi->new('double[2]');
             self::$slots = (object) [
                 'values' => $values,
-                'bytes' => $ffi->cast('void*', FFI::addr($values[0])),
-                'mean' => $ffi->cast('double*', FFI::addr($values[0])),
-                'm2' => $ffi->cast('double*', FFI::addr($values[1])),
+                'bytes' => $ffi->cast(Library::type('void*'), FFI::addr($values[0])),
+                'mean' => $ffi->cast(Library::type('double*'), FFI::addr($values[0])),
+                'm2' => $ffi->cast(Library::type('double*'), FFI::addr($values[1])),
                 'shape' => $ffi->new('int64_t[1]'),
                 'stride' => $ffi->new('int64_t[1]'),
                 'none' => $ffi->new('int64_t[1]'),
@@ -1700,8 +1756,8 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         if ($mean->size > 0) {
             Library::check(Library::ffi()->tsr_moments(
                 $src->dtype->value, count($src->shape), Library::i64($src->shape), $src->ptr(), Library::i64($src->strides),
-                $ax, Library::ffi()->cast('double*', $mean->ptr()), Library::i64($mean->strides),
-                $m2 === null ? null : Library::ffi()->cast('double*', $m2->ptr()), $m2 === null ? null : Library::i64($m2->strides),
+                $ax, Library::ffi()->cast(Library::type('double*'), $mean->ptr()), Library::i64($mean->strides),
+                $m2 === null ? null : Library::ffi()->cast(Library::type('double*'), $m2->ptr()), $m2 === null ? null : Library::i64($m2->strides),
             ), 'moments');
         }
         $r = $variance ? $m2->div(max(0, $len - $ddof) ?: NAN) : $mean;
@@ -1778,7 +1834,8 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             return $this->copy();
         }
         $axis = self::normAxis($axis, count($this->shape));
-        $work = $this->moveAxis($axis, -1)->copy();
+        $last = $axis === count($this->shape) - 1;                // no axis to move there and back
+        $work = $last ? $this->copy() : $this->moveAxis($axis, -1)->copy();
         $len = $work->shape[count($work->shape) - 1];
         $rows = $len > 0 ? intdiv($work->size, $len) : 0;
         $dt = $this->dtype === DType::Bool ? DType::UInt8 : $this->dtype;
@@ -1788,7 +1845,7 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             Library::check($ffi->{$kernel}($dt->value, $len, $work->buffer->ptr($work->offset + $r * $rowBytes)), 'sort');
         }
 
-        return $work->moveAxis(-1, $axis)->contiguous();
+        return $last ? $work : $work->moveAxis(-1, $axis)->contiguous();
     }
 
     /** Indices of the non-zero elements (numpy.ndarray.nonzero). */
@@ -1854,7 +1911,9 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             throw new DTypeError('Sorting complex arrays is not supported.');
         }
         $axis = self::normAxis($axis, max(1, count($this->shape)));
-        $work = $this->moveAxis($axis, -1)->copy();
+        // along the last axis of a C-contiguous array the rows are read where they are (the kernel only reads them)
+        $last = $axis === count($this->shape) - 1 && $this->isContiguous();
+        $work = $last ? $this : $this->moveAxis($axis, -1)->copy();
         $len = $work->shape[count($work->shape) - 1];
         $rows = $len > 0 ? intdiv($work->size, $len) : 0;
         $out = self::empty($work->shape, DType::Int64);
@@ -1863,11 +1922,11 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
         for ($r = 0; $r < $rows; $r++) {
             Library::check($ffi->tsr_argsort(
                 $dt->value, $len, $work->buffer->ptr($work->offset + $r * $len * $dt->itemsize()),
-                $ffi->cast('int64_t*', $out->buffer->ptr($r * $len * 8)),
+                $ffi->cast(Library::type('int64_t*'), $out->buffer->ptr($r * $len * 8)),
             ), 'argsort');
         }
 
-        return $out->moveAxis(-1, $axis)->contiguous();
+        return $last ? $out : $out->moveAxis(-1, $axis)->contiguous();
     }
 
     // ------------------------------------------------------------------ products

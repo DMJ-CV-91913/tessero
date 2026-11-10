@@ -6,6 +6,7 @@ namespace Tessero\Native;
 
 use FFI;
 use FFI\CData;
+use FFI\CType;
 use Tessero\Exceptions\DTypeError;
 use Tessero\Exceptions\IndexError;
 use Tessero\Exceptions\LibraryUnavailable;
@@ -439,14 +440,27 @@ final class Library
     {
         $ffi = self::ffi();
 
-        return $ffi->cast('uintptr_t', $ffi->cast('char*', $pointer))->cdata;
+        return $ffi->cast(self::$types['uintptr_t'] ??= $ffi->type('uintptr_t'), $ffi->cast(self::$types['char*'] ??= $ffi->type('char*'), $pointer))->cdata;
+    }
+
+    /** @var array<string, CType> types for casts and new(), parsed once (a type given by name is parsed on every call) */
+    private static array $types = [];
+
+    /**
+     * A type of the bound library by its declaration ('char*', 'tsr_arg'), parsed on first use.
+     *
+     * @internal
+     */
+    public static function type(string $decl): CType
+    {
+        return self::$types[$decl] ??= self::ffi()->type($decl);
     }
 
     /** @param list<int> $values */
     public static function i64(array $values): CData
     {
         $n = max(1, count($values));
-        $arr = self::ffi()->new("int64_t[{$n}]");
+        $arr = self::ffi()->new(FFI::arrayType(self::type('int64_t'), [$n]));
         foreach ($values as $i => $v) {
             $arr[$i] = $v;
         }
@@ -470,8 +484,9 @@ final class Library
             return array_pop(self::$dimSets);
         }
         $ffi = self::ffi();
+        $t = self::$types['int64_t[32]'] ??= $ffi->type('int64_t[32]');
 
-        return [$ffi->new('int64_t[32]'), $ffi->new('int64_t[32]'), $ffi->new('int64_t[32]'), $ffi->new('int64_t[32]')];
+        return [$ffi->new($t), $ffi->new($t), $ffi->new($t), $ffi->new($t)];
     }
 
     /** @param list<CData> $set a set from dims() */

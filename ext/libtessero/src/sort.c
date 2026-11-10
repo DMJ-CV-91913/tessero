@@ -72,6 +72,23 @@ static int radix(uint64_t *keys, int64_t *payload, int64_t n, int bytes)
 {
     if (n < 2) return TSR_OK;
     const int passes = (bytes * 8 + RBITS - 1) / RBITS;
+    if (n <= 32) {
+        /* a stable insertion sort on the digits the passes below read: the stable order of the keys is unique, so it
+           is the same permutation, without zeroing and scanning their 96 KB of count tables */
+        const uint64_t mask = passes * RBITS >= 64 ? ~0ULL : (1ULL << (passes * RBITS)) - 1;
+        for (int64_t i = 1; i < n; i++) {
+            const uint64_t k = keys[i], km = k & mask;
+            const int64_t p = payload ? payload[i] : 0;
+            int64_t j = i;
+            for (; j > 0 && (keys[j - 1] & mask) > km; j--) {
+                keys[j] = keys[j - 1];
+                if (payload) payload[j] = payload[j - 1];
+            }
+            keys[j] = k;
+            if (payload) payload[j] = p;
+        }
+        return TSR_OK;
+    }
     uint64_t *k2 = (uint64_t *)tsr_alloc(n * 8);
     int64_t *p2 = payload ? (int64_t *)tsr_alloc(n * 8) : NULL;
     int64_t *hist = (int64_t *)calloc((size_t)passes * RSIZE, sizeof(int64_t));

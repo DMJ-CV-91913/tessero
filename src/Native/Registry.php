@@ -191,7 +191,8 @@ final class Registry
             throw new \ArgumentCountError("{$label}(): out must hold {$nout} array(s)");
         }
         $size = array_product($shape);
-        // a shape whose element count fits goes straight to the constructor (NDArray::empty checks it again)
+        // the operands' shape (or their broadcast), whose element count fits, wraps a new block without the constructor's
+        // checks (NDArray::empty checks one that does not fit)
         $plain = is_int($size) && $size <= PHP_INT_MAX >> 5;
         $targets = [];
         $direct = [];
@@ -202,7 +203,7 @@ final class Registry
             }
             $ok = $o !== null && $o->dtype() === $dt && $o->shape() === $shape && ! self::overlaps($o, $ops);
             $direct[$k] = $ok;
-            $targets[$k] = $ok ? $o : ($plain ? new NDArray(Buffer::allocate($size * $dt->itemsize()), $dt, $shape) : NDArray::empty($shape, $dt));
+            $targets[$k] = $ok ? $o : ($plain ? (self::$wrapper ??= NDArray::wrapper())(Buffer::allocate($size * $dt->itemsize()), $dt, $shape, $size) : NDArray::empty($shape, $dt));
         }
         $size = (int) $size;
         if ($size > 0) {
@@ -233,7 +234,7 @@ final class Registry
                     continue;
                 }
                 $b = $ops[$k];
-                $ptrs[$k] = $b->offset() === 0 ? $b->buffer()->voidPtr() : $ffi->cast('void*', $b->ptr());
+                $ptrs[$k] = $b->offset() === 0 ? $b->buffer()->voidPtr() : $ffi->cast(Library::type('void*'), $b->ptr());
                 $bShape = $b->shape();
                 $bStrides = $b->strides();
                 if ($bShape === $shape) {
@@ -252,7 +253,7 @@ final class Registry
                 }
             }
             foreach ($targets as $k => $t) {
-                $ptrs[$nin + $k] = $t->offset() === 0 ? $t->buffer()->voidPtr() : $ffi->cast('void*', $t->ptr());
+                $ptrs[$nin + $k] = $t->offset() === 0 ? $t->buffer()->voidPtr() : $ffi->cast(Library::type('void*'), $t->ptr());
                 foreach ($t->strides() as $s) {
                     $cStrides[$j++] = $s;
                 }
@@ -423,7 +424,7 @@ final class Registry
                 $mask = $nd >= 63 ? -1 : (1 << $nd) - 1;
             }
             $masks[$k] = $mask;
-            self::fillMeta($metas[$k], $arr);
+            $arr->writeMeta($metas[$k]);
         }
         $pvals = self::params($info, $params, $label);
         $np = max(1, count($pvals));
@@ -456,7 +457,7 @@ final class Registry
             $n = array_product($shape);
             $outs[$o] = is_int($n) && $n >= 0 && $n <= PHP_INT_MAX >> 5
                 ? new NDArray(Buffer::allocate($n * $dt->itemsize()), $dt, $shape) : NDArray::empty($shape, $dt);
-            self::fillMeta($ometa[$o], $outs[$o]);
+            $outs[$o]->writeMeta($ometa[$o]);
         }
         self::check($ffi->tsr_fn_gufunc($info['id'], $nin, $metas, $masks, $keepdims ? 1 : 0, $pc, $nout, $ometa), $label);
         if ($slots !== null) {
@@ -497,23 +498,6 @@ final class Registry
     private static function cnew(FFI $ffi, string $decl): CData
     {
         return $ffi->new(self::$ctypes[$decl] ??= $ffi->type($decl));
-    }
-
-    /** What NDArray::meta() holds, written into a zeroed tsr_array (no struct built and copied). */
-    private static function fillMeta(CData $m, NDArray $arr): void
-    {
-        $m->data = $arr->buffer()->voidPtr();
-        $m->offset = $arr->offset();
-        $m->dtype = $arr->dtype()->value;
-        $shape = $arr->shape();
-        $m->ndim = count($shape);
-        $strides = $arr->strides();
-        $mShape = $m->shape;
-        $mStrides = $m->strides;
-        foreach ($shape as $d => $len) {
-            $mShape[$d] = $len;
-            $mStrides[$d] = $strides[$d];
-        }
     }
 
     // ------------------------------------------------------------------ numpy.random.Generator methods
@@ -586,10 +570,10 @@ final class Registry
         foreach ($ops as $k => $a) {
             $b = $a->shape() === $shape ? $a : $a->broadcastTo($shape);
             $keep[] = $b;
-            $ptrs[$k] = $ffi->cast('void*', $b->ptr());
+            $ptrs[$k] = $ffi->cast(Library::type('void*'), $b->ptr());
             array_push($strides, ...$b->strides());
         }
-        $ptrs[$nin] = $ffi->cast('void*', $out->ptr());
+        $ptrs[$nin] = $ffi->cast(Library::type('void*'), $out->ptr());
         array_push($strides, ...$out->strides());
         $pc = $ffi->new('double[' . max(1, count($pvals)) . ']');
         foreach ($pvals as $k => $v) {
@@ -618,7 +602,7 @@ final class Registry
         $ffi = Library::ffi();
         $args = array_values($args);
         $n = count($args);
-        $cargs = $ffi->new(self::$argTypes[$n] ??= FFI::arrayType($ffi->type('tsr_arg'), [max(1, $n)]));
+        $cargs = $ffi->new(self::$argTypes[$n] ??= FFI::arrayType(Library::type('tsr_arg'), [max(1, $n)]));
         $keep = [];
         $hold = [];
         $seq = $p['seq'];
@@ -636,17 +620,24 @@ final class Registry
         $res = $ffi->new($p['resType']);
         try {
             foreach ($args as $k => $v) {
+                if ($v instanceof NDArray) {
+                    // the most common argument, written into its zeroed slot here (what routineArg() does)
+                    $slot = $cargs[$k];
+                    $slot->kind = 3;
+                    $v->writeMeta($slot->arr);
+                    continue;
+                }
                 if (isset($seq[$k]) && is_array($v)) {
                     // a sequence argument (numpy's `arrays`, `*args`): one tsr_arg per item
                     $items = array_values($v);
-                    $sub = $ffi->new('tsr_arg[' . max(1, count($items)) . ']');
+                    $sub = $ffi->new(FFI::arrayType(Library::type('tsr_arg'), [max(1, count($items))]));
                     $hold[] = $sub;                       // owned by PHP: released with the variable
                     foreach ($items as $j => $item) {
                         self::routineArg($ffi, $sub[$j], $item, $keep, $label);
                     }
                     $cargs[$k]->kind = 5;
                     $cargs[$k]->count = count($items);
-                    $cargs[$k]->items = $ffi->cast('tsr_arg*', FFI::addr($sub[0]));
+                    $cargs[$k]->items = $ffi->cast(Library::type('tsr_arg*'), FFI::addr($sub[0]));
                     continue;
                 }
                 self::routineArg($ffi, $cargs[$k], $v, $keep, $label);
@@ -661,15 +652,24 @@ final class Registry
             }
             unset($keep, $hold);
         }
-        self::check($rc, $label);
+        if ($rc < 0) {
+            self::check($rc, $label);
+        }
         $out = [];
         for ($k = 0; $k < $nres; $k++) {
             $r = $res[$k];
-            if ($r->kind === 0) {
+            $kind = $r->kind;
+            if ($kind === 0) {
+                continue;
+            }
+            if ($kind === 1 || $kind === 4 || $kind === 5) {
+                // a number owns no memory: what resultValue() returns for it, without the call
+                $out[$info['outs'][$k] ?? "r{$k}"] = $kind === 1 ? (float) $r->num : ($kind === 5 ? (int) $r->ival : $r->num != 0.0);
                 continue;
             }
             try {
-                $out[$info['outs'][$k] ?? "r{$k}"] = self::resultValue($ffi, $r);   // consumes $res[$k] even when it throws
+                // both consume $res[$k] even when they throw
+                $out[$info['outs'][$k] ?? "r{$k}"] = $kind === 3 ? self::adopt($r) : self::resultValue($ffi, $r);
             } catch (\Throwable $e) {
                 for ($j = $k + 1; $j < $nres; $j++) {
                     self::release($ffi, $res[$j]);       // results not yet adopted would leak
@@ -710,7 +710,7 @@ final class Registry
             'seq' => array_flip($info['seq'] ?? []),
             'inplace' => $info['inplace'] ?? [],
             'nres' => $nres,
-            'resType' => FFI::arrayType(Library::ffi()->type('tsr_result'), [$nres]),
+            'resType' => FFI::arrayType(Library::type('tsr_result'), [$nres]),
         ];
     }
 
@@ -722,9 +722,17 @@ final class Registry
      */
     public static function routineVariadic(string $name, array $given): mixed
     {
-        $info = self::info($name);
-        $label = self::label($name);
-        $var = $info['variadic'];
+        if (! isset(self::$variadics[$name])) {
+            $info = self::info($name);
+            $phpNames = [];
+            $defaults = [];
+            foreach ($info['args'] as $i => $argName) {
+                $phpNames[$i] = self::camelName($argName);
+                $defaults[$i] = self::defaultValue((string) ($info['defaults'][$argName] ?? 'None'));
+            }
+            self::$variadics[$name] = [$info['args'], $info['variadic'], self::label($name), $phpNames, $defaults];
+        }
+        [$argNames, $var, $label, $phpNames, $defaults] = self::$variadics[$name];
         $positional = [];
         $named = [];
         foreach ($given as $k => $v) {
@@ -738,8 +746,8 @@ final class Registry
             }
         }
         $args = [];
-        foreach ($info['args'] as $i => $argName) {
-            $phpName = self::camelName($argName);
+        foreach ($argNames as $i => $_) {
+            $phpName = $phpNames[$i];
             if ($i < $var) {
                 if ($positional === [] && ! array_key_exists($phpName, $named)) {
                     throw new \ArgumentCountError("{$label}(): argument \${$phpName} is required");
@@ -753,7 +761,7 @@ final class Registry
                 $args[] = $named[$phpName];
                 unset($named[$phpName]);
             } else {
-                $args[] = self::defaultValue((string) ($info['defaults'][$argName] ?? 'None'));
+                $args[] = $defaults[$i];
             }
         }
         foreach ($named as $k => $_) {
@@ -762,6 +770,9 @@ final class Registry
 
         return self::routine($name, $args);
     }
+
+    /** @var array<string, array{0: list<string>, 1: int, 2: string, 3: list<string>, 4: list<mixed>}> routineVariadic()'s view of an entry */
+    private static array $variadics = [];
 
     /** A registry default ("None", "True", "10", "'xy'") as a PHP value. */
     public static function defaultValue(string $d): mixed
@@ -815,11 +826,11 @@ final class Registry
             $buf = $ffi->new('char[' . (strlen($v) + 1) . ']', false);
             FFI::memcpy($buf, $v, strlen($v));
             $buf[strlen($v)] = "\0";
-            $slot->str = $ffi->cast('char*', $buf);
+            $slot->str = $ffi->cast(Library::type('char*'), $buf);
             if (strlen($v) <= 32 && count(self::$strings) < 256) {
                 $own = $ffi->new('char[' . (strlen($v) + 1) . ']');   // managed: freed with the cache
                 FFI::memcpy($own, $buf, strlen($v) + 1);
-                self::$strings[$v] = $ffi->cast('char*', $own);
+                self::$strings[$v] = $ffi->cast(Library::type('char*'), $own);
                 self::$stringBufs[] = $own;
             }
             $keep[] = $buf;
@@ -834,26 +845,15 @@ final class Registry
             }
             $slot->kind = 5;
             $slot->count = 4;
-            $slot->items = $ffi->cast('tsr_arg*', FFI::addr($sub[0]));
+            $slot->items = $ffi->cast(Library::type('tsr_arg*'), FFI::addr($sub[0]));
         } else {
             $arr = $v instanceof NDArray ? $v : NDArray::array($v);
             $keep[] = $arr;
             $slot->kind = 3;
-            $slot->flags = $v instanceof NDArray ? 0 : 2;     // bit 1: built from a PHP list (a Python sequence)
-            // what NDArray::meta() holds, written straight into the zeroed slot
-            $m = $slot->arr;
-            $m->data = $arr->buffer()->voidPtr();
-            $m->offset = $arr->offset();
-            $m->dtype = $arr->dtype()->value;
-            $shape = $arr->shape();
-            $m->ndim = count($shape);
-            $strides = $arr->strides();
-            $mShape = $m->shape;
-            $mStrides = $m->strides;
-            foreach ($shape as $d => $len) {
-                $mShape[$d] = $len;
-                $mStrides[$d] = $strides[$d];
+            if (! $v instanceof NDArray) {
+                $slot->flags = 2;                                 // bit 1: built from a PHP list (a Python sequence)
             }
+            $arr->writeMeta($slot->arr);                        // what NDArray::meta() holds, into the zeroed slot
         }
     }
 
@@ -891,16 +891,22 @@ final class Registry
     {
         if ($r->kind === 6) {
             $n = $r->arr->shape[0];
-            if ($n < 0 || $n * FFI::sizeof($ffi->type('tsr_result')) > $r->bytes) {
+            if ($n < 0 || $n * FFI::sizeof(Library::type('tsr_result')) > $r->bytes) {
                 self::release($ffi, $r, false);              // a malformed sequence: free only its own block
                 throw new TesseroException("libtessero returned a malformed result sequence ({$n} items).");
             }
-            $items = $ffi->cast('tsr_result*', $r->arr->data);
+            $items = $ffi->cast(Library::type('tsr_result*'), $r->arr->data);
             $list = [];
             $failed = null;
             for ($j = 0; $j < $n; $j++) {
+                $item = $items[$j];
+                $ik = $item->kind;
+                if ($ik === 1 || $ik === 4 || $ik === 5) {          // a number (a shape entry, a count): no call
+                    $list[] = $ik === 1 ? (float) $item->num : ($ik === 5 ? (int) $item->ival : $item->num != 0.0);
+                    continue;
+                }
                 try {
-                    $list[] = self::resultValue($ffi, $items[$j]);   // consumes item j whatever happens
+                    $list[] = self::resultValue($ffi, $item);       // consumes item j whatever happens
                 } catch (\Throwable $e) {
                     $failed ??= $e;
                 }
@@ -914,7 +920,7 @@ final class Registry
         }
 
         if ($r->kind === 2) {                                   // a string result (dtype name)
-            $s = FFI::string($ffi->cast('char*', $r->arr->data));
+            $s = FFI::string($ffi->cast(Library::type('char*'), $r->arr->data));
             $ffi->tsr_free($r->arr->data, $r->bytes);
 
             return $s;
@@ -929,7 +935,7 @@ final class Registry
         };
     }
 
-    /** @var \Closure(int, int): Buffer|null */
+    /** @var \Closure(int, int, ?CData=): Buffer|null */
     private static ?\Closure $adopter = null;
 
     /**
@@ -964,10 +970,14 @@ final class Registry
             throw new TesseroException('libtessero returned a malformed array result.');
         }
         self::$adopter ??= Buffer::adopter();
-        $buffer = (self::$adopter)(Library::address($a->data), $bytes);
+        $data = $a->data;                                       // reading a pointer field copies its value
+        $buffer = (self::$adopter)(Library::address($data), $bytes, $data);
 
-        return new NDArray($buffer, $dtype, $shape);
+        return (self::$wrapper ??= NDArray::wrapper())($buffer, $dtype, $shape, $size);   // the shape is checked above
     }
+
+    /** @var \Closure(Buffer, DType, list<int>, int): NDArray|null */
+    private static ?\Closure $wrapper = null;
 
     /** Free a result that will not be adopted (kind 2/3 blocks, kind 6 sequences with their items). */
     private static function release(FFI $ffi, CData $r, bool $recurse = true): void
@@ -975,8 +985,8 @@ final class Registry
         $kind = $r->kind;
         if ($kind === 6 && $recurse) {
             $n = $r->arr->shape[0];
-            if ($n > 0 && $n * FFI::sizeof($ffi->type('tsr_result')) <= $r->bytes) {
-                $items = $ffi->cast('tsr_result*', $r->arr->data);
+            if ($n > 0 && $n * FFI::sizeof(Library::type('tsr_result')) <= $r->bytes) {
+                $items = $ffi->cast(Library::type('tsr_result*'), $r->arr->data);
                 for ($j = 0; $j < $n; $j++) {
                     self::release($ffi, $items[$j]);
                 }

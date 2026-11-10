@@ -84,7 +84,12 @@ final class Buffer
             throw new \LogicException('Tessero\Native\Buffer::adopter() is internal to Tessero.');
         }
 
-        return static fn (int $address, int $bytes): self => new self($address, $bytes, true);
+        return static function (int $address, int $bytes, ?CData $voidPtr = null): self {
+            $buf = new self($address, $bytes, true);
+            $buf->voidPtr = $voidPtr;                        // the block's void* when the caller has it: no cast to free it
+
+            return $buf;
+        };
     }
 
     /**
@@ -138,6 +143,8 @@ final class Buffer
     /** @var CData|null element 0 as a void*, made once (array descriptors for the kernel take it) */
     private ?CData $voidPtr = null;
 
+    private static ?\FFI\CType $charPtr = null;
+
     /** void* to byte 0. Keep this Buffer referenced while the pointer is in use. */
     public function voidPtr(): CData
     {
@@ -147,7 +154,7 @@ final class Buffer
 
         $address = $this->address;                          // FFI::cast takes its argument by reference
 
-        return $this->voidPtr ??= Library::ffi()->cast('void*', $address);
+        return $this->voidPtr ??= Library::ffi()->cast(Library::type('void*'), $address);
     }
 
     /** char* to byte $offset. Keep this Buffer referenced while the pointer is in use. */
@@ -184,7 +191,8 @@ final class Buffer
         if ($offset < 0 || $offset + $len > $this->bytes) {
             throw new TesseroException("Write of {$len} bytes at {$offset} overruns a {$this->bytes}-byte buffer.");
         }
-        FFI::memcpy($this->ptr($offset), $bytes, $len);
+        // byte 0 of a live block through its kept void* (ptr() casts the address, and throws after release)
+        FFI::memcpy($offset === 0 && $this->voidPtr !== null && ! $this->released ? $this->voidPtr : $this->ptr($offset), $bytes, $len);
     }
 
     public function read(int $offset, int $length): string
@@ -239,7 +247,7 @@ final class Buffer
     /** char* at an absolute address (private: only a live Buffer turns its own address into a pointer). */
     private static function raw(int $address): CData
     {
-        return Library::ffi()->cast('char*', $address);
+        return Library::ffi()->cast(self::$charPtr ??= Library::type('char*'), $address);
     }
 
     private static function human(int $bytes): string

@@ -44,7 +44,7 @@ final class Fft
             throw new ShapeError("Invalid number of FFT data points ({$len}).");
         }
         $x = self::fitLength($x, $len, $ax);
-        $work = $x->moveAxis($ax, -1)->contiguous();            // rows x len, C order; the kernel only reads it
+        $work = self::toLast($x, $ax);                           // rows x len, C order; the kernel only reads it
         $h = intdiv($len, 2) + 1;
         $rows = intdiv($work->size(), $len);
         $outShape = $work->shape();
@@ -52,14 +52,15 @@ final class Fft
         $out = NDArray::empty($outShape, DType::Complex128);
         if ($rows > 0) {
             $ffi = Library::ffi();
-            Library::check($ffi->tsr_rfft($len, $rows, $ffi->cast('double*', $work->ptr()), $ffi->cast('double*', $out->ptr())), 'rfft');
+            $dp = Library::type('double*');
+            Library::check($ffi->tsr_rfft($len, $rows, $ffi->cast($dp, $work->ptr()), $ffi->cast($dp, $out->ptr())), 'rfft');
         }
         $scale = self::scale($norm, $len, false);
         if ($scale !== 1.0) {
             $out = $out->mul($scale);
         }
 
-        return $out->moveAxis(-1, $ax)->contiguous();
+        return self::fromLast($out, $ax);
     }
 
     /** Inverse of rfft; n is the length of the real output (default 2 (m - 1)). */
@@ -76,21 +77,22 @@ final class Fft
             throw new ShapeError('irfft: invalid output length.');
         }
         $h = intdiv($n, 2) + 1;
-        $work = self::fitLength($x, $h, $ax)->moveAxis($ax, -1)->contiguous();   // the kernel only reads it
+        $work = self::toLast(self::fitLength($x, $h, $ax), $ax);   // the kernel only reads it
         $rows = intdiv($work->size(), $h);
         $outShape = $work->shape();
         $outShape[count($outShape) - 1] = $n;
         $out = NDArray::empty($outShape, DType::Float64);
         if ($rows > 0) {
             $ffi = Library::ffi();
-            Library::check($ffi->tsr_irfft($n, $rows, $ffi->cast('double*', $work->ptr()), $ffi->cast('double*', $out->ptr())), 'irfft');
+            $dp = Library::type('double*');
+            Library::check($ffi->tsr_irfft($n, $rows, $ffi->cast($dp, $work->ptr()), $ffi->cast($dp, $out->ptr())), 'irfft');
         }
         $scale = self::scale($norm, $n, true);
         if ($scale !== 1.0) {
             $out = $out->mul($scale);
         }
 
-        return $out->moveAxis(-1, $ax)->contiguous();
+        return self::fromLast($out, $ax);
     }
 
     /** Extra factor on top of the kernel's convention (forward unscaled, inverse 1/n). */
@@ -378,13 +380,13 @@ final class Fft
         }
         // rows along the last axis, C order (a view when already so), transformed out of place into a new array:
         // the input is never copied for the kernel
-        $src = $x->moveAxis($ax, -1)->contiguous();
+        $src = self::toLast($x, $ax);
         $work = NDArray::empty($src->shape(), DType::Complex128);
         $rows = intdiv($work->size(), $len);
         if ($rows > 0) {
             $ffi = Library::ffi();
-            $in = $ffi->cast('double*', $src->ptr());
-            $out = $ffi->cast('double*', $work->ptr());
+            $in = $ffi->cast(Library::type('double*'), $src->ptr());
+            $out = $ffi->cast(Library::type('double*'), $work->ptr());
             Library::check($real ? $ffi->tsr_fft_real($len, $rows, $inverse ? 1 : 0, $in, $out)
                 : $ffi->tsr_fft($len, $rows, $inverse ? 1 : 0, $in, $out), 'fft');
         }
@@ -392,7 +394,19 @@ final class Fft
             $work = $work->mul($scale);
         }
 
-        return $work->moveAxis(-1, $ax)->contiguous();
+        return self::fromLast($work, $ax);
+    }
+
+    /** $x with axis $ax last, C-contiguous ($x itself when it already is): the rows the kernels read. */
+    private static function toLast(NDArray $x, int $ax): NDArray
+    {
+        return $ax === count($x->shape()) - 1 ? $x->contiguous() : $x->moveAxis($ax, -1)->contiguous();
+    }
+
+    /** A new C-contiguous result whose last axis goes back to $ax (itself when $ax is the last). */
+    private static function fromLast(NDArray $out, int $ax): NDArray
+    {
+        return $ax === count($out->shape()) - 1 ? $out : $out->moveAxis(-1, $ax)->contiguous();
     }
 
     private static function fitLength(NDArray $x, int $len, int $ax): NDArray
