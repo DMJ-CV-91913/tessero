@@ -313,6 +313,21 @@ int tsr_ufunc_resolve(int id, int dtype, int *loop_dtype, int *out_dtype, int *n
 
 /* ================================================================ engine */
 
+/* one innermost run of an iteration with several: r is the index over the outer dimensions */
+static inline void run_row(tsr_loop_fn fn, int nop, const tsr_iter *it, char *const *base, const int64_t *steps,
+                           int64_t n, int64_t r)
+{
+    char *p[4];
+    for (int o = 0; o < nop; o++) p[o] = base[o];
+    int64_t rem = r;
+    for (int d = it->nd - 2; d >= 0; d--) {
+        const int64_t i = rem % it->shape[d];
+        rem /= it->shape[d];
+        for (int o = 0; o < nop; o++) p[o] += i * it->st[o][d];
+    }
+    fn(p, n, steps);
+}
+
 static void run_loop(tsr_loop_fn fn, int parallel, int nop, const tsr_iter *it, char **base)
 {
     const int64_t n = it->shape[it->nd - 1];
@@ -337,20 +352,14 @@ static void run_loop(tsr_loop_fn fn, int parallel, int nop, const tsr_iter *it, 
         }
         return;
     }
-#if defined(_OPENMP)
-#pragma omp parallel for num_threads(threads) schedule(static) if (threads > 1)
-#endif
-    for (int64_t r = 0; r < outer; r++) {
-        char *p[4];
-        for (int o = 0; o < nop; o++) p[o] = base[o];
-        int64_t rem = r;
-        for (int d = it->nd - 2; d >= 0; d--) {
-            const int64_t i = rem % it->shape[d];
-            rem /= it->shape[d];
-            for (int o = 0; o < nop; o++) p[o] += i * it->st[o][d];
-        }
-        fn(p, n, steps);
+    if (threads <= 1) {                                  /* no parallel region: entering one costs microseconds */
+        for (int64_t r = 0; r < outer; r++) run_row(fn, nop, it, base, steps, n, r);
+        return;
     }
+#if defined(_OPENMP)
+#pragma omp parallel for num_threads(threads) schedule(static)
+#endif
+    for (int64_t r = 0; r < outer; r++) run_row(fn, nop, it, base, steps, n, r);
 }
 
 int tsr_ufunc(int id, int loop_dtype, int32_t ndim, const int64_t *shape,

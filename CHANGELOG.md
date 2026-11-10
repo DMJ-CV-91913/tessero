@@ -15,6 +15,15 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   scalar element-wise calls. `NDArray::meta()` and the C-order strides of new arrays are cheaper too. A scalar
   `Special::ndtr(0.3)` 2.7 -> 1.3 us; small routines (`Np::diff`, `unique`, `interp`, `trapezoid` on 8 values) 1.4-1.6x
   faster. Results are unchanged, byte for byte.
+- **Element-wise registry functions on small arrays** (`scipy.special`, distribution methods such as
+  `Stats::norm()->cdf($x)`): PHP scalar arguments next to arrays are passed as one value with zero strides instead of
+  as a new 0-d array each, broadcasting computes the strides instead of building views, the pointer, shape and stride
+  arrays are reused, the output goes straight to the constructor and keeps the `void*` it was allocated with, and each
+  function's metadata is looked up once. In the kernel, an element-wise loop over several rows runs without an OpenMP
+  parallel region when it uses one thread (also the NumPy ufunc engine behind `Math::hypot`, `arctan2` and the other
+  loop ufuncs on broadcast or strided operands). `Special::ndtr` on 8 values 9.8 -> 5.0 us, `jv(1.0, $x)` 21 -> 9.2 us,
+  a 2x1 by 4 broadcast `jv` 24 -> 12.6 us, `Stats::norm()->cdf` on 8 values 24 -> 6.0 us (SciPy 41 us). Results are
+  unchanged, byte for byte (NaN sign and payload bits included).
 - **`np.diff`, `outer`, `inner`, `kron`, `ediff1d`, `trapezoid`, `cumulativeTrapezoid`, `geomspace`, `pad` (odd
   reflection) and the `poly*` routines**: their shared element-wise step read every operand through a one-element
   conversion call, also when no conversion was needed; operands already in the loop dtype are now read in place, and a

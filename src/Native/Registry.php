@@ -88,36 +88,16 @@ final class Registry
      */
     public static function ufunc(string $name, array $args, NDArray|array|null $out = null, int $method = -1): NDArray|float|array
     {
-        $info = self::info($name);
+        [$id, $nin, $nout, $outs, $kernelMethod, $label, $intArgs] = self::$ufuncs[$name][$method] ??= self::prepareUfunc($name, $method);
         $ffi = Library::ffi();
-        if ($info['kind'] === 'dist') {
-            if (! isset(self::$arity[$name][$method])) {
-                $ci = $ffi->new('int');
-                $co = $ffi->new('int');
-                Library::check($ffi->tsr_fn_arity($info['id'], $method, FFI::addr($ci), FFI::addr($co)), $name);
-                self::$arity[$name][$method] = [$ci->cdata, $co->cdata];
-            }
-            [$nin, $nout] = self::$arity[$name][$method];
-            $outs = $nout === 1 ? ['y'] : ($method === 8 ? ['mean', 'var', 'skew', 'kurtosis'] : ['a', 'b']);
-            $kernelMethod = $method;
-        } else {
-            if ($info['kind'] !== 'ufunc') {
-                throw new \ValueError("{$name} is not element-wise");
-            }
-            $nin = $info['nin'];
-            $nout = $info['nout'];
-            $outs = $info['outs'];
-            $kernelMethod = 0;
-        }
-        $label = self::label($name);
         if (count($args) !== $nin) {
             throw new \ArgumentCountError("{$label}() takes {$nin} argument(s), " . count($args) . ' given');
         }
 
         // NumPy's integer loop when every integer argument is an integer (PHP int, or an integer array)
-        if ($kernelMethod === 0 && isset($info['int_args'])) {
+        if ($intArgs !== null) {
             $ints = true;
-            foreach ($info['int_args'] as $k) {
+            foreach ($intArgs as $k) {
                 $v = $args[$k];
                 if (! (is_int($v) || is_bool($v) || ($v instanceof NDArray && ($v->dtype()->isInteger() || $v->dtype() === DType::Bool)))) {
                     $ints = false;
@@ -145,7 +125,7 @@ final class Registry
             foreach ($args as $k => $a) {
                 $vals[$k] = (float) $a;
             }
-            self::check($ffi->tsr_fn_ufunc($info['id'], $kernelMethod, 0, 0, null, $nop, $ptrs, null), $label);
+            self::check($ffi->tsr_fn_ufunc($id, $kernelMethod, 0, 0, null, $nop, $ptrs, null), $label);
             if ($nout === 1) {
                 return $vals[$nin];
             }
@@ -177,22 +157,42 @@ final class Registry
             }
         }
         $dt = $anyComplex ? DType::Complex128 : (($anyArray && $f32) ? DType::Float32 : DType::Float64);
-        $shapes = [];
-        foreach ($args as $a) {
+        // array operands by argument position; PHP scalars stay scalars (one value read with zero strides)
+        $shape = null;
+        foreach ($args as $k => $a) {
+            if (is_int($a) || is_float($a) || is_bool($a)) {
+                continue;
+            }
             $arr = $a instanceof NDArray ? $a : NDArray::array($a, $dt === DType::Complex128 ? DType::Complex128 : DType::Float64);
             $arr = $arr->dtype() === $dt ? $arr : $arr->astype($dt);
-            $ops[] = $arr;
-            $shapes[] = $arr->shape();
+            $ops[$k] = $arr;
+            $s = $arr->shape();
+            if ($shape === null) {
+                $shape = $s;
+            } elseif ($s !== $shape) {
+                $shape = false;
+            }
         }
-        try {
-            $shape = NDArray::broadcastShapes(...$shapes);
-        } catch (ShapeError) {
-            throw new ShapeError("{$label}(): operands with shapes " . implode(', ', array_map(self::shapeStr(...), $shapes)) . ' cannot be broadcast together');
+        if ($shape === null) {
+            $shape = [];
+        } elseif ($shape === false) {
+            try {
+                $shape = NDArray::broadcastShapes(...array_map(static fn (NDArray $o): array => $o->shape(), array_values($ops)));
+            } catch (ShapeError) {
+                $shapes = [];
+                foreach ($args as $k => $a) {
+                    $shapes[] = isset($ops[$k]) ? $ops[$k]->shape() : [];
+                }
+                throw new ShapeError("{$label}(): operands with shapes " . implode(', ', array_map(self::shapeStr(...), $shapes)) . ' cannot be broadcast together');
+            }
         }
         $outList = $out === null ? [] : ($out instanceof NDArray ? [$out] : array_values($out));
         if ($outList !== [] && count($outList) !== $nout) {
             throw new \ArgumentCountError("{$label}(): out must hold {$nout} array(s)");
         }
+        $size = array_product($shape);
+        // a shape whose element count fits goes straight to the constructor (NDArray::empty checks it again)
+        $plain = is_int($size) && $size <= PHP_INT_MAX >> 5;
         $targets = [];
         $direct = [];
         for ($k = 0; $k < $nout; $k++) {
@@ -202,28 +202,67 @@ final class Registry
             }
             $ok = $o !== null && $o->dtype() === $dt && $o->shape() === $shape && ! self::overlaps($o, $ops);
             $direct[$k] = $ok;
-            $targets[$k] = $ok ? $o : NDArray::empty($shape, $dt);
+            $targets[$k] = $ok ? $o : ($plain ? new NDArray(Buffer::allocate($size * $dt->itemsize()), $dt, $shape) : NDArray::empty($shape, $dt));
         }
-        $size = (int) array_product($shape);
+        $size = (int) $size;
         if ($size > 0) {
             $nop = $nin + $nout;
             $nd = count($shape);
-            $ptrs = $ffi->new("void*[{$nop}]");
-            $strides = [];
-            $keep = [];
-            foreach ($ops as $k => $a) {
-                $b = $a->shape() === $shape ? $a : $a->broadcastTo($shape);
-                $keep[] = $b;
-                $ptrs[$k] = $ffi->cast('void*', $b->ptr());
-                array_push($strides, ...$b->strides());
+            // taken out of the cache while in use, so a nested call (a destructor run by the cycle collector)
+            // makes its own
+            $st = self::$arrayOps[$nop] ?? self::arrayOps($ffi, $nop);
+            self::$arrayOps[$nop] = null;
+            [$ptrs, $cShape, $cStrides, $dbl, $flt, $dblPtr, $fltPtr] = $st;
+            foreach ($shape as $d => $len) {
+                $cShape[$d] = $len;
+            }
+            $j = 0;
+            foreach ($args as $k => $a) {
+                if (! isset($ops[$k])) {
+                    if ($dt === DType::Float32) {
+                        $flt[$k] = (float) $a;
+                        $ptrs[$k] = $fltPtr[$k];
+                    } else {
+                        $dbl[2 * $k] = (float) $a;
+                        $dbl[2 * $k + 1] = 0.0;
+                        $ptrs[$k] = $dblPtr[$k];
+                    }
+                    for ($d = 0; $d < $nd; $d++) {
+                        $cStrides[$j++] = 0;
+                    }
+                    continue;
+                }
+                $b = $ops[$k];
+                $ptrs[$k] = $b->offset() === 0 ? $b->buffer()->voidPtr() : $ffi->cast('void*', $b->ptr());
+                $bShape = $b->shape();
+                $bStrides = $b->strides();
+                if ($bShape === $shape) {
+                    foreach ($bStrides as $s) {
+                        $cStrides[$j++] = $s;
+                    }
+                    continue;
+                }
+                // broadcast: stride 0 along the added leading axes and the stretched length-1 axes
+                $pad = $nd - count($bShape);
+                for ($d = 0; $d < $pad; $d++) {
+                    $cStrides[$j++] = 0;
+                }
+                foreach ($bShape as $i => $len) {
+                    $cStrides[$j++] = $len === $shape[$pad + $i] ? $bStrides[$i] : 0;
+                }
             }
             foreach ($targets as $k => $t) {
-                $ptrs[$nin + $k] = $ffi->cast('void*', $t->ptr());
-                array_push($strides, ...$t->strides());
+                $ptrs[$nin + $k] = $t->offset() === 0 ? $t->buffer()->voidPtr() : $ffi->cast('void*', $t->ptr());
+                foreach ($t->strides() as $s) {
+                    $cStrides[$j++] = $s;
+                }
             }
-            self::check($ffi->tsr_fn_ufunc($info['id'], $kernelMethod, $dt->value, $nd, Library::i64($shape), $nop, $ptrs,
-                $nd > 0 ? Library::i64($strides) : null), $label);
-            unset($keep);
+            self::check($ffi->tsr_fn_ufunc($id, $kernelMethod, $dt->value, $nd, $cShape, $nop, $ptrs,
+                $nd > 0 ? $cStrides : null), $label);
+            self::$arrayOps[$nop] = $st;
+        }
+        if ($out === null && $nout === 1) {
+            return $targets[0];
         }
         $res = [];
         foreach ($targets as $k => $t) {
@@ -236,8 +275,35 @@ final class Registry
         return $nout === 1 ? $res[$outs[0]] : $res;
     }
 
-    /** @var array<string, array<int, array{0: int, 1: int}>> a distribution method's [nin, nout] */
-    private static array $arity = [];
+    /** @var array<string, array<int, array{0: int, 1: int, 2: int, 3: list<string>, 4: int, 5: string, 6: list<int>|null}>> */
+    private static array $ufuncs = [];
+
+    /**
+     * What ufunc() needs of an element-wise entry (or one distribution method), looked up once: id, nin, nout,
+     * output names, kernel method, label and the integer arguments that select NumPy's integer loop.
+     *
+     * @return array{0: int, 1: int, 2: int, 3: list<string>, 4: int, 5: string, 6: list<int>|null}
+     */
+    private static function prepareUfunc(string $name, int $method): array
+    {
+        $info = self::info($name);
+        if ($info['kind'] === 'dist') {
+            $ffi = Library::ffi();
+            $ci = $ffi->new('int');
+            $co = $ffi->new('int');
+            Library::check($ffi->tsr_fn_arity($info['id'], $method, FFI::addr($ci), FFI::addr($co)), $name);
+            $nin = $ci->cdata;
+            $nout = $co->cdata;
+            $outs = $nout === 1 ? ['y'] : ($method === 8 ? ['mean', 'var', 'skew', 'kurtosis'] : ['a', 'b']);
+
+            return [$info['id'], $nin, $nout, $outs, $method, self::label($name), null];
+        }
+        if ($info['kind'] !== 'ufunc') {
+            throw new \ValueError("{$name} is not element-wise");
+        }
+
+        return [$info['id'], $info['nin'], $info['nout'], $info['outs'], 0, self::label($name), $info['int_args'] ?? null];
+    }
 
     /** @var array<int, array{0: CData, 1: CData}> double[n] and void*[n] pointing into it, by n */
     private static array $scalarOps = [];
@@ -252,6 +318,28 @@ final class Registry
         }
 
         return [$vals, $ptrs];
+    }
+
+    /**
+     * @var array<int, array{0: CData, 1: CData, 2: CData, 3: CData, 4: CData, 5: list<CData>, 6: list<CData>}|null>
+     *      by operand count n: void*[n], int64_t[32] shape, int64_t[32n] strides, double[2n] and float[n] for scalar
+     *      operands (a float64 or complex128 value at double 2k, a float32 one at float k) and void* to those slots
+     */
+    private static array $arrayOps = [];
+
+    /** @return array{0: CData, 1: CData, 2: CData, 3: CData, 4: CData, 5: list<CData>, 6: list<CData>} */
+    private static function arrayOps(FFI $ffi, int $nop): array
+    {
+        $dbl = $ffi->new('double[' . (2 * $nop) . ']');
+        $flt = $ffi->new("float[{$nop}]");
+        $dblPtr = [];
+        $fltPtr = [];
+        for ($k = 0; $k < $nop; $k++) {
+            $dblPtr[] = $ffi->cast('void*', FFI::addr($dbl[2 * $k]));
+            $fltPtr[] = $ffi->cast('void*', FFI::addr($flt[$k]));
+        }
+
+        return [$ffi->new("void*[{$nop}]"), $ffi->new('int64_t[32]'), $ffi->new('int64_t[' . (32 * $nop) . ']'), $dbl, $flt, $dblPtr, $fltPtr];
     }
 
     // ------------------------------------------------------------------ generalised ufuncs

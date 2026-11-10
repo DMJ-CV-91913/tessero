@@ -1,4 +1,6 @@
-# Speed sweep, 2026-11-06
+# Speed sweep, 2026-11-09
+
+First run on 2026-11-06; tiers 1 and 3 re-timed on 2026-11-09, tier 2 last on 2026-11-07 (see Method).
 
 Every function family timed against NumPy 2.4.4 / SciPy 1.17.1, on the same inputs, single-threaded on both sides
 (`OPENBLAS_NUM_THREADS=1`), on the benchmark machine of [benchmarks](benchmarks.md) (Intel Core i7-4790, Haswell,
@@ -101,6 +103,8 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | `numpy.fft.fft2` 1024^2 | 64.5 ms | 29.7 ms | 32.2 ms | large-block reuse: freed blocks of 1 MiB or more are kept by libtessero (64 MiB per process in the CLI, 16 MiB in a web SAPI) and handed out again, instead of going back to the operating system and page-faulting in again on the next call; the rows step and the axis-0 step each made a fresh 16 MB array. Also `rfft2` 40.0 -> 15.7 ms (NumPy 12.2), and smaller gains wherever large temporaries repeat (`linkage`, `Delaunay`, `dct`, `cov` 40.5 -> 34.3 ms against NumPy's 32.2). The same values: every equivalence check of this page (13 suites, about 74,000 calls) gives the old code's results with reuse on |
 | `numpy.einsum` ij,jk->ik 300^2 | 16.7 ms | 6.17 ms | 7.93 ms | in a product of matrices a whole run of the summed label adds rows of b to one output row; they are now added four at a time per element instead of one row per pass, each element still receiving its products one by one in label order: the same sums, bit for bit, with a quarter of the loads and stores (336 calls on each backend: products with inner lengths 1 to 41, batched, ellipsis and broadcast forms, transposed and reduced outputs, three operands, NaN, inf, -0, integers). A later byte-level check showed one exception: where two NaNs meet in a sum, the NaN result can carry the other sign bit (every other bit is the same; the old code was itself not consistent there) |
 | `scipy.special` element-wise, 100,000 values | `huber` 0.88, `radian` 0.53, `entr` 1.13, `xlog1py` 1.69 ms | 0.73, 0.38, 0.94, 1.45 ms | -- | a float64 loop over the whole run for each of the 241 functions (generated with the registry, in a translation unit of its own) instead of the engine's generic per-element loop: each element still runs the very same compiled element function, so the results are the same to the last bit, NaN sign bits included (every function on contiguous, scalar-broadcast, strided, float32 and scalar inputs). Cheap functions gain 10 to 30%; tier 1 above was re-timed after it (2026-11-09, `bench/tier1_bench.php`) |
+| fixed cost per call, FFI backend | scalar `special.ndtr` 2.7 us; `numpy.diff` on 8 values 10.9 us | 1.3 us; 7.2 us | 0.22 us; 3.3 us | the registry binding prepares each routine once (label, result type, sequence and in-place arguments), fills the kernel's array descriptors in place instead of building and copying one per argument, keeps short string arguments and the C types it needs, and reuses the operand buffers of scalar element-wise calls; also `unique`, `interp`, `trapezoid` on 8 values 1.4-1.6x faster. Tier 3 above was re-timed after it (2026-11-09). Results unchanged, byte for byte |
+| `scipy.special` and distribution methods on small arrays | `ndtr` on 8 values 9.8 us; `jv(1.0, x)` 21 us; `jv` 2x1 by 4 24 us; `norm().cdf` on 8 values 24 us | 5.0; 9.2; 12.6; 6.0 us | 0.52; 2.6; 4.3; 41 us | PHP scalar arguments passed as one value with zero strides instead of a new 0-d array each, broadcast strides computed instead of views built, the pointer, shape and stride arrays reused, the output array built directly, and each function's metadata looked up once; in the kernel, a loop over several rows on one thread no longer enters an OpenMP parallel region (also the NumPy ufunc engine on broadcast or strided operands). Best of three alternating rounds at a load average of about 11; results unchanged, byte for byte (47,869 fixture results and 84 calls with scalar, float32, complex, NaN-payload and broadcast operands) |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -234,6 +238,10 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 - Tiers 1 and 3 re-timed on 2026-11-09, after the lower per-call cost of the FFI path (commit c6e18549): two
   alternating rounds of each side (`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`, at a load average of 9 to 18), each
   case keeping its best time on each side.
+- Results unchanged: since 2026-11-09 every speed change is also checked byte for byte with
+  `tools/parity/run-tests.php --hash`, which records a hash of the raw bytes of every fixture call's result (arrays by
+  dtype, shape and bytes, so NaN sign and payload bits count; floats by their bits; exceptions by class and message),
+  47,869 results, on the code before and after the change: every hash is the same.
 - `bench/sweep_report.py` compares any two `{case: ms}` result files.
 
 ## Tier 2, all cases

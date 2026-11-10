@@ -57,7 +57,10 @@ final class Buffer
             ));
         }
 
-        return new self(Library::address($raw), $bytes, true);
+        $buf = new self(Library::address($raw), $bytes, true);
+        $buf->voidPtr = $raw;                                // the void* the kernel returned, kept for voidPtr()
+
+        return $buf;
     }
 
     /*
@@ -208,7 +211,7 @@ final class Buffer
         }
         if ($this->owned && ! $this->released) {
             $this->released = true;
-            Library::ffi()->tsr_free(self::raw($this->address), $this->bytes);
+            Library::ffi()->tsr_free($this->voidPtr ?? self::raw($this->address), $this->bytes);
         }
     }
 

@@ -460,6 +460,21 @@ static inline void run_elems(const elem_job *job, char **p, const int64_t *steps
     }
 }
 
+/* one innermost run of an iteration with several: row is the index over the outer dimensions */
+static inline void run_row(const elem_job *job, const fn_iter *it, char *const *data, const int64_t *steps, int64_t n,
+                           int64_t row)
+{
+    char *p[FN_MAXOP];
+    for (int o = 0; o < it->nop; o++) p[o] = data[o];
+    int64_t rem = row;
+    for (int d = it->nd - 2; d >= 0; d--) {
+        const int64_t i = rem % it->shape[d];
+        rem /= it->shape[d];
+        for (int o = 0; o < it->nop; o++) p[o] += i * it->st[o][d];
+    }
+    run_elems(job, p, steps, n);
+}
+
 static int run_elementwise(const elem_job *job, int32_t ndim, const int64_t *shape, void **data, const int64_t *strides,
                            int parallel)
 {
@@ -490,20 +505,14 @@ static int run_elementwise(const elem_job *job, int32_t ndim, const int64_t *sha
         }
         return TSR_OK;
     }
-#if defined(_OPENMP)
-#pragma omp parallel for num_threads(threads) schedule(static) if (threads > 1)
-#endif
-    for (int64_t row = 0; row < outer; row++) {
-        char *p[FN_MAXOP];
-        for (int o = 0; o < nop; o++) p[o] = (char *)data[o];
-        int64_t rem = row;
-        for (int d = it.nd - 2; d >= 0; d--) {
-            const int64_t i = rem % it.shape[d];
-            rem /= it.shape[d];
-            for (int o = 0; o < nop; o++) p[o] += i * it.st[o][d];
-        }
-        run_elems(job, p, steps, n);
+    if (threads <= 1) {                                  /* no parallel region: entering one costs microseconds */
+        for (int64_t row = 0; row < outer; row++) run_row(job, &it, (char **)data, steps, n, row);
+        return TSR_OK;
     }
+#if defined(_OPENMP)
+#pragma omp parallel for num_threads(threads) schedule(static)
+#endif
+    for (int64_t row = 0; row < outer; row++) run_row(job, &it, (char **)data, steps, n, row);
     return TSR_OK;
 }
 
