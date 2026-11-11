@@ -200,10 +200,10 @@ $(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h include/tesser
 # - scipy_sparse_linalg.c: the iterative solvers take a dense matrix or a CSR one through different loops, fused
 #   differently, so the two gave answers 1 ulp apart (cg: 1.25e-16 on darwin-arm64) where they are the same bits on
 #   x86 (shown on x86 with -mfma -ffp-contract=fast: both differences appear, and go with this rule);
-# - la_fd_normal.c (linalg.fd_normal, curve_fit's Levenberg-Marquardt algebra): it reproduces Optimize\LeastSquares's
+# - np_linalg_fd.c (linalg.fd_normal, curve_fit's Levenberg-Marquardt algebra): it reproduces Optimize\LeastSquares's
 #   PHP loop bit for bit, and PHP rounds every product separately (fused, the iterations drifted apart on ARM).
 # tests/test_geom_ref.c, the tests' geometric references, builds the same way. ext/config.m4 compiles both with it.
-NOCONTRACT_C := spatial_distance scipy_sparse_linalg la_fd_normal
+NOCONTRACT_C := spatial_distance scipy_sparse_linalg np_linalg_fd
 $(patsubst %,$(BUILD)/c/%.o,$(NOCONTRACT_C)): $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h include/tessero_version.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -ffp-contract=off $(VIS) -Ithird_party/numpy/include -c -o $@ $<
