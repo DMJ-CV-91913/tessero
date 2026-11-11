@@ -10,11 +10,11 @@ AVX2; PHP 8.5, FFI backend). A ratio is Tessero time / reference time: below 1, 
 |---|---|---|---|---|
 | 1 | all `scipy.special` element-wise functions, 100,000 values each (the parity fixture inputs, tiled) | 212 functions | **0.95** | 106 |
 | 2 | 84 heavier calls at realistic sizes (linalg, FFT, signal, ndimage, interpolate, integrate, optimize, stats, sparse, csgraph, spatial, cluster), re-timed after the fixes below | 84 cases | **0.67** | 68 |
-| 3 | per-call latency of every parity fixture call (small inputs) | 1,022 functions, 15,184 cases | **0.34** | 743 |
+| 3 | per-call latency of every parity fixture call (small inputs) | 1,022 functions, 15,184 cases | **0.33** | 750 |
 
 Reading it: on small inputs (tier 3) the fixed cost of a call dominates, and Tessero's compiled kernels behind one
-FFI call beat SciPy's Python-level wrappers (stats 0.04, csgraph 0.03, signal 0.15); NumPy's own core functions are
-the exception (np 1.67), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
+FFI call beat SciPy's Python-level wrappers (stats 0.03, csgraph 0.04, signal 0.14); NumPy's own core functions are
+the exception (np 1.63), as they are C all the way down. On element-wise math at 100,000 values (tier 1) the two are
 on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and splines: clearly faster (by more than 10%)
 on 49 cases, within 10% either way on 26, and clearly slower on 9, mostly where an algorithm is not yet the best one
 available (the gaps below).
@@ -108,6 +108,7 @@ The quick gaps, closed the same day (tier-2 cases, single-threaded; results unch
 | array arithmetic and axis functions on small arrays (8 values) | `x * 2.0` 11.8 us; `x + x` 8.9 us; `copy` 5.0 us; `numpy.partition` 18.7 us; `numpy.searchsorted` 17.3 us | 4.8; 5.2; 3.1; 11.1; 11.8 us | 0.68; 0.46; 0.23; 1.35; 1.30 us | binary and unary operations, copies, casts and the loop ufuncs fill one reused set of shape and stride arrays instead of four new ones, pass the buffers' cached pointers, compute broadcast strides once without building views, and pass a PHP scalar's bytes directly instead of a new 0-d array; the generalised ufuncs parse their C types once, write the array descriptors in place, and pass a scalar input after the first through a slot of its own. Best of three alternating rounds at a load average of about 11; results unchanged, byte for byte (47,869 fixture results and 1,727 calls: seven dtypes, a strided view, a transpose and a 0-d array against ten kinds of PHP scalar, NaN payloads, broadcasts and `out=`) |
 | routine calls, small sorts and `numpy.fft` on small inputs (8 values) | `argsort` 18.8 us; `lexsort` (2 x 5) 17.6 us; `sort` 9.8 us; `fft` 10.5 us; `unique` with all outputs 21.0 us; `NDArray::array` of 4 floats 4.0 us | 3.7; 4.6; 4.1; 4.7; 12.6; 2.9 us | 1.36; 1.10; 0.92; 5.26; 21.8; 0.45 us | the FFI binding parses each C type once (a type given by name was parsed on every cast), arrays write their own kernel descriptor, and routine results are wrapped without repeating the constructor's checks and keep the block's pointer for freeing; in the kernel, a stable argsort of 32 keys or fewer runs an insertion sort instead of the radix passes, whose 96 KB of count tables were zeroed and scanned on every call (the stable order is unique, so the permutation is the same); `argsort`, `sort` and `numpy.fft` along the last axis skip the axis round trip. Best of three alternating rounds; results unchanged, byte for byte (47,869 fixture results and 2,271 calls: sorts of 1 to 40 values with ties, NaN payloads and -0.0 in six dtypes, FFTs along every axis with every norm) |
 | PHP lists as arguments, and generalised ufuncs with a scalar result (8 values) | `median` of a list 14.1 us; `percentile` of a list 16.9 us; `nansum` of 4 integers 15.7 us; `searchsorted` of one value 10.5 us; `broadcast_shapes` of three lists 20.2 us; `special.ndtr` of a list 7.8 us | 7.8; 9.8; 8.6; 7.2; 14.0; 6.6 us | 19.9; 55.7; 4.1; 1.25; 2.2; 1.0 us | a list of up to 4,096 values goes to the kernel as a block holding the values, shape and dtype `NDArray::array()` gives it, instead of becoming an array whose buffer is allocated and freed around the call; a generalised ufunc's 0-d result is read back from a slot as the number `item()` returns, instead of through an array. Best of three alternating rounds; results unchanged, byte for byte (47,869 fixture results and 353 calls with list operands, ragged, non-numeric, empty and too deep lists and their exceptions included). Tier 3 above was re-timed after both rows (2026-11-10) |
+| generalised ufuncs and routine arguments on small inputs (8 values) | `median` 5.6 us; `percentile` 6.7 us; `partition` 9.8 us; `nansum` of 4 integers 5.7 us; `empty_like` 4.4 us; `swapaxes` (2 x 2) 5.8 us | 4.6; 6.0; 8.5; 4.9; 3.7; 4.4 us | 19.7; 55.6; 1.35; 3.2; 0.31; 0.57 us | a generalised ufunc keeps the C blocks of its last call (axis masks, array descriptors, parameters, output shapes) and reuses them when no call is using them, instead of allocating six per call; a routine writes `null` and integer arguments into their slots without a call each; and a pointer is read back as an integer through a union instead of two casts, which every new array block and adopted result goes through (`NDArray::empty` 2.0 -> 1.8 us). Best of three alternating rounds; results unchanged, byte for byte (47,869 fixture results and the 4,375 calls of the earlier rows' checks). Tier 3 above was re-timed after it (2026-11-10) |
 
 The sorts behind `median`, `quantile`, `unique` and the set routines were libc `qsort` with a comparison function;
 they now use `sortSimd` (and `tsr_argsort` for stable orders). `einsum` also stopped skipping a product once a
@@ -124,7 +125,7 @@ largest not yet profiled).
 | `spatial.KDTree`, 100k points: build / 100 queries | 58 / 0.36 ms | 33 / 0.22 ms | the kernel build is about 35 ms; the rest is the constructor casting the PHP point arrays into one flat list (SciPy receives an ndarray) | -- |
 | `sparse.linalg.eigsh` k=6, 100 x 100 grid Poisson (CSR) | 0.74 s | 0.50 s | after the Lanczos run, a second one on the complement of the converged vectors checks that no repeated eigenvalue was missed (this spectrum has many); it takes about a third of the time | -- |
 | `spatial.ConvexHull`, 10k (2-D) | 2.0 ms | 1.5 ms | the kernel call is about 1.0 ms (the sort and the chain); the rest is casting the PHP point arrays (about 0.5 ms) and the call | -- |
-| `special.ellip_harm_2`, Kelvin-function zeros (tier 3) | 100-600x | -- | slow per-call algorithms | -- |
+| `special.ellip_harm_2`, `ellip_normal`, Kelvin- and Bessel-function zeros (tier 3) | 20-740x | -- | slow per-call algorithms: the zeros are found by scanning in steps of 0.02 (Kelvin) or 0.05 (Bessel) and refining each sign change, the Kelvin bisection evaluating the function at the bracket's lower end again on every step | for the zeros, carry that value through the bisection (the same numbers, about half the evaluations) |
 
 ## Where SciPy fails and Tessero completes
 
@@ -137,38 +138,38 @@ fixtures mix derivative=0 and 1 rows, and SciPy takes one derivative flag per ca
 
 ## Per call through the native extension
 
-Tier 3 again with the native extension (`ext/`) instead of FFI, re-timed on 2026-11-10 at commit ad837126: every parity fixture call
+Tier 3 again with the native extension (`ext/`) instead of FFI, re-timed on 2026-11-10 at commit c5f434b0 (the extension's code is that of ad837126): every parity fixture call
 that passed its check, the same cases, timed through `Tessero\Ext\*`. The extension calls the same kernel without
 the FFI layer, which costs several microseconds per call; where the work itself dominates, the two backends take the
 same time (`stats.tukey_hsd`: 54 ms on both). Against NumPy/SciPy the extension is about 8x faster per call on
-average and faster on 890 of 1,022 functions, NumPy's own core functions included (0.49; through FFI they are about
-1.7x slower).
+average and faster on 887 of 1,022 functions, NumPy's own core functions included (0.49; through FFI they are about
+1.6x slower).
 
-Best of four runs on each side, alternating, at a load average of 8 to 17 (earlier on 2026-11-10, at commit
-655992c6, the same method gave 0.12 and 882; on 2026-11-06, at commit 2184ba75 and at times above 40, three runs had
+Best of four runs on each side, alternating, at a load average of 5 to 21 (earlier on 2026-11-10, at commit
+ad837126, the same method gave 0.12 and 890, at commit 655992c6 0.12 and 882; on 2026-11-06, at commit 2184ba75 and at times above 40, three runs had
 given 0.11 and 893):
 
 | module | functions | geomean ratio | faster |
 |---|---|---|---|
 | cluster | 4 | 0.05 | 4 |
 | csgraph | 14 | 0.01 | 14 |
-| distance | 26 | 0.21 | 26 |
-| fft | 18 | 0.38 | 17 |
+| distance | 26 | 0.20 | 26 |
+| fft | 18 | 0.36 | 18 |
 | hierarchy | 26 | 0.01 | 26 |
 | interpolate | 6 | 0.01 | 6 |
-| linalg | 30 | 0.35 | 27 |
-| ndimage | 66 | 0.14 | 66 |
-| np | 193 | 0.49 | 128 |
+| linalg | 30 | 0.36 | 27 |
+| ndimage | 66 | 0.13 | 66 |
+| np | 193 | 0.49 | 126 |
 | npoly | 155 | 0.12 | 148 |
-| scipyfft | 11 | 0.62 | 3 |
-| signal | 124 | 0.06 | 119 |
+| scipyfft | 11 | 0.67 | 3 |
+| signal | 124 | 0.05 | 119 |
 | slinalg | 87 | 0.09 | 87 |
 | sparse | 23 | 0.04 | 23 |
-| special | 89 | 0.90 | 48 |
+| special | 89 | 0.94 | 46 |
 | splinalg | 14 | 0.02 | 14 |
 | stats | 111 | 0.01 | 109 |
-| windows | 25 | 0.12 | 25 |
-| **all** | 1022 | **0.12** | 890 |
+| windows | 25 | 0.11 | 25 |
+| **all** | 1022 | **0.12** | 887 |
 
 ## Sorting against NumPy
 
@@ -253,6 +254,13 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   best time on each side. Tessero's FFI times fell to 0.79 of those of the earlier 2026-11-10 run (`fft` 0.66, `np`
   0.78, `special` 0.87) and the NumPy/SciPy side's to 0.98; through the extension, to 0.96 (the NumPy/SciPy side to
   0.95 of that run's).
+- Tier 3 re-timed a third time on 2026-11-10, at commit c5f434b0 (after the generalised-ufunc change above): four
+  rounds of FFI, the extension and NumPy/SciPy in turn (at a load average of 5 to 21), each case keeping its best time
+  on each side. Tessero's FFI times fell to 0.975 of those of the ad837126 run (`stats` 0.90, `sparse` 0.94, `np`
+  0.97) and the NumPy/SciPy side's stayed at 1.005; through the extension, whose code did not change, 1.006.
+  `csgraph` and `cluster`, the first fixtures of each round, read 1.34 and 1.28 on Tessero's side in this run, while
+  alternating runs of those fixtures on the code before and after give 1.04 and 0.97: the host's other jobs, not the
+  change. Leaving those two modules out of both runs, the geomean fell from 0.350 to 0.338.
 - Tier 1 re-timed on 2026-11-10 (the code of commit c880558f): four alternating rounds of each side (at a load
   average of 8 to 26), each function keeping its best time on each side. Tessero's times fell to 0.89 of the
   2026-11-09 times and SciPy's to 0.98; the one kernel change to these loops in between is that an element-wise loop
@@ -356,25 +364,25 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 
 | module | functions | geomean ratio | faster |
 |---|---|---|---|
-| cluster | 4 | 0.13 | 4 |
-| csgraph | 14 | 0.03 | 14 |
-| distance | 26 | 0.41 | 23 |
-| fft | 18 | 1.36 | 2 |
+| cluster | 4 | 0.16 | 4 |
+| csgraph | 14 | 0.04 | 14 |
+| distance | 26 | 0.39 | 24 |
+| fft | 18 | 1.19 | 7 |
 | hierarchy | 26 | 0.04 | 26 |
 | interpolate | 6 | 0.03 | 6 |
-| linalg | 30 | 0.82 | 21 |
-| ndimage | 66 | 0.40 | 51 |
-| np | 193 | 1.67 | 62 |
-| npoly | 155 | 0.35 | 138 |
+| linalg | 30 | 0.81 | 20 |
+| ndimage | 66 | 0.38 | 52 |
+| np | 193 | 1.63 | 60 |
+| npoly | 155 | 0.34 | 136 |
 | scipyfft | 11 | 0.93 | 3 |
-| signal | 124 | 0.15 | 109 |
+| signal | 124 | 0.14 | 109 |
 | slinalg | 87 | 0.22 | 86 |
 | sparse | 23 | 0.18 | 21 |
-| special | 89 | 1.66 | 33 |
+| special | 89 | 1.71 | 37 |
 | splinalg | 14 | 0.04 | 14 |
-| stats | 111 | 0.04 | 107 |
-| windows | 25 | 0.35 | 23 |
-| **all** | 1022 | **0.34** | 743 |
+| stats | 111 | 0.03 | 107 |
+| windows | 25 | 0.30 | 24 |
+| **all** | 1022 | **0.33** | 750 |
 
 ## Tier 1, all functions
 

@@ -219,7 +219,7 @@ the gaps that remain and how to reproduce: [speed sweep](speed-sweep.md).
 |---|---|---|---|
 | `scipy.special` element-wise, 100,000 values | 212 functions | 0.95 | 106 |
 | heavier calls at realistic sizes (re-timed after the fixes) | 84 cases | 0.67 | 68 |
-| per-call latency, every parity fixture call | 1,022 functions | 0.34 | 743 |
+| per-call latency, every parity fixture call | 1,022 functions | 0.33 | 750 |
 
 ## Correctness, not just speed
 
