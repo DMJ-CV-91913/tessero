@@ -32,7 +32,8 @@ unlink($f);
 $prev = Engine::memoryBudget();
 $big = X::linspace(1.0, 0.0, 100000);
 Engine::setMemoryBudget(Engine::memoryInUse() + 1200000);   // room for the copy, not for the sort's keys and scratch
-t('sort over budget', fn () => $big->sort());
+// sortRuns() always takes its keys; sort() is the in-place AVX2 sort where the CPU has it, and needs no scratch there
+t('sort over budget', fn () => $big->sortRuns());
 t('argsort over budget', fn () => $big->argsort());
 Engine::setMemoryBudget($prev);
 unset($big);
