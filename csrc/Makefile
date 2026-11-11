@@ -252,10 +252,14 @@ DESTDIR ?=
 INCLUDEDIR ?= $(PREFIX)/include
 LIBDIR ?= $(PREFIX)/lib
 BINDIR ?= $(PREFIX)/bin
+# the generated function manifests (tools/parity), for consumers that track which registry functions exist
+DATADIR ?= $(PREFIX)/share
+MANIFESTS := ../tools/parity/registry.json ../tools/parity/api.json
 PUBLIC_HEADERS := tessero.h tessero_version.h tessero_native.h tessero_repro_f32.h
 
 install: $(OUT)/$(LIBNAME).$(EXT)
-	install -d '$(DESTDIR)$(INCLUDEDIR)'
+	install -d '$(DESTDIR)$(INCLUDEDIR)' '$(DESTDIR)$(DATADIR)/tessero'
+	install -m 644 $(MANIFESTS) '$(DESTDIR)$(DATADIR)/tessero/'
 	install -m 644 $(addprefix include/,$(PUBLIC_HEADERS)) '$(DESTDIR)$(INCLUDEDIR)/'
 ifeq ($(EXT),dll)
 	install -d '$(DESTDIR)$(BINDIR)'
@@ -270,6 +274,7 @@ endif
 
 uninstall:
 	rm -f $(addprefix '$(DESTDIR)$(INCLUDEDIR)'/,$(PUBLIC_HEADERS))
+	rm -f '$(DESTDIR)$(DATADIR)/tessero/registry.json' '$(DESTDIR)$(DATADIR)/tessero/api.json'
 ifeq ($(EXT),dll)
 	rm -f '$(DESTDIR)$(BINDIR)/$(LIBNAME).$(EXT)'
 else
