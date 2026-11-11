@@ -20,9 +20,9 @@ stage() {                       # $1 = target directory
 rewrite() {                     # $1 = config.m4, $2 = config.w32: write the source lists between the markers
     local c cxx repro fitpack nprand nofma
     # repro_f32.c is listed on its own: it must build with contraction and fast-math off (as in csrc/Makefile);
-    # so are csrc/Makefile's NOCONTRACT_C files (spatial_distance.c, scipy_sparse_linalg.c): contraction off
-    c="$(cd "$ROOT/csrc/src" && ls *.c | grep -vx -e 'repro_f32.c' -e 'spatial_distance.c' -e 'scipy_sparse_linalg.c' | sed 's|^|libtessero/src/|' | tr '\n' ' ')libtessero/third_party/scipy/cdflib.c libtessero/third_party/scipy/_cosine.c libtessero/third_party/scipy/quadpack/quadpack.c libtessero/third_party/scipy/zeros/brentq.c "
-    nofma="$(cd "$ROOT/csrc/src" && ls scipy_sparse_linalg.c spatial_distance.c 2>/dev/null | sed 's|^|libtessero/src/|' | tr '\n' ' ')"
+    # so are csrc/Makefile's NOCONTRACT_C files (spatial_distance.c, scipy_sparse_linalg.c, la_fd_normal.c): contraction off
+    c="$(cd "$ROOT/csrc/src" && ls *.c | grep -vx -e 'repro_f32.c' -e 'spatial_distance.c' -e 'scipy_sparse_linalg.c' -e 'la_fd_normal.c' | sed 's|^|libtessero/src/|' | tr '\n' ' ')libtessero/third_party/scipy/cdflib.c libtessero/third_party/scipy/_cosine.c libtessero/third_party/scipy/quadpack/quadpack.c libtessero/third_party/scipy/zeros/brentq.c "
+    nofma="$(cd "$ROOT/csrc/src" && ls la_fd_normal.c scipy_sparse_linalg.c spatial_distance.c 2>/dev/null | sed 's|^|libtessero/src/|' | tr '\n' ' ')"
     # numpy/random is listed on its own too: it builds with contraction off (as in csrc/Makefile)
     nprand="$(cd "$ROOT/csrc/third_party/numpy/random/src" && ls *.c | sed 's|^|libtessero/third_party/numpy/random/src/|' | tr '\n' ' ')"
     # the f2c-translated FITPACK (csrc/Makefile FITPACKC): scipy_interpolate.c calls curfit_/surfit_/...

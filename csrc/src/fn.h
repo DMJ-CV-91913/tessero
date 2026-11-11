@@ -241,6 +241,10 @@ tsr_result *fn_result_seq(tsr_result *r, int64_t n);
 double *fn_arg_doubles(const tsr_arg *a, int64_t *n);
 /* the argument's own elements when it is a contiguous float64 array (what fn_arg_doubles would copy), else NULL */
 const double *fn_arg_f64_view(const tsr_arg *a, int64_t *n);
+/* np_linalg.c: a routine argument as a contiguous float64 copy (fn_arg_doubles), the error naming it on failure */
+double *mat_f64(const tsr_arg *a, const char *what, int64_t *n);
+/* la_fd_normal.c (built with contraction off), listed in np_linalg.c's table: linalg.fd_normal */
+int r_fd_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
 
 /* The registry's input gate (fn_gate.c, ADR 0016): structural checks run by every tsr_fn_* entry point before
    dispatch. Each returns TSR_OK, or TSR_EARG / TSR_EDIM / TSR_ETYPE with the message set (tsr_fn_error).
