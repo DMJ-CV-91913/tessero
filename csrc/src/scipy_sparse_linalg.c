@@ -49,6 +49,7 @@ static int r_spsolve_triangular(const void *ctx, const tsr_arg *args, int nargs,
     int vector = B->ndim == 1;
     int64_t k = vector ? 1 : B->shape[1];
     if (B->shape[0] != n) { fn_set_error("spsolve_triangular: b has the wrong number of rows"); return TSR_EARG; }
+    if (fn_arg_short(B, n, k, "spsolve_triangular", "b")) return TSR_EARG;
     int64_t La, Lb; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
     double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { fn_free_doubles(A, La); return TSR_ENOMEM; }
     int64_t sh1[1] = {n}, sh2[2] = {n, k};
@@ -245,6 +246,7 @@ static int r_expm_multiply(const void *ctx, const tsr_arg *args, int nargs, tsr_
     int vector = Bd->ndim == 1;
     int64_t k = vector ? 1 : Bd->shape[1];
     if (Bd->shape[0] != n) { fn_set_error("expm_multiply: B has the wrong number of rows"); return TSR_EARG; }
+    if (fn_arg_short(Bd, n, k, "expm_multiply", "B")) return TSR_EARG;
     int64_t La, Lb; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
     double *B = fn_arg_doubles(&args[1], &Lb); if (!B) { fn_free_doubles(A, La); return TSR_ENOMEM; }
     double *E = (double *)malloc((size_t)(n * n) * sizeof(double));
@@ -461,6 +463,7 @@ static int r_spsolve(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         const int64_t k = vector ? 1 : B->shape[1];
         if (cols != n) { spl_op_free(&A); fn_set_error("spsolve: A must be square"); return TSR_EARG; }
         if (B->ndim > 2 || B->shape[0] != n) { spl_op_free(&A); fn_set_error("spsolve: b has the wrong number of rows"); return TSR_EARG; }
+        if (fn_arg_short(B, n, k, "spsolve", "b")) { spl_op_free(&A); return TSR_EARG; }
         int64_t Lb; double *b = fn_arg_doubles(&args[1], &Lb);
         if (!b) { spl_op_free(&A); return TSR_ENOMEM; }
         int64_t sh1[1] = {n}, sh2[2] = {n, k};
@@ -477,6 +480,7 @@ static int r_spsolve(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int vector = B->ndim == 1;
     int64_t k = vector ? 1 : B->shape[1];
     if (B->shape[0] != n) { fn_set_error("spsolve: b has the wrong number of rows"); return TSR_EARG; }
+    if (fn_arg_short(B, n, k, "spsolve", "b")) return TSR_EARG;
     int64_t La, Lb; double *A = fn_arg_doubles(&args[0], &La); if (!A) return TSR_ENOMEM;
     double *b = fn_arg_doubles(&args[1], &Lb); if (!b) { fn_free_doubles(A, La); return TSR_ENOMEM; }
     int64_t sh1[1] = {n}, sh2[2] = {n, k};
@@ -513,6 +517,7 @@ static int spl_iter_prologue(const char *name, const tsr_arg *args, int nargs, t
     if (lrc != TSR_OK) return lrc;
     if (cols != n) { spl_op_free(A); fn_set_error("iterative solver: A must be square"); return TSR_EARG; }
     if (args[1].arr.shape[0] != n) { spl_op_free(A); fn_set_error("iterative solver: b has the wrong length"); return TSR_EARG; }
+    if (fn_arg_short(&args[1].arr, n, 1, "iterative solver", "b")) { spl_op_free(A); return TSR_EARG; }
     double rtol = 1e-5, atol = 0.0; int64_t maxit = 10 * n;
     /* signature: (A, b, x0=None, rtol=1e-5, atol=0.0, maxiter=None). We ignore x0 (start from 0). */
     if (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) rtol = (args[3].flags & 1) ? (double)args[3].ival : args[3].num;
@@ -823,6 +828,7 @@ static int r_lsqr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3) { fn_set_error("lsqr: A 2-D, b array"); return TSR_EARG; }
     int64_t mm = args[0].arr.shape[0], nn = args[0].arr.shape[1];
     if (args[1].arr.shape[0] != mm) { fn_set_error("lsqr: b has wrong length"); return TSR_EARG; }
+    if (fn_arg_short(&args[1].arr, mm, 1, "lsqr", "b")) return TSR_EARG;
     double atol = 1e-8, btol = 1e-8; int64_t maxit = 4 * nn;
     if (nargs > 2 && (args[2].kind == 1 || args[2].kind == 4)) atol = (args[2].flags & 1) ? (double)args[2].ival : args[2].num;
     if (nargs > 3 && (args[3].kind == 1 || args[3].kind == 4)) btol = (args[3].flags & 1) ? (double)args[3].ival : args[3].num;
@@ -993,6 +999,7 @@ static int r_lsmr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     if (nargs < 2 || args[0].kind != 3 || args[0].arr.ndim != 2 || args[1].kind != 3) { fn_set_error("lsmr: A 2-D, b array"); return TSR_EARG; }
     int64_t mm = args[0].arr.shape[0], nn = args[0].arr.shape[1];
     if (args[1].arr.shape[0] != mm) { fn_set_error("lsmr: b has wrong length"); return TSR_EARG; }
+    if (fn_arg_short(&args[1].arr, mm, 1, "lsmr", "b")) return TSR_EARG;
     /* maxiter is argument 6 ("A, b, damp, atol, btol, conlim, maxiter"): reading argument 5 took conlim=1e8 for the
        iteration count, 100 million iterations per default call (15 s on a 10 x 6 system) */
     int64_t maxit = 4 * nn;

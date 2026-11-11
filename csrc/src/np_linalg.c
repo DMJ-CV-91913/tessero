@@ -522,6 +522,7 @@ static int r_lstsq(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     const int vector = B->ndim == 1;
     if (B->shape[0] != m) { fn_set_error("lstsq: b must have as many rows as a"); return TSR_EARG; }
     const int64_t nrhs = vector ? 1 : B->shape[1];
+    if (fn_arg_short(B, m, nrhs, "lstsq", "b")) return TSR_EARG;
     double rcond = 2.220446049250313e-16 * (double)(m > n ? m : n);
     if (nargs > 2 && args[2].kind == 1) rcond = args[2].flags & 1 ? (double)args[2].ival : args[2].num;
     int64_t na, nb;
@@ -1032,6 +1033,7 @@ static int r_multi_dot(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     if (!a0) return TSR_ENOMEM;
     int64_t ar = sq_first ? 1 : items[0].arr.shape[0];
     int64_t ac = sq_first ? items[0].arr.shape[0] : items[0].arr.shape[1];
+    if (fn_arg_short(&items[0].arr, ar, ac, "multi_dot", "the first array")) { fn_free_doubles(a0, na); return TSR_EARG; }
     double *acc = (double *)malloc(sizeof(double) * (size_t)(ar * ac > 0 ? ar * ac : 1));   /* malloc-owned copy */
     if (!acc) { fn_free_doubles(a0, na); return TSR_ENOMEM; }
     memcpy(acc, a0, sizeof(double) * (size_t)(ar * ac));
@@ -1042,6 +1044,7 @@ static int r_multi_dot(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
         const int64_t br = items[i].arr.shape[0];
         const int64_t bc = b1d ? 1 : items[i].arr.shape[1];
         if (ac != br) { fn_set_error("multi_dot: shapes do not align at argument %lld", (long long)i); rc = TSR_EARG; break; }
+        if (fn_arg_short(&items[i].arr, br, bc, "multi_dot", "an array")) { rc = TSR_EARG; break; }
         int64_t nb; double *b = fn_arg_doubles(&items[i], &nb);
         if (!b) { rc = TSR_ENOMEM; break; }
         double *np_ = (double *)calloc((size_t)(ar * bc > 0 ? ar * bc : 1), sizeof(double));
@@ -1808,6 +1811,7 @@ static int r_cho_solve(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     const int vector = B->ndim == 1;
     if (B->shape[0] != n) { fn_set_error("cho_solve: b has the wrong number of rows"); return TSR_EARG; }
     const int64_t nrhs = vector ? 1 : B->shape[1];
+    if (fn_arg_short(B, n, nrhs, "cho_solve", "b")) return TSR_EARG;
     int64_t nc, nb;
     double *c = mat_f64(&args[0], "c", &nc);
     if (!c) return TSR_ENOMEM;
@@ -1834,6 +1838,7 @@ static int r_solve_triangular(const void *ctx, const tsr_arg *args, int nargs, t
     const int vector = B->ndim == 1;
     if (B->shape[0] != n) { fn_set_error("solve_triangular: b has the wrong number of rows"); return TSR_EARG; }
     const int64_t nrhs = vector ? 1 : B->shape[1];
+    if (fn_arg_short(B, n, nrhs, "solve_triangular", "b")) return TSR_EARG;
     int64_t trans = 0, lower = 0, unit = 0;
     if (nargs > 2 && args[2].kind == 1) trans = args[2].ival ? args[2].ival : (int64_t)args[2].num;
     if (nargs > 3 && (args[3].kind == 4 || args[3].kind == 1)) lower = args[3].num != 0 || args[3].ival != 0;
@@ -1853,8 +1858,8 @@ static int r_solve_triangular(const void *ctx, const tsr_arg *args, int nargs, t
     double *bc = nrhs > 1 ? (double *)malloc(sizeof(double) * (size_t)(n * nrhs)) : x;
     if (!x || !bc) { if (nrhs > 1) free(bc); if (own) fn_free_doubles((double *)a, na); fn_free_doubles(b, nb); return TSR_ENOMEM; }
     if (nrhs > 1) { for (int64_t i = 0; i < n; i++) for (int64_t c = 0; c < nrhs; c++) bc[c * n + i] = b[i * nrhs + c]; }
-    else memcpy(x, b, sizeof(double) * (size_t)n);
-    lapack_int info = n > 0 ? LAPACKE_dtrtrs(LAPACK_COL_MAJOR, ucm, tcm, unit ? 'U' : 'N', (lapack_int)n, (lapack_int)nrhs,
+    else if (nrhs == 1) memcpy(x, b, sizeof(double) * (size_t)n);   /* (n, 0): no right-hand side, an empty x */
+    lapack_int info = n > 0 && nrhs > 0 ? LAPACKE_dtrtrs(LAPACK_COL_MAJOR, ucm, tcm, unit ? 'U' : 'N', (lapack_int)n, (lapack_int)nrhs,
                                              (double *)a, (lapack_int)n, bc, (lapack_int)n) : 0;
     if (nrhs > 1) {
         if (info == 0) for (int64_t i = 0; i < n; i++) for (int64_t c = 0; c < nrhs; c++) x[i * nrhs + c] = bc[c * n + i];
@@ -1912,6 +1917,8 @@ static int r_toeplitz(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     const int64_t m = args[0].arr.ndim >= 1 ? args[0].arr.shape[0] : 0;
     const int have_r = nargs > 1 && args[1].kind == 3 && args[1].arr.ndim >= 1;
     const int64_t n = have_r ? args[1].arr.shape[0] : m;
+    if (fn_arg_short(&args[0].arr, m, 1, "toeplitz", "c") || (have_r && fn_arg_short(&args[1].arr, n, 1, "toeplitz", "r")))
+        return TSR_EARG;
     int64_t nc, nr = 0;
     double *c = mat_f64(&args[0], "c", &nc);
     if (!c) return TSR_ENOMEM;
@@ -2499,6 +2506,7 @@ static int r_lu_solve(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     const int vector = B->ndim == 1;
     if (B->ndim < 1 || B->shape[0] != n) { fn_set_error("lu_solve: b has the wrong number of rows"); return TSR_EARG; }
     const int64_t nrhs = vector ? 1 : B->shape[1];
+    if (fn_arg_short(B, n, nrhs, "lu_solve", "b") || fn_arg_short(&args[1].arr, n, 1, "lu_solve", "piv")) return TSR_EARG;
     char tr = 'N';
     if (nargs > 3 && args[3].kind == 1) { int64_t t = (args[3].flags & 1) ? args[3].ival : (int64_t)args[3].num; tr = (t == 1) ? 'T' : ((t == 2) ? 'C' : 'N'); }
     int64_t nlu, npv, nb;
@@ -2511,7 +2519,15 @@ static int r_lu_solve(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)(n > 0 ? n : 1));
     double *x = (double *)malloc(sizeof(double) * (size_t)(n * nrhs > 0 ? n * nrhs : 1));
     if (!ipiv || !x) { free(ipiv); free(x); fn_free_doubles(lu, nlu); fn_free_doubles(pivd, npv); fn_free_doubles(bsrc, nb); return TSR_ENOMEM; }
-    for (int64_t i = 0; i < n; i++) ipiv[i] = (lapack_int)((int64_t)pivd[i] + 1);
+    for (int64_t i = 0; i < n; i++) {
+        /* dgetrs swaps row i with row piv[i]: a pivot outside [0, n) would have it read and write past x */
+        if (!(pivd[i] >= 0.0 && pivd[i] < (double)n)) {
+            free(ipiv); free(x); fn_free_doubles(lu, nlu); fn_free_doubles(pivd, npv); fn_free_doubles(bsrc, nb);
+            fn_set_error("lu_solve: piv[%lld] is not a row index in [0, %lld)", (long long)i, (long long)n);
+            return TSR_EARG;
+        }
+        ipiv[i] = (lapack_int)((int64_t)pivd[i] + 1);
+    }
     for (int64_t i = 0; i < n * nrhs; i++) x[i] = bsrc[i];
     if (n > 0 && nrhs > 0) {
         lapack_int info = LAPACKE_dgetrs(LAPACK_ROW_MAJOR, tr, (lapack_int)n, (lapack_int)nrhs, lu, (lapack_int)n, ipiv, x, (lapack_int)nrhs);
@@ -2766,6 +2782,7 @@ static int r_solve_toeplitz(const void *ctx, const tsr_arg *args, int nargs, tsr
     const int64_t k = vector ? 1 : B->shape[1];
     int rc = TSR_OK;
     if (B->shape[0] != n) { if (r != c) fn_free_doubles(r, nr); fn_free_doubles(c, nc); fn_set_error("solve_toeplitz: b has the wrong number of rows"); return TSR_EARG; }
+    if (fn_arg_short(B, n, k, "solve_toeplitz", "b")) { if (r != c) fn_free_doubles(r, nr); fn_free_doubles(c, nc); return TSR_EARG; }
     double *M = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
     int64_t nb = 0; double *b = mat_f64(&args[1], "b", &nb);
     if (!M || !b) rc = TSR_ENOMEM;
@@ -2792,6 +2809,7 @@ static int r_solve_circulant(const void *ctx, const tsr_arg *args, int nargs, ts
     const int64_t k = vector ? 1 : B->shape[1];
     int rc = TSR_OK;
     if (B->shape[0] != n) { fn_free_doubles(c, n); fn_set_error("solve_circulant: b has the wrong number of rows"); return TSR_EARG; }
+    if (fn_arg_short(B, n, k, "solve_circulant", "b")) { fn_free_doubles(c, n); return TSR_EARG; }
     double *M = (double *)malloc(sizeof(double) * (size_t)(n * n > 0 ? n * n : 1));
     int64_t nb = 0; double *b = mat_f64(&args[1], "b", &nb);
     if (!M || !b) rc = TSR_ENOMEM;
@@ -2823,6 +2841,7 @@ static int r_matmul_toeplitz(const void *ctx, const tsr_arg *args, int nargs, ts
     const int64_t k = vector ? 1 : X->shape[1];
     int rc = TSR_OK;
     if (X->shape[0] != n) { if (r != c) fn_free_doubles(r, nr); fn_free_doubles(c, nc); fn_set_error("matmul_toeplitz: x has the wrong number of rows"); return TSR_EARG; }
+    if (fn_arg_short(X, n, k, "matmul_toeplitz", "x")) { if (r != c) fn_free_doubles(r, nr); fn_free_doubles(c, nc); return TSR_EARG; }
     int64_t nx = 0; double *x = mat_f64(&args[1], "x", &nx);
     int64_t osh[2] = {m, k};
     double *out = x ? (double *)fn_result_array(&res[0], TSR_F64, vector ? 1 : 2, osh) : NULL;
@@ -3018,6 +3037,7 @@ static int r_cho_solve_banded(const void *ctx, const tsr_arg *args, int nargs, t
     const int vector = B->ndim == 1;
     const int64_t nrhs = vector ? 1 : B->shape[1];
     if (B->shape[0] != n) { fn_set_error("cho_solve_banded: b has the wrong number of rows"); return TSR_EARG; }
+    if (fn_arg_short(B, n, nrhs, "cho_solve_banded", "b")) return TSR_EARG;
     int64_t ncb, nb;
     double *cbd = mat_f64(&args[0], "cb", &ncb); if (!cbd) return TSR_ENOMEM;
     double *b = mat_f64(&args[2], "b", &nb); if (!b) { fn_free_doubles(cbd, ncb); return TSR_ENOMEM; }
@@ -3186,6 +3206,7 @@ static int r_solveh_banded(const void *ctx, const tsr_arg *args, int nargs, tsr_
     if (B->shape[0] != n) { fn_set_error("solveh_banded: b has the wrong number of rows"); return TSR_EARG; }
     const int vector = B->ndim == 1;
     const int64_t nrhs = vector ? 1 : B->shape[1];
+    if (fn_arg_short(B, n, nrhs, "solveh_banded", "b")) return TSR_EARG;
     char uplo = 'U';
     if (nargs > 2 && ((args[2].kind == 4 && args[2].num != 0) || (args[2].kind == 1 && (args[2].num != 0 || args[2].ival != 0)))) uplo = 'L';
     int64_t nab, nb;

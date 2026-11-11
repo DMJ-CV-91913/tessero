@@ -1225,6 +1225,16 @@ const double *fn_arg_f64_view(const tsr_arg *a, int64_t *n)
 
 void fn_free_doubles(double *p, int64_t n) { if (p) tsr_free(p, n > 8 ? n * 8 : 64); }
 
+int fn_arg_short(const tsr_array *a, int64_t rows, int64_t cols, const char *what, const char *arg)
+{
+    const int64_t size = tsr_shape_size(a->ndim, a->shape);
+    if (rows >= 0 && cols >= 0 && (rows == 0 || cols <= size / rows)) return 0;   /* rows * cols <= size, no overflow */
+    if (rows < 0 || cols < 0) fn_set_error("%s: %s has a negative length past its dimensions", what, arg);
+    else fn_set_error("%s: %s holds %lld values, fewer than the %lld x %lld it is read as (a zero-length axis)", what,
+                      arg, (long long)size, (long long)rows, (long long)cols);
+    return 1;
+}
+
 int tsr_fn_routine(int id, int nargs, const tsr_arg *args, int nres, tsr_result *res)
 {
     /* every result slot is empty before any return, so a caller may always hand res to tsr_fn_results_free */

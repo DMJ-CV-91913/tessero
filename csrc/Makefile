@@ -336,6 +336,15 @@ test: $(BUILD)/test_opt
 sanitize: $(BUILD)/test_san
 	ASAN_OPTIONS=detect_leaks=1 $(BUILD)/test_san
 
+# every routine and generalised ufunc on zero-length axes and junk past ndim, under ASan + UBSan + leak checks, one
+# forked call each (fuzz/shape_sweep.c); reuses the sanitizer build's library objects
+$(BUILD)/shape_sweep: $(BUILD)/test_san fuzz/shape_sweep.c
+	$(CC) -O1 -g -std=gnu11 $(OPENMP) $(SAN) -w -Iinclude -c -o $(BUILD)/shape_sweep.o fuzz/shape_sweep.c
+	$(CXX) $(SAN) $(OPENMP) $(filter-out %/test_main.o,$(wildcard $(BUILD)/c_san/*.o)) $(BUILD)/shape_sweep.o $(OBJ_CXX_SAN) -o $@ $(LDLIBS)
+
+shape-sweep: $(BUILD)/shape_sweep
+	ASAN_OPTIONS=detect_leaks=1 $(BUILD)/shape_sweep
+
 # line coverage of the C test suite (docs/project/security-review-2026-10.md P2): instrumented objects and test binary
 # in COV_BUILD, never the shared library. The per-file summary comes from gcovr when it is installed (it also writes
 # COV_BUILD/coverage.html), else from gcov.
@@ -351,7 +360,7 @@ coverage:
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all portable test sanitize coverage clean fuzz fuzz-standalone abi-check install uninstall
+.PHONY: all portable test sanitize shape-sweep coverage clean fuzz fuzz-standalone abi-check install uninstall
 
 # ---- fuzzing (see csrc/fuzz/): coverage-guided with libFuzzer (clang + compiler-rt), or the standalone
 #      mutation driver under ASan + UBSan anywhere. Corpora live in fuzz/corpus/<target>.

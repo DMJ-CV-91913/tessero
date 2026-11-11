@@ -80,6 +80,8 @@ static int r_kmeans2(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     if (nargs > 4 && args[4].kind == 2 && args[4].str && strcmp(args[4].str, "matrix") != 0) { fn_set_error("kmeans2: only minit='matrix' (explicit initial centroids) is supported here"); return TSR_EARG; }
     const int64_t n = args[0].arr.shape[0], f = args[0].arr.shape[1], nc = args[1].arr.shape[0];
     if (args[1].arr.shape[1] != f) { fn_set_error("kmeans2: data and k must have the same number of features"); return TSR_EARG; }
+    /* an empty code book left every observation on centroid 0 and counted it into a zero-length block */
+    if (nc < 1 && n > 0) { fn_set_error("kmeans2: k must hold at least one centroid"); return TSR_EARG; }
     const int iter = (nargs > 2 && args[2].kind == 1) ? (int)args[2].num : 10;
     int64_t ld, lk;
     double *data = fn_arg_doubles(&args[0], &ld), *init = data ? fn_arg_doubles(&args[1], &lk) : NULL;

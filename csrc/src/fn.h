@@ -256,6 +256,11 @@ int fn_gate_args(int nargs, const tsr_arg *args);
 int fn_gate_strided(int32_t ndim, const int64_t *shape, int nop, void *const *data, const int64_t *strides, const int64_t *elsize,
                     int nout);
 void fn_free_doubles(double *p, int64_t n);
+/* the guard for lengths a routine takes from an array's shape: 1 (with the error set) when the array holds fewer
+   than rows * cols elements -- a zero-length axis past the ones it is read along ((n, k, 0) holds none), or a 0-d or
+   1-d array whose shape[1] is not part of its shape -- so reading rows * cols values from it, or from its
+   fn_arg_doubles copy, would pass the end of the block; 0 when they are all there (shape-derived lengths >= 0) */
+int fn_arg_short(const tsr_array *a, int64_t rows, int64_t cols, const char *what, const char *arg);
 double tsr_psum(const double *x, int64_t n);           /* NumPy's pairwise summation (reduce.c) */
 /* sum as numpy.add.reduce would: pairwise over a contiguous core, first + x1 + x2 ... otherwise */
 static inline double fn_sum(const double *x, int64_t n, unsigned flags)

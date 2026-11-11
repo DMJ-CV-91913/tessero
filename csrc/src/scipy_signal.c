@@ -6579,6 +6579,9 @@ static int r_lfiltic(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     double *x = (haveX && y) ? fn_arg_doubles(&args[3], &lx) : NULL;
     const int64_t nx = haveX ? args[3].arr.shape[0] : 0;
     int rc = (!b || !a || !y || (haveX && !x)) ? TSR_ENOMEM : TSR_OK;
+    if (rc == TSR_OK && (fn_arg_short(&args[0].arr, M + 1, 1, "lfiltic", "b") || fn_arg_short(&args[1].arr, N + 1, 1, "lfiltic", "a")
+                         || fn_arg_short(&args[2].arr, ny, 1, "lfiltic", "y") || (haveX && fn_arg_short(&args[3].arr, nx, 1, "lfiltic", "x"))))
+        rc = TSR_EARG;                                    /* lengths from shape[0] read from flattened copies */
     if (rc == TSR_OK && N < 0) { fn_set_error("lfiltic: there must be at least one `a` coefficient"); rc = TSR_EARG; }
     if (rc == TSR_OK) {
         const int64_t K = (M > N ? M : N);

@@ -2381,6 +2381,7 @@ static void test_splinalg_csr(void)
     const int64_t before = tsr_allocated();
     int64_t sd[2] = {N, N}, sb[1] = {N}, sn[1] = {nnz}, sp[1] = {N + 1}, s2[1] = {2};
     int same = 0, ran = 0;
+    char why[256] = "";                                   /* the first solver that differs, and how (a failure's evidence) */
     for (size_t s = 0; s < sizeof solvers / sizeof solvers[0]; s++) {
         const int id = tsr_fn_find(solvers[s]);
         if (id < 0) continue;
@@ -2390,19 +2391,28 @@ static void test_splinalg_csr(void)
         tsr_arg ac[4] = {grp, arg_arr(b, 1, sb), {0}, arg_num(1e-10)};
         tsr_result rd[2], rc2[2];
         ran++;
-        if (tsr_fn_routine(id, 4, ad, 2, rd) != 0) continue;
-        if (tsr_fn_routine(id, 4, ac, 2, rc2) == 0) {
+        const int rcd = tsr_fn_routine(id, 4, ad, 2, rd);
+        if (rcd != 0) {
+            if (!why[0]) snprintf(why, sizeof why, "; first: %s dense rc %d (%s)", solvers[s], rcd, tsr_fn_error());
+            continue;
+        }
+        const int rcc = tsr_fn_routine(id, 4, ac, 2, rc2);
+        if (rcc == 0) {
             const double *xd = rd[0].arr.data, *xc = rc2[0].arr.data;
             int eq = rd[0].arr.shape[0] == N && rc2[0].arr.shape[0] == N;
+            double maxdiff = 0.0;
+            for (int i = 0; eq && i < N; i++) maxdiff = fmax(maxdiff, fabs(xd[i] - xc[i]));
             for (int i = 0; eq && i < N; i++) eq = xd[i] == xc[i];   /* equal values; only a zero's sign may differ */
             double res = 0.0;                               /* and a solution: |A x - b| small */
-            for (int i = 0; eq && i < N; i++) { double r = -b[i]; for (int j = 0; j < N; j++) r += dense[i * N + j] * xc[j]; res = fmax(res, fabs(r)); }
+            for (int i = 0; i < N && rc2[0].arr.shape[0] == N; i++) { double r = -b[i]; for (int j = 0; j < N; j++) r += dense[i * N + j] * xc[j]; res = fmax(res, fabs(r)); }
             same += eq && res < 1e-6;
+            if (!(eq && res < 1e-6) && !why[0])
+                snprintf(why, sizeof why, "; first: %s max |dense - csr| %.3g, residual %.3g", solvers[s], maxdiff, res);
             tsr_fn_results_free(rc2, 2);
-        }
+        } else if (!why[0]) snprintf(why, sizeof why, "; first: %s csr rc %d (%s)", solvers[s], rcc, tsr_fn_error());
         tsr_fn_results_free(rd, 2);
     }
-    CHECK(ran == 8 && same == ran, "iterative solvers on CSR == on the same matrix dense (%d of %d)", same, ran);
+    CHECK(ran == 8 && same == ran, "iterative solvers on CSR == on the same matrix dense (%d of %d%s)", same, ran, why);
 
     /* malformed CSR groups: refused, nothing leaked */
     const int id = tsr_fn_find("splinalg.cg");
@@ -3925,6 +3935,95 @@ static void test_numerics_review(void)
     } else CHECK(0, "logsumexp axis=1 failed: %s", tsr_fn_error());
 }
 
+/* Fuzz, 2026-11: the solvers take k right-hand sides from b's shape[1] and read n*k values from their copy of b.
+   A b with a trailing zero-length axis, (2, 8, 0), holds none, and a 0-d b's shape[1] is not part of its shape:
+   matmul_toeplitz read past its copy (heap-buffer-overflow under ASan). Each is now refused with an error. */
+void fn_results_free(tsr_result *res, int n);   /* fn.h */
+static int rhs_call(const char *name, tsr_arg *args, int nargs)
+{
+    tsr_result r[4];
+    const int rc = tsr_fn_routine(tsr_fn_find(name), nargs, args, 4, r);
+    if (rc >= 0) fn_results_free(r, 4);
+    return rc;
+}
+
+static void test_rhs_shape_regressions(void)
+{
+    double m2[4] = {4.0, 1.0, 1.0, 3.0}, c2[2] = {2.0, 0.5}, piv[2] = {0.0, 1.0}, one[1] = {1.0};
+    const int64_t s22[2] = {2, 2}, s2[1] = {2}, s1[1] = {1}, s280[3] = {2, 8, 0}, s02[2] = {0, 2};
+    const tsr_arg A = arg_arr(m2, 2, s22), C = arg_arr(c2, 1, s2), B = arg_arr(NULL, 3, s280), I1 = arg_arr(one, 1, s1);
+    tsr_arg pair[2] = {A, B};                             /* multi_dot([A, B]) */
+    tsr_arg seq; memset(&seq, 0, sizeof seq); seq.kind = 5; seq.count = 2; seq.items = pair;
+    /* every routine the zero-length-axis sweep (fuzz/shape_sweep.c) found reading past a block, one call each with
+       an array of shape (2, 8, 0) where its shape promises 2 x 8 values */
+    struct { const char *name; tsr_arg args[3]; int n; const char *expect; } cases[] = {
+        {"linalg.lstsq", {A, B}, 2, "fewer than"},
+        {"linalg.multi_dot", {seq}, 1, "fewer than"},
+        {"slinalg.lstsq", {A, B}, 2, "fewer than"},
+        {"slinalg.cho_solve", {A, arg_int(0), B}, 3, "fewer than"},
+        {"slinalg.cho_solve_banded", {A, arg_int(0), B}, 3, "fewer than"},
+        {"slinalg.solveh_banded", {A, B}, 2, "fewer than"},
+        {"slinalg.solve_triangular", {A, B}, 2, "fewer than"},
+        {"slinalg.lu_solve", {A, arg_arr(piv, 1, s2), B}, 3, "fewer than"},
+        {"slinalg.toeplitz", {B}, 1, "fewer than"},
+        {"slinalg.solve_toeplitz", {C, B}, 2, "fewer than"},
+        {"slinalg.solve_circulant", {C, B}, 2, "fewer than"},
+        {"slinalg.matmul_toeplitz", {C, B}, 2, "fewer than"},
+        {"signal.lfiltic", {B, I1, I1}, 3, "fewer than"},
+        {"cluster.kmeans2", {A, arg_arr(NULL, 2, s02)}, 2, "at least one centroid"},
+        {"splinalg.cg", {A, B}, 2, "fewer than"},
+        {"splinalg.bicg", {A, B}, 2, "fewer than"},
+        {"splinalg.bicgstab", {A, B}, 2, "fewer than"},
+        {"splinalg.cgs", {A, B}, 2, "fewer than"},
+        {"splinalg.minres", {A, B}, 2, "fewer than"},
+        {"splinalg.gmres", {A, B}, 2, "fewer than"},
+        {"splinalg.lgmres", {A, B}, 2, "fewer than"},
+        {"splinalg.gcrotmk", {A, B}, 2, "fewer than"},
+        {"splinalg.qmr", {A, B}, 2, "fewer than"},
+        {"splinalg.tfqmr", {A, B}, 2, "fewer than"},
+        {"splinalg.lsqr", {A, B}, 2, "fewer than"},
+        {"splinalg.lsmr", {A, B}, 2, "fewer than"},
+        {"splinalg.expm_multiply", {A, B}, 2, "fewer than"},
+        {"splinalg.spsolve", {A, B}, 2, "fewer than"},
+        {"splinalg.spsolve_triangular", {A, B}, 2, "fewer than"},
+    };
+    for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+        const int rc = rhs_call(cases[i].name, cases[i].args, cases[i].n);
+        CHECK(rc == TSR_EARG && strstr(tsr_fn_error(), cases[i].expect), "%s refuses a (2, 8, 0) argument (rc %d: %s)",
+              cases[i].name, rc, tsr_fn_error());
+    }
+    /* the fuzzer's input: a 0-d x whose shape[0] (outside its shape) matches n, and shape[1] = 8 */
+    tsr_arg x0 = arg_arr(one, 0, NULL);
+    x0.arr.shape[0] = 2;
+    x0.arr.shape[1] = 8;
+    tsr_arg mt[2] = {C, x0};
+    const int rc = rhs_call("slinalg.matmul_toeplitz", mt, 2);
+    CHECK(rc == TSR_EARG && strstr(tsr_fn_error(), "x holds 1 values"), "matmul_toeplitz refuses a 0-d x (rc %d: %s)", rc, tsr_fn_error());
+    /* no right-hand side, b (2, 0): an empty (2, 0) x, nothing read (it copied 2 values from the empty b) */
+    const int64_t s20[2] = {2, 0};
+    tsr_arg st[2] = {A, arg_arr(NULL, 2, s20)};
+    tsr_result r0[1];
+    const int rc0 = tsr_fn_routine(tsr_fn_find("slinalg.solve_triangular"), 2, st, 1, r0);
+    CHECK(rc0 == 0 && r0[0].arr.ndim == 2 && r0[0].arr.shape[0] == 2 && r0[0].arr.shape[1] == 0,
+          "solve_triangular with b of shape (2, 0) gives an empty (2, 0) x (rc %d: %s)", rc0, tsr_fn_error());
+    if (rc0 == 0) fn_results_free(r0, 1);
+    /* lu_solve: piv shorter than n, and a pivot outside [0, n) (dgetrs would swap with a row past x) */
+    double piv_bad[2] = {0.0, 7.0}, b1_rhs[2] = {1.0, 2.0};
+    tsr_arg lu1[3] = {A, arg_arr(NULL, 2, s20), arg_arr(b1_rhs, 1, s2)};
+    tsr_arg lu2[3] = {A, arg_arr(piv_bad, 1, s2), arg_arr(b1_rhs, 1, s2)};
+    int rcl = rhs_call("slinalg.lu_solve", lu1, 3);
+    CHECK(rcl == TSR_EARG && strstr(tsr_fn_error(), "piv holds 0 values"), "lu_solve refuses a short piv (rc %d: %s)", rcl, tsr_fn_error());
+    rcl = rhs_call("slinalg.lu_solve", lu2, 3);
+    CHECK(rcl == TSR_EARG && strstr(tsr_fn_error(), "not a row index"), "lu_solve refuses a pivot outside [0, n) (rc %d: %s)", rcl, tsr_fn_error());
+    /* valid right-hand sides still solve: (2,) and (2, 1) */
+    const int64_t s21[2] = {2, 1};
+    double b1[2] = {1.0, 2.0};
+    tsr_arg ok[2] = {C, arg_arr(b1, 1, s2)};
+    CHECK(rhs_call("slinalg.matmul_toeplitz", ok, 2) == 0, "matmul_toeplitz with x of shape (2,)");
+    ok[1] = arg_arr(b1, 2, s21);
+    CHECK(rhs_call("slinalg.solve_toeplitz", ok, 2) == 0, "solve_toeplitz with b of shape (2, 1)");
+}
+
 /* The registry's input gate (fn_gate.c, ADR 0016): every tsr_fn_* entry point refuses structurally invalid
    input before any routine, loop or core reads it, and still accepts the edge cases that are valid (empty
    arrays with no data, reversed views whose offset points at the end of the block, broadcast strides). */
@@ -4321,6 +4420,7 @@ int main(void)
     test_sort_small_stacks();
 #endif
     test_arg_gate();
+    test_rhs_shape_regressions();
     test_ownership();
     CHECK(tsr_allocated() == 0, "no leaked tessero allocations (%ld bytes)", (long)tsr_allocated());
     printf("libtessero %s simd=%d: %d checks, %d failures\n", tsr_version(), tsr_simd_level(), checks, failures);

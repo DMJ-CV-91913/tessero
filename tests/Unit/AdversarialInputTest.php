@@ -134,6 +134,18 @@ final class AdversarialInputTest extends TestCase
             ['np', 'trilIndices(0, PHP_INT_MIN)', '[[],[]]'],
             ['np', 'setdiff1d({ND}::array([PHP_INT_MAX, 9007199254740993], \'int64\'), [1.5])', '[9007199254740993,9223372036854775807]'],
             ['np', 'put({ND}::array([1, 2]), [0], -9.223372036854776e18)', 'null'],
+            // the solvers took k right-hand sides from b's second axis and read n*k values from b; a trailing
+            // zero-length axis leaves none (fuzz, 2026-11: a heap overread under ASan); refused now
+            ['linalg', 'lstsq([[2.0, 1.0], [1.0, 3.0]], {ND}::zeros([2, 9, 0]))', $raise],
+            ['slinalg', 'lstsq([[2.0, 1.0], [1.0, 3.0]], {ND}::zeros([2, 9, 0]))', $raise],
+            ['slinalg', 'choSolve([[2.0, 0.0], [1.0, 3.0]], true, {ND}::zeros([2, 9, 0]))', $raise],
+            ['slinalg', 'luSolve([[2.0, 1.0], [0.5, 2.5]], [0, 1], {ND}::zeros([2, 9, 0]))', $raise],
+            ['slinalg', 'solveTriangular([[2.0, 1.0], [0.0, 3.0]], {ND}::zeros([2, 9, 0]))', $raise],
+            ['slinalg', 'solveToeplitz([2.0, 0.5], {ND}::zeros([2, 9, 0]))', $raise],
+            ['slinalg', 'solveCirculant([2.0, 0.5], {ND}::zeros([2, 9, 0]))', $raise],
+            ['slinalg', 'matmulToeplitz([2.0, 0.5], {ND}::zeros([2, 9, 0]))', $raise],
+            // a pivot outside [0, n) had dgetrs swap with a row past the solution
+            ['slinalg', 'luSolve([[2.0, 1.0], [0.5, 2.5]], [0, 7], [1.0, 2.0])', $raise],
         ];
         $out = [];
         $backends = ['ffi'];
@@ -153,8 +165,10 @@ final class AdversarialInputTest extends TestCase
     public function testAdversarialInput(string $module, string $expr, string $expect, string $backend): void
     {
         $class = [
-            'ffi' => ['stats' => '\\Tessero\\Stats', 'special' => '\\Tessero\\Special', 'np' => '\\Tessero\\Np'],
-            'ext' => ['stats' => '\\Tessero\\Ext\\Stats', 'special' => '\\Tessero\\Ext\\Special', 'np' => '\\Tessero\\Ext\\Np'],
+            'ffi' => ['stats' => '\\Tessero\\Stats', 'special' => '\\Tessero\\Special', 'np' => '\\Tessero\\Np',
+                'linalg' => '\\Tessero\\Linalg', 'slinalg' => '\\Tessero\\ScipyLinalg'],
+            'ext' => ['stats' => '\\Tessero\\Ext\\Stats', 'special' => '\\Tessero\\Ext\\Special', 'np' => '\\Tessero\\Ext\\Np',
+                'linalg' => '\\Tessero\\Ext\\Linalg', 'slinalg' => '\\Tessero\\Ext\\ScipyLinalg'],
         ][$backend][$module];
         $expr = str_replace('{ND}', $backend === 'ext' ? '\\Tessero\\Ext\\NDArray' : '\\Tessero\\NDArray', $expr);
         $raised = null;

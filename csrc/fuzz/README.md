@@ -24,6 +24,19 @@ in `fuzz/corpus/<name>/` and are replayed first so a crash in a committed seed i
 | `abi` | the input gate (ADR 0016): malformed `tsr_arg`/`tsr_array`/operand sets sent to random routines and to `tsr_fn_ufunc`/`gufunc`/`random`/`rvs` must be refused; valid ones run on exactly-sized blocks |
 | `routines` | every registry routine (slot from the first bytes), fuzzed arg kinds; file-opening routines denied |
 
+`shape_sweep` (`fuzz/shape_sweep.c`, `make -C csrc shape-sweep`) is the deterministic complement of `routines`: every
+routine and generalised ufunc called with zero-length axes in the leading, middle and trailing positions ((0),
+(0,9), (9,0), (0,9,9), (9,0,9), (9,9,0), an int64 (9,9,0)) and with 0-d / 1-d arrays whose shape past ndim holds junk,
+in five argument layouts (all arrays that shape; a valid 9x9 or 9-vector first; that shape first, valid vectors
+after; sequence arguments of two such arrays), about 40,000 calls, each in a forked child under ASan + UBSan + leak
+checks with a 20 s limit. Any read past a block, leak, crash or hang is one `FAIL` line; `build/shape_sweep NAME
+LAYOUT SHAPE` repeats that call in process with the sanitizer's report (`SWEEP_N=n` makes the valid array n x n,
+`SWEEP_ONLY=prefix` limits the sweep). It found 29 routines that took lengths from one axis while the data had a
+zero-length axis elsewhere (2026-11); each now refuses through `fn_arg_short` (fn.h). `np.meshgrid` with a valid
+9x9 `xi` (layout 1) is 9 grids of 9^9 values, 3.5e9 in all (about 28 GB), and outlives the time limit: large work,
+not a hang (measured n x n for n = 4..8: n^(n+1) values, 1.6 s at n = 8; every zero-length meshgrid call completes in
+under 0.3 s).
+
 The shared harness helpers are in `fuzz/fuzz_common.h`: a byte reader (edge-value doubles: NaN, Inf, huge,
 subnormal, size-like), `tsr_arg` builders backed by exact-size heap blocks (so ASan sees overreads), and the
 oracle -- every result is well formed, freed once, and `tsr_allocated()` returns to where it started (no leaked
