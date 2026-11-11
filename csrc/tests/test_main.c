@@ -2679,10 +2679,10 @@ static int64_t *g2t_call(const char *fn, double *P, int64_t n, int64_t *rows, in
     *cols = r[0].arr.ndim == 2 ? r[0].arr.shape[1] : 1;
     return r[0].arr.data;
 }
-static double g2t_orient(const double *P, int64_t a, int64_t b, int64_t c)   /* > 0: counter-clockwise */
-{
-    return (P[2 * b] - P[2 * a]) * (P[2 * c + 1] - P[2 * a + 1]) - (P[2 * b + 1] - P[2 * a + 1]) * (P[2 * c] - P[2 * a]);
-}
+/* the geometric references live in test_geom_ref.c, built with contraction off like spatial_distance.c (why: there) */
+double g2t_orient(const double *P, int64_t a, int64_t b, int64_t c);   /* > 0: counter-clockwise */
+double g2t_incircle(double ax, double ay, double bx, double by, double cx, double cy, const double *P, int64_t p);
+double kd_ref_dist(const double *P, const double *Q, int64_t m, int64_t i, int64_t q);
 static void test_geom2d(void)
 {
     const int64_t before = tsr_allocated();
@@ -2720,9 +2720,7 @@ static void test_geom2d(void)
         const double ax = P[2 * a], ay = P[2 * a + 1], bx = P[2 * b], by = P[2 * b + 1], cx = P[2 * c], cy = P[2 * c + 1];
         for (int64_t p = 0; p < N && empty; p++) {
             if (p == a || p == b || p == c) continue;
-            const double dx = ax - P[2 * p], dy = ay - P[2 * p + 1], ex = bx - P[2 * p], ey = by - P[2 * p + 1], fx = cx - P[2 * p], fy = cy - P[2 * p + 1];
-            const double det = (dx * dx + dy * dy) * (ex * fy - ey * fx) - (ex * ex + ey * ey) * (dx * fy - dy * fx) + (fx * fx + fy * fy) * (dx * ey - dy * ex);
-            if (det > 1e-12) empty = 0;                   /* strictly inside the circumcircle */
+            if (g2t_incircle(ax, ay, bx, by, cx, cy, P, p) > 1e-12) empty = 0;   /* strictly inside the circumcircle */
         }
     }
     int shared = 1;                                       /* every edge in at most two triangles */
@@ -2952,11 +2950,7 @@ static void test_kdtree(void)
             const int64_t *ix = r[1].arr.data;
             int ok = r[0].arr.shape[1] == kk;
             for (int64_t q = 0; q < nq && ok; q++) {
-                for (int64_t i = 0; i < n; i++) {
-                    double s = 0.0;
-                    for (int64_t j = 0; j < m; j++) { const double df = P[i * m + j] - Q[q * m + j]; s += df * df; }
-                    pairs[2 * i] = sqrt(s); pairs[2 * i + 1] = (double)i;
-                }
+                for (int64_t i = 0; i < n; i++) { pairs[2 * i] = kd_ref_dist(P, Q, m, i, q); pairs[2 * i + 1] = (double)i; }
                 qsort(pairs, (size_t)n, 16, kd_cmp);
                 for (int64_t t = 0; t < kk; t++)
                     if (memcmp(&d[q * kk + t], &pairs[2 * t], 8) || ix[q * kk + t] != (int64_t)pairs[2 * t + 1]) { ok = 0; break; }

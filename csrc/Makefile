@@ -191,6 +191,20 @@ $(BUILD)/c/alloc.o: $(TSR_COMMIT_FILE)
 $(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h include/tessero_repro_f32.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -fno-fast-math -ffp-contract=off -fvisibility=default -Ithird_party/numpy/include -c -o $@ $<
+# two files build with contraction off, so their a*b + c rounds twice on every target, as x86-64 builds without -mfma
+# always do (there it changes nothing); aarch64 GCC and Apple clang fuse it by default, and per expression, at the
+# compiler's discretion:
+# - spatial_distance.c: the convex hull's and Delaunay's orientation and in-circle tests decide on the sign of a
+#   difference of products; fused, near-collinear and near-cocircular points were judged otherwise (the hull lost
+#   strict turns, Delaunay its empty circumcircles on linux-aarch64 and darwin-arm64);
+# - scipy_sparse_linalg.c: the iterative solvers take a dense matrix or a CSR one through different loops, fused
+#   differently, so the two gave answers 1 ulp apart (cg: 1.25e-16 on darwin-arm64) where they are the same bits on
+#   x86 (shown on x86 with -mfma -ffp-contract=fast: both differences appear, and go with this rule).
+# tests/test_geom_ref.c, the tests' geometric references, builds the same way. ext/config.m4 compiles both with it.
+NOCONTRACT_C := spatial_distance scipy_sparse_linalg
+$(patsubst %,$(BUILD)/c/%.o,$(NOCONTRACT_C)): $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h include/tessero_version.h
+	@mkdir -p $(BUILD)/c
+	$(CC) $(CFLAGS) -ffp-contract=off $(VIS) -Ithird_party/numpy/include -c -o $@ $<
 # numpy/random builds with contraction off, so a*b+c (random_uniform's lower + range*x, random_normal's
 # loc + scale*z, ...) rounds twice, as in NumPy's x86-64 wheels, on every target: aarch64 GCC and Apple clang
 # contract by default, which moved those draws 1 ulp off the x86 reference. x86-64 builds without -mfma never
@@ -301,10 +315,11 @@ endif
 portable:
 	$(MAKE) CFLAGS="$(CFLAGS) -DTSR_NO_CLONES"
 
-$(BUILD)/test_opt: $(OBJ_C) tests/test_main.c $(OBJ_CXX)
+$(BUILD)/test_opt: $(OBJ_C) tests/test_main.c tests/test_geom_ref.c $(OBJ_CXX)
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -c -o $(BUILD)/test_main.o tests/test_main.c
-	$(CXX) $(CFLAGS) $(OBJ_C) $(BUILD)/test_main.o $(OBJ_CXX) $(CXXLINK) -o $@ $(LDLIBS)
+	$(CC) $(CFLAGS) -ffp-contract=off -c -o $(BUILD)/test_geom_ref.o tests/test_geom_ref.c
+	$(CXX) $(CFLAGS) $(OBJ_C) $(BUILD)/test_main.o $(BUILD)/test_geom_ref.o $(OBJ_CXX) $(CXXLINK) -o $@ $(LDLIBS)
 
 # OWNERSHIP_CHECK=1: any build checks memory ownership (ADR 0015); never the release default
 OWNERSHIP_CHECK ?= 0
@@ -324,10 +339,13 @@ $(BUILD)/cxx_san/wright.cc.o: third_party/scipy/wright.cc
 	@mkdir -p $(BUILD)/cxx_san
 	$(CXX) -O1 -g -std=c++17 $(OPENMP) $(SAN) $(TP_INC) -MMD -MP -c -o $@ $<
 
-$(BUILD)/test_san: $(SRC) tests/test_main.c $(OBJ_CXX_SAN)
+SAN_CC = $(CC) -O1 -g -std=gnu11 -fno-math-errno -fno-trapping-math $(OPENMP) $(SAN) -DTSR_NO_CLONES $(WARN) -w \
+    -I$(abspath third_party/numpy/include)
+NOCONTRACT_SRC = $(patsubst %,src/%.c,$(NOCONTRACT_C))
+$(BUILD)/test_san: $(SRC) tests/test_main.c tests/test_geom_ref.c $(OBJ_CXX_SAN)
 	@mkdir -p $(BUILD)/c_san
-	cd $(BUILD)/c_san && $(CC) -O1 -g -std=gnu11 -fno-math-errno -fno-trapping-math $(OPENMP) $(SAN) \
-	    -DTSR_NO_CLONES $(WARN) -w -I$(abspath third_party/numpy/include) -c $(abspath $(SRC)) $(abspath tests/test_main.c)
+	cd $(BUILD)/c_san && $(SAN_CC) -c $(abspath $(filter-out $(NOCONTRACT_SRC),$(SRC))) $(abspath tests/test_main.c)
+	cd $(BUILD)/c_san && $(SAN_CC) -ffp-contract=off -c $(abspath $(NOCONTRACT_SRC)) $(abspath tests/test_geom_ref.c)
 	$(CXX) $(SAN) $(OPENMP) $(BUILD)/c_san/*.o $(OBJ_CXX_SAN) -o $@ $(LDLIBS)
 
 test: $(BUILD)/test_opt
@@ -340,7 +358,7 @@ sanitize: $(BUILD)/test_san
 # forked call each (fuzz/shape_sweep.c); reuses the sanitizer build's library objects
 $(BUILD)/shape_sweep: $(BUILD)/test_san fuzz/shape_sweep.c
 	$(CC) -O1 -g -std=gnu11 $(OPENMP) $(SAN) -w -Iinclude -c -o $(BUILD)/shape_sweep.o fuzz/shape_sweep.c
-	$(CXX) $(SAN) $(OPENMP) $(filter-out %/test_main.o,$(wildcard $(BUILD)/c_san/*.o)) $(BUILD)/shape_sweep.o $(OBJ_CXX_SAN) -o $@ $(LDLIBS)
+	$(CXX) $(SAN) $(OPENMP) $(filter-out %/test_main.o %/test_geom_ref.o,$(wildcard $(BUILD)/c_san/*.o)) $(BUILD)/shape_sweep.o $(OBJ_CXX_SAN) -o $@ $(LDLIBS)
 
 shape-sweep: $(BUILD)/shape_sweep
 	ASAN_OPTIONS=detect_leaks=1 $(BUILD)/shape_sweep
