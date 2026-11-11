@@ -419,8 +419,24 @@ final class Registry
         // the first input's dtype, dimensions and size (an array or a short list; never a scalar slot)
         [$dt0, $nd0, $size0] = isset($lists[0]) ? [$lists[0][2], count($lists[0][1]), array_product($lists[0][1])]
             : [$arrs[0]->dtype(), $arrs[0]->ndim(), $arrs[0]->size()];
-        $masks = self::cnew($ffi, "uint64_t[{$nin}]");
-        $metas = self::cnew($ffi, "tsr_array[{$nin}]");
+        $nout = $info['nout'];
+        // the C blocks of this gufunc's last call, unless a call is using them (a nested one makes its own); the
+        // array descriptors are cleared (writeMeta() and the scalar slots need zeroed ones), the rest is overwritten
+        $frame = self::$gframes[$name] ?? null;
+        if ($frame !== null) {
+            self::$gframes[$name] = null;
+            [$masks, $metas, $pc, $ond, $osh, $ometa] = $frame;
+            FFI::memset($metas, 0, $frame[6]);
+            FFI::memset($ometa, 0, $frame[7]);
+        } else {
+            $masks = self::cnew($ffi, "uint64_t[{$nin}]");
+            $metas = self::cnew($ffi, "tsr_array[{$nin}]");
+            $pc = self::cnew($ffi, 'double[' . max(1, count($info['params'])) . ']');   // params() gives one value each
+            $ond = self::cnew($ffi, "int32_t[{$nout}]");
+            $osh = self::cnew($ffi, 'int64_t[' . (32 * $nout) . ']');
+            $ometa = self::cnew($ffi, "tsr_array[{$nout}]");
+            $frame = [$masks, $metas, $pc, $ond, $osh, $ometa, FFI::sizeof($metas), FFI::sizeof($ometa)];
+        }
         foreach ($arrs as $k => $arr) {
             if (is_array($arr)) {                                // a scalar slot: a 0-d array, its one axis set empty
                 $masks[$k] = 0;
@@ -465,17 +481,11 @@ final class Registry
             }
         }
         $pvals = self::params($info, $params, $label);
-        $np = max(1, count($pvals));
-        $pc = self::cnew($ffi, "double[{$np}]");
         foreach ($pvals as $k => $v) {
             $pc[$k] = $v;
         }
-        $nout = $info['nout'];
-        $ond = self::cnew($ffi, "int32_t[{$nout}]");
-        $osh = self::cnew($ffi, 'int64_t[' . (32 * $nout) . ']');
         self::check($ffi->tsr_fn_gufunc_shape($info['id'], $nin, $metas, $masks, $keepdims ? 1 : 0, $pc, $ond, $osh), $label);
         $outs = [];
-        $ometa = self::cnew($ffi, "tsr_array[{$nout}]");
         $oslots = null;
         for ($o = 0; $o < $nout; $o++) {
             $shape = [];
@@ -512,6 +522,7 @@ final class Registry
             $outs[$o]->writeMeta($ometa[$o]);
         }
         self::check($ffi->tsr_fn_gufunc($info['id'], $nin, $metas, $masks, $keepdims ? 1 : 0, $pc, $nout, $ometa), $label);
+        self::$gframes[$name] = $frame;
         if ($slots !== null) {
             self::$scalarSlots[] = $slots;
         }
@@ -538,6 +549,9 @@ final class Registry
 
     /** @var array<string, array{0: array<string, mixed>, 1: string}> a gufunc's registry entry and label */
     private static array $gufuncs = [];
+
+    /** @var array<string, list<mixed>|null> gufunc()'s spare C blocks by gufunc (masks, metas, params, output dims and shapes, output metas, and the two metas' bytes) */
+    private static array $gframes = [];
 
     /** @var list<array{0: list<CData>, 1: list<CData>}> spare sets of eight 16-byte scalar slots and void* to them */
     private static array $scalarSlots = [];
@@ -689,6 +703,17 @@ final class Registry
                     $slot = $cargs[$k];
                     $slot->kind = 3;
                     $v->writeMeta($slot->arr);
+                    continue;
+                }
+                if ($v === null) {
+                    continue;                                 // kind 0, as routineArg() leaves it
+                }
+                if (is_int($v)) {
+                    $slot = $cargs[$k];                       // routineArg()'s integer (an axis, a count)
+                    $slot->kind = 1;
+                    $slot->num = (float) $v;
+                    $slot->flags = 1;
+                    $slot->ival = $v;
                     continue;
                 }
                 if (isset($seq[$k]) && is_array($v)) {

@@ -438,10 +438,20 @@ final class Library
     /** Integer address of any pointer CData (void* is routed through char*: a direct void*->uintptr_t cast yields 0 on PHP 8.4). */
     public static function address(CData $pointer): int
     {
+        $pun = self::$pun ??= self::ffi()->new(self::type('union { void *p; uintptr_t u; }'));
+        try {
+            $pun->p = $pointer;                     // a pointer stored and read back as an integer: no casts
+            return $pun->u;
+        } catch (\FFI\Exception) {
+            // not assignable to void* (an array): through the casts
+        }
         $ffi = self::ffi();
 
         return $ffi->cast(self::$types['uintptr_t'] ??= $ffi->type('uintptr_t'), $ffi->cast(self::$types['char*'] ??= $ffi->type('char*'), $pointer))->cdata;
     }
+
+    /** @var CData|null union { void *p; uintptr_t u; }, address()'s scratch */
+    private static ?CData $pun = null;
 
     /** @var array<string, CType> types for casts and new(), parsed once (a type given by name is parsed on every call) */
     private static array $types = [];

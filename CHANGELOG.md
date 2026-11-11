@@ -59,6 +59,14 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   `Np::broadcastShapes` of three lists 20.2 -> 14.0 us, `Special::ndtr` of a list 7.8 -> 6.6 us. Results are
   unchanged, byte for byte (NaN sign and payload bits included), and so are the exceptions for ragged, non-numeric,
   empty and too deep lists.
+- **Generalised ufuncs, routine arguments and new blocks on the FFI backend**: a generalised ufunc keeps the C blocks
+  of its last call (axis masks, array descriptors, parameters, output shapes) and reuses them when no call is using
+  them, instead of allocating six per call; a routine writes `null` and integer arguments (`axis`, `dtype=None`, ...)
+  into their slots without a call each; and `Library::address()` reads a pointer back as an integer through a union
+  instead of two casts, which every new array block and every adopted routine result goes through. On 8 values:
+  `Np::median` 5.6 -> 4.6 us (of a list 7.6 -> 6.3 us), `Np::percentile` 6.7 -> 6.0 us, `Np::partition` 9.8 -> 8.5
+  us, `Np::nansum` of 4 integers 5.7 -> 4.9 us, `Np::emptyLike` 4.4 -> 3.7 us, `Np::swapaxes` 5.8 -> 4.4 us,
+  `NDArray::empty` 2.0 -> 1.8 us. Results are unchanged, byte for byte (NaN sign and payload bits included).
 - **`np.diff`, `outer`, `inner`, `kron`, `ediff1d`, `trapezoid`, `cumulativeTrapezoid`, `geomspace`, `pad` (odd
   reflection) and the `poly*` routines**: their shared element-wise step read every operand through a one-element
   conversion call, also when no conversion was needed; operands already in the loop dtype are now read in place, and a
