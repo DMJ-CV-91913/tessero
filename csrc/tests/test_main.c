@@ -2683,6 +2683,7 @@ static int64_t *g2t_call(const char *fn, double *P, int64_t n, int64_t *rows, in
 double g2t_orient(const double *P, int64_t a, int64_t b, int64_t c);   /* > 0: counter-clockwise */
 double g2t_incircle(double ax, double ay, double bx, double by, double cx, double cy, const double *P, int64_t p);
 double kd_ref_dist(const double *P, const double *Q, int64_t m, int64_t i, int64_t q);
+void fd_normal_ref(const double *r, const double *rh, const double *h, int m, int np, double *J, double *A, double *g);
 static void test_geom2d(void)
 {
     const int64_t before = tsr_allocated();
@@ -2886,14 +2887,7 @@ static void test_fd_normal(void)
         for (int j = 0; j < NP; j++) rh[j * M + k] = k % 7 == j ? r[k] : r[k] + h[j] * cos(0.1 * k + j);
     }
     double J[M * NP], A[NP * NP] = {0}, g[NP] = {0};
-    for (int k = 0; k < M; k++) for (int j = 0; j < NP; j++) J[k * NP + j] = (rh[j * M + k] - r[k]) / h[j];
-    for (int k = 0; k < M; k++)
-        for (int i = 0; i < NP; i++) {
-            if (J[k * NP + i] == 0.0) continue;
-            g[i] += J[k * NP + i] * r[k];
-            for (int j = i; j < NP; j++) A[i * NP + j] += J[k * NP + i] * J[k * NP + j];
-        }
-    for (int i = 0; i < NP; i++) for (int j = 0; j < i; j++) A[i * NP + j] = A[j * NP + i];
+    fd_normal_ref(r, rh, h, M, NP, J, A, g);              /* test_geom_ref.c: contraction off, as the PHP loop rounds */
     int64_t sr[1] = {M}, srh[2] = {NP, M}, sh[1] = {NP};
     tsr_arg a[3] = {arg_arr(r, 1, sr), arg_arr(rh, 2, srh), arg_arr(h, 1, sh)};
     tsr_result res[3];
