@@ -112,6 +112,14 @@ char* to byte $offset. Keep this Buffer referenced while the pointer is in use.
 read(int $offset, int $length): string
 ```
 
+### voidPtr
+
+```php
+voidPtr(): FFI\CData
+```
+
+void* to byte 0. Keep this Buffer referenced while the pointer is in use.
+
 ### write
 
 ```php

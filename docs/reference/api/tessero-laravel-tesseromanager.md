@@ -24,7 +24,17 @@ __construct(array $config = [])
 applyRuntimeSettings(): void
 ```
 
-Push threads / budget / tolerance into the backend (called at boot and per Octane request).
+Push threads / budget / tolerance into the backend now, loading libtessero if it is not loaded yet.
+
+### applyRuntimeSettingsLazily
+
+```php
+applyRuntimeSettingsLazily(): void
+```
+
+The same settings without loading libtessero for them: applied now if the library is already loaded,
+otherwise right after it first loads. Called at boot, per Octane request and per queued job, so a
+request or job that never uses Tessero does not pay for loading it.
 
 ### array
 

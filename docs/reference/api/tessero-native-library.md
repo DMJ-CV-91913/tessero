@@ -99,6 +99,22 @@ The FFT plan cache limit to apply at load, or null to keep the library default (
 (bytes, 0 = no caching) wins, and otherwise web SAPIs get 32 MiB (power-of-two transforms up to 2^20 points stay
 cached), since a server runs many workers and each holds its own cache outside the memory budget.
 
+### dims
+
+```php
+static dims(): array
+```
+
+Four int64_t[32] for the shape and strides of one kernel call, to fill and pass in place of i64() arrays. Give
+them back with dimsDone() after the call (a call that throws first just leaves the pool a set short). A set is
+out of the pool while in use, so a nested call (a destructor run by the cycle collector) gets its own.
+
+### dimsDone
+
+```php
+static dimsDone(array $set): void
+```
+
 ### ffi
 
 ```php
@@ -177,3 +193,21 @@ A shared library named by an environment variable, checked before anything dlope
 path (a relative one resolves against the working directory, the web root under php-cgi), an existing
 file, and on POSIX neither the file nor its directory writable by group or others (fileperms & 0022),
 so no other account can swap the code PHP is about to run. Returns the resolved path.
+
+### type
+
+```php
+static type(string $decl): FFI\CType
+```
+
+A type of the bound library by its declaration ('char*', 'tsr_arg'), parsed on first use.
+
+### whenLoaded
+
+```php
+static whenLoaded(string $key, callable $callback): void
+```
+
+Run $callback once the library is bound: now if it already is, otherwise right after the first load.
+Settings can then be applied without loading the library in a request that never uses it. A later
+registration under the same $key replaces a pending one, so per-request re-registration does not pile up.

@@ -11,6 +11,12 @@ and expandDims/squeeze return views that share the Buffer; everything
 that computes returns a new C-contiguous array. All loops run in
 libtessero - PHP only computes shapes and strides.
 
+## Constants
+
+| Name | Value |
+|---|---|
+| `FLAT_CHUNK` | `262144` |
+
 ## Methods
 
 ### allclose
@@ -78,6 +84,14 @@ static empty(array|int $shape, Tessero\DType|string $dtype = Tessero\DType::Floa
 static eye(int $n, ?int $m = null, int $k = 0, Tessero\DType|string $dtype = Tessero\DType::Float64): self
 ```
 
+### flatBytes
+
+```php
+static flatBytes(array $chunk, Tessero\DType $dtype): string
+```
+
+The bytes of C-order values (at most FLAT_CHUNK) as $dtype elements: what fromFlat() writes.
+
 ### fromBytes
 
 ```php
@@ -109,6 +123,15 @@ static isclose(mixed $a, mixed $b, float $rtol = 1.0E-5, float $atol = 1.0E-8, b
 ```php
 static linspace(float $start, float $stop, int $num = 50, bool $endpoint = true): self
 ```
+
+### listParts
+
+```php
+static listParts(array $data, Tessero\DType|string|null $dtype = null): array
+```
+
+array()'s reading of a (nested) PHP list: its values in C order, its shape and its dtype (inferred, or $dtype).
+The registry binding packs a short list argument from these (flatBytes()) without building the array.
 
 ### load
 
@@ -163,6 +186,15 @@ static where(mixed $cond, mixed $a, mixed $b): self
 ```
 
 Element-wise selection: cond ? a : b, with broadcasting.
+
+### wrapper
+
+```php
+static wrapper(): Closure
+```
+
+trusted() as a closure, handed out to Tessero\Native\Registry only (it wraps the arrays the kernel returns
+after checking their shape against the block, see Buffer::adopter()). Registry caches the closure.
 
 ### zeros
 
@@ -1182,3 +1214,12 @@ view(Tessero\DType|string $dtype): self
 ```
 
 Reinterpret the same bytes as another dtype of equal itemsize (bool <-> uint8).
+
+### writeMeta
+
+```php
+writeMeta(FFI\CData $m): void
+```
+
+Write this array's descriptor into a zeroed tsr_array (a new one, or the arr field of a zeroed tsr_arg), so
+the registry fills its argument slots in place.
