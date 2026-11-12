@@ -30,6 +30,12 @@ Tessero\Tessero::setMemoryBudget(256 << 20);   // FFI package
 TESSERO_MEMORY_BUDGET=268435456              # Laravel: both backends
 ```
 
+With nothing set, both backends pick a default: in a web SAPI
+max(256 MiB, `memory_limit`) (unlimited when `memory_limit = -1`); in the CLI,
+which also runs queue workers and artisan commands, half of the machine's
+physical memory (unlimited where that cannot be read). `TESSERO_MEMORY_BUDGET=0`
+or `tessero.memory_budget = -1` opts out.
+
 An allocation that would take the process past its budget fails cleanly:
 `MemoryError` (FFI) or `Tessero\Ext\MemoryException`, with the requested size,
 the amount in use and the budget in the message. Nothing is partially

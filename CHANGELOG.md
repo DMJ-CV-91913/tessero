@@ -9,6 +9,13 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Changed
 
+- **A default native memory budget in the CLI**: half of the machine's physical memory, on both backends, where it
+  was unlimited. The CLI also runs queue workers and artisan commands, and a single oversized call there (a
+  `numpy.meshgrid` of nine 9-value vectors asks for 26 GiB) is now refused up front with `MemoryError` /
+  `Tessero\Ext\MemoryException` instead of exhausting a shared host. `TESSERO_MEMORY_BUDGET` now also applies in the
+  CLI (FFI package); `TESSERO_MEMORY_BUDGET=0` or `tessero.memory_budget = -1` opts out; an explicit budget is kept.
+  Web SAPIs keep max(256 MiB, `memory_limit`). The kernel exports `tsr_physical_bytes()` for it (a compatible ABI
+  addition).
 - **Lower fixed cost per call on the FFI backend**: the registry binding prepares each routine once (its label, result
   type, sequence and in-place arguments), fills the kernel's array descriptors in place instead of building and copying
   a `tsr_array` per argument, keeps short string arguments and the C types it needs, and reuses the operand buffers of

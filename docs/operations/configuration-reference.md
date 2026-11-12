@@ -8,7 +8,7 @@ Every setting that affects Tessero, by where it is set.
 |---|---|---|---|
 | `extension=tessero` | | php.ini | loads ext-tessero |
 | `tessero.threads` | `1` | `PHP_INI_ALL` | OpenMP threads for element-wise kernels on ≥ 131 072 elements and MDP sweeps on > 4 096 state-action pairs. Clamped to [1, 4 × cores]. 1 when built without OpenMP |
-| `tessero.memory_budget` | `0` | `PHP_INI_ALL` | native memory cap for extension arrays and solver workspaces, bytes (`256M`, `2G` accepted). 0 = unlimited |
+| `tessero.memory_budget` | `0` | `PHP_INI_ALL` | native memory cap for extension arrays and solver workspaces, bytes (`256M`, `2G` accepted). 0 = automatic: half the physical memory in the CLI, max(256 MiB, `memory_limit`) in a web SAPI; -1 = unlimited |
 | `tessero.epsilon` | `1e-6` | `PHP_INI_ALL` | default tolerance of `Engine::mdpValueIteration` |
 
 The extension re-applies `tessero.threads` and `tessero.memory_budget` at every
@@ -33,7 +33,7 @@ request start, so runtime changes last for one request.
 | `TESSERO_BLAS_THREADS` | FFI package | OpenBLAS threads (default: 1 outside the CLI) |
 | `TESSERO_BACKEND` | Laravel | `auto`, `ext`, `ffi` |
 | `TESSERO_THREADS` | Laravel | → `threads` |
-| `TESSERO_MEMORY_BUDGET` | Laravel; FFI package outside the CLI | → `memory_budget` (bytes). The FFI package also reads it at load in non-CLI SAPIs: a positive value sets the budget, `0` or `-1` opts out of the default max(256 MiB, `memory_limit`) |
+| `TESSERO_MEMORY_BUDGET` | Laravel; FFI package | → `memory_budget` (bytes). The FFI package also reads it at load: a positive value sets the budget, `0` or `-1` opts out of the default (half the physical memory in the CLI, max(256 MiB, `memory_limit`) elsewhere) |
 | `TESSERO_EPSILON` | Laravel | → `epsilon` |
 | `TESSERO_CAST_FORMAT` | Laravel | `json` or `binary` |
 | `TESSERO_MAX_ELEMENTS` | Laravel | default `max_elements` |

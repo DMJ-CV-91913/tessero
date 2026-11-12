@@ -51,14 +51,19 @@ static int tsr_sapi_is_cli(void)
 static zend_long tsr_startup_memory_limit = 0;
 
 /* The budget the kernel enforces. tessero.memory_budget > 0 is used as given; -1 means unlimited; 0 (the
- * default) means automatic: unlimited in the CLI, and in a web SAPI max(256 MiB, memory_limit), or unlimited when
- * memory_limit is -1. Native arrays live outside the Zend heap, so without this a php-fpm worker could allocate
- * far past memory_limit (ADR 0004). */
+ * default) means automatic: in the CLI (also queue workers and artisan commands) half of the machine's physical
+ * memory, unlimited when that is unknown; in a web SAPI max(256 MiB, memory_limit), or unlimited when memory_limit
+ * is -1. Native arrays live outside the Zend heap, so without this a php-fpm worker could allocate far past
+ * memory_limit (ADR 0004), and one oversized call in a CLI worker could exhaust a shared host. */
 static zend_long tsr_effective_budget(void)
 {
     const zend_long b = TESSERO_G(memory_budget);
     if (b > 0) return b;
-    if (b < 0 || tsr_sapi_is_cli()) return 0;
+    if (b < 0) return 0;
+    if (tsr_sapi_is_cli()) {
+        const int64_t phys = tsr_physical_bytes();
+        return phys > 0 ? (zend_long)(phys / 2) : 0;
+    }
 #ifdef ZTS
     const zend_long limit = tsr_startup_memory_limit;
 #else

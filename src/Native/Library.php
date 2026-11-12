@@ -244,20 +244,19 @@ final class Library
     }
 
     /**
-     * The native memory budget a non-CLI process starts with, or null to leave the kernel's setting alone.
-     * Native buffers do not count toward memory_limit, so outside the CLI the FFI package caps them by
-     * default at max(256 MiB, memory_limit), as the extension does. TESSERO_MEMORY_BUDGET (bytes, process
-     * environment) overrides it; 0 or a negative value opts out (unlimited). memory_limit = -1 also means
-     * unlimited. Tessero::setMemoryBudget() changes the budget at any time; under FPM the default is
+     * The native memory budget a process starts with, or null to leave the kernel's setting alone. Native
+     * buffers do not count toward memory_limit, so the FFI package caps them by default, as the extension does:
+     * outside the CLI at max(256 MiB, memory_limit) (memory_limit = -1 means unlimited); in the CLI (also
+     * queue workers and artisan commands) at half of the machine's physical memory, so one oversized call is
+     * refused up front instead of exhausting a shared host (unlimited when the size of memory is unknown).
+     * TESSERO_MEMORY_BUDGET (bytes, process environment) overrides both; 0 or a negative value opts out
+     * (unlimited). Tessero::setMemoryBudget() changes the budget at any time; under FPM the default is
      * re-applied when a request loads the library while the budget is 0.
      *
      * @internal exposed for tests
      */
-    public static function defaultBudget(string $sapi, string|false $env, string $memoryLimit, int $current): ?int
+    public static function defaultBudget(string $sapi, string|false $env, string $memoryLimit, int $current, int $physical = 0): ?int
     {
-        if ($sapi === 'cli' || $sapi === 'phpdbg' || $sapi === 'embed') {
-            return null;
-        }
         if (is_string($env) && is_numeric(trim($env))) {
             $v = (int) trim($env);
 
@@ -265,6 +264,9 @@ final class Library
         }
         if ($current !== 0) {
             return null;
+        }
+        if ($sapi === 'cli' || $sapi === 'phpdbg' || $sapi === 'embed') {
+            return $physical > 0 ? intdiv($physical, 2) : null;
         }
         $limit = function_exists('ini_parse_quantity') ? @ini_parse_quantity($memoryLimit) : (int) $memoryLimit;
         if ($limit <= 0) {
@@ -276,7 +278,7 @@ final class Library
 
     private static function applyDefaultBudget(FFI $ffi): void
     {
-        $budget = self::defaultBudget(PHP_SAPI, getenv('TESSERO_MEMORY_BUDGET', true), (string) ini_get('memory_limit'), $ffi->tsr_budget());
+        $budget = self::defaultBudget(PHP_SAPI, getenv('TESSERO_MEMORY_BUDGET', true), (string) ini_get('memory_limit'), $ffi->tsr_budget(), $ffi->tsr_physical_bytes());
         if ($budget !== null) {
             $ffi->tsr_set_budget($budget);
         }

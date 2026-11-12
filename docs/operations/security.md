@@ -18,10 +18,13 @@ Tessero is a computation library. It opens no sockets, spawns no processes
 - **Always set a native memory budget** in web-facing processes
   (`tessero.memory_budget`, `TESSERO_MEMORY_BUDGET`). Without one, a single
   request can allocate until the OOM killer ends the worker. Outside the CLI
-  the FFI package now starts with a default budget of
-  max(256 MiB, `memory_limit`) when none is set (`memory_limit = -1` keeps it
-  unlimited). Opt out with `TESSERO_MEMORY_BUDGET=0` (or `-1`) in the process
-  environment, or `Tessero::setMemoryBudget(0)` for the current request.
+  both backends start with a default budget of max(256 MiB, `memory_limit`)
+  when none is set (`memory_limit = -1` keeps it unlimited); in the CLI, which
+  also runs queue workers and artisan commands, the default is half the
+  machine's physical memory, so one oversized call is refused up front instead
+  of exhausting a shared host. Opt out with `TESSERO_MEMORY_BUDGET=0` (or `-1`)
+  in the process environment (`tessero.memory_budget = -1` for the extension),
+  or `Tessero::setMemoryBudget(0)` for the current request.
 - **Validate sizes before building arrays.** `NumericArray(maxElements: …)`
   rejects oversized input before any allocation. Its check is linear in the
   input size and allocates nothing. Without `maxElements` it uses

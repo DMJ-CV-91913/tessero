@@ -13,7 +13,6 @@ TESSERO_0.2 {
     tsr_cdflib_runaway_get;
     tsr_effective_cpus;
     tsr_pcg64_bitgen;
-    tsr_physical_bytes;
     tsr_psum;
     tsr_random_run;
     *;

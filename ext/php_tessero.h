@@ -44,7 +44,7 @@ ZEND_TSRMLS_CACHE_EXTERN()
 /* Per-thread (ZTS) / per-process (NTS) settings; libtessero itself is process-wide. */
 ZEND_BEGIN_MODULE_GLOBALS(tessero)
     zend_long threads;          /* applied to libtessero at request start (tessero.threads) */
-    zend_long memory_budget;    /* bytes; 0 = automatic (unlimited in the CLI, else derived from memory_limit),
+    zend_long memory_budget;    /* bytes; 0 = automatic (half the physical memory in the CLI, else derived from memory_limit),
                                    -1 = unlimited (tessero.memory_budget) */
     zend_long blas_threads;     /* BLAS pool size; -1 = automatic (1 outside the CLI), 0 = leave the BLAS alone
                                    (tessero.blas_threads) */

@@ -142,8 +142,6 @@ static inline int64_t tsr_shape_size(int32_t ndim, const int64_t *shape)
 #  define TSR_REUSE 1
 #endif
 
-/* the machine's physical memory in bytes, 0 when unknown (alloc.c) */
-int64_t tsr_physical_bytes(void);
 /* 1 when `bytes` more can be allocated in total: within the budget left, or the machine's RAM without a budget */
 static inline int tsr_fits(double bytes)
 {

@@ -40,6 +40,7 @@ int64_t tsr_allocated(void);
 int64_t tsr_peak(void);
 void tsr_set_budget(int64_t bytes);       /* 0 = unlimited */
 int64_t tsr_budget(void);
+int64_t tsr_physical_bytes(void);         /* the machine's physical memory in bytes, 0 when unknown (read once) */
 /* Large-block reuse: blocks of 1 MiB or more freed with tsr_free are kept, up to this many bytes per process (default
    64 MiB), and handed out again by tsr_alloc, so arrays of a repeated size do not page-fault their memory in on every
    call. The blocks stay libtessero's: only it releases them. 0 turns reuse off; lowering the limit releases kept blocks

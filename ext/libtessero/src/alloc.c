@@ -320,7 +320,7 @@ static void *aligned(int64_t bytes)
 #endif
 }
 
-/* the machine's physical memory in bytes (0 when unknown), read once (internal.h) */
+/* the machine's physical memory in bytes (0 when unknown), read once (tessero.h) */
 int64_t tsr_physical_bytes(void)
 {
     static _Atomic int64_t cached = -1;

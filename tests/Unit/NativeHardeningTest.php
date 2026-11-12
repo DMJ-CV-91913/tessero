@@ -98,10 +98,16 @@ final class NativeHardeningTest extends TestCase
 
     // ------------------------------------------------------------------ 11. default memory budget
 
-    public function testDefaultBudgetForWebSapis(): void
+    public function testDefaultBudgetBySapi(): void
     {
         $mib = 1 << 20;
-        $this->assertNull(Library::defaultBudget('cli', false, '128M', 0), 'the CLI keeps the kernel default');
+        $gib = 1024 * $mib;
+        $this->assertSame(8 * $gib, Library::defaultBudget('cli', false, '128M', 0, 16 * $gib), 'the CLI: half the physical memory');
+        $this->assertSame(4 * $gib, Library::defaultBudget('phpdbg', false, '-1', 0, 8 * $gib), 'phpdbg: half, whatever memory_limit says');
+        $this->assertNull(Library::defaultBudget('cli', false, '128M', 0, 0), 'the CLI: unlimited when the memory size is unknown');
+        $this->assertNull(Library::defaultBudget('cli', false, '128M', 5 * $mib, 16 * $gib), 'the CLI keeps an explicit budget');
+        $this->assertSame(5000, Library::defaultBudget('cli', '5000', '128M', 0, 16 * $gib), 'TESSERO_MEMORY_BUDGET applies in the CLI too');
+        $this->assertSame(0, Library::defaultBudget('cli', '0', '128M', 0, 16 * $gib), 'TESSERO_MEMORY_BUDGET=0 opts the CLI out');
         $this->assertSame(256 * $mib, Library::defaultBudget('fpm-fcgi', false, '128M', 0), 'at least 256 MiB');
         $this->assertSame(1024 * $mib, Library::defaultBudget('apache2handler', false, '1G', 0), 'memory_limit when larger');
         $this->assertNull(Library::defaultBudget('fpm-fcgi', false, '-1', 0), 'memory_limit = -1 stays unlimited');
