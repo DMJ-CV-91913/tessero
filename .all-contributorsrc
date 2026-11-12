@@ -1,0 +1,18 @@
+{
+  "projectName": "tessero",
+  "projectOwner": "DMJ-CV-91913",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [],
+  "commit": false,
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "DMJ-CV-91913",
+      "name": "Douglas Johnson",
+      "avatar_url": "https://github.com/DMJ-CV-91913.png",
+      "profile": "https://github.com/DMJ-CV-91913",
+      "contributions": ["code", "doc", "test", "infra", "maintenance", "ideas"]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use Tessero in your work, please cite it as below."
+title: "Tessero: numerical computing for PHP"
+abstract: >-
+  Tessero brings numerical computing to PHP 8.2+: n-dimensional arrays, linear
+  algebra, FFT, NumPy-identical random numbers, sparse matrices, optimisation,
+  linear and mixed-integer programming, and Markov decision processes. It runs
+  on one small SIMD C library, libtessero, reached through FFI or a native Zend
+  extension, and its results are checked against NumPy and SciPy.
+type: software
+authors:
+  - name: "Douglas Johnson"
+license: BSD-3-Clause
+repository-code: "https://github.com/DMJ-CV-91913/tessero"
+url: "https://tessero.org"
+keywords:
+  - php
+  - numerical-computing
+  - numpy
+  - scipy
+  - linear-algebra
+  - ffi
