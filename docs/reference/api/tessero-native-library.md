@@ -79,14 +79,16 @@ wins, 0 means leave alone, and otherwise web SAPIs get 1 and the CLI keeps the B
 ### defaultBudget
 
 ```php
-static defaultBudget(string $sapi, string|false $env, string $memoryLimit, int $current): ?int
+static defaultBudget(string $sapi, string|false $env, string $memoryLimit, int $current, int $physical = 0): ?int
 ```
 
-The native memory budget a non-CLI process starts with, or null to leave the kernel's setting alone.
-Native buffers do not count toward memory_limit, so outside the CLI the FFI package caps them by
-default at max(256 MiB, memory_limit), as the extension does. TESSERO_MEMORY_BUDGET (bytes, process
-environment) overrides it; 0 or a negative value opts out (unlimited). memory_limit = -1 also means
-unlimited. Tessero::setMemoryBudget() changes the budget at any time; under FPM the default is
+The native memory budget a process starts with, or null to leave the kernel's setting alone. Native
+buffers do not count toward memory_limit, so the FFI package caps them by default, as the extension does:
+outside the CLI at max(256 MiB, memory_limit) (memory_limit = -1 means unlimited); in the CLI (also
+queue workers and artisan commands) at half of the machine's physical memory, so one oversized call is
+refused up front instead of exhausting a shared host (unlimited when the size of memory is unknown).
+TESSERO_MEMORY_BUDGET (bytes, process environment) overrides both; 0 or a negative value opts out
+(unlimited). Tessero::setMemoryBudget() changes the budget at any time; under FPM the default is
 re-applied when a request loads the library while the budget is 0.
 
 ### defaultFftCache
