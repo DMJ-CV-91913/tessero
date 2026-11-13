@@ -1118,29 +1118,32 @@ static int perax_d(const tsr_arg *a, int32_t nd, double *out)
     fn_set_error("filter: a scalar or one value per axis is required"); return TSR_EARG;
 }
 
-/* Apply a (per-axis) correlation kernel along every axis in turn, ping-ponging buffers (separable filter). */
+/* Apply a (per-axis) correlation kernel along every axis in turn (separable filter). The first pass reads the input
+   where it is (a contiguous float64 array is not copied), the passes in between ping-pong two buffers, and the last
+   pass writes the result array: the same passes on the same values as through copies. */
 static int separable_corr(const tsr_arg *input, double *const *kern, const int64_t *W, const int64_t *origin,
                           int mode, double cval, tsr_result *res)
 {
     const int32_t nd = input->arr.ndim;
     int64_t total = 1; for (int d = 0; d < nd; d++) total *= input->arr.shape[d] > 0 ? input->arr.shape[d] : 0;
-    int64_t ti; double *in = fn_arg_doubles(input, &ti); if (!in) return TSR_ENOMEM;
+    int64_t ti; double *own; const double *in = nd_input(input, &ti, &own); if (!in) return TSR_ENOMEM;
     double *out = (double *)fn_result_array(res, TSR_F64, nd, input->arr.shape);
-    if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-    if (total == 0) { fn_free_doubles(in, ti); return TSR_OK; }
-    double *a = (double *)malloc((size_t)total * sizeof(double)), *b = (double *)malloc((size_t)total * sizeof(double));
-    if (!a || !b) { free(a); free(b); fn_free_doubles(in, ti); return TSR_ENOMEM; }
-    memcpy(a, in, (size_t)total * sizeof(double));
-    fn_free_doubles(in, ti);
-    double *src = a, *dst = b;
+    if (!out) { fn_free_doubles(own, ti); return TSR_ENOMEM; }
+    if (total == 0) { fn_free_doubles(own, ti); return TSR_OK; }
+    if (nd == 0) { memcpy(out, in, sizeof(double)); fn_free_doubles(own, ti); return TSR_OK; }
+    double *a = NULL, *b = NULL;
+    if (nd > 1) a = (double *)malloc((size_t)total * sizeof(double));
+    if (nd > 2) b = (double *)malloc((size_t)total * sizeof(double));
+    if ((nd > 1 && !a) || (nd > 2 && !b)) { free(a); free(b); fn_free_doubles(own, ti); return TSR_ENOMEM; }
+    const double *src = in;
     int rc = TSR_OK;
     for (int d = 0; d < nd && rc == 0; d++) {
+        double *dst = d == nd - 1 ? out : (d % 2 == 0 ? a : b);
         corr1d_ctx c = { kern[d], W[d], W[d] / 2, origin ? origin[d] : 0, mode, cval };
         rc = filter_lines(src, dst, input->arr.shape, nd, d, corr1d_line, &c);
-        double *t = src; src = dst; dst = t;
+        src = dst;
     }
-    if (rc == 0) memcpy(out, src, (size_t)total * sizeof(double));
-    free(a); free(b);
+    free(a); free(b); fn_free_doubles(own, ti);
     return rc;
 }
 

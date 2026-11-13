@@ -22,6 +22,7 @@ extern "C" {
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <numeric>
 #include <string>
 #include <vector>
@@ -3108,9 +3109,13 @@ int r_combine_pvalues(const void *, const tsr_arg *a, int n, tsr_result *res, in
 
 /* ================================================================ page_trend_test (_page_trend_test.py) */
 
-/* the exact null distribution of Page's L: p(l, k, n) by [5] Equation 1 (the recursion SciPy evaluates) */
+/* the exact null distribution of Page's L: p(l, k, n) by [5] Equation 1 (the recursion SciPy evaluates). Like
+   SciPy's module-level _pagel_state, one table per k is kept between calls (page_lstate): the k! permutation count
+   and the memoised recursion are computed once, and every value is the one the recursion gives, whichever call
+   computed it first. */
 struct PageL {
     int64_t k, a, b;
+    size_t entries = 0;
     std::map<int64_t, std::map<int64_t, double>> tab;   /* n -> l -> pmf */
     explicit PageL(int64_t k_) : k(k_), a((k_ * (k_ + 1) * (k_ + 2)) / 6), b((k_ * (k_ + 1) * (2 * k_ + 1)) / 6) {}
     int init1()
@@ -3139,9 +3144,32 @@ struct PageL {
         const int64_t low = std::max(l - (n - 1) * b, a), high = std::min(l - (n - 1) * a, b);
         for (int64_t s = low; s <= high; s++) p += pmf(l - s, n - 1) * pmf(s, 1);
         tab[n][l] = p;
+        entries++;
         return p;
     }
 };
+
+/* the PageL table of k, built on first use and kept (guarded by page_lmutex). A table past about 4 million memoised
+   values (some 200 MB of map nodes) is trimmed back to its permutation counts before the next use. */
+static std::mutex page_lmutex;
+static std::map<int64_t, std::unique_ptr<PageL>> page_lstate;
+static PageL *page_lget(int64_t k, int *rc)
+{
+    auto &slot = page_lstate[k];
+    if (slot && slot->entries > 4000000) {
+        auto first = std::move(slot->tab[1]);
+        slot->tab.clear();
+        slot->tab[1] = std::move(first);
+        slot->entries = 0;
+    }
+    if (!slot) {
+        auto st = std::make_unique<PageL>(k);
+        if ((*rc = st->init1()) != TSR_OK) return nullptr;
+        slot = std::move(st);
+    }
+    *rc = TSR_OK;
+    return slot.get();
+}
 
 /* page_trend_test(data, ranked=False, predicted_ranks=None, method='auto') */
 int r_page_trend_test(const void *, const tsr_arg *a, int n, tsr_result *res, int)
@@ -3207,11 +3235,14 @@ int r_page_trend_test(const void *, const tsr_arg *a, int n, tsr_result *res, in
         p = sc::ndtr(-Lambda);
     } else {
         const int64_t Li = (int64_t)L;
-        PageL st(nc);
-        int rc = st.init1();
-        if (rc != TSR_OK) return rc;
         vector<double> ps;
-        for (int64_t l = Li; l <= m * st.b; l++) ps.push_back(st.pmf(l, m));
+        {
+            std::lock_guard<std::mutex> lock(page_lmutex);
+            int rc;
+            PageL *st = page_lget(nc, &rc);
+            if (!st) return rc;
+            for (int64_t l = Li; l <= m * st->b; l++) ps.push_back(st->pmf(l, m));
+        }
         p = psum(ps);
     }
     if (intranks) fn_result_int(&res[0], (int64_t)L);

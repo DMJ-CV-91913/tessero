@@ -2875,6 +2875,109 @@ static void test_fft_axis(void)
     CHECK(tsr_allocated() == before, "scipyfft.fft_axis leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
+/* signal.fftconvolve on large inputs goes through the FFT (conv_fft_worth): it must agree with the direct sum, which
+   correlate with the kernel reversed computes, to rounding, in every mode, in 1-D and 2-D; small inputs keep the
+   direct sum and so agree bit for bit. */
+static void test_fftconvolve_fft(void)
+{
+    static const int64_t cases[3][4] = {{1, 3000, 1, 1000}, {120, 130, 40, 30}, {1, 10, 1, 3}};
+    static const char *modes[3] = {"full", "same", "valid"};
+    uint64_t rs = 77;
+    for (int ci = 0; ci < 3; ci++) {
+        const int nd = cases[ci][0] == 1 ? 1 : 2;
+        int64_t sa[2], sv[2];
+        if (nd == 1) { sa[0] = cases[ci][1]; sv[0] = cases[ci][3]; }
+        else { sa[0] = cases[ci][0]; sa[1] = cases[ci][1]; sv[0] = cases[ci][2]; sv[1] = cases[ci][3]; }
+        const int64_t na = nd == 1 ? sa[0] : sa[0] * sa[1], nv = nd == 1 ? sv[0] : sv[0] * sv[1];
+        double *a = malloc((size_t)na * sizeof(double)), *v = malloc((size_t)nv * sizeof(double)), *vr = malloc((size_t)nv * sizeof(double));
+        for (int64_t i = 0; i < na; i++) { rs ^= rs << 13; rs ^= rs >> 7; rs ^= rs << 17; a[i] = (double)(rs >> 11) / 9007199254740992.0 - 0.3; }
+        for (int64_t i = 0; i < nv; i++) { rs ^= rs << 13; rs ^= rs >> 7; rs ^= rs << 17; v[i] = (double)(rs >> 11) / 9007199254740992.0 - 0.6; }
+        for (int64_t i = 0; i < nv; i++) vr[i] = v[nv - 1 - i];
+        for (int m = 0; m < 3; m++) {
+            tsr_arg f[3] = {arg_arr(a, nd, sa), arg_arr(v, nd, sv), arg_str(modes[m])};
+            tsr_arg c[3] = {arg_arr(a, nd, sa), arg_arr(vr, nd, sv), arg_str(modes[m])};
+            tsr_result rf[1], rc_[1];
+            const int e1 = fa_call("signal.fftconvolve", 3, f, rf, 1), e2 = fa_call("signal.correlate", 3, c, rc_, 1);
+            int64_t n = 0;
+            double scale = 0.0, err = 0.0;
+            int same = e1 == 0 && e2 == 0 && rf[0].arr.ndim == rc_[0].arr.ndim;
+            if (same) {
+                n = 1;
+                for (int d = 0; d < rf[0].arr.ndim; d++) { same &= rf[0].arr.shape[d] == rc_[0].arr.shape[d]; n *= rf[0].arr.shape[d]; }
+            }
+            if (same) {
+                const double *x = rf[0].arr.data, *y = rc_[0].arr.data;
+                for (int64_t i = 0; i < n; i++) { if (fabs(y[i]) > scale) scale = fabs(y[i]); if (fabs(x[i] - y[i]) > err) err = fabs(x[i] - y[i]); }
+            }
+            if (ci < 2) CHECK(same && err <= 1e-12 * scale, "fftconvolve FFT path == direct sum to rounding (%s, case %d: %.3g of %.3g)", modes[m], ci, err, scale);
+            else CHECK(same && n > 0 && memcmp(rf[0].arr.data, rc_[0].arr.data, (size_t)n * sizeof(double)) == 0, "fftconvolve small inputs: the direct sum, bit for bit (%s)", modes[m]);
+            fa_free(rf, 1); fa_free(rc_, 1);
+        }
+        free(a); free(v); free(vr);
+    }
+}
+
+/* the Kelvin zeros by SciPy's KLVNZO: SciPy 1.17.1's values, and an nt past the functions' range ends with an error
+   instead of Newton steps on NaN that never stop */
+static void test_kelvin_zeros(void)
+{
+    tsr_result r[8];
+    tsr_arg n3[1] = {arg_int(3)};
+    int rc = fa_call("special.ber_zeros", 1, n3, r, 1);
+    const double *z = rc == 0 ? (const double *)r[0].arr.data : NULL;
+    CHECK(z && fabs(z[0] - 2.8489178207951396) <= 1e-14 * 2.85 && fabs(z[1] - 7.238829447632408) <= 1e-14 * 7.24
+            && fabs(z[2] - 11.673963549647077) <= 1e-14 * 11.7, "ber_zeros(3) == SciPy's (rc %d)", rc);
+    fa_free(r, 1);
+    rc = fa_call("special.kei_zeros", 1, n3, r, 1);
+    z = rc == 0 ? (const double *)r[0].arr.data : NULL;
+    CHECK(z && fabs(z[0] - 3.9146676068432655) <= 1e-14 * 3.92 && fabs(z[2] - 12.782557148597336) <= 1e-14 * 12.8,
+          "kei_zeros(3) == SciPy's (rc %d)", rc);
+    fa_free(r, 1);
+    tsr_arg big[1] = {arg_int(5000)};
+    rc = fa_call("special.ber_zeros", 1, big, r, 1);
+    CHECK(rc == TSR_EARG, "ber_zeros(5000) past the range ends with an error (rc %d)", rc);
+    fa_free(r, 1);
+}
+
+/* the Bessel and Airy zeros by SciPy's JYZO / CYZO / AIRYZO: SciPy 1.17.1's values to the last digits */
+static int zeros_match(const char *name, int nargs, const tsr_arg *a, int nres, int slot, const double *ref, int n)
+{
+    tsr_result r[4];
+    const int rc = fa_call(name, nargs, a, r, nres);
+    int ok = rc == 0 && r[slot].kind == 3 && r[slot].arr.shape[0] == n;
+    const int cplx = ok && r[slot].arr.dtype == TSR_C128;
+    for (int i = 0; ok && i < n; i++) {
+        const double v = ((const double *)r[slot].arr.data)[cplx ? 2 * i : i];
+        ok = fabs(v - ref[i]) <= 1e-14 * fabs(ref[i]) + (cplx ? 5e-9 : 0.0);
+        if (cplx) ok = ok && ((const double *)r[slot].arr.data)[2 * i + 1] == 0.0;
+    }
+    fa_free(r, nres);
+    return ok;
+}
+static void test_bessel_airy_zeros(void)
+{
+    tsr_arg n0[2] = {arg_int(0), arg_int(3)}, n1[2] = {arg_int(1), arg_int(2)}, n0b[2] = {arg_int(0), arg_int(2)},
+            n50[2] = {arg_int(50), arg_int(2)}, t2[1] = {arg_int(2)};
+    CHECK(zeros_match("special.jn_zeros", 2, n0, 1, 0, (const double[]){2.4048255576957724, 5.520078110286311, 8.653727912911013}, 3), "jn_zeros(0, 3) == SciPy's");
+    CHECK(zeros_match("special.jnp_zeros", 2, n1, 1, 0, (const double[]){1.8411837813406595, 5.3314427735250325}, 2), "jnp_zeros(1, 2) == SciPy's");
+    CHECK(zeros_match("special.yn_zeros", 2, n1, 1, 0, (const double[]){2.197141326031017, 5.429681040794135}, 2), "yn_zeros(1, 2) == SciPy's");
+    CHECK(zeros_match("special.ynp_zeros", 2, n0b, 1, 0, (const double[]){2.197141326031017, 5.429681040794135}, 2), "ynp_zeros(0, 2) == SciPy's");
+    CHECK(zeros_match("special.jn_zeros", 2, n50, 1, 0, (const double[]){57.116899160119175, 62.80769876483536}, 2), "jn_zeros(50, 2) == SciPy's");
+    CHECK(zeros_match("special.jnyn_zeros", 2, n1, 4, 2, (const double[]){2.197141326031017, 5.429681040794135}, 2), "jnyn_zeros(1, 2)[2] == yn_zeros(1, 2)");
+    CHECK(zeros_match("special.ai_zeros", 1, t2, 4, 0, (const double[]){-2.3381074104597674, -4.08794944413097}, 2)
+          && zeros_match("special.ai_zeros", 1, t2, 4, 1, (const double[]){-1.0187929716474715, -3.2481975821798375}, 2)
+          && zeros_match("special.ai_zeros", 1, t2, 4, 2, (const double[]){0.5356566560156998, -0.4190154780325641}, 2)
+          && zeros_match("special.ai_zeros", 1, t2, 4, 3, (const double[]){0.7012108227206915, -0.8031113696548628}, 2), "ai_zeros(2) == SciPy's");
+    CHECK(zeros_match("special.bi_zeros", 1, t2, 4, 0, (const double[]){-1.173713222709127, -3.271093302836352}, 2)
+          && zeros_match("special.bi_zeros", 1, t2, 4, 3, (const double[]){0.6019578879762394, -0.7603101414928012}, 2), "bi_zeros(2) == SciPy's");
+    CHECK(zeros_match("special.y0_zeros", 1, t2, 2, 0, (const double[]){0.89357697, 3.95767842}, 2)
+          && zeros_match("special.y1p_zeros", 1, t2, 2, 1, (const double[]){0.41672993, -0.30317374}, 2), "y0_zeros(2), y1p_zeros(2) == SciPy's (complex128, imaginary 0)");
+    tsr_arg huge[2] = {arg_int(0), arg_int(10000000)};
+    tsr_result r[1];
+    CHECK(fa_call("special.jn_zeros", 2, huge, r, 1) == TSR_EARG, "jn_zeros(0, 1e7) refused before the work");
+    fa_free(r, 1);
+}
+
 static void test_fd_normal(void)
 {
     const int64_t before = tsr_allocated();
@@ -4398,6 +4501,9 @@ int main(void)
     test_fd_normal();
     test_label_two_pass();
     test_fft_axis();
+    test_fftconvolve_fft();
+    test_kelvin_zeros();
+    test_bessel_airy_zeros();
     test_linalg_typed();
     test_op_names();
     test_sort_variants();

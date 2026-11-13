@@ -20,6 +20,7 @@ static int gesolve(int n, double *A, double *b);   /* small dense solver, define
 extern int tsr_fft(int64_t n, int64_t rows, int inverse, const double *in, double *out);   /* core FFT (fft.c) */
 extern int tsr_rfft(int64_t n, int64_t rows, const double *in, double *out);                /* real FFT -> n/2+1 bins */
 extern int tsr_irfft(int64_t n, int64_t rows, const double *in, double *out);               /* inverse real FFT (1/n) */
+extern int fft_axis_run(int64_t outer, int64_t len, int64_t inner, int inverse, const double *in, int real_in, double *out); /* fft.c */
 
 /* ---- integer-valued arguments. The C cast of a double to an integer is undefined for NaN, the infinities and
    values outside the type, so no routine here casts an argument directly: sig_i64 / sig_i32 convert a number
@@ -124,19 +125,42 @@ static int r_lfilter(const void *ctx, const tsr_arg *args, int nargs, tsr_result
     int64_t tb, taa, tx;
     double *b = fn_arg_doubles(&args[0], &tb); if (!b) return TSR_ENOMEM;
     double *a = fn_arg_doubles(&args[1], &taa); if (!a) { fn_free_doubles(b, tb); return TSR_ENOMEM; }
-    double *x = fn_arg_doubles(&args[2], &tx); if (!x) { fn_free_doubles(b, tb); fn_free_doubles(a, taa); return TSR_ENOMEM; }
-    if (na < 1 || a[0] == 0.0) { fn_free_doubles(b, tb); fn_free_doubles(a, taa); fn_free_doubles(x, tx); fn_set_error("lfilter: a[0] must be nonzero"); return TSR_EARG; }
+    /* x is read where it is when it is a contiguous float64 array (no 8 MB copy for 1M samples) */
+    double *xown = NULL;
+    const double *x = fn_arg_f64_view(&args[2], &tx);
+    if (!x) x = xown = fn_arg_doubles(&args[2], &tx);
+    if (!x) { fn_free_doubles(b, tb); fn_free_doubles(a, taa); return TSR_ENOMEM; }
+    if (na < 1 || a[0] == 0.0) { fn_free_doubles(b, tb); fn_free_doubles(a, taa); fn_free_doubles(xown, tx); fn_set_error("lfilter: a[0] must be nonzero"); return TSR_EARG; }
     int64_t osh[1] = {L};
     double *y = (double *)fn_result_array(&res[0], TSR_F64, 1, osh);
-    if (!y) { fn_free_doubles(b, tb); fn_free_doubles(a, taa); fn_free_doubles(x, tx); return TSR_ENOMEM; }
+    if (!y) { fn_free_doubles(b, tb); fn_free_doubles(a, taa); fn_free_doubles(xown, tx); return TSR_ENOMEM; }
     const double a0 = a[0];
-    for (int64_t n = 0; n < L; n++) {
+    /* the first K - 1 outputs reach before x[0] and y[0] and skip those terms; from n = K - 1 on every term exists,
+       so the loop runs without the index tests (the same terms in the same order). With a[0] == 1 the division is
+       dropped: acc / 1.0 is acc exactly, and it sat on the y[n-1] -> y[n] dependency chain. */
+    const int64_t K = nb > na ? nb : na, head = K - 1 < L ? K - 1 : L;
+    for (int64_t n = 0; n < head; n++) {
         double acc = 0.0;
         for (int64_t k = 0; k < nb; k++) if (n - k >= 0) acc += b[k] * x[n - k];
         for (int64_t k = 1; k < na; k++) if (n - k >= 0) acc -= a[k] * y[n - k];
         y[n] = acc / a0;
     }
-    fn_free_doubles(b, tb); fn_free_doubles(a, taa); fn_free_doubles(x, tx);
+    if (a0 == 1.0) {
+        for (int64_t n = head; n < L; n++) {
+            double acc = 0.0;
+            for (int64_t k = 0; k < nb; k++) acc += b[k] * x[n - k];
+            for (int64_t k = 1; k < na; k++) acc -= a[k] * y[n - k];
+            y[n] = acc;
+        }
+    } else {
+        for (int64_t n = head; n < L; n++) {
+            double acc = 0.0;
+            for (int64_t k = 0; k < nb; k++) acc += b[k] * x[n - k];
+            for (int64_t k = 1; k < na; k++) acc -= a[k] * y[n - k];
+            y[n] = acc / a0;
+        }
+    }
+    fn_free_doubles(b, tb); fn_free_doubles(a, taa); fn_free_doubles(xown, tx);
     return TSR_OK;
 }
 
@@ -1046,12 +1070,99 @@ static void conv_acc(double *restrict dst, const double *restrict src, int64_t L
         for (int i = (int)(x - L + 1); i < 4; i++) dst[x] = dst[x] + aj[i] * src[x - i];
 }
 
-/* N-D convolution / correlation by direct computation, sliced per mode. scipy computes fftconvolve/oaconvolve
-   via the FFT, but the result is the same operation; a direct sum matches it to within tolerance. correlate is
-   convolve with the second input reversed in every axis (real inputs; the conjugate is a no-op). Real float64. */
+/* The smallest even 2^a 3^b 5^c >= n: the transform lengths with dedicated butterflies (scipy pads its real
+   transforms to such a fast length too). */
+static int64_t conv_fast_len(int64_t n)
+{
+    int64_t best = 0;
+    for (int64_t p5 = 1; p5 < 2 * n; p5 *= 5)
+        for (int64_t p = p5; p < 2 * n; p *= 3) {
+            int64_t m = 2 * p;
+            while (m < n) m *= 2;
+            if (best == 0 || m < best) best = m;
+        }
+    return best;
+}
+
+/* fftconvolve / oaconvolve take the FFT path once the direct sum's multiply-adds (n1 * n2) exceed CONV_FFT_RATIO
+   P log2 P, P the padded size: about where the two take the same time on the benchmark host (direct about 0.14 ns
+   per multiply-add with the AVX2 clones). Below it the direct sum is kept, so small inputs keep their exact sums. */
+#define CONV_FFT_RATIO 20.0
+static int conv_fft_worth(int64_t n1, int64_t n2, const int64_t *f, int32_t nd)
+{
+    double P = 1.0;
+    for (int32_t d = 0; d < nd; d++) P *= (double)conv_fast_len(f[d]);
+    return (double)n1 * (double)n2 > CONV_FFT_RATIO * P * log2(P > 2.0 ? P : 2.0);
+}
+
+/* The full convolution of a (shape s1) and v (shape s2) through FFTs, as scipy.signal.fftconvolve computes it: both
+   zero-padded to fast lengths, a real transform along the last axis and complex ones along the others, the
+   spectra multiplied, transformed back, and the full result (shape f) read out of the padded one. */
+static int conv_fft_full(const double *a, const int64_t *s1, const double *v, const int64_t *s2, int32_t nd,
+                         const int64_t *f, double *full)
+{
+    int64_t N[TSR_MAXDIM], P = 1, rows = 1;
+    for (int32_t d = 0; d < nd; d++) { N[d] = conv_fast_len(f[d]); P *= N[d]; if (d < nd - 1) rows *= N[d]; }
+    const int64_t NL = N[nd - 1], h = NL / 2 + 1, C = rows * h;
+    double *R = (double *)calloc((size_t)P, sizeof(double));
+    double *X = (double *)malloc((size_t)(2 * C) * sizeof(double));
+    double *Y = (double *)malloc((size_t)(2 * C) * sizeof(double));
+    int rc = (R && X && Y) ? TSR_OK : TSR_ENOMEM;
+    for (int pass = 0; pass < 2 && rc == TSR_OK; pass++) {
+        const double *src = pass ? v : a;
+        const int64_t *s = pass ? s2 : s1;
+        double *Z = pass ? Y : X;
+        if (pass) memset(R, 0, (size_t)P * sizeof(double));
+        int64_t srows = 1; for (int32_t d = 0; d < nd - 1; d++) srows *= s[d];
+        int64_t J[TSR_MAXDIM]; for (int32_t d = 0; d < nd; d++) J[d] = 0;
+        for (int64_t r = 0; r < srows; r++) {                 /* each row of src into its place in the padded array */
+            int64_t off = 0, st = NL;
+            for (int32_t d = nd - 2; d >= 0; d--) { off += J[d] * st; st *= N[d]; }
+            memcpy(R + off, src + r * s[nd - 1], (size_t)s[nd - 1] * sizeof(double));
+            for (int32_t d = nd - 2; d >= 0; d--) { if (++J[d] < s[d]) break; J[d] = 0; }
+        }
+        rc = tsr_rfft(NL, rows, R, Z);
+        for (int32_t d = 0; d < nd - 1 && rc == TSR_OK; d++) {
+            int64_t outer = 1, inner = h;
+            for (int32_t e = 0; e < d; e++) outer *= N[e];
+            for (int32_t e = d + 1; e < nd - 1; e++) inner *= N[e];
+            rc = fft_axis_run(outer, N[d], inner, 0, Z, 0, Z);
+        }
+    }
+    if (rc == TSR_OK) {
+        for (int64_t i = 0; i < C; i++) {
+            const double xr = X[2 * i], xi = X[2 * i + 1], yr = Y[2 * i], yi = Y[2 * i + 1];
+            X[2 * i] = xr * yr - xi * yi;
+            X[2 * i + 1] = xr * yi + xi * yr;
+        }
+        for (int32_t d = nd - 2; d >= 0 && rc == TSR_OK; d--) {
+            int64_t outer = 1, inner = h;
+            for (int32_t e = 0; e < d; e++) outer *= N[e];
+            for (int32_t e = d + 1; e < nd - 1; e++) inner *= N[e];
+            rc = fft_axis_run(outer, N[d], inner, 1, X, 0, X);
+        }
+        if (rc == TSR_OK) rc = tsr_irfft(NL, rows, X, R);
+    }
+    if (rc == TSR_OK) {
+        int64_t frows = 1; for (int32_t d = 0; d < nd - 1; d++) frows *= f[d];
+        int64_t J[TSR_MAXDIM]; for (int32_t d = 0; d < nd; d++) J[d] = 0;
+        for (int64_t r = 0; r < frows; r++) {
+            int64_t off = 0, st = NL;
+            for (int32_t d = nd - 2; d >= 0; d--) { off += J[d] * st; st *= N[d]; }
+            memcpy(full + r * f[nd - 1], R + off, (size_t)f[nd - 1] * sizeof(double));
+            for (int32_t d = nd - 2; d >= 0; d--) { if (++J[d] < f[d]) break; J[d] = 0; }
+        }
+    }
+    free(R); free(X); free(Y);
+    return rc;
+}
+
+/* N-D convolution / correlation, sliced per mode: by direct computation, or for fftconvolve / oaconvolve (use_fft)
+   on large inputs through the FFT, as SciPy computes them (conv_fft_worth). correlate is convolve with the second
+   input reversed in every axis (real inputs; the conjugate is a no-op). Real float64. */
 /* corr2d_same: use scipy's correlate2d 'same' centering (offset s2/2) instead of the convolve/ correlate
    centering ((f-s1)/2); the two differ by one for even kernel dimensions. */
-static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse_v, int corr2d_same, const char *who, tsr_result *res)
+static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse_v, int corr2d_same, int use_fft, const char *who, tsr_result *res)
 {
     if (A->kind != 3 || V->kind != 3) { fn_set_error("%s: inputs must be arrays", who); return TSR_EARG; }
     const int32_t nd = A->arr.ndim;
@@ -1079,6 +1190,11 @@ static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse
     /* in2 reversed in every axis is its flat C-order array reversed. Each in2 row (the last axis) adds to a contiguous
        run of full, so the innermost loop is a plain multiply-add over that run; every cell still receives its terms in
        the order of (in1 element, in2 element), as a loop over single cells would add them. */
+    if (use_fft && !reverse_v && fullsize > 0 && conv_fft_worth(n1, n2, f, nd)) {
+        int rcf = conv_fft_full(a, s1, v, s2, nd, f, full);
+        if (rcf != TSR_OK) { free(full); fn_free_doubles(a, n1); fn_free_doubles(v, n2); return rcf; }
+        goto slice;
+    }
     double *vv = v;
     if (reverse_v) {
         vv = (double *)malloc((size_t)n2 * sizeof(double));
@@ -1108,6 +1224,7 @@ static int nd_convolve(const tsr_arg *A, const tsr_arg *V, int mode, int reverse
     }
     if (vv != v) free(vv);
 
+slice:;
     int64_t osh[TSR_MAXDIM], ost[TSR_MAXDIM];
     for (int32_t d = 0; d < nd; d++) {
         if (mode == CONV_FULL) { osh[d] = f[d]; ost[d] = 0; }
@@ -1144,7 +1261,7 @@ static int r_fftconvolve(const void *ctx, const tsr_arg *args, int nargs, tsr_re
     (void)ctx; (void)nres;
     int mode, rc; if ((rc = parse_mode(nargs > 2 ? &args[2] : NULL, &mode)) < 0) return rc;
     if ((rc = no_axes(args, nargs, 3, "fftconvolve")) < 0) return rc;
-    return nd_convolve(&args[0], &args[1], mode, 0, 0, "fftconvolve", &res[0]);
+    return nd_convolve(&args[0], &args[1], mode, 0, 0, 1, "fftconvolve", &res[0]);
 }
 
 /* oaconvolve(in1, in2, mode='full', axes=None): overlap-add convolution; same result as fftconvolve */
@@ -1153,7 +1270,7 @@ static int r_oaconvolve(const void *ctx, const tsr_arg *args, int nargs, tsr_res
     (void)ctx; (void)nres;
     int mode, rc; if ((rc = parse_mode(nargs > 2 ? &args[2] : NULL, &mode)) < 0) return rc;
     if ((rc = no_axes(args, nargs, 3, "oaconvolve")) < 0) return rc;
-    return nd_convolve(&args[0], &args[1], mode, 0, 0, "oaconvolve", &res[0]);
+    return nd_convolve(&args[0], &args[1], mode, 0, 0, 1, "oaconvolve", &res[0]);
 }
 
 /* correlate(in1, in2, mode='full', method='auto'): N-D cross-correlation (scipy.signal.correlate) */
@@ -1161,7 +1278,7 @@ static int r_correlate(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
 {
     (void)ctx; (void)nres;
     int mode, rc; if ((rc = parse_mode(nargs > 2 ? &args[2] : NULL, &mode)) < 0) return rc;
-    return nd_convolve(&args[0], &args[1], mode, 1, 0, "correlate", &res[0]);
+    return nd_convolve(&args[0], &args[1], mode, 1, 0, 0, "correlate", &res[0]);
 }
 
 /* -------------------------------------------------- detrend / savgol (least-squares helpers) ----- */
@@ -4704,7 +4821,7 @@ static int conv2d_common(const tsr_arg *args, int nargs, int reverse_v, const ch
     if (nargs > 4 && args[4].kind == 1 && args[4].num != 0.0) { fn_set_error("%s: only fillvalue=0 is supported", who); return TSR_EARG; }
     int mode = CONV_FULL;
     if (nargs > 2 && parse_mode(&args[2], &mode) != TSR_OK) return TSR_EARG;
-    return nd_convolve(&args[0], &args[1], mode, reverse_v, reverse_v, who, res);
+    return nd_convolve(&args[0], &args[1], mode, reverse_v, reverse_v, 0, who, res);
 }
 static int r_convolve2d(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 { (void)ctx; (void)nres; return conv2d_common(args, nargs, 0, "convolve2d", res); }

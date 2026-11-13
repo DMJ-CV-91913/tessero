@@ -4010,112 +4010,43 @@ static int roots_argi_chk(const tsr_arg *a, int n, int i, const char *name, int6
     return (n > i && a[i].kind == 1) ? fn_arg_i64(&a[i], 0, INT64_MIN, INT64_MAX, name, out) : TSR_OK;
 }
 void tsr_special_jv(const void *, const double *, double *);
-void tsr_special_yv(const void *, const double *, double *);
-void tsr_special_jvp(const void *, const double *, double *);
-void tsr_special_yvp(const void *, const double *, double *);
+int tsr_bessel_zeros_jyzo(int n, int nt, double *rj0, double *rj1, double *ry0, double *ry1);   /* cxx/special_complex.inc */
+int tsr_y_zeros_cyzo(int nt, int kf, double *zo, double *zv);
+int tsr_airy_zeros_airyzo(int nt, int kf, double *xa, double *xb, double *xc, double *xd);
 
-/* Evaluate f and f' for Bessel-zero kind: 0 = J_n, 1 = Y_n, 2 = J_n', 3 = Y_n'. J_n''/Y_n'' come from the
-   Bessel ODE: C_n'' = -C_n'/x - (1 - n^2/x^2) C_n. */
-static double bz_eval(int kind, double nu, double x, double *deriv)
-{
-    double in[2] = {nu, x}, o[1];
-    if (kind == 0) { tsr_special_jv(NULL, in, o); double fv = o[0]; tsr_special_jvp(NULL, in, o); *deriv = o[0]; return fv; }
-    if (kind == 1) { tsr_special_yv(NULL, in, o); double fv = o[0]; tsr_special_yvp(NULL, in, o); *deriv = o[0]; return fv; }
-    if (kind == 2) { tsr_special_jvp(NULL, in, o); double fp = o[0]; tsr_special_jv(NULL, in, o); double fo = o[0];
-                     *deriv = -fp / x - (1.0 - nu * nu / (x * x)) * fo; return fp; }
-    tsr_special_yvp(NULL, in, o); double fp = o[0]; tsr_special_yv(NULL, in, o); double fo = o[0];
-    *deriv = -fp / x - (1.0 - nu * nu / (x * x)) * fo; return fp;
-}
+/* The zero finders below are SciPy's own specfun routines (JYZO, CYZO, AIRYZO, KLVNZO): asymptotic starts and Newton
+   steps, as SciPy computes them (before 13 Nov 2026: scans in steps of 0.05 or 0.02 with a bisection or Newton
+   refinement of each sign change, 4 to 180 times slower than SciPy). The work per zero is a few function evaluations,
+   so nt is bounded only to bound the memory and time a call can take. */
+#define BZ_MAX_NT 1000000
 
-/* the value bz_eval returns, without the derivative (the scan only needs signs) */
-static double bz_value(int kind, double nu, double x)
+/* the first nt zeros of J_n, J_n', Y_n and Y_n' (each nt long; SciPy's jyzo(abs(n), nt), as jnyn_zeros calls it) */
+static int jyzo_run(int64_t n, int64_t nt, double *rj0, double *rj1, double *ry0, double *ry1)
 {
-    double in[2] = {nu, x}, o[1];
-    if (kind == 0) tsr_special_jv(NULL, in, o);
-    else if (kind == 1) tsr_special_yv(NULL, in, o);
-    else if (kind == 2) tsr_special_jvp(NULL, in, o);
-    else tsr_special_yvp(NULL, in, o);
-    return o[0];
-}
-
-static int bessel_zeros(int kind, double nu, int64_t nt, double *out)
-{
-    const double h = 0.05;
-    /* zeros are found by scanning in steps of 0.05 and refining each bracket (about 63 steps per zero, two
-       Bessel evaluations each): bound the work at 1000 zeros (jnyn_zeros runs four such scans) */
-    if (nt > 1000) { fn_set_error("*_zeros: nt must be <= 1000"); return TSR_EARG; }
-    /* every zero of J_nu, Y_nu and their derivatives lies beyond |nu| (j'_{nu,1} >= nu): for a large order start
-       the scan just below it instead of stepping through the zero-free stretch (orders below 100 keep the
-       original grid, so their results are unchanged) */
-    /* the scan evaluates values only, and f(a) is carried through the refinement (it is f(r) of the step that
-       moved a): the same numbers as before with half the Bessel evaluations */
-    double x = fabs(nu) >= 100.0 ? fabs(nu) - 1.0 : 1e-6, pf = bz_value(kind, nu, x);
-    int64_t got = 0;
-    while (got < nt && x < 1.0e5) {
-        double x2 = x + h, f2 = bz_value(kind, nu, x2);
-        if (pf == 0.0) { pf = f2; x = x2; continue; }
-        if ((pf < 0.0) != (f2 < 0.0)) {
-            double a = x, b = x2, r = 0.5 * (a + b), fa = pf;
-            for (int it = 0; it < 100; it++) {
-                double dr, fr = bz_eval(kind, nu, r, &dr);
-                if (fr == 0.0) break;
-                if ((fa < 0.0) != (fr < 0.0)) b = r; else { a = r; fa = fr; }
-                double rn = (dr != 0.0) ? r - fr / dr : 0.5 * (a + b);
-                if (rn <= a || rn >= b) rn = 0.5 * (a + b);
-                if (rn == r || (rn - r < 1e-15 && r - rn < 1e-15)) { r = rn; break; }
-                r = rn;
-            }
-            out[got++] = r;
-        }
-        pf = f2; x = x2;
+    if (n < 0) n = -n;
+    if (n > INT_MAX) { fn_set_error("*_zeros: n is too large"); return TSR_EARG; }
+    if (nt > BZ_MAX_NT) { fn_set_error("*_zeros: nt must be <= %d", BZ_MAX_NT); return TSR_EARG; }
+    /* each Newton step runs jyndd, whose recurrence is about n + 300 terms long; about 6 steps per zero, 4 nt zeros:
+       bound the work (about 0.2 s) */
+    if ((double)(n + 300) * (double)nt > 5e7) { fn_set_error("*_zeros: n and nt are too large together ((n + 300) * nt must be <= 5e7)"); return TSR_EARG; }
+    if (tsr_bessel_zeros_jyzo((int)n, (int)nt, rj0, rj1, ry0, ry1) != 0) {
+        fn_set_error("*_zeros: the Newton iteration did not converge");
+        return TSR_EARG;
     }
-    return got == nt ? TSR_OK : TSR_EARG;
+    return TSR_OK;
 }
 
-void tsr_special_ber(const void *, const double *, double *);
-void tsr_special_bei(const void *, const double *, double *);
-void tsr_special_ker(const void *, const double *, double *);
-void tsr_special_kei(const void *, const double *, double *);
-void tsr_special_berp(const void *, const double *, double *);
-void tsr_special_beip(const void *, const double *, double *);
-void tsr_special_kerp(const void *, const double *, double *);
-void tsr_special_keip(const void *, const double *, double *);
+int64_t tsr_kelvin_zeros_klvnzo(int64_t nt, int kd, double *zo);   /* cxx/special_complex.inc */
 
-static double kz_eval(int which, double x)
-{
-    double in[1] = {x}, o[1];
-    switch (which) {
-        case 0: tsr_special_ber(NULL, in, o); break;  case 1: tsr_special_bei(NULL, in, o); break;
-        case 2: tsr_special_ker(NULL, in, o); break;  case 3: tsr_special_kei(NULL, in, o); break;
-        case 4: tsr_special_berp(NULL, in, o); break; case 5: tsr_special_beip(NULL, in, o); break;
-        case 6: tsr_special_kerp(NULL, in, o); break; default: tsr_special_keip(NULL, in, o); break;
-    }
-    return o[0];
-}
-
+/* the first nt zeros of Kelvin function `which` (0..7: ber, bei, ker, kei, berp, beip, kerp, keip) by SciPy's
+   KLVNZO: an asymptotic start per zero and Newton steps, as SciPy computes them (before 13 Nov 2026: a scan in
+   steps of 0.02 and bisection, about 130x slower) */
 static int kelvin_zeros(int which, int64_t nt, double *out)
 {
-    const double h = 0.02;
-    double x = 1e-6, pf = kz_eval(which, x);
-    int64_t got = 0;
-    while (got < nt && x < 1.0e4) {
-        double x2 = x + h, f2 = kz_eval(which, x2);
-        if (!isfinite(f2)) break;                         /* past the overflow there are no more sign changes */
-        if (pf == 0.0) { pf = f2; x = x2; continue; }
-        if ((pf < 0.0) != (f2 < 0.0)) {
-            /* f(a) is carried (it is pf, then f(m) of the step that moved a) instead of evaluated again on every
-               step: the same numbers with half the Kelvin evaluations */
-            double a = x, b = x2, fa = pf;
-            for (int it = 0; it < 200 && (b - a) > 1e-15; it++) {
-                double m = 0.5 * (a + b), fm = kz_eval(which, m);
-                if (fm == 0.0) { a = b = m; break; }
-                if ((fa < 0.0) != (fm < 0.0)) b = m; else { a = m; fa = fm; }
-            }
-            out[got++] = 0.5 * (a + b);
-        }
-        pf = f2; x = x2;
-    }
-    return got == nt ? TSR_OK : TSR_EARG;
+    const int64_t got = tsr_kelvin_zeros_klvnzo(nt, which + 1, out);
+    if (got == nt) return TSR_OK;
+    fn_set_error("Kelvin zeros: zero %lld did not converge (past the range of the Kelvin functions)", (long long)got + 1);
+    return TSR_EARG;
 }
 
 static int kz_run(const tsr_arg *args, int nargs, tsr_result *res, int which)
@@ -4259,19 +4190,27 @@ static int r_beip_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, i
 static int r_kerp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 6); }
 static int r_keip_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return kz_run(a, n, r, 7); }
 
-static int bz_run(const tsr_arg *args, int nargs, tsr_result *res, int kind)
+/* jn_zeros / jnp_zeros / yn_zeros / ynp_zeros (n, nt): one of jyzo's four outputs (`which`: 0 Jn, 1 Jn', 2 Yn,
+   3 Yn'), as SciPy returns jnyn_zeros(n, nt)[which] */
+static int bz_run(const tsr_arg *args, int nargs, tsr_result *res, int which)
 {
     int64_t nu, nt = roots_argi(args, nargs, 1);
     int rc = roots_argi_chk(args, nargs, 0, "n", &nu);
     if (rc < 0) return rc;
     if (nt < 1) { fn_set_error("*_zeros: nt must be >= 1"); return TSR_EARG; }
+    if (nt > BZ_MAX_NT) { fn_set_error("*_zeros: nt must be <= %d", BZ_MAX_NT); return TSR_EARG; }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, (int64_t[]){nt});
-    if (!out) return TSR_ENOMEM;
-    return bessel_zeros(kind, (double)nu, nt, out);
+    double *w = (double *)malloc((size_t)(3 * nt) * sizeof(double));
+    if (!out || !w) { free(w); return TSR_ENOMEM; }
+    double *z[4];
+    for (int k = 0, j = 0; k < 4; k++) z[k] = k == which ? out : w + nt * j++;
+    rc = jyzo_run(nu, nt, z[0], z[1], z[2], z[3]);
+    free(w);
+    return rc;
 }
 static int r_jn_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 0); }
-static int r_yn_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 1); }
-static int r_jnp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 2); }
+static int r_yn_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 2); }
+static int r_jnp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 1); }
 static int r_ynp_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return bz_run(a, n, r, 3); }
 
 /* scipy.special.jnyn_zeros(n, nt): the first nt zeros of Jn, Jn', Yn, Yn' as a 4-tuple. */
@@ -4282,80 +4221,36 @@ static int r_jnyn_zeros(const void *c, const tsr_arg *args, int na, tsr_result *
     int rc0 = roots_argi_chk(args, na, 0, "n", &nu);
     if (rc0 < 0) return rc0;
     if (nt < 1) { fn_set_error("jnyn_zeros: nt must be >= 1"); return TSR_EARG; }
-    const int kinds[4] = {0, 2, 1, 3};   /* Jn, Jn', Yn, Yn' */
+    if (nt > BZ_MAX_NT) { fn_set_error("jnyn_zeros: nt must be <= %d", BZ_MAX_NT); return TSR_EARG; }
+    double *z[4];
     for (int o = 0; o < 4; o++) {
-        double *out = (double *)fn_result_array(&r[o], TSR_F64, 1, (int64_t[]){nt});
-        if (!out) return TSR_ENOMEM;
-        int rc = bessel_zeros(kinds[o], (double)nu, nt, out);
-        if (rc != TSR_OK) return rc;
+        z[o] = (double *)fn_result_array(&r[o], TSR_F64, 1, (int64_t[]){nt});
+        if (!z[o]) return TSR_ENOMEM;
+    }
+    return jyzo_run(nu, nt, z[0], z[1], z[2], z[3]);
+}
+
+/* scipy.special.ai_zeros(nt) -> (a, ap, ai, aip) (kf 1) / bi_zeros(nt) -> (b, bp, bi, bip) (kf 2): the zeros of
+   the function and of its derivative, the function at the derivative's zeros and the derivative at the function's
+   (SciPy's airyzo outputs xa, xb, xc, xd) */
+static int airy_zeros_run(const tsr_arg *args, int na, tsr_result *r, int kf, const char *who)
+{
+    int64_t nt = roots_argi(args, na, 0);
+    if (nt < 1) { fn_set_error("%s: nt must be >= 1", who); return TSR_EARG; }
+    if (nt > BZ_MAX_NT) { fn_set_error("%s: nt must be <= %d", who, BZ_MAX_NT); return TSR_EARG; }
+    double *o[4];
+    for (int k = 0; k < 4; k++) {
+        o[k] = (double *)fn_result_array(&r[k], TSR_F64, 1, (int64_t[]){nt});
+        if (!o[k]) return TSR_ENOMEM;
+    }
+    if (tsr_airy_zeros_airyzo((int)nt, kf, o[0], o[1], o[2], o[3]) != 0) {
+        fn_set_error("%s: the Newton iteration did not converge", who);
+        return TSR_EARG;
     }
     return TSR_OK;
 }
-
-void tsr_special_airy(const void *, const double *, double *);
-
-/* The fsel-th Airy component (0 = Ai, 1 = Ai', 2 = Bi, 3 = Bi') at x. */
-static double ai_eval(int fsel, double x) { double in[1] = {x}, o[4]; tsr_special_airy(NULL, in, o); return o[fsel]; }
-
-/* First nt zeros (all on the negative axis, scanned descending) of the fsel-th Airy component. */
-static int airy_scan(int fsel, int64_t nt, double *out)
-{
-    const double h = 0.05;
-    double x = -1e-6, pf = ai_eval(fsel, x);
-    int64_t got = 0;
-    while (got < nt && x > -1.0e3) {
-        double x2 = x - h, f2 = ai_eval(fsel, x2);
-        if (pf == 0.0) { pf = f2; x = x2; continue; }
-        if ((pf < 0.0) != (f2 < 0.0)) {
-            double a = x, b = x2, fa = pf;   /* f(a), carried (it is f(m) of the step that moved a) */
-            for (int it = 0; it < 200 && (a - b) > 1e-15; it++) {
-                double m = 0.5 * (a + b), fm = ai_eval(fsel, m);
-                if (fm == 0.0) { a = b = m; break; }
-                if ((fa < 0.0) != (fm < 0.0)) b = m; else { a = m; fa = fm; }
-            }
-            out[got++] = 0.5 * (a + b);
-        }
-        pf = f2; x = x2;
-    }
-    return got == nt ? TSR_OK : TSR_EARG;
-}
-
-/* scipy.special.ai_zeros(nt) -> (a, ap, ai, aip): a = zeros of Ai, ap = zeros of Ai',
-   ai = Ai at ap, aip = Ai' at a (scipy's crossed value convention). */
-static int r_ai_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr)
-{
-    (void)c; (void)nr;
-    int64_t nt = roots_argi(args, na, 0);
-    if (nt < 1) { fn_set_error("ai_zeros: nt must be >= 1"); return TSR_EARG; }
-    if (nt > 2000) { fn_set_error("ai_zeros: nt must be <= 2000"); return TSR_EARG; }   /* the scan bisects every zero */
-    double *a = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){nt});
-    double *ap = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){nt});
-    double *ai = (double *)fn_result_array(&r[2], TSR_F64, 1, (int64_t[]){nt});
-    double *aip = (double *)fn_result_array(&r[3], TSR_F64, 1, (int64_t[]){nt});
-    if (!a || !ap || !ai || !aip) return TSR_ENOMEM;
-    int rc = airy_scan(0, nt, a); if (rc != TSR_OK) return rc;
-    rc = airy_scan(1, nt, ap); if (rc != TSR_OK) return rc;
-    for (int64_t i = 0; i < nt; i++) { ai[i] = ai_eval(0, ap[i]); aip[i] = ai_eval(1, a[i]); }
-    return TSR_OK;
-}
-
-/* scipy.special.bi_zeros(nt) -> (b, bp, bi, bip): same crossed convention for Bi, Bi'. */
-static int r_bi_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr)
-{
-    (void)c; (void)nr;
-    int64_t nt = roots_argi(args, na, 0);
-    if (nt < 1) { fn_set_error("bi_zeros: nt must be >= 1"); return TSR_EARG; }
-    if (nt > 2000) { fn_set_error("bi_zeros: nt must be <= 2000"); return TSR_EARG; }   /* the scan bisects every zero */
-    double *b = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){nt});
-    double *bp = (double *)fn_result_array(&r[1], TSR_F64, 1, (int64_t[]){nt});
-    double *bi = (double *)fn_result_array(&r[2], TSR_F64, 1, (int64_t[]){nt});
-    double *bip = (double *)fn_result_array(&r[3], TSR_F64, 1, (int64_t[]){nt});
-    if (!b || !bp || !bi || !bip) return TSR_ENOMEM;
-    int rc = airy_scan(2, nt, b); if (rc != TSR_OK) return rc;
-    rc = airy_scan(3, nt, bp); if (rc != TSR_OK) return rc;
-    for (int64_t i = 0; i < nt; i++) { bi[i] = ai_eval(2, bp[i]); bip[i] = ai_eval(3, b[i]); }
-    return TSR_OK;
-}
+static int r_ai_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr) { (void)c; (void)nr; return airy_zeros_run(args, na, r, 1, "ai_zeros"); }
+static int r_bi_zeros(const void *c, const tsr_arg *args, int na, tsr_result *r, int nr) { (void)c; (void)nr; return airy_zeros_run(args, na, r, 2, "bi_zeros"); }
 
 void tsr_special_obl_cv(const void *, const double *, double *);
 void tsr_special_pro_cv(const void *, const double *, double *);
@@ -4365,7 +4260,12 @@ void tsr_special_pbvv(const void *, const double *, double *);
 /* read arg i as a double (int or float kind). */
 static double seq_argf(const tsr_arg *a, int n, int i) { return (n > i && a[i].kind == 1) ? (a[i].flags & 1 ? (double)a[i].ival : a[i].num) : 0.0; }
 
-/* scipy.special.obl_cv_seq(m, n, c) / pro_cv_seq: spheroidal characteristic values for modes m..n. */
+int tsr_spheroidal_cv_seq(int m, int n, double c, int kd, double *out);   /* cxx/special_complex.inc */
+
+/* scipy.special.obl_cv_seq(m, n, c) / pro_cv_seq: spheroidal characteristic values for modes m..n, from one call of
+   SciPy's segv for all the modes, as SciPy computes them (before 13 Nov 2026: one pro_cv / obl_cv call per mode,
+   3x slower and not always SciPy's last bits). Outside the domain obl_cv / pro_cv accept (|m|, |n|, |c| <= 1000)
+   the values stay NaN, as they were. */
 static int cv_seq(const tsr_arg *a, int na, tsr_result *r, int oblate)
 {
     int64_t m = roots_argi(a, na, 0), n = roots_argi(a, na, 1);
@@ -4375,12 +4275,11 @@ static int cv_seq(const tsr_arg *a, int na, tsr_result *r, int oblate)
     int64_t len = n - m + 1;
     double *out = (double *)fn_result_array(&r[0], TSR_F64, 1, (int64_t[]){len});
     if (!out) return TSR_ENOMEM;
-    for (int64_t k = 0; k < len; k++) {
-        double in[3] = {(double)m, (double)(m + k), cc}, o[1];
-        if (oblate) tsr_special_obl_cv(NULL, in, o); else tsr_special_pro_cv(NULL, in, o);
-        out[k] = o[0];
+    if (!(n <= 1000 && (fabs(cc) <= 1000.0 || cc == -INFINITY))) {
+        for (int64_t k = 0; k < len; k++) out[k] = NAN;
+        return TSR_OK;
     }
-    return TSR_OK;
+    return tsr_spheroidal_cv_seq((int)m, (int)n, cc, oblate ? -1 : 1, out) == 0 ? TSR_OK : TSR_ENOMEM;
 }
 static int r_obl_cv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return cv_seq(a, n, r, 1); }
 static int r_pro_cv_seq(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return cv_seq(a, n, r, 0); }
@@ -4440,32 +4339,22 @@ static int r_lmbda(const void *c, const tsr_arg *a, int na, tsr_result *r, int n
     return TSR_OK;
 }
 
-/* scipy.special.y0_zeros/y1_zeros/y1p_zeros: the first nt zeros of Y0 / Y1 / Y1' together with an
-   associated value, returned as complex128 (the zeros are real; scipy wraps them in complex). The
-   value column is Y1 at the zeros of Y0 (= -Y0'), Y1' at the zeros of Y1, and Y1 at the zeros of Y1'. */
-static int yzero_run(tsr_result *r, int bzkind, double nu, int valkind, int64_t nt)
+/* scipy.special.y0_zeros/y1_zeros/y1p_zeros (kf 0, 1, 2): the first nt real zeros of Y0 / Y1 / Y1' together
+   with an associated value, as complex128 (as SciPy returns them): Y1 at the zeros of Y0 (= -Y0'), Y1' (= Y0) at
+   the zeros of Y1, and Y1 at the zeros of Y1'. SciPy's cyzo(nt, kf, kc=1). Its Newton steps are deflated by every
+   zero found so far, so the work grows as nt^2: nt is bounded at 1000, as erf_zeros. */
+static int yzero_run(tsr_result *r, int kf, int64_t nt)
 {
     if (nt < 1) { fn_set_error("y*_zeros: nt must be >= 1"); return TSR_EARG; }
-    if (nt > 1000) { fn_set_error("y*_zeros: nt must be <= 1000"); return TSR_EARG; }   /* bessel_zeros' bound, before the malloc */
-    double *tmp = (double *)malloc((size_t)nt * sizeof(double));
-    if (!tmp) return TSR_ENOMEM;
-    int rc = bessel_zeros(bzkind, nu, nt, tmp);
-    if (rc != TSR_OK) { free(tmp); return rc; }
+    if (nt > 1000) { fn_set_error("y*_zeros: nt must be <= 1000"); return TSR_EARG; }
     double *z = (double *)fn_result_array(&r[0], TSR_C128, 1, (int64_t[]){nt});
     double *val = (double *)fn_result_array(&r[1], TSR_C128, 1, (int64_t[]){nt});
-    if (!z || !val) { free(tmp); return TSR_ENOMEM; }
-    for (int64_t i = 0; i < nt; i++) {
-        double in[2] = {1.0, tmp[i]}, o[1];
-        if (valkind == 0) tsr_special_yv(NULL, in, o); else tsr_special_yvp(NULL, in, o);
-        z[2 * i] = tmp[i]; z[2 * i + 1] = 0.0;
-        val[2 * i] = o[0]; val[2 * i + 1] = 0.0;
-    }
-    free(tmp);
-    return TSR_OK;
+    if (!z || !val) return TSR_ENOMEM;
+    return tsr_y_zeros_cyzo((int)nt, kf, z, val) == 0 ? TSR_OK : TSR_ENOMEM;
 }
-static int r_y0_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 1, 0.0, 0, roots_argi(a, n, 0)); }
-static int r_y1_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 1, 1.0, 1, roots_argi(a, n, 0)); }
-static int r_y1p_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 3, 1.0, 0, roots_argi(a, n, 0)); }
+static int r_y0_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 0, roots_argi(a, n, 0)); }
+static int r_y1_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 1, roots_argi(a, n, 0)); }
+static int r_y1p_zeros(const void *c, const tsr_arg *a, int n, tsr_result *r, int nr) { (void)c; (void)nr; return yzero_run(r, 2, roots_argi(a, n, 0)); }
 
 void tsr_modfresnel_plus(double, double *);
 void tsr_modfresnel_minus(double, double *);

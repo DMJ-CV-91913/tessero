@@ -47,8 +47,8 @@ final class KDTree
      */
     private static function rows(array $rows): object
     {
-        $flat = [];
         $d = null;
+        $lists = true;
         foreach ($rows as $p) {
             $c = count($p);
             if ($d === null) {
@@ -56,13 +56,31 @@ final class KDTree
             } elseif ($c !== $d) {
                 throw new ShapeError("Ragged nested array: every row must have the same length (expected {$d}).");
             }
-            foreach ($p as $v) {
-                $flat[] = (float) $v;
+            $lists = $lists && array_is_list($p);
+        }
+        if ($lists) {
+            // rows that are lists are concatenated in one C call; the float64 packing below converts each value as
+            // the (float) cast does, so the array holds the same doubles
+            $flat = array_merge(...array_values($rows));
+        } else {
+            $flat = [];
+            foreach ($rows as $p) {
+                foreach ($p as $v) {
+                    $flat[] = (float) $v;
+                }
             }
         }
         $n = count($rows);
         if (extension_loaded('tessero') && class_exists(\Tessero\Ext\NDArray::class)) {
-            return \Tessero\Ext\NDArray::array($flat, 'float64')->reshape([$n, (int) $d]);
+            try {
+                return \Tessero\Ext\NDArray::array($flat, 'float64')->reshape([$n, (int) $d]);
+            } catch (\Throwable $e) {
+                if (!$lists) {
+                    throw $e;
+                }
+                // the extension takes numbers only: values the (float) cast accepts (numeric strings, null) are cast
+                return \Tessero\Ext\NDArray::array(array_map(floatval(...), $flat), 'float64')->reshape([$n, (int) $d]);
+            }
         }
 
         return \Tessero\NDArray::fromFlat($flat, [$n, (int) $d], 'float64');

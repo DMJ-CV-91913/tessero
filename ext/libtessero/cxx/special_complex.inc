@@ -299,3 +299,316 @@ static const fn_def TSR_SCPLX_DEFS[] = {
 };
 
 extern "C" const fn_table TSR_SPECIAL_COMPLEX_TABLE = {TSR_SCPLX_DEFS, (int)(sizeof TSR_SCPLX_DEFS / sizeof TSR_SCPLX_DEFS[0])};
+
+/* The first nt zeros of a Kelvin function (kd 1..8: ber, bei, ker, kei, ber', bei', ker', kei') by SciPy's own
+   specfun KLVNZO (xsf::klvnzo, SciPy 1.17.1, which ber_zeros .. kelvin_zeros call): each zero starts from the
+   previous one plus 4.44 (the first from a table) and is refined by Newton steps on klvna's values until a step moves
+   it by at most 5e-10. The same steps on the same numbers as xsf, with one guard xsf lacks: a zero that has not
+   converged after 100 steps, or has turned NaN (past klvna's range), ends the search, so a large nt cannot loop
+   forever. Returns how many zeros were found (nt when all converged). */
+extern "C" int64_t tsr_kelvin_zeros_klvnzo(int64_t nt, int kd, double *zo)
+{
+    try {
+        double ber, bei, ger, gei, der, dei, her, hei;
+        double rt0[9] = {0.0, 2.84891, 5.02622, 1.71854, 3.91467, 6.03871, 3.77268, 2.66584, 4.93181};
+        double rt = rt0[kd];
+        for (int64_t m = 1; m <= nt; m++) {
+            for (int it = 0;; it++) {
+                xsf::detail::klvna(rt, &ber, &bei, &ger, &gei, &der, &dei, &her, &hei);
+                if (kd == 1) rt -= ber / der;
+                else if (kd == 2) rt -= bei / dei;
+                else if (kd == 3) rt -= ger / her;
+                else if (kd == 4) rt -= gei / hei;
+                else if (kd == 5) rt -= der / (-bei - der / rt);
+                else if (kd == 6) rt -= dei / (ber - dei / rt);
+                else if (kd == 7) rt -= her / (-gei - her / rt);
+                else rt -= hei / (ger - hei / rt);
+                if (std::fabs(rt - rt0[kd]) <= 5e-10) break;
+                rt0[kd] = rt;
+                if (it >= 100 || !std::isfinite(rt)) return m - 1;
+            }
+            zo[m - 1] = rt;
+            rt += 4.44;
+        }
+        return nt;
+    } catch (...) {
+        return 0;
+    }
+}
+
+/* The first nt zeros of J_n, J_n', Y_n and Y_n' (n >= 0) by SciPy's own specfun JYZO (xsf::specfun::jyzo, SciPy
+   1.17.1, which jn_zeros, jnp_zeros, yn_zeros, ynp_zeros and jnyn_zeros call): Newton steps on jyndd's values from
+   asymptotic starts (with SciPy's GH-18859 corrections), each next zero started from the spacing of the last two.
+   The same statements on the same numbers as xsf, with one guard xsf lacks: a zero that has not converged after 200
+   steps ends the search (-1) instead of iterating forever. 0 when all 4 x nt zeros were found. */
+extern "C" int tsr_bessel_zeros_jyzo(int n, int nt, double *rj0, double *rj1, double *ry0, double *ry1)
+{
+    try {
+        using xsf::specfun::jyndd;
+        const int maxit = 200;
+        int L, it = 0;
+        double b, h, x, x0, bjn, djn, fjn, byn, dyn, fyn;
+        const double pi = 3.141592653589793;
+        // -- Newton method for j_{N,L}
+        if (n == 0) {
+            x = 2.4;
+        } else {
+            x = n + 1.85576 * pow(n, 0.33333) + 1.03315 / pow(n, 0.33333);
+        }
+        L = 0;
+    L10:
+        x0 = x;
+        jyndd(n, x, &bjn, &djn, &fjn, &byn, &dyn, &fyn);
+        x -= bjn / djn;
+        if (fabs(x - x0) > 1e-11) {
+            if (++it > maxit) return -1;
+            goto L10;
+        }
+        it = 0;
+        L += 1;
+        rj0[L - 1] = x;
+        if (L == 1) {
+            if (n == 0) {
+                x = 5.52;
+            } else {
+                x = n + 3.24460 * pow(n, 0.33333) + 3.15824 / pow(n, 0.33333);
+            }
+        } else {
+            x = rj0[L - 1] + (rj0[L - 1] - rj0[L - 2]);
+        }
+        if (L <= (n + 10)) {
+            jyndd(n, x, &bjn, &djn, &fjn, &byn, &dyn, &fyn);
+            h = atan(fabs(djn) / sqrt(fabs(fjn * bjn)));
+            b = -djn / (bjn * atan(h));
+            x -= (h - pi / 2) / b;
+        }
+        if (L < nt) {
+            goto L10;
+        }
+        // -- Newton method for j_{N,L+1}'
+        if (n == 0) {
+            x = 3.8317;
+        } else {
+            x = n + 0.80861 * pow(n, 0.33333) + 0.07249 / pow(n, 0.33333);
+        }
+        L = 0;
+    L15:
+        x0 = x;
+        jyndd(n, x, &bjn, &djn, &fjn, &byn, &dyn, &fyn);
+        x -= djn / fjn;
+        if (fabs(x - x0) > 1e-11) {
+            if (++it > maxit) return -1;
+            goto L15;
+        }
+        it = 0;
+        L += 1;
+        rj1[L - 1] = x;
+        if (L < nt) {
+            x = rj1[L - 1] + (rj0[L] - rj0[L - 1]);
+            goto L15;
+        }
+        // -- Newton method for y_{N,L}
+        if (n == 0) {
+            x = 0.89357697;
+        } else {
+            x = n + 0.93158 * pow(n, 0.33333) + 0.26035 / pow(n, 0.33333);
+        }
+        L = 0;
+    L20:
+        x0 = x;
+        jyndd(n, x, &bjn, &djn, &fjn, &byn, &dyn, &fyn);
+        x -= byn / dyn;
+        if (fabs(x - x0) > 1.0e-11) {
+            if (++it > maxit) return -1;
+            goto L20;
+        }
+        it = 0;
+        L += 1;
+        ry0[L - 1] = x;
+        if (L == 1) {
+            if (n == 0) {
+                x = 3.957678419314858;
+            } else {
+                x = n + 2.59626 * pow(n, 0.33333) + 2.022183 / pow(n, 0.33333);
+            }
+        } else {
+            x = ry0[L - 1] + (ry0[L - 1] - ry0[L - 2]);
+        }
+        if (L <= n + 10) {
+            jyndd(n, x, &bjn, &djn, &fjn, &byn, &dyn, &fyn);
+            h = atan(fabs(dyn) / sqrt(fabs(fyn * byn)));
+            b = -dyn / (byn * tan(h));
+            x -= (h - pi / 2) / b;
+        }
+        if (L < nt)
+            goto L20;
+        // -- Newton method for y_{N,L+1}'
+        if (n == 0) {
+            x = 2.67257;
+        } else {
+            x = n + 1.8211 * pow(n, 0.33333) + 0.94001 / pow(n, 0.33333);
+        }
+        L = 0;
+    L25:
+        x0 = x;
+        jyndd(n, x, &bjn, &djn, &fjn, &byn, &dyn, &fyn);
+        x -= dyn / fyn;
+        if (fabs(x - x0) > 1.0e-11) {
+            if (++it > maxit) return -1;
+            goto L25;
+        }
+        it = 0;
+        L += 1;
+        ry1[L - 1] = x;
+        if (L < nt) {
+            x = ry1[L - 1] + (ry0[L] - ry0[L - 1]);
+            goto L25;
+        }
+        return 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+/* The spheroidal characteristic values for modes m..n (n - m <= 199) by one call of SciPy's specfun SEGV, as
+   scipy.special.pro_cv_seq (kd 1) and obl_cv_seq (kd -1) return segv(m, n, c, kd)[1][:n - m + 1]. 0, or -1. */
+extern "C" int tsr_spheroidal_cv_seq(int m, int n, double c, int kd, double *out)
+{
+    try {
+        double cv = 0.0, eg[200] = {0.0};
+        if (xsf::specfun::segv(m, n, c, kd, &cv, eg) != xsf::specfun::Status::OK) return -1;
+        for (int i = 0; i <= n - m; i++) out[i] = eg[i];
+        return 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+/* The first nt zeros of Y0 (kf 0), Y1 (kf 1) or Y1' (kf 2) on the real axis and the value Y1, Y1' (= Y0) or Y1
+   there, by SciPy's own specfun CYZO (xsf::specfun::cyzo with kc = 1, as y0_zeros, y1_zeros and y1p_zeros call it):
+   Newton steps in the complex plane, deflated by the zeros already found. Its iterations are bounded (50 per zero).
+   zo and zv are nt complex values each, interleaved. 0, or -1 out of memory. */
+extern "C" int tsr_y_zeros_cyzo(int nt, int kf, double *zo, double *zv)
+{
+    try {
+        std::vector<std::complex<double>> z((size_t)nt), v((size_t)nt);
+        xsf::specfun::cyzo(nt, kf, 1, z.data(), v.data());
+        for (int i = 0; i < nt; i++) {
+            zo[2 * i] = z[(size_t)i].real(); zo[2 * i + 1] = z[(size_t)i].imag();
+            zv[2 * i] = v[(size_t)i].real(); zv[2 * i + 1] = v[(size_t)i].imag();
+        }
+        return 0;
+    } catch (...) {
+        return -1;
+    }
+}
+
+/* The first nt zeros of Ai and Ai' (kf 1) or Bi and Bi' (kf 2) with the function's value at the derivative's zeros
+   and the derivative's at the function's, by SciPy's own specfun AIRYZO (xsf::airyzo, which ai_zeros and bi_zeros
+   call): Newton steps from asymptotic starts. The same statements on the same numbers as xsf, with one guard: a zero
+   that has not converged after 200 steps (a NaN error never does) ends the search (-1) instead of iterating forever.
+   0 when all were found. */
+extern "C" int tsr_airy_zeros_airyzo(int nt, int kf, double *xa, double *xb, double *xc, double *xd)
+{
+    try {
+        const double pi = 3.141592653589793;
+        const int maxit = 200;
+        int i;
+        double rt = 0.0, rt0, u = 0.0, u1 = 0.0, x, ai, bi, ad, bd, err;
+        for (i = 1; i <= nt; ++i) {
+            rt0 = 0.0;
+            if (kf == 1) {
+                u = 3.0 * pi * (4.0 * i - 1) / 8.0;
+                u1 = 1 / (u * u);
+            } else if (kf == 2) {
+                if (i == 1) {
+                    rt0 = -1.17371;
+                } else {
+                    u = 3.0 * pi * (4.0 * i - 3.0) / 8.0;
+                    u1 = 1 / (u * u);
+                }
+            }
+            if (rt0 == 0) {
+                rt0 = -pow(u * u, 1.0 / 3.0) *
+                      (1.0 +
+                       u1 * (5.0 / 48.0 + u1 * (-5.0 / 36.0 + u1 * (77125.0 / 82944.0 + u1 * (-108056875.0 / 6967296.0)))));
+            }
+            for (int it = 0;; it++) {
+                x = rt0;
+                xsf::airyb(x, &ai, &bi, &ad, &bd);
+                if (kf == 1) {
+                    rt = rt0 - ai / ad;
+                } else if (kf == 2) {
+                    rt = rt0 - bi / bd;
+                }
+                err = fabs((rt - rt0) / rt);
+                if (err <= 1.0e-12) {
+                    break;
+                } else {
+                    rt0 = rt;
+                }
+                if (it >= maxit) return -1;
+            }
+            xa[i - 1] = rt;
+            if (err > 1.0e-14) {
+                xsf::airyb(rt, &ai, &bi, &ad, &bd);
+            }
+            if (kf == 1) {
+                xd[i - 1] = ad;
+            } else if (kf == 2) {
+                xd[i - 1] = bd;
+            }
+        }
+        for (i = 1; i <= nt; ++i) {
+            rt0 = 0.0;
+            if (kf == 1) {
+                if (i == 1) {
+                    rt0 = -1.01879;
+                } else {
+                    u = 3.0 * pi * (4.0 * i - 3.0) / 8.0;
+                    u1 = 1 / (u * u);
+                }
+            } else if (kf == 2) {
+                if (i == 1) {
+                    rt0 = -2.29444;
+                } else {
+                    u = 3.0 * pi * (4.0 * i - 1.0) / 8.0;
+                    u1 = 1 / (u * u);
+                }
+            }
+            if (rt0 == 0) {
+                rt0 = -pow(u * u, 1.0 / 3.0) *
+                      (1.0 + u1 * (-7.0 / 48.0 +
+                                   u1 * (35.0 / 288.0 + u1 * (-181223.0 / 207360.0 + u1 * (18683371.0 / 1244160.0)))));
+            }
+            for (int it = 0;; it++) {
+                x = rt0;
+                xsf::airyb(x, &ai, &bi, &ad, &bd);
+                if (kf == 1) {
+                    rt = rt0 - ad / (ai * x);
+                } else if (kf == 2) {
+                    rt = rt0 - bd / (bi * x);
+                }
+                err = fabs((rt - rt0) / rt);
+                if (err <= 1.0e-12) {
+                    break;
+                } else {
+                    rt0 = rt;
+                }
+                if (it >= maxit) return -1;
+            }
+            xb[i - 1] = rt;
+            if (err > 1.0e-14) {
+                xsf::airyb(rt, &ai, &bi, &ad, &bd);
+            }
+            if (kf == 1) {
+                xc[i - 1] = ai;
+            } else if (kf == 2) {
+                xc[i - 1] = bi;
+            }
+        }
+        return 0;
+    } catch (...) {
+        return -1;
+    }
+}

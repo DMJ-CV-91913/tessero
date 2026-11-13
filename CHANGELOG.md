@@ -9,6 +9,35 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Changed
 
+- **SciPy's own algorithms for `quad` and the special-function zeros** (their values now follow SciPy's, from the
+  same steps):
+  - `integrate.quad` is QUADPACK's DQAGSE, ported step for step from SciPy's C translation: the 10-21 Gauss-Kronrod
+    rule, bisection of the largest error and the epsilon-algorithm extrapolation past endpoint singularities. It was
+    a 7-15 rule without extrapolation. The value, the error estimate and the number of integrand calls are SciPy's:
+    21 calls instead of 45 for `sin(x) exp(-x)` on [0, 10], 2 to 5 times fewer on endpoint singularities (`sqrt`,
+    `log`, `1/sqrt` at 0), 21 instead of 15 where one 15-point panel was enough. Equal limits return
+    `[0.0, 0.0]` without a call and reversed limits are integrated as SciPy does (over `[b, a]`, negated).
+    `dblquad`, `tplquad` and `nquad` use it.
+  - The zeros of the Kelvin functions (`kelvin_zeros`, `ber_zeros` ... `keip_zeros`), of `J_n`, `J_n'`, `Y_n`, `Y_n'`
+    (`jn_zeros`, `jnp_zeros`, `yn_zeros`, `ynp_zeros`, `jnyn_zeros`), of `Y0`, `Y1`, `Y1'` (`y0_zeros`, `y1_zeros`,
+    `y1p_zeros`) and of the Airy functions (`ai_zeros`, `bi_zeros`) come from SciPy's specfun routines (KLVNZO, JYZO,
+    CYZO, AIRYZO) in the vendored xsf: asymptotic starts and Newton steps, where Tessero scanned in steps of 0.02 or
+    0.05 and refined each sign change (4 to 180 times slower than SciPy). Unlike xsf, a zero that does not converge
+    ends with an error instead of iterating forever (`ber_zeros(5000)` reaches past the functions' range). The Bessel
+    and Airy limits rise from 1,000 and 2,000 zeros to a bound on the work.
+  - `pro_cv_seq` and `obl_cv_seq` take every mode's characteristic value from one SEGV call, as SciPy does, instead
+    of one `pro_cv` / `obl_cv` call per mode.
+- **`signal.fftconvolve` and `oaconvolve` use the FFT on large inputs**, as SciPy does (both inputs padded to a
+  length of 2, 3 and 5 factors, real transforms along the last axis): where the direct sum's multiply-adds exceed the
+  FFT's work about 20 times over. Those results move by rounding, as SciPy's do; small inputs keep the direct sum and
+  its exact values.
+- **Faster, with results unchanged byte for byte**: `ndimage.gaussian_filter`, `uniform_filter` (and the other
+  separable filters) read the input in place and write the last pass straight into the result, dropping three full
+  copies of the image; `signal.lfilter` runs its main loop without per-term index tests and, when `a[0] == 1`,
+  without the division by it on the recurrence's critical path; `stats.page_trend_test` keeps the exact null
+  distribution's table per column count between calls, as SciPy's module-level state does; the `spatial.KDTree`
+  constructor and `query` concatenate rows that are lists in one call.
+
 - **`special.ellip_harm_2` and `special.ellip_normal` about 1,000x faster** (18 ms to 12 and 21 us a call; SciPy
   takes 44 and 145 us): the 256-point Gauss-Legendre rule of their quadratures is computed once per process instead
   of on every call. The Kelvin-function zeros (`kelvin_zeros`, `ber_zeros` ... `keip_zeros`) are about 1.4x faster:
