@@ -259,6 +259,23 @@ final class NativeHardeningTest extends TestCase
         $this->throwsLike(\LogicException::class, 'internal', static fn () => Buffer::adopter());
     }
 
+    public function testFinfoAndIinfoAreKeptPerDtypeAndCopiedOnReturn(): void
+    {
+        // finfo / iinfo of a dtype name are asked of the kernel once and kept: later calls return the same numbers,
+        // and a caller changing its copy does not change what the next call returns
+        foreach (['np.finfo' => ['float64', 'float32'], 'np.iinfo' => ['int64', 'int32']] as $fn => $dtypes) {
+            foreach ($dtypes as $d) {
+                $first = Registry::routine($fn, [$d]);
+                $first['bits'] = -1;
+                $this->assertSame(Registry::routine($fn, [$d]), Registry::routine($fn, [$d]));
+                $this->assertNotSame(-1, Registry::routine($fn, [$d])['bits']);
+            }
+        }
+        $this->assertNotSame(Registry::routine('np.finfo', ['float64']), Registry::routine('np.finfo', ['float32']));
+        $this->expectException(\Throwable::class);
+        Registry::routine('np.finfo', ['no-such-dtype']);
+    }
+
     // ------------------------------------------------------------------ helpers
 
     /** @param list<int> $shape */

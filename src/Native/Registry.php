@@ -674,6 +674,24 @@ final class Registry
      */
     public static function routine(string $name, array $args): mixed
     {
+        // numpy.finfo / iinfo of a dtype name: fixed numbers per dtype, so the kernel is asked once and the result (a
+        // PHP array of numbers, copied on return) is kept; anything else goes to the kernel every time
+        if (isset(self::CONSTANT_ROUTINES[$name]) && count($args) === 1 && is_string($a = reset($args))) {
+            return self::$constants[$name][$a] ??= self::callRoutine($name, $args);
+        }
+
+        return self::callRoutine($name, $args);
+    }
+
+    /** routines whose result depends only on a dtype argument (routine() keeps it per dtype) */
+    private const CONSTANT_ROUTINES = ['np.finfo' => true, 'np.iinfo' => true];
+
+    /** @var array<string, array<string, mixed>> routine()'s kept CONSTANT_ROUTINES results */
+    private static array $constants = [];
+
+    /** @param list<mixed> $args */
+    private static function callRoutine(string $name, array $args): mixed
+    {
         $p = self::$routines[$name] ?? self::prepareRoutine($name);
         $info = $p['info'];
         $label = $p['label'];

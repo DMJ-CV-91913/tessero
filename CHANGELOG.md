@@ -37,6 +37,12 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   without the division by it on the recurrence's critical path; `stats.page_trend_test` keeps the exact null
   distribution's table per column count between calls, as SciPy's module-level state does; the `spatial.KDTree`
   constructor and `query` concatenate rows that are lists in one call.
+- **`Np::finfo` and `Np::iinfo` of a dtype name are computed once** (FFI package): their numbers depend only on the
+  dtype, so the kernel is asked on the first call and the result is kept (returned as a copy); about 0.2 us a call
+  instead of about 4 (NumPy 0.5). `finfo` is among the 15 most-called NumPy functions in the usage corpus.
+- `tools/parity/usage_speed.php`: per-call speed weighted by real-world usage. Each timed function's per-call time
+  is weighted by how often the corpus of the usage-weighted coverage calls it, giving the time a million and a
+  billion calls of that mix take on each side.
 
 - **`special.ellip_harm_2` and `special.ellip_normal` about 1,000x faster** (18 ms to 12 and 21 us a call; SciPy
   takes 44 and 145 us): the 256-point Gauss-Legendre rule of their quadratures is computed once per process instead
