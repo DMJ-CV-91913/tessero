@@ -9,6 +9,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Changed
 
+- **`special.ellip_harm_2` and `special.ellip_normal` about 1,000x faster** (18 ms to 12 and 21 us a call; SciPy
+  takes 44 and 145 us): the 256-point Gauss-Legendre rule of their quadratures is computed once per process instead
+  of on every call. The Kelvin-function zeros (`kelvin_zeros`, `ber_zeros` ... `keip_zeros`) are about 1.4x faster:
+  their bisection no longer evaluates the function at the bracket's lower end twice. Results unchanged, byte for byte.
+
 - **A default native memory budget in the CLI**: half of the machine's physical memory, on both backends, where it
   was unlimited. The CLI also runs queue workers and artisan commands, and a single oversized call there (a
   `numpy.meshgrid` of nine 9-value vectors asks for 26 GiB) is now refused up front with `MemoryError` /

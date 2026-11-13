@@ -19,6 +19,7 @@
 #include <lapacke.h>
 #include <limits.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -4102,12 +4103,13 @@ static int kelvin_zeros(int which, int64_t nt, double *out)
         if (!isfinite(f2)) break;                         /* past the overflow there are no more sign changes */
         if (pf == 0.0) { pf = f2; x = x2; continue; }
         if ((pf < 0.0) != (f2 < 0.0)) {
-            double a = x, b = x2;
+            /* f(a) is carried (it is pf, then f(m) of the step that moved a) instead of evaluated again on every
+               step: the same numbers with half the Kelvin evaluations */
+            double a = x, b = x2, fa = pf;
             for (int it = 0; it < 200 && (b - a) > 1e-15; it++) {
                 double m = 0.5 * (a + b), fm = kz_eval(which, m);
                 if (fm == 0.0) { a = b = m; break; }
-                double fa = kz_eval(which, a);
-                if ((fa < 0.0) != (fm < 0.0)) b = m; else a = m;
+                if ((fa < 0.0) != (fm < 0.0)) b = m; else { a = m; fa = fm; }
             }
             out[got++] = 0.5 * (a + b);
         }
@@ -4695,6 +4697,25 @@ static int ellip_glnodes(int N, double *x, double *w)
 
 #define ELLIP_GLN 256
 
+static double g_ellip_gl[2 * ELLIP_GLN];   /* nodes, then weights */
+static _Atomic int g_ellip_gl_state = 0;   /* 0 not computed, 1 being written, 2 ready */
+
+/* The ELLIP_GLN-point nodes and weights, computed once per process: the 256 x 256 eigenproblem took nearly all of
+   an ellip_harm_2 / ellip_normal call. Points *gl at the shared table, or at buf (2 * ELLIP_GLN doubles) while
+   another thread is still writing the table; the values are the same either way. 0 when LAPACK fails. */
+static int ellip_gl(double *buf, const double **gl)
+{
+    if (atomic_load(&g_ellip_gl_state) == 2) { *gl = g_ellip_gl; return 1; }
+    if (!ellip_glnodes(ELLIP_GLN, buf, buf + ELLIP_GLN)) return 0;
+    int expect = 0;
+    if (atomic_compare_exchange_strong(&g_ellip_gl_state, &expect, 1)) {
+        memcpy(g_ellip_gl, buf, sizeof g_ellip_gl);
+        atomic_store(&g_ellip_gl_state, 2);
+    }
+    *gl = buf;
+    return 1;
+}
+
 /* (n, p) of ellip_harm / ellip_harm_2 / ellip_normal. SciPy's _ellip_harm returns NaN unless n >= 0 and
    1 <= p <= 2n + 1 (also for a NaN or infinite n or p): 0 then. 1 when valid; -1 when n is beyond what
    ellip_lame supports (its 64-term limit refuses it anyway; checked here so the int casts stay defined). */
@@ -4732,10 +4753,10 @@ static int r_ellip_harm_2(const void *c, const tsr_arg *a, int na, tsr_result *r
     if (np_ok == 0) { fn_result_num(&res[0], NAN); return TSR_OK; }
     double eigv[64];
     if (np_ok < 0 || !ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_harm_2: invalid arguments"); return TSR_EARG; }
-    double *gx = (double *)malloc(2 * ELLIP_GLN * sizeof(double));
-    if (!gx) return TSR_ENOMEM;
-    double *gw = gx + ELLIP_GLN;
-    if (!ellip_glnodes(ELLIP_GLN, gx, gw)) { free(gx); return TSR_EARG; }
+    double glbuf[2 * ELLIP_GLN];
+    const double *gx;
+    if (!ellip_gl(glbuf, &gx)) return TSR_EARG;
+    const double *gw = gx + ELLIP_GLN;
     double hi = 1.0 / s, xm = 0.5 * hi, xc = 0.5 * hi, acc = 0.0;
     for (int j = 0; j < ELLIP_GLN; j++) {
         double tt = xc + xm * gx[j], t2 = tt * tt;
@@ -4743,7 +4764,6 @@ static int r_ellip_harm_2(const void *c, const tsr_arg *a, int na, tsr_result *r
         acc += gw[j] / (i * i * sqrt(1 - t2 * k2) * sqrt(1 - t2 * h2));
     }
     acc *= xm;
-    free(gx);
     fn_result_num(&res[0], acc * (2 * n + 1) * ellip_eval(h2, k2, n, p, s, eigv, 1.0, 1.0));
     return TSR_OK;
 }
@@ -4758,10 +4778,10 @@ static int r_ellip_normal(const void *c, const tsr_arg *a, int na, tsr_result *r
     double eigv[64];
     if (np_ok < 0 || !ellip_lame(h2, k2, n, p, eigv)) { fn_set_error("ellip_normal: invalid arguments"); return TSR_EARG; }
     double h = sqrt(h2), kk = sqrt(k2);
-    double *gx = (double *)malloc(2 * ELLIP_GLN * sizeof(double));
-    if (!gx) return TSR_ENOMEM;
-    double *gw = gx + ELLIP_GLN;
-    if (!ellip_glnodes(ELLIP_GLN, gx, gw)) { free(gx); return TSR_EARG; }
+    double glbuf[2 * ELLIP_GLN];
+    const double *gx;
+    if (!ellip_gl(glbuf, &gx)) return TSR_EARG;
+    const double *gw = gx + ELLIP_GLN;
     /* over [h,k] with weight (t-h)^-1/2 (k-t)^-1/2: t = h + (k-h) sin^2 th, dt/sqrt = 2 dth, th in [0,pi/2] */
     double xm = 0.25 * M_PI, xc = 0.25 * M_PI;   /* [0, pi/2] */
     double res_a = 0.0, res1 = 0.0, res2 = 0.0, res3 = 0.0;
@@ -4778,7 +4798,6 @@ static int r_ellip_normal(const void *c, const tsr_arg *a, int na, tsr_result *r
         res2 += w * base_0h;
         res3 += w * base_0h * t0h * t0h;
     }
-    free(gx);
     fn_result_num(&res[0], 8.0 * (res1 * res2 - res_a * res3));
     return TSR_OK;
 }
