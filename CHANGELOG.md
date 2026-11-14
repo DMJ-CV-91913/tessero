@@ -320,6 +320,14 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`inv` of empty matrices and the complete `qr` of an m x 0 matrix answer as NumPy and SciPy do.**
+  - `numpy.linalg.inv` / `scipy.linalg.inv` of a 0x0 matrix, or of a stack of them (2x0x0), raised "illegal argument
+    -7" (LAPACKE's dgetri refuses n = 0), and LAPACK printed "On entry to DGETRI parameter number 6 had an illegal
+    value" into the output. They now return the empty result.
+  - `qr(a, 'complete')` / `scipy.linalg.qr(a, 'full')` of an m x 0 matrix returned a Q that was never written
+    (whatever the memory held; it differed from run to run). Q is now the m x m identity, R stays m x 0.
+  - Found by the byte comparison of the linalg speed round. tests/Unit/LinalgEmptyInputTest.php covers both
+    backends.
 - **`Special::hyp1f1(a, b, INF)` no longer hangs.** For x = +inf Boost's evaluation can return a scaling exponent
   near 2^63, and the loop that removed it 707 at a time ran about 10^16 times (SciPy hangs on the same inputs, e.g.
   `hyp1f1(0.5, 1.5, inf)`). The loop's step count is now computed and the factor applied only while it still

@@ -280,19 +280,20 @@ static int r_inv(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     if (!a) { a = aown = mat_f64(arg, "a", &na); if (!a) return TSR_ENOMEM; }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, arg->arr.ndim, arg->arr.shape);
     if (!out) { fn_free_doubles(aown, na); return TSR_ENOMEM; }
-    lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)(m > 0 ? m : 1));
+    /* 0 x 0 matrices: the empty result, as NumPy and SciPy give (LAPACKE's dgetri refused n = 0 with illegal
+       argument -7, the workspace size) */
+    if (m == 0) { fn_free_doubles(aown, na); return TSR_OK; }
+    lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)m);
     if (!ipiv) { fn_free_doubles(aown, na); return TSR_ENOMEM; }
-    double empty = 0.0;                                   /* LAPACK's matrix argument when m is 0 */
-    const lapack_int ld = (lapack_int)(m > 0 ? m : 1);
     int err = TSR_OK;
     for (int64_t i = 0; i < batch; i++) {
-        double *o = m > 0 ? out + i * m * m : &empty;
-        if (m > 0) to_col_major(o, a + i * m * m, m, m);
-        lapack_int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, (lapack_int)m, (lapack_int)m, o, ld, ipiv);
-        if (info == 0) info = LAPACKE_dgetri(LAPACK_COL_MAJOR, (lapack_int)m, o, ld, ipiv);
+        double *o = out + i * m * m;
+        to_col_major(o, a + i * m * m, m, m);
+        lapack_int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, (lapack_int)m, (lapack_int)m, o, (lapack_int)m, ipiv);
+        if (info == 0) info = LAPACKE_dgetri(LAPACK_COL_MAJOR, (lapack_int)m, o, (lapack_int)m, ipiv);
         if (info > 0) { fn_set_error("Singular matrix"); err = TSR_EARG; break; }
         if (info < 0) { fn_set_error("linalg inv: illegal argument %d", (int)info); err = TSR_EARG; break; }
-        if (m > 0) sq_transpose(o, m);
+        sq_transpose(o, m);
     }
     free(ipiv);
     fn_free_doubles(aown, na);
@@ -776,6 +777,10 @@ static int r_qr(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res
     double *q = (double *)fn_result_array(&res[0], TSR_F64, 2, qsh);
     double *r = (double *)fn_result_array(&res[1], TSR_F64, 2, rsh);
     if (!q || !r) { free(tau); fn_free_doubles(a, na); return TSR_ENOMEM; }
+    if (k == 0 && qc > 0) {                              /* m x 0, complete: Q is the identity, as NumPy and SciPy give */
+        memset(q, 0, sizeof(double) * (size_t)(m * qc));
+        for (int64_t i = 0; i < qc; i++) q[i * qc + i] = 1.0;
+    }
     if (k > 0) {
         lapack_int info = LAPACKE_dgeqrf(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)n, a, (lapack_int)n, tau);
         if (info != 0) { free(tau); fn_free_doubles(a, na); fn_set_error("qr: dgeqrf failed"); return TSR_EARG; }
