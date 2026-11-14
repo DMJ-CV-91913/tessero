@@ -118,9 +118,11 @@ final class Linalg
         if ($n === 0) {
             return [1.0, 0.0];
         }
-        $lu = $A->copy();
+        // factored in a column-major copy (what LAPACKE's row-major dgetrf builds, without its copy back); the
+        // diagonal sits at the same places in either order
+        $lu = $A->transpose()->copy();
         $ipiv = Blas::ffi()->new("int[{$n}]");
-        $info = Blas::call('LAPACKE_dgetrf', self::ROW, $n, $n, self::d($lu), $n, $ipiv);
+        $info = Blas::call('LAPACKE_dgetrf', Blas::COL_MAJOR, $n, $n, self::d($lu), $n, $ipiv);
         if ($info < 0) {
             throw new LinAlgError("slogdet: illegal argument {$info}.");
         }

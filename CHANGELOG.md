@@ -203,6 +203,20 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`slogdet` / `det` and `scipy.linalg.cholesky` without LAPACKE's row-major copies; `cholesky` factors in its
+  result.** The same change `solve` and `numpy.linalg.cholesky` got earlier: the kernel hands LAPACK the
+  column-major copy that LAPACKE's row-major wrapper would build, made once with a tiled transpose, and skips the
+  wrapper's own copy in and back. The input is read in place when it is contiguous float64. Both Cholesky routines now
+  factor in the result array and turn the factor row-major in place, which saves one full-size buffer and a pass.
+  `Tessero\Linalg\Linalg::slogdet` (the PHP class over LAPACKE) does the same. LAPACK sees the identical matrix and
+  LAPACKE's NaN checks run as before, so results and errors are byte-identical (279 cases on FFI and 185 on the
+  extension, old library against new: sizes 1 to 1000 across the 32-wide tile edges, batched, empty, float32, int
+  and strided input, junk in the unused triangle, NaN and Inf, singular, not positive definite). Same host, single
+  thread, best of three alternating rounds (not the record, DJ's final pass times it): `numpy.linalg.cholesky`
+  1000x1000 17.0 -> 14.1 ms (NumPy 18.7), 600x600 4.7 -> 3.5 ms (NumPy 4.1); `slogdet` 600x600 6.1 -> 5.2 ms (NumPy
+  5.6); `scipy.linalg.cholesky` 1000x1000 about the same, 15.6 -> 15.0 to 15.8 ms (SciPy 13.5 to 14.8). Most of
+  that gap is OpenBLAS's upper-triangle kernel: dpotrf 'U' runs about 1 ms slower than 'L', here and in SciPy's
+  own OpenBLAS. The 'L' kernel computes in a different order and would not keep SciPy's bits, so it is not used.
 - **`sparse.linalg.eigsh` on CSR checks for missed repeated eigenvalues faster.** After the Lanczos run converges, a
   second Lanczos search of the complement of the k Ritz vectors makes sure no repeated eigenvalue was missed. The first
   such search now starts from the main run's next Ritz vector plus the usual start vector. The first part makes it

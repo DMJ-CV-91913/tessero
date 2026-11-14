@@ -72,6 +72,23 @@ static void to_col_major(double *dst, const double *src, int64_t rows, int64_t c
         }
 }
 
+/* the column-major m x m Cholesky factor in o made row-major in place, keeping the upper (c >= r) or lower (c <= r)
+   triangle and zeroing the other: what LAPACKE's copy back plus the zeroing pass gave. Each pair r < c swaps between
+   slot r * m + c (the factor's (c, r)) and slot c * m + r (its (r, c)), the two 32 x 32 tiles at a time. */
+static void tri_to_row_major(double *o, int64_t m, int upper)
+{
+    const int64_t T = 32;
+    for (int64_t r0 = 0; r0 < m; r0 += T)
+        for (int64_t c0 = r0; c0 < m; c0 += T) {
+            const int64_t r1 = r0 + T < m ? r0 + T : m, c1 = c0 + T < m ? c0 + T : m;
+            for (int64_t r = r0; r < r1; r++)
+                for (int64_t c = c0 > r + 1 ? c0 : r + 1; c < c1; c++) {
+                    if (upper) { o[r * m + c] = o[c * m + r]; o[c * m + r] = 0.0; }
+                    else { o[c * m + r] = o[r * m + c]; o[r * m + c] = 0.0; }
+                }
+        }
+}
+
 /* The SVD drivers on a matrix holding NaN or an infinity: dgesdd / dgelsd iterate without converging (a
    fuzz-found hang in np.linalg.svd). NumPy reports LinAlgError "SVD did not converge" there, so these wrappers
    check the input first and return a positive info, which every caller already reports as non-convergence. */
@@ -129,13 +146,15 @@ double *mat_f64(const tsr_arg *a, const char *what, int64_t *n)
     return p;
 }
 
-/* LU factorisation (row-major) of one M x M matrix in place; sign of the permutation and sum of log|diag|.
-   Returns 1 on success, 0 if the matrix is singular (U has a zero pivot). */
+/* LU factorisation of one M x M matrix in place, given in column-major order (to_col_major: the copy LAPACKE's
+   row-major dgetrf would make, so LAPACK sees the identical matrix); sign of the permutation and sum of log|diag|
+   (the diagonal sits at the same places in either order). Returns 1 on success, 0 if the matrix is singular (U has
+   a zero pivot). */
 static int lu_slogdet(double *a, int64_t m, double *sign, double *logabs)
 {
     lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)(m > 0 ? m : 1));
     if (!ipiv) return -1;
-    lapack_int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)m, a, (lapack_int)m, ipiv);
+    lapack_int info = LAPACKE_dgetrf(LAPACK_COL_MAJOR, (lapack_int)m, (lapack_int)m, a, (lapack_int)(m > 0 ? m : 1), ipiv);
     if (info < 0) { free(ipiv); return -2; }
     if (info > 0) { free(ipiv); *sign = 0.0; *logabs = -INFINITY; return 0; }
     double s = 1.0, lg = 0.0;
@@ -161,9 +180,15 @@ static int r_det(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
     int64_t m, batch;
     int rc = square_batch(&arg->arr, &m, &batch);
     if (rc < 0) return rc;
+    /* the input is read in place when it is contiguous float64 (else a converted copy); each matrix is factored in a
+       column-major work copy */
     int64_t na;
-    double *a = mat_f64(arg, "a", &na);
-    if (!a) return TSR_ENOMEM;
+    double *aown = NULL;
+    const double *a = fn_arg_f64_view(arg, &na);
+    if (!a) { a = aown = mat_f64(arg, "a", &na); if (!a) return TSR_ENOMEM; }
+    const int64_t tbytes = (int64_t)sizeof(double) * (m > 0 ? m * m : 1);
+    double *t = (double *)tsr_alloc(tbytes);
+    if (!t) { fn_free_doubles(aown, na); fn_set_error("det: out of memory"); return TSR_ENOMEM; }
     const int32_t nd = arg->arr.ndim - 2;                 /* leading dims -> result shape */
     int64_t sh[TSR_MAXDIM];
     for (int d = 0; d < nd; d++) sh[d] = arg->arr.shape[d];
@@ -172,20 +197,22 @@ static int r_det(const void *ctx, const tsr_arg *args, int nargs, tsr_result *re
         tsr_result *seq = res;                            /* two named outputs: sign, logabsdet */
         sgn = (double *)fn_result_array(&seq[0], TSR_F64, nd, sh);
         lg = (double *)fn_result_array(&seq[1], TSR_F64, nd, sh);
-        if (!sgn || !lg) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+        if (!sgn || !lg) { tsr_free(t, tbytes); fn_free_doubles(aown, na); return TSR_ENOMEM; }
     } else {
         dt = (double *)fn_result_array(&res[0], TSR_F64, nd, sh);
-        if (!dt) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+        if (!dt) { tsr_free(t, tbytes); fn_free_doubles(aown, na); return TSR_ENOMEM; }
     }
     for (int64_t i = 0; i < batch; i++) {
         double s, l;
-        int r = lu_slogdet(a + i * m * m, m, &s, &l);
-        if (r == -1) { fn_free_doubles(a, na); return TSR_ENOMEM; }
-        if (r == -2) { fn_free_doubles(a, na); fn_set_error("linalg: illegal value in dgetrf"); return TSR_EARG; }
+        if (m > 0) to_col_major(t, a + i * m * m, m, m);
+        int r = lu_slogdet(t, m, &s, &l);
+        if (r == -1) { tsr_free(t, tbytes); fn_free_doubles(aown, na); return TSR_ENOMEM; }
+        if (r == -2) { tsr_free(t, tbytes); fn_free_doubles(aown, na); fn_set_error("linalg: illegal value in dgetrf"); return TSR_EARG; }
         if (slog) { sgn[i] = s; lg[i] = l; }
         else dt[i] = s * exp(l);
     }
-    fn_free_doubles(a, na);
+    tsr_free(t, tbytes);
+    fn_free_doubles(aown, na);
     if (nd == 0) {                                        /* 2-D input -> scalar results */
         if (slog) {
             const double s = sgn[0], l = lg[0];
@@ -244,30 +271,26 @@ static int r_cholesky(const void *ctx, const tsr_arg *args, int nargs, tsr_resul
     int64_t m, batch;
     int rc = square_batch(&arg->arr, &m, &batch);
     if (rc < 0) return rc;
+    /* the input is read in place when it is contiguous float64 (else a converted copy) */
     int64_t na;
-    double *a = mat_f64(arg, "a", &na);
-    if (!a) return TSR_ENOMEM;
+    double *aown = NULL;
+    const double *a = fn_arg_f64_view(arg, &na);
+    if (!a) { a = aown = mat_f64(arg, "a", &na); if (!a) return TSR_ENOMEM; }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, arg->arr.ndim, arg->arr.shape);
-    if (!out) { fn_free_doubles(a, na); return TSR_ENOMEM; }
-    /* each matrix is factored in a column-major copy (what LAPACKE's row-major dpotrf builds, without its copy back);
-       the requested triangle is read from it, the other is zeroed */
-    double *t = m > 0 ? (double *)malloc(sizeof(double) * (size_t)(m * m)) : NULL;
-    if (m > 0 && !t) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    if (!out) { fn_free_doubles(aown, na); return TSR_ENOMEM; }
+    /* each matrix is factored in its result slot, holding the column-major copy LAPACKE's row-major dpotrf would
+       build (so LAPACK sees the identical matrix), then made row-major in place with the other triangle zeroed */
     const lapack_int ld = (lapack_int)(m > 0 ? m : 1);
     int err = TSR_OK;
     for (int64_t i = 0; i < batch; i++) {
-        double *mm = a + i * m * m;
-        if (m > 0) to_col_major(t, mm, m, m);
-        lapack_int info = m > 0 ? LAPACKE_dpotrf(LAPACK_COL_MAJOR, upper ? 'U' : 'L', (lapack_int)m, t, ld) : 0;
+        double *o = out + i * m * m;
+        if (m > 0) to_col_major(o, a + i * m * m, m, m);
+        lapack_int info = m > 0 ? LAPACKE_dpotrf(LAPACK_COL_MAJOR, upper ? 'U' : 'L', (lapack_int)m, o, ld) : 0;
         if (info > 0) { fn_set_error("Matrix is not positive definite"); err = TSR_EARG; break; }
         if (info < 0) { fn_set_error("linalg cholesky: illegal argument %d", (int)info); err = TSR_EARG; break; }
-        double *o = out + i * m * m;                      /* element (r, c) is t[c * m + r] */
-        for (int64_t r = 0; r < m; r++)
-            for (int64_t c = 0; c < m; c++)
-                o[r * m + c] = upper ? (c >= r ? t[c * m + r] : 0.0) : (c <= r ? t[c * m + r] : 0.0);
+        if (m > 0) tri_to_row_major(o, m, upper);
     }
-    free(t);
-    fn_free_doubles(a, na);
+    fn_free_doubles(aown, na);
     return err;
 }
 
@@ -1711,20 +1734,23 @@ static int r_scipy_cholesky(const void *ctx, const tsr_arg *args, int nargs, tsr
     if (nargs > 1 && args[1].kind == 4) lower = args[1].num != 0;
     else if (nargs > 1 && args[1].kind == 1) lower = args[1].num != 0 || args[1].ival != 0;
     const int64_t n = A->shape[0];
+    /* the input is read in place when it is contiguous float64 (else a converted copy) and factored in the result,
+       holding the column-major copy LAPACKE's row-major dpotrf would build (so LAPACK sees the identical matrix);
+       the factor is then made row-major in place with the other triangle zeroed */
     int64_t na;
-    double *a = mat_f64(&args[0], "a", &na);
-    if (!a) return TSR_ENOMEM;
+    double *aown = NULL;
+    const double *a = fn_arg_f64_view(&args[0], &na);
+    if (!a) { a = aown = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM; }
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, A->shape);
-    if (!out) { fn_free_doubles(a, na); return TSR_ENOMEM; }
+    if (!out) { fn_free_doubles(aown, na); return TSR_ENOMEM; }
     if (n > 0) {
-        lapack_int info = LAPACKE_dpotrf(LAPACK_ROW_MAJOR, lower ? 'L' : 'U', (lapack_int)n, a, (lapack_int)n);
-        if (info > 0) { fn_free_doubles(a, na); fn_set_error("Matrix is not positive definite"); return TSR_EARG; }
-        if (info < 0) { fn_free_doubles(a, na); fn_set_error("cholesky: illegal argument %d", (int)info); return TSR_EARG; }
-        for (int64_t r = 0; r < n; r++)
-            for (int64_t c = 0; c < n; c++)
-                out[r * n + c] = lower ? (c <= r ? a[r * n + c] : 0.0) : (c >= r ? a[r * n + c] : 0.0);
+        to_col_major(out, a, n, n);
+        lapack_int info = LAPACKE_dpotrf(LAPACK_COL_MAJOR, lower ? 'L' : 'U', (lapack_int)n, out, (lapack_int)n);
+        if (info > 0) { fn_free_doubles(aown, na); fn_set_error("Matrix is not positive definite"); return TSR_EARG; }
+        if (info < 0) { fn_free_doubles(aown, na); fn_set_error("cholesky: illegal argument %d", (int)info); return TSR_EARG; }
+        tri_to_row_major(out, n, !lower);
     }
-    fn_free_doubles(a, na);
+    fn_free_doubles(aown, na);
     return TSR_OK;
 }
 
