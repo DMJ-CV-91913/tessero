@@ -328,6 +328,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
     (whatever the memory held; it differed from run to run). Q is now the m x m identity, R stays m x 0.
   - Found by the byte comparison of the linalg speed round. tests/Unit/LinalgEmptyInputTest.php covers both
     backends.
+  - `Tessero\Linalg\Linalg` (the PHP class over LAPACKE): `inv`, `cholesky` and `solve` on a stack holding no
+    matrices (for example 0x3x3) threw a TypeError. They now return NumPy's empty shapes: 0x3x3 for inv and
+    cholesky; for solve 0x3 (shared vector b) or 0x3x2 (b of 3x2, shared or stacked). A b with the wrong number
+    of rows is refused before the stack is split, so the empty case is checked too. `slogdet`, `det` and `eigh`
+    already handled it, and the test now covers them.
 - **`Special::hyp1f1(a, b, INF)` no longer hangs.** For x = +inf Boost's evaluation can return a scaling exponent
   near 2^63, and the loop that removed it 707 at a time ran about 10^16 times (SciPy hangs on the same inputs, e.g.
   `hyp1f1(0.5, 1.5, inf)`). The loop's step count is now computed and the factor applied only while it still

@@ -33,7 +33,15 @@ final class Linalg
         self::requireSquare($A, 'solve');
         $n = self::last($A);
         if (count($A->shape()) > 2) {
-            return self::stacked($A, fn (NDArray $m, int $i): NDArray => self::solve($m, count($B->shape()) > 2 ? $B->slice($i) : $B), $A->shape());
+            // one result per matrix: b's own matrix shape when b is stacked, else b's shape (a shared vector or matrix)
+            $perB = count($B->shape()) > 2;
+            $rows = $perB ? $B->shape()[count($B->shape()) - 2] : ($B->shape()[0] ?? -1);
+            if ($rows !== $n) {
+                throw new ShapeError("solve: b has {$rows} rows, A is {$n}x{$n}.");
+            }
+
+            return self::stacked($A, fn (NDArray $m, int $i): NDArray => self::solve($m, $perB ? $B->slice($i) : $B), $A->shape(),
+                $perB ? array_slice($B->shape(), -2) : $B->shape());
         }
         $vector = count($B->shape()) === 1;
         if (($B->shape()[0] ?? -1) !== $n) {
@@ -600,10 +608,20 @@ final class Linalg
     }
 
     /** @param callable(NDArray, int): NDArray $fn */
-    private static function stacked(NDArray $a, callable $fn, array $shape): NDArray
+    /**
+     * $fn applied to each matrix of a stack, the results stacked back. $item is the shape of one result (default: the
+     * matrix's own, as for inv and cholesky); an empty stack returns zeros of shape [...lead, ...$item], as NumPy does.
+     *
+     * @param list<int> $shape
+     * @param list<int>|null $item
+     */
+    private static function stacked(NDArray $a, callable $fn, array $shape, ?array $item = null): NDArray
     {
         $lead = array_slice($shape, 0, -2);
         $count = (int) array_product($lead);
+        if ($count === 0) {
+            return NDArray::zeros([...$lead, ...($item ?? array_slice($shape, -2))]);
+        }
         $flat = $a->reshape([$count, ...array_slice($shape, -2)]);
         $results = [];
         for ($i = 0; $i < $count; $i++) {
