@@ -29,6 +29,8 @@ final class Linalg
     'eigvalsh' => 'eigvalsh',
     'fd_normal' => 'fdNormal',
     'inv' => 'inv',
+    'lmdif' => 'lmdif',
+    'lmdif_result' => 'lmdifResult',
     'lstsq' => 'lstsq',
     'matmul' => 'matmul',
     'matrix_norm' => 'matrixNorm',
@@ -183,6 +185,30 @@ final class Linalg
     public static function inv(mixed $a): mixed
     {
         return Registry::routine('linalg.inv', [$a]);
+    }
+
+    /**
+     * MINPACK lmdif (scipy.optimize.leastsq), one function evaluation per call: the caller evaluates at the returned points (internal helper for Optimize\LeastSquares::curveFit).
+     *
+     * numpy.linalg.lmdif
+     *
+     * @return mixed one array, or an array keyed by state, task, points when several results are requested
+     */
+    public static function lmdif(mixed $state, mixed $f = null, mixed $fcols = false, mixed $x0 = null, mixed $y = null, mixed $sigma = null, mixed $ftol = 1.49012e-08, mixed $xtol = 1.49012e-08, mixed $gtol = 0.0, mixed $maxfev = 0, mixed $epsfcn = 0.0, mixed $factor = 100.0): mixed
+    {
+        return Registry::routine('linalg.lmdif', [$state, $f, $fcols, $x0, $y, $sigma, $ftol, $xtol, $gtol, $maxfev, $epsfcn, $factor]);
+    }
+
+    /**
+     * The finished lmdif fit: x, fvec, info, nfev, leastsq's cov_x and sum(fvec**2) (internal helper for Optimize\LeastSquares::curveFit).
+     *
+     * numpy.linalg.lmdif_result
+     *
+     * @return mixed one array, or an array keyed by x, fvec, info, nfev, cov, sumsq when several results are requested
+     */
+    public static function lmdifResult(mixed $state): mixed
+    {
+        return Registry::routine('linalg.lmdif_result', [$state]);
     }
 
     /**

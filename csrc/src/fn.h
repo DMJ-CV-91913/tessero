@@ -245,6 +245,9 @@ const double *fn_arg_f64_view(const tsr_arg *a, int64_t *n);
 double *mat_f64(const tsr_arg *a, const char *what, int64_t *n);
 /* np_linalg_fd.c (built with contraction off), listed in np_linalg.c's table: linalg.fd_normal */
 int r_fd_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+/* scipy_minpack.c (built with contraction off), listed in np_linalg.c's table: linalg.lmdif, linalg.lmdif_result */
+int r_lmdif(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
+int r_lmdif_result(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
 
 /* The registry's input gate (fn_gate.c, ADR 0016): structural checks run by every tsr_fn_* entry point before
    dispatch. Each returns TSR_OK, or TSR_EARG / TSR_EDIM / TSR_ETYPE with the message set (tsr_fn_error).

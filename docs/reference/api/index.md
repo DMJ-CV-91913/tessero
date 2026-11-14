@@ -41,7 +41,7 @@ Generated from the code by `tools/gen-api-docs.php` (signatures and docblocks). 
 |---|---|
 | [`Tessero\Optimize\Minimize`](tessero-optimize-minimize.md) | scipy.optimize.minimize for smooth problems of modest dimension, with the |
 | [`Tessero\Optimize\Root`](tessero-optimize-root.md) | Scalar and vector root finding (scipy.optimize.brentq, newton, root). |
-| [`Tessero\Optimize\LeastSquares`](tessero-optimize-leastsquares.md) | Non-linear least squares by Levenberg-Marquardt (scipy.optimize.least_squares |
+| [`Tessero\Optimize\LeastSquares`](tessero-optimize-leastsquares.md) | Non-linear least squares by Levenberg-Marquardt: solve / leastSquares with Nielsen's damping update and |
 | [`Tessero\Optimize\LinearProgramming`](tessero-optimize-linearprogramming.md) | scipy.optimize.linprog and scipy.optimize.milp on libtessero's native |
 | [`Tessero\Optimize\OptimizeResult`](tessero-optimize-optimizeresult.md) | scipy.optimize.OptimizeResult |
 | [`Tessero\Optimize\LinprogResult`](tessero-optimize-linprogresult.md) | Result of LinearProgramming::linprog (field names follow scipy.optimize.OptimizeResult). |

@@ -2978,6 +2978,82 @@ static void test_bessel_airy_zeros(void)
     fa_free(r, 1);
 }
 
+/* linalg.lmdif driven to the end on a model and data built from + - * / alone (each product kept apart from its sum
+   through a volatile, so no target fuses it): SciPy 1.17.1's curve_fit to the last bit. A state lmdif did not
+   write is refused, not read. */
+static tsr_arg arg_res(const tsr_result *r) { tsr_arg a; memset(&a, 0, sizeof a); a.kind = 3; a.arr = r->arr; return a; }
+static uint64_t dbl_bits(double v) { uint64_t u; memcpy(&u, &v, sizeof u); return u; }
+static void test_lmdif(void)
+{
+    double x[12], y[12], p0[3] = {1.0, 1.0, 0.0}, F[3 * 12];
+    for (int i = 0; i < 12; i++) {
+        x[i] = i * 0.5;
+        volatile double t = 0.7 * x[i], u = 0.01 * (double)((i * 7) % 5 - 2);
+        y[i] = 3.0 / (1 + t) + 0.2 + u;
+    }
+    int64_t s3[1] = {3}, s12[1] = {12};
+    tsr_arg a[5] = {arg_none(), arg_none(), arg_num(0), arg_arr(p0, 1, s3), arg_arr(y, 1, s12)};
+    tsr_result r[3], next[3];
+    double *mid = NULL;                                  /* a copy of a state waiting at x + p (resume 3) */
+    int64_t mid_len = 0;
+    int rc = fa_call("linalg.lmdif", 5, a, r, 3), calls = 1;
+    while (rc == 0 && r[1].ival > 0 && calls < 1000) {
+        const int k = (int)r[1].ival;
+        const double *P = (const double *)r[2].arr.data;
+        for (int j = 0; j < k; j++)
+            for (int i = 0; i < 12; i++) {
+                volatile double t = P[j * 3 + 1] * x[i];
+                F[j * 12 + i] = P[j * 3] / (1 + t) + P[j * 3 + 2];
+            }
+        int64_t sf[2] = {k, 12};
+        tsr_arg b[2] = {arg_res(&r[0]), arg_arr(F, 2, sf)};
+        rc = fa_call("linalg.lmdif", 2, b, next, 3);
+        calls++;
+        if (!mid && rc == 0 && k == 3 && next[1].ival == 1) {
+            mid_len = next[0].arr.shape[0];
+            mid = (double *)malloc(sizeof(double) * (size_t)mid_len);
+            if (mid) memcpy(mid, next[0].arr.data, sizeof(double) * (size_t)mid_len);
+        }
+        fa_free(r, 3);
+        memcpy(r, next, sizeof r);
+    }
+    CHECK(rc == 0 && r[1].ival == 0, "lmdif runs to the end (rc %d, %d calls)", rc, calls);
+    tsr_result q[6];
+    tsr_arg s[1] = {arg_res(&r[0])};
+    rc = fa_call("linalg.lmdif_result", 1, s, q, 6);
+    const double *px = rc == 0 ? (const double *)q[0].arr.data : NULL;
+    CHECK(px && dbl_bits(px[0]) == 0x40080aa9df520c42ULL && dbl_bits(px[1]) == 0x3fe5a7348d46a84dULL
+              && dbl_bits(px[2]) == 0x3fc6987b3d1f0be1ULL && q[2].ival == 1 && q[3].ival == 30,
+          "lmdif == SciPy's curve_fit bit for bit (popt, ier 1, nfev 30; rc %d)", rc);
+    fa_free(q, 6);
+    /* refused: a finished state given more values, an unfinished one asked for the result, values of the wrong
+       size, a bad magic number, an impossible n, a pivot index out of range */
+    double *sd = (double *)r[0].arr.data;
+    tsr_arg more[2] = {arg_res(&r[0]), arg_arr(F, 1, s12)};
+    CHECK(fa_call("linalg.lmdif", 2, more, q, 3) == TSR_EARG, "a finished state takes no more values");
+    CHECK(mid != NULL, "lmdif waited at a trial point after a Jacobian");
+    if (mid) {
+        int64_t ml[1] = {mid_len};
+        tsr_arg ms[1] = {arg_arr(mid, 1, ml)}, wrong[2] = {arg_arr(mid, 1, ml), arg_arr(F, 1, s3)},
+                piv[2] = {arg_arr(mid, 1, ml), arg_arr(F, 1, s12)};
+        CHECK(fa_call("linalg.lmdif_result", 1, ms, q, 6) == TSR_EARG, "an unfinished state has no result yet");
+        CHECK(fa_call("linalg.lmdif", 2, wrong, q, 3) == TSR_EARG, "values of the wrong size are refused");
+        CHECK(fa_call("linalg.lmdif", 2, piv, q, 3) == 0 && q[1].ival > 0, "the copied state goes on (rc 0)");
+        fa_free(q, 3);
+        mid[32 + 7 * 3] = 3.0;                           /* ipvt[0] past n - 1 */
+        CHECK(fa_call("linalg.lmdif", 2, piv, q, 3) == TSR_EARG, "a pivot index outside 0 .. n-1 is refused");
+        free(mid);
+    }
+    const double magic = sd[0], n = sd[2];
+    sd[0] = 1.0;
+    CHECK(fa_call("linalg.lmdif_result", 1, s, q, 6) == TSR_EARG, "a state with another magic number is refused");
+    sd[0] = magic;
+    sd[2] = 1e9;
+    CHECK(fa_call("linalg.lmdif_result", 1, s, q, 6) == TSR_EARG, "a state with an impossible n is refused");
+    sd[2] = n;
+    fa_free(r, 3);
+}
+
 static void test_fd_normal(void)
 {
     const int64_t before = tsr_allocated();
@@ -4504,6 +4580,7 @@ int main(void)
     test_fftconvolve_fft();
     test_kelvin_zeros();
     test_bessel_airy_zeros();
+    test_lmdif();
     test_linalg_typed();
     test_op_names();
     test_sort_variants();

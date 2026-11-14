@@ -119,6 +119,7 @@ $x0_5 = [1.3, 0.7, 0.8, 1.9, 1.2];
 $x0_50 = array_fill(0, 50, 0.5);
 $cfx = NDArray::linspace(0.0, 4.0, 1000)->toList();
 $cfy = array_map(fn ($t) => 2.5 * exp(-1.3 * $t) + 0.5 + 0.01 * sin(37.0 * $t), $cfx);
+$cfxa = NDArray::array($cfx, 'float64');
 $teval = NDArray::linspace(0.0, 15.0, 100)->toList();
 
 $cases = [
@@ -173,6 +174,7 @@ $cases = [
     'numpy trapezoid 1M' => fn () => Np::trapezoid($x),
     'scipy.optimize least_squares Rosenbrock residuals' => fn () => LS::leastSquares(fn (array $v): array => [10.0 * ($v[1] - $v[0] ** 2), 1.0 - $v[0]], [-1.2, 1.0]),
     'scipy.optimize curve_fit exp decay, 1000 points' => fn () => LS::curveFit(fn (float $t, float $a, float $b, float $c): float => $a * exp(-$b * $t) + $c, $cfx, $cfy, [1.0, 1.0, 1.0]),
+    'scipy.optimize curve_fit exp decay, 1000 points, array model' => fn () => LS::curveFit(fn ($t, $a, $b, $c) => $t->mul(is_object($b) ? $b->neg() : -$b)->exp()->mul($a)->add($c), $cfxa, $cfy, [1.0, 1.0, 1.0]),
     'scipy.optimize minimize Nelder-Mead rosen n=5' => fn () => MZ::minimize($rosen, $x0_5, method: 'Nelder-Mead'),
     'scipy.optimize minimize L-BFGS-B rosen n=50' => fn () => MZ::minimize($rosen, $x0_50, method: 'L-BFGS-B'),
     'scipy.optimize root (2 equations)' => fn () => RT::root(fn (array $v): array => [$v[0] + 0.5 * ($v[0] - $v[1]) ** 3 - 1.0, 0.5 * ($v[1] - $v[0]) ** 3 + $v[1]], [0.0, 0.0]),

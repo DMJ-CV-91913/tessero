@@ -665,6 +665,16 @@
             "nin": 0,
             "nout": 1
         },
+        "linalg.lmdif": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 3
+        },
+        "linalg.lmdif_result": {
+            "kind": "routine",
+            "nin": 0,
+            "nout": 6
+        },
         "linalg.lstsq": {
             "kind": "routine",
             "nin": 0,

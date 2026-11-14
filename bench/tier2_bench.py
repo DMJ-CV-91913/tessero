@@ -170,6 +170,7 @@ cases = {
     'numpy trapezoid 1M': lambda: np.trapezoid(x),
     'scipy.optimize least_squares Rosenbrock residuals': lambda: so.least_squares(lambda v: [10.0 * (v[1] - v[0] ** 2), 1.0 - v[0]], [-1.2, 1.0]),
     'scipy.optimize curve_fit exp decay, 1000 points': lambda: so.curve_fit(lambda t, a, b, c: a * np.exp(-b * t) + c, cfx, cfy, p0=[1.0, 1.0, 1.0]),
+    'scipy.optimize curve_fit exp decay, 1000 points, array model': lambda: so.curve_fit(lambda t, a, b, c: a * np.exp(-b * t) + c, cfx, cfy, p0=[1.0, 1.0, 1.0]),
     'scipy.optimize minimize Nelder-Mead rosen n=5': lambda: so.minimize(rosen, x0_5, method='Nelder-Mead'),
     'scipy.optimize minimize L-BFGS-B rosen n=50': lambda: so.minimize(rosen, x0_50, method='L-BFGS-B'),
     'scipy.optimize root (2 equations)': lambda: so.root(lambda v: [v[0] + 0.5 * (v[0] - v[1]) ** 3 - 1.0, 0.5 * (v[1] - v[0]) ** 3 + v[1]], [0.0, 0.0]),

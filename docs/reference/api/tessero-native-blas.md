@@ -55,6 +55,16 @@ static gemm(Tessero\DType $dt, int $m, int $n, int $k, FFI\CData $a, FFI\CData $
 
 C = A (m x k) @ B (k x n), all row-major and contiguous.
 
+### gemmAt
+
+```php
+static gemmAt(Tessero\DType $dt, int $m, int $n, int $k, int $a, int $b, int $c): void
+```
+
+gemm() on absolute addresses (a live Buffer's address plus an offset): the same cblas_?gemm call with the same
+arguments, the pointers made in the BLAS scope straight from the addresses instead of through libtessero
+pointers and an integer cast (what made a small matmul cost several microseconds). @internal
+
 ### library
 
 ```php

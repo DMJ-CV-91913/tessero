@@ -27,6 +27,19 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
     and Airy limits rise from 1,000 and 2,000 zeros to a bound on the work.
   - `pro_cv_seq` and `obl_cv_seq` take every mode's characteristic value from one SEGV call, as SciPy does, instead
     of one `pro_cv` / `obl_cv` call per mode.
+  - `optimize.curve_fit` (`LeastSquares::curveFit`) runs MINPACK's `lmdif`, the Levenberg-Marquardt method with a
+    QR-factored step that SciPy's `curve_fit` uses without bounds (SciPy 1.17.1's C translation, in the kernel as
+    `linalg.lmdif`), with leastsq's defaults (`maxfev` 200 (n + 1), `ftol` = `xtol` = 1.49012e-8, `gtol` 0). It ran
+    Tessero's own Levenberg-Marquardt on the normal equations. On models whose arithmetic is the same in PHP and
+    NumPy the parameters, residuals, number of evaluations and status are SciPy's bit for bit (11 test problems, both
+    backends), and the covariance (leastsq's `cov_x`, by a fixed-order triangular inverse) is within 1 ulp of
+    SciPy's, which its BLAS forms. A failed fit raises `ConvergenceError` with leastsq's message; a covariance that
+    cannot be estimated is all `INF`, as in SciPy. New: `fullOutput: true` returns
+    `[popt, pcov, infodict (nfev, fvec), mesg, ier]`, and xdata given as an NDArray (either backend) calls the model on
+    the whole array, as SciPy does (`f(NDArray $x, float ...$p)`), the data staying in the kernel; such a model gets a
+    Jacobian's n evaluations in one call (x as a column, the parameters as rows) when that gives the same bits as n
+    calls, checked once per fit. The 1,000-point exponential fit: 5.0 ms before, about 0.6 ms with an array model
+    through the extension (SciPy 0.61 ms), 1.4 ms through FFI, 1.8 to 2.6 ms with a per-point model.
 - **`signal.fftconvolve` and `oaconvolve` use the FFT on large inputs**, as SciPy does (both inputs padded to a
   length of 2, 3 and 5 factors, real transforms along the last axis): where the direct sum's multiply-adds exceed the
   FFT's work about 20 times over. Those results move by rounding, as SciPy's do; small inputs keep the direct sum and

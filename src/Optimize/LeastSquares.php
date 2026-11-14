@@ -8,9 +8,8 @@ use Tessero\Exceptions\ConvergenceError;
 use Tessero\Exceptions\TesseroException;
 
 /**
- * Non-linear least squares by Levenberg-Marquardt (scipy.optimize.least_squares
- * method='lm' / curve_fit) with Nielsen's damping update and forward-difference
- * Jacobians.
+ * Non-linear least squares by Levenberg-Marquardt: solve / leastSquares with Nielsen's damping update and
+ * forward-difference Jacobians, curveFit with MINPACK's lmdif as scipy.optimize.curve_fit runs it.
  */
 final class LeastSquares
 {
@@ -28,8 +27,7 @@ final class LeastSquares
     }
 
     /**
-     * The Levenberg-Marquardt iterations of solve(), returning its result with J^T J at the solution (for
-     * curveFit's covariance).
+     * The Levenberg-Marquardt iterations of solve(), returning its result with J^T J at the solution.
      *
      * @return array{0: array<string, mixed>, 1: list<list<float>>}
      */
@@ -118,86 +116,213 @@ final class LeastSquares
     }
 
     /**
-     * scipy.optimize.curve_fit: fit f(x, ...params) to data. Returns [popt, pcov].
+     * scipy.optimize.curve_fit (method 'lm', SciPy's choice without bounds): fit f(x, ...params) to data with
+     * MINPACK's lmdif as SciPy runs it (linalg.lmdif: SciPy's own code, leastsq's defaults), so the parameters, the
+     * number of evaluations and the covariance follow SciPy's. Returns [popt, pcov], with $fullOutput
+     * [popt, pcov, infodict (nfev, fvec), mesg, ier] as SciPy's full_output.
      *
-     * @param callable(float, float ...): float $f       model evaluated at one x value
-     * @param list<float> $xdata
-     * @param list<float> $ydata
-     * @param list<float> $p0
-     * @param list<float>|null $sigma
-     * @return array{0: list<float>, 1: list<list<float>>}
+     * The model is called the way xdata comes in. A PHP list: once per point, f(float $x, float ...$p) returning a
+     * number. An NDArray (of either backend): on all of xdata, f(NDArray $x, float ...$p) returning one value per
+     * point (an NDArray of that backend or a list), as SciPy calls it, the data staying in the kernel. For the n
+     * evaluations of each forward-difference Jacobian such a model is first offered them in one call, x as a column
+     * (m, 1) and each parameter as a row (1, n) of the n evaluation points; it keeps that call when it returns an
+     * (m, n) array with the same bits as the n separate calls (compared once), and is called n times otherwise.
+     *
+     * @param callable $f                         the model, per point or on the whole of xdata (see above)
+     * @param list<float|int>|object $xdata       a list, or an NDArray of either backend
+     * @param list<float|int>|object $ydata
+     * @param list<float|int> $p0
+     * @param list<float|int>|object|null $sigma  one value per point, or a single value
+     * @return array{0: list<float>, 1: list<list<float>>}|array{0: list<float>, 1: list<list<float>>, 2: array{nfev: int, fvec: list<float>}, 3: string, 4: int}
      */
-    public static function curveFit(callable $f, array $xdata, array $ydata, array $p0, ?array $sigma = null, bool $absoluteSigma = false): array
+    public static function curveFit(callable $f, array|object $xdata, array|object $ydata, array $p0, array|object|null $sigma = null, bool $absoluteSigma = false, bool $fullOutput = false): array
     {
-        $xdata = array_values($xdata);
-        $ydata = array_values($ydata);
-        if (count($xdata) !== count($ydata)) {
-            throw new TesseroException('curveFit: xdata and ydata differ in length.');
+        $p0 = array_map('floatval', array_values($p0));
+        $n = count($p0);
+        $vec = is_object($xdata);
+        $ext = class_exists(\Tessero\Ext\NDArray::class, false)
+            && ($vec ? $xdata instanceof \Tessero\Ext\NDArray : extension_loaded('tessero') && class_exists(\Tessero\Ext\Linalg::class));
+        $nd = $ext ? \Tessero\Ext\NDArray::class : \Tessero\NDArray::class;
+        $lin = $ext ? \Tessero\Ext\Linalg::class : \Tessero\Linalg::class;
+        // arrays go to the kernel as they are when they belong to the backend used, else as lists
+        $arg = static fn (mixed $v): mixed => is_object($v) ? ($v instanceof $nd ? $v : $v->toList()) : ($v === null ? null : array_map('floatval', array_values($v)));
+        $y = $arg($ydata);
+        $m = is_object($y) ? $y->size() : count($y);
+        if ($n > $m) {
+            throw new TesseroException("curveFit: the number of parameters ({$n}) must not exceed the number of data points ({$m}).");
         }
-        $w = $sigma === null ? null : array_map(static fn ($s): float => 1.0 / (float) $s, array_values($sigma));
-        // up to four parameters are passed without the argument spread, and the weights applied after the loop:
-        // the same values with fewer PHP operations per point
-        $res = static function (array $p) use ($f, $xdata, $ydata, $w): array {
+        if ($vec) {
+            $x = $xdata instanceof $nd ? $xdata->astype('float64') : $nd::array($xdata->toList(), 'float64');
+        } else {
+            $x = array_values($xdata);
+            if (count($x) !== $m) {
+                throw new TesseroException('curveFit: xdata and ydata differ in length.');
+            }
+        }
+        $maxfev = 200 * ($n + 1);
+        [$state, $task, $pts] = array_values($lin::lmdif(null, null, false, $p0, $y, $arg($sigma), 1.49012e-8, 1.49012e-8, 0.0, $maxfev, 0.0, 100.0));
+        $together = null;                                // the Jacobian's evaluations in one call: null until tried
+        while ($task > 0) {
+            $P = $pts->toArray();
+            [$F, $fcols] = $vec ? self::cfOnArrays($f, $x, $P, $m, $nd, $together) : [self::cfPerPoint($f, $x, $P), false];
+            [$state, $task, $pts] = array_values($lin::lmdif($state, $F, $fcols));
+        }
+        [$px, $fvec, $info, $nfev, $cov, $sumsq] = array_values($lin::lmdifResult($state));
+        $popt = $px->toList();
+        $mesg = self::lmdifMessage($info, 1.49012e-8, 1.49012e-8, 0.0, $maxfev);
+        if ($info < 1 || $info > 4) {
+            throw new ConvergenceError('curveFit: optimal parameters not found: ' . $mesg);
+        }
+        $pcov = $cov->toArray();
+        $undefined = false;
+        foreach ($pcov as $row) {
+            foreach ($row as $v) {
+                $undefined = $undefined || is_nan($v);
+            }
+        }
+        if ($undefined || (! $absoluteSigma && $m <= $n)) {
+            $pcov = array_fill(0, $n, array_fill(0, $n, INF));
+        } elseif (! $absoluteSigma) {
+            $s2 = $sumsq / ($m - $n);
+            foreach ($pcov as $i => $row) {
+                foreach ($row as $j => $v) {
+                    $pcov[$i][$j] = $v * $s2;
+                }
+            }
+        }
+        if (! $fullOutput) {
+            return [$popt, $pcov];
+        }
+
+        return [$popt, $pcov, ['nfev' => $nfev, 'fvec' => $fvec->toList()], $mesg, $info];
+    }
+
+    /**
+     * curveFit's per-point model at each point lmdif asks for: one row of values per point. Up to four parameters
+     * are passed without the argument spread (fewer PHP operations per point, the same values).
+     *
+     * @param list<float|int> $xdata
+     * @param list<list<float>> $P
+     * @return list<list<float>>
+     */
+    private static function cfPerPoint(callable $f, array $xdata, array $P): array
+    {
+        $F = [];
+        foreach ($P as $p) {
             $out = [];
             switch (count($p)) {
                 case 1:
                     [$a] = $p;
-                    foreach ($xdata as $i => $x) {
-                        $out[] = (float) $f($x, $a) - $ydata[$i];
+                    foreach ($xdata as $x) {
+                        $out[] = (float) $f($x, $a);
                     }
                     break;
                 case 2:
                     [$a, $b] = $p;
-                    foreach ($xdata as $i => $x) {
-                        $out[] = (float) $f($x, $a, $b) - $ydata[$i];
+                    foreach ($xdata as $x) {
+                        $out[] = (float) $f($x, $a, $b);
                     }
                     break;
                 case 3:
                     [$a, $b, $c] = $p;
-                    foreach ($xdata as $i => $x) {
-                        $out[] = (float) $f($x, $a, $b, $c) - $ydata[$i];
+                    foreach ($xdata as $x) {
+                        $out[] = (float) $f($x, $a, $b, $c);
                     }
                     break;
                 case 4:
                     [$a, $b, $c, $d] = $p;
-                    foreach ($xdata as $i => $x) {
-                        $out[] = (float) $f($x, $a, $b, $c, $d) - $ydata[$i];
+                    foreach ($xdata as $x) {
+                        $out[] = (float) $f($x, $a, $b, $c, $d);
                     }
                     break;
                 default:
-                    foreach ($xdata as $i => $x) {
-                        $out[] = (float) $f($x, ...$p) - $ydata[$i];
+                    foreach ($xdata as $x) {
+                        $out[] = (float) $f($x, ...$p);
                     }
             }
-            if ($w !== null) {
-                foreach ($out as $i => $v) {
-                    $out[$i] = $v * $w[$i];
-                }
+            $F[] = $out;
+        }
+
+        return $F;
+    }
+
+    /**
+     * curveFit's whole-array model at the points lmdif asks for: [values, fcols], the values one row per point
+     * (fcols false), or the (m, k) result of the one call for k points (fcols true). $together records whether
+     * that one call is used: tried on the first Jacobian and kept only when it has the bits of the k calls.
+     *
+     * @param list<list<float>> $P
+     * @return array{0: mixed, 1: bool}
+     */
+    private static function cfOnArrays(callable $f, object $x, array $P, int $m, string $nd, ?bool &$together): array
+    {
+        $k = count($P);
+        $values = static function (mixed $v) use ($nd, $m): mixed {
+            if ($v instanceof $nd) {
+                return $v;
+            }
+            if (is_object($v) && method_exists($v, 'toList')) {
+                return $v->toList();
+            }
+            if (! is_array($v) || count($v) !== $m) {
+                throw new TesseroException("curveFit: the model must return {$m} values (one per point) for xdata as an array.");
             }
 
-            return $out;
+            return array_map('floatval', array_values($v));
         };
-        [$fit, $A] = self::lm($res, $p0, null, 1e-8, 1e-8, 1e-8, null);
-        if (! $fit['success']) {
-            throw new ConvergenceError('curveFit: optimal parameters not found (' . $fit['message'] . ').');
+        if ($k === 1) {
+            return [$values($f($x, ...$P[0])), false];
         }
-        $n = count($p0);
-        $m = count($ydata);
-        try {
-            $cov = Dense::inverse($A);
-        } catch (\Throwable) {
-            $cov = array_fill(0, $n, array_fill(0, $n, INF));
-        }
-        if (! $absoluteSigma) {
-            $s2 = $m > $n ? 2 * $fit['cost'] / ($m - $n) : INF;
-            foreach ($cov as $i => $row) {
-                foreach ($row as $j => $v) {
-                    $cov[$i][$j] = $v * $s2;
+        $B = null;
+        if ($together !== false && $x->ndim() === 1) {
+            try {
+                $cols = [];
+                foreach (array_keys($P[0]) as $i) {
+                    $cols[] = $nd::array([array_column($P, $i)], 'float64');
                 }
+                $B = $f($x->reshape($m, 1), ...$cols);
+            } catch (\Throwable) {
+                $B = null;
+            }
+            if (! $B instanceof $nd || $B->shape() !== [$m, $k]) {
+                $B = null;
             }
         }
+        if ($B !== null && $together === true) {
+            return [$B, true];
+        }
+        $rows = [];
+        $raw = '';
+        foreach ($P as $p) {
+            $v = $values($f($x, ...$p));
+            if ($together === null && $B !== null) {
+                $raw .= is_object($v) ? $v->astype('float64')->toBytes() : pack('e*', ...$v);
+            }
+            $rows[] = is_object($v) ? $v->toList() : $v;
+        }
+        if ($together === null) {
+            // the one call's columns against the k calls, as raw little-endian doubles (C order of its transpose)
+            $together = $B !== null && $B->astype('float64')->transpose()->toBytes() === $raw;
+        }
 
-        return [$fit['x'], $cov];
+        return [$rows, false];
+    }
+
+    /** leastsq's message for MINPACK's info */
+    private static function lmdifMessage(int $info, float $ftol, float $xtol, float $gtol, int $maxfev): string
+    {
+        return match ($info) {
+            0 => 'Improper input parameters.',
+            1 => sprintf("Both actual and predicted relative reductions in the sum of squares\n  are at most %f", $ftol),
+            2 => sprintf('The relative error between two consecutive iterates is at most %f', $xtol),
+            3 => sprintf("Both actual and predicted relative reductions in the sum of squares\n  are at most %f and the relative error between two consecutive iterates is at \n  most %f", $ftol, $xtol),
+            4 => sprintf("The cosine of the angle between func(x) and any column of the\n  Jacobian is at most %f in absolute value", $gtol),
+            5 => "Number of calls to function has reached maxfev = {$maxfev}.",
+            6 => sprintf("ftol=%f is too small, no further reduction in the sum of squares\n  is possible.", $ftol),
+            7 => sprintf("xtol=%f is too small, no further improvement in the approximate\n  solution is possible.", $xtol),
+            8 => sprintf("gtol=%f is too small, func(x) is orthogonal to the columns of\n  the Jacobian to machine precision.", $gtol),
+            default => "Unknown error (info {$info}).",
+        };
     }
 
     /**

@@ -201,9 +201,11 @@ $(BUILD)/c/repro_f32.o: src/repro_f32.c src/*.h include/tessero.h include/tesser
 #   differently, so the two gave answers 1 ulp apart (cg: 1.25e-16 on darwin-arm64) where they are the same bits on
 #   x86 (shown on x86 with -mfma -ffp-contract=fast: both differences appear, and go with this rule);
 # - np_linalg_fd.c (linalg.fd_normal, curve_fit's Levenberg-Marquardt algebra): it reproduces Optimize\LeastSquares's
-#   PHP loop bit for bit, and PHP rounds every product separately (fused, the iterations drifted apart on ARM).
+#   PHP loop bit for bit, and PHP rounds every product separately (fused, the iterations drifted apart on ARM);
+# - scipy_minpack.c (linalg.lmdif, curve_fit's MINPACK Levenberg-Marquardt): SciPy's x86-64 wheels compute it with
+#   every product rounded on its own, and a fit is a long chain of such sums.
 # tests/test_geom_ref.c, the tests' geometric references, builds the same way. ext/config.m4 compiles both with it.
-NOCONTRACT_C := spatial_distance scipy_sparse_linalg np_linalg_fd
+NOCONTRACT_C := spatial_distance scipy_sparse_linalg np_linalg_fd scipy_minpack
 $(patsubst %,$(BUILD)/c/%.o,$(NOCONTRACT_C)): $(BUILD)/c/%.o: src/%.c src/*.h include/tessero.h include/tessero_version.h
 	@mkdir -p $(BUILD)/c
 	$(CC) $(CFLAGS) -ffp-contract=off $(VIS) -Ithird_party/numpy/include -c -o $@ $<

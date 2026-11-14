@@ -364,27 +364,25 @@ final class NumericsTest extends TestCase
         $this->assertSame($php['cost'], $kernel['cost']);
     }
 
-    public function testCurveFitPassesParametersAndWeightsAsTheSpreadCallDid(): void
+    public function testCurveFitGivesTheSameBitsForAPerPointAndAWholeArrayModel(): void
     {
         $xs = array_map(static fn (int $i): float => $i * 0.05, range(0, 79));
         $ys = array_map(static fn (float $x): float => 1.0 - 0.5 * $x + 0.25 * $x * $x - 0.02 * $x ** 3 + 0.001 * $x ** 4 + 0.01 * cos(9.0 * $x), $xs);
         $sigma = array_map(static fn (float $x): float => 0.5 + 0.1 * $x, $xs);
-        $f4 = static fn (float $x, float $a, float $b, float $c, float $d): float => $a + $x * ($b + $x * ($c + $x * $d));
-        $f5 = static fn (float $x, float $a, float $b, float $c, float $d, float $e): float => $a + $x * ($b + $x * ($c + $x * ($d + $x * $e)));
-        foreach ([[$f4, [1.0, 0.0, 0.0, 0.0]], [$f5, [1.0, 0.0, 0.0, 0.0, 0.0]]] as [$f, $p0]) {
+        $xa = NDArray::array($xs, 'float64');
+        // the same operations in the same order per element: the same values, so the same fit
+        $models = [
+            [static fn (float $x, float $a): float => $a * $x * $x, static fn ($x, $a) => $x->mul($a)->mul($x), [1.0]],
+            [static fn (float $x, float $a, float $b, float $c, float $d): float => $a + $x * ($b + $x * ($c + $x * $d)),
+                static fn ($x, $a, $b, $c, $d) => $x->mul($d)->add($c)->mul($x)->add($b)->mul($x)->add($a), [1.0, 0.0, 0.0, 0.0]],
+        ];
+        foreach ($models as [$point, $array, $p0]) {
             foreach ([null, $sigma] as $s) {
-                $w = $s === null ? null : array_map(static fn (float $v): float => 1.0 / $v, $s);
-                $plain = LeastSquares::solve(static function (array $p) use ($f, $xs, $ys, $w): array {
-                    $out = [];
-                    foreach ($xs as $i => $x) {
-                        $d = (float) $f($x, ...$p) - $ys[$i];
-                        $out[] = $w === null ? $d : $d * $w[$i];
-                    }
-
-                    return $out;
-                }, $p0);
-                [$popt] = LeastSquares::curveFit($f, $xs, $ys, $p0, $s);
-                $this->assertSame($plain['x'], $popt, count($p0) . ' parameters, ' . ($s === null ? 'unweighted' : 'weighted'));
+                $label = count($p0) . ' parameters, ' . ($s === null ? 'unweighted' : 'weighted');
+                $a = LeastSquares::curveFit($point, $xs, $ys, $p0, $s, false, true);
+                $b = LeastSquares::curveFit($array, $xa, $ys, $p0, $s, false, true);
+                $this->assertSame(serialize($a), serialize($b), $label);
+                $this->assertContains($a[4], [1, 2, 3, 4], $label);
             }
         }
     }
