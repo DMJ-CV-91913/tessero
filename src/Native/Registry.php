@@ -679,9 +679,27 @@ final class Registry
         if (isset(self::CONSTANT_ROUTINES[$name]) && count($args) === 1 && is_string($a = reset($args))) {
             return self::$constants[$name][$a] ??= self::callRoutine($name, $args);
         }
+        // three of the most-called helpers in the usage corpus, in their plain form, answered by NDArray itself with
+        // the new array the kernel returns, without the routine call: zeros_like / empty_like of an NDArray with at
+        // least one dimension (zeros of its shape and dtype, C order: the kernel's empty_like is zero-filled too; of
+        // a 0-d array the kernel returns a number, so that goes to the kernel) and atleast_1d of one NDArray that has
+        // a dimension (a C-order copy)
+        if (isset(self::PHP_ROUTINES[$name])) {
+            $a0 = $args[0] ?? null;
+            if ($name === 'np.atleast_1d') {
+                if (count($args) === 1 && is_array($a0) && count($a0) === 1 && ($x = reset($a0)) instanceof NDArray && $x->ndim() >= 1) {
+                    return $x->copy();
+                }
+            } elseif ($a0 instanceof NDArray && $a0->ndim() >= 1 && count($args) === 3 && $args[1] === null && $args[2] === null) {
+                return NDArray::zeros($a0->shape(), $a0->dtype());
+            }
+        }
 
         return self::callRoutine($name, $args);
     }
+
+    /** routines routine() answers in PHP in their plain form (see there) */
+    private const PHP_ROUTINES = ['np.zeros_like' => true, 'np.empty_like' => true, 'np.atleast_1d' => true];
 
     /** routines whose result depends only on a dtype argument (routine() keeps it per dtype) */
     private const CONSTANT_ROUTINES = ['np.finfo' => true, 'np.iinfo' => true];
@@ -737,9 +755,18 @@ final class Registry
                 if (isset($seq[$k]) && is_array($v)) {
                     // a sequence argument (numpy's `arrays`, `*args`): one tsr_arg per item
                     $items = array_values($v);
-                    $sub = $ffi->new(FFI::arrayType(Library::type('tsr_arg'), [max(1, count($items))]));
+                    $ni = count($items);
+                    // the tsr_arg[n] type is made once per n (as for the argument array), and an NDArray item is
+                    // written into its slot here, as routineArg() writes it (the array stays referenced by $args)
+                    $sub = $ffi->new(self::$argTypes[$ni] ??= FFI::arrayType(Library::type('tsr_arg'), [max(1, $ni)]));
                     $hold[] = $sub;                       // owned by PHP: released with the variable
                     foreach ($items as $j => $item) {
+                        if ($item instanceof NDArray) {
+                            $s = $sub[$j];
+                            $s->kind = 3;
+                            $item->writeMeta($s->arr);
+                            continue;
+                        }
                         self::routineArg($ffi, $sub[$j], $item, $keep, $label);
                     }
                     $cargs[$k]->kind = 5;

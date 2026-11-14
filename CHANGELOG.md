@@ -40,6 +40,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 - **`Np::finfo` and `Np::iinfo` of a dtype name are computed once** (FFI package): their numbers depend only on the
   dtype, so the kernel is asked on the first call and the result is kept (returned as a copy); about 0.2 us a call
   instead of about 4 (NumPy 0.5). `finfo` is among the 15 most-called NumPy functions in the usage corpus.
+- **Lower per-call cost for the most-called NumPy helpers through FFI**, with results unchanged byte for byte:
+  - Sequence arguments (`concatenate`, `vstack`, `hstack`, `column_stack`, `stack`, ...) reuse their argument-array
+    type and write NDArray items directly; `concatenate` of two small arrays drops from about 16 to about 7 us.
+  - `zeros_like` / `empty_like` of an NDArray with a dimension, and `atleast_1d` of one such array, are answered in
+    PHP with the same new array the kernel returns, without the routine call (about 2 us saved each).
 - `tools/parity/usage_speed.php`: per-call speed weighted by real-world usage. Each timed function's per-call time
   is weighted by how often the corpus of the usage-weighted coverage calls it, giving the time a million and a
   billion calls of that mix take on each side.
