@@ -12,8 +12,8 @@ use Tessero\Optimize\LeastSquares;
 
 /**
  * solve runs MINPACK's lmdif (lmder with a Jacobian) as scipy.optimize.leastsq does, leastSquares MINPACK's lmder as
- * least_squares with method 'lm' does (linalg.lmdif). The residuals are built from + - * / alone, so their doubles
- * are the same in PHP and in NumPy on every platform, and the results are compared with SciPy's bit for bit.
+ * least_squares with method 'lm' does (linalg.lmdif). The residuals are built from + - * / alone (each rounded once,
+ * the same in PHP and NumPy), so both hold the same doubles, and the results are compared with SciPy's bit for bit.
  */
 final class LeastSquaresMinpackTest extends TestCase
 {

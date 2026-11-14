@@ -47,10 +47,20 @@ final class ConvexHull
     public int $ndim;
 
     /**
-     * @param list<list<float>> $points an (n, d) array of d-D points (d >= 2)
+     * @param list<list<float>>|object $points an (n, d) array of d-D points (d >= 2), or an (n, d) NDArray of either
+     *                                         backend
      */
-    public function __construct(array $points)
+    public function __construct(array|object $points)
     {
+        if (is_object($points)) {
+            $shape = $points->shape();
+            if (count($shape) === 2 && $shape[1] === 2 && $shape[0] >= 3) {
+                $this->hull2dArray(self::kernelArray($points));
+
+                return;
+            }
+            $points = $points->toArray();
+        }
         $first = $points === [] ? null : $points[array_key_first($points)];
         if (is_array($first) && count($first) === 2 && count($points) >= 3) {
             $this->hull2d($points);
@@ -85,15 +95,46 @@ final class ConvexHull
         $this->hullNd($pts, $d);
     }
 
+    /** whether the native extension runs the kernel calls */
+    private static function ext(): bool
+    {
+        return extension_loaded('tessero') && class_exists(\Tessero\Ext\Distance::class);
+    }
+
+    /** an NDArray of either backend as a float64 array of the backend that runs the kernel */
+    private static function kernelArray(object $a): object
+    {
+        $nd = self::ext() ? \Tessero\Ext\NDArray::class : \Tessero\NDArray::class;
+        if (! $a instanceof $nd) {
+            return $nd::array($a->toArray(), 'float64');
+        }
+        $dt = $a->dtype();                              // a DType (FFI) or its name (extension)
+
+        return $dt === 'float64' || $dt === \Tessero\DType::Float64 ? $a : $a->astype('float64');
+    }
+
     /**
-     * Andrew's monotone chain (2-D), in the kernel (distance.convex_hull_2d). The points go to the kernel as one
-     * flat list of floats: the casts and the row-length check of the general path, in one loop.
+     * Andrew's monotone chain (2-D), in the kernel (distance.convex_hull_2d). Through the extension the rows go to
+     * the kernel converted in C in one call (the doubles (float) gives); otherwise, or when the extension refuses
+     * them, as one flat list of floats: the casts and the row-length check of the general path, in one loop.
      *
      * @param array<array<float|int>> $points
      */
     private function hull2d(array $points): void
     {
-        $this->ndim = 2;
+        $n = count($points);
+        if (self::ext()) {
+            try {
+                $a = \Tessero\Ext\NDArray::array($points, 'float64');
+            } catch (\Throwable) {
+                $a = null;                              // numeric strings, null, ragged rows: the loop below
+            }
+            if ($a !== null && $a->shape() === [$n, 2]) {
+                $this->hull2dArray($a);
+
+                return;
+            }
+        }
         $flat = [];
         foreach ($points as $p) {
             if (count($p) !== 2) {                       // a row that is no array: a TypeError, as before
@@ -105,24 +146,29 @@ final class ConvexHull
             $flat[] = (float) $p[0];
             $flat[] = (float) $p[1];
         }
-        $n = count($points);
-        if (extension_loaded('tessero') && class_exists(\Tessero\Ext\Distance::class)) {
-            $r = \Tessero\Ext\Distance::convexHull2d(\Tessero\Ext\NDArray::array($flat, 'float64')->reshape([$n, 2]));
-        } else {
-            $r = \Tessero\Distance::convexHull2d(\Tessero\NDArray::fromFlat($flat, [$n, 2], 'float64'));
-        }
+        $this->hull2dArray(self::ext() ? \Tessero\Ext\NDArray::array($flat, 'float64')->reshape([$n, 2]) : \Tessero\NDArray::fromFlat($flat, [$n, 2], 'float64'));
+    }
+
+    /**
+     * The 2-D hull of an (n, 2) float64 array of the kernel's backend; the area and perimeter from the hull's own
+     * vertices (fetched alone, in hull order), summed in that order.
+     */
+    private function hull2dArray(object $a): void
+    {
+        $this->ndim = 2;
+        $r = self::ext() ? \Tessero\Ext\Distance::convexHull2d($a) : \Tessero\Distance::convexHull2d($a);
         $hull = (is_array($r) ? reset($r) : $r)->toList();
         if (count($hull) < 3) {
             throw new \InvalidArgumentException('input is degenerate (collinear points); QhullError');
         }
         $this->vertices = $hull;
+        $xy = $a->take($hull, 0)->toList();             // flat: x, y of vertex hull[i] at 2 i, 2 i + 1
         $k = count($hull);
         $area2 = 0.0;
         $perim = 0.0;
         for ($i = 0; $i < $k; $i++) {
-            $a = 2 * $hull[$i];
-            $b = 2 * $hull[($i + 1) % $k];
-            [$x1, $y1, $x2, $y2] = [$flat[$a], $flat[$a + 1], $flat[$b], $flat[$b + 1]];
+            $j = ($i + 1) % $k;
+            [$x1, $y1, $x2, $y2] = [$xy[2 * $i], $xy[2 * $i + 1], $xy[2 * $j], $xy[2 * $j + 1]];
             $area2 += $x1 * $y2 - $x2 * $y1;
             $dx = $x2 - $x1;
             $dy = $y2 - $y1;

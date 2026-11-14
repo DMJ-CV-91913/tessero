@@ -10,8 +10,8 @@
  * from LMDIF only in where the Jacobian comes from and in counting it in njev, not nfev: here the caller's (leastsq
  * with Dfun) or SciPy's 2-point differences (least_squares with method 'lm', whose jac is approx_derivative's).
  *
- * Built with multiply-add contraction off (csrc/Makefile NOCONTRACT_C), as SciPy's x86-64 wheels compute it: each
- * product rounded on its own, so the fit is the same on every platform.
+ * Built with multiply-add contraction off (csrc/Makefile NOCONTRACT_C): each product rounded on its own, as SciPy's
+ * x86-64 wheels compute it, so the fit follows SciPy's.
  */
 
 /*

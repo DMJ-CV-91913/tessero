@@ -26,27 +26,55 @@ final class KDTree
     /** the built tree: the idx, nodes and box arrays of distance.kdtree_build (null without points) */
     private ?array $tree = null;
 
-    /** @param list<list<float|int>> $data the points, one row per point */
-    public function __construct(array $data)
+    /** @param list<list<float|int>>|object $data the points, one row per point, or an (n, d) NDArray of either backend */
+    public function __construct(array|object $data)
     {
         if ($data === []) {
             return;                                    /* a query then reports that the tree has no points */
         }
         [, , $build] = self::backend();
-        $this->arr = self::rows($data);
-        $this->n = count($data);
+        $arr = self::rows($data);
+        $this->n = $arr->shape()[0];
+        if ($this->n === 0) {
+            return;
+        }
+        $this->arr = $arr;
         $r = $build($this->arr);
         $this->tree = [$r['idx'], $r['nodes'], $r['box']];
     }
 
     /**
-     * Rows of numbers as an (n, d) float64 kernel array of the active backend: each value cast as floatval does, in
-     * one loop into a flat list (a row that is no array is a TypeError, rows of unequal length a ShapeError).
+     * Points as an (n, d) float64 kernel array of the active backend. An NDArray of that backend is used as it is
+     * (cast to float64 if it is not), one of the other backend converted. Rows of numbers: through the extension
+     * converted in C in one call (the doubles (float) gives); otherwise, or when that refuses them, each value cast
+     * as floatval does, in one loop into a flat list (a row that is no array is a TypeError, rows of unequal length a
+     * ShapeError).
      *
-     * @param array<array<float|int>> $rows
+     * @param array<array<float|int>>|object $rows
      */
-    private static function rows(array $rows): object
+    private static function rows(array|object $rows): object
     {
+        [$nd] = self::backend();
+        if (is_object($rows)) {
+            $a = $rows instanceof $nd ? $rows : $nd::array($rows->toArray(), 'float64');
+            if ($a->ndim() !== 2) {
+                throw new ShapeError('KDTree: the points must be an (n, d) array.');
+            }
+
+            $dt = $a->dtype();                          // a DType (FFI) or its name (extension)
+
+            return $dt === 'float64' || $dt === \Tessero\DType::Float64 ? $a : $a->astype('float64');
+        }
+        if ($nd === \Tessero\Ext\NDArray::class) {
+            try {
+                $a = \Tessero\Ext\NDArray::array($rows, 'float64');
+                if ($a->ndim() === 2 && $a->shape()[0] === count($rows)) {
+                    return $a;
+                }
+            } catch (\Throwable) {
+                // values the extension refuses (numeric strings, null, ragged rows): the loop below casts or reports them
+            }
+        }
         $d = null;
         $lists = true;
         foreach ($rows as $p) {
@@ -107,12 +135,12 @@ final class KDTree
      * value per query point); for k > 1 each is a list of min(k, count()) -length rows, as
      * scipy.spatial.cKDTree.query returns.
      *
-     * @param list<list<float|int>> $x query points (one row each)
+     * @param list<list<float|int>>|object $x query points (one row each), or an (m, d) NDArray of either backend
      * @return array{0: mixed, 1: mixed}
      */
-    public function query(array $x, int $k = 1): array
+    public function query(array|object $x, int $k = 1): array
     {
-        if ($x === []) {
+        if ($x === [] || (is_object($x) && $x->size() === 0)) {
             return [[], []];
         }
         [$array, $query] = self::backend();

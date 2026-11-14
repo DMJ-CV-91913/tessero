@@ -631,7 +631,8 @@ static int kd_node_ok(const kd_tree *t, int64_t id)
     return l->lo == nd->lo && l->hi == mid && r->lo == mid && r->hi == nd->hi;
 }
 
-static void kd_search(kd_tree *t, int64_t id, const double *q, kd_heap *h)
+/* lb: kd_box_lb(t, id, q), which the caller has computed to choose the order of the children */
+static void kd_search(kd_tree *t, int64_t id, const double *q, kd_heap *h, double lb)
 {
     const int64_t m = t->m;
     if (t->bad) return;
@@ -639,7 +640,7 @@ static void kd_search(kd_tree *t, int64_t id, const double *q, kd_heap *h)
     const kd_node *nd = &t->nodes[id];
     if (h->n == h->k) {
         const double w = h->d[0];
-        if (kd_box_lb(t, id, q) > w * w * (1.0 + 1e-12)) return;   /* nothing in here can beat or tie the worst kept */
+        if (lb > w * w * (1.0 + 1e-12)) return;   /* nothing in here can beat or tie the worst kept */
     }
     if (nd->left < 0) {
         for (int64_t r = nd->lo; r < nd->hi; r++) {
@@ -654,8 +655,9 @@ static void kd_search(kd_tree *t, int64_t id, const double *q, kd_heap *h)
         }
         return;
     }
-    if (kd_box_lb(t, nd->left, q) <= kd_box_lb(t, nd->right, q)) { kd_search(t, nd->left, q, h); kd_search(t, nd->right, q, h); }
-    else { kd_search(t, nd->right, q, h); kd_search(t, nd->left, q, h); }
+    const double ll = kd_box_lb(t, nd->left, q), lr = kd_box_lb(t, nd->right, q);
+    if (ll <= lr) { kd_search(t, nd->left, q, h, ll); kd_search(t, nd->right, q, h, lr); }
+    else { kd_search(t, nd->right, q, h, lr); kd_search(t, nd->left, q, h, ll); }
 }
 
 /* the integer-valued array argument a as int64 (exact below 2^53); NULL with *len = -1 when it holds a non-integer */
@@ -855,7 +857,7 @@ static int r_kdtree_query(const void *ctx, const tsr_arg *args, int nargs, tsr_r
         else
             for (int64_t q = 0; q < nq; q++) {
                 kd_heap h = { hd, hi, kk, 0 };
-                kd_search(&t, 0, X + q * m, &h);
+                kd_search(&t, 0, X + q * m, &h, kd_box_lb(&t, 0, X + q * m));
                 if (t.bad) break;                         /* the heap may be short: nothing is popped */
                 for (int64_t s = kk - 1; s >= 0; s--) {     /* pop the worst into the last free slot: ascending order */
                     od[q * kk + s] = h.d[0]; oi[q * kk + s] = h.i[0];

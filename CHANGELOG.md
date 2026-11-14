@@ -203,6 +203,17 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`Spatial\KDTree` and `Spatial\ConvexHull` (2-D) take an NDArray**, of either backend, read in place, as SciPy
+  takes an ndarray. Points given as PHP rows are converted in C in one call through the extension, not flattened
+  in PHP (the same doubles; the PHP loop remains for values the extension refuses, such as numeric strings). The
+  hull's perimeter and area come from its own vertices, fetched alone. In the kd-tree search, each node now uses
+  the box bound its parent computed to order the children, instead of computing it again. Every result is
+  unchanged, bit for bit: the old against the new library on 24 point sets (random, integer grids with ties,
+  duplicates; up to 8-D; k from 1 to n + 2), the old classes against the new on 100 inputs, and rows against
+  both backends' arrays in tests/Unit/SpatialArrayInputTest.php. Profiled on one host, the extension against
+  SciPy at the same load (not the record; DJ's final pass times it): KDTree build of 100k 3-D points 39 ms from
+  rows and 33 ms from an array (SciPy 36; 54 ms before); 100 queries with k = 5 0.17 ms (SciPy 0.19; 0.21
+  before); ConvexHull of 10k points 0.73 ms from rows and 0.57 ms from an array (SciPy 1.6; 2.5 ms before).
 - **`Spatial\Delaunay` (2-D) in the kernel**: the sweep-hull algorithm (`distance.delaunay_2d`, O(n log n), the hull exact
   by construction) replaces a Bowyer-Watson that scanned every triangle in PHP: 10k points 57 s -> 29 ms (SciPy 46 ms).
   The same simplex set (parity against SciPy; PHPUnit against the old algorithm); `griddata`, `LinearNDInterpolator`

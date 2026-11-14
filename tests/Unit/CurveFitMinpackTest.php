@@ -13,9 +13,9 @@ use Tessero\Optimize\LeastSquares;
 
 /**
  * curveFit runs MINPACK's lmdif as scipy.optimize.curve_fit does (linalg.lmdif). Every data set and model here is
- * built from + - * / alone, so its doubles are the same in PHP and in NumPy on every platform, and the fits are
- * compared with SciPy's bit for bit: the parameters, the residuals, the number of evaluations and the status, for
- * a per-point model and for whole-array models on each backend, each fit run twice.
+ * built from + - * / alone (each rounded once, the same in PHP and NumPy), so both hold the same doubles, and the
+ * fits are compared with SciPy's bit for bit: the parameters, the residuals, the number of evaluations and the
+ * status, for a per-point model and for whole-array models on each backend, each fit run twice.
  */
 final class CurveFitMinpackTest extends TestCase
 {

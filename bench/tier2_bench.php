@@ -104,6 +104,11 @@ $pts3 = $r(46, [100000, 3])->toArray();
 $qpts = $r(47, [100, 3])->toArray();
 $tree = new KDTree($pts3);
 $pts2 = $r(48, [10000, 2])->toArray();
+// the same points as an NDArray of the backend the spatial classes run on (read in place, no conversion)
+$NDk = extension_loaded('tessero') && class_exists(\Tessero\Ext\NDArray::class) ? \Tessero\Ext\NDArray::class : NDArray::class;
+$pts3a = $NDk::array($pts3, 'float64');
+$qptsa = $NDk::array($qpts, 'float64');
+$pts2a = $NDk::array($pts2, 'float64');
 $km = $r(49, [10000, 3]);
 $kinit = $r(50, [8, 3]);
 $lk = $r(51, [2000, 3]);
@@ -206,6 +211,9 @@ $cases = [
     'scipy.spatial KDTree build 100k (3-D)' => fn () => new KDTree($pts3),
     'scipy.spatial KDTree query 100 points, k=5' => fn () => $tree->query($qpts, 5),
     'scipy.spatial ConvexHull 10k (2-D)' => fn () => new ConvexHull($pts2),
+    'scipy.spatial KDTree build 100k (3-D), array input' => fn () => new KDTree($pts3a),
+    'scipy.spatial KDTree query 100 points, k=5, array input' => fn () => $tree->query($qptsa, 5),
+    'scipy.spatial ConvexHull 10k (2-D), array input' => fn () => new ConvexHull($pts2a),
     'scipy.spatial Delaunay 10k (2-D)' => fn () => new Delaunay($pts2),
     'scipy.cluster.vq kmeans2 10k x 3, k=8' => fn () => CL::kmeans2($km, $kinit),
     'scipy.cluster.hierarchy linkage ward 2000x3' => fn () => HI::linkage($lk, 'ward'),
