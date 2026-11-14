@@ -1220,9 +1220,10 @@ static void lz_orth(double *q, const double *L, int64_t nl, const double *V, int
    orthonormal columns L (nl of them; the operator is A on that complement). A basis of m vectors is built by sparse
    products only; the m x m projected matrix H gives the Ritz values theta; a Ritz pair has converged when
    |beta_m y_last| <= max(tol |theta|, 16 eps |A|) (tol 0: machine precision, as ARPACK); otherwise the l most wanted Ritz vectors and
-   the last Lanczos vector restart the basis. vals: the k wanted values, vecs (n x k, may be NULL): their vectors. */
+   the last Lanczos vector restart the basis. vals: the k wanted values, vecs (n x k, may be NULL): their vectors;
+   next (n, may be NULL): the most wanted Ritz vector after them at convergence (next[0] NaN when the basis has none). */
 static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int64_t m, int64_t maxit, double tol,
-                  const double *v0, const double *L, int64_t nl, double *vals, double *vecs)
+                  const double *v0, const double *L, int64_t nl, double *vals, double *vecs, double *next)
 {
     if (!(tol > 0.0)) tol = 2.220446049250313e-16;
     double *V = (double *)calloc((size_t)((m + 1) * n), sizeof(double));
@@ -1292,7 +1293,7 @@ static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int6
         int64_t l = k + (nconv < (m - k) / 2 ? nconv : (m - k) / 2);
         if (l == 1) l = m >= 6 ? m / 2 : (m > 2 ? 2 : 1);
         if (l >= m) l = m - 1;
-        if (conv) l = k;
+        if (conv) l = (next && k + 1 < m) ? k + 1 : k;
         /* T[p] = V_m^T y_ord[p]: the kept (or answer) Ritz vectors, one matrix product */
         for (int64_t p = 0; p < l; p++) for (int64_t i = 0; i < m; i++) Ys[p * m + i] = Y[i * m + ord[p]];
         if (n <= INT_MAX) {
@@ -1310,6 +1311,8 @@ static int lz_run(const spl_op *A, int64_t n, int64_t k, const char *which, int6
         if (conv) {
             for (int64_t p = 0; p < k; p++) vals[p] = theta[ord[p]];
             if (vecs) memcpy(vecs, T, (size_t)(k * n) * sizeof(double));
+            if (next && l > k) memcpy(next, T + k * n, (size_t)n * sizeof(double));
+            else if (next) next[0] = NAN;
             goto done;
         }
         memmove(V + l * n, V + m * n, (size_t)n * sizeof(double));   /* the last Lanczos vector follows them */
@@ -1342,7 +1345,10 @@ static int lz_better(double mu, double v, const char *which)
 /* The k eigenvalues `which` wants (LA, SA, LM, SM). A Krylov space from one start vector holds one direction of each
    repeated eigenvalue, so Lanczos alone can miss a repeated one (2-D grids have many). After convergence, the most
    wanted eigenvalue of A on the orthogonal complement of the k Ritz vectors is computed; while it beats the least
-   wanted one kept (a missed repeat always does), it replaces it, and the search repeats. */
+   wanted one kept (a missed repeat always does), it replaces it, and the search repeats. The first search starts from
+   the usual start vector plus the main run's next Ritz vector: the first gives every direction the main Krylov space
+   lacked (a missed repeat's among them) its share, the second makes the search quick when nothing was missed (the
+   complement's top is then that Ritz pair, nearly converged). */
 static int eigsh_one(const spl_op *A, int64_t n, int64_t k, const char *which, int64_t ncv, int64_t maxit, double tol,
                      const double *v0, double *out)
 {
@@ -1351,20 +1357,28 @@ static int eigsh_one(const spl_op *A, int64_t n, int64_t k, const char *which, i
     if (m <= k) { fn_set_error("eigsh: ncv must exceed k (and n must exceed k)"); return TSR_EARG; }
     if (maxit <= 0) maxit = 10 * n > 1000 ? 10 * n : 1000;
     double *vecs = (double *)malloc((size_t)(n * k) * sizeof(double)), *u = (double *)malloc((size_t)n * sizeof(double));
-    if (!vecs || !u) { free(vecs); free(u); return TSR_ENOMEM; }
-    int rc = lz_run(A, n, k, which, m, maxit, tol, v0, NULL, 0, out, vecs);
+    double *nxt = (double *)malloc((size_t)n * sizeof(double)), *s0 = (double *)malloc((size_t)n * sizeof(double));
+    if (!vecs || !u || !nxt || !s0) { free(vecs); free(u); free(nxt); free(s0); return TSR_ENOMEM; }
+    int rc = lz_run(A, n, k, which, m, maxit, tol, v0, NULL, 0, out, vecs, nxt);
     for (int64_t round = 0; rc == TSR_OK && round <= k; round++) {
         int64_t m1 = 20 < n - k ? 20 : n - k;
         if (m1 < 2) break;                                /* the complement is too small to search */
         double mu;
-        if (lz_run(A, n, 1, which, m1, maxit, tol, NULL, vecs, k, &mu, u) != TSR_OK) break;
+        const int seeded = round == 0 && !isnan(nxt[0]);
+        if (seeded) {                                     /* lz_run's own start for nl = k, unit length, + nxt */
+            double ns = 0.0;
+            for (int64_t i = 0; i < n; i++) { s0[i] = 1.0 + 0.5 * sin(1.7 * (double)i + 0.3 + 0.61 * (double)k); ns += s0[i] * s0[i]; }
+            ns = sqrt(ns);
+            for (int64_t i = 0; i < n; i++) s0[i] = s0[i] / ns + nxt[i];
+        }
+        if (lz_run(A, n, 1, which, m1, maxit, tol, seeded ? s0 : NULL, vecs, k, &mu, u, NULL) != TSR_OK) break;
         int64_t worst = 0;
         for (int64_t p = 1; p < k; p++) if (lz_better(out[worst], out[p], which)) worst = p;
         if (!lz_better(mu, out[worst], which)) break;
         out[worst] = mu;
         memcpy(vecs + worst * n, u, (size_t)n * sizeof(double));
     }
-    free(vecs); free(u);
+    free(vecs); free(u); free(nxt); free(s0);
     return rc;
 }
 

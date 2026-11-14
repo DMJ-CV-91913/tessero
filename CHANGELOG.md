@@ -203,6 +203,19 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`sparse.linalg.eigsh` on CSR checks for missed repeated eigenvalues faster.** After the Lanczos run converges, a
+  second Lanczos search of the complement of the k Ritz vectors makes sure no repeated eigenvalue was missed. The first
+  such search now starts from the main run's next Ritz vector plus the usual start vector. The first part makes it
+  quick when nothing was missed; the second keeps every missed direction in reach, so the guarantee stands. On the
+  2-D Poisson case of the benchmark the check takes 390 matrix-vector products instead of 700: about 600 ms where it
+  took 700 (SciPy's ARPACK 580 ms, same host and load; not the record, DJ's final pass times it). Results:
+  - Wherever the main run misses nothing (every fixture, the benchmark, 72 of 72 compared cases), the results are
+    byte-identical.
+  - Where it does miss a copy, which is forced in tests with a start vector blind to one block, the replacement
+    eigenvalue is found by another path. It lands at the same accuracy: on 48 such cases the largest error against
+    the closed form is 2.1e-14 before and after.
+  - Tried and dropped: a second reorthogonalization pass only when needed (ARPACK's test). It saved little and made
+    the values slightly less accurate.
 - **`Spatial\KDTree` and `Spatial\ConvexHull` (2-D) take an NDArray**, of either backend, read in place, as SciPy
   takes an ndarray. Points given as PHP rows are converted in C in one call through the extension, not flattened
   in PHP (the same doubles; the PHP loop remains for values the extension refuses, such as numeric strings). The
