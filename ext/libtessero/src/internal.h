@@ -24,6 +24,7 @@
 
 enum { TSR_F64 = 0, TSR_F32 = 1, TSR_I64 = 2, TSR_I32 = 3, TSR_U8 = 4, TSR_BOOL = 5, TSR_C128 = 6, TSR_NDTYPES = 7 };
 enum { TSR_OK = 0, TSR_EARG = -1, TSR_EINDEX = -2, TSR_ENOMEM = -3, TSR_ETYPE = -4, TSR_EDIM = -5, TSR_ESHAPE = -6, TSR_ECONTIG = -7, TSR_ECONVERGE = -8, TSR_EIO = -9 };
+enum { TSR_RESULT_COLMAJOR = 1 };   /* tsr_result.flags: a 2-D array result stored column-major (see tessero.h) */
 
 /* Parallel element-wise loops only above this many elements per call (OpenMP builds). */
 #define TSR_PAR_MIN ((int64_t)1 << 17)

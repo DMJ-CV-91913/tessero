@@ -203,6 +203,28 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`lu_factor` and `cho_factor` return their factor in column (Fortran) order, as SciPy does; `lu_solve` and
+  `cho_solve` read it without a copy.** The factor is LAPACK's own column-major array, handed to PHP as an ordinary
+  NDArray of the same shape and values. `toBytes()` and `toList()` give exactly what they gave before; only the
+  memory order differs (`strides()` is `[8, 8 * rows]`, and `isContiguous()` is false). That is also what NumPy
+  reports for SciPy's factors (F-contiguous). The solves see that order and pass the factor straight to LAPACK.
+  A factor in C order (a copy, or one built by hand) or of another dtype is still copied into column order as
+  before. LAPACK sees identical matrices, so results are byte-identical:
+  - 641 cases on FFI and 612 on the extension, old library against new, including solves given C-ordered and
+    float32 factors.
+  - tests/Unit/LinalgFactorLayoutTest.php checks the order and that the solves give the same bytes from every
+    layout.
+
+  In the C ABI, `tsr_result.flags` bit 0 (documented in tessero.h) marks a column-major 2-D array result. Only these
+  two routines set it, and both PHP bindings hand such a result out as a transposed view. Same host, single thread,
+  best of five alternating rounds (load 16 to 36, so unchanged routines swing by up to 30%; not the record, DJ's
+  final pass times it), FFI / extension:
+  - `lu_factor` 600x600: 8.1 / 7.3 -> 5.7 / 5.5 ms (SciPy 5.9)
+  - `lu_solve` 600, one right-hand side: 1.71 / 1.49 -> 0.41 / 0.23 ms (SciPy 0.17); 100 of them: 4.2 / 6.0 -> 3.8 /
+    2.6 ms (SciPy 2.9)
+  - `cho_factor` 1000x1000: 20.6 / 22.2 -> 16.7 / 14.1 ms (SciPy 15.8)
+  - `cho_solve`, one right-hand side: 3.8 / 3.6 -> 1.7 / 1.1 ms (SciPy 1.9); 100 of them: 11.5 / 12.7 -> 7.8 / 6.7 ms
+    (SciPy 8.4)
 - **`inv`, `cho_factor`, `cho_solve` and `lu_solve` without LAPACKE's row-major copies; Cholesky copies only the
   triangle it reads.** The same change as `slogdet` and the Cholesky routines below:
   - `inv` (NumPy and SciPy) factors and inverts in its result array, holding the column-major copy LAPACKE builds. The

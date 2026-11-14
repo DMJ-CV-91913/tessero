@@ -1149,9 +1149,16 @@ final class Registry
         self::$adopter ??= Buffer::adopter();
         $data = $a->data;                                       // reading a pointer field copies its value
         $buffer = (self::$adopter)(Library::address($data), $bytes, $data);
+        // a column-major 2-D result (TSR_RESULT_COLMAJOR, lu_factor / cho_factor): the block is the C-ordered
+        // transpose, handed out as its transposed view, so the array has the logical shape in column order
+        $colMajor = ($r->flags & self::RESULT_COLMAJOR) !== 0 && $ndim === 2;
+        $array = (self::$wrapper ??= NDArray::wrapper())($buffer, $dtype, $colMajor ? [$shape[1], $shape[0]] : $shape, $size);
 
-        return (self::$wrapper ??= NDArray::wrapper())($buffer, $dtype, $shape, $size);   // the shape is checked above
+        return $colMajor ? $array->transpose() : $array;        // the shape is checked above
     }
+
+    /** tsr_result.flags: the 2-D array result is stored column-major (TSR_RESULT_COLMAJOR in tessero.h) */
+    private const RESULT_COLMAJOR = 1;
 
     /** @var \Closure(Buffer, DType, list<int>, int): NDArray|null */
     private static ?\Closure $wrapper = null;

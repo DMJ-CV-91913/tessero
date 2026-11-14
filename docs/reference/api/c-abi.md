@@ -455,6 +455,11 @@ typedef struct tsr_result {
     int64_t bytes;                         /* size of the arr.data block, for tsr_free */
     int64_t ival;                          /* kind 5: the exact value (num holds it rounded to double) */
 } tsr_result;
+/* tsr_result.flags, kind 3, bit 0 (value 1): the 2-D array is stored column-major (Fortran order). arr.shape is the
+   logical shape and arr.strides the column-major strides; a reader that assumes C order reads it as the C-ordered
+   (shape[1], shape[0]) transpose. Set only by slinalg.lu_factor (lu) and slinalg.cho_factor (c): LAPACK's factors in
+   LAPACK's order, as SciPy returns them, so slinalg.lu_solve / cho_solve read them without a copy. Every other array
+   result is C-contiguous with flags 0. */
 /* Typed entry points for the linear algebra most often called from C: each runs the registry routine of the same
    name (linalg.cholesky, linalg.solve, linalg.slogdet), so the results equal the registry's and both PHP backends',
    byte for byte. Row-major contiguous float64. tsr_cholesky: the lower factor L (numpy.linalg.cholesky; the upper

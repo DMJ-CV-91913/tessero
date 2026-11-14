@@ -93,6 +93,7 @@ void tsr_register_ndarray(void);
 int tsr_ndarray_new(zval *rv, int dtype, int32_t ndim, const int64_t *shape, int zero);   /* SUCCESS/FAILURE (exception set) */
 /* wrap a tsr_alloc() block of `bytes` (a kernel routine result): the new array owns and frees it */
 int tsr_ndarray_adopt(zval *rv, int dtype, int32_t ndim, const int64_t *shape, void *block, int64_t bytes);
+int tsr_ndarray_transposed(zval *rv, zval *src);
 int tsr_ndarray_from_zval(zval *value, int dtype_hint, zval *out);                         /* array/scalar/NDArray -> NDArray (new ref) */
 int tsr_ndarray_contiguous_as(zval *arr, int dtype, zval *out);                             /* C-contiguous copy/cast when needed */
 int tsr_dtype_from_name(const char *name, size_t len);

@@ -545,13 +545,25 @@ static int result_zval(tsr_result *r, zval *out)
     case 2: ZVAL_STRING(out, (const char *)r->arr.data); tsr_free(r->arr.data, r->bytes); return SUCCESS;  /* dtype name */
     case 4: ZVAL_BOOL(out, r->num != 0); return SUCCESS;
     case 5: ZVAL_LONG(out, (zend_long)r->ival); return SUCCESS;
-    case 3:
-        if (tsr_ndarray_adopt(out, r->arr.dtype, r->arr.ndim, r->arr.shape, r->arr.data, r->bytes) == FAILURE) {
+    case 3: {
+        /* a column-major 2-D result (TSR_RESULT_COLMAJOR, lu_factor / cho_factor): the block is adopted as the
+           C-ordered transpose and handed out as its transposed view, so PHP sees the logical shape in column order */
+        const int colmajor = (r->flags & TSR_RESULT_COLMAJOR) && r->arr.ndim == 2;
+        const int64_t swapped[2] = {r->arr.shape[1], r->arr.shape[0]};
+        if (tsr_ndarray_adopt(out, r->arr.dtype, r->arr.ndim, colmajor ? swapped : r->arr.shape, r->arr.data, r->bytes) == FAILURE) {
             tsr_free(r->arr.data, r->bytes);
             ZVAL_UNDEF(out);
             return FAILURE;
         }
+        if (colmajor) {
+            zval c;
+            ZVAL_COPY_VALUE(&c, out);
+            const int ok = tsr_ndarray_transposed(out, &c);
+            zval_ptr_dtor(&c);                            /* the view holds the block's owner (or, on failure, nothing does) */
+            if (ok == FAILURE) { ZVAL_UNDEF(out); return FAILURE; }
+        }
         return SUCCESS;
+    }
     case 6: {
         tsr_result *items = (tsr_result *)r->arr.data;
         const int64_t n = r->arr.shape[0];

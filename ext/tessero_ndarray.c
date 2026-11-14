@@ -205,6 +205,17 @@ static void make_view(zval *rv, tsr_obj *src, const tsr_array *meta)
     o->base = root;
 }
 
+/* rv = the transposed view of the NDArray in src (all axes reversed), as transpose() returns it; src keeps its own
+   reference */
+int tsr_ndarray_transposed(zval *rv, zval *src)
+{
+    tsr_obj *o = Z_TSR_P(src);
+    tsr_array v;
+    if (tsr_array_transpose(&o->a, NULL, &v) != 0) return FAILURE;
+    make_view(rv, o, &v);
+    return SUCCESS;
+}
+
 static int is_ndarray(zval *z) { return Z_TYPE_P(z) == IS_OBJECT && Z_OBJCE_P(z) == tsr_ce_ndarray; }
 
 /* ================================================================ element <-> zval */
