@@ -134,6 +134,26 @@ final class Blas
         }
     }
 
+    /**
+     * gemm() on absolute addresses (a live Buffer's address plus an offset): the same cblas_?gemm call with the same
+     * arguments, the pointers made in the BLAS scope straight from the addresses instead of through libtessero
+     * pointers and an integer cast (what made a small matmul cost several microseconds). @internal
+     */
+    public static function gemmAt(DType $dt, int $m, int $n, int $k, int $a, int $b, int $c): void
+    {
+        if ($m > self::INT_MAX || $n > self::INT_MAX || $k > self::INT_MAX || $m < 0 || $n < 0 || $k < 0) {
+            throw new ShapeError("matmul: dimensions ({$m}x{$k} @ {$k}x{$n}) exceed the 32-bit integer range of the BLAS library.");
+        }
+        $ffi = self::ffi();
+        if ($dt === DType::Float64) {
+            $ffi->{self::$prefix . 'cblas_dgemm'}(self::ROW_MAJOR, self::NO_TRANS, self::NO_TRANS, $m, $n, $k, 1.0,
+                $ffi->cast('double*', $a), $k, $ffi->cast('double*', $b), $n, 0.0, $ffi->cast('double*', $c), $n);
+        } else {
+            $ffi->{self::$prefix . 'cblas_sgemm'}(self::ROW_MAJOR, self::NO_TRANS, self::NO_TRANS, $m, $n, $k, 1.0,
+                $ffi->cast('float*', $a), $k, $ffi->cast('float*', $b), $n, 0.0, $ffi->cast('float*', $c), $n);
+        }
+    }
+
     /** Pointer of the given C type in the BLAS FFI scope at an absolute address. @internal */
     public static function ptr(string $type, int $address): CData
     {

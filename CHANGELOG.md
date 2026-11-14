@@ -45,6 +45,10 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
     type and write NDArray items directly; `concatenate` of two small arrays drops from about 16 to about 7 us.
   - `zeros_like` / `empty_like` of an NDArray with a dimension, and `atleast_1d` of one such array, are answered in
     PHP with the same new array the kernel returns, without the routine call (about 2 us saved each).
+- **`NDArray::matmul` / `dot` of two small matrices about 2x faster** (FFI package, results unchanged byte for byte):
+  two C-contiguous float matrices of one dtype go straight to the same BLAS gemm call, and gemm takes its operands'
+  addresses directly instead of through libtessero pointers and casts. `dot` of 3 x 3 matrices about 14 -> 7 us;
+  `numpy.dot` is the fourth most-called NumPy function in the usage corpus.
 - `tools/parity/usage_speed.php`: per-call speed weighted by real-world usage. Each timed function's per-call time
   is weighted by how often the corpus of the usage-weighted coverage calls it, giving the time a million and a
   billion calls of that mix take on each side.

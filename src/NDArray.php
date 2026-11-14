@@ -1967,6 +1967,18 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
     {
         $b = self::asArray($other);
         $a = $this;
+        // the common case, two C-contiguous float matrices of one dtype: straight to gemm, without the broadcast,
+        // astype and contiguous steps below (which leave such operands as they are), so the same gemm call
+        if (count($a->shape) === 2 && count($b->shape) === 2 && $a->dtype === $b->dtype
+            && ($a->dtype === DType::Float64 || $a->dtype === DType::Float32) && $a->shape[1] === $b->shape[0]
+            && $a->isContiguous() && $b->isContiguous()) {
+            [$m, $k] = $a->shape;
+            $n = $b->shape[1];
+            $out = self::empty([$m, $n], $a->dtype);
+            self::gemm($a->dtype, $m, $n, $k, $a->buffer, $a->offset, $b->buffer, $b->offset, $out->buffer, 0);
+
+            return $out;
+        }
         if ($a->shape === [] || $b->shape === []) {
             throw new ShapeError('matmul does not accept 0-d operands; use mul().');
         }
@@ -2036,7 +2048,8 @@ final class NDArray extends Internal\OperandBase implements ArrayAccess, Countab
             return;
         }
         if (($dt === DType::Float64 || $dt === DType::Float32) && Blas::available()) {
-            Blas::gemm($dt, $m, $n, $k, $a->ptr($ao), $b->ptr($bo), $c->ptr($co));
+            // the buffers are referenced by the caller's arrays for the call, so their addresses stay valid
+            Blas::gemmAt($dt, $m, $n, $k, $a->address + $ao, $b->address + $bo, $c->address + $co);
 
             return;
         }
