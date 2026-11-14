@@ -1,8 +1,8 @@
 /*
- * The C tests' floating-point references for spatial_distance.c (convex hull, Delaunay, k-d tree) and np_linalg_fd.c
- * (curve_fit's normal equations), built like those files with multiply-add contraction off (csrc/Makefile). The
- * checks compare the library with brute force computed here at run time: an orientation or in-circle sign for every
- * triangle and point, the exhaustive k-nearest search, the normal equations summed term by term. Both sides must round each product and sum separately, as every x86-64 build does: a compiler that fuses
+ * The C tests' floating-point references for spatial_distance.c (convex hull, Delaunay, k-d tree), built like that
+ * file with multiply-add contraction off (csrc/Makefile). The checks compare the library with brute force computed
+ * here at run time: an orientation or in-circle sign for every triangle and point, the exhaustive k-nearest search.
+ * Both sides must round each product and sum separately, as every x86-64 build does: a compiler that fuses
  * a*b - c*d into one multiply-add (aarch64 GCC and Apple clang do by default) judges near-collinear points,
  * near-cocircular points and equal distances otherwise on one side only, and the test then reports a difference in
  * its own arithmetic, not in the code under test. No expected value is stored or changed: each reference is
@@ -25,22 +25,6 @@ double g2t_incircle(double ax, double ay, double bx, double by, double cx, doubl
                  fx = cx - P[2 * p], fy = cy - P[2 * p + 1];
     return (dx * dx + dy * dy) * (ex * fy - ey * fx) - (ex * ex + ey * ey) * (dx * fy - dy * fx)
            + (fx * fx + fy * fy) * (dx * ey - dy * ex);
-}
-
-/* linalg.fd_normal's definition (np_linalg_fd.c, also built with contraction off: it reproduces
-   Optimize\LeastSquares's PHP loop bit for bit, and PHP rounds every product separately): the forward-difference
-   Jacobian J (m x np) of the residuals r from rh (np x m) at the steps h, then A = J^T J and g = J^T r, each sum in
-   the order of k with zero Jacobian entries skipped; A and g arrive zeroed */
-void fd_normal_ref(const double *r, const double *rh, const double *h, int m, int np, double *J, double *A, double *g)
-{
-    for (int k = 0; k < m; k++) for (int j = 0; j < np; j++) J[k * np + j] = (rh[j * m + k] - r[k]) / h[j];
-    for (int k = 0; k < m; k++)
-        for (int i = 0; i < np; i++) {
-            if (J[k * np + i] == 0.0) continue;
-            g[i] += J[k * np + i] * r[k];
-            for (int j = i; j < np; j++) A[i * np + j] += J[k * np + i] * J[k * np + j];
-        }
-    for (int i = 0; i < np; i++) for (int j = 0; j < i; j++) A[i * np + j] = A[j * np + i];
 }
 
 /* the Euclidean distance between row i of P and row q of Q (m columns each), summed in column order */

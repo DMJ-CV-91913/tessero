@@ -243,8 +243,6 @@ double *fn_arg_doubles(const tsr_arg *a, int64_t *n);
 const double *fn_arg_f64_view(const tsr_arg *a, int64_t *n);
 /* np_linalg.c: a routine argument as a contiguous float64 copy (fn_arg_doubles), the error naming it on failure */
 double *mat_f64(const tsr_arg *a, const char *what, int64_t *n);
-/* np_linalg_fd.c (built with contraction off), listed in np_linalg.c's table: linalg.fd_normal */
-int r_fd_normal(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
 /* scipy_minpack.c (built with contraction off), listed in np_linalg.c's table: linalg.lmdif, linalg.lmdif_result */
 int r_lmdif(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);
 int r_lmdif_result(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres);

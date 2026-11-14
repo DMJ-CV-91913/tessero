@@ -341,29 +341,6 @@ final class NumericsTest extends TestCase
         $this->assertLessThan(1e-10, abs($cov[0][0]));
     }
 
-    public function testLevenbergMarquardtNormalEquationsInTheKernelMatchThePhpLoop(): void
-    {
-        $xs = array_map(static fn (int $i): float => $i * 0.02, range(0, 199));
-        $ys = array_map(static fn (float $t): float => 2.5 * exp(-1.3 * $t) + 0.5 + 0.01 * sin(37.0 * $t), $xs);
-        $res = static function (array $p) use ($xs, $ys): array {
-            $out = [];
-            foreach ($xs as $i => $t) {
-                $out[] = $p[0] * exp(-$p[1] * $t) + $p[2] - $ys[$i];
-            }
-
-            return $out;
-        };
-        // without a Jacobian: forward differences and J^T J, J^T r in the kernel (linalg.fd_normal); with the same
-        // forward differences passed as the Jacobian: the PHP loops. The same iterations, bit for bit.
-        $kernel = LeastSquares::solve($res, [1.0, 1.0, 1.0]);
-        $php = LeastSquares::solve($res, [1.0, 1.0, 1.0], static fn (array $p): array => Root::fdJacobian($res, $p, $res($p)));
-        $this->assertTrue($kernel['success']);
-        $this->assertSame($php['x'], $kernel['x']);
-        $this->assertSame($php['fun'], $kernel['fun']);
-        $this->assertSame($php['jac'], $kernel['jac']);
-        $this->assertSame($php['cost'], $kernel['cost']);
-    }
-
     public function testCurveFitGivesTheSameBitsForAPerPointAndAWholeArrayModel(): void
     {
         $xs = array_map(static fn (int $i): float => $i * 0.05, range(0, 79));

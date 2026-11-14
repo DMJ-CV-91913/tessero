@@ -52,8 +52,18 @@ $model = fn (float $t, float $a, float $k): float => $a * exp(-$k * $t);
 [$popt, $pcov] = LeastSquares::curveFit($model, $t, $y, p0: [1.0, 0.1]);
 $stderr = array_map('sqrt', [$pcov[0][0], $pcov[1][1]]);
 
-LeastSquares::solve($residuals, $p0);    // Levenberg-Marquardt on a residual function
+LeastSquares::solve($residuals, $p0);          // scipy.optimize.leastsq
+LeastSquares::leastSquares($residuals, $x0);   // scipy.optimize.least_squares, method 'lm'
 ```
+
+All three run MINPACK's Levenberg-Marquardt code as SciPy does. Each step
+factors the Jacobian matrix by QR with column pivoting, never forming the
+normal equations J^T J. `solve` follows `leastsq`: its parameters, residuals,
+evaluation counts, status (`ier`) and `cov_x` match SciPy's, and a `jac`
+callable switches it to `lmder` as `Dfun` does. `leastSquares` follows
+`least_squares(method='lm')`: its parameters, evaluation counts, status and
+Jacobian at the solution match SciPy's. SciPy's default method there is
+`trf`, which takes different steps to the same minimum.
 
 `curveFit` runs MINPACK's `lmdif`, the method SciPy's `curve_fit` uses without
 bounds, so its parameters, evaluation count and covariance follow SciPy's. It

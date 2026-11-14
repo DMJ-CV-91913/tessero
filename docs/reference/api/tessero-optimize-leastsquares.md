@@ -2,8 +2,8 @@
 
 `Tessero\Optimize\LeastSquares`
 
-Non-linear least squares by Levenberg-Marquardt: solve / leastSquares with Nielsen's damping update and
-forward-difference Jacobians, curveFit with MINPACK's lmdif as scipy.optimize.curve_fit runs it.
+Non-linear least squares with MINPACK's Levenberg-Marquardt code as SciPy runs it (kernel linalg.lmdif): solve as
+scipy.optimize.leastsq, curveFit as curve_fit, leastSquares as least_squares with method 'lm'.
 
 ## Methods
 
@@ -37,12 +37,15 @@ Isotonic (monotonic) regression by the Pool Adjacent Violators Algorithm
 ### leastSquares
 
 ```php
-static leastSquares(callable $fun, array $x0): Tessero\Optimize\OptimizeResult
+static leastSquares(callable $fun, array $x0, ?callable $jac = null, float $ftol = 1.0E-8, float $xtol = 1.0E-8, float $gtol = 1.0E-8, ?int $maxNfev = null): Tessero\Optimize\OptimizeResult
 ```
 
-scipy.optimize.least_squares (unbounded): minimise 0.5 ||fun(x)||^2 from x0. For an unbounded problem the
-minimiser is that of the Levenberg-Marquardt solve (self::solve), so this wraps it in an OptimizeResult.
-Bounds / the trf/dogbox trust-region variants are not yet supported.
+scipy.optimize.least_squares with method 'lm' (unbounded): minimise 0.5 ||fun(x)||^2 from x0 with MINPACK's lmder
+as SciPy 1.17 runs it, the Jacobian $jac's or approx_derivative's 2-point differences, max_nfev 100 n by default;
+x, nfev, njev ($jac only), status and message follow SciPy's. fun is the cost (half the sum of squares,
+summed pairwise, where SciPy uses its BLAS dot) and jac the Jacobian at x (one row per residual), as SciPy's jac.
+SciPy's default method 'trf' takes other steps to the same minimum. Bounds and the trf/dogbox trust-region
+methods are not supported.
 
 ### lsqLinear
 
@@ -63,7 +66,11 @@ static nnls(array $A, array $b, ?int $maxiter = null): array
 ### solve
 
 ```php
-static solve(callable $residuals, array $p0, ?callable $jac = null, float $ftol = 1.0E-8, float $xtol = 1.0E-8, float $gtol = 1.0E-8, ?int $maxfev = null): array
+static solve(callable $residuals, array $p0, ?callable $jac = null, float $ftol = 1.49012E-8, float $xtol = 1.49012E-8, float $gtol = 0.0, ?int $maxfev = null): array
 ```
 
-Minimise 0.5 * sum(residuals(p)^2).
+scipy.optimize.leastsq: minimise sum(residuals(p)^2) with MINPACK's lmdif, or lmder with $jac, with leastsq's
+defaults (maxfev 200 (n + 1), with $jac 100 (n + 1)), so x, the residuals, nfev and the status follow SciPy's.
+status is leastsq's ier (1 .. 4: a solution found) and message its mesg; cost is half the sum of squares, cov_x
+leastsq's cov_x (null when R is singular), jac the Jacobian at x ($jac's, else 2-point differences, which are
+not counted in nfev).

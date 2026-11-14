@@ -40,6 +40,20 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
     Jacobian's n evaluations in one call (x as a column, the parameters as rows) when that gives the same bits as n
     calls, checked once per fit. The 1,000-point exponential fit: 5.0 ms before, about 0.6 ms with an array model
     through the extension (SciPy 0.61 ms), 1.4 ms through FFI, 1.8 to 2.6 ms with a per-point model.
+  - `optimize.leastsq` (`LeastSquares::solve`) and `optimize.least_squares` (`LeastSquares::leastSquares`) run the
+    same MINPACK code (approved by DJ, 14 Nov; the results' last bits change). `solve` runs `lmdif`, or `lmder`
+    when given `jac`, as `leastsq` does with and without `Dfun`. It now takes leastsq's defaults (`ftol` =
+    `xtol` = 1.49012e-8, `gtol` 0, `maxfev` 200 (n + 1), or 100 (n + 1) with `jac`; it used 1e-8, 1e-8, 1e-8 and
+    100 (n + 1)). `status` is leastsq's `ier`, `message` its `mesg`, and the result gains `njev` and `cov_x`.
+    `leastSquares` runs `lmder` with SciPy's 2-point Jacobian, as `least_squares(method='lm')` does in SciPy
+    1.17, and gains `jac`, `ftol`, `xtol`, `gtol` and `maxNfev`. It reports SciPy's `status`, `message` and
+    `nfev`, and its `jac` is the Jacobian at the solution. Both previously ran Tessero's own Levenberg-Marquardt
+    on the normal equations. The kernel's `linalg.lmdif` takes `jac` (0 lmdif's differences, 1 the caller's
+    Jacobian, 2 2-point differences), and `linalg.lmdif_result` also returns `njev`. On residuals whose arithmetic
+    is the same in PHP and NumPy, the parameters, residuals, evaluation counts, status and least_squares'
+    Jacobian match SciPy's bit for bit, and `cov_x` is within 1 ulp. The kernel's `linalg.fd_normal`
+    (`Linalg::fdNormal`, an internal helper for the old normal equations) is removed. Nothing in Tessero, Talario
+    or Kinetix calls it.
 - **`signal.fftconvolve` and `oaconvolve` use the FFT on large inputs**, as SciPy does (both inputs padded to a
   length of 2, 3 and 5 factors, real transforms along the last axis): where the direct sum's multiply-adds exceed the
   FFT's work about 20 times over. Those results move by rounding, as SciPy's do; small inputs keep the direct sum and

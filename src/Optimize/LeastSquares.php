@@ -8,111 +8,106 @@ use Tessero\Exceptions\ConvergenceError;
 use Tessero\Exceptions\TesseroException;
 
 /**
- * Non-linear least squares by Levenberg-Marquardt: solve / leastSquares with Nielsen's damping update and
- * forward-difference Jacobians, curveFit with MINPACK's lmdif as scipy.optimize.curve_fit runs it.
+ * Non-linear least squares with MINPACK's Levenberg-Marquardt code as SciPy runs it (kernel linalg.lmdif): solve as
+ * scipy.optimize.leastsq, curveFit as curve_fit, leastSquares as least_squares with method 'lm'.
  */
 final class LeastSquares
 {
     /**
-     * Minimise 0.5 * sum(residuals(p)^2).
+     * scipy.optimize.leastsq: minimise sum(residuals(p)^2) with MINPACK's lmdif, or lmder with $jac, with leastsq's
+     * defaults (maxfev 200 (n + 1), with $jac 100 (n + 1)), so x, the residuals, nfev and the status follow SciPy's.
+     * status is leastsq's ier (1 .. 4: a solution found) and message its mesg; cost is half the sum of squares, cov_x
+     * leastsq's cov_x (null when R is singular), jac the Jacobian at x ($jac's, else 2-point differences, which are
+     * not counted in nfev).
      *
      * @param callable(list<float>): list<float> $residuals
      * @param list<float> $p0
-     * @param (callable(list<float>): list<list<float>>)|null $jac
-     * @return array{x: list<float>, cost: float, fun: list<float>, jac: list<list<float>>, nfev: int, status: int, message: string, success: bool}
+     * @param (callable(list<float>): list<list<float>>)|null $jac  the Jacobian, one row per residual
+     * @return array{x: list<float>, cost: float, fun: list<float>, jac: list<list<float>>, nfev: int, njev: int, status: int, message: string, success: bool, cov_x: list<list<float>>|null}
      */
-    public static function solve(callable $residuals, array $p0, ?callable $jac = null, float $ftol = 1e-8, float $xtol = 1e-8, float $gtol = 1e-8, ?int $maxfev = null): array
+    public static function solve(callable $residuals, array $p0, ?callable $jac = null, float $ftol = 1.49012e-8, float $xtol = 1.49012e-8, float $gtol = 0.0, ?int $maxfev = null): array
     {
-        return self::lm($residuals, $p0, $jac, $ftol, $xtol, $gtol, $maxfev)[0];
+        $p0 = array_map('floatval', array_values($p0));
+        $maxfev ??= ($jac === null ? 200 : 100) * (count($p0) + 1);
+        [$x, $fvec, $info, $nfev, $cov, $sumsq, $njev] = self::minpack($residuals, $p0, $jac, $jac === null ? 0 : 1, $ftol, $xtol, $gtol, $maxfev);
+        $J = $jac !== null ? self::rows($jac($x)) : self::twoPoint($residuals, $x, $fvec);
+
+        return ['x' => $x, 'cost' => 0.5 * $sumsq, 'fun' => $fvec, 'jac' => $J, 'nfev' => $nfev, 'njev' => $njev, 'status' => $info,
+            'message' => self::lmdifMessage($info, $ftol, $xtol, $gtol, $maxfev), 'success' => $info >= 1 && $info <= 4, 'cov_x' => $cov];
     }
 
     /**
-     * The Levenberg-Marquardt iterations of solve(), returning its result with J^T J at the solution.
+     * MINPACK's Levenberg-Marquardt through linalg.lmdif, evaluating the residuals (and with jac 1 the Jacobian) at
+     * the points it asks for: [x, fvec, info, nfev, cov_x or null, sum(fvec^2), njev].
      *
-     * @return array{0: array<string, mixed>, 1: list<list<float>>}
+     * @param list<float> $p0
+     * @return array{0: list<float>, 1: list<float>, 2: int, 3: int, 4: list<list<float>>|null, 5: float, 6: int}
      */
-    private static function lm(callable $residuals, array $p0, ?callable $jac, float $ftol, float $xtol, float $gtol, ?int $maxfev): array
+    private static function minpack(callable $residuals, array $p0, ?callable $jac, int $mode, float $ftol, float $xtol, float $gtol, int $maxfev): array
     {
-        $p = array_map('floatval', array_values($p0));
-        $n = count($p);
-        $maxfev ??= 100 * ($n + 1);
-        $nfev = 0;
-        $R = static function (array $x) use ($residuals, &$nfev): array {
-            $nfev++;
-
-            return array_map('floatval', array_values($residuals($x)));
-        };
-        $r = $R($p);
-        $m = count($r);
-        if ($m < $n) {
-            throw new TesseroException("least squares: {$m} residuals for {$n} parameters (need m >= n).");
-        }
-        $cost = 0.5 * Minimize::dot($r, $r);
-        [$A, $g, $J] = self::linearize($R, $jac, $p, $r);
-        $mu = 1e-3 * max(array_map(static fn (int $i): float => $A[$i][$i], range(0, $n - 1)) ?: [1.0]);
-        $nu = 2.0;
-        $status = 0;
-        $message = 'maxfev reached';
-        while ($nfev < $maxfev) {
-            if (max(array_map('abs', $g)) <= $gtol) {
-                $status = 1;
-                $message = 'gtol: the gradient is small enough';
-                break;
-            }
-            $Aug = $A;
-            for ($i = 0; $i < $n; $i++) {
-                $Aug[$i][$i] = $A[$i][$i] + $mu * max($A[$i][$i], 1e-12);
-            }
-            try {
-                $step = Dense::solve($Aug, array_map(static fn (float $v): float => -$v, $g));
-            } catch (\Throwable) {
-                $mu *= $nu;
-                $nu *= 2;
-                continue;
-            }
-            $stepNorm = sqrt(Minimize::dot($step, $step));
-            $pNorm = sqrt(Minimize::dot($p, $p));
-            if ($stepNorm <= $xtol * ($pNorm + $xtol)) {
-                $status = 2;
-                $message = 'xtol: the parameter change is small enough';
-                break;
-            }
-            $pNew = [];
-            foreach ($p as $i => $v) {
-                $pNew[] = $v + $step[$i];
-            }
-            $rNew = $R($pNew);
-            $costNew = 0.5 * Minimize::dot($rNew, $rNew);
-            // gain ratio: actual / predicted reduction
-            $pred = 0.0;
-            for ($i = 0; $i < $n; $i++) {
-                $pred += 0.5 * $step[$i] * ($mu * max($A[$i][$i], 1e-12) * $step[$i] - $g[$i]);
-            }
-            $rho = $pred > 0 ? ($cost - $costNew) / $pred : -1.0;
-            if ($rho > 0 && is_finite($costNew)) {
-                $reduction = ($cost - $costNew) / max($cost, PHP_FLOAT_MIN);
-                $p = $pNew;
-                $r = $rNew;
-                $cost = $costNew;
-                [$A, $g, $J] = self::linearize($R, $jac, $p, $r);
-                $mu *= max(1 / 3, 1 - (2 * $rho - 1) ** 3);
-                $nu = 2.0;
-                if ($reduction <= $ftol) {
-                    $status = 3;
-                    $message = 'ftol: the relative reduction of the cost is small enough';
-                    break;
-                }
+        $lin = extension_loaded('tessero') && class_exists(\Tessero\Ext\Linalg::class) ? \Tessero\Ext\Linalg::class : \Tessero\Linalg::class;
+        $n = count($p0);
+        [$state, $task, $pts] = array_values($lin::lmdif(null, null, false, $p0, null, null, $ftol, $xtol, $gtol, $maxfev, 0.0, 100.0, $mode));
+        while ($task !== 0) {
+            $P = $pts->toArray();
+            if ($task < 0) {
+                $F = self::rows($jac($P[0]));
             } else {
-                $mu *= $nu;
-                $nu *= 2;
+                $F = [];
+                foreach ($P as $p) {
+                    $r = $residuals($p);
+                    $F[] = is_object($r) ? $r->toList() : array_map('floatval', array_values($r));
+                }
+                if (count($F[0]) < $n) {
+                    throw new TesseroException('least squares: ' . count($F[0]) . " residuals for {$n} parameters (need m >= n).");
+                }
+            }
+            [$state, $task, $pts] = array_values($lin::lmdif($state, $F, false));
+        }
+        [$x, $fvec, $info, $nfev, $cov, $sumsq, $njev] = array_values($lin::lmdifResult($state));
+        $cov = $cov->toArray();
+        foreach ($cov as $row) {
+            foreach ($row as $v) {
+                if (is_nan($v)) {
+                    $cov = null;
+                    break 2;
+                }
             }
         }
 
-        if (! is_array($J)) {
-            $J = $J->toArray();
+        return [$x->toList(), $fvec->toList(), $info, $nfev, $cov, $sumsq, $njev];
+    }
+
+    /**
+     * The Jacobian at x by SciPy's 2-point differences (approx_derivative): h = EPS**0.5 * sign(x_j) * max(1, |x_j|),
+     * column j (f(x + h e_j) - f0) / ((x_j + h) - x_j); one row per residual.
+     *
+     * @param list<float> $x
+     * @param list<float> $f0
+     * @return list<list<float>>
+     */
+    private static function twoPoint(callable $residuals, array $x, array $f0): array
+    {
+        $rstep = sqrt(PHP_FLOAT_EPSILON);
+        $J = array_fill(0, count($f0), []);
+        foreach ($x as $j => $xj) {
+            $x1 = $x;
+            $x1[$j] = $xj + ($rstep * ($xj >= 0.0 ? 1.0 : -1.0)) * max(1.0, abs($xj));
+            $dx = $x1[$j] - $xj;
+            $r = $residuals($x1);
+            $f1 = is_object($r) ? $r->toList() : array_values($r);
+            foreach ($f0 as $i => $v) {
+                $J[$i][] = ((float) $f1[$i] - $v) / $dx;
+            }
         }
 
-        return [['x' => $p, 'cost' => $cost, 'fun' => $r, 'jac' => $J, 'nfev' => $nfev, 'status' => $status, 'message' => $message, 'success' => $status > 0], $A];
+        return $J;
+    }
+
+    /** @return list<list<float>> a Jacobian as rows, from a nested list or an array object */
+    private static function rows(mixed $J): array
+    {
+        return is_object($J) ? $J->toArray() : array_values($J);
     }
 
     /**
@@ -326,24 +321,42 @@ final class LeastSquares
     }
 
     /**
-     * scipy.optimize.least_squares (unbounded): minimise 0.5 ||fun(x)||^2 from x0. For an unbounded problem the
-     * minimiser is that of the Levenberg-Marquardt solve (self::solve), so this wraps it in an OptimizeResult.
-     * Bounds / the trf/dogbox trust-region variants are not yet supported.
+     * scipy.optimize.least_squares with method 'lm' (unbounded): minimise 0.5 ||fun(x)||^2 from x0 with MINPACK's lmder
+     * as SciPy 1.17 runs it, the Jacobian $jac's or approx_derivative's 2-point differences, max_nfev 100 n by default;
+     * x, nfev, njev ($jac only), status and message follow SciPy's. fun is the cost (half the sum of squares,
+     * summed pairwise, where SciPy uses its BLAS dot) and jac the Jacobian at x (one row per residual), as SciPy's jac.
+     * SciPy's default method 'trf' takes other steps to the same minimum. Bounds and the trf/dogbox trust-region
+     * methods are not supported.
      *
      * @param callable(list<float>): list<float> $fun
      * @param list<float|int> $x0
+     * @param (callable(list<float>): list<list<float>>)|null $jac
      */
-    public static function leastSquares(callable $fun, array $x0): OptimizeResult
+    public static function leastSquares(callable $fun, array $x0, ?callable $jac = null, float $ftol = 1e-8, float $xtol = 1e-8, float $gtol = 1e-8, ?int $maxNfev = null): OptimizeResult
     {
-        $r = self::solve($fun, array_map('floatval', array_values($x0)));
-        $x = $r['x'];
-        $res = $fun($x);
-        $cost = 0.0;
-        foreach ($res as $ri) {
-            $cost += (float) $ri * (float) $ri;
+        $x0 = array_map('floatval', array_values($x0));
+        if ($ftol < PHP_FLOAT_EPSILON || $xtol < PHP_FLOAT_EPSILON || $gtol < PHP_FLOAT_EPSILON) {
+            throw new TesseroException("leastSquares: all tolerances must be higher than machine epsilon (2.22e-16) for method 'lm'.");
         }
+        if ($maxNfev !== null && $maxNfev <= 0) {
+            throw new TesseroException('leastSquares: maxNfev must be null or a positive integer.');
+        }
+        $maxNfev ??= 100 * count($x0);
+        [$x, $fvec, $info, $nfev, , $sumsq, $njev] = self::minpack($fun, $x0, $jac, $jac === null ? 2 : 1, $ftol, $xtol, $gtol, $maxNfev);
+        $J = $jac !== null ? self::rows($jac($x)) : self::twoPoint($fun, $x, $fvec);
+        // MINPACK's info as least_squares' status (6 .. 8 cannot occur with every tolerance above machine epsilon)
+        $status = [0 => -1, 1 => 2, 2 => 3, 3 => 4, 4 => 1, 5 => 0][$info];
+        $message = [
+            -1 => 'Improper input parameters status returned from `leastsq`',
+            0 => 'The maximum number of function evaluations is exceeded.',
+            1 => '`gtol` termination condition is satisfied.',
+            2 => '`ftol` termination condition is satisfied.',
+            3 => '`xtol` termination condition is satisfied.',
+            4 => 'Both `ftol` and `xtol` termination conditions are satisfied.',
+        ][$status];
 
-        return new OptimizeResult(x: $x, fun: 0.5 * $cost, success: true, status: 1, message: '`ftol` termination condition is satisfied.', nit: 0, nfev: 0);
+        return new OptimizeResult(x: $x, fun: 0.5 * $sumsq, success: $status > 0, status: $status, message: $message, nit: 0, nfev: $nfev,
+            njev: $jac !== null ? $njev : 0, jac: $J, method: 'lm');
     }
 
     /**
@@ -578,41 +591,6 @@ final class LeastSquares
         }
 
         return $y;
-    }
-
-    /**
-     * The Jacobian at p, the user's or by forward differences (the steps of Root::fdJacobian), with the normal
-     * equations J^T J and J^T r. The differences and the sums run in the kernel (linalg.fd_normal, the same
-     * values as the loops here); the Jacobian comes back as an array object, converted once for the result.
-     *
-     * @param list<float> $p
-     * @param list<float> $r
-     * @return array{0: list<list<float>>, 1: list<float>, 2: list<list<float>>|object}
-     */
-    private static function linearize(callable $R, ?callable $jac, array $p, array $r): array
-    {
-        if ($jac !== null || $p === []) {
-            $J = $jac !== null ? $jac($p) : Root::fdJacobian($R, $p, $r);
-            [$A, $g] = self::normal($J, $r);
-
-            return [$A, $g, $J];
-        }
-        $rel = sqrt(PHP_FLOAT_EPSILON);
-        $rh = [];
-        $hs = [];
-        foreach ($p as $j => $pj) {
-            $h = $rel * max(1.0, abs($pj)) * ($pj >= 0 ? 1.0 : -1.0);
-            $ph = $p;
-            $ph[$j] = $pj + $h;
-            $hs[] = $ph[$j] - $pj;
-            $rh[] = $R($ph);
-        }
-        $out = extension_loaded('tessero') && class_exists(\Tessero\Ext\Linalg::class)
-            ? \Tessero\Ext\Linalg::fdNormal($r, $rh, $hs)
-            : \Tessero\Linalg::fdNormal($r, $rh, $hs);
-        [$A, $g, $J] = array_values($out);
-
-        return [$A->toArray(), $g->toList(), $J];
     }
 
     /** @return array{0: list<list<float>>, 1: list<float>} J^T J and J^T r */

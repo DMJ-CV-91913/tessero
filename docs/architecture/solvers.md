@@ -117,7 +117,8 @@ Checked against NumPy reference implementations on 4 models (dense and sparse,
 | brentq | Brent's method as in SciPy's C code | same root and call count |
 | newton / secant | SciPy's `newton` | same result |
 | root (systems) | damped Newton with a finite-difference Jacobian | converges on the test systems |
-| least squares | Levenberg-Marquardt on the normal equations | parameters to tolerance |
+| leastsq (`solve`) | MINPACK's `lmdif`, or `lmder` with a Jacobian, as SciPy runs it (kernel `linalg.lmdif`) | same parameters, residuals, evaluation counts and status; `cov_x` within 1 ulp |
+| least_squares (`leastSquares`) | MINPACK's `lmder` with SciPy's 2-point Jacobian, as `method='lm'` runs it | same parameters, evaluation counts, status and Jacobian at the solution |
 | curve_fit | MINPACK's `lmdif` as SciPy runs it (kernel `linalg.lmdif`, the caller evaluating the model between steps) | same parameters, residuals and evaluation count; covariance within 1 ulp |
 
 These run in PHP because they call back into PHP every iteration. Their

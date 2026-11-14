@@ -27,7 +27,6 @@ final class Linalg
     'eigh' => 'eigh',
     'eigvals' => 'eigvals',
     'eigvalsh' => 'eigvalsh',
-    'fd_normal' => 'fdNormal',
     'inv' => 'inv',
     'lmdif' => 'lmdif',
     'lmdif_result' => 'lmdifResult',
@@ -166,18 +165,6 @@ final class Linalg
     }
 
     /**
-     * Forward-difference Jacobian J = (rh - r) / h and the normal equations J^T J, J^T r (internal helper for Optimize\LeastSquares).
-     *
-     * numpy.linalg.fd_normal
-     *
-     * @return mixed one array, or an array keyed by A, g, J when several results are requested
-     */
-    public static function fdNormal(mixed $r, mixed $rh, mixed $h): mixed
-    {
-        return Registry::routine('linalg.fd_normal', [$r, $rh, $h]);
-    }
-
-    /**
      * Multiplicative inverse of a square matrix, stacked (numpy.linalg.inv).
      *
      * numpy.linalg.inv
@@ -188,23 +175,23 @@ final class Linalg
     }
 
     /**
-     * MINPACK lmdif (scipy.optimize.leastsq), one function evaluation per call: the caller evaluates at the returned points (internal helper for Optimize\LeastSquares::curveFit).
+     * MINPACK lmdif / lmder (scipy.optimize.leastsq, curve_fit, least_squares method 'lm'), one evaluation per call: the caller evaluates at the returned points (internal helper for Optimize\LeastSquares).
      *
      * numpy.linalg.lmdif
      *
      * @return mixed one array, or an array keyed by state, task, points when several results are requested
      */
-    public static function lmdif(mixed $state, mixed $f = null, mixed $fcols = false, mixed $x0 = null, mixed $y = null, mixed $sigma = null, mixed $ftol = 1.49012e-08, mixed $xtol = 1.49012e-08, mixed $gtol = 0.0, mixed $maxfev = 0, mixed $epsfcn = 0.0, mixed $factor = 100.0): mixed
+    public static function lmdif(mixed $state, mixed $f = null, mixed $fcols = false, mixed $x0 = null, mixed $y = null, mixed $sigma = null, mixed $ftol = 1.49012e-08, mixed $xtol = 1.49012e-08, mixed $gtol = 0.0, mixed $maxfev = 0, mixed $epsfcn = 0.0, mixed $factor = 100.0, mixed $jac = 0): mixed
     {
-        return Registry::routine('linalg.lmdif', [$state, $f, $fcols, $x0, $y, $sigma, $ftol, $xtol, $gtol, $maxfev, $epsfcn, $factor]);
+        return Registry::routine('linalg.lmdif', [$state, $f, $fcols, $x0, $y, $sigma, $ftol, $xtol, $gtol, $maxfev, $epsfcn, $factor, $jac]);
     }
 
     /**
-     * The finished lmdif fit: x, fvec, info, nfev, leastsq's cov_x and sum(fvec**2) (internal helper for Optimize\LeastSquares::curveFit).
+     * The finished lmdif fit: x, fvec, info, nfev, leastsq's cov_x, sum(fvec**2) and njev (internal helper for Optimize\LeastSquares).
      *
      * numpy.linalg.lmdif_result
      *
-     * @return mixed one array, or an array keyed by x, fvec, info, nfev, cov, sumsq when several results are requested
+     * @return mixed one array, or an array keyed by x, fvec, info, nfev, cov, sumsq, njev when several results are requested
      */
     public static function lmdifResult(mixed $state): mixed
     {

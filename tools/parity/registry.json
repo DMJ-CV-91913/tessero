@@ -655,11 +655,6 @@
             "nin": 0,
             "nout": 1
         },
-        "linalg.fd_normal": {
-            "kind": "routine",
-            "nin": 0,
-            "nout": 3
-        },
         "linalg.inv": {
             "kind": "routine",
             "nin": 0,
@@ -673,7 +668,7 @@
         "linalg.lmdif_result": {
             "kind": "routine",
             "nin": 0,
-            "nout": 6
+            "nout": 7
         },
         "linalg.lstsq": {
             "kind": "routine",

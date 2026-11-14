@@ -1,12 +1,14 @@
 /*
- * linalg.lmdif and linalg.lmdif_result: MINPACK's lmdif, the Levenberg-Marquardt method with a QR-factored step that
- * scipy.optimize.leastsq and curve_fit (method 'lm') use, for Optimize\LeastSquares::curveFit.
+ * linalg.lmdif and linalg.lmdif_result: MINPACK's lmdif and lmder, the Levenberg-Marquardt method with a QR-factored
+ * step that scipy.optimize.leastsq, curve_fit and least_squares (method 'lm') use, for Optimize\LeastSquares.
  *
  * enorm, lmpar, qrfac and qrsolv at the end of this file are SciPy 1.17.1's C translation of MINPACK
  * (scipy/optimize/__minpack.c), copied unchanged; its licence and MINPACK's follow. lmdif is the same code (LMDIF
  * there, with nprint 0, mode 1 and fdjac2 inlined), cut at each function evaluation: no kernel function takes a
  * callback (tessero.h), so the caller evaluates the model at the points lmdif asks for and calls again with the
- * values. The iteration state travels between the calls as a float64 array, checked on every call.
+ * values. The iteration state travels between the calls as a float64 array, checked on every call. LMDER differs
+ * from LMDIF only in where the Jacobian comes from and in counting it in njev, not nfev: here the caller's (leastsq
+ * with Dfun) or SciPy's 2-point differences (least_squares with method 'lm', whose jac is approx_derivative's).
  *
  * Built with multiply-add contraction off (csrc/Makefile NOCONTRACT_C), as SciPy's x86-64 wheels compute it: each
  * product rounded on its own, so the fit is the same on every platform.
@@ -145,11 +147,14 @@ static const double dpmpar[3] = {
 /* ---- the state array: a header of S_HEAD doubles (integers held exactly), then x, diag, qtf, wa1, wa2, wa3, the
    difference steps h and ipvt (n each), fvec, wa4, y and w (m each) and fjac (m x n, column-major as MINPACK's).
    m is 0 until the first values arrive when no y was given. resume: 0 finished, 1 the values at x0, 2 the values
-   at the n points of the forward-difference Jacobian, 3 the values at the trial point x + p (wa2). */
+   at the n points of the forward-difference Jacobian (jac 1: the Jacobian at x), 3 the values at the trial point
+   x + p (wa2). jac: 0 lmdif's differences, 1 the caller's Jacobian (lmder), 2 approx_derivative's 2-point
+   differences (lmder as least_squares runs it). */
 #define LM_MAGIC 20261114.0
 enum { S_MAGIC, S_M, S_N, S_MAXFEV, S_NFEV, S_INFO, S_ITER, S_RESUME, S_HASY, S_HASW,
        S_FTOL, S_XTOL, S_GTOL, S_EPSFCN, S_FACTOR,
        S_ACTRED, S_DELTA, S_DIRDER, S_FNORM, S_FNORM1, S_GNORM, S_PAR, S_PNORM, S_PRERED, S_RATIO, S_XNORM,
+       S_JAC, S_NJEV,
        S_HEAD = 32 };
 
 typedef struct {
@@ -186,7 +191,7 @@ static int lm_check(const double *s, int64_t len, int *m, int *n)
         || !lm_fits((int64_t)s[S_M], (int64_t)s[S_N]) || len != lm_len((int64_t)s[S_M], (int64_t)s[S_N])
         || !lm_int(s[S_RESUME], 0, 3) || !lm_int(s[S_MAXFEV], 1, INT_MAX) || !lm_int(s[S_NFEV], 0, INT_MAX)
         || !lm_int(s[S_ITER], 0, INT_MAX - 1) || !lm_int(s[S_INFO], 0, 8) || !lm_int(s[S_HASY], 0, 1)
-        || !lm_int(s[S_HASW], 0, 1) || (s[S_M] == 0 && (s[S_RESUME] != 1 || s[S_HASY] != 0))
+        || !lm_int(s[S_HASW], 0, 1) || !lm_int(s[S_JAC], 0, 2) || !lm_int(s[S_NJEV], 0, INT_MAX) || (s[S_M] == 0 && (s[S_RESUME] != 1 || s[S_HASY] != 0))
         || (s[S_M] > 0 && s[S_M] < s[S_N])) {
         fn_set_error("lmdif: state must be the array lmdif returned");
         return 0;
@@ -226,9 +231,9 @@ static void lm_run(lm_t *L, int *ipvt, const double *F, int fcols, int k)
     double *x = L->x, *fvec = L->fvec, *fjac = L->fjac, *diag = L->diag, *qtf = L->qtf;
     double *wa1 = L->wa1, *wa2 = L->wa2, *wa3 = L->wa3, *wa4 = L->wa4;
     const double ftol = hd[S_FTOL], xtol = hd[S_XTOL], gtol = hd[S_GTOL], factor = hd[S_FACTOR];
-    const int maxfev = (int)hd[S_MAXFEV];
+    const int maxfev = (int)hd[S_MAXFEV], jac = (int)hd[S_JAC];
     int i, j, l, resume = (int)hd[S_RESUME];
-    int nfev = (int)hd[S_NFEV], info = (int)hd[S_INFO], iter = (int)hd[S_ITER];
+    int nfev = (int)hd[S_NFEV], info = (int)hd[S_INFO], iter = (int)hd[S_ITER], njev = (int)hd[S_NJEV];
     double actred = hd[S_ACTRED], delta = hd[S_DELTA], dirder = hd[S_DIRDER], fnorm = hd[S_FNORM];
     double fnorm1 = hd[S_FNORM1], gnorm = hd[S_GNORM], par = hd[S_PAR], pnorm = hd[S_PNORM];
     double prered = hd[S_PRERED], ratio = hd[S_RATIO], xnorm = hd[S_XNORM];
@@ -251,6 +256,13 @@ static void lm_run(lm_t *L, int *ipvt, const double *F, int fcols, int k)
     // Beginning of the outer loop
 OUTER:
     // Calculate the jacobian matrix (fdjac2: the caller evaluates the function at x + h e_j, j = 0 .. n-1).
+    if (jac == 2)
+    {
+        // approx_derivative, 2-point: h = EPS**0.5 * sign(x) * max(1, |x|), sign(0) = 1 (_compute_absolute_step)
+        const double rstep = sqrt(epsmch);
+        for (j = 0; j < n; j++) { L->h[j] = (rstep * (x[j] >= 0.0 ? 1.0 : -1.0)) * fmax(1.0, fabs(x[j])); }
+    }
+    else if (jac == 0)
     {
         const double eps = sqrt(fmax(hd[S_EPSFCN], epsmch));
         for (j = 0; j < n; j++)
@@ -265,15 +277,44 @@ OUTER:
     goto SAVE;
 
 R2:
-    for (j = 0; j < n; j++)
+    if (jac == 1)
     {
-        const double h = L->h[j];
-        for (i = 0; i < m; i++)
+        // the caller's Jacobian, (m, n) rows (fcols: (n, m)), times curve_fit's transform when sigma was given
+        for (j = 0; j < n; j++)
         {
-            fjac[i + ldfjac*j] = (lm_r(L, F, fcols, k, j, i) - fvec[i])/h;
+            for (i = 0; i < m; i++)
+            {
+                const double d = fcols ? F[(int64_t)j * m + i] : F[(int64_t)i * n + j];
+                fjac[i + ldfjac*j] = hd[S_HASW] != 0.0 ? L->w[i] * d : d;
+            }
         }
+        njev += 1;
     }
-    nfev += n;
+    else if (jac == 2)
+    {
+        // (f(x + h e_j) - f(x)) / dx with dx = (x_j + h_j) - x_j, as _dense_difference; lmder counts it in njev
+        for (j = 0; j < n; j++)
+        {
+            const double dx = (x[j] + L->h[j]) - x[j];
+            for (i = 0; i < m; i++)
+            {
+                fjac[i + ldfjac*j] = (lm_r(L, F, fcols, k, j, i) - fvec[i])/dx;
+            }
+        }
+        njev += 1;
+    }
+    else
+    {
+        for (j = 0; j < n; j++)
+        {
+            const double h = L->h[j];
+            for (i = 0; i < m; i++)
+            {
+                fjac[i + ldfjac*j] = (lm_r(L, F, fcols, k, j, i) - fvec[i])/h;
+            }
+        }
+        nfev += n;
+    }
 
     // Compute the qr factorization of the jacobian.
     qrfac(m, n, fjac, ldfjac, 1, ipvt, wa1, wa2, wa3);
@@ -494,7 +535,7 @@ SAVE:
     hd[S_RESUME] = resume; hd[S_NFEV] = nfev; hd[S_INFO] = info; hd[S_ITER] = iter;
     hd[S_ACTRED] = actred; hd[S_DELTA] = delta; hd[S_DIRDER] = dirder; hd[S_FNORM] = fnorm; hd[S_FNORM1] = fnorm1;
     hd[S_GNORM] = gnorm; hd[S_PAR] = par; hd[S_PNORM] = pnorm; hd[S_PRERED] = prered; hd[S_RATIO] = ratio;
-    hd[S_XNORM] = xnorm;
+    hd[S_XNORM] = xnorm; hd[S_NJEV] = njev;
     for (j = 0; j < n; j++) L->ipv[j] = ipvt[j];
 }
 
@@ -509,14 +550,15 @@ static int lm_num(const tsr_arg *args, int nargs, int i, double dflt, const char
     return TSR_OK;
 }
 
-/* the points the state waits for, as rows of a (k, n) result: x0 or x + p (1 row), or x + h_j e_j (n rows) */
+/* the points the state waits for, as rows of a (k, n) result: x0 or x + p (1 row), x + h_j e_j (n rows), or x for
+   the caller's Jacobian (1 row) */
 static int lm_points(tsr_result *r, const lm_t *L)
 {
-    const int n = L->n, resume = (int)L->hd[S_RESUME], k = resume == 2 ? n : 1;
+    const int n = L->n, resume = (int)L->hd[S_RESUME], k = resume == 2 && L->hd[S_JAC] != 1.0 ? n : 1;
     int64_t shape[2] = {k, n};
     double *p = (double *)fn_result_array(r, TSR_F64, 2, shape);
     if (!p) return TSR_ENOMEM;
-    if (resume == 2) {
+    if (resume == 2 && k == n) {
         for (int j = 0; j < n; j++) {
             memcpy(p + (int64_t)j * n, L->x, sizeof(double) * (size_t)n);
             p[(int64_t)j * n + j] = L->x[j] + L->h[j];
@@ -534,12 +576,14 @@ static int lm_start(const tsr_arg *args, int nargs, tsr_result *res)
     if (!ax || ax->kind != 3) { fn_set_error("lmdif: x0 (the starting parameters) must be an array"); return TSR_EARG; }
     if ((ay && ay->kind != 3) || (as && as->kind != 3)) { fn_set_error("lmdif: y and sigma must be arrays"); return TSR_EARG; }
     if (as && !ay) { fn_set_error("lmdif: sigma needs y"); return TSR_EARG; }
-    double ftol, xtol, gtol, epsfcn, factor, maxfev_d;
+    double ftol, xtol, gtol, epsfcn, factor, maxfev_d, jac_d;
     int rc;
     if ((rc = lm_num(args, nargs, 6, 1.49012e-8, "ftol", &ftol)) || (rc = lm_num(args, nargs, 7, 1.49012e-8, "xtol", &xtol))
         || (rc = lm_num(args, nargs, 8, 0.0, "gtol", &gtol)) || (rc = lm_num(args, nargs, 9, 0.0, "maxfev", &maxfev_d))
-        || (rc = lm_num(args, nargs, 10, 0.0, "epsfcn", &epsfcn)) || (rc = lm_num(args, nargs, 11, 100.0, "factor", &factor)))
+        || (rc = lm_num(args, nargs, 10, 0.0, "epsfcn", &epsfcn)) || (rc = lm_num(args, nargs, 11, 100.0, "factor", &factor))
+        || (rc = lm_num(args, nargs, 12, 0.0, "jac", &jac_d)))
         return rc;
+    if (!lm_int(jac_d, 0, 2)) { fn_set_error("lmdif: jac must be 0 (differences), 1 (the caller's) or 2 (2-point)"); return TSR_EARG; }
     const int64_t n = tsr_array_size(&ax->arr), m = ay ? tsr_array_size(&ay->arr) : 0;
     if (n < 1) { fn_set_error("lmdif: x0 must hold at least one parameter"); return TSR_EARG; }
     if (ay && m < n) {
@@ -548,7 +592,8 @@ static int lm_start(const tsr_arg *args, int nargs, tsr_result *res)
     }
     if (!lm_fits(m, n) || n > (INT_MAX / 200) - 1) { fn_set_error("lmdif: too many parameters or values"); return TSR_EARG; }
     if (maxfev_d != floor(maxfev_d) || maxfev_d > INT_MAX) { fn_set_error("lmdif: maxfev must be an integer"); return TSR_EARG; }
-    const int maxfev = maxfev_d <= 0 ? 200 * (int)(n + 1) : (int)maxfev_d;      /* leastsq's 200 * (n + 1) */
+    /* leastsq's 200 * (n + 1), with Dfun 100 * (n + 1); least_squares' 100 * n */
+    const int maxfev = maxfev_d > 0 ? (int)maxfev_d : jac_d == 0 ? 200 * (int)(n + 1) : jac_d == 1 ? 100 * (int)(n + 1) : 100 * (int)n;
     if ((ftol < 0.0) || (xtol < 0.0) || (gtol < 0.0) || (factor <= 0.0)) {
         fn_set_error("lmdif: improper input parameters (ftol, xtol, gtol >= 0, factor > 0)");
         return TSR_EARG;
@@ -573,7 +618,7 @@ static int lm_start(const tsr_arg *args, int nargs, tsr_result *res)
     lm_bind(&L, s, (int)m, (int)n);
     s[S_MAGIC] = LM_MAGIC; s[S_M] = (double)m; s[S_N] = (double)n; s[S_MAXFEV] = maxfev; s[S_RESUME] = 1;
     s[S_HASY] = ay ? 1.0 : 0.0; s[S_HASW] = as ? 1.0 : 0.0;
-    s[S_FTOL] = ftol; s[S_XTOL] = xtol; s[S_GTOL] = gtol; s[S_EPSFCN] = epsfcn; s[S_FACTOR] = factor;
+    s[S_FTOL] = ftol; s[S_XTOL] = xtol; s[S_GTOL] = gtol; s[S_EPSFCN] = epsfcn; s[S_FACTOR] = factor; s[S_JAC] = jac_d;
     memcpy(L.x, x0, sizeof(double) * (size_t)n);
     for (int64_t i = 0; i < m && ay; i++) L.y[i] = y[i];
     for (int64_t i = 0; i < m && as; i++) L.w[i] = 1.0 / sg[nsg == 1 ? 0 : i];     /* curve_fit's 1.0 / sigma */
@@ -584,11 +629,12 @@ static int lm_start(const tsr_arg *args, int nargs, tsr_result *res)
 }
 
 /* linalg.lmdif(state, f=None, fcols=False, x0=None, y=None, sigma=None, ftol=1.49012e-08, xtol=1.49012e-08,
-   gtol=0.0, maxfev=0, epsfcn=0.0, factor=100.0) -> state, task, points. Without a state: starts at x0, minimising
-   the sum of squares of (f - y) * (1 / sigma) (of f without y), with leastsq's defaults (maxfev 0: 200 * (n + 1)).
-   With one: f holds the function values at the points the last call returned, one row per point ((k, m); with
-   fcols, (m, k)). task is the number of points to evaluate next (the rows of points, (k, n)), 0 when finished
-   (lmdif_result then gives the fit). */
+   gtol=0.0, maxfev=0, epsfcn=0.0, factor=100.0, jac=0) -> state, task, points. Without a state: starts at x0,
+   minimising the sum of squares of (f - y) * (1 / sigma) (of f without y), with leastsq's defaults (maxfev 0:
+   200 * (n + 1); 100 * (n + 1) with jac 1, least_squares' 100 * n with jac 2). With one: f holds the function values
+   at the points the last call returned, one row per point ((k, m); with fcols, (m, k)). task is the number of points
+   to evaluate next (the rows of points, (k, n)), -1 for the Jacobian at the one point (jac 1: f is (m, n), with
+   fcols (n, m)), 0 when finished (lmdif_result then gives the fit). */
 int r_lmdif(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -605,7 +651,7 @@ int r_lmdif(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, in
     double fc = 0.0;
     int rc = lm_num(args, nargs, 2, 0.0, "fcols", &fc);
     if (rc) return rc;
-    const int k = resume == 2 ? n : 1;
+    const int jac = (int)s0[S_JAC], k = resume == 2 ? n : 1;         /* jac 1: the Jacobian, n columns of m */
     int64_t nf;
     double *F = fn_arg_doubles(af, &nf);
     if (!F) { fn_set_error("lmdif: out of memory"); return TSR_ENOMEM; }
@@ -640,11 +686,11 @@ int r_lmdif(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, in
     lm_run(&L, ipvt, F, fc != 0.0, k);
     free(ipvt);
     fn_free_doubles(F, nf);
-    fn_result_int(&res[1], s[S_RESUME] == 0 ? 0 : (s[S_RESUME] == 2 ? n : 1));
+    fn_result_int(&res[1], s[S_RESUME] == 0 ? 0 : s[S_RESUME] != 2 ? 1 : jac == 1 ? -1 : n);
     return lm_points(&res[2], &L);
 }
 
-/* linalg.lmdif_result(state) -> x, fvec, info, nfev, cov, sumsq: the finished fit. cov is leastsq's cov_x, the
+/* linalg.lmdif_result(state) -> x, fvec, info, nfev, cov, sumsq, njev: the finished fit. cov is leastsq's cov_x, the
    inverse of R^T R from the last QR factorisation (R's inverse by LAPACK dtrti2's column order, rows permuted by
    ipvt, times its transpose), NaN when info is not 1 .. 4 or R is singular; sumsq is curve_fit's
    np.sum(fvec ** 2) (NumPy's pairwise summation). */
@@ -712,6 +758,7 @@ int r_lmdif_result(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     fn_result_int(&res[2], info);
     fn_result_int(&res[3], (int64_t)s[S_NFEV]);
     fn_result_num(&res[5], sumsq);
+    fn_result_int(&res[6], (int64_t)s[S_NJEV]);
     return TSR_OK;
 }
 

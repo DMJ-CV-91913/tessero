@@ -9,7 +9,7 @@ final class OptimizeResult implements \JsonSerializable
 {
     /**
      * @param list<float> $x
-     * @param list<float>|null $jac
+     * @param list<float>|list<list<float>>|null $jac  the gradient, or least_squares' Jacobian (one row per residual)
      * @param list<list<float>>|null $hessInv
      */
     public function __construct(

@@ -2683,7 +2683,6 @@ static int64_t *g2t_call(const char *fn, double *P, int64_t n, int64_t *rows, in
 double g2t_orient(const double *P, int64_t a, int64_t b, int64_t c);   /* > 0: counter-clockwise */
 double g2t_incircle(double ax, double ay, double bx, double by, double cx, double cy, const double *P, int64_t p);
 double kd_ref_dist(const double *P, const double *Q, int64_t m, int64_t i, int64_t q);
-void fd_normal_ref(const double *r, const double *rh, const double *h, int m, int np, double *J, double *A, double *g);
 static void test_geom2d(void)
 {
     const int64_t before = tsr_allocated();
@@ -2761,8 +2760,6 @@ static void test_geom2d(void)
     CHECK(tsr_allocated() == before, "the 2-D geometry routines leave no allocation behind (%lld)", (long long)(tsr_allocated() - before));
 }
 
-/* linalg.fd_normal == its definition, exactly: J[k][j] = (rh[j][k] - r[k]) / h[j], A = J^T J and g = J^T r summed in
-   the order of k, zero Jacobian entries (rows where rh equals r) skipped; a mismatched rh is refused */
 /* ndimage.label == a flood fill from each component's first pixel in row-major order (the reference below): the
    same labels and count, on random masks of several densities and shapes, every symmetric 3x3 structure family
    (4-, 8-connected, one axis, the diagonals, none), float64 (NaN is foreground) and bool input, and a one-sided
@@ -3018,14 +3015,14 @@ static void test_lmdif(void)
         memcpy(r, next, sizeof r);
     }
     CHECK(rc == 0 && r[1].ival == 0, "lmdif runs to the end (rc %d, %d calls)", rc, calls);
-    tsr_result q[6];
+    tsr_result q[7];
     tsr_arg s[1] = {arg_res(&r[0])};
-    rc = fa_call("linalg.lmdif_result", 1, s, q, 6);
+    rc = fa_call("linalg.lmdif_result", 1, s, q, 7);
     const double *px = rc == 0 ? (const double *)q[0].arr.data : NULL;
     CHECK(px && dbl_bits(px[0]) == 0x40080aa9df520c42ULL && dbl_bits(px[1]) == 0x3fe5a7348d46a84dULL
               && dbl_bits(px[2]) == 0x3fc6987b3d1f0be1ULL && q[2].ival == 1 && q[3].ival == 30,
           "lmdif == SciPy's curve_fit bit for bit (popt, ier 1, nfev 30; rc %d)", rc);
-    fa_free(q, 6);
+    fa_free(q, 7);
     /* refused: a finished state given more values, an unfinished one asked for the result, values of the wrong
        size, a bad magic number, an impossible n, a pivot index out of range */
     double *sd = (double *)r[0].arr.data;
@@ -3036,7 +3033,7 @@ static void test_lmdif(void)
         int64_t ml[1] = {mid_len};
         tsr_arg ms[1] = {arg_arr(mid, 1, ml)}, wrong[2] = {arg_arr(mid, 1, ml), arg_arr(F, 1, s3)},
                 piv[2] = {arg_arr(mid, 1, ml), arg_arr(F, 1, s12)};
-        CHECK(fa_call("linalg.lmdif_result", 1, ms, q, 6) == TSR_EARG, "an unfinished state has no result yet");
+        CHECK(fa_call("linalg.lmdif_result", 1, ms, q, 7) == TSR_EARG, "an unfinished state has no result yet");
         CHECK(fa_call("linalg.lmdif", 2, wrong, q, 3) == TSR_EARG, "values of the wrong size are refused");
         CHECK(fa_call("linalg.lmdif", 2, piv, q, 3) == 0 && q[1].ival > 0, "the copied state goes on (rc 0)");
         fa_free(q, 3);
@@ -3046,43 +3043,41 @@ static void test_lmdif(void)
     }
     const double magic = sd[0], n = sd[2];
     sd[0] = 1.0;
-    CHECK(fa_call("linalg.lmdif_result", 1, s, q, 6) == TSR_EARG, "a state with another magic number is refused");
+    CHECK(fa_call("linalg.lmdif_result", 1, s, q, 7) == TSR_EARG, "a state with another magic number is refused");
     sd[0] = magic;
     sd[2] = 1e9;
-    CHECK(fa_call("linalg.lmdif_result", 1, s, q, 6) == TSR_EARG, "a state with an impossible n is refused");
+    CHECK(fa_call("linalg.lmdif_result", 1, s, q, 7) == TSR_EARG, "a state with an impossible n is refused");
     sd[2] = n;
     fa_free(r, 3);
-}
-
-static void test_fd_normal(void)
-{
-    const int64_t before = tsr_allocated();
-    enum { M = 257, NP = 3 };
-    double r[M], rh[NP * M], h[NP] = {1.5e-8, -2.25e-8, 3e-8};
-    uint64_t st = 99;
-    for (int k = 0; k < M; k++) {
-        st ^= st << 13; st ^= st >> 7; st ^= st << 17;
-        r[k] = (double)(st >> 11) / 9007199254740992.0 - 0.5;
-        for (int j = 0; j < NP; j++) rh[j * M + k] = k % 7 == j ? r[k] : r[k] + h[j] * cos(0.1 * k + j);
+    /* jac 2, least_squares(method='lm') on the residuals f - y (no y given): approx_derivative's 2-point Jacobian,
+       counted in njev; SciPy's x, nfev 9 and status 2 (info 1) to the last bit */
+    tsr_arg c[13] = {arg_none(), arg_none(), arg_num(0), arg_arr(p0, 1, s3), arg_none(), arg_none(), arg_num(1e-8), arg_num(1e-8),
+                     arg_num(1e-8), arg_num(0), arg_num(0), arg_num(100), arg_num(2)};
+    rc = fa_call("linalg.lmdif", 13, c, r, 3);
+    calls = 1;
+    while (rc == 0 && r[1].ival > 0 && calls < 1000) {
+        const int k = (int)r[1].ival;
+        const double *P = (const double *)r[2].arr.data;
+        for (int j = 0; j < k; j++)
+            for (int i = 0; i < 12; i++) {
+                volatile double t = P[j * 3 + 1] * x[i];
+                F[j * 12 + i] = P[j * 3] / (1 + t) + P[j * 3 + 2] - y[i];
+            }
+        int64_t sf[2] = {k, 12};
+        tsr_arg b[2] = {arg_res(&r[0]), arg_arr(F, 2, sf)};
+        rc = fa_call("linalg.lmdif", 2, b, next, 3);
+        calls++;
+        fa_free(r, 3);
+        memcpy(r, next, sizeof r);
     }
-    double J[M * NP], A[NP * NP] = {0}, g[NP] = {0};
-    fd_normal_ref(r, rh, h, M, NP, J, A, g);              /* test_geom_ref.c: contraction off, as the PHP loop rounds */
-    int64_t sr[1] = {M}, srh[2] = {NP, M}, sh[1] = {NP};
-    tsr_arg a[3] = {arg_arr(r, 1, sr), arg_arr(rh, 2, srh), arg_arr(h, 1, sh)};
-    tsr_result res[3];
-    int ok = tsr_fn_routine(tsr_fn_find("linalg.fd_normal"), 3, a, 3, res) == 0;
-    if (ok) {
-        ok = res[0].arr.shape[0] == NP && res[0].arr.shape[1] == NP && res[1].arr.shape[0] == NP
-             && res[2].arr.shape[0] == M && res[2].arr.shape[1] == NP
-             && memcmp(res[0].arr.data, A, sizeof A) == 0 && memcmp(res[1].arr.data, g, sizeof g) == 0
-             && memcmp(res[2].arr.data, J, sizeof J) == 0;
-        tsr_fn_results_free(res, 3);
-    }
-    int64_t bad[2] = {NP, M - 1};
-    a[1] = arg_arr(rh, 2, bad);
-    ok = ok && tsr_fn_routine(tsr_fn_find("linalg.fd_normal"), 3, a, 3, res) != 0;
-    CHECK(ok, "fd_normal: the forward-difference Jacobian and J^T J, J^T r as defined, bit for bit; a wrong rh refused");
-    CHECK(tsr_allocated() == before, "fd_normal leaves no allocation behind (%lld)", (long long)(tsr_allocated() - before));
+    tsr_arg s2[1] = {arg_res(&r[0])};
+    rc = rc == 0 ? fa_call("linalg.lmdif_result", 1, s2, q, 7) : rc;
+    px = rc == 0 ? (const double *)q[0].arr.data : NULL;
+    CHECK(px && dbl_bits(px[0]) == 0x40080aa9df96db46ULL && dbl_bits(px[1]) == 0x3fe5a7348c20247bULL
+              && dbl_bits(px[2]) == 0x3fc6987b371dd5a5ULL && q[2].ival == 1 && q[3].ival == 9 && q[6].ival > 0,
+          "lmdif jac 2 == SciPy's least_squares(method='lm') bit for bit (x, info 1, nfev 9; rc %d)", rc);
+    if (rc == 0) fa_free(q, 7);
+    fa_free(r, 3);
 }
 
 /* distance.kdtree_query == an exhaustive search, exactly: the same distances (sqrt of the axis sum in order), the same
@@ -4574,7 +4569,6 @@ int main(void)
     test_eigsh_csr();
     test_linkage_fast();
     test_geom2d();
-    test_fd_normal();
     test_label_two_pass();
     test_fft_axis();
     test_fftconvolve_fft();
