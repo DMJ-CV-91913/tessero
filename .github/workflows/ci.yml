@@ -698,9 +698,9 @@ jobs:
         with: { subject-path: 'tessero-binaries.tgz' }
       - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with: { subject-path: 'tessero-binaries.tgz', sbom-path: 'tessero.cdx.json' }
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         with: { cosign-release: 'v3.0.6' }
       - name: sign SHA256SUMS (Sigstore keyless; verify with cosign verify-blob, see RELEASING.md)
         run: cosign sign-blob --yes --bundle SHA256SUMS.sigstore.json SHA256SUMS
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with: { files: 'tessero-binaries.tgz,SHA256SUMS,SHA256SUMS.sigstore.json,tessero.cdx.json' }
