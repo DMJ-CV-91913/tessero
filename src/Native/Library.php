@@ -472,13 +472,17 @@ final class Library
     public static function i64(array $values): CData
     {
         $n = max(1, count($values));
-        $arr = self::ffi()->new(FFI::arrayType(self::type('int64_t'), [$n]));
+        // the int64_t[n] type is made once per n (FFI::arrayType on every call was most of a small call's cost)
+        $arr = self::ffi()->new(self::$i64Types[$n] ??= FFI::arrayType(self::type('int64_t'), [$n]));
         foreach ($values as $i => $v) {
             $arr[$i] = $v;
         }
 
         return $arr;
     }
+
+    /** @var array<int, \FFI\CType> int64_t[n] by n, for i64() */
+    private static array $i64Types = [];
 
     /** @var list<list<CData>> spare sets of four int64_t[32] */
     private static array $dimSets = [];
