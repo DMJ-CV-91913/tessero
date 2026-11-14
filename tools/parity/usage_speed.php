@@ -3,8 +3,10 @@
 // time_report.py --json, Tessero through FFI and, optionally, the extension) weighted by how often real library code
 // calls it (tools/parity/usage.json, the corpus of the usage-weighted coverage), and the time a million and a billion
 // calls of that mix take on each side. Functions without a timed row, or without a usage count, are left out; the
-// share of the corpus' calls the timed functions carry is printed first.
-//   php tools/parity/usage_speed.php tools/parity/usage.json t3_ffi.json [t3_ext.json]
+// share of the corpus' calls the timed functions carry is printed first. Each side may be a comma-separated list
+// of row files (e.g. tier 3 plus bench/usage_rows.php's rows for the most-called functions tier 3 does not time);
+// a later file's row replaces an earlier one's for the same function.
+//   php tools/parity/usage_speed.php tools/parity/usage.json t3_ffi.json[,usage_rows_ffi.json] [t3_ext.json[,...]]
 [$_, $uf, $ff] = $argv;
 $xf = $argv[3] ?? null;
 $usage = json_decode(file_get_contents($uf), true)['symbols'];
@@ -29,11 +31,13 @@ $canon = function (string $fn) use ($prefix, $polyPre, $usage): ?string {
     $s = $prefix[$m] . $name;
     return isset($usage[$s]) ? $s : null;
 };
-$load = function (string $f) use ($canon): array {
+$load = function (string $files) use ($canon): array {
     $rows = [];
-    foreach (json_decode(file_get_contents($f), true)['rows'] as $r) {
-        $s = $canon($r['fn']);
-        if ($s !== null) $rows[$s] = $r;          // one timed row per usage symbol (the first fixture file's)
+    foreach (explode(',', $files) as $f) {
+        foreach (json_decode(file_get_contents($f), true)['rows'] as $r) {
+            $s = $canon($r['fn']);
+            if ($s !== null) $rows[$s] = $r;      // one timed row per usage symbol (the last file's)
+        }
     }
     return $rows;
 };
