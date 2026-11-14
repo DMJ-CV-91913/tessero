@@ -551,8 +551,7 @@ static int result_zval(tsr_result *r, zval *out)
         const int colmajor = (r->flags & TSR_RESULT_COLMAJOR) && r->arr.ndim == 2;
         const int64_t swapped[2] = {r->arr.shape[1], r->arr.shape[0]};
         if (tsr_ndarray_adopt(out, r->arr.dtype, r->arr.ndim, colmajor ? swapped : r->arr.shape, r->arr.data, r->bytes) == FAILURE) {
-            tsr_free(r->arr.data, r->bytes);
-            ZVAL_UNDEF(out);
+            ZVAL_UNDEF(out);                              /* adopt has freed the block */
             return FAILURE;
         }
         if (colmajor) {

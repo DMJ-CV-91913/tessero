@@ -183,6 +183,8 @@ int tsr_ndarray_new(zval *rv, int dtype, int32_t ndim, const int64_t *shape, int
     return SUCCESS;
 }
 
+/* rv = a new NDArray owning the kernel block (a C-contiguous array of `shape`). The block is the new object's from
+   here on, also on FAILURE, when it is freed here: the caller never frees it. */
 int tsr_ndarray_adopt(zval *rv, int dtype, int32_t ndim, const int64_t *shape, void *block, int64_t bytes)
 {
     if (ndim > 32 || !block) { tsr_free(block, bytes); tsr_throw_rc(-1, "adopt"); return FAILURE; }

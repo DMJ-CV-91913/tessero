@@ -342,6 +342,10 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **Extension: a malformed array result is freed once.** `tsr_ndarray_adopt` frees the kernel's block itself when
+  it refuses an array (more than 32 dimensions), and its caller then freed it again. The kernel never returns such
+  a result, so this could not happen in practice. The caller no longer frees it, and adopt's comment states the
+  ownership rule.
 - **`inv` of empty matrices and the complete `qr` of an m x 0 matrix answer as NumPy and SciPy do.**
   - `numpy.linalg.inv` / `scipy.linalg.inv` of a 0x0 matrix, or of a stack of them (2x0x0), raised "illegal argument
     -7" (LAPACKE's dgetri refuses n = 0), and LAPACK printed "On entry to DGETRI parameter number 6 had an illegal
