@@ -67,15 +67,17 @@ final class Linalg
             return self::stacked($A, fn (NDArray $m): NDArray => self::inv($m), $A->shape());
         }
         $n = $A->shape()[0];
-        $inv = $A->copy();
         if ($n === 0) {
-            return $inv;
+            return $A->copy();
         }
+        // factored and inverted in a column-major copy (what LAPACKE's row-major dgetrf and dgetri build, without
+        // their copies back and forth); the transposed view of it is the inverse in row-major order
+        $inv = $A->transpose()->copy();
         $ipiv = Blas::ffi()->new("int[{$n}]");
-        self::info(Blas::call('LAPACKE_dgetrf', self::ROW, $n, $n, self::d($inv), $n, $ipiv), 'inv', singular: true);
-        self::info(Blas::call('LAPACKE_dgetri', self::ROW, $n, self::d($inv), $n, $ipiv), 'inv', singular: true);
+        self::info(Blas::call('LAPACKE_dgetrf', Blas::COL_MAJOR, $n, $n, self::d($inv), $n, $ipiv), 'inv', singular: true);
+        self::info(Blas::call('LAPACKE_dgetri', Blas::COL_MAJOR, $n, self::d($inv), $n, $ipiv), 'inv', singular: true);
 
-        return $inv;
+        return $inv->transpose()->copy();
     }
 
     /** Determinant (stacked). */

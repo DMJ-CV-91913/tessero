@@ -203,6 +203,37 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **`inv`, `cho_factor`, `cho_solve` and `lu_solve` without LAPACKE's row-major copies; Cholesky copies only the
+  triangle it reads.** The same change as `slogdet` and the Cholesky routines below:
+  - `inv` (NumPy and SciPy) factors and inverts in its result array, holding the column-major copy LAPACKE builds. The
+    hand-over from dgetrf to dgetri was an exact copy out and back, so it is dropped, and one in-place transpose
+    makes the result row-major. `Tessero\Linalg\Linalg::inv` (the PHP class over LAPACKE) does the same.
+  - `cho_factor` factors in its result, and `cho_solve` and `lu_solve` solve in column-major copies, reading the
+    factor and right-hand side in place.
+  - `numpy.linalg.cholesky`, `scipy.linalg.cholesky`, `cho_factor` and `cho_solve` copy only the triangle dpotrf or
+    dpotrs reads, as LAPACKE does. A full copy made `cho_solve` slower than before.
+
+  LAPACK sees identical matrices and LAPACKE's NaN checks are unchanged, so the bytes are the same: 558 cases on FFI
+  and 529 on the extension, old library against new, plus the Cholesky set above. The cases cover inv, qr, lu,
+  lu_factor, lu_solve, cho_factor and cho_solve: square sizes 1 to 1000 across the tile edges, rectangular shapes,
+  batched and empty input, float32, int and strided input, junk in the unused triangle, NaN, Inf, singular and not
+  positive definite, transposed solves and zero right-hand sides. Same host, single thread, best of five alternating
+  rounds at load 18 to 24 (not the record, DJ's final pass times it), FFI / extension:
+  - `inv` 600x600: 19.1 / 19.7 -> 18.0 / 17.6 ms (NumPy 21.9)
+  - `scipy.linalg.inv`: 19.6 / 20.7 -> 17.2 / 17.4 ms (SciPy 19.4)
+  - `numpy.linalg.cholesky` 1000x1000: 15.8 / 14.7 -> 13.9 / 13.8 ms (NumPy 20.5)
+  - `scipy.linalg.cholesky`: 17.4 / 16.6 -> 14.6 / 14.9 ms (SciPy 14.1)
+  - `cho_factor` 1000x1000: 18.2 / 18.1 -> 16.2 / 15.5 ms (SciPy 14.4)
+  - `cho_solve`, one right-hand side: 3.8 / 3.9 -> 2.7 / 2.3 ms (SciPy 1.6); 100 of them: 9.4 / 9.5 -> 8.5 / 8.0 ms
+    (SciPy 7.4)
+  - `lu_solve` 600, one right-hand side: 1.29 / 1.22 -> 1.01 / 0.65 ms (SciPy 0.17); 100 of them: 4.4 / 4.0 -> 3.9 /
+    3.5 ms (SciPy 3.7)
+
+  On these routines SciPy keeps the factor in Fortran order, so its solves copy nothing. Tessero's factors are
+  row-major, so every solve transposes the factor once: that is the remaining gap on `lu_solve` and `cho_solve`. The
+  same change to `qr`, `lu` and `lu_factor` was tried, measured and left out. It saved nothing there: on this host a
+  transpose costs about three plain copies, whichever tiling is used, so dropping LAPACKE's copies only pays where
+  it removes several of them around a fast factorization.
 - **`slogdet` / `det` and `scipy.linalg.cholesky` without LAPACKE's row-major copies; `cholesky` factors in its
   result.** The same change `solve` and `numpy.linalg.cholesky` got earlier: the kernel hands LAPACK the
   column-major copy that LAPACKE's row-major wrapper would build, made once with a tiled transpose, and skips the
