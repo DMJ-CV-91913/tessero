@@ -39,34 +39,46 @@ host (OpenBLAS ×4), FFI and ext are within noise of each other on all operation
 
 The same cases, timed the way an application sees them: `bench/run.php` in PHP (FFI backend) against
 `bench/numpy_bench.py` in Python, median of repeated runs, one thread for both (`OPENBLAS_NUM_THREADS=1`). Intel Core
-i7-4790 (Haswell, AVX2), PHP 8.5.12, NumPy 2.4.4 / SciPy 1.17.1. A ratio below 1 means Tessero is faster.
+i7-4790 (Haswell, AVX2), PHP 8.5.12, NumPy 2.4.4 / SciPy 1.17.1. Re-timed on 2026-11-15 at commit 56102533, as part
+of the [speed sweep](speed-sweep.md): four alternating rounds of each side at a load average of 5 to 26, each case
+keeping its best time. A ratio below 1 means Tessero is faster.
 
 | case | Tessero ms | NumPy ms | ratio |
 |---|---|---|---|
-| exp 1M / log 1M | 4.18 / 4.32 | 5.53 / 5.21 | 0.76 / 0.83 |
-| PHP list -> array 1M (Python list -> array) | 21.1 | 34.3 | 0.61 |
-| add, multiply, sqrt, transpose, boolean mask 1M | | | 0.93 - 1.04 |
-| rng normal 1M | 10.8 | 11.5 | 0.95 |
-| matmul 600x600 / svd 300x300 | 9.01 / 22.3 | 8.94 / 21.9 | 1.01 / 1.02 |
-| solve / cholesky 600x600 (separate run) | 5.19 / 4.55 | 5.70 / 6.05 | 0.91 / 0.75 |
-| solve / cholesky 2000x2000 (separate run) | 140 / 101 | 143 / 101 | 0.98 / 1.00 |
-| array -> PHP list 1M | 28.9 | 24.6 | 1.18 |
-| fft 2^20 (real input, as the bench passes it) | 49.5 | 52.4 | 0.94 |
-| fft / ifft 2^20 complex input | 51.0 / 50.6 | 47.4 / 48.3 | 1.08 / 1.05 |
+| add 1M (new array / `out=`) | 1.64 / 1.63 | 1.89 / 1.94 | 0.87 / 0.84 |
+| multiply by a scalar 1M | 1.11 | 1.34 | 0.83 |
+| sqrt 1M | 1.93 | 1.91 | 1.01 |
+| exp 1M / log 1M | 4.13 / 4.36 | 9.41 / 5.71 | 0.44 / 0.76 |
+| sum 1M / sum along axis 0, 1000x1000 | 0.495 / 0.389 | 0.488 / 0.507 | 1.01 / 0.77 |
+| transpose copy 1000x1000 | 1.86 | 2.18 | 0.85 |
+| boolean mask 1M | 5.40 | 5.76 | 0.94 |
+| sort 1M | 17.0 | 15.6 | 1.09 |
+| matmul 600x600 | 9.12 | 9.87 | 0.92 |
+| solve / cholesky 600x600 | 5.85 / 4.91 | 6.15 / 4.19 | 0.95 / 1.17 |
+| svd 300x300 | 24.2 | 22.3 | 1.08 |
+| fft 2^20 complex / rfft 2^20 | 34.7 / 17.7 | 54.4 / 23.9 | 0.64 / 0.74 |
+| fft 1,000,003 (prime, Bluestein) | 191 | 278 | 0.68 |
+| rng normal 1M | 11.3 | 11.5 | 0.99 |
+| PHP list -> array 1M (Python list -> array) | 25.0 | 35.0 | 0.72 |
+| array -> PHP list 1M | 31.3 | 25.1 | 1.25 |
+
+Geometric mean over the 21 cases: **0.86x** NumPy's time, Tessero faster on 15 (0.89x without `exp`). NumPy's `exp`
+took 9.4 to 11.1 ms in every round of this run, against 5.5 ms on 2026-11-05 on the same machine, while Tessero's
+stayed at 4.1 ms; that row's ratio rests on NumPy's slower time here. The earlier full run (2026-11-05, before the
+FFT plan cache, the copy removals and the large-block reuse) gave 1.10x.
+
+Rows from separate earlier runs (2026-11-05 to 2026-11-07), not in this bench:
+
+| case | Tessero ms | NumPy ms | ratio |
+|---|---|---|---|
+| solve / cholesky 2000x2000 | 140 / 101 | 143 / 101 | 0.98 / 1.00 |
+| ifft / irfft 2^20 | 50.6 / 28.0 | 48.3 / 27.1 | 1.05 / 1.03 |
 | var / std 1M | 1.1 | 2.9 | 0.38 |
-| sum 1M | 0.48 | 0.35 | 1.38 |
-| rfft / irfft 2^20 | 34.0 / 28.0 | 25.7 / 27.1 | 1.32 / 1.03 |
-| fft 1,000,003 (prime, Bluestein) | 468 | 261 | 1.80 |
-| sort 1M (re-timed with `bench/sort_bench.*` after `sort()` became the AVX2 sort) | 17.1 | 13.7 | 1.25 |
 
-The fft, rfft and var rows were measured in a second run (`fft` and `rfft` with and without the copy removal, `var`
-with and without its row buffer); the other rows come from the full bench run. Geometric mean over the 21 shared
-cases: **1.10x** NumPy's time after the first round (1.21x before the plan cache, the scalar-parameter draw loop, the
-single-pass mean and the AVX2 min/max), before the FFT copy removal. Outside the bench set: `mean` 1M 0.39 ms (NumPy
-0.34), `max` 1M 0.33 ms (0.26), `exponential` 1M 5.4 ms (6.45).
+Outside the bench set: `mean` 1M 0.39 ms (NumPy 0.34), `max` 1M 0.33 ms (0.26), `exponential` 1M 5.4 ms (6.45).
 
-A 2^20 complex FFT spends about 35 ms in butterfly arithmetic and 16 ms in the recursion's strided reads of its input
-(a sequential copy of the same 16 MB takes 1.6 ms); the time around the kernel call is now under a millisecond.
+A 2^20 complex FFT spent about 35 ms in butterfly arithmetic and 16 ms in the recursion's strided reads of its input
+before the transform's levels became passes over whole rows (see the speed sweep); it now takes 34.7 ms in all.
 
 Reductions to a scalar on small arrays (FFI backend, per call): `sum` of 10 values 1.9 us (NumPy 1.0), `max` 1.9 us
 (1.1), `mean` 1.6 us (2.7), `var` 1.7 us (9.1).
@@ -74,8 +86,9 @@ Reductions to a scalar on small arrays (FFI backend, per call): `sum` of 10 valu
 Bluestein lengths: a repeated 1,000,003-point `fft` takes about 220 ms (NumPy 260) under the CLI's 256 MiB FFT cache;
 under a web SAPI's 32 MiB default the plan (about 112 MB) is rebuilt per call, about 490 ms.
 
-Known gaps, largest first: `cholesky` of small matrices (100x100: 0.16 ms against 0.05, the triangle masking), `rfft` (1.3x),
-and `sum` / `max` of 1M values (1.1-1.25x).
+Known gaps, largest first: array -> PHP list (1.25x), `cholesky` 600x600 (1.17x; of small matrices, 100x100, 0.16 ms
+against 0.05 on 2026-11-05, the triangle masking, before the change that copies only the triangle it reads), `sort`
+1M (1.09x) and `svd` 300x300 (1.08x).
 
 Reproduce:
 
@@ -126,10 +139,13 @@ PHP closure for the objective in Tessero, `scipy.optimize.rosen` (vectorised Num
 Both sides return the same answers: `linprog` reaches the same optimum to 12 digits (HiGHS takes 83 iterations,
 Tessero's simplex 109); BFGS stops at the same point after the same 25 iterations (183 function evaluations against
 SciPy's 180), though Tessero reports a precision-loss status where SciPy reports success, an open discrepancy.
-Known gaps: `signal.fftconvolve` transforms at the exact length (101,000 = 2^3 5^3 101 here, a Bluestein transform)
-where SciPy pads to a fast length; the `ndimage` filters and `lfilter` are scalar loops; `lu_factor` and `det` still
-pay LAPACKE's row-major copies (the fix used for `solve` applies); `linalg.expm` does not yet handle matrices with
-complex eigenvalues (a general random matrix raises), so it is not in the table.
+Known gaps at the time: `signal.fftconvolve` transformed at the exact length (101,000 = 2^3 5^3 101 here, a
+Bluestein transform) where SciPy pads to a fast length; the `ndimage` filters and `lfilter` were scalar loops;
+`lu_factor` and `det` paid LAPACKE's row-major copies; `linalg.expm` was not in the table, as it raised on the
+general random matrix of the bench. Since then `fftconvolve` takes an FFT path
+at fast lengths as SciPy does, the separable `ndimage` filters and `lfilter` run faster loops (2026-11-13), and
+`lu_factor`, `det` and `inv` read their matrix without LAPACKE's copies (2026-11-14); this table has not been
+re-timed since, and the speed sweep's tier 2 holds the current times of the cases it shares.
 
 Reproduce: the scripts are in `bench/` (`scipy_bench.php`, `scipy_bench.py`), run under the same conditions.
 
@@ -211,15 +227,16 @@ above are the radix sort, measured before `sort()` became the AVX2 sort; it is n
 
 ## Full sweep
 
-Every function family timed against NumPy/SciPy on the same inputs, single-threaded (2026-11-06; the element-wise
-and per-call tiers re-timed on 2026-11-10); all the tables,
-the gaps that remain and how to reproduce: [speed sweep](speed-sweep.md).
+Every function family timed against NumPy/SciPy on the same inputs, single-threaded (first on 2026-11-06; every
+tier re-timed on 2026-11-15 at commit 56102533); all the tables, the gaps that remain and how to reproduce:
+[speed sweep](speed-sweep.md).
 
 | tier | timed on both sides | geomean Tessero / reference | Tessero faster |
 |---|---|---|---|
-| `scipy.special` element-wise, 100,000 values | 212 functions | 0.95 | 106 |
-| heavier calls at realistic sizes (re-timed after the fixes) | 84 cases | 0.67 | 68 |
-| per-call latency, every parity fixture call | 1,022 functions | 0.33 | 750 |
+| `scipy.special` element-wise, 100,000 values | 212 functions | 0.94 | 103 |
+| heavier calls at realistic sizes | 88 cases | 0.70 | 64 |
+| per-call latency, every parity fixture call (FFI) | 1,022 functions | 0.30 | 754 |
+| per-call latency, every parity fixture call (native extension) | 1,022 functions | 0.074 | 966 |
 
 ## Correctness, not just speed
 
