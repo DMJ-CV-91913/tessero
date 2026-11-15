@@ -193,6 +193,11 @@ are unweighted, the mean over their functions, and "all" covers the weighted cat
 available on both backends. "Faster on" is the share of the weighted calls that go to functions where Tessero's
 per-call time is below NumPy/SciPy's.
 
+In the scikit-learn `special` row one function carries most of the time: `logsumexp`, 1 of the 7 calls, takes 108 us
+in SciPy against 1.06 us through the extension. The other 6 calls go to `expit`, which is slower in Tessero (0.42 us
+in SciPy, 0.59 us through the extension, 4.40 us through FFI), so the row's weighted time is lower while Tessero is
+faster on only 14% of its calls.
+
 The per-call `optimize` rows solve small problems end to end (two parameters); `minimize` and `least_squares` are
 Tessero's PHP code, the same on both backends. The `cKDTree` row builds a tree over 8 points (Tessero's `KDTree`).
 In the model-type mixes, each model type's functions are those of the usual scikit-learn estimators of that kind.
@@ -458,77 +463,27 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   `bench/tier1_bench.py`, the first float64 block of each function; SciPy runs each function in a child process, so
   one that crashes or hangs on the fixture rows is reported as failed).
 - Tier 2: `bench/tier2_bench.php` and `bench/tier2_bench.py`, the same calls on the same inputs (seeded generators:
-  Tessero's PCG64 streams match NumPy's); median of repeated runs, fast calls in an inner loop. Re-timed after the
-  fixes above (last on 2026-11-07): `sort()` as the AVX2 sort, the `KDTree` built once (in the constructor, as SciPy
-  does; before, the build row timed no tree at all and every query rebuilt it), the sparse solvers on CSR input (the
-  three sparse cases had failed: the solvers took dense matrices only), and `linkage`, `Delaunay`, `ConvexHull`,
-  `solve_triangular`, `median`, `percentile`, `curve_fit`, `eigsh`, `ConvexHull` and `KDTree` as listed above (the
-  last four re-timed on their own, at a load average of 11 to 19; the spatial cases over twelve alternating rounds,
-  as their times moved by up to half between rounds), `resample_poly`, `medfilt`, `pinv`, `sobel`, `laplace` and
-  `maximum_filter` (five alternating rounds of the new code, the old code and SciPy, at a load average of 26 to 41,
-  which slowed both sides: their before and after times come from the same rounds, so they sit above the sweep's
-  times for the same code), `label` (the same, at a load average of 16 to 18) and the FFT cases (two runs of five
-  alternating rounds, at a load average of 10 to 21; each side's best of the ten; `fft2` and `rfft2` once more
-  after the leading-axis change, five rounds at a load average of 12 to 14), and `savgol_filter`, `sosfilt`, `clip` and
-  `filtfilt` (five alternating rounds each, at a load average of 12 to 17), and `shortest_path` and `median_filter`
-  (four alternating rounds each, at a load average of 7 to 15), and `rankdata`, `argsort`, `spearmanr`, `kendalltau`
-  and `linregress` (ten alternating rounds, at a load average of 7 to 17), `unique` (six alternating rounds, at
-  a load average of 6 to 10), `ks_2samp` (twelve alternating rounds, at a load average of up to 38),
-  `binned_statistic` (six alternating rounds, at a load average of 5 to 10), `find_peaks` (six alternating
-  rounds, at a load average of 18), `zoom` (six alternating rounds, at a load average of 6 to 9), `cov` and
-  `cumsum` (six alternating rounds, at a load average of 9 to 10) `gaussian_kde` (six alternating rounds, at a
-  load average of 8 to 9) and `clip`, `sobel`, `laplace` and `maximum_filter` (six alternating rounds, at a load
-  average of 6 to 21, `clip` twelve more) `filtfilt` and `hilbert` (six alternating rounds, at a load average of
-  10 to 14) `dct` (six alternating rounds, at a load average of 10 to 17) and, after
-  the large-block reuse, `fft2`, `rfft2`, `dct`, `linkage`, `kmeans2`, `sosfilt`, `connected_components`,
-  `ConvexHull` and `Delaunay` (six alternating rounds, at a load average of 7 to 9), `einsum` (six alternating
-  rounds, at a load average of 9 to 10) and, again after the large-block reuse, `cov`, `clip`, `hilbert`, `pinv`,
-  `svdvals` and `cholesky` (six alternating rounds, at a load average of 9 to 11). Each side ran three times, alternating,
-  and each case keeps its best time, as the host carries unrelated load (load average 16 to 22 on 8 cores during the
-  last run). Ratios within 10% are read as on par.
+  Tessero's PCG64 streams match NumPy's); median of repeated runs, fast calls in an inner loop.
 - Tier 3: `tools/parity/run-tests.php --time` times every fixture call that passed its check (same arguments, 3-200
   repetitions, median), `tools/parity/time_calls.py` times the same cases in NumPy/SciPy, and
   `tools/parity/time_report.py` pairs them case for case. Stateful calls (seeded generators, frozen distributions)
   and in-place calls are left out; so are 87 functions that could not be resolved in the Python namespaces and 988
   cases that raised in SciPy.
-- Tiers 1 and 3 re-timed on 2026-11-09, after the lower per-call cost of the FFI path (commit c6e18549): two
-  alternating rounds of each side (`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`, at a load average of 9 to 18), each
-  case keeping its best time on each side.
-- Tier 3 re-timed on 2026-11-10, after the small-array changes (commits c5ae8bd3 and 655992c6): four alternating
-  rounds of each side (at a load average of 8 to 15), each case keeping its best time on each side. The geomean rose
-  from 0.37 to 0.42 although Tessero's own times fell (to 0.90 of the 2026-11-09 times on `np`, 0.79 on `special`,
-  0.68 on `signal`): the NumPy/SciPy side ran faster on this host than in the two 2026-11-09 rounds (to 0.54 of
-  those times on `npoly`, 0.57 on `scipyfft`, 0.62 on `slinalg`), which had flattered the earlier figure. Four rounds
-  per side give the steadier reference.
-- Tier 3 re-timed again on 2026-11-10, at commit ad837126 (after the changes of commits 5960de74 and ad837126 above):
-  four rounds of FFI, the extension and NumPy/SciPy in turn (at a load average of 8 to 17), each case keeping its
-  best time on each side. Tessero's FFI times fell to 0.79 of those of the earlier 2026-11-10 run (`fft` 0.66, `np`
-  0.78, `special` 0.87) and the NumPy/SciPy side's to 0.98; through the extension, to 0.96 (the NumPy/SciPy side to
-  0.95 of that run's).
-- Tier 3 re-timed a third time on 2026-11-10, at commit c5f434b0 (after the generalised-ufunc change above): four
-  rounds of FFI, the extension and NumPy/SciPy in turn (at a load average of 5 to 21), each case keeping its best time
-  on each side. Tessero's FFI times fell to 0.975 of those of the ad837126 run (`stats` 0.90, `sparse` 0.94, `np`
-  0.97) and the NumPy/SciPy side's stayed at 1.005; through the extension, whose code did not change, 1.006.
-  `csgraph` and `cluster`, the first fixtures of each round, read 1.34 and 1.28 on Tessero's side in this run, while
-  alternating runs of those fixtures on the code before and after give 1.04 and 0.97: the host's other jobs, not the
-  change. Leaving those two modules out of both runs, the geomean fell from 0.350 to 0.338.
-- Tier 1 re-timed on 2026-11-10 (the code of commit c880558f): four alternating rounds of each side (at a load
-  average of 8 to 26), each function keeping its best time on each side. Tessero's times fell to 0.89 of the
-  2026-11-09 times and SciPy's to 0.98; the one kernel change to these loops in between is that an element-wise loop
-  on one thread no longer runs inside an OpenMP parallel region (commit c5ae8bd3).
-- Results unchanged: since 2026-11-09 every speed change is also checked against the parity suite's recorded
-  results (`tools/parity/run-tests.php --hash`), 47,869 results, on the code before and after the change: none
-  changed.
-- Every tier re-timed on 2026-11-15 at commit 56102533 (the build deployed that day), for all the tables on this
-  page: four rounds, each running in turn the gate bench of [benchmarks](benchmarks.md) (`bench/run.php`, then
+- The run behind the tables: every tier timed on 2026-11-15 at commit 56102533 (the build deployed that day): four
+  rounds, each running in turn the gate bench of [benchmarks](benchmarks.md) (`bench/run.php`, then
   `bench/numpy_bench.py`), tier 1, tier 2, and tier 3 through FFI, through the extension and in NumPy/SciPy,
   single-threaded (`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`), at a load average of 5 to 26 on 8 hardware threads;
   then four rounds of `bench/usage_bench.php` (FFI, extension) and `bench/usage_bench.py` for the usage-weighted mix.
-  Each case keeps its best time on each side. Tier 2 gains four cases: `curve_fit` with a model that takes the whole
-  array, and the `KDTree` build and query and `ConvexHull` from an NDArray. Against the 2026-11-10 tables, Tessero's
-  own times fell to 0.956 of theirs in tier 1, 0.889 in tier 2 (the 84 shared cases) and 0.89 in tier 3 through FFI
-  (0.58 through the extension); the NumPy/SciPy side's fell to 0.965, 0.863 and 0.96, so the ratios moved less than
-  Tessero's times.
+  Each case keeps its best time on each side, as the host carries unrelated load. Ratios within 10% are read as on
+  par.
+- Timed again after the sweep: the known gaps and the cases changed since, on 2026-11-15 at commit d2d4e2e6 (the
+  installed library), with `bench/tier2_bench.php` and `bench/tier2_bench.py`: each case alone, eight alternating
+  rounds of FFI, the extension and NumPy/SciPy (18:42 to 18:47 UTC, at a load average of 8 to 14), each side's best.
+  The `KDTree` build keeps the sweep's figure. These are the times in "Known gaps" and in the re-timed rows of
+  "Fixed after the sweep".
+- Results unchanged: since 2026-11-09 every speed change is also checked against the parity suite's recorded
+  results (`tools/parity/run-tests.php --hash`), 47,869 results, on the code before and after the change: none
+  changed.
 - `bench/sweep_report.py` compares any two `{case: ms}` result files.
 
 ## Tier 2, all cases
@@ -864,3 +819,65 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | huber | 0.315 | 0.23 | 1.37 |
 | erfcinv | 2.41 | 1.74 | 1.39 |
 | ndtr | 2.33 | 1.66 | 1.41 |
+
+## Timing history, 2026-11-06 to 2026-11-10
+
+The timings before the 2026-11-15 run, kept for the record: they are where the "before" columns of "Fixed during
+the sweep" and "Fixed after the sweep" come from. Every table above comes from the 2026-11-15 run (see Method).
+
+- Tier 2, first run (2026-11-06): each side ran three times, alternating, and each case kept its best time, as the
+  host carries unrelated load (load average 16 to 22 on 8 cores during the last run).
+- Tier 2 cases re-timed after their fixes, from 2026-11-07: `sort()` as the AVX2 sort, the `KDTree` built once (in
+  the constructor, as SciPy does; before, the build row timed no tree at all and every query rebuilt it), the sparse
+  solvers on CSR input (the three sparse cases had failed: the solvers took dense matrices only), and `linkage`,
+  `Delaunay`, `solve_triangular`, `median`, `percentile`, `curve_fit`, `eigsh`, `ConvexHull` and `KDTree` (the last
+  four re-timed on their own, at a load average of 11 to 19; the spatial cases over twelve alternating rounds, as
+  their times moved by up to half between rounds); `resample_poly`, `medfilt`, `pinv`, `sobel`, `laplace` and
+  `maximum_filter` (five alternating rounds of the new code, the old code and SciPy, at a load average of 26 to 41,
+  which slowed both sides: their before and after times come from the same rounds, so they sit above the sweep's
+  times for the same code); `label` (the same, at a load average of 16 to 18); the FFT cases (two runs of five
+  alternating rounds, at a load average of 10 to 21; each side's best of the ten; `fft2` and `rfft2` once more after
+  the leading-axis change, five rounds at a load average of 12 to 14); `savgol_filter`, `sosfilt`, `clip` and
+  `filtfilt` (five alternating rounds each, at a load average of 12 to 17); `shortest_path` and `median_filter` (four
+  alternating rounds each, at a load average of 7 to 15); `rankdata`, `argsort`, `spearmanr`, `kendalltau` and
+  `linregress` (ten alternating rounds, at a load average of 7 to 17); `unique` (six alternating rounds, at a load
+  average of 6 to 10); `ks_2samp` (twelve alternating rounds, at a load average of up to 38); `binned_statistic` (six
+  alternating rounds, at a load average of 5 to 10); `find_peaks` (six alternating rounds, at a load average of 18);
+  `zoom` (six alternating rounds, at a load average of 6 to 9); `cov` and `cumsum` (six alternating rounds, at a load
+  average of 9 to 10); `gaussian_kde` (six alternating rounds, at a load average of 8 to 9); `clip`, `sobel`,
+  `laplace` and `maximum_filter` (six alternating rounds, at a load average of 6 to 21, `clip` twelve more);
+  `filtfilt` and `hilbert` (six alternating rounds, at a load average of 10 to 14); `dct` (six alternating rounds, at
+  a load average of 10 to 17); after the large-block reuse, `fft2`, `rfft2`, `dct`, `linkage`, `kmeans2`, `sosfilt`,
+  `connected_components`, `ConvexHull` and `Delaunay` (six alternating rounds, at a load average of 7 to 9);
+  `einsum` (six alternating rounds, at a load average of 9 to 10); and, again after the large-block reuse, `cov`,
+  `clip`, `hilbert`, `pinv`, `svdvals` and `cholesky` (six alternating rounds, at a load average of 9 to 11).
+- Tiers 1 and 3 re-timed on 2026-11-09, after the lower per-call cost of the FFI path (commit c6e18549): two
+  alternating rounds of each side (`OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`, at a load average of 9 to 18), each
+  case keeping its best time on each side.
+- Tier 3 re-timed on 2026-11-10, after the small-array changes (commits c5ae8bd3 and 655992c6): four alternating
+  rounds of each side (at a load average of 8 to 15), each case keeping its best time on each side. The geomean rose
+  from 0.37 to 0.42 although Tessero's own times fell (to 0.90 of the 2026-11-09 times on `np`, 0.79 on `special`,
+  0.68 on `signal`): the NumPy/SciPy side ran faster on this host than in the two 2026-11-09 rounds (to 0.54 of
+  those times on `npoly`, 0.57 on `scipyfft`, 0.62 on `slinalg`), which had flattered the earlier figure. Four rounds
+  per side give the steadier reference.
+- Tier 3 re-timed again on 2026-11-10, at commit ad837126 (after the changes of commits 5960de74 and ad837126):
+  four rounds of FFI, the extension and NumPy/SciPy in turn (at a load average of 8 to 17), each case keeping its
+  best time on each side. Tessero's FFI times fell to 0.79 of those of the earlier 2026-11-10 run (`fft` 0.66, `np`
+  0.78, `special` 0.87) and the NumPy/SciPy side's to 0.98; through the extension, to 0.96 (the NumPy/SciPy side to
+  0.95 of that run's).
+- Tier 3 re-timed a third time on 2026-11-10, at commit c5f434b0 (after the generalised-ufunc change): four rounds of
+  FFI, the extension and NumPy/SciPy in turn (at a load average of 5 to 21), each case keeping its best time on each
+  side. Tessero's FFI times fell to 0.975 of those of the ad837126 run (`stats` 0.90, `sparse` 0.94, `np` 0.97) and
+  the NumPy/SciPy side's stayed at 1.005; through the extension, whose code did not change, 1.006. `csgraph` and
+  `cluster`, the first fixtures of each round, read 1.34 and 1.28 on Tessero's side in this run, while alternating
+  runs of those fixtures on the code before and after give 1.04 and 0.97: the host's other jobs, not the change.
+  Leaving those two modules out of both runs, the geomean fell from 0.350 to 0.338.
+- Tier 1 re-timed on 2026-11-10 (the code of commit c880558f): four alternating rounds of each side (at a load
+  average of 8 to 26), each function keeping its best time on each side. Tessero's times fell to 0.89 of the
+  2026-11-09 times and SciPy's to 0.98; the one kernel change to these loops in between is that an element-wise loop
+  on one thread no longer runs inside an OpenMP parallel region (commit c5ae8bd3).
+- The 2026-11-15 run against the 2026-11-10 tables: tier 2 gained four cases (`curve_fit` with a model that takes
+  the whole array, and the `KDTree` build and query and `ConvexHull` from an NDArray). Tessero's own times fell to
+  0.956 of the earlier ones in tier 1, 0.889 in tier 2 (the 84 shared cases) and 0.89 in tier 3 through FFI (0.58
+  through the extension); the NumPy/SciPy side's fell to 0.965, 0.863 and 0.96, so the ratios moved less than
+  Tessero's times.
