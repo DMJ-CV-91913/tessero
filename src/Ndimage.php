@@ -104,7 +104,7 @@ final class Ndimage
     }
 
     /**
-     * Apply an affine transform by interpolation, order 0/1 (scipy.ndimage.affine_transform).
+     * Apply an affine transform by B-spline interpolation of order 0..5 (scipy.ndimage.affine_transform).
      *
      * scipy.ndimage.affine_transform
      */
@@ -468,7 +468,7 @@ final class Ndimage
     }
 
     /**
-     * Interpolate an array at given coordinates, order 0/1 (scipy.ndimage.map_coordinates).
+     * Interpolate an array at given coordinates by B-splines of order 0..5 (scipy.ndimage.map_coordinates).
      *
      * scipy.ndimage.map_coordinates
      */
@@ -638,7 +638,7 @@ final class Ndimage
     }
 
     /**
-     * Rotate an array in a plane by interpolation, order 0/1 (scipy.ndimage.rotate).
+     * Rotate an array in a plane by B-spline interpolation of order 0..5 (scipy.ndimage.rotate).
      *
      * scipy.ndimage.rotate
      */
@@ -648,7 +648,7 @@ final class Ndimage
     }
 
     /**
-     * Shift an array by interpolation, order 0/1 (scipy.ndimage.shift).
+     * Shift an array by B-spline interpolation of order 0..5 (scipy.ndimage.shift).
      *
      * scipy.ndimage.shift
      */
@@ -768,12 +768,12 @@ final class Ndimage
     }
 
     /**
-     * Resample an array by a zoom factor, order 0/1 (scipy.ndimage.zoom).
+     * Resample an array by a zoom factor with B-spline interpolation of order 0..5 (scipy.ndimage.zoom).
      *
      * scipy.ndimage.zoom
      */
-    public static function zoom(mixed $input, mixed $zoom, mixed $order = 3, mixed $mode = 'constant', mixed $cval = 0.0, mixed $prefilter = true): mixed
+    public static function zoom(mixed $input, mixed $zoom, mixed $order = 3, mixed $mode = 'constant', mixed $cval = 0.0, mixed $prefilter = true, mixed $gridMode = false): mixed
     {
-        return Registry::routine('ndimage.zoom', [$input, $zoom, $order, $mode, $cval, $prefilter]);
+        return Registry::routine('ndimage.zoom', [$input, $zoom, $order, $mode, $cval, $prefilter, $gridMode]);
     }
 }

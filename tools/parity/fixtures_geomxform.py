@@ -51,12 +51,7 @@ B = rng.uniform(-5, 5, (6, 6))
 C = np.arange(30.0).reshape(5, 6)
 
 cases = []
-# NOTE on orders/modes: orders 0 and 1 are matched on every boundary mode. For the B-spline orders (>=2)
-# Tessero's map_coordinates (and hence this carve-out) reproduces scipy exactly under the fold modes
-# 'mirror' and 'reflect' -- the prefilter's boundary conditions there are the fold modes. The 'constant',
-# 'nearest' and 'wrap' prefilter extensions differ, so high-order cases here use the fold modes only,
-# exactly as the existing map_coordinates fixtures (fixtures_ndimage.py) do (they test orders 2-5 only
-# with mode='mirror').
+# Orders 0-5 on every boundary mode, the grid modes included (the B-spline orders at the end of the file).
 
 # --- shift mapping: input = output - shift  (so the image shifts by +shift) --------------------------
 for order in (0, 1):
@@ -87,6 +82,12 @@ cases.append(case(A, 'affine', {'matrix': [[1.0, 0.0], [0.0, 1.0]], 'offset': [0
 for order in (0, 1):
     cases.append(case(C, 'swap', {}, order, 'reflect', output_shape=[6, 5]))
 cases.append(case(C, 'swap', {}, 3, 'mirror', output_shape=[6, 5]))
+
+# --- the B-spline orders on every boundary mode (scipy's prefilter padding, edge taps and grid modes) -------
+for mode in ('constant', 'nearest', 'reflect', 'mirror', 'wrap', 'grid-constant', 'grid-wrap', 'grid-mirror'):
+    cases.append(case(A, 'affine', {'matrix': Maff, 'offset': off}, 3, mode, cval=-1.5))
+    cases.append(case(B, 'shift', {'shift': [1.3, -0.7]}, 5, mode))
+    cases.append(case(C, 'scale', {'scale': [1.5, 0.8]}, 2, mode))
 
 doc = {'module': 'ndimage', 'scipy': scipy.__version__,
        'env': {'numpy': np.__version__, 'scipy': scipy.__version__, 'pinned': False},

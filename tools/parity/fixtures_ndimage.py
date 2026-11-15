@@ -215,7 +215,7 @@ mc = [call_nd('map_coordinates', [mc_in, mc_co], {'order': o, 'mode': m}, [])
     call_nd('map_coordinates', [mc_in, mc_co], {'order': 1, 'mode': 'constant', 'cval': 2.5}, []),
     call_nd('map_coordinates', [rng.uniform(-5, 5, 8), np.array([[0.3, 2.9, 7.4, -0.6]])], {'order': 1}, [])] + [
     call_nd('map_coordinates', [mc_in, mc_co], {'order': k, 'mode': 'mirror'}, []) for k in (2, 3, 4, 5)]
-# B-spline prefilter (orders 2-5), mode mirror (the default; the fold modes are matched exactly)
+# B-spline prefilter (orders 2-5), mode mirror (the default); every mode below
 sf_in = rng.uniform(-5, 5, (5, 6))
 sfil1d = [call_nd('spline_filter1d', [sf_in], {'order': k}, []) for k in (2, 3, 4, 5)] + [
     call_nd('spline_filter1d', [sf_in], {'order': 3, 'axis': 0}, []), call_nd('spline_filter1d', [rng.uniform(-5, 5, 9)], {'order': 5}, [])]
@@ -236,6 +236,29 @@ grot = [call_nd('rotate', [gt_in, ang], {'order': 1, 'mode': m}, []) for ang in 
     call_nd('rotate', [gt_in, 90.0], {'order': 0}, []), call_nd('rotate', [gt_in, 180.0], {'order': 0}, []),
     call_nd('rotate', [gt_in, 30.0], {'order': 1, 'reshape': False}, []),
     call_nd('rotate', [gt_in, 30.0], {'order': 3, 'mode': 'mirror'}, [])]
+# every boundary mode at the B-spline orders (scipy's prefilter padding, edge taps and grid modes), prefilter=False,
+# grid_mode, homogeneous affine matrices, a 3-D rotate and integer input (the result keeps the input's dtype)
+rng2 = np.random.default_rng(20261115)   # its own stream: the later fixtures' inputs stay as they were
+ALL_MODES = ('constant', 'nearest', 'reflect', 'mirror', 'wrap', 'grid-constant', 'grid-wrap', 'grid-mirror')
+mc += [call_nd('map_coordinates', [mc_in, mc_co], {'order': k, 'mode': m, 'cval': 1.25}, []) for k in (2, 3, 5) for m in ALL_MODES] + [
+    call_nd('map_coordinates', [mc_in, mc_co], {'order': 3, 'mode': m, 'prefilter': False}, []) for m in ('constant', 'nearest', 'wrap')] + [
+    call_nd('map_coordinates', [rng2.uniform(-5, 5, (4, 5, 6)), rng2.uniform(-1.5, 6.5, (3, 7))], {'order': 3, 'mode': m}, []) for m in ('constant', 'grid-constant')]
+gshift += [call_nd('shift', [gt_in, [1.3, -0.7]], {'order': 3, 'mode': m, 'cval': -0.5}, []) for m in ALL_MODES] + [
+    call_nd('shift', [gt_in, [1.3, -0.7]], {'order': 5, 'mode': 'nearest', 'prefilter': False}, [])]
+gaff += [call_nd('affine_transform', [gt_in, [[0.9, 0.1], [-0.2, 1.1]], [0.5, -0.3]], {'order': 3, 'mode': m}, []) for m in ALL_MODES] + [
+    call_nd('affine_transform', [gt_in, [[0.9, 0.1, 0.5], [-0.2, 1.1, -0.3], [0.0, 0.0, 1.0]]], {'order': 3}, []),
+    call_nd('affine_transform', [gt_in, [[0.9, 0.1, 0.5], [-0.2, 1.1, -0.3]]], {'order': 2, 'mode': 'nearest'}, []),
+    call_nd('affine_transform', [gt_in, [1.5, 0.5], [0.2, 0.1]], {'order': 3, 'mode': 'wrap'}, [])]
+gzoom += [call_nd('zoom', [gt_in, 1.5], {'order': 3, 'mode': m}, []) for m in ALL_MODES] + [
+    call_nd('zoom', [gt_in, [2.0, 1.5]], {'order': 3, 'mode': m, 'grid_mode': True}, []) for m in ('grid-constant', 'grid-wrap', 'reflect')] + [
+    call_nd('zoom', [gt_in, 1.0], {'order': 3}, []), call_nd('zoom', [gt_in, [0.5, 1.7]], {'order': 4, 'mode': 'constant'}, [])]
+grot += [call_nd('rotate', [gt_in, 30.0], {'order': 3, 'mode': m, 'cval': 0.75}, []) for m in ALL_MODES] + [
+    call_nd('rotate', [rng2.uniform(-5, 5, (4, 5, 6)), -40.0], {'order': 3, 'axes': [0, 2]}, []),
+    call_nd('rotate', [gt_in, 30.0], {'order': 3, 'reshape': False}, []),
+    call_nd('rotate', [gt_in, 30.0], {'order': 3, 'prefilter': False}, []),
+    call_nd('rotate', [np.round(gt_in * 20).astype(np.int64), 25.0], {'order': 1}, [])]
+sfil1d += [call_nd('spline_filter1d', [sf_in], {'order': 3, 'mode': m}, []) for m in ALL_MODES]
+sfil += [call_nd('spline_filter', [sf_in], {'order': k, 'mode': m}, []) for k in (2, 5) for m in ('constant', 'nearest', 'wrap', 'grid-wrap', 'reflect')]
 def dist_case(fn, a, kw):
     r = np.asarray(getattr(nd, fn)(*a, **(kw or {})), dtype=float)
     return {'args': [F.enc(x) for x in a], 'kwargs': {k: F.enc(v) for k, v in (kw or {}).items()}, 'expect': F.enc(r), 'compare': 'tol'}

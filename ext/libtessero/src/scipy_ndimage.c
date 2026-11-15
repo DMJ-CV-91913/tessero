@@ -180,7 +180,7 @@ static int r_label(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
 }
 
 /* ---- convolve(input, weights, mode='reflect', cval=0.0): 2-D ---- */
-enum { ND_REFLECT, ND_CONSTANT, ND_NEAREST, ND_MIRROR, ND_WRAP };
+enum { ND_REFLECT, ND_CONSTANT, ND_NEAREST, ND_MIRROR, ND_WRAP, ND_GRID_CONSTANT, ND_GRID_WRAP };   /* the grid modes: geometric transforms only */
 
 static int nd_mode(const tsr_arg *a, int *mode)
 {
@@ -1920,26 +1920,57 @@ static int r_fourier_ellipsoid(const void *ctx, const tsr_arg *args, int nargs, 
     return TSR_OK;
 }
 
-/* scipy's ni_interpolation.c map_coordinate: fold an out-of-bounds (float) coordinate in-bounds per mode (constant
-   returns -1 to signal "out of bounds"). Matches scipy exactly so the interpolation boundaries agree. */
+/* scipy's ni_interpolation.c map_coordinate, operation for operation: fold an out-of-bounds coordinate into range
+   per mode ('constant' gives -1: out of bounds). A coordinate too large for scipy's integer cast (undefined there)
+   is out of bounds here. */
 static double map_coord(double in, int64_t len, int mode)
 {
-    if (len <= 1) return 0.0;
+    if (!(fabs(in) < 4.5e15)) return mode == ND_NEAREST ? (in < 0 ? 0.0 : (double)(len - 1)) : -1.0;
     if (in < 0) {
         switch (mode) {
-        case ND_MIRROR: { const double sz2 = 2.0 * len - 2; in = fmod(in, sz2); in = in <= 1 - len ? in + sz2 : -in; break; }
-        case ND_WRAP: { const int64_t sz = len - 1; in = fmod(in, (double)sz) + (double)sz; break; }
+        case ND_MIRROR:
+            if (len <= 1) in = 0;
+            else { const int64_t sz2 = 2 * len - 2; in = (double)(sz2 * (int64_t)(-in / (double)sz2)) + in; in = in <= (double)(1 - len) ? in + (double)sz2 : -in; }
+            break;
+        case ND_REFLECT:
+            if (len <= 1) in = 0;
+            else {
+                const int64_t sz2 = 2 * len;
+                if (in < (double)-sz2) in = (double)(sz2 * (int64_t)(-in / (double)sz2)) + in;
+                in = in < (double)-len ? in + (double)sz2 : (in > -1e-15 ? 1e-15 : -in) - 1;
+            }
+            break;
+        case ND_WRAP:
+            if (len <= 1) in = 0;
+            else { const int64_t sz = len - 1; in += (double)(sz * ((int64_t)(-in / (double)sz) + 1)); }
+            break;
+        case ND_GRID_WRAP:
+            if (len <= 1) in = 0;
+            else in += (double)(len * ((int64_t)((-1 - in) / (double)len) + 1));
+            break;
         case ND_NEAREST: in = 0; break;
         case ND_CONSTANT: in = -1; break;
-        default: { const double sz2 = 2.0 * len; if (in < -sz2) in = fmod(in, sz2); in = in < -len ? in + sz2 : (in > -1e-15 ? 1e-15 : -in) - 1; break; }  /* reflect */
         }
-    } else if (in > len - 1) {
+    } else if (in > (double)(len - 1)) {
         switch (mode) {
-        case ND_MIRROR: { const double sz2 = 2.0 * len - 2; in = fmod(in, sz2); if (in > len - 1) in = sz2 - in; break; }
-        case ND_WRAP: { const int64_t sz = len - 1; in = fmod(in, (double)sz); break; }
+        case ND_MIRROR:
+            if (len <= 1) in = 0;
+            else { const int64_t sz2 = 2 * len - 2; in -= (double)(sz2 * (int64_t)(in / (double)sz2)); if (in >= (double)len) in = (double)sz2 - in; }
+            break;
+        case ND_REFLECT:
+            if (len <= 1) in = 0;
+            else { const int64_t sz2 = 2 * len; in -= (double)(sz2 * (int64_t)(in / (double)sz2)); if (in >= (double)len) in = (double)sz2 - in - 1; }
+            break;
+        case ND_WRAP:
+            if (len <= 1) in = 0;
+            else { const int64_t sz = len - 1; in -= (double)(sz * (int64_t)(in / (double)sz)); }
+            break;
+        case ND_GRID_WRAP:
+            if (len <= 1) in = 0;
+            else in -= (double)(len * (int64_t)(in / (double)len));
+            break;
         case ND_NEAREST: in = (double)(len - 1); break;
         case ND_CONSTANT: in = -1; break;
-        default: { const double sz2 = 2.0 * len; in = fmod(in, sz2); if (in >= len) in = sz2 - in - 1; break; }  /* reflect */
         }
     }
     return in;
@@ -1985,8 +2016,10 @@ static int spline_poles(int order, double *p)
 
 typedef struct { int order; int mode; } spf_ctx;
 
-/* one line of the spline prefilter: apply the gain and the causal/anticausal pole recursions. Boundary init is
-   mirror for mirror/constant/wrap, reflect for reflect/nearest (scipy apply_filter's mode map). */
+/* one line of the spline prefilter, as scipy's ni_splines.c apply_filter: the gain, then per pole the causal and
+   anticausal recursions, started as the mode asks: mirror for 'constant', 'grid-constant', 'mirror' and 'wrap',
+   wrap for 'grid-wrap', reflect for 'nearest' and 'reflect' (the reflect start reads the c[0] it is building, as
+   scipy's does). */
 static void spf_line(const double *in, double *c, int64_t n, const void *vctx)
 {
     const spf_ctx *x = (const spf_ctx *)vctx;
@@ -1995,22 +2028,32 @@ static void spf_line(const double *in, double *c, int64_t n, const void *vctx)
     double poles[2]; const int np = spline_poles(x->order, poles);
     double gain = 1.0; for (int k = 0; k < np; k++) { const double z = poles[k]; gain *= (1.0 - z) * (1.0 - 1.0 / z); }
     for (int64_t i = 0; i < n; i++) c[i] *= gain;
-    const int reflect = (x->mode == ND_REFLECT || x->mode == ND_NEAREST);
+    const int init = (x->mode == ND_REFLECT || x->mode == ND_NEAREST) ? 2 : x->mode == ND_GRID_WRAP ? 1 : 0;
     for (int k = 0; k < np; k++) {
         const double z = poles[k];
-        if (reflect) {
-            double z_i = z; const double z_n = pow(z, (double)n); double sum = c[0] + z_n * c[n - 1];
-            for (int64_t i = 1; i < n; i++) { sum += z_i * (c[i] + z_n * c[n - 1 - i]); z_i *= z; }
-            c[0] += sum * z / (1.0 - z_n * z_n);
+        if (init == 2) {
+            double z_i = z; const double z_n = pow(z, (double)n); const double c0 = c[0];
+            c[0] = c[0] + z_n * c[n - 1];
+            for (int64_t i = 1; i < n; i++) { c[0] += z_i * (c[i] + z_n * c[n - 1 - i]); z_i *= z; }
+            c[0] *= z / (1 - z_n * z_n);
+            c[0] += c0;
+        } else if (init == 1) {
+            double z_i = z;
+            for (int64_t i = 1; i < n; i++) { c[0] += z_i * c[n - i]; z_i *= z; }
+            c[0] /= 1 - z_i;
         } else {
             double z_i = z; const double z_n_1 = pow(z, (double)(n - 1));
             c[0] = c[0] + z_n_1 * c[n - 1];
             for (int64_t i = 1; i < n - 1; i++) { c[0] += z_i * (c[i] + z_n_1 * c[n - 1 - i]); z_i *= z; }
-            c[0] /= 1.0 - z_n_1 * z_n_1;
+            c[0] /= 1 - z_n_1 * z_n_1;
         }
         for (int64_t i = 1; i < n; i++) c[i] += z * c[i - 1];
-        if (reflect) c[n - 1] *= z / (z - 1.0);
-        else c[n - 1] = (z * c[n - 2] + c[n - 1]) * z / (z * z - 1.0);
+        if (init == 2) c[n - 1] *= z / (z - 1);
+        else if (init == 1) {
+            double z_i = z;
+            for (int64_t i = 0; i < n - 1; i++) { c[n - 1] += z_i * c[i]; z_i *= z; }
+            c[n - 1] *= z / (z_i - 1);
+        } else c[n - 1] = (z * c[n - 2] + c[n - 1]) * z / (z * z - 1);
         for (int64_t i = n - 2; i >= 0; i--) c[i] = z * (c[i + 1] - c[i]);
     }
 }
@@ -2029,58 +2072,248 @@ static int spline_prefilter_nd(double *buf, const int64_t *shape, int32_t nd, in
     return rc;
 }
 
-/* interpolate `in` (the spline coefficients for order >= 2, else the raw input) at one coordinate vector, orders
-   0..5. Non-constant modes fold the coordinate (map_coord) and each tap (bmap); constant returns cval for the
-   point if a coordinate leaves [0, len-1] and uses cval for any tap that falls outside. */
-static double geom_interp(const double *in, const int64_t *si, int32_t nd, const int64_t *istride,
-                          const double *coord, int order, int mode, double cval, int con)
+/* ---- map_coordinates, shift, zoom, affine_transform and rotate, as scipy runs them ----
+ * Ported from scipy/ndimage/_interpolation.py and src/ni_interpolation.c (NI_GeometricTransform, NI_ZoomShift):
+ * the prefilter only with prefilter true and order > 1, on the input padded by 12 for 'nearest' (edge values) and
+ * 'grid-constant' (cval); each coordinate folded by its mode (not for 'nearest' and 'grid-constant'); the taps
+ * past an edge folded by scipy's spline mode (mirror for 'constant' and 'wrap'), or cval for 'grid-constant'; the
+ * coefficient times each axis's weight in turn, summed over the taps in scipy's order; the result in the input's
+ * dtype (integers rounded half away from zero and clipped, as scipy stores them). */
+
+/* the geometric transforms' boundary modes (scipy _extend_mode_to_code): 'grid-mirror' is 'reflect' */
+static int geom_mode(const tsr_arg *a, int dflt, int *mode)
 {
-    double cc[8];
-    for (int d = 0; d < nd; d++) {
-        const double c = coord[d];
-        if (!isfinite(c)) return cval;                    /* NaN / infinity: no sample (and no float->int cast) */
-        if (si[d] <= 0) return cval;                      /* an empty input has nothing to sample (it read in[0]) */
-        if (con) { if (c < 0.0 || c > (double)(si[d] - 1)) return cval; cc[d] = c; }
-        else cc[d] = map_coord(c, si[d], mode);
-    }
-    if (order == 0) {
-        int64_t flat = 0;
-        for (int d = 0; d < nd; d++) {
-            int64_t idx = (int64_t)floor(cc[d] + 0.5);
-            idx = con ? idx : bmap(idx, si[d], mode);
-            if (con) { if (idx < 0 || idx >= si[d]) return cval; } else if (idx < 0) idx = 0;
-            flat += idx * istride[d];
-        }
-        return in[flat];
-    }
-    int64_t start[8]; double wt[8][6]; int64_t idxc[8];
-    const int nt = order + 1;
-    for (int d = 0; d < nd; d++) {
-        start[d] = (int64_t)floor((order & 1) ? cc[d] : cc[d] + 0.5) - order / 2;
-        spline_weights(cc[d], order, wt[d]);
-        idxc[d] = 0;
-    }
-    double acc = 0.0;
-    for (;;) {
-        double w = 1.0; int64_t flat = 0, oob = 0;
-        for (int d = 0; d < nd; d++) {
-            w *= wt[d][idxc[d]];
-            int64_t t = start[d] + idxc[d];
-            if (con) { if (t < 0 || t >= si[d]) { oob = 1; } }
-            else { t = bmap(t, si[d], mode); if (t < 0) t = 0; }
-            if (!oob) flat += t * istride[d];
-        }
-        acc += w * (oob ? cval : in[flat]);
-        int d = nd - 1; while (d >= 0) { if (++idxc[d] < nt) break; idxc[d] = 0; d--; }
-        if (d < 0) break;
-    }
-    return acc;
+    if (!a || a->kind == 0) { *mode = dflt; return TSR_OK; }
+    if (a->kind != 2 || !a->str) { fn_set_error("mode must be a string"); return TSR_EARG; }
+    const struct { const char *n; int m; } T[] = {
+        {"constant", ND_CONSTANT}, {"nearest", ND_NEAREST}, {"reflect", ND_REFLECT}, {"mirror", ND_MIRROR}, {"wrap", ND_WRAP},
+        {"grid-constant", ND_GRID_CONSTANT}, {"grid-wrap", ND_GRID_WRAP}, {"grid-mirror", ND_REFLECT},
+    };
+    for (size_t i = 0; i < sizeof T / sizeof T[0]; i++) if (strcmp(a->str, T[i].n) == 0) { *mode = T[i].m; return TSR_OK; }
+    fn_set_error("boundary mode '%s' is not supported", a->str);
+    return TSR_EARG;
 }
 
-/* map_coordinates(input, coordinates, order, mode, cval): interpolate `input` at the given coordinates.
-   coordinates has shape (input.ndim, ...output); the output takes the trailing shape. Orders 0 (nearest) and 1
-   (linear) for now (higher orders need the B-spline prefilter). Non-constant modes fold the coordinate (map_coord);
-   constant uses cval for taps that fall outside. */
+static int geom_flag(const tsr_arg *a, int dflt)
+{
+    if (!a || a->kind == 0) return dflt;
+    if (a->kind == 4) return a->num != 0.0;
+    if (a->kind == 1) return (a->flags & 1) ? a->ival != 0 : a->num != 0.0;
+    return dflt;
+}
+
+static double geom_num(const tsr_arg *a, double dflt)
+{
+    return (a && a->kind == 1) ? ((a->flags & 1) ? (double)a->ival : a->num) : dflt;
+}
+
+/* the output dtype: the input's (complex is not supported here, it gives float64) */
+static int geom_outdt(int32_t dt)
+{
+    return (dt == TSR_F32 || dt == TSR_I64 || dt == TSR_I32 || dt == TSR_U8 || dt == TSR_BOOL) ? dt : TSR_F64;
+}
+
+/* cval as np.pad writes it into an array of the input's dtype (the 'grid-constant' padding) */
+static double geom_padval(int32_t dt, double cval)
+{
+    switch (dt) {
+    case TSR_F32: return (double)(float)cval;
+    case TSR_I64: case TSR_I32: return isfinite(cval) ? trunc(cval) : 0.0;
+    case TSR_U8: return isfinite(cval) ? (double)(uint8_t)(int64_t)trunc(cval) : 0.0;
+    case TSR_BOOL: return cval != 0.0 ? 1.0 : 0.0;
+    default: return cval;
+    }
+}
+
+/* scipy's CASE_INTERP_OUT macros: one interpolated value stored in the output dtype */
+static void geom_store(void *out, int dt, int64_t i, double t)
+{
+    switch (dt) {
+    case TSR_F32: ((float *)out)[i] = (float)t; break;
+    case TSR_I64: case TSR_I32: {
+        const double hi = dt == TSR_I64 ? 9223372036854775807.0 : 2147483647.0;
+        const double lo = dt == TSR_I64 ? -9223372036854775808.0 : -2147483648.0;
+        t = t > 0 ? t + 0.5 : t - 0.5;
+        t = t > hi ? hi : t;
+        t = t < lo ? lo : t;
+        if (dt == TSR_I64) ((int64_t *)out)[i] = isnan(t) ? INT64_MIN : t >= hi ? INT64_MAX : (int64_t)t;
+        else ((int32_t *)out)[i] = isnan(t) ? INT32_MIN : (int32_t)t;
+        break;
+    }
+    case TSR_U8: t = t > 0 ? t + 0.5 : 0; t = t > 255 ? 255 : t; t = t < 0 ? 0 : t; ((uint8_t *)out)[i] = (uint8_t)t; break;
+    case TSR_BOOL: ((uint8_t *)out)[i] = (uint8_t)(t >= 1.0 || t <= -1.0); break;
+    default: ((double *)out)[i] = t;
+    }
+}
+
+/* the array the transforms interpolate: with prefilter and order > 1, the input (padded by 12 for 'nearest' and
+   'grid-constant', as _prepad_for_spline_filter) spline-filtered along every axis, else the input itself. *own is
+   the block to free (NULL for the input), dims its shape, *npad the padding. */
+static int geom_coeffs(const double *in, const int64_t *si, int32_t nd, int order, int mode, double padval, int prefilter,
+                       double **own, const double **src, int64_t *dims, int *npad)
+{
+    *own = NULL; *src = in; *npad = 0;
+    for (int d = 0; d < nd; d++) dims[d] = si[d];
+    if (!prefilter || order < 2) return TSR_OK;
+    int64_t total = 1; for (int d = 0; d < nd; d++) total *= si[d] > 0 ? si[d] : 0;
+    const int pad = (mode == ND_NEAREST || mode == ND_GRID_CONSTANT) && total > 0 ? 12 : 0;
+    int64_t ptot = 1;
+    for (int d = 0; d < nd; d++) { dims[d] = si[d] + 2 * pad; ptot *= dims[d] > 0 ? dims[d] : 0; }
+    double *buf = (double *)malloc((size_t)(ptot > 0 ? ptot : 1) * sizeof(double));
+    if (!buf) return TSR_ENOMEM;
+    if (pad == 0) { if (total > 0) memcpy(buf, in, (size_t)total * sizeof(double)); }
+    else {
+        int64_t istr[8], k[8] = {0};
+        istr[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istr[d] = istr[d + 1] * si[d + 1];
+        for (int64_t p = 0; p < ptot; p++) {
+            int64_t flat = 0; int outside = 0;
+            for (int d = 0; d < nd; d++) {
+                int64_t s = k[d] - pad;
+                if (s < 0 || s >= si[d]) { outside = 1; s = s < 0 ? 0 : si[d] - 1; }
+                flat += s * istr[d];
+            }
+            buf[p] = (outside && mode == ND_GRID_CONSTANT) ? padval : in[flat];
+            for (int d = nd - 1; d >= 0; d--) { if (++k[d] < dims[d]) break; k[d] = 0; }
+        }
+    }
+    const int rc = spline_prefilter_nd(buf, dims, nd, order, mode);
+    if (rc != 0) { free(buf); return rc; }
+    *own = buf; *src = buf; *npad = pad;
+    return TSR_OK;
+}
+
+/* one axis of one point: whether it samples at all (ok 0: the whole point is cval), its tap offsets, the taps
+   that read cval ('grid-constant') and the weights. c is the coordinate in the input before padding. */
+typedef struct { int ok; double w[6]; int64_t off[6]; unsigned char cv[6]; } geom_ax;
+
+static void geom_axis(geom_ax *e, double c, int64_t len, int64_t stride, int order, int mode, int npad)
+{
+    e->ok = 0;
+    if (!isfinite(c) || len <= 0) return;                 /* scipy casts such a coordinate to an integer (undefined) */
+    double cc = c + (double)npad;
+    if (mode != ND_GRID_CONSTANT && mode != ND_NEAREST) cc = map_coord(cc, len, mode);
+    if (!(cc > -1.0 || mode == ND_GRID_CONSTANT || mode == ND_NEAREST)) return;
+    if (!(fabs(cc) < 4.5e15)) return;
+    const int64_t start = (order & 1) ? (int64_t)floor(cc) - order / 2 : (int64_t)floor(cc + 0.5) - order / 2;
+    const int edge = start < 0 || start + order >= len;
+    const int smode = (mode == ND_CONSTANT || mode == ND_WRAP) ? ND_MIRROR : mode;
+    for (int k = 0; k <= order; k++) {
+        int64_t idx = start + k;
+        e->cv[k] = 0;
+        if (mode == ND_GRID_CONSTANT) { if (idx < 0 || idx >= len) { e->cv[k] = 1; idx = 0; } }
+        else if (edge) idx = (int64_t)map_coord((double)idx, len, smode);
+        e->off[k] = idx * stride;
+    }
+    if (order > 0) spline_weights(cc, order, e->w);
+    e->ok = 1;
+}
+
+/* the interpolated value from one entry per axis: each tap's coefficient times the axes' weights in turn, summed
+   with the last axis fastest (scipy's fcoordinates order) */
+static double geom_sum(const double *src, int32_t nd, const geom_ax *const *e, int order, double cval)
+{
+    for (int d = 0; d < nd; d++) if (!e[d]->ok) return cval;
+    const int nt = order + 1;
+    int k[8] = {0};
+    double t = 0.0;
+    for (;;) {
+        int cv = 0; int64_t idx = 0;
+        for (int d = 0; d < nd; d++) { cv |= e[d]->cv[k[d]]; idx += e[d]->off[k[d]]; }
+        double coeff = cv ? cval : src[idx];
+        if (order > 0) for (int d = 0; d < nd; d++) coeff *= e[d]->w[k[d]];
+        t += coeff;
+        int d = nd - 1; while (d >= 0) { if (++k[d] < nt) break; k[d] = 0; d--; }
+        if (d < 0) break;
+    }
+    return t;
+}
+
+/* geom_sum for two axes: the same products and additions in the same order, without the n-D bookkeeping */
+static inline double geom_sum2(const double *src, const geom_ax *A, const geom_ax *B, int order, double cval)
+{
+    if (!A->ok || !B->ok) return cval;
+    const int nt = order + 1;
+    double t = 0.0;
+    if (order == 0) return t + ((A->cv[0] | B->cv[0]) ? cval : src[A->off[0] + B->off[0]]);   /* 0.0 + v, as scipy (-0 -> +0) */
+    for (int i0 = 0; i0 < nt; i0++) {
+        const int64_t a = A->off[i0]; const double wa = A->w[i0]; const unsigned char ca = A->cv[i0];
+        for (int i1 = 0; i1 < nt; i1++) {
+            double coeff = (ca | B->cv[i1]) ? cval : src[a + B->off[i1]];
+            coeff *= wa;
+            coeff *= B->w[i1];
+            t += coeff;
+        }
+    }
+    return t;
+}
+
+/* NI_ZoomShift: a grid whose coordinate along each axis depends on that axis's output index alone, so each
+   axis's entries are made once per index: c = (o + shift) * zoom, or ((o + 0.5) * zoom - 0.5) with grid_mode.
+   shift and zoom may be NULL. Writes osh's points into out (dtype odt, C order). */
+static int geom_zoom_shift(const double *src, const int64_t *dims, int32_t nd, int npad, const int64_t *osh,
+                           const double *zoom, const double *shift, int grid_mode, int order, int mode, double cval,
+                           void *out, int odt)
+{
+    int64_t istride[8], otot = 1;
+    istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * dims[d + 1];
+    for (int d = 0; d < nd; d++) otot *= osh[d] > 0 ? osh[d] : 0;
+    if (otot == 0) return TSR_OK;
+    geom_ax *ax[8] = {0};
+    int ok = 1;
+    for (int d = 0; d < nd && ok; d++) {
+        ax[d] = (geom_ax *)malloc((size_t)osh[d] * sizeof(geom_ax));
+        if (!ax[d]) { ok = 0; break; }
+        for (int64_t o = 0; o < osh[d]; o++) {
+            double cc = (double)o;
+            if (shift) cc += shift[d];
+            if (zoom) { if (grid_mode) { cc += 0.5; cc *= zoom[d]; cc -= 0.5; } else cc *= zoom[d]; }
+            geom_axis(&ax[d][o], cc, dims[d], istride[d], order, mode, npad);
+        }
+    }
+    if (ok && nd == 2) {
+        int64_t o = 0;
+        for (int64_t o0 = 0; o0 < osh[0]; o0++)
+            for (int64_t o1 = 0; o1 < osh[1]; o1++, o++) geom_store(out, odt, o, geom_sum2(src, &ax[0][o0], &ax[1][o1], order, cval));
+    } else if (ok) {
+        int64_t oi[8] = {0};
+        const geom_ax *pe[8];
+        for (int64_t o = 0; o < otot; o++) {
+            for (int d = 0; d < nd; d++) pe[d] = &ax[d][oi[d]];
+            geom_store(out, odt, o, geom_sum(src, nd, pe, order, cval));
+            for (int d = nd - 1; d >= 0; d--) { if (++oi[d] < osh[d]) break; oi[d] = 0; }
+        }
+    }
+    for (int d = 0; d < nd; d++) free(ax[d]);
+    return ok ? TSR_OK : TSR_ENOMEM;
+}
+
+/* NI_GeometricTransform with a full matrix: the coordinate along axis h is off[h] + o[0] * m[h][0] + ... added in
+   that order. Writes the osh grid into out at base + o . ostr (elements). */
+static void geom_affine(const double *src, const int64_t *dims, int32_t nd, int npad, const int64_t *osh,
+                        const double *m, const double *off, int order, int mode, double cval,
+                        void *out, int odt, int64_t base, const int64_t *ostr)
+{
+    int64_t istride[8], otot = 1;
+    istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * dims[d + 1];
+    for (int d = 0; d < nd; d++) otot *= osh[d] > 0 ? osh[d] : 0;
+    int64_t oi[8] = {0};
+    geom_ax ax[8]; const geom_ax *pe[8];
+    for (int d = 0; d < nd; d++) pe[d] = &ax[d];
+    for (int64_t o = 0; o < otot; o++) {
+        int64_t at = base;
+        for (int h = 0; h < nd; h++) {
+            double tmp = off[h];
+            for (int l = 0; l < nd; l++) tmp += (double)oi[l] * m[h * nd + l];
+            geom_axis(&ax[h], tmp, dims[h], istride[h], order, mode, npad);
+            at += oi[h] * ostr[h];
+        }
+        geom_store(out, odt, at, nd == 2 ? geom_sum2(src, &ax[0], &ax[1], order, cval) : geom_sum(src, nd, pe, order, cval));
+        for (int d = nd - 1; d >= 0; d--) { if (++oi[d] < osh[d]) break; oi[d] = 0; }
+    }
+}
+
+/* map_coordinates(input, coordinates, order=3, mode='constant', cval=0.0, prefilter=True): interpolate `input` at
+   the given coordinates (shape (input.ndim, ...output)); the output takes the trailing shape. */
 static int r_map_coordinates(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -2090,131 +2323,37 @@ static int r_map_coordinates(const void *ctx, const tsr_arg *args, int nargs, ts
     if (args[1].arr.ndim < 1 || args[1].arr.shape[0] != nd) { fn_set_error("map_coordinates: coordinates must have shape (input.ndim, ...)"); return TSR_EARG; }
     const int64_t order = arg_int(nargs > 2 ? &args[2] : NULL, 3);
     if (order < 0 || order > 5) { fn_set_error("map_coordinates: order must be 0..5"); return TSR_EARG; }
-    int mode; int rc = nd_mode(nargs > 3 ? &args[3] : NULL, &mode);
+    int mode; int rc = geom_mode(nargs > 3 ? &args[3] : NULL, ND_CONSTANT, &mode);
     if (rc < 0) return rc;
-    const double cval = (nargs > 4 && args[4].kind == 1) ? ((args[4].flags & 1) ? (double)args[4].ival : args[4].num) : 0.0;
+    const double cval = geom_num(nargs > 4 ? &args[4] : NULL, 0.0);
+    const int prefilter = geom_flag(nargs > 5 ? &args[5] : NULL, 1);
+    const int32_t idt = args[0].arr.dtype, odt = geom_outdt(idt);
     const int64_t *si = args[0].arr.shape;
-    int64_t istride[8]; istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
     const int32_t ond = args[1].arr.ndim - 1;
     int64_t osh[8], M = 1; for (int d = 0; d < ond; d++) { osh[d] = args[1].arr.shape[d + 1]; M *= osh[d]; }
     int64_t ti, tc; double *in = fn_arg_doubles(&args[0], &ti);
     double *co = in ? fn_arg_doubles(&args[1], &tc) : NULL;
-    /* (nd,) coordinates give a scalar: no 0-d result block (one was allocated and then overwritten, a leak) */
-    double *out = (co && ond > 0) ? (double *)fn_result_array(&res[0], TSR_F64, ond, osh) : NULL;
+    /* (nd,) coordinates give a scalar: no 0-d result block */
+    void *out = (co && ond > 0) ? fn_result_array(&res[0], odt, ond, osh) : NULL;
     if (!co || (ond > 0 && !out)) { fn_free_doubles(in, ti); if (co) fn_free_doubles(co, tc); return TSR_ENOMEM; }
+    double *own; const double *src; int64_t dims[8]; int npad;
+    rc = geom_coeffs(in, si, nd, (int)order, mode, geom_padval(idt, cval), prefilter, &own, &src, dims, &npad);
+    if (rc != 0) { fn_free_doubles(in, ti); fn_free_doubles(co, tc); return rc; }
+    int64_t istride[8]; istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * dims[d + 1];
+    geom_ax ax[8]; const geom_ax *pe[8];
+    for (int d = 0; d < nd; d++) pe[d] = &ax[d];
     double scalar = 0.0;
-    double *dst = (ond == 0) ? &scalar : out;
-    const int con = (mode == ND_CONSTANT);
-    const double *src = in; double *coeff = NULL;
-    if (order >= 2) {
-        int64_t itot = 1; for (int d = 0; d < nd; d++) itot *= si[d] > 0 ? si[d] : 0;
-        coeff = (double *)malloc((size_t)(itot > 0 ? itot : 1) * sizeof(double));
-        if (!coeff) { fn_free_doubles(in, ti); fn_free_doubles(co, tc); return TSR_ENOMEM; }
-        memcpy(coeff, in, (size_t)itot * sizeof(double));
-        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
-        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); fn_free_doubles(co, tc); return prc; }
-        src = coeff;
-    }
-    double coord[8];
     for (int64_t m = 0; m < M; m++) {
-        for (int d = 0; d < nd; d++) coord[d] = co[(int64_t)d * M + m];
-        dst[m] = geom_interp(src, si, nd, istride, coord, (int)order, mode, cval, con);
+        for (int d = 0; d < nd; d++) geom_axis(&ax[d], co[(int64_t)d * M + m], dims[d], istride[d], (int)order, mode, npad);
+        const double t = nd == 2 ? geom_sum2(src, &ax[0], &ax[1], (int)order, cval) : geom_sum(src, nd, pe, (int)order, cval);
+        if (ond == 0) scalar = t; else geom_store(out, odt, m, t);
     }
     if (ond == 0) fn_result_num(&res[0], scalar);
-    free(coeff); fn_free_doubles(in, ti); fn_free_doubles(co, tc);
+    free(own); fn_free_doubles(in, ti); fn_free_doubles(co, tc);
     return TSR_OK;
 }
 
-/* shift(input, shift, order, mode, cval): output[o] = interp(input, o - shift). order 0/1. */
-/* zoom and shift sample a grid: the coordinate along each axis depends on that axis's output index alone, so what
-   geom_interp derives from it (the cval cases, the folded coordinate, the weights and each tap's offset) is
-   computed once per index and axis; each point then sums its taps as geom_interp does, the same products in the
-   same order */
-typedef struct { int ok; double w[6]; int64_t off[6]; } zoom_ax;   /* off: tap offset, -1 outside (constant mode) */
-
-static void zoom_axis_entry(zoom_ax *z, double c, int64_t n, int64_t stride, int order, int mode, int con)
-{
-    z->ok = 0;
-    if (!isfinite(c) || n <= 0) return;
-    double cc;
-    if (con) { if (c < 0.0 || c > (double)(n - 1)) return; cc = c; }
-    else cc = map_coord(c, n, mode);
-    if (order == 0) {
-        int64_t idx = (int64_t)floor(cc + 0.5);
-        if (con) { if (idx < 0 || idx >= n) return; }
-        else { idx = bmap(idx, n, mode); if (idx < 0) idx = 0; }
-        z->off[0] = idx * stride;
-        z->ok = 1;
-        return;
-    }
-    const int64_t start = (int64_t)floor((order & 1) ? cc : cc + 0.5) - order / 2;
-    spline_weights(cc, order, z->w);
-    for (int k = 0; k <= order; k++) {
-        int64_t t = start + k;
-        if (con) z->off[k] = (t < 0 || t >= n) ? -1 : t * stride;
-        else { t = bmap(t, n, mode); if (t < 0) t = 0; z->off[k] = t * stride; }
-    }
-    z->ok = 1;
-}
-
-static void zoom_grid(const double *in, int32_t nd, const int64_t *osh, zoom_ax *const *ax, int order, double cval, double *out)
-{
-    const int nt = order + 1;
-    int64_t otot = 1;
-    for (int d = 0; d < nd; d++) otot *= osh[d];
-    if (otot <= 0) return;
-    if (nd == 2 && order > 0) {
-        int64_t o = 0;
-        for (int64_t o0 = 0; o0 < osh[0]; o0++) {
-            const zoom_ax *A = &ax[0][o0];
-            for (int64_t o1 = 0; o1 < osh[1]; o1++, o++) {
-                const zoom_ax *B = &ax[1][o1];
-                if (!A->ok || !B->ok) { out[o] = cval; continue; }
-                double acc = 0.0;
-                for (int i0 = 0; i0 < nt; i0++)
-                    for (int i1 = 0; i1 < nt; i1++) {
-                        double w = 1.0;
-                        w *= A->w[i0];
-                        w *= B->w[i1];
-                        const int oob = A->off[i0] < 0 || B->off[i1] < 0;
-                        acc += w * (oob ? cval : in[A->off[i0] + B->off[i1]]);
-                    }
-                out[o] = acc;
-            }
-        }
-        return;
-    }
-    int64_t oi[8] = {0};
-    for (int64_t o = 0; o < otot; o++) {
-        const zoom_ax *z[8];
-        int ok = 1;
-        for (int d = 0; d < nd; d++) { z[d] = &ax[d][oi[d]]; ok &= z[d]->ok; }
-        if (!ok) out[o] = cval;
-        else if (order == 0) {
-            int64_t flat = 0;
-            for (int d = 0; d < nd; d++) flat += z[d]->off[0];
-            out[o] = in[flat];
-        } else {
-            int idxc[8] = {0};
-            double acc = 0.0;
-            for (;;) {
-                double w = 1.0; int64_t flat = 0; int oob = 0;
-                for (int d = 0; d < nd; d++) {
-                    w *= z[d]->w[idxc[d]];
-                    const int64_t t = z[d]->off[idxc[d]];
-                    if (t < 0) oob = 1;
-                    if (!oob) flat += t;
-                }
-                acc += w * (oob ? cval : in[flat]);
-                int d = nd - 1; while (d >= 0) { if (++idxc[d] < nt) break; idxc[d] = 0; d--; }
-                if (d < 0) break;
-            }
-            out[o] = acc;
-        }
-        for (int d = nd - 1; d >= 0; d--) { if (++oi[d] < osh[d]) break; oi[d] = 0; }
-    }
-}
-
+/* shift(input, shift, order=3, mode='constant', cval=0.0, prefilter=True): output[o] = interp(input, o - shift). */
 static int r_shift(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -2222,52 +2361,40 @@ static int r_shift(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     const int32_t nd = args[0].arr.ndim;
     if (nd < 1 || nd > 8) { fn_set_error("shift: 1..8 dimensions"); return TSR_EDIM; }
     double sh[8]; int rc = perax_d(&args[1], nd, sh); if (rc < 0) return rc;
+    for (int d = 0; d < nd; d++) sh[d] = -sh[d];
     const int64_t order = arg_int(nargs > 2 ? &args[2] : NULL, 3);
     if (order < 0 || order > 5) { fn_set_error("shift: order must be 0..5"); return TSR_EARG; }
-    int mode; if ((rc = nd_mode(nargs > 3 ? &args[3] : NULL, &mode)) < 0) return rc;
-    const double cval = (nargs > 4 && args[4].kind == 1) ? ((args[4].flags & 1) ? (double)args[4].ival : args[4].num) : 0.0;
+    int mode; if ((rc = geom_mode(nargs > 3 ? &args[3] : NULL, ND_CONSTANT, &mode)) < 0) return rc;
+    const double cval = geom_num(nargs > 4 ? &args[4] : NULL, 0.0);
+    const int prefilter = geom_flag(nargs > 5 ? &args[5] : NULL, 1);
+    const int32_t idt = args[0].arr.dtype, odt = geom_outdt(idt);
     const int64_t *si = args[0].arr.shape;
-    int64_t istride[8], total = 1; for (int d = 0; d < nd; d++) total *= si[d] > 0 ? si[d] : 0;
-    istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
-    double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, si);
+    void *out = fn_result_array(&res[0], odt, nd, si);
     if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-    const int con = (mode == ND_CONSTANT);
-    const double *src = in; double *coeff = NULL;
-    if (order >= 2) {
-        coeff = (double *)malloc((size_t)(total > 0 ? total : 1) * sizeof(double));
-        if (!coeff) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-        memcpy(coeff, in, (size_t)total * sizeof(double));
-        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
-        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); return prc; }
-        src = coeff;
-    }
-    zoom_ax *ax[8] = {0};
-    int ok = 1;
-    for (int d = 0; d < nd && ok; d++) {
-        ax[d] = (zoom_ax *)malloc((size_t)(si[d] > 0 ? si[d] : 1) * sizeof(zoom_ax));
-        if (!ax[d]) ok = 0;
-        else for (int64_t o = 0; o < si[d]; o++) zoom_axis_entry(&ax[d][o], (double)o - sh[d], si[d], istride[d], (int)order, mode, con);
-    }
-    if (ok) zoom_grid(src, nd, si, ax, (int)order, cval, out);
-    for (int d = 0; d < nd; d++) free(ax[d]);
-    free(coeff); fn_free_doubles(in, ti);
-    return ok ? TSR_OK : TSR_ENOMEM;
+    double *own; const double *src; int64_t dims[8]; int npad;
+    rc = geom_coeffs(in, si, nd, (int)order, mode, geom_padval(idt, cval), prefilter, &own, &src, dims, &npad);
+    if (rc == 0) rc = geom_zoom_shift(src, dims, nd, npad, si, NULL, sh, 0, (int)order, mode, cval, out, odt);
+    free(own); fn_free_doubles(in, ti);
+    return rc;
 }
 
-/* affine_transform(input, matrix, offset=0, output_shape=None, order, mode, cval): output[o] = interp(input,
-   matrix @ o + offset). matrix is (nd, nd) full or (nd,) diagonal. order 0/1. */
+/* affine_transform(input, matrix, offset=0.0, output_shape=None, order=3, mode='constant', cval=0.0, prefilter=True):
+   output[o] = interp(input, matrix @ o + offset). matrix (nd, nd); (nd,) a diagonal, run as a zoom and shift the
+   way scipy does ((o + offset / m) * m); (nd, nd + 1) or (nd + 1, nd + 1) homogeneous, the offset its last column. */
 static int r_affine_transform(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[1].kind != 3) { fn_set_error("affine_transform: input and matrix arrays are required"); return TSR_EARG; }
     const int32_t nd = args[0].arr.ndim;
     if (nd < 1 || nd > 8) { fn_set_error("affine_transform: 1..8 dimensions"); return TSR_EDIM; }
-    const int mat2d = args[1].arr.ndim == 2;
+    const int32_t mnd = args[1].arr.ndim;
+    if (mnd != 1 && mnd != 2) { fn_set_error("affine_transform: no proper affine matrix provided"); return TSR_EARG; }
+    const int64_t mr = args[1].arr.shape[0], mc = mnd == 2 ? args[1].arr.shape[1] : 1;
     double off[8];
     if (nargs > 2 && args[2].kind == 3) { int rc = perax_d(&args[2], nd, off); if (rc < 0) return rc; }
-    else { const double v = (nargs > 2 && args[2].kind == 1) ? ((args[2].flags & 1) ? (double)args[2].ival : args[2].num) : 0.0; for (int d = 0; d < nd; d++) off[d] = v; }
-    int64_t osh[8]; int32_t ond = nd;
+    else { const double v = geom_num(nargs > 2 ? &args[2] : NULL, 0.0); for (int d = 0; d < nd; d++) off[d] = v; }
+    int64_t osh[8];
     if (nargs > 3 && args[3].kind == 3) {
         int64_t to; double *os = fn_arg_doubles(&args[3], &to); if (!os) return TSR_ENOMEM;
         if (to != nd) { fn_free_doubles(os, to); fn_set_error("affine_transform: output_shape must have one entry per axis"); return TSR_EARG; }
@@ -2277,50 +2404,52 @@ static int r_affine_transform(const void *ctx, const tsr_arg *args, int nargs, t
         if (tsr_shape_size(nd, osh) < 0) { fn_set_error("affine_transform: output_shape is too large"); return TSR_ENOMEM; }
     }
     else for (int d = 0; d < nd; d++) osh[d] = args[0].arr.shape[d];
-    {
-        int64_t mn = 1; for (int d = 0; d < args[1].arr.ndim; d++) mn *= args[1].arr.shape[d];
-        if (mn < (mat2d ? (int64_t)nd * nd : nd)) { fn_set_error("affine_transform: matrix must be (ndim, ndim) or (ndim,)"); return TSR_EARG; }
-    }
     const int64_t order = arg_int(nargs > 4 ? &args[4] : NULL, 3);
     if (order < 0 || order > 5) { fn_set_error("affine_transform: order must be 0..5"); return TSR_EARG; }
-    int mode; int rc = nd_mode(nargs > 5 ? &args[5] : NULL, &mode); if (rc < 0) return rc;
-    const double cval = (nargs > 6 && args[6].kind == 1) ? ((args[6].flags & 1) ? (double)args[6].ival : args[6].num) : 0.0;
-    const int64_t *si = args[0].arr.shape;
-    int64_t istride[8]; istride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
-    int64_t ostride[8], otot = 1; for (int d = 0; d < nd; d++) otot *= osh[d] > 0 ? osh[d] : 0;
-    ostride[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) ostride[d] = ostride[d + 1] * osh[d + 1];
-    int64_t ti, tm; double *in = fn_arg_doubles(&args[0], &ti);
-    double *mat = in ? fn_arg_doubles(&args[1], &tm) : NULL;
-    double *out = mat ? (double *)fn_result_array(&res[0], TSR_F64, ond, osh) : NULL;
-    if (!out) { fn_free_doubles(in, ti); if (mat) fn_free_doubles(mat, tm); return TSR_ENOMEM; }
-    const int con = (mode == ND_CONSTANT);
-    const double *insrc = in; double *coeff = NULL;
-    if (order >= 2) {
-        int64_t itot = 1; for (int d = 0; d < nd; d++) itot *= si[d] > 0 ? si[d] : 0;
-        coeff = (double *)malloc((size_t)(itot > 0 ? itot : 1) * sizeof(double));
-        if (!coeff) { fn_free_doubles(in, ti); fn_free_doubles(mat, tm); return TSR_ENOMEM; }
-        memcpy(coeff, in, (size_t)itot * sizeof(double));
-        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
-        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); fn_free_doubles(mat, tm); return prc; }
-        insrc = coeff;
-    }
-    double oc[8], coord[8];
-    for (int64_t o = 0; o < otot; o++) {
-        int64_t t = o; for (int d = 0; d < nd; d++) { oc[d] = (double)(t / ostride[d]); t %= ostride[d]; }
-        for (int i = 0; i < nd; i++) {
-            double c = off[i];
-            if (mat2d) for (int j = 0; j < nd; j++) c += mat[(int64_t)i * nd + j] * oc[j];
-            else c += mat[i] * oc[i];
-            coord[i] = c;
+    int mode; int rc = geom_mode(nargs > 5 ? &args[5] : NULL, ND_CONSTANT, &mode); if (rc < 0) return rc;
+    const double cval = geom_num(nargs > 6 ? &args[6] : NULL, 0.0);
+    const int prefilter = geom_flag(nargs > 7 ? &args[7] : NULL, 1);
+    int64_t tm; double *mat = fn_arg_doubles(&args[1], &tm); if (!mat) return TSR_ENOMEM;
+    double m[64];
+    if (mnd == 2 && mc == nd + 1 && (mr == nd || mr == nd + 1)) {
+        if (mr == nd + 1) {
+            for (int j = 0; j <= nd; j++) if (mat[(int64_t)nd * mc + j] != (j == nd ? 1.0 : 0.0)) {
+                fn_free_doubles(mat, tm); fn_set_error("affine_transform: expected a homogeneous transformation matrix (bottom row 0, ..., 0, 1)"); return TSR_EARG;
+            }
         }
-        out[o] = geom_interp(insrc, si, nd, istride, coord, (int)order, mode, cval, con);
+        for (int h = 0; h < nd; h++) { off[h] = mat[(int64_t)h * mc + nd]; for (int l = 0; l < nd; l++) m[h * nd + l] = mat[(int64_t)h * mc + l]; }
+    } else if (mnd == 2) {
+        if (mr != nd) { fn_free_doubles(mat, tm); fn_set_error("affine_transform: affine matrix has wrong number of rows"); return TSR_EARG; }
+        if (mc != nd) { fn_free_doubles(mat, tm); fn_set_error("affine_transform: affine matrix has wrong number of columns"); return TSR_EARG; }
+        for (int i = 0; i < nd * nd; i++) m[i] = mat[i];
+    } else {
+        if (mr != nd) { fn_free_doubles(mat, tm); fn_set_error("affine_transform: affine matrix has wrong number of rows"); return TSR_EARG; }
+        for (int i = 0; i < nd; i++) m[i] = mat[i];
     }
-    free(coeff); fn_free_doubles(in, ti); fn_free_doubles(mat, tm);
-    return TSR_OK;
+    fn_free_doubles(mat, tm);
+    const int32_t idt = args[0].arr.dtype, odt = geom_outdt(idt);
+    const int64_t *si = args[0].arr.shape;
+    int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
+    void *out = fn_result_array(&res[0], odt, nd, osh);
+    if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+    double *own; const double *src; int64_t dims[8]; int npad;
+    rc = geom_coeffs(in, si, nd, (int)order, mode, geom_padval(idt, cval), prefilter, &own, &src, dims, &npad);
+    if (rc == 0) {
+        if (mnd == 1) {
+            double sh[8]; for (int d = 0; d < nd; d++) sh[d] = off[d] / m[d];
+            rc = geom_zoom_shift(src, dims, nd, npad, osh, m, sh, 0, (int)order, mode, cval, out, odt);
+        } else {
+            int64_t ostr[8]; ostr[nd - 1] = 1; for (int d = nd - 2; d >= 0; d--) ostr[d] = ostr[d + 1] * osh[d + 1];
+            geom_affine(src, dims, nd, npad, osh, m, off, (int)order, mode, cval, out, odt, 0, ostr);
+        }
+    }
+    free(own); fn_free_doubles(in, ti);
+    return rc;
 }
 
-/* zoom(input, zoom, order, mode, cval): resample to round(shape*zoom); coord = o * (in-1)/(out-1) (grid_mode
-   False). order 0/1. */
+/* zoom(input, zoom, order=3, mode='constant', cval=0.0, prefilter=True, grid_mode=False): resample to
+   round(shape * zoom) (round half to even, as Python's round); the coordinate o * (in - 1) / (out - 1), or with
+   grid_mode (o + 0.5) * in / out - 0.5. A zoom of 1 on every axis with prefilter returns the input unchanged. */
 static int r_zoom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -2330,49 +2459,45 @@ static int r_zoom(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     double zm[8]; int rc = perax_d(&args[1], nd, zm); if (rc < 0) return rc;
     const int64_t order = arg_int(nargs > 2 ? &args[2] : NULL, 3);
     if (order < 0 || order > 5) { fn_set_error("zoom: order must be 0..5"); return TSR_EARG; }
-    int mode; if ((rc = nd_mode(nargs > 3 ? &args[3] : NULL, &mode)) < 0) return rc;
-    const double cval = (nargs > 4 && args[4].kind == 1) ? ((args[4].flags & 1) ? (double)args[4].ival : args[4].num) : 0.0;
+    int mode; if ((rc = geom_mode(nargs > 3 ? &args[3] : NULL, ND_CONSTANT, &mode)) < 0) return rc;
+    const double cval = geom_num(nargs > 4 ? &args[4] : NULL, 0.0);
+    const int prefilter = geom_flag(nargs > 5 ? &args[5] : NULL, 1);
+    const int grid_mode = geom_flag(nargs > 6 ? &args[6] : NULL, 0);
+    const int32_t idt = args[0].arr.dtype, odt = geom_outdt(idt);
     const int64_t *si = args[0].arr.shape;
-    int64_t osh[8], otot = 1; double scale[8];
+    int64_t osh[8], otot = 1; int ones = 1;
     for (int d = 0; d < nd; d++) {
-        const double o = floor((double)si[d] * zm[d] + 0.5);
-        if (!(o < 4294967296.0)) { fn_set_error("zoom: the output shape is too large"); return o != o ? TSR_EARG : TSR_ENOMEM; }   /* NaN too */
-        osh[d] = o < 1.0 ? 1 : (int64_t)o;
-        if (osh[d] > INT64_MAX / otot) { fn_set_error("zoom: the output shape is too large"); return TSR_ENOMEM; }
-        otot *= osh[d]; scale[d] = osh[d] > 1 ? (double)(si[d] - 1) / (double)(osh[d] - 1) : 0.0;
+        const double o = nearbyint((double)si[d] * zm[d]);
+        if (!(o >= 0.0)) { fn_set_error("zoom: the output shape must not be negative"); return TSR_EARG; }   /* NaN too */
+        if (!(o < 4294967296.0)) { fn_set_error("zoom: the output shape is too large"); return TSR_ENOMEM; }
+        osh[d] = (int64_t)o;
+        if (osh[d] > 0 && otot > INT64_MAX / osh[d]) { fn_set_error("zoom: the output shape is too large"); return TSR_ENOMEM; }
+        otot *= osh[d];
+        ones &= zm[d] == 1.0;
     }
-    int64_t istride[8]; istride[nd - 1] = 1;
-    for (int d = nd - 2; d >= 0; d--) istride[d] = istride[d + 1] * si[d + 1];
+    double z[8];
+    for (int d = 0; d < nd; d++) {
+        const int64_t div = grid_mode ? osh[d] : osh[d] - 1, nom = grid_mode ? si[d] : si[d] - 1;
+        z[d] = div != 0 ? (double)nom / (double)div : 1.0;
+    }
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
-    double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, osh);
+    void *out = fn_result_array(&res[0], odt, nd, osh);
     if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-    const int con = (mode == ND_CONSTANT);
-    const double *src = in; double *coeff = NULL;
-    if (order >= 2) {
-        int64_t itot = 1; for (int d = 0; d < nd; d++) itot *= si[d] > 0 ? si[d] : 0;
-        coeff = (double *)malloc((size_t)(itot > 0 ? itot : 1) * sizeof(double));
-        if (!coeff) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-        memcpy(coeff, in, (size_t)itot * sizeof(double));
-        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
-        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); return prc; }
-        src = coeff;
+    if (ones && prefilter) {
+        for (int64_t i = 0; i < otot; i++) geom_store(out, odt, i, in[i]);
+        fn_free_doubles(in, ti);
+        return TSR_OK;
     }
-    zoom_ax *ax[8] = {0};
-    int ok = 1;
-    for (int d = 0; d < nd && ok; d++) {
-        ax[d] = (zoom_ax *)malloc((size_t)(osh[d] > 0 ? osh[d] : 1) * sizeof(zoom_ax));
-        if (!ax[d]) ok = 0;
-        else for (int64_t o = 0; o < osh[d]; o++) zoom_axis_entry(&ax[d][o], (double)o * scale[d], si[d], istride[d], (int)order, mode, con);
-    }
-    if (ok) zoom_grid(src, nd, osh, ax, (int)order, cval, out);
-    for (int d = 0; d < nd; d++) free(ax[d]);
-    free(coeff); fn_free_doubles(in, ti);
-    return ok ? TSR_OK : TSR_ENOMEM;
+    double *own; const double *src; int64_t dims[8]; int npad;
+    rc = geom_coeffs(in, si, nd, (int)order, mode, geom_padval(idt, cval), prefilter, &own, &src, dims, &npad);
+    if (rc == 0) rc = geom_zoom_shift(src, dims, nd, npad, osh, z, NULL, grid_mode, (int)order, mode, cval, out, odt);
+    free(own); fn_free_doubles(in, ti);
+    return rc;
 }
 
-/* rotate(input, angle, axes=(1,0), reshape=True, order, mode, cval): rotate in the plane of two axes by `angle`
-   degrees. Builds scipy's rotation matrix [[c,s],[-s,c]], the reshaped output plane, and the centre offset, then
-   interpolates (order 0/1). Axes outside the plane pass through. */
+/* rotate(input, angle, axes=(1,0), reshape=True, order=3, mode='constant', cval=0.0, prefilter=True): rotate in the
+   plane of two axes by `angle` degrees, as scipy: the matrix [[c, s], [-s, c]] (cosdg, sindg), the reshaped
+   output plane and the centre offset, then an affine transform of each plane (prefiltered as a 2-D array). */
 static int r_rotate(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
@@ -2389,11 +2514,12 @@ static int r_rotate(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     if (a0 < 0) a0 += nd; if (a1 < 0) a1 += nd;
     if (a0 > a1) { int t = a0; a0 = a1; a1 = t; }
     if (a0 < 0 || a1 >= nd || a0 == a1) { fn_set_error("rotate: axes are out of range"); return TSR_EARG; }
-    const int reshape = !(nargs > 3 && args[3].kind == 4 && args[3].num == 0.0);
+    const int reshape = geom_flag(nargs > 3 ? &args[3] : NULL, 1);
     const int64_t order = arg_int(nargs > 4 ? &args[4] : NULL, 3);
     if (order < 0 || order > 5) { fn_set_error("rotate: order must be 0..5"); return TSR_EARG; }
-    int mode; int rc = nd_mode(nargs > 5 ? &args[5] : NULL, &mode); if (rc < 0) return rc;
-    const double cval = (nargs > 6 && args[6].kind == 1) ? ((args[6].flags & 1) ? (double)args[6].ival : args[6].num) : 0.0;
+    int mode; int rc = geom_mode(nargs > 5 ? &args[5] : NULL, ND_CONSTANT, &mode); if (rc < 0) return rc;
+    const double cval = geom_num(nargs > 6 ? &args[6] : NULL, 0.0);
+    const int prefilter = geom_flag(nargs > 7 ? &args[7] : NULL, 1);
     double c, s; tsr_special_cosdg(NULL, &angle, &c); tsr_special_sindg(NULL, &angle, &s);
     const int64_t *si = args[0].arr.shape;
     const double iy = (double)si[a0], ix = (double)si[a1];
@@ -2407,41 +2533,38 @@ static int r_rotate(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
         }
         op0 = fn_dbl_i64(y1 - y0 + 0.5, 0); op1 = fn_dbl_i64(x1 - x0 + 0.5, 0);   /* a NaN angle leaves the extent undefined */
         if (op0 > ((int64_t)1 << 32) || op1 > ((int64_t)1 << 32)) { fn_set_error("rotate: the output shape is too large"); return TSR_ENOMEM; }
+        if (op0 < 0) op0 = 0; if (op1 < 0) op1 = 0;
     } else { op0 = si[a0]; op1 = si[a1]; }
-    if (op0 < 1) op0 = 1; if (op1 < 1) op1 = 1;
     const double ocy = ((double)op0 - 1) / 2.0, ocx = ((double)op1 - 1) / 2.0;
-    const double off0 = (iy - 1) / 2.0 - (c * ocy + s * ocx);
-    const double off1 = (ix - 1) / 2.0 - (-s * ocy + c * ocx);
+    const double m[4] = { c, s, -s, c };
+    const double off[2] = { (iy - 1) / 2.0 - (c * ocy + s * ocx), (ix - 1) / 2.0 - (-s * ocy + c * ocx) };
     int64_t osh[8]; for (int d = 0; d < nd; d++) osh[d] = si[d];
     osh[a0] = op0; osh[a1] = op1;
-    int64_t istride[8], ostride[8], otot = 1;
-    for (int d = 0; d < nd; d++) otot *= osh[d] > 0 ? osh[d] : 0;
+    const int32_t idt = args[0].arr.dtype, odt = geom_outdt(idt);
+    int64_t istride[8], ostride[8];
     istride[nd - 1] = 1; ostride[nd - 1] = 1;
     for (int d = nd - 2; d >= 0; d--) { istride[d] = istride[d + 1] * si[d + 1]; ostride[d] = ostride[d + 1] * osh[d + 1]; }
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
-    double *out = (double *)fn_result_array(&res[0], TSR_F64, nd, osh);
+    void *out = fn_result_array(&res[0], odt, nd, osh);
     if (!out) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-    const int con = (mode == ND_CONSTANT);
-    const double *src = in; double *coeff = NULL;
-    if (order >= 2) {
-        int64_t itot = 1; for (int d = 0; d < nd; d++) itot *= si[d] > 0 ? si[d] : 0;
-        coeff = (double *)malloc((size_t)(itot > 0 ? itot : 1) * sizeof(double));
-        if (!coeff) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
-        memcpy(coeff, in, (size_t)itot * sizeof(double));
-        const int prc = spline_prefilter_nd(coeff, si, nd, (int)order, mode);
-        if (prc != 0) { free(coeff); fn_free_doubles(in, ti); return prc; }
-        src = coeff;
+    int64_t nplanes = 1; for (int d = 0; d < nd; d++) if (d != a0 && d != a1) nplanes *= si[d] > 0 ? si[d] : 0;
+    const int64_t psh[2] = { si[a0], si[a1] }, posh[2] = { op0, op1 }, postr[2] = { ostride[a0], ostride[a1] };
+    double *plane = (double *)malloc((size_t)(psh[0] * psh[1] > 0 ? psh[0] * psh[1] : 1) * sizeof(double));
+    if (!plane) { fn_free_doubles(in, ti); return TSR_ENOMEM; }
+    int64_t pi[8] = {0};                                   /* the plane's index along the other axes */
+    for (int64_t p = 0; p < nplanes && rc == 0; p++) {
+        int64_t ib = 0, ob = 0;
+        for (int d = 0; d < nd; d++) if (d != a0 && d != a1) { ib += pi[d] * istride[d]; ob += pi[d] * ostride[d]; }
+        for (int64_t y = 0; y < psh[0]; y++)
+            for (int64_t x = 0; x < psh[1]; x++) plane[y * psh[1] + x] = in[ib + y * istride[a0] + x * istride[a1]];
+        double *own; const double *src; int64_t dims[2]; int npad;
+        rc = geom_coeffs(plane, psh, 2, (int)order, mode, geom_padval(idt, cval), prefilter, &own, &src, dims, &npad);
+        if (rc == 0) geom_affine(src, dims, 2, npad, posh, m, off, (int)order, mode, cval, out, odt, ob, postr);
+        free(own);
+        for (int d = nd - 1; d >= 0; d--) { if (d == a0 || d == a1) continue; if (++pi[d] < si[d]) break; pi[d] = 0; }
     }
-    double oc[8], coord[8];
-    for (int64_t o = 0; o < otot; o++) {
-        int64_t t = o; for (int d = 0; d < nd; d++) { oc[d] = (double)(t / ostride[d]); t %= ostride[d]; }
-        for (int d = 0; d < nd; d++) coord[d] = oc[d];
-        coord[a0] = c * oc[a0] + s * oc[a1] + off0;
-        coord[a1] = -s * oc[a0] + c * oc[a1] + off1;
-        out[o] = geom_interp(src, si, nd, istride, coord, (int)order, mode, cval, con);
-    }
-    free(coeff); fn_free_doubles(in, ti);
-    return TSR_OK;
+    free(plane); fn_free_doubles(in, ti);
+    return rc;
 }
 
 /* correlate: full n-D correlation with a weights array. out[i] = sum_j w[j] * ext(i + j - center - origin),
@@ -2500,7 +2623,7 @@ static int r_spline_filter1d(const void *ctx, const tsr_arg *args, int nargs, ts
     if (order < 0 || order > 5) { fn_set_error("spline_filter1d: order must be 0..5"); return TSR_EARG; }
     int64_t ax = arg_int(nargs > 2 ? &args[2] : NULL, -1); if (ax < 0) ax += nd;
     if (ax < 0 || ax >= nd) { fn_set_error("spline_filter1d: axis out of range"); return TSR_EARG; }
-    int mode; int rc = nd_mode(nargs > 3 ? &args[3] : NULL, &mode); if (rc < 0) return rc;
+    int mode; int rc = geom_mode(nargs > 3 ? &args[3] : NULL, ND_MIRROR, &mode); if (rc < 0) return rc;
     const int64_t *si = args[0].arr.shape;
     int64_t total = 1; for (int d = 0; d < nd; d++) total *= si[d] > 0 ? si[d] : 0;
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
@@ -2521,7 +2644,7 @@ static int r_spline_filter(const void *ctx, const tsr_arg *args, int nargs, tsr_
     if (nd < 1 || nd > 8) { fn_set_error("spline_filter: 1..8 dimensions"); return TSR_EDIM; }
     const int64_t order = arg_int(nargs > 1 ? &args[1] : NULL, 3);
     if (order < 0 || order > 5) { fn_set_error("spline_filter: order must be 0..5"); return TSR_EARG; }
-    int mode; int rc = nd_mode(nargs > 2 ? &args[2] : NULL, &mode); if (rc < 0) return rc;
+    int mode; int rc = geom_mode(nargs > 2 ? &args[2] : NULL, ND_MIRROR, &mode); if (rc < 0) return rc;
     const int64_t *si = args[0].arr.shape;
     int64_t total = 1; for (int d = 0; d < nd; d++) total *= si[d] > 0 ? si[d] : 0;
     int64_t ti; double *in = fn_arg_doubles(&args[0], &ti); if (!in) return TSR_ENOMEM;
@@ -2712,11 +2835,11 @@ static const fn_def DEFS[] = {
     ROUTINE("ndimage.distance_transform_edt", 1, "input, sampling=None", "out", r_distance_edt, NULL, "Exact Euclidean distance to the nearest zero (scipy.ndimage.distance_transform_edt)."),
     ROUTINE("ndimage.distance_transform_bf", 1, "input, metric='euclidean', sampling=None", "out", r_distance_bf, NULL, "Brute-force distance to the nearest zero, any metric (scipy.ndimage.distance_transform_bf)."),
     ROUTINE("ndimage.distance_transform_cdt", 1, "input, metric='chessboard'", "out", r_distance_cdt, NULL, "Chamfer (chessboard/taxicab) distance to the nearest zero (scipy.ndimage.distance_transform_cdt)."),
-    ROUTINE("ndimage.map_coordinates", 1, "input, coordinates, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_map_coordinates, NULL, "Interpolate an array at given coordinates, order 0/1 (scipy.ndimage.map_coordinates)."),
-    ROUTINE("ndimage.shift", 1, "input, shift, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_shift, NULL, "Shift an array by interpolation, order 0/1 (scipy.ndimage.shift)."),
-    ROUTINE("ndimage.affine_transform", 1, "input, matrix, offset=0.0, output_shape=None, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_affine_transform, NULL, "Apply an affine transform by interpolation, order 0/1 (scipy.ndimage.affine_transform)."),
-    ROUTINE("ndimage.zoom", 1, "input, zoom, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_zoom, NULL, "Resample an array by a zoom factor, order 0/1 (scipy.ndimage.zoom)."),
-    ROUTINE("ndimage.rotate", 1, "input, angle, axes=None, reshape=True, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_rotate, NULL, "Rotate an array in a plane by interpolation, order 0/1 (scipy.ndimage.rotate)."),
+    ROUTINE("ndimage.map_coordinates", 1, "input, coordinates, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_map_coordinates, NULL, "Interpolate an array at given coordinates by B-splines of order 0..5 (scipy.ndimage.map_coordinates)."),
+    ROUTINE("ndimage.shift", 1, "input, shift, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_shift, NULL, "Shift an array by B-spline interpolation of order 0..5 (scipy.ndimage.shift)."),
+    ROUTINE("ndimage.affine_transform", 1, "input, matrix, offset=0.0, output_shape=None, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_affine_transform, NULL, "Apply an affine transform by B-spline interpolation of order 0..5 (scipy.ndimage.affine_transform)."),
+    ROUTINE("ndimage.zoom", 1, "input, zoom, order=3, mode='constant', cval=0.0, prefilter=True, grid_mode=False", "out", r_zoom, NULL, "Resample an array by a zoom factor with B-spline interpolation of order 0..5 (scipy.ndimage.zoom)."),
+    ROUTINE("ndimage.rotate", 1, "input, angle, axes=None, reshape=True, order=3, mode='constant', cval=0.0, prefilter=True", "out", r_rotate, NULL, "Rotate an array in a plane by B-spline interpolation of order 0..5 (scipy.ndimage.rotate)."),
     ROUTINE("ndimage.spline_filter1d", 1, "input, order=3, axis=-1, mode='mirror'", "out", r_spline_filter1d, NULL, "1-D B-spline prefilter along an axis (scipy.ndimage.spline_filter1d)."),
     ROUTINE("ndimage.spline_filter", 1, "input, order=3, mode='mirror'", "out", r_spline_filter, NULL, "N-D B-spline prefilter over all axes (scipy.ndimage.spline_filter)."),
     ROUTINE("ndimage.mean", 1, "input, labels=None, index=None", "out", r_measure, &MEAS_MEAN, "Mean of array values over labeled regions (scipy.ndimage.mean)."),

@@ -9,6 +9,19 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Changed
 
+- **`minimize` with methods 'TNC' and 'Newton-CG' runs SciPy's algorithms** (approved by DJ, 15 Nov; their results
+  change to SciPy's). 'TNC' is a port of the C code SciPy wraps (Nash's truncated Newton, scipy/optimize/tnc/tnc.c)
+  with SciPy's defaults, return codes and messages, including the scaling to the bounds, the preconditioned CG
+  direction, Gill and Murray's line search, `maxfun` and SciPy's forward-difference gradient when none is given;
+  `minimize` takes variables fixed by equal bounds out of the problem as SciPy's does. It was Tessero's own
+  truncated Newton (on a 10,000 x 50 logistic regression it ran 800 iterations without converging, 5.4 s; now 12
+  iterations, as SciPy, 0.14 to 0.16 s against SciPy's 0.06 s). 'Newton-CG' follows SciPy's code with its line
+  search (MINPACK's dcsrch, then scalar_search_wolfe2) and no longer evaluates the objective at every
+  Hessian-vector product. On objectives whose arithmetic is the same in PHP and Python both return SciPy's iterates
+  and results bit for bit (16 test problems). New TNC options: `eps`, `scale`, `offset`, `maxCGit`, `maxfun`,
+  `eta`, `stepmx`, `accuracy`, `minfev`, `ftol`, `xtol`, `rescale`; Newton-CG takes `eps`, `c1` and `c2`.
+  `nfev` and `njev` count the evaluations Tessero makes, which can be fewer than SciPy's.
+
 - **SciPy's own algorithms for `quad` and the special-function zeros** (their values now follow SciPy's, from the
   same steps):
   - `integrate.quad` is QUADPACK's DQAGSE, ported step for step from SciPy's C translation: the 10-21 Gauss-Kronrod
@@ -37,9 +50,9 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
     cannot be estimated is all `INF`, as in SciPy. New: `fullOutput: true` returns
     `[popt, pcov, infodict (nfev, fvec), mesg, ier]`, and xdata given as an NDArray (either backend) calls the model on
     the whole array, as SciPy does (`f(NDArray $x, float ...$p)`), the data staying in the kernel; such a model gets a
-    Jacobian's n evaluations in one call (x as a column, the parameters as rows) when that gives the same bits as n
-    calls, checked once per fit. The 1,000-point exponential fit: 5.0 ms before, about 0.6 ms with an array model
-    through the extension (SciPy 0.61 ms), 1.4 ms through FFI, 1.8 to 2.6 ms with a per-point model.
+    Jacobian's n evaluations in one call (x as a row (1, m), the parameters as columns (n, 1)) when that gives the
+    same bits as n calls, checked once per fit. The 1,000-point exponential fit: 5.0 ms before, 0.44 ms with an array
+    model through the extension (SciPy 0.55 ms), 1.1 ms through FFI, 1.8 to 2.6 ms with a per-point model.
   - `optimize.leastsq` (`LeastSquares::solve`) and `optimize.least_squares` (`LeastSquares::leastSquares`) run the
     same MINPACK code (approved by DJ, 14 Nov; the results' last bits change). `solve` runs `lmdif`, or `lmder`
     when given `jac`, as `leastsq` does with and without `Dfun`. It now takes leastsq's defaults (`ftol` =
@@ -368,6 +381,21 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`ndimage.map_coordinates`, `shift`, `zoom`, `affine_transform` and `rotate` return SciPy's values in every
+  boundary mode** (approved by DJ, 15 Nov). At the B-spline orders (2 to 5) they matched SciPy only in 'mirror' and
+  'reflect'; in 'constant' (the default), 'nearest' and 'wrap' they were off by up to 0.2 to 0.4 on data in [0, 1],
+  and `prefilter=False` was ignored. They now run SciPy's code (ni_interpolation.c, ni_splines.c): the prefilter
+  only with `prefilter` true, on the input padded by 12 for 'nearest' and 'grid-constant'; the coordinate folding
+  of each mode; the taps past an edge folded as SciPy does (mirrored for 'constant' and 'wrap'); the products in
+  SciPy's order; and the result in the input's dtype (integers rounded and clipped as SciPy stores them; they were
+  float64). New: the modes 'grid-constant', 'grid-wrap' and 'grid-mirror', homogeneous `affine_transform`
+  matrices ((n, n + 1) and (n + 1, n + 1)), `zoom`'s `grid_mode`, zoom's output shape rounded half to even as
+  Python's `round`, and `rotate` of 3-D and higher arrays prefiltering each plane as SciPy does.
+  `spline_filter` and `spline_filter1d` start the 'reflect' and 'nearest' recursions as SciPy's code does (a
+  last-bits change) and take the grid modes. Checked byte for byte against SciPy 1.17.1 on 882 calls (every mode,
+  orders 0 to 5, with and without the prefilter, 1-D to 3-D, int32, int64, uint8, float32 and bool input): 872
+  identical in dtype, shape and bytes; the other 10 are bool results from a `cval` outside [0, 1], where SciPy
+  writes the truncated value into the bool byte (2 or 253) and Tessero writes 1 -- the same truth values.
 - **Extension: a malformed array result is freed once.** `tsr_ndarray_adopt` frees the kernel's block itself when
   it refuses an array (more than 32 dimensions), and its caller then freed it again. The kernel never returns such
   a result, so this could not happen in practice. The caller no longer frees it, and adopt's comment states the
