@@ -516,10 +516,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
   average of 8 to 26), each function keeping its best time on each side. Tessero's times fell to 0.89 of the
   2026-11-09 times and SciPy's to 0.98; the one kernel change to these loops in between is that an element-wise loop
   on one thread no longer runs inside an OpenMP parallel region (commit c5ae8bd3).
-- Results unchanged: since 2026-11-09 every speed change is also checked byte for byte with
-  `tools/parity/run-tests.php --hash`, which records a hash of the raw bytes of every fixture call's result (arrays by
-  dtype, shape and bytes, so NaN sign and payload bits count; floats by their bits; exceptions by class and message),
-  47,869 results, on the code before and after the change: every hash is the same.
+- Results unchanged: since 2026-11-09 every speed change is also checked against the parity suite's recorded
+  results (`tools/parity/run-tests.php --hash`), 47,869 results, on the code before and after the change: none
+  changed.
 - Every tier re-timed on 2026-11-15 at commit 56102533 (the build deployed that day), for all the tables on this
   page: four rounds, each running in turn the gate bench of [benchmarks](benchmarks.md) (`bench/run.php`, then
   `bench/numpy_bench.py`), tier 1, tier 2, and tier 3 through FFI, through the extension and in NumPy/SciPy,

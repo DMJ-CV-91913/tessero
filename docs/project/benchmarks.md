@@ -199,7 +199,7 @@ Intel's x86-simd-sort vector quicksort):
 `sortSimd()` also uses the threads set with `Tessero::setThreads()` (extension: `Engine::setMaxThreads()` or
 the `tessero.threads` ini setting) for arrays of 131,072 values or more; NumPy's sort is single-threaded. The
 partitions near the top of the sort become tasks for the other threads, and the pivots do not depend on the thread
-count, so the output is the one-thread output, byte for byte (tested at 1 and 4 threads). Random values, same
+count, so the output is the one-thread output (tested at 1 and 4 threads). Random values, same
 machine (4 cores, 8 hardware threads; a separate benchmark occupied one core during these runs):
 
 | dtype, 1,000,000 values | NumPy | sortSimd 1 thread | 2 threads | 4 threads |
