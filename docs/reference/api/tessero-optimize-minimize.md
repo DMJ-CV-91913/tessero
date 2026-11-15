@@ -11,6 +11,9 @@ objective written as a plain PHP callable over list<float>.
                recursion; converges to the same KKT point as the Fortran code,
                intermediate iterates differ)
   Nelder-Mead  a line-by-line port of scipy's simplex (same iterates)
+  Newton-CG    scipy's algorithm step for step (conjugate-gradient inner
+               solve, line search by MINPACK's dcsrch with the wolfe2 fallback)
+  TNC          a port of the C code scipy wraps (same iterates)
 
 Gradients default to scipy's 2-point finite differences.
 
@@ -140,8 +143,9 @@ exactly as scipy's fmin_slsqp. Returns the minimiser x.
 static fminTnc(callable $func, array $x0, ?callable $fprime = null, ?array $bounds = null): array
 ```
 
-scipy.optimize.fmin_tnc: bound-constrained minimisation by a truncated-Newton algorithm. Returns the
-minimiser x (scipy returns (x, nfeval, rc); here we return x only, matching the other fmin_* wrappers).
+scipy.optimize.fmin_tnc: bound-constrained minimisation by a truncated-Newton algorithm (TNC, called
+directly as scipy does: no removal of variables fixed by their bounds). Returns the minimiser x (scipy
+returns (x, nfeval, rc); here we return x only, matching the other fmin_* wrappers).
 
 ### fminbound
 

@@ -179,8 +179,8 @@ counts are in `tools/parity/usage.json`).
 | scipy.spatial.cKDTree build 100,000 x 3 | distance | 27.5 | 28.4 | 30.8 |
 | scipy.spatial.cKDTree query 1,000 points, k=5 | distance | 2.02 | 2.55 | 3.28 |
 | logistic regression, L-BFGS-B, 10,000 x 50 | optimize | 21.2 | 59.2 | 81.7 |
-| logistic regression, Newton-CG, 10,000 x 50 | optimize | 3867 | 4382 | 5318 |
-| logistic regression, TNC, 10,000 x 50 | optimize | 62.6 | 5934 | 5423 |
+| logistic regression, Newton-CG, 10,000 x 50 | optimize | 3544 | 3307 | 3614 |
+| logistic regression, TNC, 10,000 x 50 | optimize | 60.6 | 141 | 156 |
 | scipy.special.expit 1M | special | 7.64 | 9.87 | 10.5 |
 | scipy.special.logsumexp 1M | special | 16.9 | 8.70 | 8.37 |
 | scipy.stats.norm.logpdf 1M | distributions | 24.1 | 18.5 | 18.8 |
@@ -201,15 +201,19 @@ both. Large dense linear algebra runs in OpenBLAS and LAPACK on both sides and i
 (1.1 to 1.2x). `pdist` and `cdist` take about 1.5x SciPy's time. The logistic regression minimizes the mean log-loss
 with its gradient, both evaluated with array operations each iteration. With L-BFGS-B both sides stop by their
 convergence tests (25 iterations in Tessero at a loss of 6.2e-5, 26 in SciPy at 1.9e-5); Tessero's extra time is in
-evaluating the objective and the gradient from PHP. With Newton-CG, Tessero needs 1,429 function evaluations where
-SciPy needs 20, and stops at a higher loss (1.4e-4 against 6.1e-5). With TNC, Tessero stops after 800 iterations at
-a higher loss (2.2e-4) where SciPy converges in 12 (8.0e-5). Those two rows therefore compare unlike work: both are
-open gaps in Tessero's implementations of those methods.
+evaluating the objective and the gradient from PHP. Newton-CG and TNC now run SciPy's algorithms step for step
+(Newton-CG as SciPy's code, with its line search; TNC as a port of the C code SciPy wraps): TNC stops after 12
+iterations on both sides at a loss of 8.0e-5, Newton-CG after 17 iterations in Tessero (9.9e-5) and 18 in SciPy
+(6.1e-5). On this separable problem Newton-CG's end point depends on the last bits of the gradient: SciPy itself
+stops after 15 iterations at 2.3e-4 when its gradient multiplies by a transposed copy of the matrix instead of the
+transposed view. On objectives that round the same way in PHP and Python, both methods return exactly SciPy's
+iterates and results. TNC takes 2.3 to 2.6x SciPy's time, for the same reason as L-BFGS-B; Newton-CG is on a par.
 
 Conditions: timed on 2026-11-15 (08:39 to 08:47 UTC) at commit 56102533, after the sweep: four alternating rounds of
 FFI, the extension and NumPy/SciPy for `bench/ml_bench.php` and `bench/ml_bench.py`, single-threaded
 (`OPENBLAS_NUM_THREADS=1`), at a load average of 5 to 13; each case keeps its best time on each side. The other
-per-call rows are the sweep's.
+per-call rows are the sweep's. The Newton-CG and TNC rows were timed again after their ports (14:40 to 14:42 UTC,
+the same data and library, three alternating rounds, load 7 to 8).
 
 ## Fixed during the sweep
 
@@ -243,6 +247,14 @@ byte for byte unless the row says otherwise.
 One change made a case slower: `optimize.least_squares` (method 'lm', the Rosenbrock residuals) now runs MINPACK's
 `lmder` with SciPy's 2-point differences, as SciPy does, and returns SciPy's results bit for bit; it takes 0.76 ms
 instead of 0.31 ms, against SciPy's 5.8 ms.
+
+After the classical machine learning timing, `minimize` with method 'TNC' became a port of the TNC code SciPy wraps
+(it was Tessero's own truncated Newton, which on the logistic regression ran 800 iterations without converging), and
+method 'Newton-CG' follows SciPy's code step for step, its line search included (MINPACK's `dcsrch`, then
+`scalar_search_wolfe2`); `fmin_tnc` and `fmin_ncg` with them. Both now return SciPy's results, which changes their
+answers. The logistic regression at 10,000 x 50 (see the classical machine learning section): TNC 5,934 ms through
+the extension and 5,423 ms through FFI before, 141 and 156 ms after, against SciPy's 61 ms; Newton-CG 4,382 and
+5,318 ms before, 3,307 and 3,614 ms after, against SciPy's 3,544 ms.
 
 Earlier changes, 2026-11-06 to 2026-11-13 (each row's before and after timed together; the first rows are the quick
 gaps, closed the day of the first sweep; results unchanged, checked by parity):

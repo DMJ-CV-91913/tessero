@@ -16,6 +16,9 @@ use Tessero\Exceptions\TesseroException;
  *                recursion; converges to the same KKT point as the Fortran code,
  *                intermediate iterates differ)
  *   Nelder-Mead  a line-by-line port of scipy's simplex (same iterates)
+ *   Newton-CG    scipy's algorithm step for step (conjugate-gradient inner
+ *                solve, line search by MINPACK's dcsrch with the wolfe2 fallback)
+ *   TNC          a port of the C code scipy wraps (same iterates)
  *
  * Gradients default to scipy's 2-point finite differences.
  */
@@ -128,8 +131,9 @@ final class Minimize
     }
 
     /**
-     * scipy.optimize.fmin_tnc: bound-constrained minimisation by a truncated-Newton algorithm. Returns the
-     * minimiser x (scipy returns (x, nfeval, rc); here we return x only, matching the other fmin_* wrappers).
+     * scipy.optimize.fmin_tnc: bound-constrained minimisation by a truncated-Newton algorithm (TNC, called
+     * directly as scipy does: no removal of variables fixed by their bounds). Returns the minimiser x (scipy
+     * returns (x, nfeval, rc); here we return x only, matching the other fmin_* wrappers).
      *
      * @param callable(list<float>): float $func
      * @param list<float> $x0
@@ -138,7 +142,12 @@ final class Minimize
      */
     public static function fminTnc(callable $func, array $x0, ?callable $fprime = null, ?array $bounds = null): array
     {
-        return self::minimize($func, $x0, $fprime, 'TNC', $bounds)->x;
+        $x0 = array_map('floatval', array_values($x0));
+        if ($x0 === []) {
+            throw new TesseroException('fmin_tnc: x0 must not be empty.');
+        }
+
+        return (new self($func, $fprime))->tnc($x0, $bounds, [])->x;
     }
 
     /**
@@ -308,7 +317,7 @@ final class Minimize
             'CG' => $self->cg($x0, $options),
             'POWELL' => $self->powell($x0, $options),
             'NEWTON-CG', 'NEWTONCG' => $self->newtonCg($x0, $options),
-            'TNC' => $self->tnc($x0, $bounds, $options),
+            'TNC' => $self->tncBounded($x0, $bounds, $options),
             'SLSQP' => $self->slsqp($x0, $bounds, $options),
             'COBYLA' => $self->cobyla($x0, $options),
             'DOGLEG' => $self->trustRegion($x0, $options, 'dogleg'),
@@ -913,29 +922,39 @@ final class Minimize
 
     // ------------------------------------------------------------------ Newton-CG (truncated Newton)
 
+    /**
+     * scipy.optimize.minimize(method='Newton-CG'), following scipy's _minimize_newtoncg: conjugate gradients
+     * on H p = -g (Hessian-vector products from `hessp`, or a forward difference of the gradient with step
+     * `eps`), then scipy's _line_search_wolfe12: MINPACK's dcsrch, and scalar_search_wolfe2 if that fails.
+     * The difference quotient reuses the gradient at x (scipy evaluates it again), and the gradient at the
+     * accepted step is kept for the next iteration.
+     */
     private function newtonCg(array $x, array $o): OptimizeResult
     {
         $n = count($x);
         $hessp = $o['hessp'] ?? null;
-        $xtol = (float) ($o['xtol'] ?? 1e-5);
+        $xtol = $n * (float) ($o['xtol'] ?? 1e-5);
         $maxiter = (int) ($o['maxiter'] ?? 200 * $n);
+        $eps = (float) ($o['eps'] ?? 1.4901161193847656e-08);
+        $c1 = (float) ($o['c1'] ?? 1e-4);
+        $c2 = (float) ($o['c2'] ?? 0.9);
         $cgMax = 20 * $n;
-        $xtolEff = $n * $xtol;
-        $eps = 1.4901161193847656e-08;
         $f64eps = 2.220446049250313e-16;
         $updateL1 = PHP_FLOAT_MAX;
         $f = $this->f($x);
         $oldOld = null;
+        $gfk = null;
+        $gNext = null;
         $k = 0;
         $warn = 0;
         $msg = 'Optimization terminated successfully.';
-        while ($updateL1 > $xtolEff) {
+        while ($updateL1 > $xtol) {
             if ($k >= $maxiter) {
                 $warn = 1;
-                $msg = 'Maximum number of iterations has been exceeded.';
+                $msg = 'Warning: Maximum number of iterations has been exceeded.';
                 break;
             }
-            $g0 = $this->g($x, $f);
+            $g0 = $gNext ?? $this->g($x, $f);
             $b = self::neg($g0);
             $maggrad = self::l1($b);
             $eta = min(0.5, sqrt($maggrad));
@@ -955,7 +974,7 @@ final class Minimize
                     $Ap = array_map('floatval', array_values(($hessp)($x, $psupi)));
                 } else {
                     $x1 = self::axpy($eps, $psupi, $x);
-                    $g1 = $this->g($x1, $this->f($x1));
+                    $g1 = $this->g($x1);
                     $Ap = [];
                     for ($t = 0; $t < $n; $t++) {
                         $Ap[$t] = ($g1[$t] - $g0[$t]) / $eps;
@@ -985,19 +1004,19 @@ final class Minimize
                 $dri0 = $dri1;
             }
             if (! $cgConverged) {
-                $warn = 2;
-                $msg = 'Warning: CG iterations did not converge.';
+                $warn = 3;
+                $msg = "Warning: CG iterations didn't converge. The Hessian is not positive definite.";
                 break;
             }
             $pk = $xsupi;
-            $gfk = self::neg($b);
-            $ls = $this->wolfe($x, $pk, $f, $oldOld ?? ($f + self::norm2($gfk) / 2), $gfk, 1e-4, 0.9);
+            $gfk = $g0;
+            $ls = $this->wolfe12($x, $pk, $f, $oldOld, $gfk, $c1, $c2);
             if ($ls === null) {
                 $warn = 2;
-                $msg = 'Line search failed.';
+                $msg = 'Warning: Desired error not necessarily achieved due to precision loss.';
                 break;
             }
-            [$alphak, $fNew] = $ls;
+            [$alphak, $fNew, $gNext] = $ls;
             $oldOld = $f;
             $f = $fNew;
             $update = self::scale($alphak, $pk);
@@ -1005,8 +1024,242 @@ final class Minimize
             $k++;
             $updateL1 = self::l1($update);
         }
+        if ($warn === 0 && (is_nan($f) || is_nan($updateL1))) {
+            $warn = 3;
+            $msg = 'NaN result encountered.';
+        }
 
-        return new OptimizeResult($x, $f, $warn === 0, $warn, $msg, $k, $this->nfev, $this->njev, null, null, 'Newton-CG');
+        return new OptimizeResult($x, $f, $warn === 0, $warn, $msg, $k, $this->nfev, $this->njev, $gfk, null, 'Newton-CG');
+    }
+
+    /**
+     * scipy.optimize._optimize._line_search_wolfe12 without extra_condition: line_search_wolfe1 (MINPACK's
+     * dcsrch, amax 50, amin 1e-8, xtol 1e-14), then line_search_wolfe2 if dcsrch finds no step.
+     *
+     * @return array{0: float, 1: float, 2: list<float>|null}|null step, f there, the gradient there if evaluated
+     */
+    private function wolfe12(array $x, array $p, float $phi0, ?float $oldPhi0, array $g0, float $c1, float $c2): ?array
+    {
+        $derphi0 = self::dot($g0, $p);
+        $fAt = null;
+        $gAt = null;
+        $phi = function (float $a) use ($x, $p, &$fAt): float {
+            $v = $this->f(self::axpy($a, $p, $x));
+            $fAt = [$a, $v];
+
+            return $v;
+        };
+        $derphi = function (float $a) use ($x, $p, &$fAt, &$gAt): float {
+            $gg = $this->g(self::axpy($a, $p, $x), $fAt !== null && $fAt[0] === $a ? $fAt[1] : null);
+            $gAt = [$a, $gg];
+
+            return self::dot($gg, $p);
+        };
+        $alpha1 = 1.0;
+        if ($oldPhi0 !== null && $derphi0 != 0.0) {
+            $alpha1 = min(1.0, 1.01 * 2 * ($phi0 - $oldPhi0) / $derphi0);
+            if ($alpha1 < 0) {
+                $alpha1 = 1.0;
+            }
+        }
+        $r = self::dcsrch($phi, $derphi, $alpha1, $phi0, $derphi0, $c1, $c2, 1e-14, 1e-8, 50.0);
+        if ($r !== null) {
+            return [$r[0], $r[1], $gAt !== null && $gAt[0] === $r[0] ? $gAt[1] : null];
+        }
+
+        return $this->wolfe($x, $p, $phi0, $oldPhi0, $g0, $c1, $c2, null, true);
+    }
+
+    /**
+     * MINPACK-2's dcsrch as scipy.optimize._dcsrch.DCSRCH runs it (100 iterations): a step satisfying the
+     * strong Wolfe conditions with ftol = c1 and gtol = c2, or null where scipy returns None.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    private static function dcsrch(callable $phi, callable $derphi, float $stp, float $finit, float $ginit, float $ftol, float $gtol, float $xtol, float $stpmin, float $stpmax): ?array
+    {
+        if ($stp < $stpmin || $stp > $stpmax || $ginit >= 0 || $ftol < 0 || $gtol < 0 || $xtol < 0 || $stpmin < 0 || $stpmax < $stpmin) {
+            return null;
+        }
+        if (! is_finite($stp)) {
+            return null;
+        }
+        $brackt = false;
+        $stage = 1;
+        $gtest = $ftol * $ginit;
+        $width = $stpmax - $stpmin;
+        $width1 = $width / 0.5;
+        $stx = 0.0;
+        $fx = $finit;
+        $gx = $ginit;
+        $sty = 0.0;
+        $fy = $finit;
+        $gy = $ginit;
+        $stmin = 0.0;
+        $stmax = $stp + 4.0 * $stp;
+        $f = $phi($stp);
+        $g = $derphi($stp);
+        for ($i = 1; $i < 100; $i++) {
+            $ftest = $finit + $stp * $gtest;
+            if ($stage === 1 && $f <= $ftest && $g >= 0) {
+                $stage = 2;
+            }
+            $warn = ($brackt && ($stp <= $stmin || $stp >= $stmax))
+                || ($brackt && $stmax - $stmin <= $xtol * $stmax)
+                || ($stp == $stpmax && $f <= $ftest && $g <= $gtest)
+                || ($stp == $stpmin && ($f > $ftest || $g >= $gtest));
+            if ($f <= $ftest && abs($g) <= $gtol * -$ginit) {
+                return [$stp, $f];
+            }
+            if ($warn) {
+                return null;
+            }
+            if ($stage === 1 && $f <= $fx && $f > $ftest) {
+                $fm = $f - $stp * $gtest;
+                $fxm = $fx - $stx * $gtest;
+                $fym = $fy - $sty * $gtest;
+                $gm = $g - $gtest;
+                $gxm = $gx - $gtest;
+                $gym = $gy - $gtest;
+                [$stx, $fxm, $gxm, $sty, $fym, $gym, $stp, $brackt] = self::dcstep($stx, $fxm, $gxm, $sty, $fym, $gym, $stp, $fm, $gm, $brackt, $stmin, $stmax);
+                $fx = $fxm + $stx * $gtest;
+                $fy = $fym + $sty * $gtest;
+                $gx = $gxm + $gtest;
+                $gy = $gym + $gtest;
+            } else {
+                [$stx, $fx, $gx, $sty, $fy, $gy, $stp, $brackt] = self::dcstep($stx, $fx, $gx, $sty, $fy, $gy, $stp, $f, $g, $brackt, $stmin, $stmax);
+            }
+            if ($brackt) {
+                if (abs($sty - $stx) >= 0.66 * $width1) {
+                    $stp = $stx + 0.5 * ($sty - $stx);
+                }
+                $width1 = $width;
+                $width = abs($sty - $stx);
+                $stmin = $sty < $stx ? $sty : $stx;
+                $stmax = $sty > $stx ? $sty : $stx;
+            } else {
+                $stmin = $stp + 1.1 * ($stp - $stx);
+                $stmax = $stp + 4.0 * ($stp - $stx);
+            }
+            if (is_nan($stp)) {
+                return null;
+            }
+            $stp = min(max($stp, $stpmin), $stpmax);
+            if (($brackt && ($stp <= $stmin || $stp >= $stmax)) || ($brackt && $stmax - $stmin <= $xtol * $stmax)) {
+                $stp = $stx;
+            }
+            if (! is_finite($stp)) {
+                return null;
+            }
+            $f = $phi($stp);
+            $g = $derphi($stp);
+        }
+
+        return null;
+    }
+
+    /**
+     * MINPACK-2's dcstep (scipy.optimize._dcsrch.dcstep): the safeguarded cubic / quadratic step of dcsrch.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float, 4: float, 5: float, 6: float, 7: bool}
+     */
+    private static function dcstep(float $stx, float $fx, float $dx, float $sty, float $fy, float $dy, float $stp, float $fp, float $dp, bool $brackt, float $stpmin, float $stpmax): array
+    {
+        $sgnd = ($dp > 0 ? 1.0 : ($dp < 0 ? -1.0 : 0.0)) * ($dx > 0 ? 1.0 : ($dx < 0 ? -1.0 : 0.0));
+        $mx = static fn (float $a, float $b, float $c): float => ($b > $a ? $b : $a) < $c ? $c : ($b > $a ? $b : $a);
+        if ($fp > $fx) {
+            $theta = fdiv(3.0 * ($fx - $fp), $stp - $stx) + $dx + $dp;
+            $s = $mx(abs($theta), abs($dx), abs($dp));
+            $gamma = $s * sqrt(fdiv($theta, $s) ** 2 - fdiv($dx, $s) * fdiv($dp, $s));
+            if ($stp < $stx) {
+                $gamma *= -1;
+            }
+            $p = ($gamma - $dx) + $theta;
+            $q = (($gamma - $dx) + $gamma) + $dp;
+            $r = fdiv($p, $q);
+            $stpc = $stx + $r * ($stp - $stx);
+            $stpq = $stx + (fdiv($dx, fdiv($fx - $fp, $stp - $stx) + $dx) / 2.0) * ($stp - $stx);
+            $stpf = abs($stpc - $stx) <= abs($stpq - $stx) ? $stpc : $stpc + ($stpq - $stpc) / 2.0;
+            $brackt = true;
+        } elseif ($sgnd < 0.0) {
+            $theta = fdiv(3 * ($fx - $fp), $stp - $stx) + $dx + $dp;
+            $s = $mx(abs($theta), abs($dx), abs($dp));
+            $gamma = $s * sqrt(fdiv($theta, $s) ** 2 - fdiv($dx, $s) * fdiv($dp, $s));
+            if ($stp > $stx) {
+                $gamma *= -1;
+            }
+            $p = ($gamma - $dp) + $theta;
+            $q = (($gamma - $dp) + $gamma) + $dx;
+            $r = fdiv($p, $q);
+            $stpc = $stp + $r * ($stx - $stp);
+            $stpq = $stp + fdiv($dp, $dp - $dx) * ($stx - $stp);
+            $stpf = abs($stpc - $stp) > abs($stpq - $stp) ? $stpc : $stpq;
+            $brackt = true;
+        } elseif (abs($dp) < abs($dx)) {
+            $theta = fdiv(3 * ($fx - $fp), $stp - $stx) + $dx + $dp;
+            $s = $mx(abs($theta), abs($dx), abs($dp));
+            $rad = fdiv($theta, $s) ** 2 - fdiv($dx, $s) * fdiv($dp, $s);
+            $gamma = $s * sqrt($rad > 0 ? $rad : 0.0);
+            if ($stp > $stx) {
+                $gamma = -$gamma;
+            }
+            $p = ($gamma - $dp) + $theta;
+            $q = ($gamma + ($dx - $dp)) + $gamma;
+            $r = fdiv($p, $q);
+            if ($r < 0 && $gamma != 0) {
+                $stpc = $stp + $r * ($stx - $stp);
+            } elseif ($stp > $stx) {
+                $stpc = $stpmax;
+            } else {
+                $stpc = $stpmin;
+            }
+            $stpq = $stp + fdiv($dp, $dp - $dx) * ($stx - $stp);
+            if ($brackt) {
+                $stpf = abs($stpc - $stp) < abs($stpq - $stp) ? $stpc : $stpq;
+                $lim = $stp + 0.66 * ($sty - $stp);
+                if ($stp > $stx) {
+                    $stpf = $stpf < $lim ? $stpf : $lim;
+                } else {
+                    $stpf = $stpf > $lim ? $stpf : $lim;
+                }
+            } else {
+                $stpf = abs($stpc - $stp) > abs($stpq - $stp) ? $stpc : $stpq;
+                $stpf = is_nan($stpf) ? $stpf : min(max($stpf, $stpmin), $stpmax);
+            }
+        } else {
+            if ($brackt) {
+                $theta = fdiv(3.0 * ($fp - $fy), $sty - $stp) + $dy + $dp;
+                $s = $mx(abs($theta), abs($dy), abs($dp));
+                $gamma = $s * sqrt(fdiv($theta, $s) ** 2 - fdiv($dy, $s) * fdiv($dp, $s));
+                if ($stp > $sty) {
+                    $gamma = -$gamma;
+                }
+                $p = ($gamma - $dp) + $theta;
+                $q = (($gamma - $dp) + $gamma) + $dy;
+                $r = fdiv($p, $q);
+                $stpf = $stp + $r * ($sty - $stp);
+            } elseif ($stp > $stx) {
+                $stpf = $stpmax;
+            } else {
+                $stpf = $stpmin;
+            }
+        }
+        if ($fp > $fx) {
+            $sty = $stp;
+            $fy = $fp;
+            $dy = $dp;
+        } else {
+            if ($sgnd < 0) {
+                $sty = $stx;
+                $fy = $fx;
+                $dy = $dx;
+            }
+            $stx = $stp;
+            $fx = $fp;
+            $dx = $dp;
+        }
+
+        return [$stx, $fx, $dx, $sty, $fy, $dy, $stpf, $brackt];
     }
 
     private static function l1(array $a): float
@@ -1031,11 +1284,12 @@ final class Minimize
     }
 
     /**
-     * Strong-Wolfe line search (scipy.optimize._linesearch.scalar_search_wolfe2).
+     * Strong-Wolfe line search (scipy.optimize._linesearch.scalar_search_wolfe2). With $lastStep, the end of
+     * its ten iterations returns the last step tried, as scipy does; without it, null.
      *
      * @return array{0: float, 1: float, 2: list<float>|null}|null
      */
-    private function wolfe(array $x, array $p, float $phi0, float $oldPhi0, array $g0, float $c1 = 1e-4, float $c2 = 0.9, ?callable $extra = null): ?array
+    private function wolfe(array $x, array $p, float $phi0, ?float $oldPhi0, array $g0, float $c1 = 1e-4, float $c2 = 0.9, ?callable $extra = null, bool $lastStep = false): ?array
     {
         $derphi0 = self::dot($g0, $p);
         $gCache = [];
@@ -1048,7 +1302,7 @@ final class Minimize
 
             return self::dot($gg, $p);
         };
-        $alpha1 = $derphi0 != 0.0 ? min(1.0, 1.01 * 2 * ($phi0 - $oldPhi0) / $derphi0) : 1.0;
+        $alpha1 = $oldPhi0 !== null && $derphi0 != 0.0 ? min(1.0, 1.01 * 2 * ($phi0 - $oldPhi0) / $derphi0) : 1.0;
         if ($alpha1 < 0) {
             $alpha1 = 1.0;
         }
@@ -1079,6 +1333,9 @@ final class Minimize
             $phiA0 = $phiA1;
             $phiA1 = $phi($alpha1);
             $derA0 = $derA1;
+        }
+        if ($result === null && $lastStep && $i === 10) {
+            $result = [$alpha1, $phiA1];
         }
         if ($result === null) {
             return null;
@@ -1291,122 +1548,1129 @@ final class Minimize
 
     // ------------------------------------------------------------------ TNC (truncated Newton, box-bounded)
 
+    private const TNC_MESSAGES = [
+        -1 => 'Infeasible (lower bound > upper bound)',
+        0 => 'Local minimum reached (|pg| ~= 0)',
+        1 => 'Converged (|f_n-f_(n-1)| ~= 0)',
+        2 => 'Converged (|x_n-x_(n-1)| ~= 0)',
+        3 => 'Max. number of function evaluations reached',
+        4 => 'Linear search failed',
+        5 => 'All lower bounds are equal to the upper bounds',
+        6 => 'Unable to progress',
+    ];
+
     /**
-     * scipy.optimize.minimize(method='TNC'): a truncated-Newton algorithm with box bounds. Each outer step
-     * solves H d = -g on the free variables by conjugate gradients (Hessian-vector products from a
-     * finite-difference of the gradient), then a projected Armijo line search clips to the bounds. Converges
-     * to scipy's TNC optimum; the intermediate iterate sequence differs (scipy wraps Nash's Fortran tnc).
+     * scipy.optimize.minimize's bounds handling for TNC: an upper bound below its lower bound is an error,
+     * variables fixed by equal bounds are taken out of the problem (put back in x, NaN in the gradient),
+     * and when all are fixed the result is the bounds.
      *
      * @param list<float> $x
      * @param list<array{0: float|null, 1: float|null}>|null $bounds
      * @param array<string, mixed> $o
      */
+    private function tncBounded(array $x, ?array $bounds, array $o): OptimizeResult
+    {
+        if ($bounds === null) {
+            return $this->tnc($x, null, $o);
+        }
+        $n = count($x);
+        [$lo, $hi] = self::unpackBounds($bounds, $n);
+        $fixed = [];
+        for ($i = 0; $i < $n; $i++) {
+            if ($hi[$i] < $lo[$i]) {
+                throw new TesseroException('minimize: an upper bound is less than the corresponding lower bound.');
+            }
+            if ($lo[$i] == $hi[$i]) {
+                $fixed[$i] = $lo[$i];
+            }
+        }
+        if ($fixed === []) {
+            return $this->tnc($x, $bounds, $o);
+        }
+        if (count($fixed) === $n) {
+            return new OptimizeResult($lo, $this->f($lo), true, 0, 'All independent variables were fixed by bounds.', 0, $this->nfev, 0, null, null, 'TNC');
+        }
+        $full = static function (array $z) use ($fixed, $n): array {
+            $out = [];
+            $j = 0;
+            for ($i = 0; $i < $n; $i++) {
+                $out[$i] = $fixed[$i] ?? (float) $z[$j++];
+            }
+
+            return $out;
+        };
+        $fun = $this->fun;
+        $jac = $this->jac;
+        $inner = new self(
+            static fn (array $z) => $fun($full($z)),
+            $jac === null ? null : static fn (array $z): array => array_values(array_diff_key(array_values($jac($full($z))), $fixed)),
+        );
+        $xFree = [];
+        $bFree = [];
+        foreach (array_values($bounds) as $i => $pair) {
+            if (! isset($fixed[$i])) {
+                $xFree[] = $x[$i];
+                $bFree[] = $pair;
+            }
+        }
+        $r = $inner->tnc($xFree, $bFree, $o);
+        $jacFull = null;
+        if ($r->jac !== null) {
+            $jacFull = [];
+            $j = 0;
+            for ($i = 0; $i < $n; $i++) {
+                $jacFull[$i] = isset($fixed[$i]) ? NAN : $r->jac[$j++];
+            }
+        }
+
+        return new OptimizeResult($full($r->x), $r->fun, $r->success, $r->status, $r->message, $r->nit, $r->nfev, $r->njev, $jacFull, null, 'TNC');
+    }
+
+    /**
+     * scipy.optimize.minimize(method='TNC'): a port of the TNC code scipy wraps (Stephen Nash's truncated
+     * Newton method; C version by Jean-Sebastien Roy, scipy/optimize/tnc/tnc.c) with scipy's defaults
+     * (scipy.optimize._tnc): variables scaled to the bounds, a direction from preconditioned conjugate
+     * gradients with Hessian-vector products from a forward difference of the gradient, Gill and Murray's
+     * line search, and the active-set rules for the bounds. Without a gradient, scipy's forward difference
+     * (absolute step `eps`, turned around at a bound). The Hessian-vector products evaluate the gradient
+     * only (scipy also evaluates the objective there and discards it); `maxfun` counts them as scipy does.
+     *
+     * @param list<float> $x
+     * @param list<array{0: float|null, 1: float|null}>|null $bounds
+     * @param array<string, mixed> $o eps, scale, offset, maxCGit, maxfun, eta, stepmx, accuracy, minfev, ftol, xtol, gtol, rescale
+     */
     private function tnc(array $x, ?array $bounds, array $o): OptimizeResult
     {
         $n = count($x);
-        [$lo, $hi] = self::unpackBounds($bounds, $n);
-        $gtol = (float) ($o['gtol'] ?? 1e-6);
-        $maxiter = (int) ($o['maxiter'] ?? 200);
-        $x = self::project($x, $lo, $hi);
-        $f = $this->f($x);
-        $status = 1;
-        $msg = 'Local minimum reached (|pg| ~= 0)';
-        $k = 0;
-        $g = $this->g($x, $f);
-        for ($outer = 0; $outer < 4 * $maxiter; $outer++) {
-            $g = $this->g($x);
-            // free set: a variable is fixed only if it sits on a bound with the gradient pushing outward.
-            $free = [];
-            for ($i = 0; $i < $n; $i++) {
-                $atLo = $x[$i] <= $lo[$i] + 1e-12 && $g[$i] > 0;
-                $atHi = $x[$i] >= $hi[$i] - 1e-12 && $g[$i] < 0;
-                $free[$i] = ! ($atLo || $atHi);
+        [$low, $up] = self::unpackBounds($bounds, $n);
+        $eps = (float) ($o['eps'] ?? 1e-8);
+        $scale = isset($o['scale']) ? array_map('floatval', array_values($o['scale'])) : null;
+        $offset = isset($o['offset']) ? array_map('floatval', array_values($o['offset'])) : null;
+        $maxCGit = (int) ($o['maxCGit'] ?? -1);
+        $maxnfeval = (int) ($o['maxfun'] ?? max(100, 10 * $n));
+        $eta = (float) ($o['eta'] ?? -1);
+        $stepmx = (float) ($o['stepmx'] ?? 0);
+        $accuracy = (float) ($o['accuracy'] ?? 0);
+        $fmin = (float) ($o['minfev'] ?? 0);
+        $ftol = (float) ($o['ftol'] ?? -1);
+        $xtol = (float) ($o['xtol'] ?? -1);
+        $pgtol = (float) ($o['gtol'] ?? -1);
+        $rescale = (float) ($o['rescale'] ?? -1);
+        foreach ([$scale, $offset] as $v) {
+            if ($v !== null && count($v) !== $n) {
+                throw new TesseroException('minimize: TNC scale and offset need one value per variable.');
             }
-            $pg = [];
-            for ($i = 0; $i < $n; $i++) {
-                $pg[$i] = $free[$i] ? $g[$i] : 0.0;
-            }
-            if (self::normInf($pg) <= $gtol) {
-                $status = 0;
-                break;
-            }
-            // CG to approximately solve H d = -pg on the free subspace
-            $d = array_fill(0, $n, 0.0);
-            $r = self::neg($pg);
-            $p = $r;
-            $rs = self::dot($r, $r);
-            $pgnorm = sqrt(self::dot($pg, $pg));
-            $maxcg = 2 * $n + 2;
-            for ($j = 0; $j < $maxcg; $j++) {
-                $pf = [];
-                for ($i = 0; $i < $n; $i++) {
-                    $pf[$i] = $free[$i] ? $p[$i] : 0.0;
-                }
-                $Hp = $this->hessVec($x, $pf, $g);
-                for ($i = 0; $i < $n; $i++) {
-                    $Hp[$i] = $free[$i] ? $Hp[$i] : 0.0;
-                }
-                $pHp = self::dot($p, $Hp);
-                if ($pHp <= 1e-14) {
-                    if (! self::anyNonzero($d)) {
-                        $d = $r;
-                    }
-                    break;
-                }
-                $alpha = $rs / $pHp;
-                $d = self::axpy($alpha, $p, $d);
-                $r = self::axpy(-$alpha, $Hp, $r);
-                $rs2 = self::dot($r, $r);
-                if (sqrt($rs2) < 0.1 * max($pgnorm, 1e-15)) {
-                    break;
-                }
-                $p = self::axpy($rs2 / $rs, $p, $r);
-                $rs = $rs2;
-            }
-            for ($i = 0; $i < $n; $i++) {
-                $d[$i] = $free[$i] ? $d[$i] : 0.0;
-            }
-            if (self::dot($d, $g) >= 0) {
-                $d = self::neg($pg);
-            }
-            // projected backtracking (Armijo) along P(x + alpha d)
-            $alpha = 1.0;
-            $accepted = false;
-            $xn = $x;
-            for ($ls = 0; $ls < 40; $ls++) {
-                $xn = self::project(self::axpy($alpha, $d, $x), $lo, $hi);
-                $ft = $this->f($xn);
-                $step = self::sub($xn, $x);
-                if ($ft <= $f + 1e-4 * self::dot($g, $step)) {
-                    $accepted = true;
-                    break;
-                }
-                $alpha *= 0.5;
-            }
-            if (! $accepted) {
-                break;
-            }
-            if (self::norm2(self::sub($xn, $x)) < 1e-12) {
-                $x = $xn;
-                $f = $this->f($x);
-                break;
-            }
-            $x = $xn;
-            $f = $this->f($x);
-            $k++;
         }
 
-        return new OptimizeResult($x, $f, $status === 0, $status, $msg, $k, $this->nfev, $this->njev, $g, null, 'TNC');
+        // scipy's ScalarFunction: one cached point; the objective and the gradient are evaluated on demand.
+        $cx = null;
+        $cf = null;
+        $cg = null;
+        $fg = function (array $xv, bool $needF = true) use (&$cx, &$cf, &$cg, $eps, $low, $up): array {
+            if ($cx !== $xv) {
+                $cx = $xv;
+                $cf = null;
+                $cg = null;
+            }
+            if ($this->jac === null) {
+                $cf ??= $this->f($xv);
+                $cg ??= $this->tncFdGrad($xv, $cf, $eps, $low, $up);
+            } else {
+                if ($needF) {
+                    $cf ??= $this->f($xv);
+                }
+                $cg ??= $this->g($xv);
+            }
+
+            return [$cf, $cg];
+        };
+        if ($this->jac === null) {
+            for ($i = 0; $i < $n; $i++) {
+                if ($x[$i] < $low[$i] || $x[$i] > $up[$i]) {
+                    throw new TesseroException('minimize: `x0` violates bound constraints.');
+                }
+            }
+        }
+        $fg($x);
+        $rc = null;
+        $niter = 0;
+        $nfeval = 0;
+        for ($i = 0; $i < $n; $i++) {
+            if ($low[$i] > $up[$i]) {
+                $rc = -1;
+                break;
+            }
+        }
+        if ($rc === null) {
+            $x = self::tncCoerce($x, $low, $up);
+            if ($maxnfeval < 1) {
+                $rc = 3;
+            }
+        }
+        if ($rc === null) {
+            [$f, $gfull] = $fg($x);
+            $nfeval++;
+            $nc = 0;
+            for ($i = 0; $i < $n; $i++) {
+                if ($low[$i] == $up[$i] || ($scale !== null && $scale[$i] == 0.0)) {
+                    $nc++;
+                }
+            }
+            if ($nc === $n) {
+                $rc = 5;
+            }
+        }
+        if ($rc === null) {
+            $xscale = [];
+            $xoffset = [];
+            for ($i = 0; $i < $n; $i++) {
+                if ($scale !== null) {
+                    $xscale[$i] = abs($scale[$i]);
+                    $xoffset[$i] = 0.0;
+                    if ($xscale[$i] == 0.0) {
+                        $xoffset[$i] = $low[$i] = $up[$i] = $x[$i];
+                    }
+                } elseif ($low[$i] != -INF && $up[$i] != INF) {
+                    $xscale[$i] = $up[$i] - $low[$i];
+                    $xoffset[$i] = ($up[$i] + $low[$i]) * 0.5;
+                } else {
+                    $xscale[$i] = 1.0 + abs($x[$i]);
+                    $xoffset[$i] = $x[$i];
+                }
+                if ($offset !== null) {
+                    $xoffset[$i] = $offset[$i];
+                }
+            }
+            $rteps = sqrt(self::EPS);
+            if ($stepmx < $rteps * 10.0) {
+                $stepmx = 1.0e1;
+            }
+            if ($eta < 0.0 || $eta >= 1.0) {
+                $eta = 0.25;
+            }
+            if ($rescale < 0) {
+                $rescale = 1.3;
+            }
+            if ($maxCGit < 0) {
+                $maxCGit = max(1, min(50, intdiv($n, 2)));
+            }
+            if ($maxCGit > $n) {
+                $maxCGit = $n;
+            }
+            if ($accuracy <= self::EPS) {
+                $accuracy = $rteps;
+            }
+            if ($ftol < 0.0) {
+                $ftol = $accuracy;
+            }
+            if ($pgtol < 0.0) {
+                $pgtol = 1e-2 * sqrt($accuracy);
+            }
+            if ($xtol < 0.0) {
+                $xtol = $rteps;
+            }
+            [$rc, $x, $niter] = $this->tncMinimize($x, $f, $gfull, $fg, $xscale, $xoffset, $low, $up, $maxCGit, $maxnfeval, $nfeval, $eta, $stepmx, $accuracy, $fmin, $ftol, $xtol, $pgtol, $rescale);
+        }
+        [$fx, $gx] = $fg($x);
+
+        return new OptimizeResult($x, $fx, $rc > -1 && $rc < 3, $rc, self::TNC_MESSAGES[$rc], $niter, $this->nfev, $this->njev, $gx, null, 'TNC');
     }
 
-    /** Finite-difference Hessian-vector product (df-of-gradient), as TNC/Newton-CG use. */
-    private function hessVec(array $x, array $v, array $g): array
+    /**
+     * tnc.c tnc_minimize: the truncated-Newton iterations on the scaled variables.
+     *
+     * @return array{0: int, 1: list<float>, 2: int} return code, x (unscaled, inside the bounds), iterations
+     */
+    private function tncMinimize(array $x, float $f, array $gfull, callable $fg, array $xscale, array $xoffset, array $low, array $up, int $maxCGit, int $maxnfeval, int $nfeval, float $eta, float $stepmx, float $accuracy, float $fmin, float $ftol, float $xtol, float $pgtol, float $rescale): array
     {
-        $eps = 1e-7;
-        $xv = self::axpy($eps, $v, $x);
-        $gv = $this->g($xv);
+        $n = count($x);
+        $niter = 0;
+        $fscale = 1.0;
+        $difnew = 0.0;
+        $epsred = 0.05;
+        $upd1 = true;
+        $icycle = $n - 1;
+        $newcon = true;
+        $lreset = false;
+        $yrsr = 0.0;
+        $yksk = 0.0;
+        $zero = array_fill(0, $n, 0.0);
+        $sk = $yk = $sr = $yr = $zero;
+        $alpha = 0.0;
 
-        return array_map(static fn (float $a, float $b): float => ($a - $b) / $eps, $gv, $g);
+        for ($i = 0; $i < $n; $i++) {
+            if ($xscale[$i] > 0.0) {
+                $x[$i] = ($x[$i] - $xoffset[$i]) / $xscale[$i];
+            }
+        }
+        $f *= $fscale;
+        $pivot = [];
+        for ($i = 0; $i < $n; $i++) {
+            if ($xscale[$i] == 0.0) {
+                $pivot[$i] = 2;
+            } elseif ($low[$i] != -INF && ($x[$i] * $xscale[$i] + $xoffset[$i] - $low[$i] <= self::EPS * 10.0 * (abs($low[$i]) + 1.0))) {
+                $pivot[$i] = -1;
+            } elseif ($up[$i] != INF && ($x[$i] * $xscale[$i] + $xoffset[$i] - $up[$i] >= self::EPS * 10.0 * (abs($up[$i]) + 1.0))) {
+                $pivot[$i] = 1;
+            } else {
+                $pivot[$i] = 0;
+            }
+        }
+        $g = self::tncScaleG($gfull, $xscale, $fscale);
+        for ($i = 0; $i < $n; $i++) {
+            if (-$pivot[$i] * $g[$i] < 0.0) {
+                $pivot[$i] = 0;
+            }
+        }
+        $g = self::tncProject($g, $pivot);
+        $gnorm = self::tncNrm2($g);
+        $fLastConstraint = $f;
+        $fLastReset = $f;
+        $diagb = array_fill(0, $n, 1.0);
+
+        while (true) {
+            if (self::tncNrm2($g) <= $pgtol * $fscale) {
+                $rc = 0;
+                break;
+            }
+            if ($nfeval >= $maxnfeval) {
+                $rc = 3;
+                break;
+            }
+            $newscale = self::tncNrm2($g);
+            if ($newscale > self::EPS && abs(log10($newscale)) > $rescale) {
+                $newscale = 1.0 / $newscale;
+                $f *= $newscale;
+                $fscale *= $newscale;
+                $gnorm *= $newscale;
+                $fLastConstraint *= $newscale;
+                $fLastReset *= $newscale;
+                $difnew *= $newscale;
+                for ($i = 0; $i < $n; $i++) {
+                    $g[$i] *= $newscale;
+                }
+                $diagb = array_fill(0, $n, 1.0);
+                $upd1 = true;
+                $icycle = $n - 1;
+                $newcon = true;
+            }
+            $xnorm = self::tncNrm2(self::tncProject($x, $pivot));
+            $oldnfeval = $nfeval;
+            $pk = $this->tncDirection($diagb, $x, $g, $maxCGit, $maxnfeval, $nfeval, $upd1, $yksk, $yrsr, $sk, $yk, $sr, $yr, $lreset, $fg, $xscale, $xoffset, $fscale, $pivot, $accuracy, $gnorm, $xnorm, $low, $up);
+            if (! $newcon) {
+                if (! $lreset) {
+                    for ($i = 0; $i < $n; $i++) {
+                        $sr[$i] += $sk[$i];
+                        $yr[$i] += $yk[$i];
+                    }
+                    $icycle++;
+                } else {
+                    $sr = $sk;
+                    $yr = $yk;
+                    $fLastReset = $f;
+                    $icycle = 1;
+                }
+            }
+            $oldg = $g;
+            $oldf = $f;
+            $oldgtp = self::dot($pk, $g);
+            $ustpmax = $stepmx / (self::tncNrm2($pk) + self::EPS);
+            $spe = self::tncStepMax($ustpmax, $x, $pk, $pivot, $low, $up, $xscale, $xoffset);
+            if ($spe > 0.0) {
+                $alpha = self::tncInitialStep($f, $fmin / $fscale, $oldgtp, $spe);
+                $lsrc = $this->tncLinearSearch($fg, $low, $up, $xscale, $xoffset, $fscale, $pivot, $eta, $ftol, $spe, $pk, $x, $f, $alpha, $gfull, $maxnfeval, $nfeval);
+                if ($lsrc === 'fail') {
+                    $rc = 4;
+                    break;
+                }
+                if ($alpha >= 0.9 * $ustpmax) {
+                    $stepmx *= 1e2;
+                }
+                if ($alpha - $spe >= -self::EPS * 10.0) {
+                    $newcon = true;
+                } else {
+                    if ($lsrc !== 'ok') {
+                        $rc = $lsrc === 'maxfun' ? 3 : 4;
+                        break;
+                    }
+                    $newcon = false;
+                }
+            } else {
+                $newcon = true;
+            }
+            if ($newcon) {
+                if (! self::tncAddConstraint($x, $pk, $pivot, $low, $up, $xscale, $xoffset)) {
+                    if ($nfeval === $oldnfeval) {
+                        $rc = 6;
+                        break;
+                    }
+                }
+                $fLastConstraint = $f;
+            }
+            $niter++;
+            $difold = $difnew;
+            $difnew = $oldf - $f;
+            if ($icycle === 1) {
+                if ($difnew > $difold * 2.0) {
+                    $epsred += $epsred;
+                }
+                if ($difnew < $difold * 0.5) {
+                    $epsred *= 0.5;
+                }
+            }
+            $g = self::tncScaleG($gfull, $xscale, $fscale);
+            $gnorm = self::tncNrm2(self::tncProject($g, $pivot));
+            $remcon = self::tncRemoveConstraint($oldgtp, $gnorm, $pgtol * $fscale, $f, $fLastConstraint, $g, $pivot);
+            if ($remcon) {
+                $gnorm = self::tncNrm2(self::tncProject($g, $pivot));
+                $fLastConstraint = $f;
+            }
+            if (! $remcon && ! $newcon) {
+                if (abs($difnew) <= $ftol * $fscale) {
+                    $rc = 1;
+                    break;
+                }
+                if ($alpha * self::tncNrm2($pk) <= $xtol) {
+                    $rc = 2;
+                    break;
+                }
+            }
+            $g = self::tncProject($g, $pivot);
+            if (! $newcon) {
+                for ($i = 0; $i < $n; $i++) {
+                    $yk[$i] = $g[$i] - $oldg[$i];
+                    $sk[$i] = $alpha * $pk[$i];
+                }
+                $yksk = self::dot($yk, $sk);
+                if ($icycle === $n - 1 || $difnew < $epsred * ($fLastReset - $f)) {
+                    $lreset = true;
+                } else {
+                    $yrsr = self::dot($yr, $sr);
+                    $lreset = $yrsr <= 0.0;
+                }
+                $upd1 = false;
+            }
+        }
+        for ($i = 0; $i < $n; $i++) {
+            $x[$i] = $x[$i] * $xscale[$i] + $xoffset[$i];
+        }
+
+        return [$rc, self::tncCoerce($x, $low, $up), $niter];
+    }
+
+    /**
+     * tnc.c tnc_direction: preconditioned conjugate gradients on the Newton equations, stopped when the
+     * quadratic model stops decreasing enough. Updates the diagonal preconditioner $diagb.
+     *
+     * @return list<float> the search direction
+     */
+    private function tncDirection(array &$diagb, array $x, array $g, int $maxCGit, int $maxnfeval, int &$nfeval, bool $upd1, float $yksk, float $yrsr, array $sk, array $yk, array $sr, array $yr, bool $lreset, callable $fg, array $xscale, array $xoffset, float $fscale, array $pivot, float $accuracy, float $gnorm, float $xnorm, array $low, array $up): array
+    {
+        $n = count($x);
+        if ($maxCGit === 0) {
+            return self::tncProject(self::neg($g), $pivot);
+        }
+        $rhsnrm = $gnorm;
+        $tol = 1e-12;
+        $qold = 0.0;
+        $rzold = 0.0;
+        $emat = self::tncInitPreconditioner($diagb, $lreset, $yksk, $yrsr, $sk, $yk, $sr, $yr, $upd1);
+        $r = self::neg($g);
+        $v = array_fill(0, $n, 0.0);
+        $zsol = array_fill(0, $n, 0.0);
+        for ($k = 0; $k < $maxCGit; $k++) {
+            $r = self::tncProject($r, $pivot);
+            $zk = self::tncProject(self::tncMsolve($r, $sk, $yk, $diagb, $sr, $yr, $upd1, $yksk, $yrsr, $lreset), $pivot);
+            $rz = self::dot($r, $zk);
+            if (fdiv($rz, $rhsnrm) < $tol || $nfeval >= $maxnfeval - 1) {
+                if ($k === 0) {
+                    $zsol = self::tncProject(self::neg($g), $pivot);
+                }
+                break;
+            }
+            $beta = $k === 0 ? 0.0 : fdiv($rz, $rzold);
+            for ($i = 0; $i < $n; $i++) {
+                $v[$i] = $zk[$i] + $beta * $v[$i];
+            }
+            $v = self::tncProject($v, $pivot);
+            // Hessian times v by a forward difference of the gradient (tnc.c hessianTimesVector)
+            $delta = $accuracy * ($xnorm + 1.0);
+            $xv = [];
+            for ($i = 0; $i < $n; $i++) {
+                $xv[$i] = ($x[$i] + $delta * $v[$i]) * $xscale[$i] + $xoffset[$i];
+            }
+            $gv = self::tncScaleG($fg(self::tncCoerce($xv, $low, $up), false)[1], $xscale, $fscale);
+            $nfeval++;
+            $dinv = 1.0 / $delta;
+            for ($i = 0; $i < $n; $i++) {
+                $gv[$i] = $xscale[$i] == 0.0 || $pivot[$i] !== 0 ? 0.0 : ($gv[$i] - $g[$i]) * $dinv;
+            }
+            $vgv = self::dot($v, $gv);
+            if (fdiv($vgv, $rhsnrm) < $tol) {
+                if ($k === 0) {
+                    $zsol = self::tncProject(self::neg(self::tncMsolve($g, $sk, $yk, $diagb, $sr, $yr, $upd1, $yksk, $yrsr, $lreset)), $pivot);
+                }
+                break;
+            }
+            // diagonal BFGS update of the preconditioner (tnc.c diagonalScaling)
+            $vr = fdiv(1.0, self::dot($v, $r));
+            $vgvInv = fdiv(1.0, $vgv);
+            for ($i = 0; $i < $n; $i++) {
+                $emat[$i] += -$r[$i] * $r[$i] * $vr + $gv[$i] * $gv[$i] * $vgvInv;
+                if ($emat[$i] <= 1e-6) {
+                    $emat[$i] = 1.0;
+                }
+            }
+            $alpha = fdiv($rz, $vgv);
+            for ($i = 0; $i < $n; $i++) {
+                $zsol[$i] += $alpha * $v[$i];
+                $r[$i] += -$alpha * $gv[$i];
+            }
+            $gtp = self::dot($zsol, $g);
+            $pr = self::dot($r, $zsol);
+            $qnew = ($gtp + $pr) * 0.5;
+            $qtest = ($k + 1) * (1.0 - fdiv($qold, $qnew));
+            if ($qtest <= 0.5) {
+                break;
+            }
+            if ($gtp > 0.0) {
+                for ($i = 0; $i < $n; $i++) {
+                    $zsol[$i] += -$alpha * $v[$i];
+                }
+                break;
+            }
+            $qold = $qnew;
+            $rzold = $rz;
+        }
+        $diagb = $emat;
+
+        return $zsol;
+    }
+
+    /** tnc.c msolve: the two-step self-scaled BFGS preconditioner applied to $g. */
+    private static function tncMsolve(array $g, array $sk, array $yk, array $diagb, array $sr, array $yr, bool $upd1, float $yksk, float $yrsr, bool $lreset): array
+    {
+        $n = count($g);
+        if ($upd1) {
+            $y = [];
+            for ($i = 0; $i < $n; $i++) {
+                $y[$i] = fdiv($g[$i], $diagb[$i]);
+            }
+
+            return $y;
+        }
+        $gsk = self::dot($g, $sk);
+        $hg = $hyk = $hyr = [];
+        if ($lreset) {
+            for ($i = 0; $i < $n; $i++) {
+                $rdiagb = fdiv(1.0, $diagb[$i]);
+                $hg[$i] = $g[$i] * $rdiagb;
+                $hyk[$i] = $yk[$i] * $rdiagb;
+            }
+            $ykhyk = self::dot($yk, $hyk);
+            $ghyk = self::dot($g, $hyk);
+
+            return self::tncSsbfgs($sk, $hg, $hyk, $yksk, $ykhyk, $gsk, $ghyk);
+        }
+        for ($i = 0; $i < $n; $i++) {
+            $rdiagb = fdiv(1.0, $diagb[$i]);
+            $hg[$i] = $g[$i] * $rdiagb;
+            $hyk[$i] = $yk[$i] * $rdiagb;
+            $hyr[$i] = $yr[$i] * $rdiagb;
+        }
+        $gsr = self::dot($g, $sr);
+        $ghyr = self::dot($g, $hyr);
+        $yrhyr = self::dot($yr, $hyr);
+        $hg = self::tncSsbfgs($sr, $hg, $hyr, $yrsr, $yrhyr, $gsr, $ghyr);
+        $yksr = self::dot($yk, $sr);
+        $ykhyr = self::dot($yk, $hyr);
+        $hyk = self::tncSsbfgs($sr, $hyk, $hyr, $yrsr, $yrhyr, $yksr, $ykhyr);
+        $ykhyk = self::dot($hyk, $yk);
+        $ghyk = self::dot($hyk, $g);
+
+        return self::tncSsbfgs($sk, $hg, $hyk, $yksk, $ykhyk, $gsk, $ghyk);
+    }
+
+    /** tnc.c ssbfgs with gamma = 1: one self-scaled BFGS update applied to a vector. */
+    private static function tncSsbfgs(array $sj, array $hjv, array $hjyj, float $yjsj, float $yjhyj, float $vsj, float $vhyj): array
+    {
+        if ($yjsj == 0.0) {
+            $delta = 0.0;
+            $beta = 0.0;
+        } else {
+            $delta = (1.0 * $yjhyj / $yjsj + 1.0) * $vsj / $yjsj - 1.0 * $vhyj / $yjsj;
+            $beta = -1.0 * $vsj / $yjsj;
+        }
+        $out = [];
+        foreach ($hjv as $i => $h) {
+            $out[$i] = 1.0 * $h + $delta * $sj[$i] + $beta * $hjyj[$i];
+        }
+
+        return $out;
+    }
+
+    /** tnc.c initPreconditioner: the diagonal of the preconditioner for this direction. */
+    private static function tncInitPreconditioner(array $diagb, bool $lreset, float $yksk, float $yrsr, array $sk, array $yk, array $sr, array $yr, bool $upd1): array
+    {
+        if ($upd1) {
+            return $diagb;
+        }
+        $n = count($diagb);
+        $emat = $bsk = [];
+        if ($lreset) {
+            for ($i = 0; $i < $n; $i++) {
+                $bsk[$i] = $diagb[$i] * $sk[$i];
+            }
+            $sds = self::dot($sk, $bsk);
+            if ($yksk == 0.0) {
+                $yksk = 1.0;
+            }
+            if ($sds == 0.0) {
+                $sds = 1.0;
+            }
+            for ($i = 0; $i < $n; $i++) {
+                $td = $diagb[$i];
+                $emat[$i] = $td - $td * $td * $sk[$i] * $sk[$i] / $sds + $yk[$i] * $yk[$i] / $yksk;
+            }
+
+            return $emat;
+        }
+        for ($i = 0; $i < $n; $i++) {
+            $bsk[$i] = $diagb[$i] * $sr[$i];
+        }
+        $sds = self::dot($sr, $bsk);
+        $srds = self::dot($sk, $bsk);
+        $yrsk = self::dot($yr, $sk);
+        if ($yrsr == 0.0) {
+            $yrsr = 1.0;
+        }
+        if ($sds == 0.0) {
+            $sds = 1.0;
+        }
+        for ($i = 0; $i < $n; $i++) {
+            $td = $diagb[$i];
+            $bsk[$i] = $td * $sk[$i] - $bsk[$i] * $srds / $sds + $yr[$i] * $yrsk / $yrsr;
+            $emat[$i] = $td - $td * $td * $sr[$i] * $sr[$i] / $sds + $yr[$i] * $yr[$i] / $yrsr;
+        }
+        $sds = self::dot($sk, $bsk);
+        if ($yksk == 0.0) {
+            $yksk = 1.0;
+        }
+        if ($sds == 0.0) {
+            $sds = 1.0;
+        }
+        for ($i = 0; $i < $n; $i++) {
+            $emat[$i] -= $bsk[$i] * $bsk[$i] / $sds + $yk[$i] * $yk[$i] / $yksk;
+        }
+
+        return $emat;
+    }
+
+    /**
+     * tnc.c linearSearch: Gill and Murray's safeguarded cubic line search along $p from the scaled point $x.
+     * On success moves $x, $f and $gfull to the new point; $alpha is the step reached either way.
+     *
+     * @return 'ok'|'fail'|'maxfun'
+     */
+    private function tncLinearSearch(callable $fg, array $low, array $up, array $xscale, array $xoffset, float $fscale, array $pivot, float $eta, float $ftol, float $xbnd, array $p, array &$x, float &$f, float &$alpha, array &$gfull, int $maxnfeval, int &$nfeval): string
+    {
+        $n = count($x);
+        $gu = self::dot(self::tncScaleG($gfull, $xscale, $fscale), $p);
+        $xnorm = self::tncNrm2(self::tncProject($x, $pivot));
+        $rteps = sqrt(self::EPS);
+        $pe = self::tncNrm2($p) + self::EPS;
+        $s = [
+            'reltol' => $rteps * ($xnorm + 1.0) / $pe,
+            'abstol' => fdiv(-self::EPS * (1.0 + abs($f)), $gu - self::EPS),
+            'u' => $alpha, 'fu' => $f, 'gu' => $gu, 'xmin' => 0.0, 'fmin' => $f,
+        ];
+        $tnytol = self::EPS * ($xnorm + 1.0) / $pe;
+        $big = 1.0 / (self::EPS * self::EPS);
+        $itcnt = 0;
+        $newgfull = $gfull;
+        $itest = self::tncGetptcInit($s, $tnytol, $eta, 1e-4, $xbnd);
+        while ($itest === 'eval') {
+            if (++$itcnt > 64 || $nfeval >= $maxnfeval) {
+                break;
+            }
+            $ualpha = $s['xmin'] + $s['u'];
+            $temp = [];
+            for ($i = 0; $i < $n; $i++) {
+                $temp[$i] = ($x[$i] + $ualpha * $p[$i]) * $xscale[$i] + $xoffset[$i];
+            }
+            [$fu, $tempgfull] = $fg(self::tncCoerce($temp, $low, $up));
+            $nfeval++;
+            $s['fu'] = $fu * $fscale;
+            $s['gu'] = self::dot(self::tncScaleG($tempgfull, $xscale, $fscale), $p);
+            $itest = self::tncGetptcIter($s, $big, self::EPS, $tnytol, $ftol, $xbnd);
+            if ($s['xmin'] == $ualpha) {
+                $newgfull = $tempgfull;
+            }
+        }
+        $alpha = $s['xmin'];
+        if ($itest === 'ok') {
+            $f = $s['fmin'];
+            for ($i = 0; $i < $n; $i++) {
+                $x[$i] += $alpha * $p[$i];
+            }
+            $gfull = $newgfull;
+
+            return 'ok';
+        }
+        if ($itcnt > 64 || $itest !== 'eval') {
+            return 'fail';
+        }
+
+        return 'maxfun';
+    }
+
+    /**
+     * tnc.c getptcInit: sets up the line search state in $s (keys as the C variables, xmin = the step).
+     *
+     * @param array<string, mixed> $s
+     */
+    private static function tncGetptcInit(array &$s, float $tnytol, float $eta, float $rmu, float $xbnd): string
+    {
+        if ($s['u'] <= 0.0 || $xbnd <= $tnytol || $s['gu'] > 0.0) {
+            return 'einval';
+        }
+        if ($xbnd < $s['abstol']) {
+            $s['abstol'] = $xbnd;
+        }
+        $s['tol'] = $s['abstol'];
+        $s['a'] = 0.0;
+        $s['xw'] = 0.0;
+        $s['xmin'] = 0.0;
+        $s['oldf'] = $s['fu'];
+        $s['fmin'] = $s['fu'];
+        $s['fw'] = $s['fu'];
+        $s['gw'] = $s['gu'];
+        $s['gmin'] = $s['gu'];
+        $s['step'] = $s['u'];
+        $s['factor'] = 5.0;
+        $s['braktd'] = false;
+        $s['scxbnd'] = $xbnd;
+        $s['b'] = $s['scxbnd'] + $s['reltol'] * abs($s['scxbnd']) + $s['abstol'];
+        $s['e'] = $s['b'] + $s['b'];
+        $s['b1'] = $s['b'];
+        $s['gtest1'] = -$rmu * $s['gu'];
+        $s['gtest2'] = -$eta * $s['gu'];
+        if ($s['step'] >= $s['scxbnd']) {
+            $s['step'] = $s['scxbnd'];
+            $s['scxbnd'] -= ($s['reltol'] * abs($xbnd) + $s['abstol']) / (1.0 + $s['reltol']);
+        }
+        $s['u'] = $s['step'];
+        if (abs($s['step']) < $s['tol'] && $s['step'] < 0.0) {
+            $s['u'] = -$s['tol'];
+        }
+        if (abs($s['step']) < $s['tol'] && $s['step'] >= 0.0) {
+            $s['u'] = $s['tol'];
+        }
+
+        return 'eval';
+    }
+
+    /**
+     * tnc.c getptcIter: takes the new point (u, fu, gu) and returns 'ok', 'fail' or 'eval' with the next
+     * trial step in $s['u'].
+     *
+     * @param array<string, mixed> $s
+     */
+    private static function tncGetptcIter(array &$s, float $big, float $rtsmll, float $tnytol, float $fpresn, float $xbnd): string
+    {
+        $reltol = &$s['reltol'];
+        $abstol = &$s['abstol'];
+        $u = &$s['u'];
+        $fu = &$s['fu'];
+        $gu = &$s['gu'];
+        $xmin = &$s['xmin'];
+        $fmin = &$s['fmin'];
+        $gmin = &$s['gmin'];
+        $xw = &$s['xw'];
+        $fw = &$s['fw'];
+        $gw = &$s['gw'];
+        $a = &$s['a'];
+        $b = &$s['b'];
+        $oldf = &$s['oldf'];
+        $b1 = &$s['b1'];
+        $scxbnd = &$s['scxbnd'];
+        $e = &$s['e'];
+        $step = &$s['step'];
+        $factor = &$s['factor'];
+        $braktd = &$s['braktd'];
+        $gtest1 = $s['gtest1'];
+        $gtest2 = $s['gtest2'];
+        $tol = &$s['tol'];
+        $moved = false;
+        if ($fu <= $fmin) {
+            $chordu = $oldf - ($xmin + $u) * $gtest1;
+            if ($fu > $chordu) {
+                $chordm = $oldf - $xmin * $gtest1;
+                $gu = -$gmin;
+                $denom = $chordm - $fmin;
+                if (abs($denom) < 1e-15) {
+                    $denom = 1e-15;
+                    if ($chordm - $fmin < 0.0) {
+                        $denom = -$denom;
+                    }
+                }
+                if ($xmin != 0.0) {
+                    $gu = $gmin * ($chordu - $fu) / $denom;
+                }
+                $fu = 0.5 * $u * ($gmin + $gu) + $fmin;
+                if ($fu < $fmin) {
+                    $fu = $fmin;
+                }
+            } else {
+                $fw = $fmin;
+                $fmin = $fu;
+                $gw = $gmin;
+                $gmin = $gu;
+                $xmin += $u;
+                $a -= $u;
+                $b -= $u;
+                $xw = -$u;
+                $scxbnd -= $u;
+                if ($gu <= 0.0) {
+                    $a = 0.0;
+                } else {
+                    $b = 0.0;
+                    $braktd = true;
+                }
+                $tol = abs($xmin) * $reltol + $abstol;
+                $moved = true;
+            }
+        }
+        if (! $moved) {
+            if ($u < 0.0) {
+                $a = $u;
+            } else {
+                $b = $u;
+                $braktd = true;
+            }
+            $xw = $u;
+            $fw = $fu;
+            $gw = $gu;
+        }
+
+        $twotol = $tol + $tol;
+        $xmidpt = 0.5 * ($a + $b);
+        $convrg = (abs($xmidpt) <= $twotol - 0.5 * ($b - $a))
+            || (abs($gmin) <= $gtest2 && $fmin < $oldf && ((abs($xmin - $xbnd) > $tol) || (! $braktd)));
+        if ($convrg) {
+            if ($xmin != 0.0) {
+                return 'ok';
+            }
+            if (abs($oldf - $fw) <= $fpresn) {
+                return 'fail';
+            }
+            $tol = 0.1 * $tol;
+            if ($tol < $tnytol) {
+                return 'fail';
+            }
+            $reltol = 0.1 * $reltol;
+            $abstol = 0.1 * $abstol;
+            $twotol = 0.1 * $twotol;
+        }
+
+        $r = 0.0;
+        $q = 0.0;
+        $sv = 0.0;
+        $minimumFound = false;
+        if (abs($e) > $tol) {
+            $r = fdiv(3.0 * ($fmin - $fw), $xw) + $gmin + $gw;
+            $absr = abs($r);
+            $q = $absr;
+            if ($gw != 0.0 && $gmin != 0.0) {
+                $abgw = abs($gw);
+                $abgmin = abs($gmin);
+                $sv = sqrt($abgmin) * sqrt($abgw);
+                if ($gw / $abgw * $gmin > 0.0) {
+                    if ($r >= $sv || $r <= -$sv) {
+                        $q = sqrt(abs($r + $sv)) * sqrt(abs($r - $sv));
+                    } else {
+                        $r = 0.0;
+                        $q = 0.0;
+                        $minimumFound = true;
+                    }
+                } else {
+                    $sumsq = 1.0;
+                    $pp = 0.0;
+                    if ($absr >= $sv) {
+                        if ($absr > $rtsmll) {
+                            $pp = $absr * $rtsmll;
+                        }
+                        if ($sv >= $pp) {
+                            $value = fdiv($sv, $absr);
+                            $sumsq = 1.0 + $value * $value;
+                        }
+                        $scl = $absr;
+                    } else {
+                        if ($sv > $rtsmll) {
+                            $pp = $sv * $rtsmll;
+                        }
+                        if ($absr >= $pp) {
+                            $value = fdiv($absr, $sv);
+                            $sumsq = 1.0 + $value * $value;
+                        }
+                        $scl = $sv;
+                    }
+                    $sumsq = sqrt($sumsq);
+                    $q = $big;
+                    if ($scl < $big / $sumsq) {
+                        $q = $scl * $sumsq;
+                    }
+                }
+            }
+            if (! $minimumFound) {
+                if ($xw < 0.0) {
+                    $q = -$q;
+                }
+                $sv = $xw * ($gmin - $r - $q);
+                $q = $gw - $gmin + $q + $q;
+                if ($q > 0.0) {
+                    $sv = -$sv;
+                }
+                if ($q <= 0.0) {
+                    $q = -$q;
+                }
+                $r = $e;
+                if ($b1 != $step || $braktd) {
+                    $e = $step;
+                }
+            }
+        }
+
+        $a1 = $a;
+        $b1 = $b;
+        $step = $xmidpt;
+        if ((! $braktd) || (($a == 0.0 && $xw < 0.0) || ($b == 0.0 && $xw > 0.0))) {
+            if ($braktd) {
+                $d1 = $xw;
+                $d2 = $a;
+                if ($a == 0.0) {
+                    $d2 = $b;
+                }
+                $u = fdiv(-$d1, $d2);
+                $step = 5.0 * $d2 * (0.1 + fdiv(1.0, $u)) / 11.0;
+                if ($u < 1.0) {
+                    $step = 0.5 * $d2 * sqrt($u);
+                }
+            } else {
+                $step = -$factor * $xw;
+                if ($step > $scxbnd) {
+                    $step = $scxbnd;
+                }
+                if ($step != $scxbnd) {
+                    $factor = 5.0 * $factor;
+                }
+            }
+            if ($step <= 0.0) {
+                $a1 = $step;
+            }
+            if ($step > 0.0) {
+                $b1 = $step;
+            }
+        }
+
+        if (abs($sv) <= abs(0.5 * $q * $r) || $sv <= $q * $a1 || $sv >= $q * $b1) {
+            $e = $b - $a;
+        } else {
+            $step = fdiv($sv, $q);
+            if ($step - $a < $twotol || $b - $step < $twotol) {
+                $step = $xmidpt <= 0.0 ? -$tol : $tol;
+            }
+        }
+
+        if ($step >= $scxbnd) {
+            $step = $scxbnd;
+            $scxbnd -= ($reltol * abs($xbnd) + $abstol) / (1.0 + $reltol);
+        }
+        $u = $step;
+        if (abs($step) < $tol && $step < 0.0) {
+            $u = -$tol;
+        }
+        if (abs($step) < $tol && $step >= 0.0) {
+            $u = $tol;
+        }
+
+        return 'eval';
+    }
+
+    /** tnc.c initialStep: the first trial step of the line search. */
+    private static function tncInitialStep(float $fnew, float $fmin, float $gtp, float $smax): float
+    {
+        $d = abs($fnew - $fmin);
+        $alpha = 1.0;
+        if ($d * 2.0 <= -$gtp && $d >= self::EPS) {
+            $alpha = $d * -2.0 / $gtp;
+        }
+
+        return $alpha >= $smax ? $smax : $alpha;
+    }
+
+    /** tnc.c stepMax: the longest step along $dir that keeps the free variables inside their bounds. */
+    private static function tncStepMax(float $step, array $x, array $dir, array $pivot, array $low, array $up, array $xscale, array $xoffset): float
+    {
+        foreach ($x as $i => $xi) {
+            if ($pivot[$i] === 0 && $dir[$i] != 0.0) {
+                if ($dir[$i] < 0.0) {
+                    $t = fdiv($low[$i] - $xoffset[$i], $xscale[$i]) - $xi;
+                    if ($t > $step * $dir[$i]) {
+                        $step = $t / $dir[$i];
+                    }
+                } else {
+                    $t = fdiv($up[$i] - $xoffset[$i], $xscale[$i]) - $xi;
+                    if ($t < $step * $dir[$i]) {
+                        $step = $t / $dir[$i];
+                    }
+                }
+            }
+        }
+
+        return $step;
+    }
+
+    /** tnc.c addConstraint: fixes the free variables the step has brought onto a bound. */
+    private static function tncAddConstraint(array &$x, array $p, array &$pivot, array $low, array $up, array $xscale, array $xoffset): bool
+    {
+        $newcon = false;
+        foreach ($x as $i => $xi) {
+            if ($pivot[$i] === 0 && $p[$i] != 0.0) {
+                if ($p[$i] < 0.0 && $low[$i] != -INF) {
+                    $tol = self::EPS * 10.0 * (abs($low[$i]) + 1.0);
+                    if ($xi * $xscale[$i] + $xoffset[$i] - $low[$i] <= $tol) {
+                        $pivot[$i] = -1;
+                        $x[$i] = fdiv($low[$i] - $xoffset[$i], $xscale[$i]);
+                        $newcon = true;
+                    }
+                } elseif ($up[$i] != INF) {
+                    $tol = self::EPS * 10.0 * (abs($up[$i]) + 1.0);
+                    if ($up[$i] - ($xi * $xscale[$i] + $xoffset[$i]) <= $tol) {
+                        $pivot[$i] = 1;
+                        $x[$i] = fdiv($up[$i] - $xoffset[$i], $xscale[$i]);
+                        $newcon = true;
+                    }
+                }
+            }
+        }
+
+        return $newcon;
+    }
+
+    /** tnc.c removeConstraint: frees the bound variable with the most negative Lagrange multiplier. */
+    private static function tncRemoveConstraint(float $gtpnew, float $gnorm, float $pgtolfs, float $f, float $fLastConstraint, array $g, array &$pivot): bool
+    {
+        if ((($fLastConstraint - $f) <= ($gtpnew * -0.5)) && ($gnorm > $pgtolfs)) {
+            return false;
+        }
+        $imax = -1;
+        $cmax = 0.0;
+        foreach ($g as $i => $gi) {
+            if ($pivot[$i] === 2) {
+                continue;
+            }
+            $t = -$pivot[$i] * $gi;
+            if ($t < $cmax) {
+                $cmax = $t;
+                $imax = $i;
+            }
+        }
+        if ($imax !== -1) {
+            $pivot[$imax] = 0;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /** tnc.c dnrm21: Euclidean norm with running rescaling, summed in order. */
+    private static function tncNrm2(array $v): float
+    {
+        $ssq = 1.0;
+        $scale = 0.0;
+        foreach ($v as $x) {
+            if ($x != 0.0) {
+                $a = abs($x);
+                if ($scale < $a) {
+                    $ratio = $scale / $a;
+                    $ssq = 1.0 + $ssq * $ratio * $ratio;
+                    $scale = $a;
+                } else {
+                    $ratio = fdiv($a, $scale);
+                    $ssq += $ratio * $ratio;
+                }
+            }
+        }
+
+        return $scale * sqrt($ssq);
+    }
+
+    /** Zeroes the components of $v whose variables are on a bound (tnc.c project). */
+    private static function tncProject(array $v, array $pivot): array
+    {
+        foreach ($pivot as $i => $pv) {
+            if ($pv !== 0) {
+                $v[$i] = 0.0;
+            }
+        }
+
+        return $v;
+    }
+
+    /** tnc.c scaleg: the gradient with respect to the scaled variables, times the function scale. */
+    private static function tncScaleG(array $g, array $xscale, float $fscale): array
+    {
+        foreach ($g as $i => $gi) {
+            $g[$i] = $gi * ($xscale[$i] * $fscale);
+        }
+
+        return $g;
+    }
+
+    /** tnc.c coercex: clips x into the bounds. */
+    private static function tncCoerce(array $x, array $low, array $up): array
+    {
+        foreach ($x as $i => $xi) {
+            if ($xi < $low[$i]) {
+                $x[$i] = $low[$i];
+            } elseif ($xi > $up[$i]) {
+                $x[$i] = $up[$i];
+            }
+        }
+
+        return $x;
+    }
+
+    /**
+     * scipy.optimize._numdiff.approx_derivative(method='2-point', abs_step=eps, bounds) for a scalar
+     * function: forward differences, the step turned around (or shortened) where it would leave the bounds.
+     */
+    private function tncFdGrad(array $x, float $f0, float $eps, array $lb, array $ub): array
+    {
+        $g = [];
+        foreach ($x as $i => $xi) {
+            $h = $eps;
+            if (($xi + $h) - $xi == 0.0) {
+                $h = sqrt(self::EPS) * ($xi >= 0 ? 1.0 : -1.0) * max(1.0, abs($xi));
+            }
+            $lower = $xi - $lb[$i];
+            $upper = $ub[$i] - $xi;
+            $xh = $xi + $h;
+            $fitting = abs($h) <= max($lower, $upper);
+            if (($xh < $lb[$i] || $xh > $ub[$i]) && $fitting) {
+                $h *= -1;
+            } elseif (! $fitting) {
+                $h = $upper >= $lower ? $upper : -$lower;
+            }
+            $x1 = $x;
+            $x1[$i] = $xi + $h;
+            $g[$i] = fdiv($this->f($x1) - $f0, ($xi + $h) - $xi);
+        }
+        $this->njev++;
+
+        return $g;
     }
 
     // ------------------------------------------------------------------ SLSQP (Kraft sequential QP)
