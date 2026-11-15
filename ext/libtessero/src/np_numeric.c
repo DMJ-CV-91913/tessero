@@ -293,6 +293,22 @@ static int own_from(own *o, const tsr_array *v, int dt)
     return rc;
 }
 
+/* v for reading only, as an own of dtype dt: v itself when it already is C-contiguous dt and not empty (bytes 0, so
+   own_free leaves it alone; data moved to element 0), else the owned contiguous copy own_from makes. The values read
+   are the same either way; the borrowed one saves an allocation and a copy per input. Never write to it or emit it. */
+static int own_in(own *o, const tsr_array *v, int dt)
+{
+    const int want = dt < 0 ? v->dtype : dt;
+    if (v->dtype == want && tsr_shape_size(v->ndim, v->shape) > 0 && tsr_array_is_contiguous(v)) {
+        o->a = *v;
+        o->a.data = (char *)v->data + v->offset;
+        o->a.offset = 0;
+        o->bytes = 0;
+        return TSR_OK;
+    }
+    return own_from(o, v, dt);
+}
+
 enum { OP_ADD, OP_SUB, OP_MUL, OP_TDIV, OP_NE };
 
 /* the loop dtype of a binary operation (numpy's type resolution for add/subtract/multiply/true_divide) */
@@ -4793,7 +4809,7 @@ static int r_modf(const void *ctx, const tsr_arg *args, int nargs, tsr_result *r
     harr h; int rc = get_arr(argk(args, nargs, 0), &h, "x");
     if (rc < 0) return rc;
     own src;
-    if ((rc = own_from(&src, &h.a, TSR_F64)) < 0) return rc;  /* contiguous float64 copy */
+    if ((rc = own_in(&src, &h.a, TSR_F64)) < 0) return rc;    /* contiguous float64 (read only) */
     const int64_t n = tsr_shape_size(src.a.ndim, src.a.shape);
     tsr_result *items = fn_result_seq(&res[0], 2);
     if (!items) { own_free(&src); return TSR_ENOMEM; }
@@ -4824,8 +4840,8 @@ static int r_bitwise(const void *ctx, const tsr_arg *args, int nargs, tsr_result
         return TSR_ETYPE;
     }
     own a, b;
-    if ((rc = own_from(&a, &ha.a, TSR_I64)) < 0) return rc;
-    if ((rc = own_from(&b, &hb.a, TSR_I64)) < 0) { own_free(&a); return rc; }
+    if ((rc = own_in(&a, &ha.a, TSR_I64)) < 0) return rc;
+    if ((rc = own_in(&b, &hb.a, TSR_I64)) < 0) { own_free(&a); return rc; }
     const int64_t na = tsr_shape_size(a.a.ndim, a.a.shape), nb = tsr_shape_size(b.a.ndim, b.a.shape);
     if (na != nb && na != 1 && nb != 1) { own_free(&a); own_free(&b); fn_set_error("operands could not be broadcast together"); return TSR_EARG; }
     const tsr_array *rsh = na >= nb ? &a.a : &b.a;
@@ -4930,7 +4946,7 @@ static int r_frexp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     harr h; int rc = get_arr(argk(args, nargs, 0), &h, "x");
     if (rc < 0) return rc;
     own src;
-    if ((rc = own_from(&src, &h.a, TSR_F64)) < 0) return rc;
+    if ((rc = own_in(&src, &h.a, TSR_F64)) < 0) return rc;   /* read only */
     const int64_t n = tsr_shape_size(src.a.ndim, src.a.shape);
     tsr_result *items = fn_result_seq(&res[0], 2);
     if (!items) { own_free(&src); return TSR_ENOMEM; }
@@ -4951,8 +4967,8 @@ static int r_ldexp(const void *ctx, const tsr_arg *args, int nargs, tsr_result *
     int rc = get_arr(argk(args, nargs, 0), &ha, "x1"); if (rc < 0) return rc;
     rc = get_arr(argk(args, nargs, 1), &hb, "x2"); if (rc < 0) return rc;
     own a, b;
-    if ((rc = own_from(&a, &ha.a, TSR_F64)) < 0) return rc;
-    if ((rc = own_from(&b, &hb.a, TSR_I64)) < 0) { own_free(&a); return rc; }
+    if ((rc = own_in(&a, &ha.a, TSR_F64)) < 0) return rc;
+    if ((rc = own_in(&b, &hb.a, TSR_I64)) < 0) { own_free(&a); return rc; }
     const int64_t na = tsr_shape_size(a.a.ndim, a.a.shape), nb = tsr_shape_size(b.a.ndim, b.a.shape);
     if (na != nb && na != 1 && nb != 1) { own_free(&a); own_free(&b); fn_set_error("operands could not be broadcast together"); return TSR_EARG; }
     const tsr_array *rsh = na >= nb ? &a.a : &b.a;
@@ -4978,7 +4994,7 @@ static int r_bitwise_count(const void *ctx, const tsr_arg *args, int nargs, tsr_
     if (rc < 0) return rc;
     if (!is_intlike(h.a.dtype)) { fn_set_error("bitwise_count is not supported for floating-point arguments"); return TSR_ETYPE; }
     own a;
-    if ((rc = own_from(&a, &h.a, TSR_I64)) < 0) return rc;
+    if ((rc = own_in(&a, &h.a, TSR_I64)) < 0) return rc;
     own z;
     if ((rc = own_new(&z, TSR_U8, a.a.ndim, a.a.shape)) < 0) { own_free(&a); return rc; }
     const int64_t n = tsr_shape_size(a.a.ndim, a.a.shape);
@@ -5017,8 +5033,8 @@ static int r_divmod(const void *ctx, const tsr_arg *args, int nargs, tsr_result 
     const int ints = is_intlike(ha.a.dtype) && is_intlike(hb.a.dtype);
     const int dt = ints ? TSR_I64 : TSR_F64;
     own a, b;
-    if ((rc = own_from(&a, &ha.a, dt)) < 0) return rc;
-    if ((rc = own_from(&b, &hb.a, dt)) < 0) { own_free(&a); return rc; }
+    if ((rc = own_in(&a, &ha.a, dt)) < 0) return rc;
+    if ((rc = own_in(&b, &hb.a, dt)) < 0) { own_free(&a); return rc; }
     const int64_t na = tsr_shape_size(a.a.ndim, a.a.shape), nb = tsr_shape_size(b.a.ndim, b.a.shape);
     if (na != nb && na != 1 && nb != 1) { own_free(&a); own_free(&b); fn_set_error("operands could not be broadcast together"); return TSR_EARG; }
     const tsr_array *rsh = na >= nb ? &a.a : &b.a;

@@ -223,6 +223,12 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   `special.wofz` 1.5 -> 0.83, `hankel1` 2.4 -> 1.55. On the tier-3 per-call fixtures the functions slower than
   NumPy/SciPy fell from 12 to 4 (np.json), 47 to 33 (np_shape), 34 to 21 (np_numeric) and 38 to 20 (special). Most
   of the special ones left are at 1.00 to 1.08: they run SciPy's own specfun routines.
+- **Element-wise integer and float routines read their inputs in place.** `bitwise_and` / `or` / `xor`,
+  `left_shift`, `right_shift`, `bitwise_count`, `ldexp`, `frexp`, `modf` and `divmod` made an owned copy of every
+  input, even one already C-contiguous in the right dtype. They now read such an input where it is, through
+  `own_in`, and copy only to convert. Each routine was checked to only read its inputs and never emit them. Per
+  call through the extension: `bitwise_and` 0.96 -> 0.70 us, `ldexp` 0.98 -> 0.74, `divmod` 1.27 -> 1.03, `frexp`
+  0.93 -> 0.81. Byte hash identical on both backends.
 - **`lu_factor` and `cho_factor` return their factor in column (Fortran) order, as SciPy does; `lu_solve` and
   `cho_solve` read it without a copy.** The factor is LAPACK's own column-major array, handed to PHP as an ordinary
   NDArray of the same shape and values. `toBytes()` and `toList()` give exactly what they gave before; only the
