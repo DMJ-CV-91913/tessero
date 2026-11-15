@@ -1,6 +1,6 @@
 # Speed sweep, 2026-11-15
 
-First run on 2026-11-06; every tier re-timed on 2026-11-15 at commit 56102533 (see Method).
+First run on 2026-11-06; every tier re-timed on 2026-11-15 at commit 56102533 (see Method); the known gaps and the cases changed since were timed again at commit d2d4e2e6.
 
 Every function family timed against NumPy 2.4.4 / SciPy 1.17.1, on the same inputs, single-threaded on both sides
 (`OPENBLAS_NUM_THREADS=1`), on the benchmark machine of [benchmarks](benchmarks.md) (Intel Core i7-4790, Haswell,
@@ -21,7 +21,8 @@ same kernel without the FFI layer, tier 3 takes 0.07 of the NumPy/SciPy time and
 functions, NumPy's core included (np 0.29; see "Per call through the native extension"). On element-wise math at
 100,000 values (tier 1) the two are on a par. On heavy calls (tier 2) Tessero is ahead on optimizers, ODEs and
 splines: clearly faster (by more than 10%) on 49 cases, within 10% either way on 24, and clearly slower on 15,
-listed with what is known of their causes under the gaps below.
+listed with what is known of their causes under the gaps below. Timed again after the fixes since the sweep,
+`rotate` has moved ahead of SciPy (see "Known gaps").
 
 ## Usage-weighted mix
 
@@ -256,6 +257,19 @@ answers. The logistic regression at 10,000 x 50 (see the classical machine learn
 the extension and 5,423 ms through FFI before, 141 and 156 ms after, against SciPy's 61 ms; Newton-CG 4,382 and
 5,318 ms before, 3,307 and 3,614 ms after, against SciPy's 3,544 ms.
 
+Then `ndimage.map_coordinates`, `shift`, `zoom`, `affine_transform` and `rotate` were corrected. At the B-spline
+orders (2 to 5) they had matched SciPy only in the modes 'mirror' and 'reflect': in 'constant' (SciPy's default,
+the mode these cases time), 'nearest' and 'wrap' their results were off by up to 0.2 to 0.4 on data in [0, 1], and
+`prefilter=False` was ignored. They now follow SciPy's code (`NI_GeometricTransform`, `NI_ZoomShift` and the
+spline prefilter, with its padding at the edges) and give SciPy's answers: identical in dtype, shape and bytes on
+872 of 882 calls checked against SciPy, on both backends (the other 10 are bool results with a cval outside [0, 1],
+with the same truth values). The sweep's times for these cases, and the earlier `zoom` and `shift` rows below, were
+of the old code. Re-timed alone on 2026-11-15 (18:42 to 18:47 UTC, the installed library at commit d2d4e2e6, eight
+alternating rounds of FFI and SciPy, at a load average of 8 to 14; `shift` three rounds): `rotate` 512^2 at 30 deg
+49.7 ms in the sweep, now 29.6 ms against SciPy's 36.1 ms; `map_coordinates` 1000^2 at 100k points 54.8 ms, now
+41.7 ms against 36.0 ms; `zoom` 500^2 x2 21 ms, now 23.6 ms against 74.1 ms; `shift` 1000^2 at order 3 42.9 ms
+against 89.6 ms.
+
 Earlier changes, 2026-11-06 to 2026-11-13 (each row's before and after timed together; the first rows are the quick
 gaps, closed the day of the first sweep; results unchanged, checked by parity):
 
@@ -346,19 +360,21 @@ factor was zero, so a NaN in a later operand propagates as in NumPy.
 The tier-2 cases clearly slower than SciPy in this sweep, largest gap first; the other five (`median`, the
 `shortest_path` Dijkstra case, `clip`, `diff`, `medfilt`, 1.12 to 1.24) are in the tier 2 table below. Since the
 2026-11-10 tables, `eigsh`, `ConvexHull`, the Kelvin and Bessel zeros and `quad` have left this list (see "Fixed
-after the sweep"). Several cases below were on a par or ahead in the 2026-11-10 tables, where the SciPy side
-took longer (`rotate` 60.9 ms, `map_coordinates` 70.6 ms, `hilbert` 79.3 ms); their Tessero times have not grown.
+after the sweep"), and since this sweep `rotate`, now faster than SciPy after its correction (29.6 ms against
+36.1 ms, see the same section). The times below were taken again on 2026-11-15, after the fixes since the sweep:
+each case alone, the installed library at commit d2d4e2e6, eight alternating rounds of FFI and SciPy (18:42 to
+18:47 UTC, at a load average of 8 to 14), each side's best; the `KDTree` build keeps the sweep's figures. The
+sweep's figures for each case are in the tier 2 table below.
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
-| `optimize.curve_fit`, 1000 points | 2.25 ms; 1.36 ms with a model that takes the whole array | 0.58 ms | a per-point PHP model is called once per point and evaluation. A whole-array model is called once per evaluation, as SciPy calls it; since this sweep the Jacobian's evaluations go to it in one call laid out along the data axis, and lmdif takes them as one array: 1.14 ms through FFI, 0.44 ms through the extension (SciPy 0.55 ms), the same results byte for byte. The time left through FFI is its cost per array operation (about 5 us, some 60 operations per fit) | the native extension |
+| `optimize.curve_fit`, 1000 points | 2.29 ms; 1.16 ms with a model that takes the whole array | 0.60 ms | a per-point PHP model is called once per point and evaluation. A whole-array model is called once per evaluation, as SciPy calls it; since this sweep the Jacobian's evaluations go to it in one call laid out along the data axis, and lmdif takes them as one array, with the same results byte for byte. Through the extension, with the extension's arrays, the fit takes 0.44 ms against SciPy's 0.56 ms (best of 200 fits, three runs each side). The time left through FFI is its cost per array operation (about 5 us, some 60 operations per fit) | the native extension |
 | `spatial.KDTree` build, 100k points from PHP rows | 55.4 ms | 30.7 ms | casting the PHP point rows into one block through FFI; from an NDArray the build takes 30.8 ms, on a par | pass an NDArray |
-| `numpy.fft.rfft2` 1024^2 | 15.9 ms | 9.9 ms | the transforms themselves: timed alone after the sweep, the real FFT of the rows took 10.3 ms against 3.6 ms and the complex FFT down the columns 10.0 ms against 5.4 ms (at a load average near 12) | -- |
-| `ndimage.map_coordinates` 1000^2, 100k points | 54.8 ms | 36.4 ms | the interpolation of the points (about 38 ms against SciPy's 15.5 ms, timed alone after the sweep); the spline prefilter is on a par | -- |
-| `signal.hilbert` 1M | 86.8 ms | 58.3 ms | the FFT itself, after the input is read in place; timed alone after the sweep (eight alternating rounds) it took 1.09x SciPy's time, so most of this gap was load | -- |
-| `ndimage.rotate` 512^2, 30 deg | 49.7 ms | 35.3 ms | the interpolation (48.7 ms against 30.6 ms without the prefilter, timed alone after the sweep); the prefilter is close to SciPy's (5.7 against 4.6 ms) | -- |
-| `ndimage.binary_erosion` 1000^2 | 13.8 ms | 9.8 ms | not yet profiled; timed alone after the sweep it took 12.9 ms against 10.9 ms | -- |
-| `spatial.KDTree`, 100 queries (k=5) in 100k | 0.268 ms; 0.254 ms from an NDArray | 0.207 ms | not yet profiled | -- |
+| `numpy.fft.rfft2` 1024^2 | 15.4 ms | 11.9 ms | the transforms themselves: timed alone after the sweep, the real FFT of the rows took 10.3 ms against 3.6 ms and the complex FFT down the columns 10.0 ms against 5.4 ms (at a load average near 12) | -- |
+| `ndimage.binary_erosion` 1000^2 | 12.3 ms | 9.7 ms | not yet profiled | -- |
+| `spatial.KDTree`, 100 queries (k=5) in 100k | 0.250 ms; 0.232 ms from an NDArray | 0.207 ms; 0.202 ms | not yet profiled | -- |
+| `ndimage.map_coordinates` 1000^2, 100k points | 41.7 ms | 36.0 ms | the interpolation of the points, now SciPy's own operations (see "Fixed after the sweep"; 54.8 ms in the sweep, with the old code); not yet profiled again | -- |
+| `signal.hilbert` 1M | 73.5 ms | 66.4 ms | the FFT itself, after the input is read in place; in the sweep 86.8 against 58.3 ms, most of which was load | -- |
 
 ## Where SciPy fails and Tessero completes
 
