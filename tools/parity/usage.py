@@ -138,21 +138,23 @@ def census_index():
 
 def scan():
     resolve, census = census_index()
-    counts, packages, corpus = {}, {}, []
+    counts, packages, by_package, corpus = {}, {}, {}, []
     for name, repo, tag, sub in CORPUS:
         root, commit = clone(repo, tag)
         top = package_dir(root, sub, name)
-        nfiles, ncalls, used = 0, 0, set()
+        nfiles, ncalls, used = 0, 0, {}
         for f in py_files(top):
             nfiles += 1
             for k, v in scan_file(f, resolve).items():
                 counts[k] = counts.get(k, 0) + v
                 ncalls += v
-                used.add(k)
-        for k in used:
+                used[k] = used.get(k, 0) + v
+        for k, v in used.items():
             packages[k] = packages.get(k, 0) + 1
+            by_package.setdefault(k, {})[name] = v
         corpus.append({'name': name, 'repo': repo, 'tag': tag, 'commit': commit, 'files': nfiles, 'calls': ncalls})
-    symbols = {k: {'calls': counts[k], 'packages': packages[k]} for k in sorted(counts)}
+    # by_package: the symbol's calls in each package that calls it (a mix can be weighted by one package alone)
+    symbols = {k: {'calls': counts[k], 'packages': packages[k], 'by_package': by_package[k]} for k in sorted(counts)}
     return {'numpy': census.get('numpy'), 'scipy': census.get('scipy'), 'corpus': corpus,
             'total_calls': sum(counts.values()), 'symbols': symbols}
 

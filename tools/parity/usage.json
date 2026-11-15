@@ -1,7 +1,7 @@
 {
  "corpus": [
   {
-   "calls": 4337,
+   "calls": 4338,
    "commit": "866c0f51e7560ef0303cbcc5f159df5382ea9e3f",
    "files": 277,
    "name": "scikit-learn",
@@ -17,7 +17,7 @@
    "tag": "v3.0.6"
   },
   {
-   "calls": 10575,
+   "calls": 10579,
    "commit": "278ff9950636cdd4939b4055e339a8e681d79cab",
    "files": 454,
    "name": "statsmodels",
@@ -25,7 +25,7 @@
    "tag": "v0.15.0"
   },
   {
-   "calls": 2533,
+   "calls": 2534,
    "commit": "ee0a7a3ebd9ac8c2602f40e55bc015a3c8a81ae8",
    "files": 197,
    "name": "scikit-image",
@@ -89,7 +89,7 @@
    "tag": "v1.3.3"
   },
   {
-   "calls": 7667,
+   "calls": 7679,
    "commit": "bf67729b805865b5bb0f2f97621e416278efd1b2",
    "files": 419,
    "name": "mne",
@@ -97,7 +97,7 @@
    "tag": "v1.13.2"
   },
   {
-   "calls": 1798,
+   "calls": 1799,
    "commit": "6c81c341d2b9e356c9b2cc94836985d8171482d2",
    "files": 162,
    "name": "nilearn",
@@ -121,7 +121,7 @@
    "tag": "v0.30.3"
   },
   {
-   "calls": 1321,
+   "calls": 1328,
    "commit": "ba161f9962f7a95fb8bd052fe646ba8234e99d95",
    "files": 67,
    "name": "pvlib",
@@ -149,2965 +149,7841 @@
  "scipy": "1.17.1",
  "symbols": {
   "numpy.absolute": {
+   "by_package": {
+    "arviz-stats": 7,
+    "astropy": 63,
+    "librosa": 46,
+    "lifelines": 4,
+    "matplotlib": 58,
+    "mne": 201,
+    "networkx": 12,
+    "nilearn": 70,
+    "pandas": 8,
+    "pingouin": 21,
+    "pvlib": 32,
+    "pymc": 14,
+    "scanpy": 18,
+    "scikit-image": 58,
+    "scikit-learn": 64,
+    "seaborn": 7,
+    "statsmodels": 264
+   },
    "calls": 947,
    "packages": 17
   },
   "numpy.add": {
+   "by_package": {
+    "astropy": 15,
+    "librosa": 4,
+    "matplotlib": 3,
+    "networkx": 3,
+    "nilearn": 1,
+    "pandas": 2,
+    "pvlib": 1,
+    "scanpy": 1,
+    "scikit-image": 3,
+    "scikit-learn": 3,
+    "statsmodels": 5
+   },
    "calls": 41,
    "packages": 11
   },
   "numpy.all": {
+   "by_package": {
+    "arviz-stats": 11,
+    "astropy": 45,
+    "librosa": 15,
+    "lifelines": 5,
+    "matplotlib": 22,
+    "mne": 41,
+    "networkx": 2,
+    "nilearn": 35,
+    "pandas": 23,
+    "pvlib": 1,
+    "pymc": 19,
+    "scanpy": 5,
+    "scikit-image": 11,
+    "scikit-learn": 49,
+    "seaborn": 2,
+    "statsmodels": 64,
+    "xarray": 5
+   },
    "calls": 355,
    "packages": 17
   },
   "numpy.allclose": {
+   "by_package": {
+    "astropy": 10,
+    "librosa": 11,
+    "matplotlib": 7,
+    "mne": 35,
+    "networkx": 1,
+    "nilearn": 9,
+    "pandas": 2,
+    "pingouin": 2,
+    "pvlib": 2,
+    "pymc": 2,
+    "scikit-image": 3,
+    "scikit-learn": 13,
+    "statsmodels": 26
+   },
    "calls": 123,
    "packages": 13
   },
   "numpy.amax": {
+   "by_package": {
+    "astropy": 3,
+    "mne": 4,
+    "networkx": 3,
+    "scikit-image": 1,
+    "scikit-learn": 1
+   },
    "calls": 12,
    "packages": 5
   },
   "numpy.amin": {
+   "by_package": {
+    "networkx": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "numpy.angle": {
+   "by_package": {
+    "arviz-stats": 2,
+    "librosa": 5,
+    "matplotlib": 2,
+    "mne": 3,
+    "pingouin": 1
+   },
    "calls": 13,
    "packages": 5
   },
   "numpy.any": {
+   "by_package": {
+    "arviz-stats": 25,
+    "astropy": 112,
+    "librosa": 47,
+    "lifelines": 5,
+    "matplotlib": 28,
+    "mne": 93,
+    "networkx": 2,
+    "nilearn": 22,
+    "pandas": 22,
+    "pingouin": 1,
+    "pvlib": 13,
+    "pymc": 12,
+    "scanpy": 6,
+    "scikit-image": 33,
+    "scikit-learn": 46,
+    "statsmodels": 114,
+    "xarray": 13
+   },
    "calls": 594,
    "packages": 17
   },
   "numpy.append": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 3,
+    "librosa": 1,
+    "lifelines": 9,
+    "matplotlib": 4,
+    "mne": 25,
+    "networkx": 2,
+    "nilearn": 8,
+    "pandas": 6,
+    "pingouin": 1,
+    "pvlib": 5,
+    "scanpy": 2,
+    "scikit-image": 1,
+    "scikit-learn": 14,
+    "seaborn": 4,
+    "statsmodels": 21,
+    "xarray": 3
+   },
    "calls": 111,
    "packages": 17
   },
   "numpy.apply_along_axis": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 3,
+    "librosa": 4,
+    "matplotlib": 1,
+    "mne": 4,
+    "nilearn": 1,
+    "pandas": 3,
+    "pingouin": 1,
+    "scanpy": 2,
+    "scikit-image": 3,
+    "scikit-learn": 4,
+    "statsmodels": 16,
+    "xarray": 1
+   },
    "calls": 44,
    "packages": 13
   },
   "numpy.apply_over_axes": {
+   "by_package": {
+    "librosa": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.arange": {
+   "by_package": {
+    "arviz-stats": 56,
+    "astropy": 70,
+    "librosa": 49,
+    "lifelines": 12,
+    "matplotlib": 70,
+    "mne": 345,
+    "networkx": 9,
+    "nilearn": 47,
+    "pandas": 118,
+    "pingouin": 14,
+    "pvlib": 14,
+    "pymc": 21,
+    "scanpy": 59,
+    "scikit-image": 71,
+    "scikit-learn": 128,
+    "seaborn": 16,
+    "statsmodels": 316,
+    "xarray": 40
+   },
    "calls": 1455,
    "packages": 18
   },
   "numpy.arccos": {
+   "by_package": {
+    "astropy": 7,
+    "matplotlib": 1,
+    "mne": 5,
+    "pvlib": 8,
+    "statsmodels": 1
+   },
    "calls": 22,
    "packages": 5
   },
   "numpy.arcsin": {
+   "by_package": {
+    "astropy": 10,
+    "matplotlib": 5,
+    "mne": 3,
+    "pvlib": 7,
+    "statsmodels": 20
+   },
    "calls": 45,
    "packages": 5
   },
   "numpy.arcsinh": {
+   "by_package": {
+    "astropy": 9,
+    "matplotlib": 2
+   },
    "calls": 11,
    "packages": 2
   },
   "numpy.arctan": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 2,
+    "librosa": 1,
+    "lifelines": 1,
+    "matplotlib": 3,
+    "mne": 2,
+    "pvlib": 6,
+    "scikit-image": 3,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 23,
    "packages": 10
   },
   "numpy.arctan2": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 23,
+    "matplotlib": 13,
+    "mne": 12,
+    "networkx": 1,
+    "nilearn": 1,
+    "pvlib": 14,
+    "scikit-image": 9,
+    "statsmodels": 4
+   },
    "calls": 78,
    "packages": 9
   },
   "numpy.arctanh": {
+   "by_package": {
+    "pingouin": 3,
+    "statsmodels": 1
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.argmax": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 1,
+    "librosa": 12,
+    "mne": 34,
+    "networkx": 5,
+    "nilearn": 7,
+    "pandas": 1,
+    "pvlib": 2,
+    "pymc": 1,
+    "scanpy": 16,
+    "scikit-image": 9,
+    "scikit-learn": 42,
+    "statsmodels": 11,
+    "xarray": 5
+   },
    "calls": 148,
    "packages": 14
   },
   "numpy.argmin": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 2,
+    "librosa": 4,
+    "matplotlib": 11,
+    "mne": 48,
+    "nilearn": 3,
+    "pingouin": 1,
+    "scanpy": 21,
+    "scikit-image": 6,
+    "scikit-learn": 12,
+    "seaborn": 1,
+    "statsmodels": 6
+   },
    "calls": 117,
    "packages": 12
   },
   "numpy.argpartition": {
+   "by_package": {
+    "networkx": 1,
+    "nilearn": 1,
+    "scanpy": 2,
+    "scikit-learn": 5,
+    "statsmodels": 3
+   },
    "calls": 12,
    "packages": 5
   },
   "numpy.argsort": {
+   "by_package": {
+    "arviz-stats": 18,
+    "astropy": 2,
+    "librosa": 9,
+    "lifelines": 6,
+    "matplotlib": 4,
+    "mne": 58,
+    "networkx": 5,
+    "nilearn": 8,
+    "pandas": 7,
+    "pingouin": 1,
+    "pvlib": 1,
+    "pymc": 3,
+    "scanpy": 26,
+    "scikit-image": 13,
+    "scikit-learn": 40,
+    "seaborn": 2,
+    "statsmodels": 54,
+    "xarray": 4
+   },
    "calls": 261,
    "packages": 18
   },
   "numpy.argwhere": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 1,
+    "nilearn": 1,
+    "scikit-image": 2
+   },
    "calls": 7,
    "packages": 6
   },
   "numpy.around": {
+   "by_package": {
+    "astropy": 4,
+    "librosa": 3,
+    "matplotlib": 1,
+    "nilearn": 1,
+    "pandas": 1,
+    "pvlib": 1,
+    "scikit-image": 1,
+    "scikit-learn": 6
+   },
    "calls": 18,
    "packages": 8
   },
   "numpy.array": {
+   "by_package": {
+    "arviz-stats": 29,
+    "astropy": 299,
+    "librosa": 43,
+    "lifelines": 17,
+    "matplotlib": 179,
+    "mne": 1008,
+    "networkx": 45,
+    "nilearn": 87,
+    "pandas": 208,
+    "pingouin": 28,
+    "pvlib": 86,
+    "pymc": 43,
+    "scanpy": 108,
+    "scikit-image": 194,
+    "scikit-learn": 186,
+    "seaborn": 24,
+    "statsmodels": 613,
+    "xarray": 68
+   },
    "calls": 3265,
    "packages": 18
   },
   "numpy.array2string": {
+   "by_package": {
+    "astropy": 11,
+    "scikit-image": 1,
+    "scikit-learn": 1
+   },
    "calls": 13,
    "packages": 3
   },
   "numpy.array_equal": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 1,
+    "librosa": 1,
+    "lifelines": 5,
+    "matplotlib": 6,
+    "mne": 43,
+    "nilearn": 6,
+    "pandas": 15,
+    "pingouin": 2,
+    "pymc": 3,
+    "scanpy": 1,
+    "scikit-image": 2,
+    "scikit-learn": 10,
+    "xarray": 3
+   },
    "calls": 100,
    "packages": 14
   },
   "numpy.array_equiv": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.array_repr": {
+   "by_package": {
+    "astropy": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.array_split": {
+   "by_package": {
+    "matplotlib": 1,
+    "mne": 30,
+    "nilearn": 1,
+    "pvlib": 3,
+    "scanpy": 2,
+    "scikit-image": 2,
+    "scikit-learn": 2,
+    "statsmodels": 8
+   },
    "calls": 49,
    "packages": 8
   },
   "numpy.array_str": {
+   "by_package": {
+    "astropy": 3,
+    "statsmodels": 1
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.asanyarray": {
+   "by_package": {
+    "astropy": 71,
+    "librosa": 18,
+    "matplotlib": 29,
+    "mne": 13,
+    "nilearn": 5,
+    "pandas": 3,
+    "pvlib": 6,
+    "scikit-image": 30,
+    "scikit-learn": 2,
+    "statsmodels": 40,
+    "xarray": 1
+   },
    "calls": 218,
    "packages": 11
   },
   "numpy.asarray": {
+   "by_package": {
+    "arviz-stats": 139,
+    "astropy": 140,
+    "librosa": 46,
+    "lifelines": 50,
+    "matplotlib": 145,
+    "mne": 124,
+    "networkx": 22,
+    "nilearn": 100,
+    "pandas": 290,
+    "pingouin": 47,
+    "pvlib": 18,
+    "pymc": 46,
+    "scanpy": 22,
+    "scikit-image": 106,
+    "scikit-learn": 212,
+    "seaborn": 32,
+    "statsmodels": 714,
+    "xarray": 82
+   },
    "calls": 2335,
    "packages": 18
   },
   "numpy.asarray_chkfinite": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.ascontiguousarray": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 15,
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 19,
+    "nilearn": 6,
+    "scanpy": 4,
+    "scikit-image": 45,
+    "scikit-learn": 11,
+    "statsmodels": 10
+   },
    "calls": 114,
    "packages": 10
   },
   "numpy.asfortranarray": {
+   "by_package": {
+    "mne": 9,
+    "nilearn": 2,
+    "scikit-learn": 8,
+    "statsmodels": 22
+   },
    "calls": 41,
    "packages": 4
   },
   "numpy.atleast_1d": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 18,
+    "librosa": 13,
+    "lifelines": 13,
+    "matplotlib": 42,
+    "mne": 58,
+    "networkx": 2,
+    "nilearn": 12,
+    "pandas": 3,
+    "pvlib": 31,
+    "pymc": 16,
+    "scikit-image": 5,
+    "scikit-learn": 29,
+    "seaborn": 4,
+    "statsmodels": 67,
+    "xarray": 7
+   },
    "calls": 325,
    "packages": 16
   },
   "numpy.atleast_2d": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 1,
+    "librosa": 12,
+    "matplotlib": 3,
+    "mne": 45,
+    "networkx": 2,
+    "nilearn": 12,
+    "pandas": 7,
+    "pvlib": 1,
+    "pymc": 2,
+    "scikit-image": 7,
+    "scikit-learn": 22,
+    "seaborn": 5,
+    "statsmodels": 50,
+    "xarray": 1
+   },
    "calls": 172,
    "packages": 15
   },
   "numpy.atleast_3d": {
+   "by_package": {
+    "matplotlib": 2,
+    "mne": 1,
+    "nilearn": 2,
+    "scikit-image": 8,
+    "scikit-learn": 2
+   },
    "calls": 15,
    "packages": 5
   },
   "numpy.average": {
+   "by_package": {
+    "astropy": 3,
+    "matplotlib": 1,
+    "mne": 10,
+    "nilearn": 5,
+    "pingouin": 1,
+    "pymc": 1,
+    "scikit-image": 2,
+    "scikit-learn": 38,
+    "seaborn": 2,
+    "statsmodels": 2
+   },
    "calls": 65,
    "packages": 10
   },
   "numpy.binary_repr": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.bincount": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 5,
+    "matplotlib": 11,
+    "mne": 8,
+    "networkx": 1,
+    "nilearn": 8,
+    "pandas": 7,
+    "scanpy": 3,
+    "scikit-image": 9,
+    "scikit-learn": 34,
+    "statsmodels": 34
+   },
    "calls": 124,
    "packages": 11
   },
   "numpy.bitwise_and": {
+   "by_package": {
+    "astropy": 2,
+    "mne": 9
+   },
    "calls": 11,
    "packages": 2
   },
   "numpy.bitwise_invert": {
+   "by_package": {
+    "astropy": 2,
+    "mne": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.bitwise_xor": {
+   "by_package": {
+    "astropy": 1,
+    "pandas": 1,
+    "scikit-image": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "numpy.block": {
+   "by_package": {
+    "astropy": 1,
+    "statsmodels": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.bool": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.broadcast": {
+   "by_package": {
+    "astropy": 8,
+    "mne": 2,
+    "scanpy": 1,
+    "statsmodels": 1,
+    "xarray": 3
+   },
    "calls": 15,
    "packages": 5
   },
   "numpy.broadcast_arrays": {
+   "by_package": {
+    "astropy": 32,
+    "matplotlib": 5,
+    "pvlib": 4,
+    "pymc": 1,
+    "xarray": 1
+   },
    "calls": 43,
    "packages": 5
   },
   "numpy.broadcast_shapes": {
+   "by_package": {
+    "astropy": 9,
+    "librosa": 1,
+    "pymc": 2,
+    "xarray": 1
+   },
    "calls": 13,
    "packages": 4
   },
   "numpy.broadcast_to": {
+   "by_package": {
+    "astropy": 44,
+    "librosa": 2,
+    "matplotlib": 12,
+    "mne": 2,
+    "pandas": 10,
+    "pvlib": 3,
+    "pymc": 2,
+    "scanpy": 4,
+    "scikit-image": 8,
+    "xarray": 1
+   },
    "calls": 88,
    "packages": 10
   },
   "numpy.bytes_": {
+   "by_package": {
+    "astropy": 1,
+    "xarray": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.can_cast": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 3,
+    "pandas": 1,
+    "pymc": 1,
+    "scikit-image": 2,
+    "scikit-learn": 2
+   },
    "calls": 11,
    "packages": 6
   },
   "numpy.cbrt": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 1,
+    "networkx": 9,
+    "scikit-image": 3
+   },
    "calls": 14,
    "packages": 4
   },
   "numpy.ceil": {
+   "by_package": {
+    "arviz-stats": 14,
+    "astropy": 16,
+    "librosa": 30,
+    "lifelines": 4,
+    "matplotlib": 19,
+    "mne": 38,
+    "networkx": 2,
+    "nilearn": 9,
+    "pandas": 2,
+    "pvlib": 5,
+    "scanpy": 5,
+    "scikit-image": 19,
+    "scikit-learn": 16,
+    "seaborn": 3,
+    "statsmodels": 28,
+    "xarray": 6
+   },
    "calls": 216,
    "packages": 16
   },
   "numpy.choose": {
+   "by_package": {
+    "astropy": 4,
+    "scikit-image": 1,
+    "statsmodels": 7
+   },
    "calls": 12,
    "packages": 3
   },
   "numpy.clip": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 12,
+    "librosa": 11,
+    "lifelines": 14,
+    "matplotlib": 39,
+    "mne": 48,
+    "networkx": 7,
+    "nilearn": 3,
+    "pandas": 3,
+    "pingouin": 8,
+    "pvlib": 16,
+    "pymc": 2,
+    "scanpy": 6,
+    "scikit-image": 27,
+    "scikit-learn": 25,
+    "seaborn": 3,
+    "statsmodels": 72
+   },
    "calls": 302,
    "packages": 17
   },
   "numpy.column_stack": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 2,
+    "matplotlib": 35,
+    "mne": 9,
+    "networkx": 5,
+    "nilearn": 2,
+    "pingouin": 10,
+    "pvlib": 1,
+    "scanpy": 1,
+    "scikit-image": 4,
+    "seaborn": 7,
+    "statsmodels": 132
+   },
    "calls": 209,
    "packages": 12
   },
   "numpy.common_type": {
+   "by_package": {
+    "seaborn": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.complex128": {
+   "by_package": {
+    "astropy": 1,
+    "scikit-image": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.complex64": {
+   "by_package": {
+    "astropy": 1,
+    "scikit-image": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.compress": {
+   "by_package": {
+    "pandas": 4,
+    "scikit-learn": 5,
+    "seaborn": 4,
+    "statsmodels": 3
+   },
    "calls": 16,
    "packages": 4
   },
   "numpy.concatenate": {
+   "by_package": {
+    "arviz-stats": 15,
+    "astropy": 43,
+    "librosa": 10,
+    "lifelines": 7,
+    "matplotlib": 68,
+    "mne": 318,
+    "networkx": 2,
+    "nilearn": 18,
+    "pandas": 57,
+    "pvlib": 2,
+    "pymc": 17,
+    "scanpy": 9,
+    "scikit-image": 36,
+    "scikit-learn": 46,
+    "seaborn": 7,
+    "statsmodels": 158,
+    "xarray": 10
+   },
    "calls": 823,
    "packages": 17
   },
   "numpy.conjugate": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 3,
+    "matplotlib": 2,
+    "mne": 4,
+    "scikit-image": 2,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 15,
    "packages": 7
   },
   "numpy.convolve": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 1,
+    "mne": 6,
+    "nilearn": 1,
+    "scikit-image": 2,
+    "statsmodels": 1
+   },
    "calls": 12,
    "packages": 6
   },
   "numpy.copy": {
+   "by_package": {
+    "astropy": 2,
+    "librosa": 1,
+    "matplotlib": 8,
+    "mne": 1,
+    "nilearn": 11,
+    "pandas": 3,
+    "pymc": 7,
+    "scanpy": 1,
+    "scikit-image": 7,
+    "scikit-learn": 15,
+    "statsmodels": 21
+   },
    "calls": 77,
    "packages": 11
   },
   "numpy.copysign": {
+   "by_package": {
+    "astropy": 4,
+    "matplotlib": 1
+   },
    "calls": 5,
    "packages": 2
   },
   "numpy.copyto": {
+   "by_package": {
+    "astropy": 4,
+    "matplotlib": 4,
+    "pymc": 2
+   },
    "calls": 10,
    "packages": 3
   },
   "numpy.corrcoef": {
+   "by_package": {
+    "mne": 4,
+    "nilearn": 2,
+    "pandas": 1,
+    "pingouin": 1,
+    "scikit-image": 1,
+    "scikit-learn": 1,
+    "statsmodels": 9
+   },
    "calls": 19,
    "packages": 7
   },
   "numpy.correlate": {
+   "by_package": {
+    "matplotlib": 1,
+    "statsmodels": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.cos": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 66,
+    "librosa": 3,
+    "matplotlib": 42,
+    "mne": 34,
+    "networkx": 4,
+    "nilearn": 1,
+    "pandas": 2,
+    "pingouin": 2,
+    "pvlib": 75,
+    "scanpy": 1,
+    "scikit-image": 22,
+    "scikit-learn": 11,
+    "seaborn": 2,
+    "statsmodels": 14
+   },
    "calls": 285,
    "packages": 15
   },
   "numpy.cosh": {
+   "by_package": {
+    "pingouin": 1,
+    "scikit-learn": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.count_nonzero": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 5,
+    "librosa": 2,
+    "nilearn": 1,
+    "pingouin": 1,
+    "pymc": 1,
+    "scanpy": 11,
+    "scikit-image": 13,
+    "scikit-learn": 6
+   },
    "calls": 42,
    "packages": 9
   },
   "numpy.cov": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 1,
+    "matplotlib": 2,
+    "mne": 5,
+    "pandas": 2,
+    "pingouin": 5,
+    "pvlib": 1,
+    "pymc": 3,
+    "scikit-learn": 4,
+    "seaborn": 1,
+    "statsmodels": 26
+   },
    "calls": 53,
    "packages": 11
   },
   "numpy.cross": {
+   "by_package": {
+    "mne": 16,
+    "nilearn": 4,
+    "scikit-image": 9
+   },
    "calls": 29,
    "packages": 3
   },
   "numpy.cumprod": {
+   "by_package": {
+    "lifelines": 1,
+    "mne": 2,
+    "pandas": 1,
+    "pymc": 1,
+    "scanpy": 1,
+    "scikit-image": 1,
+    "scikit-learn": 1,
+    "statsmodels": 2,
+    "xarray": 2
+   },
    "calls": 12,
    "packages": 9
   },
   "numpy.cumsum": {
+   "by_package": {
+    "arviz-stats": 7,
+    "astropy": 14,
+    "librosa": 7,
+    "lifelines": 7,
+    "matplotlib": 13,
+    "mne": 48,
+    "nilearn": 3,
+    "pandas": 3,
+    "pvlib": 6,
+    "pymc": 1,
+    "scanpy": 7,
+    "scikit-image": 16,
+    "scikit-learn": 22,
+    "seaborn": 1,
+    "statsmodels": 73,
+    "xarray": 5
+   },
    "calls": 233,
    "packages": 16
   },
   "numpy.datetime64": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 5,
+    "pandas": 9,
+    "pymc": 1,
+    "xarray": 10
+   },
    "calls": 26,
    "packages": 5
   },
   "numpy.datetime_as_string": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.datetime_data": {
+   "by_package": {
+    "pandas": 23,
+    "xarray": 12
+   },
    "calls": 35,
    "packages": 2
   },
   "numpy.deg2rad": {
+   "by_package": {
+    "astropy": 3,
+    "matplotlib": 33,
+    "mne": 16,
+    "pvlib": 2,
+    "scikit-image": 9
+   },
    "calls": 63,
    "packages": 5
   },
   "numpy.degrees": {
+   "by_package": {
+    "astropy": 2,
+    "pvlib": 26,
+    "statsmodels": 1
+   },
    "calls": 29,
    "packages": 3
   },
   "numpy.delete": {
+   "by_package": {
+    "astropy": 2,
+    "lifelines": 1,
+    "mne": 26,
+    "nilearn": 3,
+    "pandas": 10,
+    "pingouin": 5,
+    "scanpy": 2,
+    "scikit-image": 4,
+    "scikit-learn": 4,
+    "statsmodels": 13
+   },
    "calls": 70,
    "packages": 10
   },
   "numpy.diag": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 6,
+    "librosa": 1,
+    "matplotlib": 2,
+    "mne": 16,
+    "networkx": 10,
+    "nilearn": 23,
+    "pingouin": 6,
+    "pymc": 3,
+    "scanpy": 4,
+    "scikit-image": 7,
+    "scikit-learn": 14,
+    "seaborn": 1,
+    "statsmodels": 148
+   },
    "calls": 242,
    "packages": 14
   },
   "numpy.diag_indices": {
+   "by_package": {
+    "lifelines": 2,
+    "mne": 3,
+    "networkx": 1,
+    "scikit-learn": 1,
+    "statsmodels": 18
+   },
    "calls": 25,
    "packages": 5
   },
   "numpy.diag_indices_from": {
+   "by_package": {
+    "nilearn": 1,
+    "pingouin": 1,
+    "scanpy": 1,
+    "scikit-learn": 2,
+    "statsmodels": 1
+   },
    "calls": 6,
    "packages": 5
   },
   "numpy.diagflat": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.diagonal": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 1,
+    "statsmodels": 8
+   },
    "calls": 10,
    "packages": 3
   },
   "numpy.diff": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 17,
+    "librosa": 11,
+    "lifelines": 3,
+    "matplotlib": 30,
+    "mne": 79,
+    "networkx": 2,
+    "nilearn": 11,
+    "pandas": 7,
+    "pvlib": 6,
+    "scanpy": 3,
+    "scikit-image": 11,
+    "scikit-learn": 19,
+    "seaborn": 8,
+    "statsmodels": 41,
+    "xarray": 8
+   },
    "calls": 261,
    "packages": 16
   },
   "numpy.digitize": {
+   "by_package": {
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 1,
+    "pvlib": 1,
+    "statsmodels": 2
+   },
    "calls": 6,
    "packages": 5
   },
   "numpy.divide": {
+   "by_package": {
+    "astropy": 17,
+    "matplotlib": 11,
+    "mne": 3,
+    "pvlib": 3,
+    "pymc": 4,
+    "scanpy": 3,
+    "scikit-image": 3,
+    "scikit-learn": 6,
+    "seaborn": 1,
+    "statsmodels": 13
+   },
    "calls": 64,
    "packages": 10
   },
   "numpy.divmod": {
+   "by_package": {
+    "mne": 1,
+    "pymc": 1,
+    "scikit-image": 1,
+    "xarray": 1
+   },
    "calls": 4,
    "packages": 4
   },
   "numpy.dot": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 66,
+    "lifelines": 31,
+    "matplotlib": 13,
+    "mne": 308,
+    "nilearn": 76,
+    "pandas": 6,
+    "pvlib": 5,
+    "pymc": 10,
+    "scanpy": 11,
+    "scikit-image": 3,
+    "scikit-learn": 201,
+    "seaborn": 2,
+    "statsmodels": 791,
+    "xarray": 1
+   },
    "calls": 1530,
    "packages": 15
   },
   "numpy.dstack": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 7,
+    "mne": 1,
+    "scikit-image": 1,
+    "scikit-learn": 6,
+    "statsmodels": 1,
+    "xarray": 1
+   },
    "calls": 19,
    "packages": 7
   },
   "numpy.dtype": {
+   "by_package": {
+    "astropy": 73,
+    "librosa": 10,
+    "matplotlib": 6,
+    "mne": 40,
+    "nilearn": 9,
+    "pandas": 257,
+    "pvlib": 1,
+    "pymc": 12,
+    "scanpy": 4,
+    "scikit-image": 22,
+    "scikit-learn": 14,
+    "statsmodels": 5,
+    "xarray": 51
+   },
    "calls": 504,
    "packages": 13
   },
   "numpy.ediff1d": {
+   "by_package": {
+    "astropy": 1,
+    "pandas": 1,
+    "scikit-learn": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "numpy.einsum": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 11,
+    "lifelines": 8,
+    "mne": 30,
+    "networkx": 10,
+    "scikit-image": 1,
+    "scikit-learn": 10,
+    "statsmodels": 12
+   },
    "calls": 83,
    "packages": 8
   },
   "numpy.empty": {
+   "by_package": {
+    "arviz-stats": 19,
+    "astropy": 39,
+    "librosa": 27,
+    "lifelines": 9,
+    "matplotlib": 51,
+    "mne": 177,
+    "networkx": 4,
+    "nilearn": 24,
+    "pandas": 95,
+    "pingouin": 3,
+    "pvlib": 6,
+    "pymc": 8,
+    "scanpy": 8,
+    "scikit-image": 52,
+    "scikit-learn": 148,
+    "seaborn": 2,
+    "statsmodels": 121,
+    "xarray": 7
+   },
    "calls": 800,
    "packages": 18
   },
   "numpy.empty_like": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 12,
+    "librosa": 27,
+    "lifelines": 1,
+    "matplotlib": 9,
+    "mne": 8,
+    "nilearn": 5,
+    "pandas": 5,
+    "pymc": 3,
+    "scanpy": 1,
+    "scikit-image": 13,
+    "scikit-learn": 37,
+    "seaborn": 1,
+    "statsmodels": 18,
+    "xarray": 1
+   },
    "calls": 146,
    "packages": 15
   },
   "numpy.equal": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 8,
+    "mne": 1,
+    "pandas": 2,
+    "pvlib": 2,
+    "scikit-learn": 1,
+    "statsmodels": 4
+   },
    "calls": 19,
    "packages": 7
   },
   "numpy.errstate": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 44,
+    "librosa": 6,
+    "lifelines": 8,
+    "matplotlib": 13,
+    "mne": 15,
+    "networkx": 6,
+    "pandas": 37,
+    "pingouin": 7,
+    "pvlib": 34,
+    "scanpy": 2,
+    "scikit-image": 3,
+    "scikit-learn": 24,
+    "seaborn": 6,
+    "statsmodels": 6,
+    "xarray": 4
+   },
    "calls": 220,
    "packages": 16
   },
   "numpy.exp": {
+   "by_package": {
+    "arviz-stats": 42,
+    "astropy": 42,
+    "librosa": 12,
+    "lifelines": 56,
+    "matplotlib": 5,
+    "mne": 9,
+    "networkx": 5,
+    "nilearn": 4,
+    "pandas": 1,
+    "pingouin": 12,
+    "pvlib": 73,
+    "pymc": 14,
+    "scanpy": 4,
+    "scikit-image": 17,
+    "scikit-learn": 36,
+    "seaborn": 2,
+    "statsmodels": 335,
+    "xarray": 1
+   },
    "calls": 670,
    "packages": 18
   },
   "numpy.expand_dims": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 12,
+    "librosa": 3,
+    "matplotlib": 13,
+    "mne": 6,
+    "pandas": 5,
+    "pymc": 2,
+    "scikit-image": 2,
+    "scikit-learn": 6,
+    "statsmodels": 8,
+    "xarray": 2
+   },
    "calls": 62,
    "packages": 11
   },
   "numpy.expm1": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 5,
+    "librosa": 1,
+    "pvlib": 12,
+    "pymc": 1,
+    "scanpy": 4,
+    "statsmodels": 7
+   },
    "calls": 34,
    "packages": 7
   },
   "numpy.extract": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 1,
+    "nilearn": 2,
+    "pandas": 1
+   },
    "calls": 5,
    "packages": 4
   },
   "numpy.eye": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 8,
+    "librosa": 1,
+    "lifelines": 7,
+    "matplotlib": 2,
+    "mne": 85,
+    "networkx": 6,
+    "nilearn": 32,
+    "pingouin": 2,
+    "pymc": 8,
+    "scikit-image": 13,
+    "scikit-learn": 12,
+    "statsmodels": 164
+   },
    "calls": 345,
    "packages": 13
   },
   "numpy.fabs": {
+   "by_package": {
+    "astropy": 2,
+    "nilearn": 5,
+    "pandas": 1,
+    "pingouin": 4,
+    "scikit-learn": 1,
+    "statsmodels": 4
+   },
    "calls": 17,
    "packages": 6
   },
   "numpy.fft.fft": {
+   "by_package": {
+    "arviz-stats": 1,
+    "matplotlib": 2,
+    "statsmodels": 16
+   },
    "calls": 19,
    "packages": 3
   },
   "numpy.fft.fftfreq": {
+   "by_package": {
+    "matplotlib": 1,
+    "statsmodels": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.fft.fftshift": {
+   "by_package": {
+    "arviz-stats": 1,
+    "statsmodels": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.fft.ifft": {
+   "by_package": {
+    "astropy": 2,
+    "statsmodels": 6
+   },
    "calls": 8,
    "packages": 2
   },
   "numpy.fft.ifftshift": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.fft.irfft": {
+   "by_package": {
+    "arviz-stats": 2,
+    "statsmodels": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.fft.rfft": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 1,
+    "statsmodels": 1
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.fft.rfftfreq": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.fill_diagonal": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 2,
+    "networkx": 7,
+    "nilearn": 6,
+    "scanpy": 1,
+    "scikit-image": 1,
+    "scikit-learn": 9,
+    "statsmodels": 7
+   },
    "calls": 34,
    "packages": 8
   },
   "numpy.finfo": {
+   "by_package": {
+    "arviz-stats": 7,
+    "astropy": 12,
+    "librosa": 3,
+    "matplotlib": 1,
+    "mne": 18,
+    "nilearn": 17,
+    "pandas": 3,
+    "pingouin": 2,
+    "pvlib": 3,
+    "scikit-image": 19,
+    "scikit-learn": 73,
+    "statsmodels": 33,
+    "xarray": 1
+   },
    "calls": 192,
    "packages": 13
   },
   "numpy.flatnonzero": {
+   "by_package": {
+    "astropy": 8,
+    "librosa": 8,
+    "mne": 11,
+    "nilearn": 1,
+    "pandas": 7,
+    "pingouin": 6,
+    "scanpy": 7,
+    "scikit-image": 13,
+    "scikit-learn": 33,
+    "statsmodels": 51,
+    "xarray": 3
+   },
    "calls": 148,
    "packages": 11
   },
   "numpy.flip": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 2,
+    "mne": 1,
+    "scanpy": 1,
+    "scikit-image": 2,
+    "statsmodels": 2,
+    "xarray": 2
+   },
    "calls": 12,
    "packages": 7
   },
   "numpy.fliplr": {
+   "by_package": {
+    "librosa": 1,
+    "lifelines": 2,
+    "matplotlib": 1,
+    "scikit-image": 3,
+    "statsmodels": 2
+   },
    "calls": 9,
    "packages": 5
   },
   "numpy.flipud": {
+   "by_package": {
+    "matplotlib": 1,
+    "mne": 4,
+    "scikit-image": 1,
+    "statsmodels": 1
+   },
    "calls": 7,
    "packages": 4
   },
   "numpy.float16": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.float32": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 2,
+    "pandas": 7,
+    "scikit-image": 1,
+    "scikit-learn": 1
+   },
    "calls": 12,
    "packages": 5
   },
   "numpy.float64": {
+   "by_package": {
+    "astropy": 8,
+    "mne": 8,
+    "nilearn": 3,
+    "pandas": 5,
+    "pymc": 1,
+    "scanpy": 16,
+    "scikit-image": 2,
+    "scikit-learn": 3,
+    "xarray": 1
+   },
    "calls": 47,
    "packages": 9
   },
   "numpy.floor": {
+   "by_package": {
+    "arviz-stats": 17,
+    "astropy": 19,
+    "librosa": 15,
+    "matplotlib": 19,
+    "mne": 13,
+    "nilearn": 5,
+    "pandas": 5,
+    "pingouin": 1,
+    "pvlib": 2,
+    "scanpy": 1,
+    "scikit-image": 8,
+    "scikit-learn": 2,
+    "statsmodels": 15
+   },
    "calls": 122,
    "packages": 13
   },
   "numpy.floor_divide": {
+   "by_package": {
+    "pandas": 1,
+    "scikit-image": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.fmax": {
+   "by_package": {
+    "astropy": 1,
+    "pvlib": 3,
+    "scikit-image": 3
+   },
    "calls": 7,
    "packages": 3
   },
   "numpy.fmin": {
+   "by_package": {
+    "astropy": 1,
+    "pvlib": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.format_float_positional": {
+   "by_package": {
+    "pingouin": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.format_float_scientific": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.frombuffer": {
+   "by_package": {
+    "astropy": 21,
+    "librosa": 1,
+    "matplotlib": 4,
+    "mne": 72,
+    "nilearn": 1,
+    "pandas": 9,
+    "pymc": 2,
+    "scikit-image": 2,
+    "scikit-learn": 7
+   },
    "calls": 119,
    "packages": 9
   },
   "numpy.fromfile": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 125,
+    "scikit-image": 1
+   },
    "calls": 127,
    "packages": 3
   },
   "numpy.fromiter": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 1,
+    "pandas": 6,
+    "scanpy": 2,
+    "scikit-learn": 4,
+    "xarray": 1
+   },
    "calls": 15,
    "packages": 6
   },
   "numpy.frompyfunc": {
+   "by_package": {
+    "pandas": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.fromstring": {
+   "by_package": {
+    "mne": 7
+   },
    "calls": 7,
    "packages": 1
   },
   "numpy.full": {
+   "by_package": {
+    "arviz-stats": 14,
+    "astropy": 7,
+    "librosa": 1,
+    "matplotlib": 15,
+    "mne": 61,
+    "networkx": 7,
+    "nilearn": 3,
+    "pandas": 17,
+    "pingouin": 2,
+    "pvlib": 3,
+    "pymc": 1,
+    "scanpy": 3,
+    "scikit-image": 21,
+    "scikit-learn": 38,
+    "seaborn": 9,
+    "statsmodels": 29,
+    "xarray": 15
+   },
    "calls": 246,
    "packages": 17
   },
   "numpy.full_like": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 5,
+    "matplotlib": 6,
+    "mne": 6,
+    "pvlib": 18,
+    "pymc": 2,
+    "scikit-image": 1,
+    "scikit-learn": 10,
+    "seaborn": 1,
+    "statsmodels": 21
+   },
    "calls": 73,
    "packages": 10
   },
   "numpy.gcd": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.genfromtxt": {
+   "by_package": {
+    "mne": 5,
+    "nilearn": 3,
+    "scikit-learn": 1
+   },
    "calls": 9,
    "packages": 3
   },
   "numpy.geomspace": {
+   "by_package": {
+    "matplotlib": 2,
+    "mne": 1,
+    "nilearn": 2,
+    "scikit-learn": 1
+   },
    "calls": 6,
    "packages": 4
   },
   "numpy.get_include": {
+   "by_package": {
+    "astropy": 10
+   },
    "calls": 10,
    "packages": 1
   },
   "numpy.get_printoptions": {
+   "by_package": {
+    "astropy": 3,
+    "scanpy": 1,
+    "scikit-learn": 1,
+    "xarray": 1
+   },
    "calls": 6,
    "packages": 4
   },
   "numpy.getbufsize": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.geterr": {
+   "by_package": {
+    "astropy": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.gradient": {
+   "by_package": {
+    "librosa": 2,
+    "matplotlib": 1,
+    "scikit-image": 11
+   },
    "calls": 14,
    "packages": 3
   },
   "numpy.greater": {
+   "by_package": {
+    "pvlib": 2,
+    "scikit-image": 1,
+    "scikit-learn": 1,
+    "statsmodels": 2
+   },
    "calls": 6,
    "packages": 4
   },
   "numpy.greater_equal": {
+   "by_package": {
+    "mne": 2,
+    "pingouin": 2,
+    "pvlib": 1
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.hamming": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.hanning": {
+   "by_package": {
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 7,
+    "scikit-image": 1
+   },
    "calls": 10,
    "packages": 4
   },
   "numpy.histogram": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 4,
+    "librosa": 1,
+    "matplotlib": 1,
+    "pymc": 2,
+    "scikit-image": 2,
+    "seaborn": 2,
+    "statsmodels": 3
+   },
    "calls": 19,
    "packages": 8
   },
   "numpy.histogram2d": {
+   "by_package": {
+    "arviz-stats": 1,
+    "matplotlib": 1,
+    "mne": 1,
+    "seaborn": 1,
+    "statsmodels": 2
+   },
    "calls": 6,
    "packages": 5
   },
   "numpy.histogram_bin_edges": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 1,
+    "matplotlib": 1,
+    "pandas": 1,
+    "seaborn": 2
+   },
    "calls": 6,
    "packages": 5
   },
   "numpy.histogramdd": {
+   "by_package": {
+    "mne": 1,
+    "scikit-image": 1,
+    "statsmodels": 3
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.hsplit": {
+   "by_package": {
+    "pymc": 2,
+    "statsmodels": 2
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.hstack": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 17,
+    "lifelines": 1,
+    "matplotlib": 9,
+    "mne": 42,
+    "nilearn": 33,
+    "pandas": 5,
+    "scanpy": 4,
+    "scikit-image": 19,
+    "scikit-learn": 46,
+    "statsmodels": 41
+   },
    "calls": 223,
    "packages": 11
   },
   "numpy.hypot": {
+   "by_package": {
+    "astropy": 18,
+    "matplotlib": 27,
+    "nilearn": 1,
+    "scikit-image": 9,
+    "xarray": 1
+   },
    "calls": 56,
    "packages": 5
   },
   "numpy.identity": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 1,
+    "mne": 5,
+    "networkx": 3,
+    "pymc": 1,
+    "scikit-learn": 2,
+    "statsmodels": 11
+   },
    "calls": 25,
    "packages": 7
   },
   "numpy.iinfo": {
+   "by_package": {
+    "astropy": 7,
+    "mne": 12,
+    "nilearn": 4,
+    "pandas": 14,
+    "scanpy": 1,
+    "scikit-image": 14,
+    "scikit-learn": 24,
+    "xarray": 13
+   },
    "calls": 89,
    "packages": 8
   },
   "numpy.imag": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 1,
+    "mne": 3,
+    "pandas": 3,
+    "pingouin": 2,
+    "scikit-image": 1,
+    "scikit-learn": 1,
+    "statsmodels": 6
+   },
    "calls": 18,
    "packages": 8
   },
   "numpy.indices": {
+   "by_package": {
+    "librosa": 2,
+    "nilearn": 1,
+    "scanpy": 2,
+    "scikit-image": 3,
+    "scikit-learn": 1,
+    "seaborn": 1,
+    "statsmodels": 1
+   },
    "calls": 11,
    "packages": 7
   },
   "numpy.inner": {
+   "by_package": {
+    "astropy": 1,
+    "scikit-learn": 3,
+    "statsmodels": 8
+   },
    "calls": 12,
    "packages": 3
   },
   "numpy.insert": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 6,
+    "matplotlib": 6,
+    "mne": 11,
+    "nilearn": 1,
+    "pandas": 10,
+    "pingouin": 2,
+    "pymc": 1,
+    "scikit-image": 5,
+    "scikit-learn": 4,
+    "xarray": 2
+   },
    "calls": 49,
    "packages": 11
   },
   "numpy.int16": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.int32": {
+   "by_package": {
+    "astropy": 1,
+    "scikit-learn": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.int64": {
+   "by_package": {
+    "astropy": 1,
+    "lifelines": 5,
+    "mne": 7,
+    "pandas": 17,
+    "scanpy": 1,
+    "scikit-learn": 2,
+    "statsmodels": 5,
+    "xarray": 3
+   },
    "calls": 41,
    "packages": 8
   },
   "numpy.int8": {
+   "by_package": {
+    "pymc": 3,
+    "scikit-image": 4
+   },
    "calls": 7,
    "packages": 2
   },
   "numpy.interp": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 9,
+    "lifelines": 1,
+    "matplotlib": 15,
+    "mne": 18,
+    "pandas": 1,
+    "pvlib": 11,
+    "scikit-image": 2,
+    "scikit-learn": 5,
+    "seaborn": 4,
+    "statsmodels": 7,
+    "xarray": 1
+   },
    "calls": 78,
    "packages": 12
   },
   "numpy.intersect1d": {
+   "by_package": {
+    "arviz-stats": 2,
+    "matplotlib": 1,
+    "mne": 33,
+    "nilearn": 1,
+    "pandas": 1,
+    "scanpy": 1,
+    "scikit-learn": 1,
+    "statsmodels": 4
+   },
    "calls": 44,
    "packages": 8
   },
   "numpy.invert": {
+   "by_package": {
+    "mne": 1,
+    "scikit-image": 1,
+    "scikit-learn": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "numpy.isclose": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 6,
+    "librosa": 3,
+    "matplotlib": 6,
+    "mne": 21,
+    "nilearn": 4,
+    "pandas": 1,
+    "pingouin": 1,
+    "pvlib": 10,
+    "pymc": 3,
+    "scanpy": 1,
+    "scikit-image": 2,
+    "scikit-learn": 12,
+    "statsmodels": 8,
+    "xarray": 5
+   },
    "calls": 84,
    "packages": 15
   },
   "numpy.iscomplex": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 2,
+    "pvlib": 1,
+    "statsmodels": 2
+   },
    "calls": 6,
    "packages": 4
   },
   "numpy.iscomplexobj": {
+   "by_package": {
+    "librosa": 5,
+    "matplotlib": 1,
+    "mne": 22,
+    "pandas": 1,
+    "scikit-image": 2,
+    "statsmodels": 3
+   },
    "calls": 34,
    "packages": 6
   },
   "numpy.isfinite": {
+   "by_package": {
+    "arviz-stats": 56,
+    "astropy": 29,
+    "librosa": 20,
+    "matplotlib": 52,
+    "mne": 43,
+    "nilearn": 14,
+    "pandas": 4,
+    "pingouin": 4,
+    "pvlib": 6,
+    "pymc": 17,
+    "scanpy": 2,
+    "scikit-image": 9,
+    "scikit-learn": 24,
+    "seaborn": 10,
+    "statsmodels": 32,
+    "xarray": 3
+   },
    "calls": 325,
    "packages": 16
   },
   "numpy.isfortran": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 1,
+    "mne": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "numpy.isin": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 2,
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 84,
+    "nilearn": 8,
+    "pandas": 6,
+    "scanpy": 3,
+    "scikit-image": 2,
+    "scikit-learn": 10,
+    "seaborn": 2,
+    "xarray": 2
+   },
    "calls": 122,
    "packages": 12
   },
   "numpy.isinf": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 6,
+    "librosa": 2,
+    "lifelines": 2,
+    "matplotlib": 9,
+    "mne": 5,
+    "networkx": 3,
+    "pandas": 5,
+    "pingouin": 1,
+    "pvlib": 3,
+    "pymc": 8,
+    "scikit-image": 3,
+    "scikit-learn": 10,
+    "statsmodels": 5
+   },
    "calls": 65,
    "packages": 14
   },
   "numpy.isnan": {
+   "by_package": {
+    "arviz-stats": 33,
+    "astropy": 59,
+    "librosa": 5,
+    "lifelines": 6,
+    "matplotlib": 18,
+    "mne": 42,
+    "nilearn": 20,
+    "pandas": 55,
+    "pingouin": 16,
+    "pvlib": 32,
+    "pymc": 13,
+    "scanpy": 13,
+    "scikit-image": 12,
+    "scikit-learn": 35,
+    "seaborn": 5,
+    "statsmodels": 84,
+    "xarray": 9
+   },
    "calls": 457,
    "packages": 17
   },
   "numpy.isnat": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 1,
+    "pandas": 2,
+    "xarray": 4
+   },
    "calls": 8,
    "packages": 4
   },
   "numpy.isneginf": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 1,
+    "pymc": 5,
+    "statsmodels": 1
+   },
    "calls": 8,
    "packages": 4
   },
   "numpy.isposinf": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 1,
+    "lifelines": 1,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 8,
    "packages": 5
   },
   "numpy.isreal": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 1,
+    "mne": 1,
+    "pandas": 2,
+    "pvlib": 5,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 13,
    "packages": 7
   },
   "numpy.isrealobj": {
+   "by_package": {
+    "librosa": 4,
+    "mne": 4,
+    "scikit-image": 1
+   },
    "calls": 9,
    "packages": 3
   },
   "numpy.isscalar": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 32,
+    "librosa": 4,
+    "lifelines": 1,
+    "matplotlib": 7,
+    "mne": 10,
+    "nilearn": 1,
+    "pvlib": 39,
+    "scikit-image": 36,
+    "scikit-learn": 9,
+    "seaborn": 8,
+    "statsmodels": 42,
+    "xarray": 1
+   },
    "calls": 191,
    "packages": 13
   },
   "numpy.issubdtype": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 32,
+    "librosa": 11,
+    "matplotlib": 8,
+    "mne": 3,
+    "nilearn": 4,
+    "pandas": 9,
+    "pymc": 2,
+    "scanpy": 9,
+    "scikit-image": 41,
+    "scikit-learn": 12,
+    "seaborn": 1,
+    "statsmodels": 14,
+    "xarray": 72
+   },
    "calls": 222,
    "packages": 14
   },
   "numpy.iterable": {
+   "by_package": {
+    "astropy": 27,
+    "matplotlib": 88,
+    "networkx": 4,
+    "pandas": 5,
+    "scikit-learn": 2,
+    "statsmodels": 4,
+    "xarray": 1
+   },
    "calls": 131,
    "packages": 7
   },
   "numpy.ix_": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 6,
+    "mne": 17,
+    "pandas": 1,
+    "pingouin": 1,
+    "scanpy": 2,
+    "scikit-learn": 3,
+    "statsmodels": 33,
+    "xarray": 1
+   },
    "calls": 66,
    "packages": 9
   },
   "numpy.kron": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 7,
+    "statsmodels": 38
+   },
    "calls": 46,
    "packages": 3
   },
   "numpy.left_shift": {
+   "by_package": {
+    "astropy": 2,
+    "mne": 2
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.less": {
+   "by_package": {
+    "librosa": 2,
+    "mne": 2,
+    "pingouin": 1,
+    "pvlib": 3,
+    "scikit-image": 2,
+    "scikit-learn": 1,
+    "statsmodels": 2
+   },
    "calls": 13,
    "packages": 7
   },
   "numpy.less_equal": {
+   "by_package": {
+    "lifelines": 1,
+    "mne": 1,
+    "pingouin": 1,
+    "pvlib": 1,
+    "scikit-image": 1,
+    "statsmodels": 12
+   },
    "calls": 17,
    "packages": 6
   },
   "numpy.lexsort": {
+   "by_package": {
+    "astropy": 5,
+    "mne": 1,
+    "pandas": 9,
+    "scikit-image": 1,
+    "scikit-learn": 1,
+    "statsmodels": 4,
+    "xarray": 2
+   },
    "calls": 23,
    "packages": 7
   },
   "numpy.linalg.LinAlgError": {
+   "by_package": {
+    "mne": 1,
+    "statsmodels": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.linalg.cholesky": {
+   "by_package": {
+    "arviz-stats": 2,
+    "seaborn": 1,
+    "statsmodels": 29
+   },
    "calls": 32,
    "packages": 3
   },
   "numpy.linalg.cond": {
+   "by_package": {
+    "nilearn": 1,
+    "statsmodels": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.linalg.det": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 5,
+    "matplotlib": 1,
+    "mne": 4,
+    "networkx": 2,
+    "nilearn": 4,
+    "pingouin": 2,
+    "scanpy": 1,
+    "scikit-image": 8,
+    "seaborn": 1,
+    "statsmodels": 16
+   },
    "calls": 46,
    "packages": 11
   },
   "numpy.linalg.eig": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 1,
+    "networkx": 3,
+    "pvlib": 1,
+    "scikit-image": 1,
+    "statsmodels": 7
+   },
    "calls": 14,
    "packages": 6
   },
   "numpy.linalg.eigh": {
+   "by_package": {
+    "mne": 7,
+    "networkx": 5,
+    "pymc": 1,
+    "statsmodels": 12
+   },
    "calls": 25,
    "packages": 4
   },
   "numpy.linalg.eigvals": {
+   "by_package": {
+    "networkx": 1,
+    "statsmodels": 11
+   },
    "calls": 12,
    "packages": 2
   },
   "numpy.linalg.eigvalsh": {
+   "by_package": {
+    "arviz-stats": 2,
+    "nilearn": 2,
+    "scikit-image": 2,
+    "statsmodels": 3
+   },
    "calls": 9,
    "packages": 4
   },
   "numpy.linalg.inv": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 2,
+    "lifelines": 4,
+    "matplotlib": 2,
+    "mne": 30,
+    "networkx": 2,
+    "nilearn": 15,
+    "scanpy": 3,
+    "scikit-image": 7,
+    "scikit-learn": 1,
+    "seaborn": 1,
+    "statsmodels": 120,
+    "xarray": 1
+   },
    "calls": 191,
    "packages": 13
   },
   "numpy.linalg.lstsq": {
+   "by_package": {
+    "astropy": 4,
+    "mne": 2,
+    "pvlib": 9,
+    "scikit-image": 1,
+    "statsmodels": 18,
+    "xarray": 3
+   },
    "calls": 37,
    "packages": 6
   },
   "numpy.linalg.matrix_power": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.linalg.matrix_rank": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 1,
+    "nilearn": 1,
+    "pingouin": 3,
+    "statsmodels": 52,
+    "xarray": 1
+   },
    "calls": 59,
    "packages": 6
   },
   "numpy.linalg.multi_dot": {
+   "by_package": {
+    "pingouin": 2,
+    "scikit-learn": 10
+   },
    "calls": 12,
    "packages": 2
   },
   "numpy.linalg.norm": {
+   "by_package": {
+    "lifelines": 1,
+    "matplotlib": 3,
+    "mne": 196,
+    "networkx": 18,
+    "nilearn": 5,
+    "pymc": 2,
+    "scikit-image": 7,
+    "scikit-learn": 8,
+    "statsmodels": 10
+   },
    "calls": 250,
    "packages": 9
   },
   "numpy.linalg.pinv": {
+   "by_package": {
+    "lifelines": 3,
+    "mne": 7,
+    "networkx": 1,
+    "pingouin": 5,
+    "seaborn": 3,
+    "statsmodels": 87
+   },
    "calls": 106,
    "packages": 6
   },
   "numpy.linalg.qr": {
+   "by_package": {
+    "mne": 2,
+    "networkx": 1,
+    "nilearn": 1,
+    "pingouin": 3,
+    "statsmodels": 9
+   },
    "calls": 16,
    "packages": 5
   },
   "numpy.linalg.slogdet": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 14
+   },
    "calls": 15,
    "packages": 2
   },
   "numpy.linalg.solve": {
+   "by_package": {
+    "astropy": 8,
+    "mne": 2,
+    "networkx": 2,
+    "nilearn": 1,
+    "pingouin": 1,
+    "scikit-image": 4,
+    "statsmodels": 96
+   },
    "calls": 114,
    "packages": 7
   },
   "numpy.linalg.svd": {
+   "by_package": {
+    "mne": 15,
+    "pingouin": 1,
+    "scikit-image": 9,
+    "scikit-learn": 3,
+    "statsmodels": 25,
+    "xarray": 1
+   },
    "calls": 54,
    "packages": 6
   },
   "numpy.linspace": {
+   "by_package": {
+    "arviz-stats": 12,
+    "astropy": 25,
+    "librosa": 8,
+    "lifelines": 9,
+    "matplotlib": 43,
+    "mne": 56,
+    "networkx": 5,
+    "nilearn": 25,
+    "pandas": 14,
+    "pingouin": 1,
+    "pvlib": 6,
+    "pymc": 2,
+    "scanpy": 4,
+    "scikit-image": 20,
+    "scikit-learn": 29,
+    "seaborn": 27,
+    "statsmodels": 49,
+    "xarray": 5
+   },
    "calls": 340,
    "packages": 18
   },
   "numpy.load": {
+   "by_package": {
+    "matplotlib": 1,
+    "nilearn": 1,
+    "scikit-image": 4,
+    "scikit-learn": 2,
+    "statsmodels": 1
+   },
    "calls": 9,
    "packages": 5
   },
   "numpy.loadtxt": {
+   "by_package": {
+    "mne": 14,
+    "nilearn": 3,
+    "scikit-image": 1,
+    "scikit-learn": 6
+   },
    "calls": 24,
    "packages": 4
   },
   "numpy.log": {
+   "by_package": {
+    "arviz-stats": 18,
+    "astropy": 62,
+    "librosa": 27,
+    "lifelines": 31,
+    "matplotlib": 21,
+    "mne": 13,
+    "networkx": 4,
+    "nilearn": 2,
+    "pandas": 2,
+    "pingouin": 3,
+    "pvlib": 66,
+    "pymc": 23,
+    "scanpy": 12,
+    "scikit-image": 21,
+    "scikit-learn": 81,
+    "seaborn": 4,
+    "statsmodels": 424,
+    "xarray": 1
+   },
    "calls": 815,
    "packages": 18
   },
   "numpy.log10": {
+   "by_package": {
+    "arviz-stats": 9,
+    "astropy": 13,
+    "librosa": 24,
+    "matplotlib": 21,
+    "mne": 27,
+    "nilearn": 11,
+    "pandas": 4,
+    "pvlib": 2,
+    "scanpy": 7,
+    "scikit-image": 3,
+    "scikit-learn": 4,
+    "statsmodels": 10,
+    "xarray": 1
+   },
    "calls": 136,
    "packages": 13
   },
   "numpy.log1p": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 1,
+    "librosa": 7,
+    "nilearn": 2,
+    "pingouin": 1,
+    "pvlib": 4,
+    "scanpy": 9,
+    "scikit-learn": 1,
+    "statsmodels": 4
+   },
    "calls": 35,
    "packages": 9
   },
   "numpy.log2": {
+   "by_package": {
+    "arviz-stats": 6,
+    "librosa": 41,
+    "lifelines": 2,
+    "matplotlib": 1,
+    "mne": 7,
+    "networkx": 1,
+    "nilearn": 1,
+    "pandas": 1,
+    "pymc": 1,
+    "scanpy": 3,
+    "scikit-image": 10,
+    "scikit-learn": 5,
+    "seaborn": 5,
+    "statsmodels": 3
+   },
    "calls": 87,
    "packages": 14
   },
   "numpy.logaddexp": {
+   "by_package": {
+    "pymc": 3,
+    "scikit-learn": 6
+   },
    "calls": 9,
    "packages": 2
   },
   "numpy.logical_and": {
+   "by_package": {
+    "astropy": 13,
+    "librosa": 2,
+    "matplotlib": 1,
+    "mne": 54,
+    "nilearn": 14,
+    "pandas": 1,
+    "pvlib": 17,
+    "scanpy": 1,
+    "scikit-image": 13,
+    "scikit-learn": 3,
+    "statsmodels": 9,
+    "xarray": 1
+   },
    "calls": 129,
    "packages": 12
   },
   "numpy.logical_not": {
+   "by_package": {
+    "astropy": 9,
+    "lifelines": 1,
+    "matplotlib": 1,
+    "mne": 9,
+    "nilearn": 19,
+    "pandas": 1,
+    "scikit-image": 10,
+    "scikit-learn": 10,
+    "statsmodels": 9,
+    "xarray": 2
+   },
    "calls": 71,
    "packages": 10
   },
   "numpy.logical_or": {
+   "by_package": {
+    "astropy": 14,
+    "matplotlib": 2,
+    "mne": 5,
+    "nilearn": 3,
+    "pandas": 2,
+    "pvlib": 6,
+    "pymc": 1,
+    "scikit-image": 2,
+    "scikit-learn": 8,
+    "statsmodels": 9,
+    "xarray": 1
+   },
    "calls": 53,
    "packages": 11
   },
   "numpy.logical_xor": {
+   "by_package": {
+    "nilearn": 1,
+    "scikit-image": 5
+   },
    "calls": 6,
    "packages": 2
   },
   "numpy.logspace": {
+   "by_package": {
+    "librosa": 3,
+    "mne": 2,
+    "nilearn": 3,
+    "scikit-image": 3,
+    "scikit-learn": 3,
+    "statsmodels": 1
+   },
    "calls": 15,
    "packages": 6
   },
   "numpy.matmul": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 24,
+    "pymc": 2,
+    "scikit-learn": 2,
+    "statsmodels": 7
+   },
    "calls": 36,
    "packages": 5
   },
   "numpy.matrix": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.max": {
+   "by_package": {
+    "arviz-stats": 13,
+    "astropy": 19,
+    "librosa": 7,
+    "lifelines": 11,
+    "matplotlib": 40,
+    "mne": 104,
+    "networkx": 1,
+    "nilearn": 30,
+    "pandas": 5,
+    "pvlib": 5,
+    "pymc": 1,
+    "scanpy": 16,
+    "scikit-image": 32,
+    "scikit-learn": 27,
+    "statsmodels": 60,
+    "xarray": 5
+   },
    "calls": 376,
    "packages": 16
   },
   "numpy.maximum": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 9,
+    "librosa": 21,
+    "lifelines": 2,
+    "matplotlib": 8,
+    "mne": 32,
+    "networkx": 4,
+    "nilearn": 16,
+    "pandas": 9,
+    "pingouin": 3,
+    "pvlib": 52,
+    "pymc": 2,
+    "scikit-image": 31,
+    "scikit-learn": 27,
+    "statsmodels": 58,
+    "xarray": 3
+   },
    "calls": 280,
    "packages": 16
   },
   "numpy.may_share_memory": {
+   "by_package": {
+    "pandas": 1,
+    "scikit-learn": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "numpy.mean": {
+   "by_package": {
+    "arviz-stats": 40,
+    "astropy": 8,
+    "librosa": 9,
+    "matplotlib": 4,
+    "mne": 138,
+    "networkx": 4,
+    "nilearn": 23,
+    "pandas": 3,
+    "pingouin": 6,
+    "pvlib": 16,
+    "pymc": 16,
+    "scanpy": 11,
+    "scikit-image": 19,
+    "scikit-learn": 60,
+    "seaborn": 1,
+    "statsmodels": 93,
+    "xarray": 1
+   },
    "calls": 452,
    "packages": 17
   },
   "numpy.median": {
+   "by_package": {
+    "arviz-stats": 10,
+    "astropy": 6,
+    "librosa": 1,
+    "lifelines": 1,
+    "matplotlib": 2,
+    "mne": 35,
+    "nilearn": 2,
+    "pandas": 1,
+    "pingouin": 7,
+    "scanpy": 7,
+    "scikit-image": 2,
+    "scikit-learn": 12,
+    "statsmodels": 31
+   },
    "calls": 117,
    "packages": 13
   },
   "numpy.memmap": {
+   "by_package": {
+    "mne": 7
+   },
    "calls": 7,
    "packages": 1
   },
   "numpy.meshgrid": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 8,
+    "matplotlib": 12,
+    "mne": 9,
+    "pvlib": 1,
+    "pymc": 2,
+    "scikit-image": 15,
+    "scikit-learn": 5,
+    "seaborn": 2,
+    "statsmodels": 9,
+    "xarray": 3
+   },
    "calls": 67,
    "packages": 11
   },
   "numpy.min": {
+   "by_package": {
+    "arviz-stats": 14,
+    "astropy": 11,
+    "librosa": 5,
+    "lifelines": 1,
+    "matplotlib": 35,
+    "mne": 64,
+    "nilearn": 16,
+    "pandas": 4,
+    "pingouin": 4,
+    "pvlib": 1,
+    "pymc": 2,
+    "scanpy": 17,
+    "scikit-image": 17,
+    "scikit-learn": 20,
+    "seaborn": 1,
+    "statsmodels": 37,
+    "xarray": 7
+   },
    "calls": 256,
    "packages": 17
   },
   "numpy.min_scalar_type": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 1,
+    "pandas": 7,
+    "scikit-image": 8,
+    "xarray": 1
+   },
    "calls": 18,
    "packages": 5
   },
   "numpy.minimum": {
+   "by_package": {
+    "arviz-stats": 8,
+    "astropy": 8,
+    "librosa": 5,
+    "lifelines": 6,
+    "matplotlib": 4,
+    "mne": 16,
+    "networkx": 2,
+    "nilearn": 10,
+    "pandas": 1,
+    "pingouin": 1,
+    "pvlib": 9,
+    "pymc": 2,
+    "scanpy": 1,
+    "scikit-image": 12,
+    "scikit-learn": 5,
+    "statsmodels": 26,
+    "xarray": 2
+   },
    "calls": 118,
    "packages": 17
   },
   "numpy.modf": {
+   "by_package": {
+    "astropy": 3,
+    "librosa": 2,
+    "mne": 1,
+    "pandas": 1
+   },
    "calls": 7,
    "packages": 4
   },
   "numpy.moveaxis": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 15,
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 6,
+    "scikit-image": 28,
+    "scikit-learn": 5,
+    "xarray": 2
+   },
    "calls": 61,
    "packages": 8
   },
   "numpy.multiply": {
+   "by_package": {
+    "astropy": 13,
+    "librosa": 8,
+    "lifelines": 3,
+    "matplotlib": 1,
+    "mne": 5,
+    "pingouin": 2,
+    "pymc": 3,
+    "scanpy": 4,
+    "scikit-image": 14,
+    "scikit-learn": 3,
+    "seaborn": 1,
+    "statsmodels": 11
+   },
    "calls": 68,
    "packages": 12
   },
   "numpy.nan_to_num": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 3,
+    "librosa": 1,
+    "mne": 1,
+    "networkx": 1,
+    "nilearn": 4,
+    "pvlib": 1,
+    "scanpy": 4,
+    "scikit-image": 2,
+    "seaborn": 6,
+    "statsmodels": 3
+   },
    "calls": 28,
    "packages": 11
   },
   "numpy.nanargmax": {
+   "by_package": {
+    "mne": 1,
+    "pandas": 1,
+    "scikit-learn": 1,
+    "xarray": 1
+   },
    "calls": 4,
    "packages": 4
   },
   "numpy.nanargmin": {
+   "by_package": {
+    "xarray": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.nanmax": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 4,
+    "librosa": 1,
+    "matplotlib": 9,
+    "mne": 5,
+    "nilearn": 12,
+    "pandas": 7,
+    "pingouin": 2,
+    "pvlib": 2,
+    "scanpy": 1,
+    "scikit-image": 1,
+    "scikit-learn": 2,
+    "seaborn": 5,
+    "statsmodels": 1,
+    "xarray": 2
+   },
    "calls": 58,
    "packages": 15
   },
   "numpy.nanmean": {
+   "by_package": {
+    "arviz-stats": 4,
+    "mne": 5,
+    "nilearn": 1,
+    "pandas": 1,
+    "pingouin": 2,
+    "scanpy": 1,
+    "scikit-learn": 4,
+    "statsmodels": 5
+   },
    "calls": 23,
    "packages": 8
   },
   "numpy.nanmedian": {
+   "by_package": {
+    "librosa": 2,
+    "mne": 2,
+    "pandas": 3,
+    "scanpy": 1,
+    "scikit-learn": 1
+   },
    "calls": 9,
    "packages": 5
   },
   "numpy.nanmin": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 4,
+    "librosa": 3,
+    "matplotlib": 9,
+    "mne": 5,
+    "nilearn": 7,
+    "pandas": 7,
+    "pingouin": 2,
+    "scanpy": 2,
+    "scikit-image": 1,
+    "scikit-learn": 6,
+    "seaborn": 2,
+    "statsmodels": 1,
+    "xarray": 3
+   },
    "calls": 56,
    "packages": 14
   },
   "numpy.nanpercentile": {
+   "by_package": {
+    "nilearn": 1,
+    "scanpy": 1,
+    "scikit-learn": 4,
+    "seaborn": 5,
+    "statsmodels": 3,
+    "xarray": 2
+   },
    "calls": 16,
    "packages": 6
   },
   "numpy.nanquantile": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.nanstd": {
+   "by_package": {
+    "pingouin": 2,
+    "scikit-learn": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.nansum": {
+   "by_package": {
+    "arviz-stats": 6,
+    "networkx": 1,
+    "nilearn": 1,
+    "pingouin": 4,
+    "pvlib": 1,
+    "scikit-learn": 1,
+    "statsmodels": 7
+   },
    "calls": 21,
    "packages": 7
   },
   "numpy.nanvar": {
+   "by_package": {
+    "arviz-stats": 4,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 6,
    "packages": 3
   },
   "numpy.ndarray": {
+   "by_package": {
+    "astropy": 11,
+    "mne": 2,
+    "networkx": 4,
+    "nilearn": 17,
+    "scanpy": 3,
+    "scikit-learn": 1
+   },
    "calls": 38,
    "packages": 6
   },
   "numpy.ndenumerate": {
+   "by_package": {
+    "matplotlib": 1,
+    "seaborn": 1,
+    "xarray": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "numpy.ndim": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 7,
+    "matplotlib": 14,
+    "mne": 4,
+    "nilearn": 3,
+    "pandas": 8,
+    "pymc": 10,
+    "scikit-image": 4,
+    "scikit-learn": 4,
+    "seaborn": 4,
+    "statsmodels": 14,
+    "xarray": 1
+   },
    "calls": 75,
    "packages": 12
   },
   "numpy.ndindex": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 3,
+    "librosa": 2,
+    "nilearn": 2,
+    "pymc": 1,
+    "scikit-image": 4,
+    "statsmodels": 1
+   },
    "calls": 19,
    "packages": 7
   },
   "numpy.nditer": {
+   "by_package": {
+    "astropy": 13,
+    "scanpy": 1
+   },
    "calls": 14,
    "packages": 2
   },
   "numpy.negative": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.nextafter": {
+   "by_package": {
+    "matplotlib": 7,
+    "mne": 1,
+    "pandas": 3,
+    "pymc": 2,
+    "scikit-learn": 2,
+    "statsmodels": 3
+   },
    "calls": 18,
    "packages": 6
   },
   "numpy.nonzero": {
+   "by_package": {
+    "astropy": 20,
+    "librosa": 5,
+    "matplotlib": 7,
+    "mne": 26,
+    "networkx": 3,
+    "nilearn": 2,
+    "pandas": 9,
+    "pymc": 1,
+    "scanpy": 6,
+    "scikit-image": 21,
+    "scikit-learn": 13,
+    "statsmodels": 43,
+    "xarray": 3
+   },
    "calls": 159,
    "packages": 13
   },
   "numpy.not_equal": {
+   "by_package": {
+    "astropy": 1,
+    "scikit-learn": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.ones": {
+   "by_package": {
+    "arviz-stats": 7,
+    "astropy": 42,
+    "librosa": 6,
+    "lifelines": 28,
+    "matplotlib": 12,
+    "mne": 144,
+    "networkx": 9,
+    "nilearn": 52,
+    "pandas": 32,
+    "pingouin": 11,
+    "pvlib": 10,
+    "pymc": 12,
+    "scanpy": 21,
+    "scikit-image": 40,
+    "scikit-learn": 73,
+    "seaborn": 10,
+    "statsmodels": 212,
+    "xarray": 3
+   },
    "calls": 724,
    "packages": 18
   },
   "numpy.ones_like": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 34,
+    "lifelines": 9,
+    "matplotlib": 1,
+    "mne": 8,
+    "nilearn": 5,
+    "pandas": 2,
+    "pvlib": 2,
+    "pymc": 3,
+    "scanpy": 1,
+    "scikit-image": 4,
+    "scikit-learn": 19,
+    "seaborn": 1,
+    "statsmodels": 23
+   },
    "calls": 117,
    "packages": 14
   },
   "numpy.outer": {
+   "by_package": {
+    "lifelines": 8,
+    "matplotlib": 6,
+    "mne": 5,
+    "networkx": 4,
+    "nilearn": 1,
+    "pandas": 1,
+    "scikit-learn": 11,
+    "seaborn": 1,
+    "statsmodels": 57,
+    "xarray": 1
+   },
    "calls": 95,
    "packages": 10
   },
   "numpy.packbits": {
+   "by_package": {
+    "astropy": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "numpy.pad": {
+   "by_package": {
+    "astropy": 2,
+    "librosa": 17,
+    "matplotlib": 1,
+    "mne": 8,
+    "networkx": 1,
+    "nilearn": 1,
+    "pvlib": 2,
+    "pymc": 1,
+    "scikit-image": 32,
+    "scikit-learn": 1,
+    "statsmodels": 2
+   },
    "calls": 68,
    "packages": 11
   },
   "numpy.partition": {
+   "by_package": {
+    "networkx": 1,
+    "nilearn": 2,
+    "scanpy": 4,
+    "scikit-learn": 2,
+    "statsmodels": 1
+   },
    "calls": 10,
    "packages": 5
   },
   "numpy.percentile": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 3,
+    "librosa": 1,
+    "lifelines": 12,
+    "matplotlib": 4,
+    "mne": 10,
+    "pingouin": 1,
+    "pymc": 2,
+    "scanpy": 4,
+    "scikit-image": 4,
+    "scikit-learn": 10,
+    "seaborn": 7,
+    "statsmodels": 14,
+    "xarray": 2
+   },
    "calls": 76,
    "packages": 14
   },
   "numpy.piecewise": {
+   "by_package": {
+    "pvlib": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.place": {
+   "by_package": {
+    "astropy": 3,
+    "pandas": 2
+   },
    "calls": 5,
    "packages": 2
   },
   "numpy.poly1d": {
+   "by_package": {
+    "astropy": 1,
+    "statsmodels": 5
+   },
    "calls": 6,
    "packages": 2
   },
   "numpy.polyfit": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 2,
+    "mne": 1,
+    "pvlib": 1,
+    "seaborn": 2
+   },
    "calls": 7,
    "packages": 5
   },
   "numpy.polymul": {
+   "by_package": {
+    "statsmodels": 6
+   },
    "calls": 6,
    "packages": 1
   },
   "numpy.polynomial.Polynomial": {
+   "by_package": {
+    "pvlib": 1,
+    "statsmodels": 14
+   },
    "calls": 15,
    "packages": 2
   },
+  "numpy.polynomial.hermite_e.HermiteE": {
+   "by_package": {
+    "statsmodels": 2
+   },
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.polynomial.legendre.legval": {
+   "by_package": {
+    "mne": 2
+   },
+   "calls": 2,
+   "packages": 1
+  },
+  "numpy.polynomial.legendre.legvander": {
+   "by_package": {
+    "mne": 1
+   },
+   "calls": 1,
+   "packages": 1
+  },
+  "numpy.polynomial.polynomial.Polynomial": {
+   "by_package": {
+    "mne": 1,
+    "pvlib": 5,
+    "statsmodels": 2
+   },
+   "calls": 8,
+   "packages": 3
+  },
+  "numpy.polynomial.polynomial.polyfit": {
+   "by_package": {
+    "pvlib": 2
+   },
+   "calls": 2,
+   "packages": 1
+  },
   "numpy.polyval": {
+   "by_package": {
+    "pvlib": 3,
+    "seaborn": 2,
+    "statsmodels": 2
+   },
    "calls": 7,
    "packages": 3
   },
   "numpy.positive": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.power": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 2,
+    "librosa": 5,
+    "lifelines": 2,
+    "matplotlib": 7,
+    "mne": 2,
+    "pvlib": 5,
+    "scanpy": 10,
+    "scikit-image": 12,
+    "scikit-learn": 5,
+    "seaborn": 4,
+    "statsmodels": 58,
+    "xarray": 1
+   },
    "calls": 115,
    "packages": 13
   },
   "numpy.printoptions": {
+   "by_package": {
+    "astropy": 2,
+    "mne": 3,
+    "xarray": 1
+   },
    "calls": 6,
    "packages": 3
   },
   "numpy.prod": {
+   "by_package": {
+    "arviz-stats": 21,
+    "astropy": 11,
+    "librosa": 7,
+    "mne": 30,
+    "nilearn": 10,
+    "pandas": 12,
+    "pingouin": 2,
+    "pymc": 15,
+    "scanpy": 2,
+    "scikit-image": 5,
+    "scikit-learn": 7,
+    "seaborn": 1,
+    "statsmodels": 22
+   },
    "calls": 145,
    "packages": 13
   },
   "numpy.promote_types": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 4,
+    "matplotlib": 4,
+    "pandas": 3,
+    "scikit-image": 6,
+    "statsmodels": 14,
+    "xarray": 1
+   },
    "calls": 33,
    "packages": 7
   },
   "numpy.ptp": {
+   "by_package": {
+    "matplotlib": 10,
+    "mne": 4,
+    "nilearn": 1,
+    "pingouin": 5,
+    "scikit-image": 3,
+    "scikit-learn": 2,
+    "seaborn": 2,
+    "statsmodels": 9
+   },
    "calls": 36,
    "packages": 8
   },
   "numpy.put": {
+   "by_package": {
+    "astropy": 2,
+    "nilearn": 1,
+    "scikit-learn": 1
+   },
    "calls": 4,
    "packages": 3
   },
   "numpy.putmask": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 4,
+    "pandas": 38,
+    "scanpy": 1,
+    "statsmodels": 3
+   },
    "calls": 48,
    "packages": 5
   },
   "numpy.quantile": {
+   "by_package": {
+    "arviz-stats": 6,
+    "pandas": 3,
+    "statsmodels": 4
+   },
    "calls": 13,
    "packages": 3
   },
   "numpy.rad2deg": {
+   "by_package": {
+    "astropy": 3,
+    "matplotlib": 27,
+    "mne": 13,
+    "pvlib": 5,
+    "scikit-image": 3
+   },
    "calls": 51,
    "packages": 5
   },
   "numpy.radians": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 20,
+    "matplotlib": 7,
+    "mne": 1,
+    "pvlib": 66
+   },
    "calls": 95,
    "packages": 5
   },
   "numpy.random.Generator": {
+   "by_package": {
+    "pymc": 3,
+    "scanpy": 1,
+    "scikit-image": 1
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.random.PCG64": {
+   "by_package": {
+    "pymc": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.random.RandomState": {
+   "by_package": {
+    "networkx": 1,
+    "nilearn": 1,
+    "pandas": 1,
+    "pingouin": 2,
+    "pymc": 1,
+    "scanpy": 1,
+    "scikit-image": 1,
+    "scikit-learn": 44,
+    "statsmodels": 1
+   },
    "calls": 53,
    "packages": 9
   },
   "numpy.random.SeedSequence": {
+   "by_package": {
+    "pymc": 2,
+    "scikit-image": 1,
+    "statsmodels": 1
+   },
    "calls": 4,
    "packages": 3
   },
   "numpy.random.binomial": {
+   "by_package": {
+    "scanpy": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.random.choice": {
+   "by_package": {
+    "astropy": 1,
+    "lifelines": 1,
+    "pingouin": 1,
+    "pymc": 3,
+    "scanpy": 5
+   },
    "calls": 11,
    "packages": 5
   },
   "numpy.random.default_rng": {
+   "by_package": {
+    "arviz-stats": 12,
+    "astropy": 1,
+    "librosa": 2,
+    "mne": 3,
+    "nilearn": 16,
+    "pandas": 1,
+    "pymc": 7,
+    "scanpy": 3,
+    "scikit-image": 12,
+    "scikit-learn": 2,
+    "seaborn": 2,
+    "statsmodels": 5,
+    "xarray": 2
+   },
    "calls": 68,
    "packages": 13
   },
   "numpy.random.get_state": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.random.multivariate_normal": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.random.normal": {
+   "by_package": {
+    "pymc": 1,
+    "scanpy": 2,
+    "statsmodels": 2
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.random.permutation": {
+   "by_package": {
+    "lifelines": 1,
+    "scikit-learn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.random.poisson": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.random.rand": {
+   "by_package": {
+    "pymc": 2,
+    "scanpy": 8
+   },
    "calls": 10,
    "packages": 2
   },
   "numpy.random.randint": {
+   "by_package": {
+    "astropy": 2,
+    "lifelines": 1,
+    "matplotlib": 1,
+    "pymc": 1,
+    "scanpy": 3,
+    "seaborn": 1,
+    "statsmodels": 1,
+    "xarray": 1
+   },
    "calls": 11,
    "packages": 8
   },
   "numpy.random.randn": {
+   "by_package": {
+    "astropy": 1,
+    "pymc": 2,
+    "scanpy": 6,
+    "statsmodels": 3
+   },
    "calls": 12,
    "packages": 4
   },
   "numpy.random.random": {
+   "by_package": {
+    "scanpy": 2,
+    "statsmodels": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.random.seed": {
+   "by_package": {
+    "astropy": 1,
+    "lifelines": 2,
+    "pymc": 3,
+    "scanpy": 8,
+    "scikit-learn": 1
+   },
    "calls": 15,
    "packages": 5
   },
   "numpy.random.set_state": {
+   "by_package": {
+    "astropy": 1,
+    "scanpy": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.random.uniform": {
+   "by_package": {
+    "astropy": 1,
+    "lifelines": 1,
+    "scanpy": 3,
+    "scikit-learn": 1,
+    "seaborn": 2,
+    "statsmodels": 2
+   },
    "calls": 10,
    "packages": 6
   },
   "numpy.ravel": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 22,
+    "matplotlib": 31,
+    "mne": 10,
+    "networkx": 6,
+    "nilearn": 15,
+    "pingouin": 1,
+    "scanpy": 12,
+    "scikit-image": 4,
+    "scikit-learn": 27,
+    "seaborn": 2,
+    "statsmodels": 9,
+    "xarray": 6
+   },
    "calls": 151,
    "packages": 13
   },
   "numpy.ravel_multi_index": {
+   "by_package": {
+    "astropy": 4,
+    "librosa": 1,
+    "matplotlib": 1,
+    "nilearn": 2,
+    "scikit-image": 2,
+    "xarray": 1
+   },
    "calls": 11,
    "packages": 6
   },
   "numpy.real": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 1,
+    "librosa": 1,
+    "mne": 4,
+    "networkx": 4,
+    "pandas": 2,
+    "pingouin": 2,
+    "scikit-image": 9,
+    "scikit-learn": 3,
+    "statsmodels": 3
+   },
    "calls": 30,
    "packages": 10
   },
   "numpy.real_if_close": {
+   "by_package": {
+    "statsmodels": 7
+   },
    "calls": 7,
    "packages": 1
   },
   "numpy.recarray": {
+   "by_package": {
+    "astropy": 7
+   },
    "calls": 7,
    "packages": 1
   },
   "numpy.reciprocal": {
+   "by_package": {
+    "networkx": 1,
+    "nilearn": 1,
+    "scikit-image": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "numpy.remainder": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 5,
+    "librosa": 17,
+    "matplotlib": 1,
+    "mne": 2,
+    "pandas": 1,
+    "pingouin": 1,
+    "pvlib": 6,
+    "scikit-image": 1,
+    "scikit-learn": 1,
+    "statsmodels": 1,
+    "xarray": 2
+   },
    "calls": 40,
    "packages": 12
   },
   "numpy.repeat": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 17,
+    "librosa": 2,
+    "matplotlib": 23,
+    "mne": 52,
+    "networkx": 8,
+    "nilearn": 1,
+    "pandas": 27,
+    "pymc": 1,
+    "scanpy": 4,
+    "scikit-image": 2,
+    "scikit-learn": 24,
+    "seaborn": 6,
+    "statsmodels": 20,
+    "xarray": 4
+   },
    "calls": 194,
    "packages": 15
   },
   "numpy.require": {
+   "by_package": {
+    "astropy": 2,
+    "matplotlib": 1,
+    "mne": 2,
+    "scikit-image": 1,
+    "scikit-learn": 3,
+    "statsmodels": 20
+   },
    "calls": 29,
    "packages": 6
   },
   "numpy.reshape": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 12,
+    "librosa": 1,
+    "matplotlib": 3,
+    "mne": 33,
+    "nilearn": 10,
+    "pandas": 2,
+    "pymc": 2,
+    "scikit-image": 17,
+    "scikit-learn": 24,
+    "seaborn": 1,
+    "statsmodels": 47,
+    "xarray": 2
+   },
    "calls": 155,
    "packages": 13
   },
   "numpy.resize": {
+   "by_package": {
+    "matplotlib": 4,
+    "networkx": 1,
+    "pandas": 1,
+    "pymc": 1,
+    "scikit-learn": 7
+   },
    "calls": 14,
    "packages": 5
   },
   "numpy.result_type": {
+   "by_package": {
+    "astropy": 9,
+    "librosa": 1,
+    "mne": 1,
+    "pandas": 12,
+    "scikit-image": 4,
+    "scikit-learn": 5,
+    "xarray": 7
+   },
    "calls": 39,
    "packages": 7
   },
   "numpy.rint": {
+   "by_package": {
+    "astropy": 3,
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 3,
+    "nilearn": 3,
+    "scikit-image": 2,
+    "scikit-learn": 2
+   },
    "calls": 15,
    "packages": 7
   },
   "numpy.roll": {
+   "by_package": {
+    "astropy": 3,
+    "librosa": 7,
+    "matplotlib": 2,
+    "mne": 2,
+    "pandas": 4,
+    "pvlib": 4,
+    "scikit-image": 11,
+    "scikit-learn": 1,
+    "statsmodels": 1,
+    "xarray": 1
+   },
    "calls": 36,
    "packages": 10
   },
   "numpy.rollaxis": {
+   "by_package": {
+    "astropy": 18,
+    "matplotlib": 1,
+    "mne": 3,
+    "nilearn": 10,
+    "scikit-learn": 3
+   },
    "calls": 35,
    "packages": 5
   },
   "numpy.roots": {
+   "by_package": {
+    "matplotlib": 1,
+    "statsmodels": 6
+   },
    "calls": 7,
    "packages": 2
   },
   "numpy.rot90": {
+   "by_package": {
+    "nilearn": 4,
+    "scikit-image": 4
+   },
    "calls": 8,
    "packages": 2
   },
   "numpy.round": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 18,
+    "librosa": 12,
+    "lifelines": 1,
+    "matplotlib": 12,
+    "mne": 62,
+    "nilearn": 15,
+    "pandas": 1,
+    "pingouin": 6,
+    "pvlib": 2,
+    "pymc": 4,
+    "scanpy": 8,
+    "scikit-image": 14,
+    "scikit-learn": 3,
+    "statsmodels": 16,
+    "xarray": 3
+   },
    "calls": 181,
    "packages": 16
   },
   "numpy.save": {
+   "by_package": {
+    "scanpy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.savetxt": {
+   "by_package": {
+    "mne": 2,
+    "nilearn": 1,
+    "scanpy": 7
+   },
    "calls": 10,
    "packages": 3
   },
   "numpy.savez": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.savez_compressed": {
+   "by_package": {
+    "scanpy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.sctypeDict": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.searchsorted": {
+   "by_package": {
+    "arviz-stats": 7,
+    "astropy": 12,
+    "librosa": 5,
+    "matplotlib": 11,
+    "mne": 60,
+    "nilearn": 10,
+    "pingouin": 2,
+    "pvlib": 1,
+    "pymc": 1,
+    "scanpy": 1,
+    "scikit-image": 2,
+    "scikit-learn": 20,
+    "seaborn": 1,
+    "statsmodels": 16,
+    "xarray": 3
+   },
    "calls": 152,
    "packages": 15
   },
   "numpy.select": {
+   "by_package": {
+    "astropy": 7
+   },
    "calls": 7,
    "packages": 1
   },
   "numpy.set_printoptions": {
+   "by_package": {
+    "scanpy": 2,
+    "scikit-learn": 2,
+    "xarray": 2
+   },
    "calls": 6,
    "packages": 3
   },
   "numpy.setdiff1d": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 1,
+    "mne": 43,
+    "nilearn": 1,
+    "pandas": 4,
+    "scanpy": 1,
+    "scikit-learn": 12
+   },
    "calls": 63,
    "packages": 7
   },
   "numpy.seterr": {
+   "by_package": {
+    "astropy": 2,
+    "lifelines": 2,
+    "nilearn": 2,
+    "scikit-image": 2,
+    "scikit-learn": 4
+   },
    "calls": 12,
    "packages": 5
   },
   "numpy.shape": {
+   "by_package": {
+    "astropy": 23,
+    "matplotlib": 28,
+    "mne": 4,
+    "nilearn": 7,
+    "pandas": 5,
+    "pvlib": 1,
+    "pymc": 4,
+    "scikit-image": 1,
+    "scikit-learn": 2,
+    "seaborn": 1,
+    "statsmodels": 30,
+    "xarray": 7
+   },
    "calls": 113,
    "packages": 12
   },
   "numpy.shares_memory": {
+   "by_package": {
+    "pandas": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.show_config": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.sign": {
+   "by_package": {
+    "astropy": 14,
+    "librosa": 7,
+    "lifelines": 1,
+    "matplotlib": 10,
+    "mne": 37,
+    "networkx": 2,
+    "nilearn": 6,
+    "pingouin": 2,
+    "pvlib": 4,
+    "pymc": 2,
+    "scanpy": 3,
+    "scikit-image": 4,
+    "scikit-learn": 12,
+    "seaborn": 6,
+    "statsmodels": 15
+   },
    "calls": 125,
    "packages": 15
   },
   "numpy.signbit": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 2,
+    "pandas": 1,
+    "scanpy": 1
+   },
    "calls": 5,
    "packages": 4
   },
   "numpy.sin": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 70,
+    "librosa": 4,
+    "lifelines": 1,
+    "matplotlib": 48,
+    "mne": 37,
+    "networkx": 4,
+    "pandas": 2,
+    "pingouin": 4,
+    "pvlib": 54,
+    "scanpy": 1,
+    "scikit-image": 21,
+    "scikit-learn": 11,
+    "seaborn": 1,
+    "statsmodels": 18
+   },
    "calls": 280,
    "packages": 15
   },
   "numpy.sinc": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "numpy.sinh": {
+   "by_package": {
+    "astropy": 5,
+    "matplotlib": 2
+   },
    "calls": 7,
    "packages": 2
   },
   "numpy.size": {
+   "by_package": {
+    "arviz-stats": 7,
+    "astropy": 11,
+    "matplotlib": 7,
+    "mne": 2,
+    "nilearn": 5,
+    "pvlib": 1,
+    "pymc": 3,
+    "scikit-learn": 14,
+    "statsmodels": 76
+   },
    "calls": 126,
    "packages": 9
   },
   "numpy.sort": {
+   "by_package": {
+    "arviz-stats": 9,
+    "astropy": 5,
+    "librosa": 4,
+    "lifelines": 5,
+    "matplotlib": 7,
+    "mne": 27,
+    "networkx": 3,
+    "nilearn": 9,
+    "pandas": 9,
+    "pingouin": 4,
+    "pymc": 3,
+    "scanpy": 4,
+    "scikit-image": 5,
+    "scikit-learn": 10,
+    "seaborn": 7,
+    "statsmodels": 44,
+    "xarray": 5
+   },
    "calls": 160,
    "packages": 17
   },
   "numpy.spacing": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 1,
+    "scikit-image": 4,
+    "scikit-learn": 5
+   },
    "calls": 11,
    "packages": 4
   },
   "numpy.split": {
+   "by_package": {
+    "astropy": 6,
+    "matplotlib": 2,
+    "mne": 5,
+    "nilearn": 1,
+    "scanpy": 5,
+    "scikit-image": 1,
+    "scikit-learn": 5,
+    "seaborn": 1,
+    "statsmodels": 5
+   },
    "calls": 31,
    "packages": 9
   },
   "numpy.sqrt": {
+   "by_package": {
+    "arviz-stats": 26,
+    "astropy": 99,
+    "librosa": 13,
+    "lifelines": 21,
+    "matplotlib": 33,
+    "mne": 197,
+    "networkx": 29,
+    "nilearn": 39,
+    "pandas": 10,
+    "pingouin": 59,
+    "pvlib": 18,
+    "pymc": 19,
+    "scanpy": 36,
+    "scikit-image": 99,
+    "scikit-learn": 90,
+    "seaborn": 13,
+    "statsmodels": 557,
+    "xarray": 4
+   },
    "calls": 1362,
    "packages": 18
   },
   "numpy.square": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 2,
+    "librosa": 3,
+    "pingouin": 2,
+    "pymc": 1,
+    "scanpy": 3,
+    "scikit-image": 9,
+    "scikit-learn": 2,
+    "seaborn": 6,
+    "statsmodels": 18
+   },
    "calls": 47,
    "packages": 10
   },
   "numpy.squeeze": {
+   "by_package": {
+    "arviz-stats": 2,
+    "librosa": 1,
+    "mne": 6,
+    "nilearn": 12,
+    "pandas": 4,
+    "pingouin": 2,
+    "pymc": 3,
+    "scikit-image": 13,
+    "scikit-learn": 16,
+    "seaborn": 2,
+    "statsmodels": 113,
+    "xarray": 2
+   },
    "calls": 176,
    "packages": 12
   },
   "numpy.stack": {
+   "by_package": {
+    "arviz-stats": 10,
+    "astropy": 7,
+    "librosa": 3,
+    "matplotlib": 12,
+    "mne": 12,
+    "pvlib": 1,
+    "pymc": 9,
+    "scanpy": 1,
+    "scikit-image": 44,
+    "scikit-learn": 1,
+    "seaborn": 7,
+    "statsmodels": 3,
+    "xarray": 2
+   },
    "calls": 112,
    "packages": 13
   },
   "numpy.std": {
+   "by_package": {
+    "arviz-stats": 8,
+    "astropy": 1,
+    "mne": 16,
+    "networkx": 1,
+    "nilearn": 1,
+    "pingouin": 3,
+    "pvlib": 14,
+    "pymc": 1,
+    "scanpy": 4,
+    "scikit-image": 1,
+    "scikit-learn": 10,
+    "seaborn": 1,
+    "statsmodels": 31
+   },
    "calls": 92,
    "packages": 13
   },
   "numpy.str_": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.subtract": {
+   "by_package": {
+    "arviz-stats": 2,
+    "astropy": 10,
+    "librosa": 3,
+    "pvlib": 2,
+    "scikit-image": 9,
+    "scikit-learn": 1,
+    "seaborn": 2,
+    "statsmodels": 23
+   },
    "calls": 52,
    "packages": 8
   },
   "numpy.sum": {
+   "by_package": {
+    "arviz-stats": 63,
+    "astropy": 58,
+    "librosa": 20,
+    "lifelines": 11,
+    "matplotlib": 15,
+    "mne": 236,
+    "networkx": 17,
+    "nilearn": 58,
+    "pandas": 7,
+    "pingouin": 33,
+    "pvlib": 18,
+    "pymc": 8,
+    "scanpy": 36,
+    "scikit-image": 99,
+    "scikit-learn": 172,
+    "seaborn": 7,
+    "statsmodels": 343,
+    "xarray": 1
+   },
    "calls": 1202,
    "packages": 18
   },
   "numpy.swapaxes": {
+   "by_package": {
+    "librosa": 7,
+    "mne": 1,
+    "nilearn": 1,
+    "pymc": 1,
+    "scikit-image": 2,
+    "scikit-learn": 3,
+    "statsmodels": 1
+   },
    "calls": 16,
    "packages": 7
   },
   "numpy.take": {
+   "by_package": {
+    "librosa": 2,
+    "matplotlib": 6,
+    "mne": 5,
+    "pandas": 4,
+    "scikit-image": 1,
+    "scikit-learn": 9,
+    "seaborn": 3,
+    "statsmodels": 13,
+    "xarray": 7
+   },
    "calls": 50,
    "packages": 9
   },
   "numpy.take_along_axis": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 1,
+    "scikit-image": 3
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.tan": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 8,
+    "matplotlib": 2,
+    "mne": 1,
+    "pvlib": 10,
+    "scikit-learn": 1
+   },
    "calls": 27,
    "packages": 6
   },
   "numpy.tanh": {
+   "by_package": {
+    "mne": 1,
+    "pingouin": 1,
+    "scanpy": 1,
+    "scikit-image": 2,
+    "scikit-learn": 2,
+    "statsmodels": 3
+   },
    "calls": 10,
    "packages": 6
   },
   "numpy.tensordot": {
+   "by_package": {
+    "scikit-image": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "numpy.tile": {
+   "by_package": {
+    "arviz-stats": 3,
+    "librosa": 6,
+    "lifelines": 15,
+    "matplotlib": 13,
+    "mne": 45,
+    "nilearn": 4,
+    "pandas": 31,
+    "pingouin": 1,
+    "pvlib": 4,
+    "pymc": 2,
+    "scanpy": 2,
+    "scikit-image": 3,
+    "scikit-learn": 9,
+    "seaborn": 3,
+    "statsmodels": 14,
+    "xarray": 1
+   },
    "calls": 156,
    "packages": 16
   },
   "numpy.timedelta64": {
+   "by_package": {
+    "astropy": 1,
+    "matplotlib": 1,
+    "pandas": 13,
+    "pvlib": 2,
+    "pymc": 1,
+    "xarray": 31
+   },
    "calls": 49,
    "packages": 6
   },
   "numpy.trace": {
+   "by_package": {
+    "mne": 5,
+    "pingouin": 6,
+    "scikit-learn": 5,
+    "statsmodels": 27
+   },
    "calls": 43,
    "packages": 4
   },
   "numpy.transpose": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 8,
+    "matplotlib": 6,
+    "mne": 8,
+    "networkx": 3,
+    "nilearn": 5,
+    "pandas": 2,
+    "pvlib": 2,
+    "scikit-image": 15,
+    "scikit-learn": 4,
+    "seaborn": 2,
+    "statsmodels": 26
+   },
    "calls": 85,
    "packages": 12
   },
   "numpy.tri": {
+   "by_package": {
+    "nilearn": 2,
+    "scikit-learn": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.tril": {
+   "by_package": {
+    "mne": 2,
+    "nilearn": 4,
+    "statsmodels": 1
+   },
    "calls": 7,
    "packages": 3
   },
   "numpy.tril_indices": {
+   "by_package": {
+    "mne": 3,
+    "pymc": 3,
+    "statsmodels": 16
+   },
    "calls": 22,
    "packages": 3
   },
   "numpy.tril_indices_from": {
+   "by_package": {
+    "librosa": 2,
+    "nilearn": 1,
+    "seaborn": 1,
+    "statsmodels": 3
+   },
    "calls": 7,
    "packages": 4
   },
   "numpy.triu": {
+   "by_package": {
+    "nilearn": 1,
+    "pingouin": 2,
+    "statsmodels": 1
+   },
    "calls": 4,
    "packages": 3
   },
   "numpy.triu_indices": {
+   "by_package": {
+    "mne": 5,
+    "pingouin": 4,
+    "pymc": 1,
+    "scikit-learn": 2,
+    "statsmodels": 23
+   },
    "calls": 35,
    "packages": 5
   },
   "numpy.triu_indices_from": {
+   "by_package": {
+    "librosa": 2,
+    "mne": 1,
+    "seaborn": 2
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.trunc": {
+   "by_package": {
+    "astropy": 4,
+    "mne": 2,
+    "nilearn": 1,
+    "pandas": 1,
+    "scikit-image": 2,
+    "statsmodels": 3
+   },
    "calls": 13,
    "packages": 6
   },
   "numpy.uint16": {
+   "by_package": {
+    "astropy": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "numpy.uint32": {
+   "by_package": {
+    "astropy": 5
+   },
    "calls": 5,
    "packages": 1
   },
   "numpy.uint64": {
+   "by_package": {
+    "astropy": 5,
+    "pandas": 13
+   },
    "calls": 18,
    "packages": 2
   },
   "numpy.uint8": {
+   "by_package": {
+    "astropy": 3,
+    "matplotlib": 1,
+    "scikit-image": 1
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.union1d": {
+   "by_package": {
+    "matplotlib": 1,
+    "mne": 4,
+    "pandas": 6,
+    "statsmodels": 1
+   },
    "calls": 12,
    "packages": 4
   },
   "numpy.unique": {
+   "by_package": {
+    "arviz-stats": 18,
+    "astropy": 28,
+    "librosa": 5,
+    "lifelines": 15,
+    "matplotlib": 8,
+    "mne": 106,
+    "networkx": 1,
+    "nilearn": 69,
+    "pandas": 13,
+    "pingouin": 4,
+    "pvlib": 3,
+    "pymc": 1,
+    "scanpy": 19,
+    "scikit-image": 19,
+    "scikit-learn": 90,
+    "seaborn": 8,
+    "statsmodels": 73,
+    "xarray": 16
+   },
    "calls": 496,
    "packages": 18
   },
   "numpy.unpackbits": {
+   "by_package": {
+    "astropy": 3,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.unravel_index": {
+   "by_package": {
+    "arviz-stats": 6,
+    "astropy": 7,
+    "librosa": 1,
+    "matplotlib": 1,
+    "mne": 11,
+    "nilearn": 1,
+    "scanpy": 2,
+    "scikit-image": 5,
+    "scikit-learn": 13,
+    "statsmodels": 2,
+    "xarray": 1
+   },
    "calls": 50,
    "packages": 11
   },
   "numpy.unwrap": {
+   "by_package": {
+    "astropy": 2,
+    "librosa": 2,
+    "matplotlib": 1
+   },
    "calls": 5,
    "packages": 3
   },
   "numpy.vander": {
+   "by_package": {
+    "statsmodels": 6,
+    "xarray": 1
+   },
    "calls": 7,
    "packages": 2
   },
   "numpy.var": {
+   "by_package": {
+    "arviz-stats": 18,
+    "mne": 5,
+    "nilearn": 4,
+    "pingouin": 2,
+    "scanpy": 1,
+    "scikit-learn": 12,
+    "statsmodels": 18
+   },
    "calls": 60,
    "packages": 7
   },
   "numpy.vdot": {
+   "by_package": {
+    "pingouin": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "numpy.vectorize": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 10,
+    "librosa": 9,
+    "lifelines": 1,
+    "matplotlib": 5,
+    "mne": 1,
+    "nilearn": 2,
+    "pandas": 4,
+    "pvlib": 4,
+    "seaborn": 2,
+    "statsmodels": 2,
+    "xarray": 6
+   },
    "calls": 47,
    "packages": 12
   },
   "numpy.void": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "numpy.vsplit": {
+   "by_package": {
+    "mne": 2,
+    "statsmodels": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "numpy.vstack": {
+   "by_package": {
+    "arviz-stats": 4,
+    "astropy": 12,
+    "lifelines": 2,
+    "matplotlib": 15,
+    "mne": 48,
+    "networkx": 1,
+    "nilearn": 19,
+    "pandas": 6,
+    "pingouin": 1,
+    "pvlib": 11,
+    "pymc": 4,
+    "scanpy": 7,
+    "scikit-image": 17,
+    "scikit-learn": 48,
+    "seaborn": 2,
+    "statsmodels": 35,
+    "xarray": 1
+   },
    "calls": 233,
    "packages": 17
   },
   "numpy.where": {
+   "by_package": {
+    "arviz-stats": 13,
+    "astropy": 74,
+    "librosa": 3,
+    "lifelines": 5,
+    "matplotlib": 13,
+    "mne": 264,
+    "networkx": 2,
+    "nilearn": 24,
+    "pandas": 71,
+    "pingouin": 11,
+    "pvlib": 124,
+    "pymc": 12,
+    "scanpy": 16,
+    "scikit-image": 9,
+    "scikit-learn": 35,
+    "seaborn": 5,
+    "statsmodels": 61,
+    "xarray": 9
+   },
    "calls": 751,
    "packages": 18
   },
   "numpy.zeros": {
+   "by_package": {
+    "arviz-stats": 18,
+    "astropy": 138,
+    "librosa": 35,
+    "lifelines": 51,
+    "matplotlib": 50,
+    "mne": 385,
+    "networkx": 39,
+    "nilearn": 103,
+    "pandas": 107,
+    "pingouin": 9,
+    "pvlib": 25,
+    "pymc": 28,
+    "scanpy": 109,
+    "scikit-image": 111,
+    "scikit-learn": 276,
+    "seaborn": 7,
+    "statsmodels": 597,
+    "xarray": 6
+   },
    "calls": 2094,
    "packages": 18
   },
   "numpy.zeros_like": {
+   "by_package": {
+    "arviz-stats": 5,
+    "astropy": 33,
+    "librosa": 11,
+    "lifelines": 12,
+    "matplotlib": 4,
+    "mne": 32,
+    "nilearn": 13,
+    "pandas": 5,
+    "pvlib": 8,
+    "pymc": 3,
+    "scanpy": 3,
+    "scikit-image": 36,
+    "scikit-learn": 29,
+    "seaborn": 1,
+    "statsmodels": 46,
+    "xarray": 2
+   },
    "calls": 243,
    "packages": 16
   },
   "scipy.cluster.hierarchy.dendrogram": {
+   "by_package": {
+    "scanpy": 1,
+    "seaborn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.cluster.hierarchy.leaves_list": {
+   "by_package": {
+    "nilearn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.cluster.hierarchy.linkage": {
+   "by_package": {
+    "nilearn": 1,
+    "scanpy": 1,
+    "scikit-learn": 1,
+    "seaborn": 1
+   },
    "calls": 4,
    "packages": 4
   },
   "scipy.cluster.hierarchy.optimal_leaf_ordering": {
+   "by_package": {
+    "nilearn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.cluster.hierarchy.ward": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.cluster.vq.kmeans": {
+   "by_package": {
+    "pymc": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.cluster.vq.kmeans2": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.constants.value": {
+   "by_package": {
+    "pvlib": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.fft.dct": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.fft.fft": {
+   "by_package": {
+    "librosa": 2,
+    "mne": 5,
+    "scikit-image": 2,
+    "scikit-learn": 1
+   },
    "calls": 10,
    "packages": 4
   },
   "scipy.fft.fftfreq": {
+   "by_package": {
+    "mne": 3,
+    "scikit-image": 2
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.fft.fftn": {
+   "by_package": {
+    "scikit-image": 6
+   },
    "calls": 6,
    "packages": 1
   },
   "scipy.fft.fftshift": {
+   "by_package": {
+    "scikit-image": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.fft.idct": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.fft.ifft": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 3,
+    "scikit-image": 1,
+    "scikit-learn": 1
+   },
    "calls": 6,
    "packages": 4
   },
   "scipy.fft.ifftn": {
+   "by_package": {
+    "scikit-image": 8
+   },
    "calls": 8,
    "packages": 1
   },
   "scipy.fft.ifftshift": {
+   "by_package": {
+    "mne": 1,
+    "scikit-image": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.fft.irfft": {
+   "by_package": {
+    "librosa": 3,
+    "mne": 2
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.fft.irfftn": {
+   "by_package": {
+    "scikit-image": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.fft.next_fast_len": {
+   "by_package": {
+    "astropy": 1,
+    "librosa": 1,
+    "scikit-image": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "scipy.fft.rfft": {
+   "by_package": {
+    "librosa": 5,
+    "mne": 3
+   },
    "calls": 8,
    "packages": 2
   },
   "scipy.fft.rfftfreq": {
+   "by_package": {
+    "mne": 5
+   },
    "calls": 5,
    "packages": 1
   },
   "scipy.fft.rfftn": {
+   "by_package": {
+    "scikit-image": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.integrate.cumulative_trapezoid": {
+   "by_package": {
+    "lifelines": 1,
+    "mne": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.integrate.dblquad": {
+   "by_package": {
+    "astropy": 1,
+    "statsmodels": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.integrate.odeint": {
+   "by_package": {
+    "pymc": 1,
+    "statsmodels": 4
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.integrate.quad": {
+   "by_package": {
+    "astropy": 3,
+    "lifelines": 2,
+    "pingouin": 2,
+    "statsmodels": 12
+   },
    "calls": 19,
    "packages": 4
   },
   "scipy.integrate.simpson": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.integrate.trapezoid": {
+   "by_package": {
+    "lifelines": 5,
+    "mne": 2,
+    "pvlib": 2,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 11,
    "packages": 5
   },
   "scipy.interpolate.Akima1DInterpolator": {
+   "by_package": {
+    "pandas": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.BPoly": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.BSpline": {
+   "by_package": {
+    "astropy": 1,
+    "scikit-learn": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.interpolate.CubicSpline": {
+   "by_package": {
+    "arviz-stats": 1,
+    "nilearn": 1,
+    "pandas": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "scipy.interpolate.InterpolatedUnivariateSpline": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.LSQUnivariateSpline": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.LinearNDInterpolator": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.PchipInterpolator": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.Rbf": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.RectBivariateSpline": {
+   "by_package": {
+    "mne": 1,
+    "scikit-image": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.interpolate.RegularGridInterpolator": {
+   "by_package": {
+    "astropy": 1,
+    "nilearn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.interpolate.UnivariateSpline": {
+   "by_package": {
+    "astropy": 1,
+    "pandas": 1,
+    "xarray": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "scipy.interpolate.interp1d": {
+   "by_package": {
+    "librosa": 11,
+    "mne": 8,
+    "nilearn": 1,
+    "pandas": 1,
+    "pvlib": 1,
+    "scikit-image": 1,
+    "scikit-learn": 2,
+    "statsmodels": 10,
+    "xarray": 1
+   },
    "calls": 36,
    "packages": 9
   },
   "scipy.interpolate.interpn": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.interpolate.make_interp_spline": {
+   "by_package": {
+    "pvlib": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.interpolate.splev": {
+   "by_package": {
+    "pvlib": 1,
+    "statsmodels": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.interpolate.splrep": {
+   "by_package": {
+    "astropy": 1
+   },
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.io.loadmat": {
+   "by_package": {
+    "mne": 7,
+    "nilearn": 1,
+    "scikit-learn": 1
+   },
+   "calls": 9,
+   "packages": 3
+  },
+  "scipy.io.whosmat": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.linalg.LinAlgError": {
+   "by_package": {
+    "mne": 1,
+    "scikit-learn": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.linalg.block_diag": {
+   "by_package": {
+    "mne": 1,
+    "statsmodels": 9
+   },
    "calls": 10,
    "packages": 2
   },
   "scipy.linalg.cho_factor": {
+   "by_package": {
+    "statsmodels": 11
+   },
    "calls": 11,
    "packages": 1
   },
   "scipy.linalg.cho_solve": {
+   "by_package": {
+    "scikit-learn": 5,
+    "statsmodels": 11
+   },
    "calls": 16,
    "packages": 2
   },
   "scipy.linalg.cho_solve_banded": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.linalg.cholesky": {
+   "by_package": {
+    "scikit-learn": 4,
+    "statsmodels": 7
+   },
    "calls": 11,
    "packages": 2
   },
   "scipy.linalg.circulant": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.linalg.eig": {
+   "by_package": {
+    "mne": 1,
+    "scanpy": 1,
+    "statsmodels": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "scipy.linalg.eigh": {
+   "by_package": {
+    "mne": 5,
+    "networkx": 2,
+    "nilearn": 4,
+    "scanpy": 2,
+    "scikit-learn": 11
+   },
    "calls": 24,
    "packages": 5
   },
   "scipy.linalg.eigvals": {
+   "by_package": {
+    "networkx": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.linalg.eigvalsh": {
+   "by_package": {
+    "mne": 2,
+    "networkx": 4
+   },
    "calls": 6,
    "packages": 2
   },
   "scipy.linalg.expm": {
+   "by_package": {
+    "networkx": 6
+   },
    "calls": 6,
    "packages": 1
   },
   "scipy.linalg.fractional_matrix_power": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.linalg.get_blas_funcs": {
+   "by_package": {
+    "mne": 2,
+    "scikit-learn": 4
+   },
    "calls": 6,
    "packages": 2
   },
   "scipy.linalg.get_lapack_funcs": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.linalg.hankel": {
+   "by_package": {
+    "pvlib": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.linalg.inv": {
+   "by_package": {
+    "lifelines": 1,
+    "mne": 1,
+    "networkx": 1,
+    "nilearn": 6,
+    "scikit-image": 18,
+    "scikit-learn": 4,
+    "statsmodels": 2
+   },
    "calls": 33,
    "packages": 7
   },
   "scipy.linalg.issymmetric": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.linalg.lstsq": {
+   "by_package": {
+    "mne": 6,
+    "nilearn": 1,
+    "scikit-learn": 3
+   },
    "calls": 10,
    "packages": 3
   },
   "scipy.linalg.norm": {
+   "by_package": {
+    "lifelines": 1,
+    "mne": 4,
+    "networkx": 1,
+    "nilearn": 2,
+    "scikit-learn": 16
+   },
    "calls": 24,
    "packages": 5
   },
   "scipy.linalg.orth": {
+   "by_package": {
+    "mne": 2,
+    "nilearn": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.linalg.pinv": {
+   "by_package": {
+    "librosa": 2,
+    "mne": 1,
+    "nilearn": 2,
+    "scikit-learn": 4
+   },
    "calls": 9,
    "packages": 4
   },
   "scipy.linalg.pinvh": {
+   "by_package": {
+    "mne": 2,
+    "pingouin": 1,
+    "scikit-learn": 11
+   },
    "calls": 14,
    "packages": 3
   },
   "scipy.linalg.qr": {
+   "by_package": {
+    "mne": 3,
+    "nilearn": 1,
+    "scikit-learn": 4,
+    "statsmodels": 4
+   },
    "calls": 12,
    "packages": 4
   },
   "scipy.linalg.solve": {
+   "by_package": {
+    "lifelines": 4,
+    "mne": 3,
+    "scikit-learn": 9,
+    "statsmodels": 1
+   },
    "calls": 17,
    "packages": 4
   },
   "scipy.linalg.solve_discrete_lyapunov": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.linalg.solve_sylvester": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.linalg.solve_triangular": {
+   "by_package": {
+    "scikit-learn": 5,
+    "statsmodels": 6
+   },
    "calls": 11,
    "packages": 2
   },
   "scipy.linalg.sqrtm": {
+   "by_package": {
+    "nilearn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.linalg.svd": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 2,
+    "nilearn": 3,
+    "scikit-learn": 15
+   },
    "calls": 21,
    "packages": 4
   },
   "scipy.linalg.svdvals": {
+   "by_package": {
+    "mne": 2,
+    "nilearn": 1,
+    "scikit-learn": 2
+   },
    "calls": 5,
    "packages": 3
   },
   "scipy.linalg.toeplitz": {
+   "by_package": {
+    "mne": 2,
+    "nilearn": 1,
+    "statsmodels": 8
+   },
    "calls": 11,
    "packages": 3
   },
   "scipy.ndimage.affine_transform": {
+   "by_package": {
+    "nilearn": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.ndimage.binary_closing": {
+   "by_package": {
+    "nilearn": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.ndimage.binary_dilation": {
+   "by_package": {
+    "mne": 1,
+    "nilearn": 5,
+    "scikit-image": 3
+   },
    "calls": 9,
    "packages": 3
   },
   "scipy.ndimage.binary_erosion": {
+   "by_package": {
+    "nilearn": 3,
+    "scikit-image": 5
+   },
    "calls": 8,
    "packages": 2
   },
   "scipy.ndimage.binary_fill_holes": {
+   "by_package": {
+    "nilearn": 1,
+    "scikit-image": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.ndimage.binary_opening": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.binary_propagation": {
+   "by_package": {
+    "nilearn": 2,
+    "scikit-image": 2
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.ndimage.center_of_mass": {
+   "by_package": {
+    "nilearn": 6
+   },
    "calls": 6,
    "packages": 1
   },
   "scipy.ndimage.convolve": {
+   "by_package": {
+    "librosa": 3,
+    "scikit-image": 16
+   },
    "calls": 19,
    "packages": 2
   },
   "scipy.ndimage.correlate": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.distance_transform_cdt": {
+   "by_package": {
+    "nilearn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.distance_transform_edt": {
+   "by_package": {
+    "mne": 1,
+    "scikit-image": 6
+   },
    "calls": 7,
    "packages": 2
   },
   "scipy.ndimage.find_objects": {
+   "by_package": {
+    "mne": 1,
+    "nilearn": 3,
+    "scikit-image": 3
+   },
    "calls": 7,
    "packages": 3
   },
   "scipy.ndimage.gaussian_filter": {
+   "by_package": {
+    "mne": 1,
+    "nilearn": 1,
+    "scikit-image": 2
+   },
    "calls": 4,
    "packages": 3
   },
   "scipy.ndimage.gaussian_filter1d": {
+   "by_package": {
+    "mne": 3,
+    "nilearn": 1
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.ndimage.gaussian_gradient_magnitude": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.gaussian_laplace": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.generate_binary_structure": {
+   "by_package": {
+    "nilearn": 4,
+    "scikit-image": 19
+   },
    "calls": 23,
    "packages": 2
   },
   "scipy.ndimage.generic_filter": {
+   "by_package": {
+    "scikit-image": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.ndimage.grey_dilation": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.grey_erosion": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.label": {
+   "by_package": {
+    "mne": 2,
+    "nilearn": 16,
+    "scikit-image": 7
+   },
    "calls": 25,
    "packages": 3
   },
   "scipy.ndimage.laplace": {
+   "by_package": {
+    "scikit-image": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.ndimage.map_coordinates": {
+   "by_package": {
+    "scikit-image": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.ndimage.maximum_filter": {
+   "by_package": {
+    "nilearn": 3,
+    "scikit-image": 4
+   },
    "calls": 7,
    "packages": 2
   },
   "scipy.ndimage.maximum_filter1d": {
+   "by_package": {
+    "librosa": 2,
+    "scikit-image": 2
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.ndimage.median_filter": {
+   "by_package": {
+    "librosa": 2,
+    "scikit-image": 4
+   },
    "calls": 6,
    "packages": 2
   },
   "scipy.ndimage.minimum_filter": {
+   "by_package": {
+    "nilearn": 1,
+    "scikit-image": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.ndimage.rotate": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.shift": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.sobel": {
+   "by_package": {
+    "nilearn": 2,
+    "scikit-image": 3
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.ndimage.sum": {
+   "by_package": {
+    "mne": 2,
+    "scikit-image": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.ndimage.uniform_filter": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.ndimage.uniform_filter1d": {
+   "by_package": {
+    "scikit-image": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.ndimage.zoom": {
+   "by_package": {
+    "scikit-image": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.optimize.Bounds": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.LinearConstraint": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.basinhopping": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.optimize.bisect": {
+   "by_package": {
+    "pvlib": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.brent": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.optimize.brenth": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 4
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.optimize.brentq": {
+   "by_package": {
+    "arviz-stats": 1,
+    "astropy": 2,
+    "networkx": 1,
+    "pvlib": 4,
+    "statsmodels": 27
+   },
    "calls": 35,
    "packages": 5
   },
   "scipy.optimize.brute": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.optimize.curve_fit": {
+   "by_package": {
+    "pvlib": 1,
+    "xarray": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.optimize.differential_evolution": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.optimize.fmin": {
+   "by_package": {
+    "astropy": 1,
+    "pvlib": 1,
+    "statsmodels": 13
+   },
    "calls": 15,
    "packages": 3
   },
   "scipy.optimize.fmin_bfgs": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.fmin_cg": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.fmin_cobyla": {
+   "by_package": {
+    "mne": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.optimize.fmin_l_bfgs_b": {
+   "by_package": {
+    "librosa": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.optimize.fmin_ncg": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.fmin_powell": {
+   "by_package": {
+    "statsmodels": 6
+   },
    "calls": 6,
    "packages": 1
   },
   "scipy.optimize.fmin_slsqp": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.fminbound": {
+   "by_package": {
+    "statsmodels": 4
+   },
    "calls": 4,
    "packages": 1
   },
   "scipy.optimize.fsolve": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.optimize.isotonic_regression": {
+   "by_package": {
+    "arviz-stats": 2,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 4,
    "packages": 3
   },
   "scipy.optimize.least_squares": {
+   "by_package": {
+    "astropy": 3,
+    "pvlib": 1,
+    "statsmodels": 2
+   },
    "calls": 6,
    "packages": 3
   },
   "scipy.optimize.leastsq": {
+   "by_package": {
+    "astropy": 2,
+    "mne": 1,
+    "scikit-image": 1,
+    "statsmodels": 4
+   },
    "calls": 8,
    "packages": 4
   },
   "scipy.optimize.linear_sum_assignment": {
+   "by_package": {
+    "networkx": 2,
+    "scikit-learn": 1
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.optimize.linprog": {
+   "by_package": {
+    "networkx": 1,
+    "scikit-learn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.optimize.minimize": {
+   "by_package": {
+    "arviz-stats": 1,
+    "lifelines": 3,
+    "mne": 1,
+    "networkx": 2,
+    "pvlib": 1,
+    "scikit-learn": 10,
+    "statsmodels": 10
+   },
    "calls": 28,
    "packages": 7
   },
   "scipy.optimize.minimize_scalar": {
+   "by_package": {
+    "astropy": 1,
+    "mne": 1,
+    "scikit-learn": 1,
+    "statsmodels": 2
+   },
    "calls": 5,
    "packages": 4
   },
   "scipy.optimize.newton": {
+   "by_package": {
+    "lifelines": 1,
+    "pvlib": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.optimize.nnls": {
+   "by_package": {
+    "librosa": 1,
+    "scikit-learn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.optimize.root": {
+   "by_package": {
+    "astropy": 2,
+    "pvlib": 1,
+    "scanpy": 1,
+    "statsmodels": 1
+   },
    "calls": 5,
    "packages": 4
   },
   "scipy.optimize.root_scalar": {
+   "by_package": {
+    "lifelines": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.argrelmax": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.signal.butter": {
+   "by_package": {
+    "mne": 1,
+    "nilearn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.signal.chirp": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.convolve": {
+   "by_package": {
+    "arviz-stats": 2,
+    "librosa": 1,
+    "scikit-image": 2,
+    "statsmodels": 9
+   },
    "calls": 14,
    "packages": 4
   },
   "scipy.signal.convolve2d": {
+   "by_package": {
+    "arviz-stats": 1,
+    "scikit-image": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.signal.correlate": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.signal.detrend": {
+   "by_package": {
+    "mne": 6
+   },
    "calls": 6,
    "packages": 1
   },
   "scipy.signal.fftconvolve": {
+   "by_package": {
+    "mne": 1,
+    "scikit-image": 2,
+    "statsmodels": 1
+   },
    "calls": 4,
    "packages": 3
   },
   "scipy.signal.filtfilt": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.signal.find_peaks": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.signal.firwin": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.signal.freqz": {
+   "by_package": {
+    "mne": 5,
+    "statsmodels": 1
+   },
    "calls": 6,
    "packages": 2
   },
   "scipy.signal.get_window": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 3,
+    "nilearn": 1,
+    "scikit-image": 1
+   },
    "calls": 6,
    "packages": 4
   },
   "scipy.signal.group_delay": {
+   "by_package": {
+    "mne": 4
+   },
    "calls": 4,
    "packages": 1
   },
   "scipy.signal.hilbert": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.signal.iirdesign": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.signal.iirfilter": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.lfilter": {
+   "by_package": {
+    "librosa": 5,
+    "mne": 2,
+    "statsmodels": 12
+   },
    "calls": 19,
    "packages": 3
   },
   "scipy.signal.lfilter_zi": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.lfiltic": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.signal.lombscargle": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.minimum_phase": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.signal.order_filter": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.resample": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.resample_poly": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.signal.savgol_filter": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.signal.sos2zpk": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.sosfilt": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.sosfiltfilt": {
+   "by_package": {
+    "librosa": 1,
+    "nilearn": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.signal.sosfreqz": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.tf2zpk": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.wiener": {
+   "by_package": {
+    "nilearn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.windows.dpss": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.windows.gaussian": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.signal.windows.hann": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.sparse.block_diag": {
+   "by_package": {
+    "mne": 4
+   },
    "calls": 4,
    "packages": 1
   },
   "scipy.sparse.coo_array": {
+   "by_package": {
+    "arviz-stats": 1,
+    "mne": 11,
+    "networkx": 4,
+    "scanpy": 1,
+    "scikit-learn": 12,
+    "statsmodels": 1
+   },
    "calls": 30,
    "packages": 6
   },
   "scipy.sparse.coo_matrix": {
+   "by_package": {
+    "astropy": 6,
+    "mne": 1,
+    "nilearn": 12,
+    "pandas": 2,
+    "scanpy": 1,
+    "scikit-learn": 1
+   },
    "calls": 23,
    "packages": 6
   },
   "scipy.sparse.csc_array": {
+   "by_package": {
+    "librosa": 6,
+    "mne": 3,
+    "networkx": 2,
+    "scikit-image": 1,
+    "scikit-learn": 10
+   },
    "calls": 22,
    "packages": 5
   },
   "scipy.sparse.csc_matrix": {
+   "by_package": {
+    "librosa": 2,
+    "scanpy": 6,
+    "scikit-learn": 1
+   },
    "calls": 9,
    "packages": 3
   },
   "scipy.sparse.csgraph.connected_components": {
+   "by_package": {
+    "mne": 3,
+    "networkx": 1,
+    "nilearn": 2,
+    "scanpy": 3,
+    "scikit-learn": 4
+   },
    "calls": 13,
    "packages": 5
   },
   "scipy.sparse.csgraph.dijkstra": {
+   "by_package": {
+    "mne": 5
+   },
    "calls": 5,
    "packages": 1
   },
   "scipy.sparse.csgraph.laplacian": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.csgraph.minimum_spanning_tree": {
+   "by_package": {
+    "scanpy": 2,
+    "scikit-learn": 2
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.sparse.csgraph.shortest_path": {
+   "by_package": {
+    "scikit-image": 1,
+    "scikit-learn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.sparse.csr_array": {
+   "by_package": {
+    "librosa": 3,
+    "mne": 17,
+    "networkx": 2,
+    "scikit-image": 6,
+    "scikit-learn": 43,
+    "statsmodels": 5
+   },
    "calls": 76,
    "packages": 6
   },
   "scipy.sparse.csr_matrix": {
+   "by_package": {
+    "astropy": 4,
+    "nilearn": 4,
+    "scanpy": 6,
+    "scikit-image": 2,
+    "scikit-learn": 3
+   },
    "calls": 19,
    "packages": 5
   },
   "scipy.sparse.dia_array": {
+   "by_package": {
+    "mne": 2,
+    "networkx": 20,
+    "scikit-image": 4,
+    "scikit-learn": 7,
+    "statsmodels": 1
+   },
    "calls": 34,
    "packages": 5
   },
   "scipy.sparse.dia_matrix": {
+   "by_package": {
+    "nilearn": 3,
+    "scanpy": 1,
+    "statsmodels": 1
+   },
    "calls": 5,
    "packages": 3
   },
   "scipy.sparse.diags": {
+   "by_package": {
+    "nilearn": 1,
+    "scikit-learn": 2,
+    "statsmodels": 2
+   },
    "calls": 5,
    "packages": 3
   },
   "scipy.sparse.diags_array": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.sparse.eye": {
+   "by_package": {
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.sparse.eye_array": {
+   "by_package": {
+    "mne": 4,
+    "networkx": 2,
+    "statsmodels": 1
+   },
    "calls": 7,
    "packages": 3
   },
   "scipy.sparse.find": {
+   "by_package": {
+    "astropy": 6,
+    "scikit-learn": 1
+   },
    "calls": 7,
    "packages": 2
   },
   "scipy.sparse.hstack": {
+   "by_package": {
+    "mne": 3,
+    "scikit-learn": 13,
+    "statsmodels": 1
+   },
    "calls": 17,
    "packages": 3
   },
   "scipy.sparse.issparse": {
+   "by_package": {
+    "librosa": 3,
+    "mne": 9,
+    "nilearn": 1,
+    "pandas": 1,
+    "scikit-image": 1,
+    "scikit-learn": 292,
+    "statsmodels": 10
+   },
    "calls": 317,
    "packages": 7
   },
   "scipy.sparse.isspmatrix": {
+   "by_package": {
+    "scikit-learn": 6
+   },
    "calls": 6,
    "packages": 1
   },
   "scipy.sparse.isspmatrix_csr": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.kron": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.lil_array": {
+   "by_package": {
+    "mne": 1,
+    "networkx": 2,
+    "scikit-learn": 2
+   },
    "calls": 5,
    "packages": 3
   },
   "scipy.sparse.lil_matrix": {
+   "by_package": {
+    "scanpy": 5
+   },
    "calls": 5,
    "packages": 1
   },
   "scipy.sparse.linalg.LinearOperator": {
+   "by_package": {
+    "networkx": 1,
+    "scanpy": 1,
+    "scikit-learn": 5
+   },
    "calls": 7,
    "packages": 3
   },
   "scipy.sparse.linalg.aslinearoperator": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.linalg.cg": {
+   "by_package": {
+    "networkx": 2,
+    "nilearn": 2,
+    "scikit-image": 1,
+    "scikit-learn": 1
+   },
    "calls": 6,
    "packages": 4
   },
   "scipy.sparse.linalg.eigs": {
+   "by_package": {
+    "networkx": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.sparse.linalg.eigsh": {
+   "by_package": {
+    "networkx": 3,
+    "scanpy": 1,
+    "scikit-image": 1,
+    "scikit-learn": 5
+   },
    "calls": 10,
    "packages": 4
   },
   "scipy.sparse.linalg.factorized": {
+   "by_package": {
+    "networkx": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.linalg.lobpcg": {
+   "by_package": {
+    "networkx": 1,
+    "scikit-learn": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.sparse.linalg.lsqr": {
+   "by_package": {
+    "scikit-learn": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.sparse.linalg.matrix_power": {
+   "by_package": {
+    "networkx": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.linalg.spilu": {
+   "by_package": {
+    "networkx": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.linalg.splu": {
+   "by_package": {
+    "networkx": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.sparse.linalg.spsolve": {
+   "by_package": {
+    "scikit-image": 2,
+    "statsmodels": 2
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.sparse.linalg.svds": {
+   "by_package": {
+    "networkx": 1,
+    "scanpy": 1,
+    "scikit-learn": 3,
+    "statsmodels": 2
+   },
    "calls": 7,
    "packages": 4
   },
   "scipy.sparse.random": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.random_array": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.save_npz": {
+   "by_package": {
+    "scanpy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.spdiags": {
+   "by_package": {
+    "scanpy": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.sparse.tril": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.sparse.triu": {
+   "by_package": {
+    "astropy": 5,
+    "mne": 1
+   },
    "calls": 6,
    "packages": 2
   },
   "scipy.sparse.vstack": {
+   "by_package": {
+    "mne": 1,
+    "scanpy": 1,
+    "scikit-learn": 4
+   },
    "calls": 6,
    "packages": 3
   },
   "scipy.spatial.ConvexHull": {
+   "by_package": {
+    "mne": 3,
+    "scikit-image": 2
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.spatial.Delaunay": {
+   "by_package": {
+    "mne": 8,
+    "scikit-image": 2
+   },
    "calls": 10,
    "packages": 2
   },
   "scipy.spatial.KDTree": {
+   "by_package": {
+    "astropy": 3,
+    "mne": 2,
+    "networkx": 1,
+    "xarray": 1
+   },
    "calls": 7,
    "packages": 4
   },
   "scipy.spatial.Voronoi": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.spatial.cKDTree": {
+   "by_package": {
+    "arviz-stats": 2,
+    "networkx": 1,
+    "pymc": 2,
+    "scikit-image": 9
+   },
    "calls": 14,
    "packages": 4
   },
   "scipy.spatial.distance.cdist": {
+   "by_package": {
+    "librosa": 1,
+    "mne": 17,
+    "scikit-image": 2,
+    "scikit-learn": 5,
+    "statsmodels": 1
+   },
    "calls": 26,
    "packages": 5
   },
   "scipy.spatial.distance.pdist": {
+   "by_package": {
+    "mne": 11,
+    "pingouin": 2,
+    "pvlib": 1,
+    "scikit-image": 2,
+    "scikit-learn": 6,
+    "statsmodels": 3
+   },
    "calls": 25,
    "packages": 6
   },
   "scipy.spatial.distance.squareform": {
+   "by_package": {
+    "mne": 7,
+    "pingouin": 2,
+    "scanpy": 1,
+    "scikit-image": 1,
+    "scikit-learn": 9,
+    "statsmodels": 3
+   },
    "calls": 23,
    "packages": 6
   },
   "scipy.spatial.distance_matrix": {
+   "by_package": {
+    "nilearn": 1,
+    "scikit-image": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.spatial.minkowski_distance": {
+   "by_package": {
+    "scikit-image": 1
+   },
+   "calls": 1,
+   "packages": 1
+  },
+  "scipy.spatial.transform.Rotation": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.bdtr": {
+   "by_package": {
+    "arviz-stats": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.bdtrik": {
+   "by_package": {
+    "arviz-stats": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.beta": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.betainc": {
+   "by_package": {
+    "arviz-stats": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.special.betaincinv": {
+   "by_package": {
+    "astropy": 4
+   },
    "calls": 4,
    "packages": 1
   },
   "scipy.special.betaln": {
+   "by_package": {
+    "pingouin": 1,
+    "scikit-learn": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.special.binom": {
+   "by_package": {
+    "scikit-learn": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.chdtrc": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.chndtrinc": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.comb": {
+   "by_package": {
+    "astropy": 1,
+    "scikit-learn": 7,
+    "statsmodels": 16
+   },
    "calls": 24,
    "packages": 3
   },
   "scipy.special.elliprg": {
+   "by_package": {
+    "scikit-image": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.erf": {
+   "by_package": {
+    "pvlib": 1,
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 3,
    "packages": 3
   },
   "scipy.special.erfinv": {
+   "by_package": {
+    "astropy": 2,
+    "lifelines": 3
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.special.exp10": {
+   "by_package": {
+    "pvlib": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.expit": {
+   "by_package": {
+    "mne": 4,
+    "scikit-learn": 6
+   },
    "calls": 10,
    "packages": 2
   },
   "scipy.special.expm1": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.special.factorial": {
+   "by_package": {
+    "astropy": 4,
+    "statsmodels": 12
+   },
    "calls": 16,
    "packages": 2
   },
   "scipy.special.fdtrc": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.gamma": {
+   "by_package": {
+    "lifelines": 1,
+    "pingouin": 1,
+    "scikit-learn": 1,
+    "statsmodels": 6
+   },
    "calls": 9,
    "packages": 4
   },
   "scipy.special.gammainc": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.gammainccinv": {
+   "by_package": {
+    "lifelines": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.gammaincinv": {
+   "by_package": {
+    "astropy": 1,
+    "lifelines": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.special.gammaln": {
+   "by_package": {
+    "arviz-stats": 9,
+    "astropy": 4,
+    "mne": 1,
+    "scikit-learn": 7,
+    "statsmodels": 31
+   },
    "calls": 52,
    "packages": 5
   },
   "scipy.special.hyp2f1": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.special.inv_boxcox": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.ive": {
+   "by_package": {
+    "arviz-stats": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.special.jn_zeros": {
+   "by_package": {
+    "astropy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.kv": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.log_wright_bessel": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.logit": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.logsumexp": {
+   "by_package": {
+    "arviz-stats": 15,
+    "mne": 1,
+    "pymc": 1,
+    "scikit-learn": 1,
+    "statsmodels": 4
+   },
    "calls": 22,
    "packages": 5
   },
   "scipy.special.lpmv": {
+   "by_package": {
+    "mne": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.ncfdtr": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.ncfdtri": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.ncfdtrinc": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.special.nctdtr": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.nctdtrinc": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.special.ndtr": {
+   "by_package": {
+    "statsmodels": 4
+   },
    "calls": 4,
    "packages": 1
   },
   "scipy.special.polygamma": {
+   "by_package": {
+    "statsmodels": 13
+   },
    "calls": 13,
    "packages": 1
   },
   "scipy.special.psi": {
+   "by_package": {
+    "scikit-learn": 14,
+    "statsmodels": 16
+   },
    "calls": 30,
    "packages": 2
   },
   "scipy.special.sph_harm_y": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.stdtr": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.special.wright_bessel": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.special.xlogy": {
+   "by_package": {
+    "scikit-learn": 7
+   },
    "calls": 7,
    "packages": 1
   },
   "scipy.special.zeta": {
+   "by_package": {
+    "networkx": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.anderson": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.bernoulli": {
+   "by_package": {
+    "networkx": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.stats.beta": {
+   "by_package": {
+    "arviz-stats": 1,
+    "librosa": 1,
+    "pingouin": 2,
+    "statsmodels": 20
+   },
    "calls": 24,
    "packages": 4
   },
   "scipy.stats.betabinom": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.binom": {
+   "by_package": {
+    "arviz-stats": 2,
+    "pingouin": 2,
+    "statsmodels": 18
+   },
    "calls": 22,
    "packages": 3
   },
   "scipy.stats.binomtest": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.stats.boltzmann": {
+   "by_package": {
+    "librosa": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.bootstrap": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.boxcox": {
+   "by_package": {
+    "scikit-learn": 1,
+    "statsmodels": 11
+   },
    "calls": 12,
    "packages": 2
   },
   "scipy.stats.chi": {
+   "by_package": {
+    "statsmodels": 5
+   },
    "calls": 5,
    "packages": 1
   },
   "scipy.stats.chi2": {
+   "by_package": {
+    "astropy": 2,
+    "lifelines": 5,
+    "mne": 1,
+    "pingouin": 12,
+    "scikit-learn": 3,
+    "statsmodels": 111
+   },
    "calls": 134,
    "packages": 6
   },
   "scipy.stats.chisquare": {
+   "by_package": {
+    "pymc": 1,
+    "statsmodels": 3
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.stats.circmean": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.circstd": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.describe": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.dirichlet": {
+   "by_package": {
+    "arviz-stats": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.entropy": {
+   "by_package": {
+    "scanpy": 1,
+    "scikit-image": 4
+   },
    "calls": 5,
    "packages": 2
   },
   "scipy.stats.expon": {
+   "by_package": {
+    "lifelines": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.f": {
+   "by_package": {
+    "mne": 4,
+    "nilearn": 2,
+    "pingouin": 21,
+    "scikit-image": 2,
+    "scikit-learn": 1,
+    "statsmodels": 33
+   },
    "calls": 63,
    "packages": 6
   },
   "scipy.stats.false_discovery_control": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.fatiguelife": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.gamma": {
+   "by_package": {
+    "nilearn": 2,
+    "statsmodels": 12
+   },
    "calls": 14,
    "packages": 2
   },
   "scipy.stats.gaussian_kde": {
+   "by_package": {
+    "mne": 2,
+    "pandas": 2,
+    "scanpy": 1,
+    "seaborn": 2,
+    "statsmodels": 3
+   },
    "calls": 10,
    "packages": 5
   },
   "scipy.stats.geom": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.gmean": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.hypergeom": {
+   "by_package": {
+    "arviz-stats": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.invgamma": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.invgauss": {
+   "by_package": {
+    "statsmodels": 3
+   },
    "calls": 3,
    "packages": 1
   },
   "scipy.stats.kendalltau": {
+   "by_package": {
+    "pandas": 1,
+    "pingouin": 1,
+    "scanpy": 4,
+    "statsmodels": 5
+   },
    "calls": 11,
    "packages": 4
   },
   "scipy.stats.ks_2samp": {
+   "by_package": {
+    "pymc": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.kstwobign": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.kurtosis": {
+   "by_package": {
+    "mne": 1,
+    "statsmodels": 11
+   },
    "calls": 12,
    "packages": 2
   },
   "scipy.stats.levy_stable": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.linregress": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.stats.lognorm": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.stats.logser": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.mannwhitneyu": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.median_abs_deviation": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.mode": {
+   "by_package": {
+    "scikit-learn": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.stats.multivariate_normal": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.multivariate_t": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.nbinom": {
+   "by_package": {
+    "statsmodels": 11
+   },
    "calls": 11,
    "packages": 1
   },
   "scipy.stats.ncf": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.nct": {
+   "by_package": {
+    "pingouin": 4
+   },
    "calls": 4,
    "packages": 1
   },
   "scipy.stats.ncx2": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 2
+   },
    "calls": 3,
    "packages": 2
   },
   "scipy.stats.norm": {
+   "by_package": {
+    "arviz-stats": 3,
+    "astropy": 3,
+    "lifelines": 4,
+    "nilearn": 8,
+    "pingouin": 17,
+    "scanpy": 5,
+    "scikit-image": 1,
+    "scikit-learn": 9,
+    "statsmodels": 175
+   },
    "calls": 225,
    "packages": 9
   },
   "scipy.stats.normaltest": {
+   "by_package": {
+    "statsmodels": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.pearsonr": {
+   "by_package": {
+    "lifelines": 1,
+    "mne": 2,
+    "networkx": 1,
+    "nilearn": 1,
+    "pingouin": 7,
+    "scikit-image": 1
+   },
    "calls": 13,
    "packages": 6
   },
   "scipy.stats.poisson": {
+   "by_package": {
+    "statsmodels": 30
+   },
    "calls": 30,
    "packages": 1
   },
   "scipy.stats.power_divergence": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.probplot": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.stats.rankdata": {
+   "by_package": {
+    "arviz-stats": 1,
+    "mne": 2,
+    "pingouin": 3,
+    "scikit-learn": 7,
+    "statsmodels": 6
+   },
    "calls": 19,
    "packages": 5
   },
   "scipy.stats.recipinvgauss": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.scoreatpercentile": {
+   "by_package": {
+    "nilearn": 2,
+    "statsmodels": 8
+   },
    "calls": 10,
    "packages": 2
   },
   "scipy.stats.sem": {
+   "by_package": {
+    "mne": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.skew": {
+   "by_package": {
+    "statsmodels": 10
+   },
    "calls": 10,
    "packages": 1
   },
   "scipy.stats.spearmanr": {
+   "by_package": {
+    "nilearn": 1,
+    "pandas": 1,
+    "pingouin": 4,
+    "scikit-learn": 1
+   },
    "calls": 7,
    "packages": 4
   },
   "scipy.stats.studentized_range": {
+   "by_package": {
+    "pingouin": 2,
+    "statsmodels": 2
+   },
    "calls": 4,
    "packages": 2
   },
   "scipy.stats.t": {
+   "by_package": {
+    "mne": 3,
+    "nilearn": 4,
+    "pingouin": 14,
+    "statsmodels": 33
+   },
    "calls": 54,
    "packages": 4
   },
   "scipy.stats.tiecorrect": {
+   "by_package": {
+    "pingouin": 1,
+    "statsmodels": 1
+   },
    "calls": 2,
    "packages": 2
   },
   "scipy.stats.truncnorm": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.ttest_1samp": {
+   "by_package": {
+    "pingouin": 1,
+    "scanpy": 1,
+    "statsmodels": 2
+   },
    "calls": 4,
    "packages": 3
   },
   "scipy.stats.ttest_ind": {
+   "by_package": {
+    "pingouin": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.ttest_ind_from_stats": {
+   "by_package": {
+    "scanpy": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.ttest_rel": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.uniform": {
+   "by_package": {
+    "lifelines": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.wasserstein_distance": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.wasserstein_distance_nd": {
+   "by_package": {
+    "arviz-stats": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.weibull_min": {
+   "by_package": {
+    "statsmodels": 2
+   },
    "calls": 2,
    "packages": 1
   },
   "scipy.stats.wilcoxon": {
+   "by_package": {
+    "pingouin": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.yeojohnson": {
+   "by_package": {
+    "scikit-learn": 1
+   },
    "calls": 1,
    "packages": 1
   },
   "scipy.stats.zscore": {
+   "by_package": {
+    "mne": 6,
+    "statsmodels": 2
+   },
    "calls": 8,
    "packages": 2
   }
  },
- "total_calls": 42551
+ "total_calls": 42577
 }

@@ -674,7 +674,7 @@
    "total": 1846
   }
  },
- "registry_functions": 1566,
+ "registry_functions": 1567,
  "registry_untested": [
   "distance.convex_hull_2d",
   "distance.delaunay_2d",
@@ -682,7 +682,8 @@
   "interpolate.spgrid",
   "interpolate.spherfit",
   "interpolate.spherfit_lsq",
-  "linalg.fd_normal",
+  "linalg.lmdif",
+  "linalg.lmdif_result",
   "linalg.qr_complex",
   "np.cumulativeSimpson",
   "np.cumulativeTrapezoid",
@@ -691,13 +692,13 @@
  "scipy": "1.17.1",
  "usage": {
   "all": {
-   "calls": 42548,
-   "covered_both": 40173,
-   "covered_ext": 40173,
-   "covered_ffi": 40173,
+   "calls": 42563,
+   "covered_both": 40188,
+   "covered_ext": 40188,
+   "covered_ffi": 40188,
    "excluded_calls": 2375,
    "excluded_share": 5.6,
-   "in_scope_calls": 40173,
+   "in_scope_calls": 40188,
    "top": {
     "100": {
      "both": 100,
@@ -732,13 +733,13 @@
   "corpus_packages": 18,
   "groups": {
    "NumPy core": {
-    "calls": 39800,
-    "covered_both": 37798,
-    "covered_ext": 37798,
-    "covered_ffi": 37798,
+    "calls": 39815,
+    "covered_both": 37813,
+    "covered_ext": 37813,
+    "covered_ffi": 37813,
     "excluded_calls": 2002,
     "excluded_share": 5.0,
-    "in_scope_calls": 37798,
+    "in_scope_calls": 37813,
     "top": {
      "100": {
       "both": 100,
@@ -808,7 +809,7 @@
     "u_ffi": 100.0
    }
   },
-  "total_calls": 42551,
-  "unmatched_calls": 3
+  "total_calls": 42577,
+  "unmatched_calls": 14
  }
 }

@@ -27,15 +27,15 @@ listed with what is known of their causes under the gaps below.
 
 Tier 3 counts every function once; real code does not call them equally. Here each function's per-call time is
 weighted by how often the library code of 18 widely used scientific Python packages calls it (the corpus of the
-[usage-weighted coverage](usage-weighted-coverage.md): 40,173 calls to in-scope NumPy and SciPy functions; calls to
+[usage-weighted coverage](usage-weighted-coverage.md): 40,188 calls to in-scope NumPy and SciPy functions; calls to
 excluded symbols are left out). The time of a mix is the sum over its functions of the per-call time times the
 function's corpus calls, divided by those calls. The functions timed (tier 3, plus `bench/usage_bench.php` and
-`bench/usage_bench.py` for the most-called functions tier 3 does not time) carry 36,691 of the 40,173 calls. The
+`bench/usage_bench.py` for the most-called functions tier 3 does not time) carry 36,696 of the 40,188 calls. The
 inputs are small (the fixture and usage-bench inputs), so the fixed cost of a call dominates.
 
 | mix | weighted over | NumPy/SciPy us | extension us | FFI us | extension faster on | FFI faster on |
 |---|---|---|---|---|---|---|
-| real-usage mix | 36,691 calls | 7.20 | 0.75 | 4.41 | 92% | 19% |
+| real-usage mix | 36,696 calls | 7.20 | 0.75 | 4.41 | 92% | 19% |
 | ML operations | 20 functions | 1.45 | 0.40 | 3.70 | 95% | 20% |
 
 ML operations: `numpy.dot`, `numpy.exp`, `numpy.log`, `numpy.sum`, `numpy.mean`, `numpy.max`, `numpy.min`,
@@ -52,6 +52,164 @@ SciPy's.
 
 The inputs here are small. Large matrix products run in OpenBLAS on both sides and are on a par: a 600 x 600
 `matmul` takes 9.1 ms against NumPy's 9.9 ms in this sweep's run of the [benchmarks](benchmarks.md) bench.
+
+## Classical machine learning
+
+The functions classical machine learning code calls, scikit-learn style: array creation and validation, shape
+manipulation, matrix products, reductions, indexing and decisions, element-wise math, random sampling,
+optimization, sparse matrices, linear algebra, distances and neighbours, special functions and distributions. Each
+function's per-call time on small inputs (the tier 3 rows, `bench/usage_bench.php` and `bench/ml_bench.php` for the
+rest, against their Python counterparts) is weighted by its static call count: in the library code of the 18
+corpus packages, and in scikit-learn's alone (scikit-learn 1.9.1, 2,044 calls to these functions; the per-package
+counts are in `tools/parity/usage.json`).
+
+### By category
+
+| category | weighting | weighted over | NumPy/SciPy us | extension us | FFI us | extension faster on | FFI faster on |
+|---|---|---|---|---|---|---|---|
+| creation | 18 packages | 9,218 calls | 0.49 | 0.21 | 2.66 | 100% | 0% |
+| creation | scikit-learn | 895 calls | 0.44 | 0.20 | 2.49 | 100% | 0% |
+| shape | 18 packages | 1,647 calls | 1.35 | 1.06 | 5.64 | 50% | 0% |
+| shape | scikit-learn | 197 calls | 1.45 | 0.96 | 5.20 | 77% | 0% |
+| matmul | 18 packages | 1,649 calls | 0.93 | 0.43 | 5.52 | 100% | 0% |
+| matmul | scikit-learn | 213 calls | 0.92 | 0.43 | 5.51 | 100% | 0% |
+| reductions | 18 packages | 1,930 calls | 3.30 | 0.34 | 1.84 | 100% | 94% |
+| reductions | scikit-learn | 288 calls | 3.21 | 0.37 | 2.02 | 100% | 88% |
+| indexing | 18 packages | 1,277 calls | 1.10 | 0.36 | 4.86 | 100% | 0% |
+| indexing | scikit-learn | 129 calls | 1.23 | 0.34 | 3.53 | 100% | 0% |
+| element-wise | 18 packages | 3,149 calls | 0.63 | 0.32 | 4.04 | 100% | 0% |
+| element-wise | scikit-learn | 232 calls | 0.65 | 0.32 | 4.10 | 100% | 0% |
+| random | unweighted | 4 functions | 3.83 | 0.52 | 13.2 | 100% | 0% |
+| optimize | 18 packages | 34 calls | 873 | 29.9 | 48.8 | 100% | 100% |
+| optimize | scikit-learn | 10 calls | 979 | 32.7 | 34.2 | 100% | 100% |
+| sparse | 18 packages | 45 calls | 70.5 | 1.49 | 10.4 | 100% | 100% |
+| sparse | scikit-learn | 17 calls | 83.5 | 1.42 | 11.1 | 100% | 100% |
+| linalg | 18 packages | 90 calls | 68.7 | 3.87 | 11.1 | 100% | 100% |
+| linalg | scikit-learn | 45 calls | 63.5 | 4.04 | 11.4 | 100% | 100% |
+| distance | 18 packages | 65 calls | 10.1 | 1.16 | 5.97 | 100% | 60% |
+| distance | scikit-learn | 11 calls | 9.93 | 0.96 | 4.96 | 100% | 55% |
+| special | 18 packages | 32 calls | 74.5 | 0.91 | 4.52 | 69% | 69% |
+| special | scikit-learn | 7 calls | 15.8 | 0.65 | 4.42 | 14% | 14% |
+| distributions | unweighted | 3 functions | 49.9 | 1.10 | 9.11 | 100% | 100% |
+| all | 18 packages | 19,136 calls | 3.14 | 0.42 | 3.61 | 96% | 11% |
+| all | scikit-learn | 2,044 calls | 8.02 | 0.60 | 3.69 | 97% | 16% |
+
+### By function
+
+| function | category | 18-package calls | scikit-learn calls | NumPy/SciPy us | extension us | FFI us |
+|---|---|---|---|---|---|---|
+| numpy.asarray | creation | 2,335 | 212 | 0.56 | 0.24 | 2.96 |
+| numpy.array | creation | 3,265 | 186 | 0.57 | 0.23 | 2.87 |
+| numpy.zeros | creation | 2,094 | 276 | 0.25 | 0.17 | 1.87 |
+| numpy.ones | creation | 724 | 73 | 0.93 | 0.18 | 3.97 |
+| numpy.empty | creation | 800 | 148 | 0.25 | 0.17 | 1.80 |
+| numpy.reshape | shape | 155 | 24 | 0.83 | 0.24 | 1.31 |
+| numpy.ravel | shape | 151 | 27 | 0.47 | 0.21 | 1.24 |
+| numpy.expand_dims | shape | 62 | 6 | 1.78 | 0.85 | 6.63 |
+| numpy.concatenate | shape | 823 | 46 | 1.23 | 1.31 | 6.72 |
+| numpy.vstack | shape | 233 | 48 | 2.13 | 1.19 | 6.60 |
+| numpy.hstack | shape | 223 | 46 | 1.83 | 1.20 | 6.39 |
+| numpy.dot | matmul | 1,530 | 201 | 0.86 | 0.36 | 5.43 |
+| numpy.matmul | matmul | 36 | 2 | 1.20 | 0.36 | 5.29 |
+| numpy.einsum | matmul | 83 | 10 | 2.09 | 1.74 | 7.33 |
+| numpy.sum | reductions | 1,202 | 172 | 2.31 | 0.27 | 1.71 |
+| numpy.mean | reductions | 452 | 60 | 3.84 | 0.38 | 1.40 |
+| numpy.std | reductions | 92 | 10 | 10.9 | 0.42 | 1.54 |
+| numpy.var | reductions | 60 | 12 | 10.1 | 0.42 | 1.55 |
+| numpy.bincount | reductions | 124 | 34 | 1.95 | 0.79 | 5.00 |
+| numpy.argmax | indexing | 148 | 42 | 1.23 | 0.28 | 1.81 |
+| numpy.argmin | indexing | 117 | 12 | 1.18 | 0.28 | 1.83 |
+| numpy.argsort | indexing | 261 | 40 | 1.51 | 0.39 | 3.26 |
+| numpy.where | indexing | 751 | 35 | 0.92 | 0.37 | 6.50 |
+| numpy.exp | element-wise | 670 | 36 | 0.46 | 0.35 | 3.79 |
+| numpy.log | element-wise | 815 | 81 | 0.46 | 0.36 | 3.69 |
+| numpy.sqrt | element-wise | 1,362 | 90 | 0.43 | 0.29 | 3.41 |
+| numpy.clip | element-wise | 302 | 25 | 2.35 | 0.25 | 8.39 |
+| Generator.normal | random | -- | -- | 1.02 | 0.80 | 17.7 |
+| Generator.uniform | random | -- | -- | 1.94 | 0.75 | 17.5 |
+| Generator.choice | random | -- | -- | 10.6 | 0.31 | 13.6 |
+| Generator.permutation | random | -- | -- | 1.75 | 0.25 | 3.96 |
+| scipy.optimize.minimize | optimize | 28 | 10 | 979 | 32.7 | 34.2 |
+| scipy.optimize.least_squares | optimize | 6 | 0 | 381 | 17.2 | 117 |
+| scipy.sparse.csr_matrix | sparse | 19 | 3 | 58.0 | 1.56 | 9.60 |
+| scipy.sparse.csc_matrix | sparse | 9 | 1 | 57.5 | 1.55 | 9.69 |
+| scipy.sparse.hstack | sparse | 17 | 13 | 91.4 | 1.38 | 11.5 |
+| scipy.linalg.svd | linalg | 21 | 15 | 29.4 | 6.00 | 15.8 |
+| scipy.linalg.eigh | linalg | 24 | 11 | 34.4 | 3.11 | 9.96 |
+| scipy.linalg.cholesky | linalg | 11 | 4 | 9.43 | 0.79 | 4.89 |
+| scipy.linalg.solve | linalg | 17 | 9 | 40.6 | 1.29 | 5.80 |
+| scipy.linalg.lstsq | linalg | 10 | 3 | 44.6 | 5.69 | 16.2 |
+| scipy.sparse.linalg.svds | linalg | 7 | 3 | 500 | 8.62 | 15.5 |
+| scipy.spatial.distance.cdist | distance | 26 | 5 | 4.08 | 1.15 | 5.48 |
+| scipy.spatial.distance.pdist | distance | 25 | 6 | 14.8 | 0.81 | 4.53 |
+| scipy.spatial.cKDTree | distance | 14 | 0 | 12.9 | 1.80 | 9.44 |
+| scipy.special.expit | special | 10 | 6 | 0.42 | 0.59 | 4.40 |
+| scipy.special.softmax | special | 0 | 0 | 10.8 | 1.08 | 4.98 |
+| scipy.special.logsumexp | special | 22 | 1 | 108 | 1.06 | 4.58 |
+| scipy.stats.norm.pdf | distributions | -- | -- | 57.2 | 1.11 | 5.03 |
+| scipy.stats.norm.logpdf | distributions | -- | -- | 60.5 | 1.01 | 4.81 |
+| scipy.stats.norm.rvs | distributions | -- | -- | 32.0 | 1.19 | 17.5 |
+
+### By model type
+
+| model type | weighting | functions | NumPy/SciPy us | extension us | FFI us | extension faster on | FFI faster on |
+|---|---|---|---|---|---|---|---|
+| linear and logistic | 18 packages | dot, matmul, mean, clip, log, minimize, lstsq, expit, csr_matrix | 10.3 | 0.66 | 5.00 | 100% | 16% |
+| linear and logistic | scikit-learn | dot, matmul, mean, clip, log, minimize, lstsq, expit, csr_matrix | 27.1 | 1.24 | 5.47 | 98% | 19% |
+| tree ensembles | 18 packages | argsort, bincount, where, argmax, csc_matrix | 1.57 | 0.41 | 5.18 | 100% | 1% |
+| tree ensembles | scikit-learn | argsort, bincount, where, argmax, csc_matrix | 1.76 | 0.45 | 4.03 | 100% | 1% |
+| clustering and neighbours | 18 packages | argmin, mean, std, sum, cdist, cKDTree | 3.12 | 0.33 | 1.75 | 100% | 92% |
+| clustering and neighbours | scikit-learn | argmin, mean, std, sum, cdist, cKDTree | 2.98 | 0.32 | 1.71 | 100% | 93% |
+| dimensionality reduction | 18 packages | dot, mean, var, svd, eigh, svds | 4.11 | 0.48 | 4.63 | 100% | 27% |
+| dimensionality reduction | scikit-learn | dot, mean, var, svd, eigh, svds | 9.42 | 0.83 | 5.25 | 100% | 33% |
+
+### At realistic sizes
+
+| case | category | NumPy/SciPy ms | extension ms | FFI ms |
+|---|---|---|---|---|
+| numpy.matmul 2000x2000 | matmul | 327 | 325 | 321 |
+| scipy.linalg.svd 1000x1000 (full) | linalg | 503 | 608 | 555 |
+| scipy.linalg.eigh 1000x1000 | linalg | 262 | 246 | 258 |
+| scipy.linalg.solve 1000x1000 | linalg | 31.5 | 27.7 | 26.6 |
+| scipy.linalg.cholesky 1000x1000 | linalg | 13.8 | 14.4 | 14.6 |
+| scipy.linalg.lstsq 10,000 x 50 | linalg | 13.7 | 13.8 | 14.4 |
+| scipy.sparse.linalg.svds k=10, 2,000 x 500 (dense input) | linalg | 137 | 88.1 | 87.2 |
+| scipy.spatial.distance.pdist 2,000 x 50 (euclidean) | distance | 45.4 | 69.4 | 67.0 |
+| scipy.spatial.distance.cdist 1,000 x 1,000 x 50 (euclidean) | distance | 21.7 | 32.8 | 32.7 |
+| scipy.spatial.cKDTree build 100,000 x 3 | distance | 27.5 | 28.4 | 30.8 |
+| scipy.spatial.cKDTree query 1,000 points, k=5 | distance | 2.02 | 2.55 | 3.28 |
+| logistic regression, L-BFGS-B, 10,000 x 50 | optimize | 21.2 | 59.2 | 81.7 |
+| logistic regression, Newton-CG, 10,000 x 50 | optimize | 3867 | 4382 | 5318 |
+| logistic regression, TNC, 10,000 x 50 | optimize | 62.6 | 5934 | 5423 |
+| scipy.special.expit 1M | special | 7.64 | 9.87 | 10.5 |
+| scipy.special.logsumexp 1M | special | 16.9 | 8.70 | 8.37 |
+| scipy.stats.norm.logpdf 1M | distributions | 24.1 | 18.5 | 18.8 |
+
+The weights are static call sites in library code, not run time, and say nothing about how much time a program
+spends in each function. Method calls (`x.sum()`, `rng.normal()`) cannot be attributed statically, so the random
+Generator methods and the distribution methods (`norm.pdf`, `norm.logpdf`, `norm.rvs`) have no weight: their rows
+are unweighted, the mean over their functions, and "all" covers the weighted categories only. `Generator.choice` is
+available on both backends. "Faster on" is the share of the weighted calls that go to functions where Tessero's
+per-call time is below NumPy/SciPy's.
+
+The per-call `optimize` rows solve small problems end to end (two parameters); `minimize` and `least_squares` are
+Tessero's PHP code, the same on both backends. The `cKDTree` row builds a tree over 8 points (Tessero's `KDTree`).
+In the model-type mixes, each model type's functions are those of the usual scikit-learn estimators of that kind.
+
+At realistic sizes the inputs come from the same PCG64 streams on both sides, and `svds` takes the dense matrix on
+both. Large dense linear algebra runs in OpenBLAS and LAPACK on both sides and is on a par, except the full `svd`
+(1.1 to 1.2x). `pdist` and `cdist` take about 1.5x SciPy's time. The logistic regression minimizes the mean log-loss
+with its gradient, both evaluated with array operations each iteration. With L-BFGS-B both sides stop by their
+convergence tests (25 iterations in Tessero at a loss of 6.2e-5, 26 in SciPy at 1.9e-5); Tessero's extra time is in
+evaluating the objective and the gradient from PHP. With Newton-CG, Tessero needs 1,429 function evaluations where
+SciPy needs 20, and stops at a higher loss (1.4e-4 against 6.1e-5). With TNC, Tessero stops after 800 iterations at
+a higher loss (2.2e-4) where SciPy converges in 12 (8.0e-5). Those two rows therefore compare unlike work: both are
+open gaps in Tessero's implementations of those methods.
+
+Conditions: timed on 2026-11-15 (08:39 to 08:47 UTC) at commit 56102533, after the sweep: four alternating rounds of
+FFI, the extension and NumPy/SciPy for `bench/ml_bench.php` and `bench/ml_bench.py`, single-threaded
+(`OPENBLAS_NUM_THREADS=1`), at a load average of 5 to 13; each case keeps its best time on each side. The other
+per-call rows are the sweep's.
 
 ## Fixed during the sweep
 
