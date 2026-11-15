@@ -246,7 +246,7 @@ byte for byte unless the row says otherwise.
 | small calls through the native extension (tier 3, per call) | `bitwise_and` 2.17; `ldexp` 2.33; `linalg.inv` 4.42; `linalg.slogdet` 2.35; `concatenate` 2.22 us | 0.83; 0.85; 1.66; 1.13; 1.31 us | 0.65; 0.64; 6.02; 4.20; 1.23 us | the extension no longer zeroes its 28 KB of argument buffers on every call (a hardening compiler flag did it), finds a method's routine by an index instead of by name, and checks argument sizes without 64-bit divisions; element-wise integer and float routines read a C-contiguous input in place instead of copying it. Over all 1,022 functions the extension's per-call time fell to 0.58 of the 2026-11-10 run's (the NumPy/SciPy side to 0.96) |
 
 One change made a case slower: `optimize.least_squares` (method 'lm', the Rosenbrock residuals) now runs MINPACK's
-`lmder` with SciPy's 2-point differences, as SciPy does, and returns SciPy's results bit for bit; it takes 0.76 ms
+`lmder` with SciPy's 2-point differences, as SciPy does, and returns SciPy's results; it takes 0.76 ms
 instead of 0.31 ms, against SciPy's 5.8 ms.
 
 After the classical machine learning timing, `minimize` with method 'TNC' became a port of the TNC code SciPy wraps
@@ -261,9 +261,9 @@ Then `ndimage.map_coordinates`, `shift`, `zoom`, `affine_transform` and `rotate`
 orders (2 to 5) they had matched SciPy only in the modes 'mirror' and 'reflect': in 'constant' (SciPy's default,
 the mode these cases time), 'nearest' and 'wrap' their results were off by up to 0.2 to 0.4 on data in [0, 1], and
 `prefilter=False` was ignored. They now follow SciPy's code (`NI_GeometricTransform`, `NI_ZoomShift` and the
-spline prefilter, with its padding at the edges) and give SciPy's answers: identical in dtype, shape and bytes on
-872 of 882 calls checked against SciPy, on both backends (the other 10 are bool results with a cval outside [0, 1],
-with the same truth values). The sweep's times for these cases, and the earlier `zoom` and `shift` rows below, were
+spline prefilter, with its padding at the edges) and give SciPy's answers, in the input's dtype, on 872 of 882
+calls checked against SciPy, on both backends (the other 10 are bool results with a cval outside [0, 1], with the
+same truth values). The sweep's times for these cases, and the earlier `zoom` and `shift` rows below, were
 of the old code. Re-timed alone on 2026-11-15 (18:42 to 18:47 UTC, the installed library at commit d2d4e2e6, eight
 alternating rounds of FFI and SciPy, at a load average of 8 to 14; `shift` three rounds): `rotate` 512^2 at 30 deg
 49.7 ms in the sweep, now 29.6 ms against SciPy's 36.1 ms; `map_coordinates` 1000^2 at 100k points 54.8 ms, now
@@ -543,7 +543,7 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.optimize minimize Nelder-Mead rosen n=5 | 0.884 | 6.39 | 0.14 |
 | scipy.signal welch 1M, nperseg 1024 | 17.6 | 116 | 0.15 |
 | scipy.signal detrend 1M | 9.98 | 43.3 | 0.23 |
-| scipy.ndimage zoom 500x500 x2 | 21 | 76.6 | 0.27 |
+| scipy.ndimage zoom 500x500 x2 (old code; see Fixed after the sweep) | 21 | 76.6 | 0.27 |
 | scipy.optimize minimize L-BFGS-B rosen n=50 | 25.3 | 88.2 | 0.29 |
 | scipy.sparse.linalg spsolve tridiagonal 100k | 12 | 39.1 | 0.31 |
 | scipy.ndimage maximum_filter 1000x1000, 5 | 6.18 | 19.7 | 0.31 |
@@ -617,9 +617,9 @@ advantage held in every run). How the sorts work and their tests: [sorting desig
 | scipy.spatial KDTree query 100 points, k=5, array input | 0.254 | 0.202 | 1.25 |
 | scipy.spatial KDTree query 100 points, k=5 | 0.268 | 0.207 | 1.29 |
 | scipy.ndimage binary_erosion 1000x1000 | 13.8 | 9.79 | 1.41 |
-| scipy.ndimage rotate 512x512, 30 deg | 49.7 | 35.3 | 1.41 |
+| scipy.ndimage rotate 512x512, 30 deg (old code; see Fixed after the sweep) | 49.7 | 35.3 | 1.41 |
 | scipy.signal hilbert 1M | 86.8 | 58.3 | 1.49 |
-| scipy.ndimage map_coordinates 1000x1000, 100k points | 54.8 | 36.4 | 1.50 |
+| scipy.ndimage map_coordinates 1000x1000, 100k points (old code; see Fixed after the sweep) | 54.8 | 36.4 | 1.50 |
 | numpy rfft2 1024x1024 | 15.9 | 9.86 | 1.61 |
 | scipy.spatial KDTree build 100k (3-D) | 55.4 | 30.7 | 1.80 |
 | scipy.optimize curve_fit exp decay, 1000 points, array model | 1.36 | 0.59 | 2.31 |
