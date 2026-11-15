@@ -1,7 +1,8 @@
 # Installation
 
 Tessero needs PHP 8.2 or newer on a 64-bit platform. It reaches its C kernel in one of two ways: the native
-extension, or the FFI package, which needs no compiler.
+extension, or the FFI package, which will need no compiler once prebuilt binaries are released (not yet; see
+Option B).
 
 **Use the native extension.** It calls the kernel without the FFI layer. In the
 [speed sweep](../project/speed-sweep.md) a small call takes 0.074 of NumPy/SciPy's time on average (geomean over
@@ -36,18 +37,23 @@ Build requirements: the PHP headers (`phpize`), a C compiler and a C++17 compile
 SciPy uses are C++), and LAPACKE with BLAS, which the build links for linear algebra and matrix products. The
 extension compiles its own copy of the kernel (`ext/libtessero/`), so it needs neither `ext-ffi` nor a prebuilt
 `libtessero`. Build it on Linux. On macOS and Windows it needs a LAPACKE the build can find, which is still open
-cross-platform work. There, use the FFI package's prebuilt binaries.
+cross-platform work. There, use the FFI package with a library built by `make -C csrc`.
 
 Once the package is registered with PIE (not yet: tracked as TSR-011), `pie install tessero/tessero-ext` will build
 it for the running PHP. Build details, INI settings and fleet packaging are in
 [Native extension](../operations/native-extension.md).
 
-## Option B: the FFI package (no compiler needed)
+## Option B: the FFI package
 
 ```bash
 composer require tessero/tessero
 vendor/bin/tessero doctor
 ```
+
+Not on Packagist yet, and no prebuilt binaries are published yet (both tracked as TSR-011). Until then, add the
+repository as a Composer path or VCS repository and build the library yourself (`vendor/bin/tessero build` or
+`make -C csrc`, which needs a C compiler). Once released, the package carries prebuilt binaries and needs no
+compiler.
 
 Requirements:
 
@@ -55,9 +61,9 @@ Requirements:
   the official Docker images run `docker-php-ext-install ffi`).
 - `ffi.enable=1` for the CLI, or `ffi.enable=preload` plus the preload script
   for PHP-FPM ([Deployment](../operations/deployment.md)).
-- A prebuilt `libtessero` for your platform in `vendor/tessero/tessero/lib/<os>-<arch>/`.
-  Release packages carry linux-x86_64, linux-aarch64, linux-musl-x86_64,
-  darwin-arm64, darwin-x86_64 and windows-x86_64. On anything else run
+- A `libtessero` for your platform in `vendor/tessero/tessero/lib/<os>-<arch>/`.
+  Release packages will carry linux-x86_64, linux-aarch64, linux-musl-x86_64,
+  darwin-arm64, darwin-x86_64 and windows-x86_64. Until then, or on anything else, run
   `vendor/bin/tessero build` (needs a C compiler) or set `TESSERO_LIB` to a
   library you built.
 - For linear algebra only: an LP64 OpenBLAS with LAPACKE

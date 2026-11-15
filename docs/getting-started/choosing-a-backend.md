@@ -9,7 +9,7 @@ requires identical bytes.
 
 | | FFI package `tessero/tessero` | Extension `tessero/tessero-ext` |
 |---|---|---|
-| Install | `composer require`; prebuilt binary | `phpize` build (C/C++ compiler, LAPACKE and BLAS headers); `pie install` once registered |
+| Install | `composer require`; prebuilt binary once released (until then `make -C csrc`) | `phpize` build (C/C++ compiler, LAPACKE and BLAS headers); `pie install` once registered |
 | PHP settings | `ffi.enable=1` (CLI) or `ffi.enable=preload` + preload script (FPM) | `extension=tessero` |
 | Small calls (speed sweep, 2026-11-15) | `np.zeros` 1.87 µs, `np.sum` 1.71, `np.dot` 5.43 (NumPy: 0.25, 2.31, 0.86); per-call geomean 0.30 of NumPy/SciPy's time | `np.zeros` 0.17 µs, `np.sum` 0.27, `np.dot` 0.36; per-call geomean 0.074, faster on 966 of 1,022 functions |
 | PHP array → native, 1M floats | 26 ms | 9 ms |

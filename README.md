@@ -3,8 +3,8 @@
 Numerical computing for PHP 8.2+: n-dimensional arrays, linear algebra, FFT,
 NumPy-identical random numbers, sparse matrices, optimisation, linear and
 mixed-integer programming, and Markov decision processes. It all runs on one
-small SIMD C library, `libtessero`. You reach it through FFI (no compiler
-needed) or through a native Zend extension, and the Laravel package
+small SIMD C library, `libtessero`. You reach it through a native Zend extension (recommended: the faster
+backend) or through FFI (no compiler needed once prebuilt binaries are released), and the Laravel package
 integrates it into applications. Results are checked against NumPy and SciPy.
 
 Security floor: PHP 8.2 to 8.5, only releases with the 2026-10-21 security fixes (8.2.35, 8.3.36, 8.4.27,
@@ -30,7 +30,7 @@ $plan['ineqlin'];  // shadow prices [-10, -20], SciPy's convention
 | Package | What | Install |
 |---|---|---|
 | `tessero/tessero-ext` (recommended) | Zend extension with the kernel compiled in: operators, `$a['1:, ::-1']`, `foreach`, JSON; small calls 0.074 of NumPy/SciPy's time (geomean), faster on 966 of 1,022 functions | `phpize` build ([installation](docs/getting-started/installation.md)); `pie install tessero/tessero-ext` once registered |
-| `tessero/tessero` | PHP library; loads prebuilt `libtessero` through FFI, no compiler needed; install it alongside the extension for its PHP-level APIs | `composer require tessero/tessero` |
+| `tessero/tessero` | PHP library; loads `libtessero` through FFI (prebuilt binaries, so no compiler, once released); install it alongside the extension for its PHP-level APIs | `composer require tessero/tessero` once on Packagist; until then a path repository and `make -C csrc` |
 | `tessero/laravel` | provider, facade, Eloquent casts, validation rule, Octane-safe settings, `response()->ndarray()`; uses the extension when loaded | `composer require tessero/laravel` |
 
 Both backends give identical numbers. Use the extension where you can; FFI's fixed cost of a few microseconds per
