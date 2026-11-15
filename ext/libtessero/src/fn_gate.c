@@ -47,8 +47,9 @@ static int gate_mul(int64_t a, int64_t b, int64_t *out)
     if (a == 0 || b == 0) { *out = 0; return 1; }
     if (a == INT64_MIN || b == INT64_MIN) return 0;
     const int64_t ua = a < 0 ? -a : a, ub = b < 0 ? -b : b;
-    if (ua > INT64_MAX / ub) return 0;
-    *out = a * b;
+    int64_t p;
+    if (tsr_mul_overflows(ua, ub, &p)) return 0;        /* ua * ub > INT64_MAX, as ua > INT64_MAX / ub, undivided */
+    *out = (a < 0) != (b < 0) ? -p : p;
     return 1;
 }
 
@@ -106,12 +107,13 @@ int fn_gate_array(const tsr_array *a, int with_data, const char *what, int k)
                 return TSR_EARG;
             }
     if ((uint64_t)hi > UINTPTR_MAX - (uintptr_t)a->data) { fn_set_error("%s %d: the elements wrap the address space", what, k); return TSR_EARG; }
-    /* kernels load elements through typed pointers: every element address must be aligned to its type */
+    /* kernels load elements through typed pointers: every element address must be aligned to its type (al is 4
+       or 8 here, so a mask tests divisibility, negative strides included, without a division) */
     const int64_t al = el > 8 ? 8 : el;
     if (al > 1) {
-        int64_t mis = (int64_t)(((uintptr_t)a->data + (uintptr_t)a->offset) % (uintptr_t)al);
+        int64_t mis = (int64_t)(((uintptr_t)a->data + (uintptr_t)a->offset) & (uintptr_t)(al - 1));
         for (int32_t d = 0; d < a->ndim && mis == 0; d++)
-            if (a->shape[d] > 1 && a->strides[d] % al != 0) mis = 1;
+            if (a->shape[d] > 1 && (a->strides[d] & (al - 1)) != 0) mis = 1;
         if (mis) { fn_set_error("%s %d: elements are not aligned to %lld bytes", what, k, (long long)al); return TSR_EARG; }
     }
     return TSR_OK;
@@ -178,9 +180,13 @@ int fn_gate_strided(int32_t ndim, const int64_t *shape, int nop, void *const *da
         /* kernels load operands through typed pointers: the first element and every step must be aligned */
         const int64_t al = elsize[o] > 8 ? 8 : elsize[o];
         if (al > 1) {
-            int mis = ((uintptr_t)data[o] % (uintptr_t)al) != 0;
-            for (int32_t d = 0; d < ndim && !mis; d++)
-                if (shape[d] > 1 && strides[(int64_t)o * ndim + d] % al != 0) mis = 1;
+            /* a power-of-two size (every dtype's) is tested with a mask, without a division per axis */
+            const int pow2 = (al & (al - 1)) == 0;
+            int mis = (pow2 ? ((uintptr_t)data[o] & (uintptr_t)(al - 1)) : ((uintptr_t)data[o] % (uintptr_t)al)) != 0;
+            for (int32_t d = 0; d < ndim && !mis; d++) {
+                const int64_t st = strides[(int64_t)o * ndim + d];
+                if (shape[d] > 1 && (pow2 ? (st & (al - 1)) : st % al) != 0) mis = 1;
+            }
             if (mis) { fn_set_error("operand %d: elements are not aligned to %lld bytes", o, (long long)al); return TSR_EARG; }
         }
         if (ndim == 0) continue;

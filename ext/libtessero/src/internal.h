@@ -118,14 +118,18 @@ int tsr_la_dims_fit(const char *who, const int64_t *dims, size_t n);
     tsr_la_dims_fit((who), (const int64_t[]){__VA_ARGS__}, sizeof((const int64_t[]){__VA_ARGS__}) / sizeof(int64_t))
 
 /* Element count of a shape, or -1 if negative or if the count (or count * 16 bytes) would overflow int64.
-   Every size that becomes an allocation or a loop bound goes through this. */
+   Every size that becomes an allocation or a loop bound goes through this. The test n * shape[d] > INT64_MAX / 16
+   is the old n > (INT64_MAX / 16) / shape[d] (the same for positive integers) without a 64-bit division per axis,
+   which cost more than the rest of a small call's checks. */
+static inline int tsr_mul_overflows(int64_t a, int64_t b, int64_t *out);
 static inline int64_t tsr_shape_size(int32_t ndim, const int64_t *shape)
 {
     int64_t n = 1;
     for (int32_t d = 0; d < ndim; d++) {
         if (shape[d] < 0) return -1;
-        if (shape[d] != 0 && n > (INT64_MAX / 16) / shape[d]) return -1;
-        n *= shape[d];
+        int64_t p;
+        if (tsr_mul_overflows(n, shape[d], &p) || p > INT64_MAX / 16) return -1;
+        n = p;
     }
     return n;
 }

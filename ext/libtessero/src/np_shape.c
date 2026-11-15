@@ -129,8 +129,10 @@ static void c_strides(int32_t nd, const int64_t *sh, int64_t isz, int64_t *st)
 /* an argument as an array: arrays as given, Python scalars as 0-d int64 / float64 / bool (numpy.asarray) */
 static int get_arr(const tsr_arg *x, harr *h, const char *what)
 {
+    /* an array is copied whole (as the memset then copy did, without zeroing 550 bytes first); a scalar's holder
+       is zeroed, then filled */
+    if (x->kind == 3) { h->a = x->arr; memset(h->s, 0, sizeof h->s); return TSR_OK; }
     memset(h, 0, sizeof *h);
-    if (x->kind == 3) { h->a = x->arr; return TSR_OK; }
     int dt;
     if (x->kind == 1 && (x->flags & 1)) { memcpy(h->s, &x->ival, 8); dt = TSR_I64; }
     else if (x->kind == 1) { memcpy(h->s, &x->num, 8); dt = TSR_F64; }

@@ -203,6 +203,26 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Performance
 
+- **Small calls cost less: the extension's dispatch and the kernel's argument checks.** On small inputs a registry
+  call was mostly fixed cost: about 0.75 us before any work. Measured with cycle counters, it went to:
+  - Zeroing about 28 KB of stack per routine call. The build's `-ftrivial-auto-var-init=zero` hardening zeroes
+    every local, and the routine dispatch keeps its argument and result arrays on the stack (each argument slot
+    holds a whole `tsr_array`). Those buffers are now exempt (`TSR_NOINIT`, `__attribute__((uninitialized))`), and
+    only the slots a call passes are cleared. Every other variable keeps the hardening, and the kernel clears its
+    result slots before anything else.
+  - 64-bit integer divisions in the argument gate's overflow and alignment checks and in `tsr_shape_size`. They now
+    use `__builtin_mul_overflow` and power-of-two masks, which flag exactly the same cases (the INT64_MIN operand
+    and power-of-two conditions are kept), with the same error messages.
+  - Looking up the method by building and lower-casing its `class::method` name on every call. Methods are now
+    indexed by their function once at start-up, with the name lookup kept as the fallback.
+  - `get_arr` zeroing its 550-byte holder before copying an array argument over it.
+
+  Results and errors are unchanged: the byte hash of all 47,869 fixture results is identical on both backends.
+  Per call through the extension (one host, single thread; DJ's final pass times the record), `np.ndim` 1.26 ->
+  0.38 us, `promote_types` 0.88 -> 0.36, `shape` 1.56 -> 0.62, `ascontiguousarray` 1.46 -> 0.77,
+  `special.wofz` 1.5 -> 0.83, `hankel1` 2.4 -> 1.55. On the tier-3 per-call fixtures the functions slower than
+  NumPy/SciPy fell from 12 to 4 (np.json), 47 to 33 (np_shape), 34 to 21 (np_numeric) and 38 to 20 (special). Most
+  of the special ones left are at 1.00 to 1.08: they run SciPy's own specfun routines.
 - **`lu_factor` and `cho_factor` return their factor in column (Fortran) order, as SciPy does; `lu_solve` and
   `cho_solve` read it without a copy.** The factor is LAPACK's own column-major array, handed to PHP as an ordinary
   NDArray of the same shape and values. `toBytes()` and `toList()` give exactly what they gave before; only the

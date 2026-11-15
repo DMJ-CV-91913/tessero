@@ -54,6 +54,18 @@ ZEND_END_MODULE_GLOBALS(tessero)
 ZEND_EXTERN_MODULE_GLOBALS(tessero)
 #define TESSERO_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(tessero, v)
 
+/* Exempts one large stack buffer from -ftrivial-auto-var-init=zero (config.m4's hardening), for buffers whose used
+   part is written before anything reads it: the registry dispatch's argument and result arrays are about 28 KB, and
+   zeroing them took more than half of a small call. Every other variable keeps the hardening. */
+#if defined(__has_attribute)
+#  if __has_attribute(uninitialized)
+#    define TSR_NOINIT __attribute__((uninitialized))
+#  endif
+#endif
+#ifndef TSR_NOINIT
+#  define TSR_NOINIT
+#endif
+
 /* ---------------------------------------------------------------- NDArray object */
 
 /* Array flags (tsr_obj.flags); views inherit them from their root owner. */

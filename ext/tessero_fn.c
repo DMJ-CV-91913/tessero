@@ -75,6 +75,7 @@ typedef struct {
 static fn_bind *g_binds = NULL;
 static int g_nbinds = 0;
 static HashTable g_by_method;       /* "class::method" (lower case) -> bind index */
+static HashTable g_by_func;         /* the method's zend_function, as an integer -> bind index (filled at start-up) */
 
 zend_class_entry *tsr_ce_special, *tsr_ce_stats, *tsr_ce_np, *tsr_ce_linalg, *tsr_ce_slinalg, *tsr_ce_distance, *tsr_ce_sparse, *tsr_ce_signal, *tsr_ce_ndimage, *tsr_ce_csgraph, *tsr_ce_signal_windows, *tsr_ce_interpolate, *tsr_ce_cluster, *tsr_ce_npoly, *tsr_ce_hierarchy, *tsr_ce_splinalg, *tsr_ce_scipyfft;
 
@@ -601,14 +602,20 @@ static void default_zval(const char *d, zval *z)
 
 static void call_routine(const fn_bind *b, zend_execute_data *execute_data, zval *args, int nargs, zval *rv)
 {
-    tsr_arg cargs[MAX_ROUTINE_ARGS];
-    tsr_arg *blocks[MAX_ROUTINE_ARGS];
+    tsr_arg cargs[MAX_ROUTINE_ARGS] TSR_NOINIT;   /* the slots passed are zeroed below, then filled */
+    tsr_arg *blocks[MAX_ROUTINE_ARGS] TSR_NOINIT;   /* blocks[0..nblocks) are written before use */
     int nblocks = 0;
-    zval defs[MAX_ROUTINE_ARGS];
+    zval defs[MAX_ROUTINE_ARGS] TSR_NOINIT;          /* defs[0..ndefs) likewise */
     int ndefs = 0;
     keep_list kl = {NULL, 0, 0};
-    memset(cargs, 0, sizeof cargs);
     int ncall = nargs;
+    {
+        /* zero only the slots this call passes (each tsr_arg holds a whole tsr_array, about 580 bytes: clearing all
+           32 cost more than the rest of a small call); ncall is set to the same value in the branches below */
+        int used = b->variadic >= 0 || (nargs <= MAX_ROUTINE_ARGS && b->nrargs > nargs && b->nrargs <= MAX_ROUTINE_ARGS) ? b->nrargs : nargs;
+        if (used > MAX_ROUTINE_ARGS) used = MAX_ROUTINE_ARGS;
+        if (used > 0) memset(cargs, 0, sizeof(tsr_arg) * (size_t)used);
+    }
     if (b->variadic >= 0) {
         /* numpy's f(a, *xi, option=...): positional arguments up to the variadic one, the rest form the
            sequence; options come as named arguments (collected by the engine as extra named parameters) */
@@ -663,12 +670,12 @@ static void call_routine(const fn_bind *b, zend_execute_data *execute_data, zval
         }
     }
     {
-        tsr_result res[16];
+        tsr_result res[16] TSR_NOINIT;             /* tsr_fn_routine clears res[0..nres) before anything else */
         const int nres = b->nout > 0 ? (b->nout < 16 ? b->nout : 16) : 1;
         const int rc = tsr_fn_routine(b->id, ncall, cargs, nres, res);
         keep_free(&kl);
         if (rc < 0) { throw_fn(rc, b->label); goto done; }
-        zval vals[16];
+        zval vals[16] TSR_NOINIT;                  /* each vals[k] is set (UNDEF or a value) before it is read */
         int present = 0, last = -1, failed = 0;
         for (int k = 0; k < nres; k++) {
             ZVAL_UNDEF(&vals[k]);
@@ -695,14 +702,23 @@ done:
 
 /* ================================================================ dispatch */
 
-static const fn_bind *bind_for(zend_execute_data *execute_data)
+/* the bind of a registry method, by its "class::method" name */
+static const fn_bind *bind_by_name(const zend_function *f)
 {
-    zend_function *f = EX(func);
     char key[160];
     snprintf(key, sizeof key, "%s::%s", ZSTR_VAL(f->common.scope->name), ZSTR_VAL(f->common.function_name));
     for (char *p = key; *p; p++) *p = (char)tolower((unsigned char)*p);
     zval *v = zend_hash_str_find(&g_by_method, key, strlen(key));
     return v ? &g_binds[Z_LVAL_P(v)] : NULL;
+}
+
+/* the bind of the method being called: one integer lookup of its zend_function (indexed at start-up, see
+   index_methods), instead of formatting and lower-casing its name on every call; the name is the fallback */
+static const fn_bind *bind_for(zend_execute_data *execute_data)
+{
+    const zend_function *f = EX(func);
+    zval *v = zend_hash_index_find(&g_by_func, (zend_ulong)(uintptr_t)f);
+    return v ? &g_binds[Z_LVAL_P(v)] : bind_by_name(f);
 }
 
 uint64_t *tsr_generator_state(zval *obj);
@@ -872,6 +888,7 @@ void *tsr_pkeep(void *p)
 
 void tsr_unregister_fn(void)
 {
+    zend_hash_destroy(&g_by_func);
     zend_hash_destroy(&g_by_method);
     while (g_npblocks > 0) pefree(g_pblocks[--g_npblocks], 1);
     if (g_pblocks) pefree(g_pblocks, 1);
@@ -1117,9 +1134,25 @@ static zend_internal_arg_info *make_arginfo(const fn_bind *b, zval *info, int *n
     return ai;
 }
 
+/* file every registry method of ce (handler Fn::call) under its zend_function in g_by_func; run once at start-up,
+   after the class is registered, so the table is only read while requests run */
+static void index_methods(zend_class_entry *ce)
+{
+    zend_function *f;
+    ZEND_HASH_FOREACH_PTR(&ce->function_table, f) {
+        if (f->type != ZEND_INTERNAL_FUNCTION || f->internal_function.handler != zim_Fn_call) continue;
+        const fn_bind *b = bind_by_name(f);
+        if (!b) continue;
+        zval idx;
+        ZVAL_LONG(&idx, (zend_long)(b - g_binds));
+        zend_hash_index_update(&g_by_func, (zend_ulong)(uintptr_t)f, &idx);
+    } ZEND_HASH_FOREACH_END();
+}
+
 void tsr_register_fn(void)
 {
     zend_hash_init(&g_by_method, 512, NULL, NULL, 1);
+    zend_hash_init(&g_by_func, 1024, NULL, NULL, 1);
     const int n = tsr_fn_count();
     g_binds = tsr_pkeep(pecalloc((size_t)(n > 0 ? n : 1), sizeof(fn_bind), 1));
     g_nbinds = n;
@@ -1179,5 +1212,7 @@ void tsr_register_fn(void)
         ce.name = zend_string_init_interned(cname, strlen(cname), 1);
         *statics[j].ce = zend_register_internal_class(&ce);
         (*statics[j].ce)->ce_flags |= ZEND_ACC_EXPLICIT_ABSTRACT_CLASS | ZEND_ACC_NO_DYNAMIC_PROPERTIES;
+        index_methods(*statics[j].ce);
     }
+    index_methods(tsr_ce_generator);
 }
