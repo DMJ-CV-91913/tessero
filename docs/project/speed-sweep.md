@@ -263,7 +263,7 @@ the mode these cases time), 'nearest' and 'wrap' their results were off by up to
 `prefilter=False` was ignored. They now follow SciPy's code (`NI_GeometricTransform`, `NI_ZoomShift` and the
 spline prefilter, with its padding at the edges) and give SciPy's answers, in the input's dtype, on 872 of 882
 calls checked against SciPy, on both backends (the other 10 are bool results with a cval outside [0, 1], with the
-same truth values). The sweep's times for these cases, and the earlier `zoom` and `shift` rows below, were
+same truth values). The sweep's times for these cases, and the earlier `zoom` and `shift` rows of this section, were
 of the old code. Re-timed alone on 2026-11-15 (18:42 to 18:47 UTC, the installed library at commit d2d4e2e6, eight
 alternating rounds of FFI and SciPy, at a load average of 8 to 14; `shift` three rounds): `rotate` 512^2 at 30 deg
 49.7 ms in the sweep, now 29.6 ms against SciPy's 36.1 ms; `map_coordinates` 1000^2 at 100k points 54.8 ms, now
