@@ -29,11 +29,12 @@ $plan['ineqlin'];  // shadow prices [-10, -20], SciPy's convention
 
 | Package | What | Install |
 |---|---|---|
-| `tessero/tessero` | PHP library; loads prebuilt `libtessero` through FFI | `composer require tessero/tessero` |
-| `tessero/tessero-ext` | Zend extension with the kernel compiled in: operators, `$a['1:, ::-1']`, `foreach`, JSON, ~0.3 µs per call | `pie install tessero/tessero-ext` |
-| `tessero/laravel` | provider, facade, Eloquent casts, validation rule, Octane-safe settings, `response()->ndarray()` | `composer require tessero/laravel` |
+| `tessero/tessero-ext` (recommended) | Zend extension with the kernel compiled in: operators, `$a['1:, ::-1']`, `foreach`, JSON; small calls 0.074 of NumPy/SciPy's time (geomean), faster on 966 of 1,022 functions | `phpize` build ([installation](docs/getting-started/installation.md)); `pie install tessero/tessero-ext` once registered |
+| `tessero/tessero` | PHP library; loads prebuilt `libtessero` through FFI, no compiler needed; install it alongside the extension for its PHP-level APIs | `composer require tessero/tessero` |
+| `tessero/laravel` | provider, facade, Eloquent casts, validation rule, Octane-safe settings, `response()->ndarray()`; uses the extension when loaded | `composer require tessero/laravel` |
 
-Both backends give identical numbers; see *Choosing a backend* in the docs.
+Both backends give identical numbers. Use the extension where you can; FFI's fixed cost of a few microseconds per
+call makes small calls to NumPy's core functions slower than NumPy ([speed sweep](docs/project/speed-sweep.md)).
 
 ## What is in the box
 

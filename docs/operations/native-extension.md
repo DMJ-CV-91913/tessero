@@ -16,6 +16,8 @@ make install                      # into $(php-config --extension-dir)
 | PHP 8.2–8.5 headers (`php-dev` / `php8.x-dev`) | the extension uses the stable Zend API; one build per PHP minor version and thread-safety mode |
 | GCC ≥ 9 or Clang ≥ 12 | C11 atomics; GCC `target_clones` gives AVX2/AVX-512 paths on x86-64 |
 | libgomp | only with OpenMP (the default). `config.m4` links `-lgomp`; when building with Clang, install libgomp or pass `--disable-tessero-openmp` |
+| a C++17 compiler (`g++`) | the special-function libraries SciPy uses (xsf, Boost.Math) are C++ |
+| LAPACKE and BLAS (`liblapacke-dev libopenblas-dev`) | `config.m4` links `-llapacke -lblas` for linear algebra and matrix products; on macOS and Windows a LAPACKE the build can find is still open cross-platform work |
 
 The build compiles `ext/libtessero/*.c` (a copy of `csrc/`) into the module.
 Kernel symbols are compiled with hidden visibility, and a linker version
@@ -32,6 +34,7 @@ enabled on Windows builds.
 pie install tessero/tessero-ext
 ```
 
+Not available yet: the package is not registered with PIE (TSR-011); until it is, build from source as above.
 PIE (the PHP Foundation's installer) builds the release source for the
 running PHP and writes the INI file. Pin a version in production:
 `pie install tessero/tessero-ext:0.3.0`.
@@ -42,7 +45,7 @@ Build once per (PHP minor, NTS/ZTS, architecture, libc) and ship the `.so`:
 
 ```dockerfile
 FROM php:8.4-cli AS ext
-RUN apt-get update && apt-get install -y $PHPIZE_DEPS
+RUN apt-get update && apt-get install -y $PHPIZE_DEPS liblapacke-dev libopenblas-dev
 COPY ext/ /src/ext/
 RUN cd /src/ext && phpize && ./configure --enable-tessero && make -j"$(nproc)" && make test
 

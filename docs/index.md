@@ -29,8 +29,8 @@ $plan['ineqlin'];  // shadow prices, same sign convention as SciPy
 
 | Package | What it is | Install |
 |---|---|---|
-| `tessero/tessero` | The PHP library. Loads `libtessero` through FFI. Nothing to compile. | `composer require tessero/tessero` |
-| `tessero/tessero-ext` | A Zend extension with `libtessero` compiled in: operators (`$a + $b`), native slicing, `foreach`, `json_encode`, 30× lower call overhead, no FFI setup. | `pie install tessero/tessero-ext` |
+| `tessero/tessero-ext` (recommended) | A Zend extension with `libtessero` compiled in: operators (`$a + $b`), native slicing, `foreach`, `json_encode`, no FFI setup. Small calls take 0.074 of NumPy/SciPy's time (geomean), faster on 966 of 1,022 functions. | `phpize` build ([Installation](getting-started/installation.md)); `pie install tessero/tessero-ext` once registered |
+| `tessero/tessero` | The PHP library. Loads `libtessero` through FFI. Nothing to compile. Install it alongside the extension for its PHP-level APIs. | `composer require tessero/tessero` |
 | `tessero/laravel` | Laravel integration: service provider, facade, Eloquent casts, validation rule, Octane-safe settings, `response()->ndarray()`. | `composer require tessero/laravel` |
 
 Both backends produce identical numbers. The parity suite replays the same

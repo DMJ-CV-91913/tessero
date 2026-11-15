@@ -1,10 +1,48 @@
 # Installation
 
-Tessero needs PHP 8.2 or newer on a 64-bit platform. Pick one backend (or
-install both; the Laravel package uses the extension when it is loaded and
-falls back to FFI otherwise).
+Tessero needs PHP 8.2 or newer on a 64-bit platform. It reaches its C kernel in one of two ways: the native
+extension, or the FFI package, which needs no compiler.
 
-## Option A: the FFI package (no compiler needed)
+**Use the native extension.** It calls the kernel without the FFI layer. In the
+[speed sweep](../project/speed-sweep.md) a small call takes 0.074 of NumPy/SciPy's time on average (geomean over
+1,022 functions) and is faster on 966 of them. Through FFI each call carries a fixed cost of a few microseconds,
+which makes small calls to NumPy's core functions (`zeros`, `asarray`, `dot`, `sqrt`) slower than in NumPy. Both
+backends give the same numbers.
+
+The extension's classes (`Tessero\Ext\NDArray`, `Np`, `Linalg`, `Special`, `Stats`, `Signal`, ... ) cover the same
+NumPy and SciPy functions, each checked against NumPy/SciPy on the extension. Install the PHP package (Option B)
+alongside it for the PHP-level APIs and the command-line tools. Where the extension is loaded, the Laravel package
+and the classes that look for it (`KDTree`, `ConvexHull`, `Delaunay`, `curve_fit`, `least_squares`) run on it.
+The PHP package's other classes still go through FFI, so keep Option B's FFI settings if you use them. Use the FFI
+package alone where you cannot compile or load an extension, for example on shared hosting.
+
+## Option A: the native extension (recommended)
+
+From a source checkout:
+
+```bash
+sudo apt install php8.4-dev g++ liblapacke-dev libopenblas-dev   # Debian/Ubuntu; match your PHP version
+cd ext
+phpize
+./configure --enable-tessero            # --disable-tessero-openmp to drop libgomp
+make -j
+make test                               # phpt suite
+sudo make install
+echo "extension=tessero" | sudo tee "$(php-config --ini-dir)/30-tessero.ini"
+php --ri tessero
+```
+
+Build requirements: the PHP headers (`phpize`), a C compiler and a C++17 compiler (the special-function libraries
+SciPy uses are C++), and LAPACKE with BLAS, which the build links for linear algebra and matrix products. The
+extension compiles its own copy of the kernel (`ext/libtessero/`), so it needs neither `ext-ffi` nor a prebuilt
+`libtessero`. Build it on Linux. On macOS and Windows it needs a LAPACKE the build can find, which is still open
+cross-platform work. There, use the FFI package's prebuilt binaries.
+
+Once the package is registered with PIE (not yet: tracked as TSR-011), `pie install tessero/tessero-ext` will build
+it for the running PHP. Build details, INI settings and fleet packaging are in
+[Native extension](../operations/native-extension.md).
+
+## Option B: the FFI package (no compiler needed)
 
 ```bash
 composer require tessero/tessero
@@ -32,30 +70,6 @@ Requirements:
   return different though valid values: `signal.savgol_filter` and `linalg.eig_banded` (eigenvector signs),
   `linalg.subspace_angles` (a tiny angle returned as 0) and `linalg.ordqz` (sign and last digits). CI checks
   that 3.10 runs without a crash or any other difference.
-
-## Option B: the native extension
-
-```bash
-pie install tessero/tessero-ext
-```
-
-or from a source checkout:
-
-```bash
-cd ext
-phpize
-./configure --enable-tessero            # --disable-tessero-openmp to drop libgomp
-make -j
-make test                               # 12 phpt files
-sudo make install
-echo "extension=tessero" | sudo tee "$(php-config --ini-dir)/30-tessero.ini"
-php --ri tessero
-```
-
-The extension compiles its own copy of the kernel (`ext/libtessero/`), so it
-needs neither `ext-ffi` nor the FFI package. It does not include LAPACK-based
-linear algebra, multi-axis reductions or `.npy` I/O yet; install the FFI
-package alongside it when you need those ([Choosing a backend](choosing-a-backend.md)).
 
 ## Option C: Laravel
 
