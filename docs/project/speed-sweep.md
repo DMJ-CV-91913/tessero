@@ -351,13 +351,13 @@ took longer (`rotate` 60.9 ms, `map_coordinates` 70.6 ms, `hilbert` 79.3 ms); th
 
 | case | Tessero | SciPy | cause | remedy |
 |---|---|---|---|---|
-| `optimize.curve_fit`, 1000 points | 2.25 ms; 1.36 ms with a model that takes the whole array | 0.58 ms | a per-point PHP model is called once per point and evaluation; a whole-array model is called once per evaluation, as SciPy calls it, and the time left there is not yet profiled | -- |
+| `optimize.curve_fit`, 1000 points | 2.25 ms; 1.36 ms with a model that takes the whole array | 0.58 ms | a per-point PHP model is called once per point and evaluation. A whole-array model is called once per evaluation, as SciPy calls it; since this sweep the Jacobian's evaluations go to it in one call laid out along the data axis, and lmdif takes them as one array: 1.14 ms through FFI, 0.44 ms through the extension (SciPy 0.55 ms), the same results byte for byte. The time left through FFI is its cost per array operation (about 5 us, some 60 operations per fit) | the native extension |
 | `spatial.KDTree` build, 100k points from PHP rows | 55.4 ms | 30.7 ms | casting the PHP point rows into one block through FFI; from an NDArray the build takes 30.8 ms, on a par | pass an NDArray |
-| `numpy.fft.rfft2` 1024^2 | 15.9 ms | 9.9 ms | not yet profiled; its time moved between 15.9 and 29 ms across the four rounds (SciPy's stayed near 10 ms) | -- |
-| `ndimage.map_coordinates` 1000^2, 100k points | 54.8 ms | 36.4 ms | not yet profiled | -- |
-| `signal.hilbert` 1M | 86.8 ms | 58.3 ms | the FFT itself, after the input is read in place | -- |
-| `ndimage.rotate` 512^2, 30 deg | 49.7 ms | 35.3 ms | not yet profiled | -- |
-| `ndimage.binary_erosion` 1000^2 | 13.8 ms | 9.8 ms | not yet profiled | -- |
+| `numpy.fft.rfft2` 1024^2 | 15.9 ms | 9.9 ms | the transforms themselves: timed alone after the sweep, the real FFT of the rows took 10.3 ms against 3.6 ms and the complex FFT down the columns 10.0 ms against 5.4 ms (at a load average near 12) | -- |
+| `ndimage.map_coordinates` 1000^2, 100k points | 54.8 ms | 36.4 ms | the interpolation of the points (about 38 ms against SciPy's 15.5 ms, timed alone after the sweep); the spline prefilter is on a par | -- |
+| `signal.hilbert` 1M | 86.8 ms | 58.3 ms | the FFT itself, after the input is read in place; timed alone after the sweep (eight alternating rounds) it took 1.09x SciPy's time, so most of this gap was load | -- |
+| `ndimage.rotate` 512^2, 30 deg | 49.7 ms | 35.3 ms | the interpolation (48.7 ms against 30.6 ms without the prefilter, timed alone after the sweep); the prefilter is close to SciPy's (5.7 against 4.6 ms) | -- |
+| `ndimage.binary_erosion` 1000^2 | 13.8 ms | 9.8 ms | not yet profiled; timed alone after the sweep it took 12.9 ms against 10.9 ms | -- |
 | `spatial.KDTree`, 100 queries (k=5) in 100k | 0.268 ms; 0.254 ms from an NDArray | 0.207 ms | not yet profiled | -- |
 
 ## Where SciPy fails and Tessero completes

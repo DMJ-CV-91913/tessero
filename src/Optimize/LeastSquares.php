@@ -119,9 +119,9 @@ final class LeastSquares
      * The model is called the way xdata comes in. A PHP list: once per point, f(float $x, float ...$p) returning a
      * number. An NDArray (of either backend): on all of xdata, f(NDArray $x, float ...$p) returning one value per
      * point (an NDArray of that backend or a list), as SciPy calls it, the data staying in the kernel. For the n
-     * evaluations of each forward-difference Jacobian such a model is first offered them in one call, x as a column
-     * (m, 1) and each parameter as a row (1, n) of the n evaluation points; it keeps that call when it returns an
-     * (m, n) array with the same bits as the n separate calls (compared once), and is called n times otherwise.
+     * evaluations of each forward-difference Jacobian such a model is first offered them in one call, x as a row
+     * (1, m) and each parameter as a column (n, 1) of the n evaluation points; it keeps that call when it returns an
+     * (n, m) array with the same bits as the n separate calls (compared once), and is called n times otherwise.
      *
      * @param callable $f                         the model, per point or on the whole of xdata (see above)
      * @param list<float|int>|object $xdata       a list, or an NDArray of either backend
@@ -273,34 +273,40 @@ final class LeastSquares
             try {
                 $cols = [];
                 foreach (array_keys($P[0]) as $i) {
-                    $cols[] = $nd::array([array_column($P, $i)], 'float64');
+                    $cols[] = $nd::array(array_map(static fn (array $p): array => [$p[$i]], $P), 'float64');
                 }
-                $B = $f($x->reshape($m, 1), ...$cols);
+                $B = $f($x->reshape(1, $m), ...$cols);
             } catch (\Throwable) {
                 $B = null;
             }
-            if (! $B instanceof $nd || $B->shape() !== [$m, $k]) {
+            if (! $B instanceof $nd || $B->shape() !== [$k, $m]) {
                 $B = null;
             }
         }
         if ($B !== null && $together === true) {
-            return [$B, true];
+            return [$B, false];
         }
-        $rows = [];
         $raw = '';
+        $rows = [];
         foreach ($P as $p) {
             $v = $values($f($x, ...$p));
-            if ($together === null && $B !== null) {
-                $raw .= is_object($v) ? $v->astype('float64')->toBytes() : pack('e*', ...$v);
+            if ($raw !== null && is_object($v) && $v->shape() === [$m]) {
+                $raw .= $v->astype('float64')->toBytes();
+            } else {
+                $raw = null;
             }
-            $rows[] = is_object($v) ? $v->toList() : $v;
+            $rows[] = $v;
         }
         if ($together === null) {
-            // the one call's columns against the k calls, as raw little-endian doubles (C order of its transpose)
-            $together = $B !== null && $B->astype('float64')->transpose()->toBytes() === $raw;
+            // the one call's rows against the k calls, as raw doubles (C order)
+            $together = $B !== null && $raw !== null && $B->astype('float64')->toBytes() === $raw;
+        }
+        if ($raw !== null) {
+            // the k rows as one (k, m) array, without lists through PHP
+            return [$nd::fromBytes($raw, 'float64', [$k, $m]), false];
         }
 
-        return [$rows, false];
+        return [array_map(static fn (mixed $v): array => is_object($v) ? $v->toList() : $v, $rows), false];
     }
 
     /** leastsq's message for MINPACK's info */

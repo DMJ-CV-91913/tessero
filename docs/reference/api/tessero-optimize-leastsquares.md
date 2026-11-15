@@ -21,9 +21,9 @@ number of evaluations and the covariance follow SciPy's. Returns [popt, pcov], w
 The model is called the way xdata comes in. A PHP list: once per point, f(float $x, float ...$p) returning a
 number. An NDArray (of either backend): on all of xdata, f(NDArray $x, float ...$p) returning one value per
 point (an NDArray of that backend or a list), as SciPy calls it, the data staying in the kernel. For the n
-evaluations of each forward-difference Jacobian such a model is first offered them in one call, x as a column
-(m, 1) and each parameter as a row (1, n) of the n evaluation points; it keeps that call when it returns an
-(m, n) array with the same bits as the n separate calls (compared once), and is called n times otherwise.
+evaluations of each forward-difference Jacobian such a model is first offered them in one call, x as a row
+(1, m) and each parameter as a column (n, 1) of the n evaluation points; it keeps that call when it returns an
+(n, m) array with the same bits as the n separate calls (compared once), and is called n times otherwise.
 
 ### isotonicRegression
 
