@@ -118,7 +118,13 @@ jobs:
         run: FUZZ_SEED=1 make -C csrc fuzz-standalone FUZZ_RUNS=200000 FUZZ_DEFS=-DFUZZ_SKIP_KNOWN BUILD=./build-fuzzsa
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with: { name: fuzz-crashes, path: 'csrc/crash-*' }
+        with:
+          name: fuzz-crashes
+          # libFuzzer writes crash-* in csrc; the standalone driver writes <target>-crash-* / -timeout-* in its build dir
+          path: |
+            csrc/crash-*
+            csrc/build-fuzzsa/*-crash-*
+            csrc/build-fuzzsa/*-timeout-*
 
   repro:
     name: reproducible f32 bit-identical (${{ matrix.runner }})

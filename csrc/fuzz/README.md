@@ -75,6 +75,14 @@ coefficient-array length, a rank, a NaN/Inf number) without validating it before
 
 ## Fixed findings
 
+CI standalone driver, 16 Nov 2026 (vendored `xsf/specfun/specfun.h`). Regression check in `tests/test_main.c`
+(`test_bessel_airy_zeros`). The input was not kept (the upload step looked only for libFuzzer's `crash-*`; it now
+takes the standalone driver's files too).
+
+| id | routine(s) | was | now |
+|----|-----------|-----|-----|
+| G-U1 | `special.jn_zeros`, `jnp_zeros`, `yn_zeros`, `ynp_zeros`, `jnyn_zeros` (`jyzo` -> `jyndd` -> `jynbh`) | `k * k` (jynbh) and `n * n` (jyndd) in `int` overflowed past 46340, so orders above about 46000 (UBSan at specfun.h:3492, k = 1426355) | `tsr_wrap_mul`: the wrapped product SciPy's x86-64 builds compute: defined, results unchanged |
+
 PR #57 CI follow-up (`np_shape.c`, `np_linalg.c`, `cxx/special_complex.inc`). Regression checks in `tests/test_main.c`;
 reproducers `fuzz/corpus/routines/regress_*` (default table, CI seed 1).
 

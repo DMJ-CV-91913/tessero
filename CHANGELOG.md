@@ -386,6 +386,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Fixed
 
+- **`special.jn_zeros`, `jnp_zeros`, `yn_zeros`, `ynp_zeros` and `jnyn_zeros` with an order above about 46000** no
+  longer overflow an `int` inside the vendored xsf code (`jynbh` and `jyndd` formed `k * k` and `n * n`; undefined
+  behaviour, found by the standalone fuzz driver in CI). The product is now computed as SciPy's x86-64 builds compute it, made explicit, so results are unchanged. CI
+  now uploads the standalone driver's crash inputs too.
+
 - **`ndimage.map_coordinates`, `shift`, `zoom`, `affine_transform` and `rotate` return SciPy's values in every
   boundary mode** (approved by DJ, 15 Nov). At the B-spline orders (2 to 5) they matched SciPy only in 'mirror' and
   'reflect'; in 'constant' (the default), 'nearest' and 'wrap' they were off by up to 0.2 to 0.4 on data in [0, 1],

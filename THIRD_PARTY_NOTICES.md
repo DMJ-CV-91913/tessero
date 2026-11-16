@@ -69,6 +69,10 @@ are unchanged; the parity fixtures verify that.
   The registry additionally returns NaN for |m|, |n| > 1000 or finite |c| > 1000 (`guard:` in
   `spec/special.yaml`).
 - `xsf/xsf/specfun/specfun.h`, `qstar`: for m = 0 the original reads `ap[-1]`; Tessero returns NaN.
+- `xsf/xsf/specfun/specfun.h`, `jynbh` and `jyndd`: `k * k` and `n * n` are formed in `int` and overflow once
+  they pass 46340 (orders n above about 46000, reached from the `jn_zeros` family through `jyzo`; standalone fuzz
+  driver, CI). Tessero computes them with `tsr_wrap_mul`, the wrapped value SciPy's x86-64 builds produce: defined,
+  and the results are unchanged.
 - `xsf/xsf/faddeeva.h`, `w_im_y100` and `erfcx_y100`: for a NaN argument the originals reach their final return
   through `(int)NaN`, which is undefined behaviour (UBSan, nightly fuzzing); Tessero takes that return directly
   (NaN, and 1.0 for `erfcx_y100`), the value x86-64 already produced.

@@ -3489,7 +3489,9 @@ namespace specfun {
                     bs += 2.0 * f;
                     su += pow(-1, k / 2) * f / k;
                 } else if (k > 1) {
-                    sv += pow(-1, k / 2) * k / (k * k - 1.0) * f;
+                    /* Tessero local modification: k * k overflows int once k > 46340 (n above about 46000, undefined in
+                       SciPy); tsr_wrap_mul gives the wrapped value SciPy's x86-64 builds compute, so results are unchanged */
+                    sv += pow(-1, k / 2) * k / (tsr_wrap_mul(k, k) - 1.0) * f;
                 }
                 f2 = f1;
                 f1 = f;
@@ -3598,8 +3600,10 @@ namespace specfun {
         *byn = by[0];
         *djn = -bj[1] + n * bj[0] / x;
         *dyn = -by[1] + n * by[0] / x;
-        *fjn = (n * n / (x * x) - 1.0) * (*bjn) - (*djn) / x;
-        *fyn = (n * n / (x * x) - 1.0) * (*byn) - (*dyn) / x;
+        /* Tessero local modification: n * n overflows int once n > 46340 (undefined in SciPy); tsr_wrap_mul gives the
+           wrapped value SciPy's x86-64 builds compute, so results are unchanged */
+        *fjn = (tsr_wrap_mul(n, n) / (x * x) - 1.0) * (*bjn) - (*djn) / x;
+        *fyn = (tsr_wrap_mul(n, n) / (x * x) - 1.0) * (*byn) - (*dyn) / x;
         return;
     }
 

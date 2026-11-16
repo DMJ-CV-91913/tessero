@@ -2973,6 +2973,13 @@ static void test_bessel_airy_zeros(void)
     tsr_result r[1];
     CHECK(fa_call("special.jn_zeros", 2, huge, r, 1) == TSR_EARG, "jn_zeros(0, 1e7) refused before the work");
     fa_free(r, 1);
+    /* the fuzzer's find: xsf jynbh and jyndd formed k * k and n * n in int, past INT_MAX once n > 46340 (UB, caught
+       by the sanitizer build). SciPy 1.17.1 returns NaN here (the Newton steps do not settle at this order) */
+    tsr_arg big_n[2] = {arg_int(50000), arg_int(1)};
+    const int rcb = fa_call("special.ynp_zeros", 2, big_n, r, 1);
+    CHECK(rcb == 0 && r[0].kind == 3 && r[0].arr.shape[0] == 1 && isnan(((const double *)r[0].arr.data)[0]),
+          "ynp_zeros(50000, 1) == SciPy's NaN, without overflow (rc %d)", rcb);
+    fa_free(r, 1);
 }
 
 /* linalg.lmdif driven to the end on a model and data built from + - * / alone (each product kept apart from its sum
