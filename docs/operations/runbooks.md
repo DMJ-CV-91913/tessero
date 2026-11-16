@@ -70,7 +70,7 @@ and the error started with a deploy.
 4. **Floating-point differences in the last digits** after a CPU or OpenBLAS
    change are expected ([Troubleshooting](troubleshooting.md#results-differ-slightly-between-machines)).
 5. Anything else is a bug: capture the input (`serialize()` the arrays, or
-   `Npy::saveZ`) and open an issue.
+   `Npy::saveZ`) and email it to support@tessero.org.
 
 ---
 

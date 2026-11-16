@@ -192,7 +192,9 @@ docs/        documentation site (MkDocs)
 
 ## Contributing and governance
 
-See `CONTRIBUTING.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md` and `SECURITY.md`.
+Tessero is open source (BSD-3-Clause) with a single maintainer, Douglas Johnson, and does not accept outside
+contributions or pull requests. Report bugs by email to support@tessero.org and vulnerabilities to
+security@tessero.org. See `CONTRIBUTING.md`, `GOVERNANCE.md`, `CODE_OF_CONDUCT.md` and `SECURITY.md`.
 
 ## Licence
 

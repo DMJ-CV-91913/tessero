@@ -1,7 +1,7 @@
 # Tessero: Update & Development Guide
 
 How to change Tessero safely and get the change onto the ref server. The governing
-rule mirrors the parity program (see `CLAUDE.md`): **covered means verified -- a
+rule mirrors the parity program (see `docs/operations/maintaining.md`): **covered means verified -- a
 change ships only when the parity gate is green on BOTH backends (FFI + ext).
 Never loosen a tolerance or edit generated files to get green.**
 
@@ -33,8 +33,7 @@ box, not from the server, so one shell drives the whole loop.
 Edit on the dev box -> commit -> push -> the build server pulls, builds, and
 **gates on the parity suite**.
 
-**[dev / PowerShell]** -- commit + push (end commit messages with the
-Co-Authored-By/Claude-Session trailers):
+**[dev / PowerShell]** -- commit + push:
 ```powershell
 git add -A
 git commit -m "..."
@@ -54,7 +53,7 @@ cd <server checkout> \
 # sync-ext.sh refreshes ext/libtessero from csrc (run after a kernel change)
 # QUICK=1 = fast gate; drop it for the full sanitize+fuzz+soak+bench
 ```
-`QUICK=1` skips sanitizers, fuzzing, soak and benchmarks (per `CLAUDE.md`); run the
+`QUICK=1` skips sanitizers, fuzzing, soak and benchmarks; run the
 full `bash tools/parity/gate.sh` before a release or anything ABI-affecting. The gate
 runs BOTH backends (`run-tests.php --backend=ffi` and `--backend=ext`). Only after
 green do you let a consumer relink (§4).
@@ -137,7 +136,7 @@ Caveats:
   until that rebuild. Safe: gate here, then relink the consumer.
 
 ## 6. Coverage / metrics hand-off
-Coverage numbers are **generated**, never typed by hand (`CLAUDE.md`). After a parity
+Coverage numbers are **generated**, never typed by hand. After a parity
 run, record suites and regenerate the coverage doc:
 ```bash
 # [server / bash] -- after the gate
@@ -158,7 +157,7 @@ library via `php artisan docs:sync`, so most content updates flow from the libra
 - **Content from this repo:** regenerate coverage/metrics here (§6) and push this repo's
   `main`; the site's `docs:sync` picks it up on deploy. No site code change needed.
 - **Site code / copy changes:** done in the `tesserophp-org` repo; read its `AGENTS.md`
-  / `CLAUDE.md` house rules first (notably: NO em/en dashes anywhere; honest,
+  house rules first (notably: NO em/en dashes anywhere; honest,
   source-backed messaging; verify routes + `npm run build` before shipping).
 - **Deploy (owner runs it; only `main` goes live):** the site is a separate repo with
   its **own** `deploy.sh`, run from its own server-side checkout (a different checkout

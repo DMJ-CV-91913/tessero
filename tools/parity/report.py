@@ -14,7 +14,7 @@ Inputs (nothing is typed by hand):
   api.json       the public PHP API of both backends (tools/api-dump.php)
   usage.json     call counts of each symbol in the library code of widely used Python packages (tools/parity/usage.py)
 
-Metrics (prompts/numpy-scipy-parity-program.md section 3.4):
+Metrics (parity program):
   M2  in-scope symbol coverage per module and backend: implemented / (canonical symbols - excluded)
   M3  excluded share per module: excluded / canonical symbols
   M4  verified share: implemented symbols whose verification (fixture or suite) passed in the recorded run;

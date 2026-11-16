@@ -2,18 +2,17 @@
 
 ## Security reports
 
-Do not use the issue tracker or this file to report a vulnerability. Email **security@tessero.org**
+Do not use this file to report a vulnerability. Email **security@tessero.org**
 (GitHub private vulnerability reporting is not enabled); `SECURITY.md` describes the process,
-the scope and the disclosure timeline.
+the scope and the disclosure timeline. Other bugs go to **support@tessero.org**.
 
 ## Current maintainers
 
-TODO (repository owner): list each maintainer with their GitHub handle and areas before the first release.
-Until then the repository owner named in `.github/CODEOWNERS` is the only maintainer and reviews every change.
+Tessero has a single maintainer and does not accept outside contributions (see `GOVERNANCE.md`).
 
-| GitHub handle | Areas | Since |
-|---|---|---|
-| TODO | all | TODO |
+| Name | GitHub handle | Areas | Since |
+|---|---|---|---|
+| Douglas Johnson | @DMJ-CV-91913 | all | October 2026 |
 
 ## Areas
 
@@ -25,7 +24,3 @@ Until then the repository owner named in `.github/CODEOWNERS` is the only mainta
 | Laravel package | `laravel/` | |
 | Parity and fixtures | `tools/parity/`, `tests/fixtures/` | fixtures come only from the pinned environment (ADR 0012) |
 | CI, release and supply chain | `.github/`, `docker/`, `RELEASING.md`, `SECURITY.md`, `THIRD_PARTY_NOTICES.md` | owner review required |
-
-## Becoming a maintainer
-
-See `GOVERNANCE.md` for how maintainers are added and removed.

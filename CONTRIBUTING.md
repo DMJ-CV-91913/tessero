@@ -1,23 +1,29 @@
 # Contributing to Tessero
 
-Thank you for helping. Tessero is numerical infrastructure, so the bar is
-correctness first, then clarity, then speed.
+Tessero is open source under the BSD-3-Clause licence: anyone may read, use,
+modify and redistribute it under that licence. It is **not open to outside
+contributions**. Douglas Johnson writes and maintains all of the code, and the
+project does not accept pull requests or patches, and has no public issue
+tracker.
 
-## Ways to help
+You are welcome to fork the project under the licence.
 
-- **Report a wrong number.** This is the most valuable contribution. Include
-  the input (export it with `Tessero\Io\Npy::save` or `serialize()`), what
-  NumPy/SciPy return for the same input, and `vendor/bin/tessero info --json`.
-- **Report an installation problem** with the output of `tessero doctor` and
-  `php -v`, and your OS/architecture.
-- **Improve the documentation.** The docs are Markdown under `docs/`
-  (`mkdocs serve` to preview).
-- **Pick an item from the roadmap** (`docs/project/roadmap.md`). Comment on the
-  issue first so work is not duplicated.
+## Reporting a bug
 
-Security problems: do **not** open an issue; see `SECURITY.md`.
+Email **support@tessero.org**. The most valuable report is a wrong number.
+Include:
 
-## Development setup
+- the input (export it with `Tessero\Io\Npy::save` or `serialize()`);
+- what NumPy/SciPy return for the same input;
+- the output of `vendor/bin/tessero info --json`.
+
+For an installation problem, include the output of `tessero doctor` and
+`php -v`, and your OS and architecture.
+
+Security problems: do **not** send them to the support address; follow
+`SECURITY.md` (security@tessero.org).
+
+## Building from source
 
 Requirements: PHP 8.2+ with `ext-ffi` and headers (`php-dev`), GCC or Clang,
 Python 3 with NumPy and SciPy (for fixtures), Composer.
@@ -40,12 +46,10 @@ php -d ffi.enable=1 bench/run.php               # benchmarks with gates
 After changing anything in `csrc/`, run `bash tools/sync-ext.sh` to update
 the extension's copy. CI fails if they differ.
 
-## Rules for changes
+## Engineering rules (how the maintainer works)
 
-1. **Tests come from the reference.** New numerical behaviour gets a case in
-   `tests/fixtures/generate_parity.py` computed by NumPy/SciPy, not a
-   hand-typed expected value. Regenerate with
-   `python tests/fixtures/generate_parity.py` and commit the fixture.
+1. **Tests come from the reference.** New numerical behaviour gets a case
+   computed by NumPy/SciPy, not a hand-typed expected value.
 2. **Both backends.** If a feature exists in the FFI package and the extension,
    the extension parity suite must cover it.
 3. **No PHP loops over elements.** Loops over data belong in `csrc/`.
@@ -58,11 +62,9 @@ the extension's copy. CI fails if they differ.
    `TSR_W*` wrap macros.
 7. **Errors are typed:** C returns a negative code; bindings map it to an
    exception with a message that names shapes, sizes or the offending index.
-8. **Documentation is part of the change.** Update the guide page and the API
-   docblock, regenerate the API reference
-   (`php -d ffi.enable=1 -d extension=tessero tools/gen-api-docs.php`), and add
-   a changelog entry under "Unreleased".
-9. **Architecture changes need an ADR** in `docs/architecture/adr/`.
+8. **Documentation is part of the change.** Guide page, API docblock,
+   regenerated API reference and a changelog entry under "Unreleased".
+9. **Architecture changes get an ADR** in `docs/architecture/adr/`.
 
 ## Style
 
@@ -73,16 +75,5 @@ the extension's copy. CI fails if they differ.
   `docs/project/upstream-bugs.md`.
 - C: C11, 4-space indent, `tsr_` prefix for public symbols, `static` for
   everything else, comments that explain *why*.
-- Commit messages: imperative subject ≤ 72 characters, body explaining
+- Commit messages: imperative subject of 72 characters or fewer, body explaining
   motivation.
-
-## Pull requests
-
-- One topic per pull request, with tests.
-- CI must be green. For numerical changes, say in the description which parity
-  cases cover the change.
-- Maintainers review within a week. Two approvals are needed for changes to
-  `csrc/` or `ext/`, one elsewhere (see `GOVERNANCE.md`).
-
-By contributing you agree that your contribution is licensed under the
-project's BSD-3-Clause licence and that you follow the Code of Conduct.

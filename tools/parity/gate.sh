@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The full gate of the parity program (prompts/numpy-scipy-parity-program.md section 8), adapted to the function
+# The full gate of the parity program, adapted to the function
 # registry (ADR 0011): the code generators are gen_registry.py and gen-facades.php.
 #
 #   bash tools/parity/gate.sh                    # everything

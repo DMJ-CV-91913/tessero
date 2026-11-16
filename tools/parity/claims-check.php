@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Audit coverage language (prompts/numpy-scipy-parity-program.md section 3.5).
+ * Audit coverage language (parity program rule: covered means verified).
  *
  *   php tools/parity/claims-check.php
  *

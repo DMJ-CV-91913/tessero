@@ -9,6 +9,11 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 
 ### Changed
 
+- **Single maintainer, closed contribution.** Tessero stays open source (BSD-3-Clause) but no longer accepts pull
+  requests or patches, and the public issue tracker is closed. Bugs go to support@tessero.org, vulnerabilities to
+  security@tessero.org. `CONTRIBUTING.md`, `GOVERNANCE.md`, `MAINTAINERS.md` (Douglas Johnson, sole maintainer)
+  and the roadmap are updated; the issue templates and local agent notes are removed from the repository.
+
 - **`minimize` with methods 'TNC' and 'Newton-CG' runs SciPy's algorithms** (approved by DJ, 15 Nov; their results
   change to SciPy's). 'TNC' is a port of the C code SciPy wraps (Nash's truncated Newton, scipy/optimize/tnc/tnc.c)
   with SciPy's defaults, return codes and messages, including the scaling to the bounds, the preconditioned CG
@@ -513,7 +518,7 @@ behaviour changes. The library and the PHP package check that their versions mat
   recorded in `csrc/repro/GOLDENS.md`, approved on two hosts.
 - Talario's GPU kernels mirror these definitions and match them bit for bit on twelve NVIDIA GPU models across four
   generations, Ampere to Blackwell (attested at 1024 x 1024 by Talario); other GPUs are not yet attested.
-- **NumPy/SciPy parity program** (`prompts/numpy-scipy-parity-program.md`, ADR 0011, ADR 0012). Coverage is
+- **NumPy/SciPy parity program** (ADR 0011, ADR 0012). Coverage is
   measured, not asserted. `tools/parity/census.py` lists every public symbol of NumPy 2.4.4 and SciPy 1.17.1,
   and `tools/parity/report.py` classifies each one from the code and the recorded fixture runs
   (`docs/project/numpy-scipy-coverage.md`).

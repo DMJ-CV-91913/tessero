@@ -20,7 +20,7 @@ this page makes a 1.0 credible without them.
 | Windows build of the extension and the kernel | The memory-map code (`csrc/src/mmap.c`) is written against the Win32 API (`CreateFileMapping`, `MapViewOfFile`, `Interlocked*`) but has never been compiled | a Windows runner (CI) | **open** |
 | Production pilot | Tests prove correctness, not fitness under real load | one real workload (for example an hourly × node price cube with memmap, an LP dispatch model) | **open** |
 | Independent review | One author so far | a reviewer for `csrc/` and `ext/` (C and Zend API experience); a security review before 1.0 | **open**, the main use of first sponsor funds |
-| Second maintainer | Single-maintainer numerics projects in PHP have not survived | recruitment through the launch posts | **open** |
+| Continuity | Single maintainer by design (closed contribution, see `GOVERNANCE.md`) | public source, build, tests, fixtures and release process, so anyone can build, verify and fork | **by design** |
 
 ## 2. Engineering to 1.0
 

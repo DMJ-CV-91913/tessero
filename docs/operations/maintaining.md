@@ -5,7 +5,7 @@ kernel, regenerating fixtures, running the gate, deploying to the reference host
 and publishing issues. It is distinct from the rest of the operations manual,
 which is for *users* running Tessero in their own applications (see
 [Deployment](deployment.md) and [Upgrading](upgrading.md)), and from the
-day-to-day numerical-parity rules in `prompts/numpy-scipy-parity-program.md`,
+day-to-day numerical-parity rules (the gate below),
 [CONTRIBUTING](https://github.com/DMJ-CV-91913/tessero/blob/main/CONTRIBUTING.md)
 and [RELEASING](https://github.com/DMJ-CV-91913/tessero/blob/main/RELEASING.md).
 
@@ -67,8 +67,8 @@ Avoid `git clean -fd` on the reference host — it would remove `.venv-parity` a
 
 ## The gate
 
-`tools/parity/gate.sh` is the full acceptance gate (prompts/numpy-scipy-parity-program.md
-section 8): generated-file checks, kernel build + tests + sanitizers, extension
+`tools/parity/gate.sh` is the full acceptance gate:
+generated-file checks, kernel build + tests + sanitizers, extension
 build + tests, NumPy/SciPy fixtures on **both** backends, PHPUnit suites, the
 runnable cookbook, fuzz + soak + benchmarks, and `mkdocs build --strict`.
 

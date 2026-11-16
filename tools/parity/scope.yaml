@@ -3,7 +3,7 @@
 #   implemented  a Tessero function provides it and a fixture test verifies it on the backend(s) listed:
 #                - registry functions: automatically, from spec/*.yaml `ref:` + the fixture results;
 #                - functions that predate the registry: the `legacy` map below (test suites named per entry).
-#   excluded     one of the fixed categories E1..E8 (prompts/numpy-scipy-parity-program.md section 3.3).
+#   excluded     one of the fixed categories E1..E8.
 #   planned      everything else, assigned to a phase by `phases` (module default) and `phase_names` (overrides).
 #
 # Aliases (two names for one object, e.g. numpy.acos / numpy.arccos) inherit the status of their canonical

@@ -45,7 +45,7 @@ NumPy/SciPy fixtures through both. See [Choosing a backend](getting-started/choo
 - **[Operations manual](operations/index.md)**: deployment (FPM, Octane, queues, Docker), configuration, memory and threads, monitoring, runbooks, security, upgrades.
 - **[Architecture](architecture/overview.md)**: how the kernel, the FFI binding and the extension fit together, numerical methods, testing strategy, and the decision records behind them.
 - **[Reference](reference/api/index.md)**: generated API pages for every public class, the C ABI, error codes, configuration keys.
-- **[Project](project/roadmap.md)**: roadmap, status against the original gap analysis, governance and how to contribute.
+- **[Project](project/roadmap.md)**: roadmap, status against the original gap analysis, governance and how to report bugs.
 
 </div>
 
