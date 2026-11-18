@@ -5,7 +5,7 @@ All notable changes are recorded here. The format follows
 [Semantic Versioning](https://semver.org) (breaking changes are allowed in 0.x
 minor releases and are always listed; see `docs/operations/upgrading.md`).
 
-## [Unreleased]
+## [0.4.0] - 2026-11-18
 
 ### Changed
 
@@ -183,15 +183,16 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   `allocCacheLimit()` / `allocCacheBytes()` and the same on `Tessero\Ext\Engine`, or `TESSERO_ALLOC_CACHE_BYTES`
   (`0` turns it off). Kept blocks are outside the memory budget. Results are unchanged. Off in the ownership-check and AddressSanitizer builds.
 - **`sort()` (C `tsr_sort`) is now the AVX2 quicksort of `sortSimd()` where the CPU has AVX2**, the radix sort
-  elsewhere. The result is unchanged (the sorts return the same bytes); the time is 2-25x lower below a few thousand
+  elsewhere. The result is unchanged (both sorts return the same sorted array); the time is 2-25x lower below a few thousand
   values and about 2x lower on 1M random values (one thread: 17 ms against NumPy's 14 ms, was 31 ms). `sortSimd()`
   stays as an explicit name. The radix sort stays tested on AVX2 machines through a test-only switch.
 
 ### Added
 
-- **`tools/parity/run-tests.php --hash=OUT.txt`**: one line per fixture call with a hash of the result's raw bytes
-  (arrays by dtype, shape and bytes, floats by their bits, exceptions by class and message), so two builds can be
-  compared byte for byte (`diff` the files). **`bench/tier1_bench.php` / `bench/tier1_bench.py`**: the element-wise
+- **`tools/parity/run-tests.php --hash=OUT.txt`**: one line per fixture call with a hash of its result
+  (arrays by dtype, shape and bytes, floats by their bits, exceptions by class and message), for regression checks:
+  run it before and after a change on the same machine and `diff` the files.
+  **`bench/tier1_bench.php` / `bench/tier1_bench.py`**: the element-wise
   tier of the speed sweep (every `scipy.special` function on the fixture rows tiled to 100,000 values), paired by
   `bench/sweep_report.py`.
 - **`SparseLinalg` solvers take sparse matrices** (`spsolve`, `eigsh`, `cg`, `bicgstab`, `bicg`, `cgs`, `minres`, `gmres`,
@@ -215,8 +216,8 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
 - **Two more sorts with the same result as `sort()`**: `NDArray::sortSimd()` (C `tsr_sort_simd`, an AVX2 quicksort:
   faster on random data, many duplicates and sorted input; the radix sort where AVX2 is missing) and
   `NDArray::sortRuns()` (C `tsr_sort_runs`, a natural merge sort: fastest on mostly sorted data, slowest on random
-  data), on both backends. All three sort the same order-preserving keys by comparison only, so their output is
-  byte-identical on every CPU, thread count and input alignment; `sort()` (radix) stays the default. When to use
+  data), on both backends. All three sort the same order-preserving keys by comparison only, so they return the same sorted
+  array as one another, at any thread count; `sort()` (radix) stays the default. When to use
   which, with measurements: `docs/project/benchmarks.md`.
 
 ### Performance
