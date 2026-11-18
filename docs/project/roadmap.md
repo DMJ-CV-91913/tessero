@@ -15,7 +15,7 @@ this page makes a 1.0 credible without them.
 
 | Item | Why | Needs | Status |
 |---|---|---|---|
-| Public repository with CI running | Everything is verified on one Linux x86-64 host with PHP 8.4 | a GitHub organisation; CI minutes (the free tier is enough) | **open** |
+| Public repository with CI running | Everything is verified on one Linux x86-64 host with PHP 8.4 | a GitHub organisation; CI minutes (the free tier is enough) | **done**: the repository is public and CI runs on every push (all 80 jobs green on 8136ec71) |
 | Packagist + PIE registration | `composer require` / `pie install` only work from registered packages | Packagist account; subtree splits for `tessero/laravel` and `tessero/tessero-ext` | **open** |
 | Windows build of the extension and the kernel | The memory-map code (`csrc/src/mmap.c`) is written against the Win32 API (`CreateFileMapping`, `MapViewOfFile`, `Interlocked*`) but has never been compiled | a Windows runner (CI) | **open** |
 | Production pilot | Tests prove correctness, not fitness under real load | one real workload (for example an hourly × node price cube with memmap, an LP dispatch model) | **open** |
