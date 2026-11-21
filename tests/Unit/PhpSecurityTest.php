@@ -8,14 +8,15 @@ use PHPUnit\Framework\TestCase;
 use Tessero\Native\Library;
 
 /**
- * The PHP security floor: 8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on each branch (owner decision 2026-10-24).
+ * The PHP security floor: 8.2.36, 8.3.37, 8.4.28, 8.5.13 or newer on each branch (owner decision 2026-10-24,
+ * raised 2026-11-21 for the 2026-11-19 security releases).
  * The FFI loader, the extension's MINIT check and the three composer.json constraints must agree.
  */
 final class PhpSecurityTest extends TestCase
 {
-    private const FLOOR = ['8.2' => 80235, '8.3' => 80336, '8.4' => 80427, '8.5' => 80512];
+    private const FLOOR = ['8.2' => 80236, '8.3' => 80337, '8.4' => 80428, '8.5' => 80513];
 
-    private const CONSTRAINT = '~8.2.35 || ~8.3.36 || ~8.4.27 || ~8.5.12';
+    private const CONSTRAINT = '~8.2.36 || ~8.3.37 || ~8.4.28 || ~8.5.13';
 
     public function testEachBranchStartsAtItsSecurityRelease(): void
     {
@@ -54,6 +55,6 @@ final class PhpSecurityTest extends TestCase
             $this->assertStringContainsString("v >= {$floor};", $c, "{$branch}: run-time floor");
         }
         $this->assertMatchesRegularExpression('/PHP_VERSION_ID >= 80600\b/', $c, '8.6 refused at compile time');
-        $this->assertStringContainsString('if (v < 80600) return v >= 80512;', $c, '8.5 is the last branch at run time');
+        $this->assertStringContainsString('if (v < 80600) return v >= 80513;', $c, '8.5 is the last branch at run time');
     }
 }

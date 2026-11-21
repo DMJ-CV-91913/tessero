@@ -422,22 +422,22 @@ static zend_result operand_do_operation(uint8_t opcode, zval *result, zval *op1,
 
 /* ================================================================ module */
 
-/* Security floor (owner decision 2026-10-24): only PHP releases that carry the 2026-10-21 security fixes, i.e.
-   8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on each branch, PHP 8.2 to 8.5 only (8.6 is a pre-release). Patch releases of a branch share the extension API, so
+/* Security floor (owner decision 2026-10-24, raised 2026-11-21): only PHP releases that carry the 2026-11-19 security
+   fixes, i.e. 8.2.36, 8.3.37, 8.4.28, 8.5.13 or newer on each branch, PHP 8.2 to 8.5 only (8.6 is a pre-release). Patch releases of a branch share the extension API, so
    a build against patched headers still loads into an older patch release: the running PHP is checked as well.
    Mirrors Tessero\Native\Library::phpPatched() and the composer.json "php" constraints. */
-#if PHP_VERSION_ID < 80235 || (PHP_VERSION_ID >= 80300 && PHP_VERSION_ID < 80336) \
-    || (PHP_VERSION_ID >= 80400 && PHP_VERSION_ID < 80427) || (PHP_VERSION_ID >= 80500 && PHP_VERSION_ID < 80512) \
+#if PHP_VERSION_ID < 80236 || (PHP_VERSION_ID >= 80300 && PHP_VERSION_ID < 80337) \
+    || (PHP_VERSION_ID >= 80400 && PHP_VERSION_ID < 80428) || (PHP_VERSION_ID >= 80500 && PHP_VERSION_ID < 80513) \
     || PHP_VERSION_ID >= 80600
-#  error "tessero requires a security-patched PHP 8.2-8.5: 8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on its branch (8.6 is a pre-release)"
+#  error "tessero requires a security-patched PHP 8.2-8.5: 8.2.36, 8.3.37, 8.4.28, 8.5.13 or newer on its branch (8.6 is a pre-release)"
 #endif
 static int tsr_php_patched(zend_long v)
 {
     if (v < 80200) return 0;
-    if (v < 80300) return v >= 80235;
-    if (v < 80400) return v >= 80336;
-    if (v < 80500) return v >= 80427;
-    if (v < 80600) return v >= 80512;
+    if (v < 80300) return v >= 80236;
+    if (v < 80400) return v >= 80337;
+    if (v < 80500) return v >= 80428;
+    if (v < 80600) return v >= 80513;
     return 0;                                   /* 8.6 and later: pre-release, not supported until stable and in CI */
 }
 static int tsr_disabled;   /* 1 when MINIT refused the running PHP: no classes registered */
@@ -451,8 +451,8 @@ PHP_MINIT_FUNCTION(tessero)
         zval *id = zend_get_constant_str("PHP_VERSION_ID", sizeof("PHP_VERSION_ID") - 1);
         if (id == NULL || Z_TYPE_P(id) != IS_LONG || !tsr_php_patched(Z_LVAL_P(id))) {
             zval *ver = zend_get_constant_str("PHP_VERSION", sizeof("PHP_VERSION") - 1);
-            zend_error(E_CORE_WARNING, "tessero: PHP %s is not a supported security-patched release (8.2.35, 8.3.36, 8.4.27 or "
-                       "8.5.12 or newer on its branch; 8.6 is a pre-release); the extension is disabled",
+            zend_error(E_CORE_WARNING, "tessero: PHP %s is not a supported security-patched release (8.2.36, 8.3.37, 8.4.28 or "
+                       "8.5.13 or newer on its branch; 8.6 is a pre-release); the extension is disabled",
                        ver != NULL && Z_TYPE_P(ver) == IS_STRING ? Z_STRVAL_P(ver) : "?");
             tsr_disabled = 1;
             return SUCCESS;

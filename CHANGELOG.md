@@ -5,6 +5,17 @@ All notable changes are recorded here. The format follows
 [Semantic Versioning](https://semver.org) (breaking changes are allowed in 0.x
 minor releases and are always listed; see `docs/operations/upgrading.md`).
 
+## [Unreleased]
+
+### Security
+
+- **PHP security floor raised to the 2026-11-19 security releases: 8.2.36, 8.3.37, 8.4.28, 8.5.13 or newer on each
+  branch** (was 8.2.35, 8.3.36, 8.4.27, 8.5.12; PHP 8.6 is still refused as a pre-release). Composer refuses older
+  releases (`composer.json`, `laravel/composer.json`, `ext/composer.json`), the FFI loader throws
+  `LibraryUnavailable`, and the extension fails to compile against older headers or disables itself at startup with
+  a warning. The reference Docker image moves to `php:8.4.28`, and CI's AddressSanitizer PHP builds to 8.4.28 and
+  8.2.36. Upgrade PHP before upgrading Tessero.
+
 ## [0.4.0] - 2026-11-18
 
 ### Changed

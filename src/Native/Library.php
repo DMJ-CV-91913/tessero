@@ -351,18 +351,18 @@ final class Library
     }
 
     /**
-     * Security floor (owner decision 2026-10-24): only PHP releases that carry the 2026-10-21 security fixes,
-     * 8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on each branch; PHP 8.2 to 8.5 only (8.6 is a pre-release). Mirrors the extension's MINIT check and the
+     * Security floor (owner decision 2026-10-24, raised 2026-11-21): only PHP releases that carry the 2026-11-19 security fixes,
+     * 8.2.36, 8.3.37, 8.4.28, 8.5.13 or newer on each branch; PHP 8.2 to 8.5 only (8.6 is a pre-release). Mirrors the extension's MINIT check and the
      * composer.json "php" constraints (tests/Unit/PhpSecurityTest.php keeps the three in step).
      */
     public static function phpPatched(int $versionId): bool
     {
         return match (true) {
             $versionId < 80200 => false,
-            $versionId < 80300 => $versionId >= 80235,
-            $versionId < 80400 => $versionId >= 80336,
-            $versionId < 80500 => $versionId >= 80427,
-            $versionId < 80600 => $versionId >= 80512,
+            $versionId < 80300 => $versionId >= 80236,
+            $versionId < 80400 => $versionId >= 80337,
+            $versionId < 80500 => $versionId >= 80428,
+            $versionId < 80600 => $versionId >= 80513,
             default => false,                           // 8.6 and later: pre-release, not supported yet
         };
     }
@@ -371,7 +371,7 @@ final class Library
     {
         if (! self::phpPatched(PHP_VERSION_ID)) {
             throw new LibraryUnavailable('PHP ' . PHP_VERSION . ' is not a supported security-patched release: Tessero needs '
-                . '8.2.35, 8.3.36, 8.4.27 or 8.5.12 or newer on its branch (8.6 is a pre-release).');
+                . '8.2.36, 8.3.37, 8.4.28 or 8.5.13 or newer on its branch (8.6 is a pre-release).');
         }
         if (! extension_loaded('ffi')) {
             throw new LibraryUnavailable('ext-ffi is not loaded.');

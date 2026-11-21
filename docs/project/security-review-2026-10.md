@@ -65,18 +65,19 @@ timeout found after #55; batch D fixes them (PR #57).
 
 ## PHP security floor (2026-10-24)
 
-Owner decision: Tessero supports PHP 8.2 and newer, but only releases that carry the 2026-10-21 security fixes:
-8.2.35, 8.3.36, 8.4.27, 8.5.12 or newer on each branch. Enforced in three layers, kept in step by
+Owner decision: Tessero supports PHP 8.2 and newer, but only security-patched releases. The floor was first set
+for the 2026-10-21 security fixes (8.2.35, 8.3.36, 8.4.27, 8.5.12) and raised on 2026-11-21 for the 2026-11-19
+security releases: 8.2.36, 8.3.37, 8.4.28, 8.5.13 or newer on each branch. Enforced in three layers, kept in step by
 `tests/Unit/PhpSecurityTest.php`:
 
-- install: the `php` constraint `~8.2.35 || ~8.3.36 || ~8.4.27 || ^8.5.12` in `composer.json`,
+- install: the `php` constraint `~8.2.36 || ~8.3.37 || ~8.4.28 || ~8.5.13` in `composer.json`,
   `laravel/composer.json` and `ext/composer.json` (PIE);
 - FFI: `Tessero\Native\Library::phpPatched()` runs before the library loads (`LibraryUnavailable` otherwise);
 - extension: a compile-time `#error` against unpatched headers, and a MINIT check of the running PHP (patch
   releases of a branch share the extension API). On an unpatched PHP the extension logs an `E_CORE_WARNING` and
   registers no classes instead of failing MINIT, which would be a fatal startup error for the whole SAPI.
 
-The reference Docker image pins `php:8.4.27` by digest.
+The reference Docker image pins `php:8.4.28` by digest.
 
 Supported range: PHP 8.2 to 8.5 only. PHP 8.6 is a pre-release and is refused like an unpatched build (Composer
 constraint tops out below 8.6, and both run-time checks say so); a new minor is added once it is stable and CI covers

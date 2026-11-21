@@ -697,7 +697,7 @@ Acceptance criteria:
 
 **Retire PHP 8.2 and 8.3 support** (P2; tooling, tech-debt)
 
-Owner decision 2026-10-24: support for PHP 8.2 and 8.3 is to be rolled off as future technical debt (not urgent). Today every branch from 8.2 is supported at its security-patched release (8.2.35, 8.3.36, 8.4.27, 8.5.12). Upstream security support ends for 8.2 on 2026-12-31 and for 8.3 on 2027-12-31.
+Owner decision 2026-10-24: support for PHP 8.2 and 8.3 is to be rolled off as future technical debt (not urgent). Today every branch from 8.2 is supported at its security-patched release (8.2.36, 8.3.37, 8.4.28, 8.5.13 since 2026-11-21). Upstream security support ends for 8.2 on 2026-12-31 and for 8.3 on 2027-12-31.
 
 Acceptance criteria:
 

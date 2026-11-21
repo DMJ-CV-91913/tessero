@@ -30,7 +30,7 @@ concurrency:
 # built for the ASan job), fuzzing uses fixed seeds where the harness takes one, and no step retries on failure.
 
 # setup-php reuses a PHP preinstalled on the runner image unless told to update it: without this the Windows
-# images kept PHP 8.5.11, below the security floor (8.2.35, 8.3.36, 8.4.27, 8.5.12; docs/project/security-review-2026-10.md)
+# images kept PHP 8.5.11, below the security floor (now 8.2.36, 8.3.37, 8.4.28, 8.5.13; docs/project/security-review-2026-10.md)
 env:
   update: true
 
@@ -415,8 +415,8 @@ jobs:
       fail-fast: false
       matrix:
         include:   # sha256 of the php.net tarball, from https://www.php.net/releases/index.php?json&version=X
-          - { php: '8.4.27', sha256: 'dcf93923b0e38e0d5252b25b796520b5a47761a08b3488b6d0b5d1115764d3f0' }
-          - { php: '8.2.35', sha256: '5737b98601fe5ab1b8c5db0c82ed3158acb9283ed3081ffe2faffb9ac81455e6' }
+          - { php: '8.4.28', sha256: '0c8ec360e5dd8154f270b2fd50cd44ecc824e6ee39c85f911312b80d4daecd72' }
+          - { php: '8.2.36', sha256: 'df50a00d2b453096608bf2bd98a9fab9a3df8678a77b93011b65c3cfe9a018fa' }
     env:
       PHP_ASAN_VERSION: ${{ matrix.php }}
       PHP_ASAN_SHA256: ${{ matrix.sha256 }}
