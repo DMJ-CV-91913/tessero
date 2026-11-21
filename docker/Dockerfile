@@ -10,7 +10,7 @@
 # To move to another PHP version, change both tags and their digests together.
 
 # ---------------------------------------------------------------- build stage
-FROM php:8.4.28-cli-bookworm@sha256:85da896b3eeb8bcd83fe612e51a529b7d5983a1fab92ef5f63c7ac6e2842fc46 AS build
+FROM php:8.6.0RC7-cli-bookworm@sha256:e1c663265e9754cb13ff34bd1c99feb6db58399be94c62f7f93a04cb3196fc83 AS build
 RUN apt-get update \
  && apt-get install -y --no-install-recommends $PHPIZE_DEPS libffi-dev liblapacke-dev libopenblas-dev \
  && rm -rf /var/lib/apt/lists/*
@@ -24,7 +24,7 @@ RUN cd /src/ext && phpize && ./configure --enable-tessero && make -j"$(nproc)" \
  && make install
 
 # ---------------------------------------------------------------- runtime stage
-FROM php:8.4.28-fpm-bookworm@sha256:e4b1eec29a5be22428aa93fb43da75a0e39006e403da0c3e93631dde92f067df
+FROM php:8.6.0RC7-fpm-bookworm@sha256:f15912faf70120610219ac9f95de666e0cd8a215812778ee37885a049eeed46b
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libgomp1 libopenblas0-pthread liblapacke libffi-dev \
  && docker-php-ext-install ffi opcache \
