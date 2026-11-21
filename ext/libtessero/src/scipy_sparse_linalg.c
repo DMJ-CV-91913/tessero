@@ -184,7 +184,10 @@ static int r_matrix_power(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("matrix_power: A must be square"); return TSR_EARG; }
     if (nargs < 2) { fn_set_error("matrix_power: power is required"); return TSR_EARG; }
-    int64_t p = (args[1].flags & 1) ? args[1].ival : (int64_t)args[1].num;
+    /* the power as an int64 without undefined behaviour, and its magnitude as unsigned: -p overflowed for
+       p = INT64_MIN (fuzz finding G-U3), and the old (int64_t) cast of a float outside int64 was undefined too */
+    int64_t p; const int prc = fn_arg_i64(&args[1], 0, INT64_MIN, INT64_MAX, "power", &p); if (prc != TSR_OK) return prc;
+    uint64_t up = p < 0 ? (uint64_t)0 - (uint64_t)p : (uint64_t)p;
     int64_t n = args[0].arr.shape[0], L; double *A = fn_arg_doubles(&args[0], &L);
     if (!A) return TSR_ENOMEM;
     int64_t sh[2] = {n, n};
@@ -203,16 +206,16 @@ static int r_matrix_power(const void *ctx, const tsr_arg *args, int nargs, tsr_r
                 for (int64_t i = 0; i < n * n; i++) base[i] = 0.0;
                 for (int64_t i = 0; i < n; i++) base[i * n + i] = 1.0;
                 if (sl_dense_solve(M, base, n, n) != 0) { fn_set_error("matrix_power: matrix is singular"); rc = TSR_EARG; }
-                free(M); p = -p;
+                free(M);
             }
         }
         if (rc == TSR_OK) {
             for (int64_t i = 0; i < n * n; i++) out[i] = 0.0;             /* out <- identity */
             for (int64_t i = 0; i < n; i++) out[i * n + i] = 1.0;
-            while (p > 0) {
-                if (p & 1) { spl_mm(tmp, out, base, n); memcpy(out, tmp, (size_t)(n * n) * sizeof(double)); }
-                p >>= 1;
-                if (p > 0) { spl_mm(tmp, base, base, n); memcpy(base, tmp, (size_t)(n * n) * sizeof(double)); }
+            while (up > 0) {
+                if (up & 1) { spl_mm(tmp, out, base, n); memcpy(out, tmp, (size_t)(n * n) * sizeof(double)); }
+                up >>= 1;
+                if (up > 0) { spl_mm(tmp, base, base, n); memcpy(base, tmp, (size_t)(n * n) * sizeof(double)); }
             }
         }
     }

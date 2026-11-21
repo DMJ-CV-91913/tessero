@@ -16,6 +16,17 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   a warning. The reference Docker image moves to `php:8.4.28`, and CI's AddressSanitizer PHP builds to 8.4.28 and
   8.2.36. Upgrade PHP before upgrading Tessero.
 
+### Fixed
+
+- **Integer edge cases found by fuzzing** (undefined behaviour in C, no change for ordinary inputs):
+  `linalg.trace` and `linalg.diagonal` with an offset outside the int range now give the empty diagonal, as NumPy
+  does (the offset was cast to int and negated); `linalg.tensorinv` checks `ind` the same way; both
+  `matrix_power` routines accept any int64 power, the most negative included (`-p` overflowed); and a NaN,
+  infinite or out-of-range float for any of these is refused instead of being cast. The complex Bessel and
+  Hankel functions (`h1vp`, `h2vp` and the paths through the vendored AMOS code) no longer cast an order past
+  INT_MAX to int; the result is the one SciPy's x86-64 builds give, so values are unchanged. Reproducers are in
+  the fuzz corpus and the CI fuzz job replays them.
+
 ## [0.4.0] - 2026-11-18
 
 ### Changed

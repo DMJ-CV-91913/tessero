@@ -137,6 +137,13 @@ namespace amos {
         std::complex<double>, double, int, int, std::complex<double> *, std::complex<double> *, double, double, double
     );
 
+    /* Tessero local modification (fuzz finding G-U4): besh and besj bound the order by 0.5/tol and d1mach[1]
+       where AMOS's ZBESH/ZBESJ also bound it by I1MACH(9), the largest int, so an order past INT_MAX (e.g.
+       hankel2(4e9, z)) reached the (int) casts of the order below: undefined behaviour in SciPy. tsr_x86_int makes
+       them defined with the value SciPy's x86-64 builds compute (cvttsd2si's INT_MIN for NaN and out-of-range
+       doubles), so results are unchanged; it is specfun.h's helper of the same name. */
+    inline int tsr_x86_int(double v) { return (v == v && v > -2147483649.0 && v < 2147483648.0) ? (int)v : (-2147483647 - 1); }
+
     constexpr double d1mach[5] = {
         2.2250738585072014e-308, /* np.finfo(np.float64).tiny      */
         1.7976931348623157e+308, /* np.finfo(np.float64).max       */
@@ -475,7 +482,7 @@ namespace amos {
         // CALCULATE CSPN=EXP(FNU*PI*I) TO MINIMIZE LOSSES OF SIGNIFICANCE
         // WHEN FNU IS LARGE
         //
-        inu = (int)fnu;
+        inu = tsr_x86_int(fnu);
         arg = (fnu - inu) * sgn;
         cpn = cos(arg);
         spn = sin(arg);
@@ -542,7 +549,7 @@ namespace amos {
                     yy = -std::imag(zn);
                     csgn *= std::complex<double>(cos(yy), sin(yy));
                 }
-                inu = (int)fnu;
+                inu = tsr_x86_int(fnu);
                 arg = (fnu - inu) * sgn;
                 cspn = std::complex<double>(cos(arg), sin(arg));
                 if (inu % 2 == 1) {
@@ -1071,7 +1078,7 @@ namespace amos {
             yy = std::imag(z);
             p1 = 0.;
             if (yy != 0.) {
-                inu = (int)fnu;
+                inu = tsr_x86_int(fnu);
                 arg = (fnu - inu) * pi;
                 inu += n - il;
                 ak = -sin(arg);
@@ -1498,7 +1505,7 @@ namespace amos {
         // CALCULATE EXP(FNU*HPI*I) TO MINIMIZE LOSSES OF SIGNIFICANCE
         // WHEN FNU IS LARGE
         //
-        inu = (int)fnu;
+        inu = tsr_x86_int(fnu);
         inuh = inu / 2;
         ir = inu - 2 * inuh;
         arg = (fnu - (inu - ir)) * sgn;
@@ -1751,7 +1758,7 @@ namespace amos {
             // CALCULATE CSGN=EXP(FNU*PI*I) TO MINIMIZE LOSSES OF SIGNIFICANCE
             // WHEN FNU IS LARGE
             //
-            inu = (int)fnu;
+            inu = tsr_x86_int(fnu);
             arg = (fnu - inu) * pi;
             if (yy < 0.0) {
                 arg = -arg;
@@ -2009,7 +2016,7 @@ namespace amos {
         // WHEN FNU IS LARGE
         //
         ci.imag(1);
-        inu = (int)fnu;
+        inu = tsr_x86_int(fnu);
         inuh = inu / 2;
         ir = inu - 2 * inuh;
         arg = (fnu - (inu - ir)) * hpi;
@@ -2742,7 +2749,7 @@ namespace amos {
             //
             // INCREMENT FNU+NN-1 UP TO FNUL, COMPUTE AND RECUR BACKWARD
             //
-            nui = (int)(fnul - dfnu) + 1;
+            nui = tsr_x86_int(fnul - dfnu) + 1;
             nui = (nui > 0 ? nui : 0);
             nw = buni(z, fnu, kode, nn, cy, nui, &nlast, fnul, tol, elim, alim);
             if (nw < 0) {
@@ -3185,7 +3192,7 @@ namespace amos {
         iflag = 0;
         koded = kode;
         rz = 2. / z;
-        inu = (int)(fnu + 0.5);
+        inu = tsr_x86_int(fnu + 0.5);
         dnu = fnu - inu;
         // Definitions for silencing initialization warnings.
         s1 = 0.0;
@@ -3948,8 +3955,8 @@ namespace amos {
         nz = 0;
         az = std::abs(z);
         x = std::real(z);
-        iaz = (int)az;
-        ifnu = (int)fnu;
+        iaz = tsr_x86_int(az);
+        ifnu = tsr_x86_int(fnu);
         inu = ifnu + n - 1;
         at = iaz + 1;
         ck = at / z;
@@ -4227,7 +4234,7 @@ namespace amos {
         int i, id, idnu, inu, itime, k, kk, magz;
 
         az = std::abs(z);
-        inu = (int)fnu;
+        inu = tsr_x86_int(fnu);
         idnu = inu + n - 1;
         fdnu = idnu;
         magz = az;
@@ -5161,7 +5168,7 @@ namespace amos {
         zn = -z * ci;
         zb = z;
         cid = -ci;
-        inu = (int)fnu;
+        inu = tsr_x86_int(fnu);
         ang = hpi * (fnu - inu);
         c2 = std::complex<double>(cos(ang), sin(ang));
         zar = c2;
@@ -5671,7 +5678,7 @@ namespace amos {
         // CSPN AND CSGN ARE COEFF OF K AND I FUNCIONS RESP.
         //
         csgn = std::complex<double>(0.0, sgn);
-        inu = (int)fnu;
+        inu = tsr_x86_int(fnu);
         fnf = fnu - inu;
         ifn = inu + n - 1;
         ang = fnf * sgn;
@@ -5897,7 +5904,7 @@ namespace amos {
         yy = std::imag(zr);
         zn = -zr * std::complex<double>(0, 1);
         zb = zr;
-        inu = (int)fnu;
+        inu = tsr_x86_int(fnu);
         fnf = fnu - inu;
         ang = -hpi * fnf;
         car = cos(ang);

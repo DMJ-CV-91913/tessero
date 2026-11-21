@@ -1179,7 +1179,10 @@ static int r_matrix_power(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     if (args[0].kind != 3 || args[0].arr.ndim != 2 || args[0].arr.shape[0] != args[0].arr.shape[1]) { fn_set_error("matrix_power: input must be a square 2-D array"); return TSR_EARG; }
     if (nargs < 2 || args[1].kind != 1) { fn_set_error("matrix_power: n must be an integer"); return TSR_EARG; }
     const int64_t m = args[0].arr.shape[0];
-    long long nexp = (long long) args[1].num;
+    /* n as an int64 without undefined behaviour (the old (long long) cast of the float form was undefined outside
+       int64, and -n overflowed at INT64_MIN: fuzz finding G-U3); its magnitude is taken as unsigned below */
+    int64_t n; const int nrc = fn_arg_i64(&args[1], 0, INT64_MIN, INT64_MAX, "n", &n); if (nrc != TSR_OK) return nrc;
+    uint64_t nexp = n < 0 ? (uint64_t)0 - (uint64_t)n : (uint64_t)n;
     int64_t na; double *a = mat_f64(&args[0], "a", &na); if (!a) return TSR_ENOMEM;
     int64_t sh[2] = {m, m};
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 2, sh);
@@ -1190,14 +1193,13 @@ static int r_matrix_power(const void *ctx, const tsr_arg *args, int nargs, tsr_r
     memcpy(base, a, (size_t)(m * m) * sizeof(double));
     fn_free_doubles(a, na);
     int rc = TSR_OK;
-    if (nexp < 0) {                                          /* invert the base */
+    if (n < 0) {                                             /* invert the base */
         lapack_int *ipiv = (lapack_int *)malloc(sizeof(lapack_int) * (size_t)(m > 0 ? m : 1));
         if (!ipiv) { free(base); return TSR_ENOMEM; }
         lapack_int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, (lapack_int)m, (lapack_int)m, base, (lapack_int)m, ipiv);
         if (info == 0) info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, (lapack_int)m, base, (lapack_int)m, ipiv);
         free(ipiv);
         if (info != 0) { free(base); fn_set_error("matrix_power: singular matrix cannot be raised to a negative power"); return TSR_EARG; }
-        nexp = -nexp;
     }
     double *z = (double *)malloc((size_t)(m * m) * sizeof(double));     /* running square */
     double *result = (double *)malloc((size_t)(m * m) * sizeof(double));
@@ -1275,7 +1277,8 @@ static int r_tensorinv(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     (void)ctx; (void)nres;
     if (args[0].kind != 3) { fn_set_error("tensorinv: a must be an array"); return TSR_EARG; }
     const tsr_array *A = &args[0].arr;
-    int ind = (nargs > 1 && args[1].kind == 1) ? (int) args[1].num : 2;
+    int64_t ind = 2;
+    if (nargs > 1 && args[1].kind == 1) { const int rc = fn_arg_i64(&args[1], 0, INT64_MIN, INT64_MAX, "ind", &ind); if (rc != TSR_OK) return rc; }
     if (ind < 1 || ind >= A->ndim) { fn_set_error("tensorinv: invalid ind"); return TSR_EARG; }
     int64_t N = 1; for (int d = 0; d < ind; d++) N *= A->shape[d];
     int64_t rest = 1; for (int d = ind; d < A->ndim; d++) rest *= A->shape[d];
@@ -1298,16 +1301,28 @@ static int r_tensorinv(const void *ctx, const tsr_arg *args, int nargs, tsr_resu
     return rc;
 }
 
+/* The diagonal offset of trace/diagonal as an int64 without undefined behaviour, and the first row of that diagonal
+   in an M x N matrix (M when the diagonal is empty). The old (int) cast and -off overflowed for offsets outside int
+   (fuzz finding G-U2: -2147483648); any |offset| past the matrix gives the empty diagonal, as in NumPy. */
+static int la_diag_offset(const tsr_arg *args, int nargs, int64_t M, int64_t N, int64_t *off, int64_t *r0)
+{
+    *off = 0;
+    if (nargs > 1 && args[1].kind == 1) { const int rc = fn_arg_i64(&args[1], 0, INT64_MIN, INT64_MAX, "offset", off); if (rc != TSR_OK) return rc; }
+    if (*off >= N || *off <= -M) *r0 = M;          /* empty: also keeps r + off and -off inside int64 */
+    else *r0 = *off < 0 ? -*off : 0;
+    return TSR_OK;
+}
+
 /* linalg.trace(x, offset=0): sum of the (offset) diagonal of a 2-D matrix (numpy.linalg.trace; Array-API). */
 static int r_la_trace(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("trace: input must be a 2-D array"); return TSR_EARG; }
-    const int off = (nargs > 1 && args[1].kind == 1) ? (int) args[1].num : 0;
     const int64_t M = args[0].arr.shape[0], N = args[0].arr.shape[1];
+    int64_t off, r0; const int orc = la_diag_offset(args, nargs, M, N, &off, &r0); if (orc != TSR_OK) return orc;
     int64_t na; double *a = mat_f64(&args[0], "x", &na); if (!a) return TSR_ENOMEM;
     double s = 0.0;
-    for (int64_t r = (off < 0 ? -off : 0); r < M; r++) { const int64_t c = r + off; if (c >= 0 && c < N) s += a[r * N + c]; }
+    for (int64_t r = r0; r < M; r++) { const int64_t c = r + off; if (c >= 0 && c < N) s += a[r * N + c]; }
     fn_free_doubles(a, na);
     fn_result_num(res, s);
     return TSR_OK;
@@ -1318,16 +1333,16 @@ static int r_la_diagonal(const void *ctx, const tsr_arg *args, int nargs, tsr_re
 {
     (void)ctx; (void)nres;
     if (args[0].kind != 3 || args[0].arr.ndim != 2) { fn_set_error("diagonal: input must be a 2-D array"); return TSR_EARG; }
-    const int off = (nargs > 1 && args[1].kind == 1) ? (int) args[1].num : 0;
     const int64_t M = args[0].arr.shape[0], N = args[0].arr.shape[1];
+    int64_t off, r0; const int orc = la_diag_offset(args, nargs, M, N, &off, &r0); if (orc != TSR_OK) return orc;
     int64_t na; double *a = mat_f64(&args[0], "x", &na); if (!a) return TSR_ENOMEM;
     int64_t len = 0;
-    for (int64_t r = (off < 0 ? -off : 0); r < M; r++) { const int64_t c = r + off; if (c >= 0 && c < N) len++; }
+    for (int64_t r = r0; r < M; r++) { const int64_t c = r + off; if (c >= 0 && c < N) len++; }
     int64_t sh[1] = {len};
     double *out = (double *)fn_result_array(&res[0], TSR_F64, 1, sh);
     if (!out) { fn_free_doubles(a, na); return TSR_ENOMEM; }
     int64_t k = 0;
-    for (int64_t r = (off < 0 ? -off : 0); r < M; r++) { const int64_t c = r + off; if (c >= 0 && c < N) out[k++] = a[r * N + c]; }
+    for (int64_t r = r0; r < M; r++) { const int64_t c = r + off; if (c >= 0 && c < N) out[k++] = a[r * N + c]; }
     fn_free_doubles(a, na);
     return TSR_OK;
 }

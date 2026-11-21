@@ -2982,6 +2982,50 @@ static void test_bessel_airy_zeros(void)
     fa_free(r, 1);
 }
 
+/* fuzz findings G-U2 / G-U3 (csrc/fuzz/README.md): a diagonal offset or a matrix power at the edge of the integer
+   range was negated in int / int64 (undefined), and a float outside int64 was cast to it. Run under UBSan in
+   `make sanitize`; the results are NumPy's / SciPy's. */
+static void test_int_edge_offsets_powers(void)
+{
+    double m22[4] = {1, 2, 3, 4}, one[1] = {1.0}, two[1] = {2.0};
+    const int64_t s22[2] = {2, 2}, s11[2] = {1, 1};
+    tsr_result r[1];
+    int rc;
+    tsr_arg t1[2] = {arg_arr(m22, 2, s22), arg_int(1)}, tm1[2] = {arg_arr(m22, 2, s22), arg_int(-1)};
+    rc = fa_call("linalg.trace", 2, t1, r, 1); CHECK(rc == 0 && fa_num(&r[0]) == 2.0, "trace(offset=1) == 2 (rc %d)", rc); fa_free(r, 1);
+    rc = fa_call("linalg.trace", 2, tm1, r, 1); CHECK(rc == 0 && fa_num(&r[0]) == 3.0, "trace(offset=-1) == 3 (rc %d)", rc); fa_free(r, 1);
+    const int64_t edges[4] = {INT32_MIN, INT64_MIN, INT64_MAX, (int64_t)INT32_MAX + 1};
+    for (int i = 0; i < 4; i++) {
+        tsr_arg te[2] = {arg_arr(m22, 2, s22), arg_int(edges[i])};
+        rc = fa_call("linalg.trace", 2, te, r, 1);
+        CHECK(rc == 0 && fa_num(&r[0]) == 0.0, "trace(offset=%lld) == 0, the empty diagonal (rc %d)", (long long)edges[i], rc);
+        fa_free(r, 1);
+        rc = fa_call("linalg.diagonal", 2, te, r, 1);
+        CHECK(rc == 0 && r[0].kind == 3 && r[0].arr.shape[0] == 0, "diagonal(offset=%lld) is empty (rc %d)", (long long)edges[i], rc);
+        fa_free(r, 1);
+    }
+    tsr_arg tf[2] = {arg_arr(m22, 2, s22), arg_num(-1e300)}, tn[2] = {arg_arr(m22, 2, s22), arg_num(NAN)};
+    rc = fa_call("linalg.trace", 2, tf, r, 1); CHECK(rc == TSR_EARG, "trace(offset=-1e300) refused (rc %d)", rc); fa_free(r, 1);
+    rc = fa_call("linalg.diagonal", 2, tn, r, 1); CHECK(rc == TSR_EARG, "diagonal(offset=nan) refused (rc %d)", rc); fa_free(r, 1);
+    /* the identity to any power, the most negative included, is itself: 64 squarings, no -n overflow */
+    const char *mp[2] = {"linalg.matrix_power", "splinalg.matrix_power"};
+    for (int k = 0; k < 2; k++) {
+        tsr_arg pmin[2] = {arg_arr(one, 2, s11), arg_int(INT64_MIN)}, pinv[2] = {arg_arr(two, 2, s11), arg_int(-1)},
+                pbig[2] = {arg_arr(two, 2, s11), arg_num(1e300)};
+        rc = fa_call(mp[k], 2, pmin, r, 1);
+        CHECK(rc == 0 && fa_num(&r[0]) == 1.0, "%s([[1]], INT64_MIN) == [[1]] (rc %d)", mp[k], rc); fa_free(r, 1);
+        rc = fa_call(mp[k], 2, pinv, r, 1);
+        CHECK(rc == 0 && fa_num(&r[0]) == 0.5, "%s([[2]], -1) == [[0.5]] (rc %d)", mp[k], rc); fa_free(r, 1);
+        rc = fa_call(mp[k], 2, pbig, r, 1);
+        CHECK(rc == TSR_EARG, "%s(power=1e300) refused, not cast (rc %d)", mp[k], rc); fa_free(r, 1);
+    }
+    double t4[16] = {0};
+    for (int i = 0; i < 4; i++) t4[i * 5] = 1.0;                            /* a (2,2,2,2) identity tensor */
+    const int64_t s2222[4] = {2, 2, 2, 2};
+    tsr_arg ti[2] = {arg_arr(t4, 4, s2222), arg_num(1e300)};
+    rc = fa_call("linalg.tensorinv", 2, ti, r, 1); CHECK(rc == TSR_EARG, "tensorinv(ind=1e300) refused, not cast (rc %d)", rc); fa_free(r, 1);
+}
+
 /* linalg.lmdif driven to the end on a model and data built from + - * / alone (each product kept apart from its sum
    through a volatile, so no target fuses it): SciPy 1.17.1's curve_fit to the last bit. A state lmdif did not
    write is refused, not read. */
@@ -4581,6 +4625,7 @@ int main(void)
     test_fftconvolve_fft();
     test_kelvin_zeros();
     test_bessel_airy_zeros();
+    test_int_edge_offsets_powers();
     test_lmdif();
     test_linalg_typed();
     test_op_names();

@@ -83,6 +83,16 @@ takes the standalone driver's files too).
 |----|-----------|-----|-----|
 | G-U1 | `special.jn_zeros`, `jnp_zeros`, `yn_zeros`, `ynp_zeros`, `jnyn_zeros` (`jyzo` -> `jyndd` -> `jynbh`) | `k * k` (jynbh) and `n * n` (jyndd) in `int` overflowed past 46340, so orders above about 46000 (UBSan at specfun.h:3492, k = 1426355) | `tsr_wrap_mul`: the wrapped product SciPy's x86-64 builds compute: defined, results unchanged |
 
+CI libFuzzer `routines`, 18 Nov 2026 (main and the v0.4.0 tag, 60 s per target). Regression check in
+`tests/test_main.c` (`test_int_edge_offsets_powers`); reproducers `fuzz/corpus/routines/regress_G_U2_*` and
+`regress_G_U3_*` (the CI crash inputs).
+
+| id | routine(s) | was | now |
+|----|-----------|-----|-----|
+| G-U2 | `linalg.trace`, `linalg.diagonal` (offset); `linalg.tensorinv` (ind) | the number was cast to `int` (undefined outside int) and the offset negated: UBSan at `np_linalg.c:1310`, offset = -2147483648 | `fn_arg_i64`; an offset past the matrix on either side is the empty diagonal, as in NumPy; NaN, infinite or out-of-int64 numbers are refused |
+| G-U3 | `splinalg.matrix_power`, `linalg.matrix_power` (power) | `p = -p` overflowed at INT64_MIN (UBSan at `scipy_sparse_linalg.c:206`), and a float power outside int64 was cast to it | `fn_arg_i64`, and the magnitude taken as unsigned: any int64 power works (64 squarings at most); NaN, infinite or out-of-int64 floats are refused |
+| G-U4 | `special.h1vp`, `h2vp` and every complex Bessel/Hankel order path through vendored `xsf/amos/amos.h` | xsf's `besh` and `besj` bound the order by `d1mach[1]` where AMOS bounds it by `I1MACH(9)`, so an order past INT_MAX reached `(int)fnu` (float-cast-overflow at `amos.h:5900`, order 4e9; reported by the standalone driver, whose sanitizer set includes float-cast-overflow) | `tsr_x86_int` at the 14 order casts: the value SciPy's x86-64 builds compute (INT_MIN), so defined and unchanged; reproducer `regress_G_U4_*` |
+
 PR #57 CI follow-up (`np_shape.c`, `np_linalg.c`, `cxx/special_complex.inc`). Regression checks in `tests/test_main.c`;
 reproducers `fuzz/corpus/routines/regress_*` (default table, CI seed 1).
 
