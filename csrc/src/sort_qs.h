@@ -166,8 +166,15 @@ static void QS_FN(qs_sort)(QS_T *a, int64_t n, int threads)
             const unsigned int own = _mm_getcsr();
             _mm_setcsr(csr);
 #pragma omp single
-            QS_FN(qs_rec_par)(a, n, depth, cutoff);
-            _mm_setcsr(own);                                   /* after the single's barrier: every task has run */
+            {
+                QS_FN(qs_rec_par)(a, n, depth, cutoff);
+                /* the barrier that ends the single does not join the tasks generated inside it, and neither does
+                   the one that ends the parallel region: without this join a worker could still be running after
+                   this thread restored its FP control word below, or after qs_sort returned and the caller freed
+                   and reused the array (thread sanitizer, nightly) */
+#pragma omp taskwait
+            }
+            _mm_setcsr(own);                                   /* after the taskwait: every task has run */
         }
         return;
     }
