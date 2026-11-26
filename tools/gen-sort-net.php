@@ -37,44 +37,47 @@ function net(int $w, int $R, string $kind): string
     for ($j = 0; $j < $R; $j++) {
         $o[] = "    __m256i r$j = _mm256_load_si256((const __m256i *)(buf + " . ($j * $L) . '));';
     }
+    $net = [];
     for ($s = 2; $s <= $N; $s *= 2) {
-        stage($o, $w, $R, $L, $s - 1, intdiv($s, 2), $kind);         // flip
+        stage($net, $w, $R, $L, $s - 1, intdiv($s, 2), $kind);       // flip
         for ($d = intdiv($s, 4); $d >= 1; $d = intdiv($d, 2)) {
-            stage($o, $w, $R, $L, $d, $d, $kind);                      // half-cleaners
+            stage($net, $w, $R, $L, $d, $d, $kind);                    // half-cleaners
         }
     }
     // slot i = lane * R + reg: lane l of registers g .. g+B-1 is the run buf[l * R + g ..]
     if ($w === 64) {
         for ($g = 0; $g < $R; $g += 4) {
             [$a, $b, $c, $d] = ["r$g", 'r' . ($g + 1), 'r' . ($g + 2), 'r' . ($g + 3)];
-            $o[] = '    {';
-            $o[] = "        const __m256i t0 = _mm256_unpacklo_epi64($a, $b), t1 = _mm256_unpackhi_epi64($a, $b);";
-            $o[] = "        const __m256i t2 = _mm256_unpacklo_epi64($c, $d), t3 = _mm256_unpackhi_epi64($c, $d);";
-            $o[] = "        _mm256_store_si256((__m256i *)(buf + " . (0 * $R + $g) . '), _mm256_permute2x128_si256(t0, t2, 0x20));';
-            $o[] = "        _mm256_store_si256((__m256i *)(buf + " . (1 * $R + $g) . '), _mm256_permute2x128_si256(t1, t3, 0x20));';
-            $o[] = "        _mm256_store_si256((__m256i *)(buf + " . (2 * $R + $g) . '), _mm256_permute2x128_si256(t0, t2, 0x31));';
-            $o[] = "        _mm256_store_si256((__m256i *)(buf + " . (3 * $R + $g) . '), _mm256_permute2x128_si256(t1, t3, 0x31));';
-            $o[] = '    }';
+            $net[] = '    {';
+            $net[] = "        t0 = _mm256_unpacklo_epi64($a, $b), t1 = _mm256_unpackhi_epi64($a, $b);";
+            $net[] = "        t2 = _mm256_unpacklo_epi64($c, $d), t3 = _mm256_unpackhi_epi64($c, $d);";
+            $net[] = "        _mm256_store_si256((__m256i *)(buf + " . (0 * $R + $g) . '), _mm256_permute2x128_si256(t0, t2, 0x20));';
+            $net[] = "        _mm256_store_si256((__m256i *)(buf + " . (1 * $R + $g) . '), _mm256_permute2x128_si256(t1, t3, 0x20));';
+            $net[] = "        _mm256_store_si256((__m256i *)(buf + " . (2 * $R + $g) . '), _mm256_permute2x128_si256(t0, t2, 0x31));';
+            $net[] = "        _mm256_store_si256((__m256i *)(buf + " . (3 * $R + $g) . '), _mm256_permute2x128_si256(t1, t3, 0x31));';
+            $net[] = '    }';
         }
     } else {
         for ($g = 0; $g < $R; $g += 8) {
             $x = [];
             for ($k = 0; $k < 8; $k++) $x[] = 'r' . ($g + $k);
-            $o[] = '    {';
+            $net[] = '    {';
             for ($k = 0; $k < 8; $k += 2) {
-                $o[] = "        const __m256i t$k = _mm256_unpacklo_epi32({$x[$k]}, {$x[$k + 1]}), t" . ($k + 1) . " = _mm256_unpackhi_epi32({$x[$k]}, {$x[$k + 1]});";
+                $net[] = "        t$k = _mm256_unpacklo_epi32({$x[$k]}, {$x[$k + 1]}), t" . ($k + 1) . " = _mm256_unpackhi_epi32({$x[$k]}, {$x[$k + 1]});";
             }
-            $o[] = '        const __m256i u0 = _mm256_unpacklo_epi64(t0, t2), u1 = _mm256_unpackhi_epi64(t0, t2);';
-            $o[] = '        const __m256i u2 = _mm256_unpacklo_epi64(t1, t3), u3 = _mm256_unpackhi_epi64(t1, t3);';
-            $o[] = '        const __m256i u4 = _mm256_unpacklo_epi64(t4, t6), u5 = _mm256_unpackhi_epi64(t4, t6);';
-            $o[] = '        const __m256i u6 = _mm256_unpacklo_epi64(t5, t7), u7 = _mm256_unpackhi_epi64(t5, t7);';
+            $net[] = '        u0 = _mm256_unpacklo_epi64(t0, t2), u1 = _mm256_unpackhi_epi64(t0, t2);';
+            $net[] = '        u2 = _mm256_unpacklo_epi64(t1, t3), u3 = _mm256_unpackhi_epi64(t1, t3);';
+            $net[] = '        u4 = _mm256_unpacklo_epi64(t4, t6), u5 = _mm256_unpackhi_epi64(t4, t6);';
+            $net[] = '        u6 = _mm256_unpacklo_epi64(t5, t7), u7 = _mm256_unpackhi_epi64(t5, t7);';
             foreach ([0, 1, 2, 3] as $l) {
-                $o[] = "        _mm256_store_si256((__m256i *)(buf + " . ($l * $R + $g) . "), _mm256_permute2x128_si256(u$l, u" . ($l + 4) . ', 0x20));';
-                $o[] = "        _mm256_store_si256((__m256i *)(buf + " . (($l + 4) * $R + $g) . "), _mm256_permute2x128_si256(u$l, u" . ($l + 4) . ', 0x31));';
+                $net[] = "        _mm256_store_si256((__m256i *)(buf + " . ($l * $R + $g) . "), _mm256_permute2x128_si256(u$l, u" . ($l + 4) . ', 0x20));';
+                $net[] = "        _mm256_store_si256((__m256i *)(buf + " . (($l + 4) * $R + $g) . "), _mm256_permute2x128_si256(u$l, u" . ($l + 4) . ', 0x31));';
             }
-            $o[] = '    }';
+            $net[] = '    }';
         }
     }
+    $o[] = temporaries($net);
+    foreach ($net as $line) $o[] = $line;
     $o[] = "    memcpy(a, buf, (size_t)n * sizeof($T));";
     $o[] = '}';
     return implode("\n", $o) . "\n";
@@ -98,11 +101,11 @@ function stage(array &$o, int $w, int $R, int $L, int $x, int $b, string $kind):
         $q = $r ^ $xr;
         if ($q < $r) continue;
         if ($q === $r) {                                  // within one register
-            $o[] = '    { const __m256i p = ' . perm($w, "r$r", $xl) . '; ' . minmax($w, "r$r", 'p', $kind)
+            $o[] = '    { p = ' . perm($w, "r$r", $xl) . '; ' . minmax($w, "r$r", 'p', $kind)
                 . " r$r = _mm256_blend_epi32(mn, mx, $upper); }";
         } else {                                          // register r against register q with lanes permuted
-            $o[] = '    { const __m256i p = ' . perm($w, "r$q", $xl) . '; ' . minmax($w, "r$r", 'p', $kind)
-                . " r$r = _mm256_blend_epi32(mn, mx, $upper); const __m256i t = _mm256_blend_epi32(mx, mn, $upper); r$q = "
+            $o[] = '    { p = ' . perm($w, "r$q", $xl) . '; ' . minmax($w, "r$r", 'p', $kind)
+                . " r$r = _mm256_blend_epi32(mn, mx, $upper); t = _mm256_blend_epi32(mx, mn, $upper); r$q = "
                 . perm($w, 't', $xl) . '; }';
         }
     }
@@ -111,13 +114,30 @@ function stage(array &$o, int $w, int $R, int $L, int $x, int $b, string $kind):
 function minmax(int $w, string $a, string $b, string $kind): string
 {
     if ($kind === 'd') {
-        return "const __m256d x_ = _mm256_castsi256_pd($a), y_ = _mm256_castsi256_pd($b); "
-            . 'const __m256i mn = _mm256_castpd_si256(_mm256_min_pd(x_, y_)), mx = _mm256_castpd_si256(_mm256_max_pd(x_, y_));';
+        return "x_ = _mm256_castsi256_pd($a); y_ = _mm256_castsi256_pd($b); "
+            . 'mn = _mm256_castpd_si256(_mm256_min_pd(x_, y_)); mx = _mm256_castpd_si256(_mm256_max_pd(x_, y_));';
     }
     if ($w === 32) {
-        return "const __m256i mn = _mm256_min_epi32($a, $b), mx = _mm256_max_epi32($a, $b);";
+        return "mn = _mm256_min_epi32($a, $b); mx = _mm256_max_epi32($a, $b);";
     }
-    return "const __m256i g = _mm256_cmpgt_epi64($a, $b); const __m256i mn = _mm256_blendv_epi8($a, $b, g), mx = _mm256_blendv_epi8($b, $a, g);";
+    return "g = _mm256_cmpgt_epi64($a, $b); mn = _mm256_blendv_epi8($a, $b, g); mx = _mm256_blendv_epi8($b, $a, g);";
+}
+
+/* The temporaries of the steps and of the closing transpose, declared once for the whole function: at -O0 the
+   compiler gives every declaration a stack slot of its own, and one set per step would need 64 KB of stack for
+   the 64-key network (the 128 KB thread stack test in tests/test_main.c, and musl's default pthread stacks). */
+function temporaries(array $net): string
+{
+    $text = implode("\n", $net);
+    $decl = [];
+    foreach (['g', 'mn', 'mx', 'p', 't', 't0', 't1', 't2', 't3', 't4', 't5', 't6', 't7',
+              'u0', 'u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7'] as $v) {
+        if (preg_match('/\b' . $v . '\b/', $text)) $decl[] = $v;
+    }
+    $o = [];
+    if ($decl) $o[] = '    __m256i ' . implode(', ', $decl) . ';';
+    if (preg_match('/\bx_\b/', $text)) $o[] = '    __m256d x_, y_;';
+    return implode("\n", $o);
 }
 
 /* lane l takes lane l ^ xl */
