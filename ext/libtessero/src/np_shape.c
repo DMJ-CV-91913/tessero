@@ -1981,6 +1981,73 @@ static void tri_row(const trik *t, int64_t i, int64_t *e, int64_t *w)
     *e = diff >= (uint64_t)jw ? jw : (int64_t)diff + 1;
 }
 
+/* How many (row, column) pairs tri(k) selects in an (n, cols) plane, plus the two numbers the fill loop needs
+   to stay proportional to the result: jw (tri_row's w) and how many leading rows sit before the crossing v0.
+   Row i holds [0, e) and [w, cols). Every row before the crossing has the same shape, and from v0 on e grows
+   by one per row for min(rows, jw - u0) rows and is jw after that, where u0 is how far the first row sits past
+   v0 -- for v0 < 0 that is -v0, not 0 (a k of INT64_MIN is already past the ramp at the first row), which is
+   why the closed form tracks u0 rather than counting rows from the crossing. Neither the count nor the fill
+   walks the rows: n is an int64 taken from an argument, and NumPy answers a huge one at once
+   (numpy.tril_indices(1768810751) raises MemoryError from its arange(n) in milliseconds); walking made
+   np.tril_indices(1768810751, 4, 1) here loop over 1.8e9 rows before refusing -- the nightly fuzz routines
+   job's libFuzzer timeout (26 Nov 2026). Terms saturate at TRI_CAP, which is only reached once the count is
+   far past the kernel budget (256 MiB), so the count is exact whenever the result could still be allocated. */
+#define TRI_CAP ((int64_t)1 << 40)                    /* 2**40 pairs is 16 TiB of output: past any budget */
+
+static int64_t tri_mul(int64_t a, int64_t b)          /* a, b >= 0: a * b, saturating at TRI_CAP */
+{
+    if (a == 0 || b == 0) return 0;
+    if (a > TRI_CAP / b) return TRI_CAP;
+    return a * b;
+}
+
+static int64_t tri_add(int64_t a, int64_t b)          /* 0 <= a, b <= TRI_CAP: a + b, saturating */
+{
+    const int64_t s = a + b;
+    return s > TRI_CAP ? TRI_CAP : s;
+}
+
+static int64_t tri_half(int64_t m)                    /* m * (m - 1) / 2, saturating (0 + 1 + ... + m - 1) */
+{
+    if (m <= 1) return 0;                             /* halve the even factor first, so the product is exact
+                                                         below the cap instead of saturating early */
+    return tri_mul(m & 1 ? m : m / 2, m & 1 ? (m - 1) / 2 : m - 1);
+}
+
+typedef struct { int64_t cnt, jw, below; } tricount;
+
+static tricount tri_count(const trik *t, int64_t n, int upper)
+{
+    const int64_t cols = t->cols;
+    tricount r = {0, cols, 0};
+    if (t->d != 0 && t->v0 > 0 && cols > 0 && (uint64_t)(INT64_MAX - t->v0) < (uint64_t)cols - 1)
+        r.jw = INT64_MAX - t->v0 + 1;                 /* the same wrap bound tri_row applies */
+    if (n <= 0 || cols <= 0) return r;                /* nothing selected: tri_row is empty on every row */
+    r.below = t->v0 > 0 ? (t->v0 < n ? t->v0 : n) : 0;         /* rows before the crossing */
+    const int64_t ge = n - r.below;                            /* rows at or past it */
+    if (t->d == 0) {                                  /* a float k: e is 0 or cols and w is cols */
+        r.cnt = upper ? tri_mul(r.below, cols) : tri_mul(ge, cols);
+        return r;
+    }
+    const int64_t rest = cols - r.jw;                 /* the columns a row before the crossing holds */
+    const uint64_t u0 = t->v0 >= 0 ? 0 : (uint64_t)0 - (uint64_t)t->v0;   /* tri_row's distance on the first row */
+    int64_t W = 0, m = 0;                             /* W = jw - u0, m = rows whose e is still growing */
+    if (u0 < (uint64_t)r.jw) {
+        W = (int64_t)((uint64_t)r.jw - u0);
+        m = W < ge ? W : ge;
+    }
+    if (upper) {
+        /* rows past the ramp contribute nothing, so only e < jw matters: over the ramp, jw - e runs down
+           from jw - u0 - 1 to jw - u0 - mp for the mp = min(ge, jw - u0 - 1) rows that still hold a column */
+        const int64_t mp = W > 1 ? (W - 1 < ge ? W - 1 : ge) : 0;
+        r.cnt = tri_add(tri_mul(r.below, r.jw), tri_add(tri_mul(mp, W - mp), tri_half(mp)));
+        return r;
+    }
+    const int64_t ramp = tri_add(tri_mul(m, (int64_t)u0 + 1), tri_half(m));   /* sum of e over the ramp */
+    r.cnt = tri_add(tri_add(tri_add(tri_mul(r.below, rest), ramp), tri_mul(m, rest)), tri_mul(ge - m, cols));
+    return r;
+}
+
 /* tri(N, M=None, k=0, dtype=float) */
 static int r_tri(const void *ctx, const tsr_arg *args, int nargs, tsr_result *res, int nres)
 {
@@ -2083,22 +2150,25 @@ static int r_trilu_indices(const void *ctx, const tsr_arg *args, int nargs, tsr_
     if ((rc = tri_k(ka, m, upper, &t)) < 0) return rc;
     const int64_t sh2[2] = {n, t.cols};
     if (tsr_shape_size(2, sh2) < 0) { fn_set_error("array is too big"); return TSR_EARG; }
-    int64_t cnt = 0;
-    for (int64_t i = 0; i < n; i++) {
-        int64_t e, w;
-        tri_row(&t, i, &e, &w);
-        cnt += upper ? w - e : e + (t.cols - w);
-    }
-    if (check_total(2.0 * (double)cnt, 8) < 0) return TSR_ENOMEM;
+    const tricount tc = tri_count(&t, n, upper);
+    if (check_total(2.0 * (double)tc.cnt, 8) < 0) return TSR_ENOMEM;
+    int64_t cnt = tc.cnt;
     tsr_result *items = fn_result_seq(&res[0], 2);
     if (!items) return TSR_ENOMEM;
     int64_t *r = (int64_t *)fn_result_array(&items[0], TSR_I64, 1, &cnt);
     int64_t *c = r ? (int64_t *)fn_result_array(&items[1], TSR_I64, 1, &cnt) : NULL;
     if (!r || !c) return TSR_ENOMEM;
     int64_t q = 0;
-    for (int64_t i = 0; i < n; i++) {                    /* only the selected columns: O(result) */
+    /* Rows before the crossing hold the same columns in every row; when that is nothing (a far or wrapped
+       diagonal) they are skipped as one block, and triu's rows past their ramp hold nothing at all. The walk
+       is proportional to the result, never to n -- n is an argument, and an empty plane must not be walked
+       either. Only the selected columns, so O(result). */
+    int64_t i = (upper ? tc.jw : t.cols - tc.jw) == 0 ? tc.below : 0;
+    if (tc.cnt == 0) i = n;
+    for (; i < n; i++) {
         int64_t e, w;
         tri_row(&t, i, &e, &w);
+        if (upper && e == w) break;
         if (upper) { for (int64_t j = e; j < w; j++) { r[q] = i; c[q] = j; q++; } }
         else {
             for (int64_t j = 0; j < e; j++) { r[q] = i; c[q] = j; q++; }
