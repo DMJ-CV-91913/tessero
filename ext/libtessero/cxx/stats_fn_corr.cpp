@@ -2144,8 +2144,12 @@ int r_quantile(const void *, const tsr_arg *args, int nargs, tsr_result *res, in
                     jp1 = std::floor(jg);
                     j = jp1 - 1;
                 } else {
-                    const int64_t ni = (int64_t)n;
-                    const int64_t ti = ni - 1 < 0 ? ni - 1 + L : ni - 1;
+                    /* cumulative_weights[n - 1] as scipy's take_along_axis reads it: numpy wraps an index in
+                       [-L, -1] and raises outside it (n_zero_weight and the omitted NaNs are counted
+                       independently, so n can fall below zero) */
+                    const int64_t k = (int64_t)n - 1;
+                    if (k < -L || k >= L) return fail("index %lld is out of bounds for axis 0 with size %lld", (long long)k, (long long)L);
+                    const int64_t ti = k < 0 ? k + L : k;
                     const double total = cw[ti];
                     jg = pp * total + m;
                     jp1 = (double)(std::upper_bound(cw.begin(), cw.end(), jg, lt_nan) - cw.begin());
