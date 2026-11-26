@@ -119,7 +119,9 @@ jobs:
 
   # ThreadSanitizer over the C tests with 4 OpenMP threads (test_threads, the threaded ufunc/elementwise loops).
   # clang + LLVM libomp with the Archer tool: libomp tells TSan about its barriers and task synchronisation, so a
-  # report is a real race (blocking). There is no gcc + libgomp leg: libgomp is not TSan-instrumented, so TSan cannot
+  # report is a real race (blocking), with one exception: libomp's own task records, which .github/tsan.supp
+  # suppresses and explains (the ordering of a task record's firstprivate copies is a libomp-internal hand-off).
+  # There is no gcc + libgomp leg: libgomp is not TSan-instrumented, so TSan cannot
   # see its barriers and reports every `#pragma omp parallel` whose workers read a variable the main thread wrote
   # before the region (measured: 14 reports in src/elementwise.c and src/ufunc.c, all of that shape, none between
   # workers). That leg could never pass, so it was removed (2026-10-24); Archer is the race check.
@@ -155,7 +157,9 @@ jobs:
             export ARCHER_OPTIONS='verbose=1'
             # the Archer setup LLVM documents: libomp's own (uninstrumented) internals are not reported; the
             # synchronisation they implement reaches TSan through the OMPT callbacks
-            export TSAN_OPTIONS="$TSAN_OPTIONS ignore_noninstrumented_modules=1"
+            # .github/tsan.supp covers libomp's task records; TSan lists the rules it applied when the run ends, so
+            # a rule that stops being needed shows up in the log
+            export TSAN_OPTIONS="$TSAN_OPTIONS ignore_noninstrumented_modules=1 suppressions=${{ github.workspace }}/.github/tsan.supp"
           fi
           cd csrc && ./build-tsan/test_opt
 
