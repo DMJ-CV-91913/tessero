@@ -91,6 +91,12 @@ are unchanged; the parity fixtures verify that.
   evaluation can return log_scaling near 2^63, and the loops that remove it 707 at a time ran about 10^16 times
   (SciPy hangs, e.g. `hyp1f1(0.5, 1.5, inf)`). Tessero computes their step count and stops multiplying once the
   result is inf, NaN or 0, which no further step changes: bit for bit the original loops' result, in a few steps.
+- `boost/math/distributions/hypergeometric.hpp` (`check_x` and `range`) and
+  `boost/math/distributions/detail/hypergeometric_cdf.hpp`: the lower limit of the support is computed as
+  `(int64)(n + r) - (int64)N`, which is signed overflow once the counts exceed INT64_MAX -- reachable from
+  `stats.fisher_exact` when wrapped int64 margins land in a valid-looking range (UBSan at `hypergeometric.hpp:71`).
+  The subtraction is done in uint64 instead, where wrapping is defined and produces the same bits x86-64 builds
+  already produced, so no result changes.
 - `scipy/boost_special_functions.h`, `user_overflow_error`: SciPy sets Python's `OverflowError` and returns 0;
   Tessero records the same message as the call's error, and the registry raises it after the element loop.
 - `scipy/cython_ports.hpp`, the `_unsafe` wrappers (`yn`, `kn`, `expn`, `bdtrc`, `bdtri`, `nbdtr*`, `pdtri`,

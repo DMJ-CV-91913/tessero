@@ -28,7 +28,10 @@ namespace boost{ namespace math{ namespace detail{
       {
          result = hypergeometric_pdf<T>(x, r, n, N, pol);
          T diff = result;
-         const auto lower_limit = static_cast<std::uint64_t>((std::max)(INT64_C(0), static_cast<std::int64_t>(n + r) - static_cast<std::int64_t>(N)));
+         // Tessera local modification (THIRD_PARTY_NOTICES.md): the counts can exceed INT64_MAX, and the signed
+         // subtraction was then undefined (UBSan: signed integer overflow). uint64 wrapping is defined and gives
+         // the same bits x86-64 builds already produced, so results are unchanged.
+         const auto lower_limit = static_cast<std::uint64_t>((std::max)(INT64_C(0), static_cast<std::int64_t>(n + r - N)));
          while(diff > (invert ? T(1) : result) * tools::epsilon<T>())
          {
             diff = T(x) * T((N + x) - n - r) * diff / (T(1 + n - x) * T(1 + r - x));

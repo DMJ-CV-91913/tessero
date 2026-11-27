@@ -93,6 +93,16 @@ CI libFuzzer `routines`, 18 Nov 2026 (main and the v0.4.0 tag, 60 s per target).
 | G-U3 | `splinalg.matrix_power`, `linalg.matrix_power` (power) | `p = -p` overflowed at INT64_MIN (UBSan at `scipy_sparse_linalg.c:206`), and a float power outside int64 was cast to it | `fn_arg_i64`, and the magnitude taken as unsigned: any int64 power works (64 squarings at most); NaN, infinite or out-of-int64 floats are refused |
 | G-U4 | `special.h1vp`, `h2vp` and every complex Bessel/Hankel order path through vendored `xsf/amos/amos.h` | xsf's `besh` and `besj` bound the order by `d1mach[1]` where AMOS bounds it by `I1MACH(9)`, so an order past INT_MAX reached `(int)fnu` (float-cast-overflow at `amos.h:5900`, order 4e9; reported by the standalone driver, whose sanitizer set includes float-cast-overflow) | `tsr_x86_int` at the 14 order casts: the value SciPy's x86-64 builds compute (INT_MIN), so defined and unchanged; reproducer `regress_G_U4_*` |
 
+CI libFuzzer `routines`, 27 Nov 2026 (scheduled nightly at `65ee8f32`, 30 min, `FUZZ_SKIP_KNOWN`). Both findings sit
+on one input path: UBSan stops at the first report, so G-U5 hid G-U6. Reproducer
+`fuzz/corpus/routines/G-U5-fisher-exact-margins-overflow` (the CI crash input, sha1 `11ca25f5...`), replayed by every
+`routines` run.
+
+| id | routine(s) | was | now |
+|----|-----------|-----|-----|
+| G-U5 | `stats.fisher_exact` (`cxx/stats_fn_tests.cpp`, `f_fisher_exact`) | the int64 margins and products overflowed: `c00 + c10`, `(n + 1) * (n1 + 1)` (UBSan at `stats_fn_tests.cpp:1193`, `5993497313227843585 * 5993497313227843585`) | every int64 `+` and `*` goes through wrapping helpers, which is what numpy's int64 scalar arithmetic does: the value is unchanged and the UB is gone |
+| G-U6 | `stats.fisher_exact` -> vendored `boost/math/distributions/hypergeometric.hpp` (`check_x`, `range`) and `detail/hypergeometric_cdf.hpp` | counts past INT64_MAX made `(int64)(n + r) - (int64)N` signed overflow (UBSan at `hypergeometric.hpp:71`, `-6459749447253864448 - 9176464918103217152`) | the subtraction is done in uint64, where wrapping is defined and gives the bits x86-64 builds already produced: results unchanged (Tessera local modification, `THIRD_PARTY_NOTICES.md`) |
+
 PR #57 CI follow-up (`np_shape.c`, `np_linalg.c`, `cxx/special_complex.inc`). Regression checks in `tests/test_main.c`;
 reproducers `fuzz/corpus/routines/regress_*` (default table, CI seed 1).
 

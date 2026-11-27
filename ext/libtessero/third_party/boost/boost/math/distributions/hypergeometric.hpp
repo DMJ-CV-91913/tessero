@@ -68,7 +68,10 @@ namespace boost { namespace math {
       }
       bool check_x(std::uint64_t x, const char* function, RealType* result)const
       {
-         if(x < static_cast<std::uint64_t>((std::max)(INT64_C(0), static_cast<std::int64_t>(m_n + m_r) - static_cast<std::int64_t>(m_N))))
+         // Tessera local modification (THIRD_PARTY_NOTICES.md): the counts can exceed INT64_MAX, and the signed
+         // subtraction below is then undefined (UBSan: signed integer overflow). Compute it in uint64, where
+         // wrapping is defined and produces the same bits x86-64 builds already produced, so results are unchanged.
+         if(x < static_cast<std::uint64_t>((std::max)(INT64_C(0), static_cast<std::int64_t>(m_n + m_r - m_N))))
          {
             *result = boost::math::policies::raise_domain_error<RealType>(
                function, "Random variable out of range: must be > 0 and > m + r - N but got %1%", static_cast<RealType>(x), Policy());
@@ -103,7 +106,9 @@ namespace boost { namespace math {
       const auto r = dist.defective();
       const auto n = dist.sample_count();
       const auto N = dist.total();
-      const auto l = static_cast<std::uint64_t>((std::max)(INT64_C(0), static_cast<std::int64_t>(n + r) - static_cast<std::int64_t>(N)));
+      // Tessera local modification (THIRD_PARTY_NOTICES.md): as in check_x above, do the subtraction in uint64 so
+      // the wrapped value x86-64 builds compute is produced without signed overflow.
+      const auto l = static_cast<std::uint64_t>((std::max)(INT64_C(0), static_cast<std::int64_t>(n + r - N)));
       const auto u = (std::min)(r, n);
       return std::make_pair(l, u);
 #ifdef _MSC_VER

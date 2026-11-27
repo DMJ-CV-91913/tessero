@@ -1174,23 +1174,25 @@ int f_fisher_exact(const void *, const tsr_arg *args, int nargs, tsr_result *res
         for (int q = 0; q < 4; q++)
             if (!(t.v[q] > -9223372036854775808.0 && t.v[q] < 9223372036854775808.0)) fail("Python int too large to convert to C long");
         const int64_t c00 = (int64_t)t.v[0], c01 = (int64_t)t.v[1], c10 = (int64_t)t.v[2], c11 = (int64_t)t.v[3];
-        if (c00 + c10 == 0 || c01 + c11 == 0 || c00 + c01 == 0 || c10 + c11 == 0) {
+        /* numpy int64 scalar arithmetic wraps around (with a RuntimeWarning); unsigned arithmetic does the same
+           without C++'s signed-overflow undefined behaviour. Every int64 + and * below goes through these: the
+           cells are only bounded by < 2**63, so a raw sum or product is UB (the fuzzer reaches it -- UBSan,
+           cxx/stats_fn_tests.cpp:1193) even though the wrapped value is the one numpy and SciPy produce. */
+        auto mulw = [](int64_t x, int64_t y) { return (int64_t)((uint64_t)x * (uint64_t)y); };
+        auto addw = [](int64_t x, int64_t y) { return (int64_t)((uint64_t)x + (uint64_t)y); };
+        if (addw(c00, c10) == 0 || addw(c01, c11) == 0 || addw(c00, c01) == 0 || addw(c10, c11) == 0) {
             fn_result_num(&res[0], NaN);
             fn_result_num(&res[1], 1.0);
             return TSR_OK;
         }
-        /* numpy int64 scalar arithmetic wraps around (with a RuntimeWarning); unsigned arithmetic does the same
-           without C++'s signed-overflow undefined behaviour */
-        auto mulw = [](int64_t x, int64_t y) { return (int64_t)((uint64_t)x * (uint64_t)y); };
-        auto addw = [](int64_t x, int64_t y) { return (int64_t)((uint64_t)x + (uint64_t)y); };
         const double odds = (c10 > 0 && c01 > 0) ? (double)mulw(c00, c11) / (double)mulw(c10, c01) : INF;
         const int64_t n1 = addw(c00, c01), n2 = addw(c10, c11), n = addw(c00, c10);
-        const Hypergeom H((double)(n1 + n2), (double)n1, (double)n);
+        const Hypergeom H((double)addw(n1, n2), (double)n1, (double)n);
         double pvalue;
         if (!strcmp(as, "less")) pvalue = H.cdf((double)c00);
-        else if (!strcmp(as, "greater")) pvalue = Hypergeom((double)(n1 + n2), (double)n1, (double)(c01 + c11)).cdf((double)c01);
+        else if (!strcmp(as, "greater")) pvalue = Hypergeom((double)addw(n1, n2), (double)n1, (double)addw(c01, c11)).cdf((double)c01);
         else if (!strcmp(as, "two-sided")) {
-            const double mode = std::trunc((double)((n + 1) * (n1 + 1)) / (double)(n1 + n2 + 2));
+            const double mode = std::trunc((double)mulw(addw(n, 1), addw(n1, 1)) / (double)addw(addw(n1, n2), 2));
             const double pexact = H.pmf((double)c00), pmode = H.pmf(mode);
             const double epsilon = 1e-14, gamma = 1 + epsilon;
             if (std::fabs(pexact - pmode) / std::max(pexact, pmode) <= epsilon) {

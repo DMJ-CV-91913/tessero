@@ -27,6 +27,14 @@ minor releases and are always listed; see `docs/operations/upgrading.md`).
   INT_MAX to int; the result is the one SciPy's x86-64 builds give, so values are unchanged. Reproducers are in
   the fuzz corpus and the CI fuzz job replays them.
 
+- **`stats.fisher_exact` and the vendored Boost hypergeometric support bound no longer overflow int64** (undefined
+  behaviour found by the nightly fuzzer; no change for ordinary inputs, and the fuzzer's input joins the routines
+  corpus). The four margins are int64 and were added and multiplied as signed integers (`c00 + c10`,
+  `(n + 1) * (n1 + 1)`), which is undefined once a cell passes half of 2**63; the arithmetic wraps in uint64 now,
+  the value NumPy's int64 scalars produce. The hypergeometric distribution's support lower limit was computed as
+  `(int64)(n + r) - (int64)N`, the same overflow once the counts pass INT64_MAX, and is subtracted in uint64
+  (`THIRD_PARTY_NOTICES.md`).
+
 ## [0.4.0] - 2026-11-18
 
 ### Changed
