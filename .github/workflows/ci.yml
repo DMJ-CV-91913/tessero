@@ -65,7 +65,7 @@ jobs:
       - if: runner.os == 'Linux' && !matrix.container
         run: sudo apt-get update && sudo apt-get install -y liblapacke-dev libopenblas-dev
       - if: matrix.platform == 'windows-x86_64'
-        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
+        uses: msys2/setup-msys2@3c51bf698df1e37b2261f53cb67797b97761185c # v2.34.0
         with: { msystem: MINGW64, install: 'make mingw-w64-x86_64-gcc mingw-w64-x86_64-openblas' }
       - if: runner.os == 'macOS'
         run: brew install openblas      # LAPACK + LAPACKE + cblas (Accelerate has no LAPACKE)
@@ -704,9 +704,9 @@ jobs:
         with: { subject-path: 'tessero-binaries.tgz' }
       - uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with: { subject-path: 'tessero-binaries.tgz', sbom-path: 'tessero.cdx.json' }
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
         with: { cosign-release: 'v3.0.6' }
       - name: sign SHA256SUMS (Sigstore keyless; verify with cosign verify-blob, see RELEASING.md)
         run: cosign sign-blob --yes --bundle SHA256SUMS.sigstore.json SHA256SUMS
-      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+      - uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with: { files: 'tessero-binaries.tgz,SHA256SUMS,SHA256SUMS.sigstore.json,tessero.cdx.json' }
